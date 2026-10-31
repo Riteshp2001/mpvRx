@@ -1433,8 +1433,6 @@
   <string name="ui_no_storage_location_configured">保存場所が設定されていません</string>
   <string name="ui_script_file_not_found">スクリプトファイルが見つかりません</string>
   <string name="ui_search_models">モデルを検索...</string>
-  <string name="ui_portrait_playback_buttons">縦向き再生ボタン</string>
-  <string name="ui_landscape_playback_buttons">横向き再生ボタン</string>
   <string name="ui_portrait_seekbar_position">縦向きのシークバーの位置</string>
   <string name="ui_landscape_seekbar_position">横向きのシークバーの位置</string>
   <string name="pref_player_buttons_opacity">プレーヤーボタンの背景の不透明度</string>
@@ -2832,10 +2830,8 @@
   <string name="clip_quick_length">長さのクイック選択</string>
   <string name="clip_length_seconds">%1$d秒</string>
   <string name="clip_crop_reset">フレーム全体を使用</string>
-  <string name="pref_layout_center_seekbar_above">中央再生・操作ボタンの上にシークバー</string>
-  <string name="pref_layout_center_seekbar_below">中央再生・操作ボタンの下にシークバー</string>
-  <string name="pref_layout_playback_above">シークバーの上に再生と操作ボタン</string>
-  <string name="pref_layout_playback_below">シークバーの下に再生と操作ボタン</string>
+  <string name="pref_layout_seekbar_above">シークバーを上に</string>
+  <string name="pref_layout_seekbar_below">シークバーを下に</string>
   <string name="player_layout_preset_title">再生操作の配置</string>
   <string name="player_layout_preview_hint">表示はサンプルです。変更はすぐに保存されます。</string>
   <string name="player_layout_shared_landscape_hint">横向き画面のすべての操作領域で共通です。</string>

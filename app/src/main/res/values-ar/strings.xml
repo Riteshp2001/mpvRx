@@ -1464,8 +1464,6 @@
   <string name="ui_no_storage_location_configured">لم يتم إعداد موقع تخزين</string>
   <string name="ui_script_file_not_found">لم يتم العثور على ملف البرنامج النصي</string>
   <string name="ui_search_models">البحث عن نماذج...</string>
-  <string name="ui_portrait_playback_buttons">أزرار تشغيل الوضع العمودي</string>
-  <string name="ui_landscape_playback_buttons">أزرار تشغيل الوضع الأفقي</string>
   <string name="ui_portrait_seekbar_position">موضع شريط التقديم في الوضع العمودي</string>
   <string name="ui_landscape_seekbar_position">موضع شريط التقديم في الوضع الأفقي</string>
   <string name="pref_player_buttons_opacity">شفافية خلفية أزرار المشغل</string>
@@ -2910,10 +2908,8 @@
   <string name="clip_quick_length">مدة سريعة</string>
   <string name="clip_length_seconds">%1$d ث</string>
   <string name="clip_crop_reset">استخدام الإطار الكامل</string>
-  <string name="pref_layout_center_seekbar_above">تشغيل بالوسط · شريط فوق الأزرار</string>
-  <string name="pref_layout_center_seekbar_below">تشغيل بالوسط · شريط تحت الأزرار</string>
-  <string name="pref_layout_playback_above">التشغيل والأزرار فوق الشريط</string>
-  <string name="pref_layout_playback_below">التشغيل والأزرار تحت الشريط</string>
+  <string name="pref_layout_seekbar_above">شريط التقديم بالأعلى</string>
+  <string name="pref_layout_seekbar_below">شريط التقديم بالأسفل</string>
   <string name="player_layout_preset_title">تخطيط التشغيل</string>
   <string name="player_layout_preview_hint">معاينة فقط. تُحفظ التغييرات فورًا.</string>
   <string name="player_layout_shared_landscape_hint">مشترك بين جميع مناطق الوضع الأفقي.</string>

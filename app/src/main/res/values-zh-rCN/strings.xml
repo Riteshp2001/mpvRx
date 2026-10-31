@@ -1460,8 +1460,6 @@
   <string name="ui_no_storage_location_configured">未配置存储位置</string>
   <string name="ui_script_file_not_found">未找到脚本文件</string>
   <string name="ui_search_models">搜索模型...</string>
-  <string name="ui_portrait_playback_buttons">竖屏播放按钮</string>
-  <string name="ui_landscape_playback_buttons">横屏播放按钮</string>
   <string name="ui_portrait_seekbar_position">竖屏进度条位置</string>
   <string name="ui_landscape_seekbar_position">横屏进度条位置</string>
   <string name="pref_player_buttons_opacity">播放器按钮背景不透明度</string>
@@ -2832,10 +2830,8 @@
   <string name="clip_quick_length">快速时长</string>
   <string name="clip_length_seconds">%1$d秒</string>
   <string name="clip_crop_reset">使用完整画面</string>
-  <string name="pref_layout_center_seekbar_above">居中播放 · 进度条在操作按钮上方</string>
-  <string name="pref_layout_center_seekbar_below">居中播放 · 进度条在操作按钮下方</string>
-  <string name="pref_layout_playback_above">播放与操作按钮在进度条上方</string>
-  <string name="pref_layout_playback_below">播放与操作按钮在进度条下方</string>
+  <string name="pref_layout_seekbar_above">进度条在上方</string>
+  <string name="pref_layout_seekbar_below">进度条在下方</string>
   <string name="player_layout_preset_title">播放布局</string>
   <string name="player_layout_preview_hint">仅供预览，更改会立即保存。</string>
   <string name="player_layout_shared_landscape_hint">所有横屏操作区域共用此布局。</string>

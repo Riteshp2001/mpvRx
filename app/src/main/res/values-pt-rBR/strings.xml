@@ -1440,8 +1440,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="ui_no_storage_location_configured">Nenhum local de armazenamento configurado</string>
   <string name="ui_script_file_not_found">Arquivo de script não encontrado</string>
   <string name="ui_search_models">Pesquisar modelos...</string>
-  <string name="ui_portrait_playback_buttons">Botões de reprodução em retrato</string>
-  <string name="ui_landscape_playback_buttons">Botões de reprodução em paisagem</string>
   <string name="ui_portrait_seekbar_position">Posição da barra de progresso em retrato</string>
   <string name="ui_landscape_seekbar_position">Posição da barra de progresso em paisagem</string>
   <string name="pref_player_buttons_opacity">Opacidade do fundo dos botões do player</string>
@@ -2848,10 +2846,8 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="clip_quick_length">Duração rápida</string>
   <string name="clip_length_seconds">%1$d s</string>
   <string name="clip_crop_reset">Usar quadro inteiro</string>
-  <string name="pref_layout_center_seekbar_above">Centralizado · barra acima das ações</string>
-  <string name="pref_layout_center_seekbar_below">Centralizado · barra abaixo das ações</string>
-  <string name="pref_layout_playback_above">Reprodução e ações acima da barra</string>
-  <string name="pref_layout_playback_below">Reprodução e ações abaixo da barra</string>
+  <string name="pref_layout_seekbar_above">Barra de progresso acima</string>
+  <string name="pref_layout_seekbar_below">Barra de progresso abaixo</string>
   <string name="player_layout_preset_title">Layout de reprodução</string>
   <string name="player_layout_preview_hint">Apenas prévia. Alterações salvas na hora.</string>
   <string name="player_layout_shared_landscape_hint">Compartilhado por todas as áreas em paisagem.</string>

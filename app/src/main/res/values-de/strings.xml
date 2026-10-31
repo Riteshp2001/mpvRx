@@ -1440,8 +1440,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_no_storage_location_configured">Kein Speicherort konfiguriert</string>
   <string name="ui_script_file_not_found">Skriptdatei nicht gefunden</string>
   <string name="ui_search_models">Modelle suchen...</string>
-  <string name="ui_portrait_playback_buttons">Wiedergabeschaltflächen im Hochformat</string>
-  <string name="ui_landscape_playback_buttons">Wiedergabeschaltflächen im Querformat</string>
   <string name="ui_portrait_seekbar_position">Position der Suchleiste im Hochformat</string>
   <string name="ui_landscape_seekbar_position">Position der Suchleiste im Querformat</string>
   <string name="pref_player_buttons_opacity">Deckkraft des Hintergrunds der Player-Schaltflächen</string>
@@ -2848,10 +2846,8 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="clip_quick_length">Schnellauswahl</string>
   <string name="clip_length_seconds">%1$d s</string>
   <string name="clip_crop_reset">Vollbild verwenden</string>
-  <string name="pref_layout_center_seekbar_above">Mitte · Zeitleiste über Aktionen</string>
-  <string name="pref_layout_center_seekbar_below">Mitte · Zeitleiste unter Aktionen</string>
-  <string name="pref_layout_playback_above">Wiedergabe + Aktionen über Zeitleiste</string>
-  <string name="pref_layout_playback_below">Wiedergabe + Aktionen unter Zeitleiste</string>
+  <string name="pref_layout_seekbar_above">Zeitleiste oben</string>
+  <string name="pref_layout_seekbar_below">Zeitleiste unten</string>
   <string name="player_layout_preset_title">Wiedergabelayout</string>
   <string name="player_layout_preview_hint">Nur Vorschau. Änderungen werden sofort gespeichert.</string>
   <string name="player_layout_shared_landscape_hint">Gilt für alle Bereiche im Querformat.</string>

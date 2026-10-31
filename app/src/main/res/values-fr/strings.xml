@@ -1440,8 +1440,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_no_storage_location_configured">Aucun emplacement de stockage configuré</string>
   <string name="ui_script_file_not_found">Fichier de script introuvable</string>
   <string name="ui_search_models">Rechercher des modèles...</string>
-  <string name="ui_portrait_playback_buttons">Boutons de lecture en mode portrait</string>
-  <string name="ui_landscape_playback_buttons">Boutons de lecture en mode paysage</string>
   <string name="ui_portrait_seekbar_position">Position de la barre de progression en portrait</string>
   <string name="ui_landscape_seekbar_position">Position de la barre de progression en paysage</string>
   <string name="pref_player_buttons_opacity">Opacité du fond des boutons du lecteur</string>
@@ -2848,10 +2846,8 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="clip_quick_length">Durée rapide</string>
   <string name="clip_length_seconds">%1$d s</string>
   <string name="clip_crop_reset">Utiliser l\'image entière</string>
-  <string name="pref_layout_center_seekbar_above">Centré · barre au-dessus des actions</string>
-  <string name="pref_layout_center_seekbar_below">Centré · barre sous les actions</string>
-  <string name="pref_layout_playback_above">Lecture et actions au-dessus de la barre</string>
-  <string name="pref_layout_playback_below">Lecture et actions sous la barre</string>
+  <string name="pref_layout_seekbar_above">Barre de progression au-dessus</string>
+  <string name="pref_layout_seekbar_below">Barre de progression en dessous</string>
   <string name="player_layout_preset_title">Disposition de lecture</string>
   <string name="player_layout_preview_hint">Aperçu simulé. Modifications enregistrées.</string>
   <string name="player_layout_shared_landscape_hint">Commun à toutes les zones en paysage.</string>

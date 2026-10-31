@@ -1352,8 +1352,6 @@
   <string name="ui_no_storage_location_configured">कोई स्टोरेज लोकेशन कॉन्फ़िगर नहीं है</string>
   <string name="ui_script_file_not_found">स्क्रिप्ट फाइल नहीं मिली</string>
   <string name="ui_search_models">मॉडल खोजें...</string>
-  <string name="ui_portrait_playback_buttons">पोर्ट्रेट प्लेबैक बटन</string>
-  <string name="ui_landscape_playback_buttons">लैंडस्केप प्लेबैक बटन</string>
   <string name="ui_portrait_seekbar_position">पोर्ट्रेट सीकबार की स्थिति</string>
   <string name="ui_landscape_seekbar_position">लैंडस्केप सीकबार की स्थिति</string>
   <string name="pref_player_buttons_opacity">प्लेयर बटन पृष्ठभूमि की अपारदर्शिता</string>
@@ -2752,10 +2750,8 @@
   <string name="clip_quick_length">झटपट लंबाई</string>
   <string name="clip_length_seconds">%1$d से॰</string>
   <string name="clip_crop_reset">पूरा फ़्रेम इस्तेमाल करें</string>
-  <string name="pref_layout_center_seekbar_above">बीच में प्लेबैक · बटनों के ऊपर सीक बार</string>
-  <string name="pref_layout_center_seekbar_below">बीच में प्लेबैक · बटनों के नीचे सीक बार</string>
-  <string name="pref_layout_playback_above">सीक बार के ऊपर प्लेबैक और बटन</string>
-  <string name="pref_layout_playback_below">सीक बार के नीचे प्लेबैक और बटन</string>
+  <string name="pref_layout_seekbar_above">सीकबार ऊपर</string>
+  <string name="pref_layout_seekbar_below">सीकबार नीचे</string>
   <string name="player_layout_preset_title">प्लेबैक लेआउट</string>
   <string name="player_layout_preview_hint">सिर्फ़ नमूना। बदलाव तुरंत सहेजे जाते हैं।</string>
   <string name="player_layout_shared_landscape_hint">लैंडस्केप की सभी जगहों पर लागू होता है।</string>

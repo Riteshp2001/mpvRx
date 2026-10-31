@@ -163,12 +163,8 @@ private fun PreviewScene(
   val hasActions =
     if (region.isPortrait) portraitBottomButtons.isNotEmpty()
     else bottomRightButtons.isNotEmpty() || bottomLeftButtons.isNotEmpty()
-  val geometry = resolvePlaybackControlsGeometry(
-    sceneWidth, preset.playbackPosition, playlist, hasActions, spacing,
-  )
-  val layout = resolveBottomControlsLayout(
-    preset.seekbarPlacement, preset.playbackPosition, hasActions, geometry.canShareRow,
-  )
+  val geometry = resolvePlaybackControlsGeometry(sceneWidth, spacing)
+  val layout = resolveBottomControlsLayout(preset.seekbarPlacement, hasActions)
   val backdrop = rememberLiquidGlassBackdrop()
   val background = Brush.linearGradient(listOf(Color(0xFF112333), Color(0xFF27434A), Color(0xFF10131D)))
   Box(Modifier.fillMaxSize()) {
@@ -196,9 +192,7 @@ private fun PreviewScene(
           )
         }
       }
-      if (!layout.buttonsBesidePlayback) {
-        PreviewPlayback(playlist, geometry, Modifier.align(Alignment.Center))
-      }
+      PreviewPlayback(playlist, geometry, Modifier.align(Alignment.Center))
       Column(
         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
           .padding(horizontal = spacing.large, vertical = if (region.isPortrait) spacing.large else spacing.medium),
@@ -208,40 +202,30 @@ private fun PreviewScene(
           when (slot) {
             BottomSlot.Seekbar -> SeekbarStylePreview(seekbarStyle, useWavySeekbar = wavy)
             BottomSlot.Buttons -> {
-              val left = if (region.isPortrait) {
-                if (layout.buttonsBesidePlayback) portraitBottomButtons.take(portraitBottomButtons.size / 2) else emptyList()
-              } else bottomLeftButtons
-              val right = if (region.isPortrait) {
-                if (layout.buttonsBesidePlayback) portraitBottomButtons.drop(portraitBottomButtons.size / 2) else portraitBottomButtons
-              } else bottomRightButtons
-              val actionGap = when {
-                region.isPortrait && layout.buttonsBesidePlayback -> spacing.extraSmall
-                region.isPortrait -> spacing.medium
-                else -> spacing.extraSmall
-              }
+              val left = if (region.isPortrait) emptyList() else bottomLeftButtons
+              val right = if (region.isPortrait) portraitBottomButtons else bottomRightButtons
+              val actionGap = if (region.isPortrait) spacing.medium else spacing.extraSmall
               Row(
-                Modifier.fillMaxWidth().heightIn(min = if (layout.buttonsBesidePlayback) geometry.playPauseSize else 48.dp),
+                Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(if (layout.buttonsBesidePlayback) geometry.sideGap else spacing.smaller),
+                horizontalArrangement = Arrangement.spacedBy(spacing.smaller),
               ) {
-                if (layout.buttonsBesidePlayback || left.isNotEmpty()) {
+                if (left.isNotEmpty()) {
                   PreviewButtons(
-                    left, region == ControlRegion.BOTTOM_LEFT || region == ControlRegion.PORTRAIT_BOTTOM,
+                    left, region == ControlRegion.BOTTOM_LEFT,
                     Modifier.weight(1f), buttonGap = actionGap,
                   )
                 }
-                if (layout.buttonsBesidePlayback) PreviewPlayback(playlist, geometry)
-                if (layout.buttonsBesidePlayback || right.isNotEmpty()) {
+                if (right.isNotEmpty()) {
                   PreviewButtons(
                     right, region == ControlRegion.BOTTOM_RIGHT || region == ControlRegion.PORTRAIT_BOTTOM,
-                    Modifier.weight(1f), endAligned = !region.isPortrait || layout.buttonsBesidePlayback,
-                    centered = region.isPortrait && !layout.buttonsBesidePlayback,
+                    Modifier.weight(1f), endAligned = !region.isPortrait,
+                    centered = region.isPortrait,
                     buttonGap = actionGap,
                   )
                 }
               }
             }
-            BottomSlot.Playback -> Unit
           }
         }
       }

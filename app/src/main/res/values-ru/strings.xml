@@ -1454,8 +1454,6 @@
   <string name="ui_no_storage_location_configured">Место хранения не настроено</string>
   <string name="ui_script_file_not_found">Файл скрипта не найден</string>
   <string name="ui_search_models">Поиск моделей...</string>
-  <string name="ui_portrait_playback_buttons">Кнопки воспроизведения в портретном режиме</string>
-  <string name="ui_landscape_playback_buttons">Кнопки воспроизведения в альбомном режиме</string>
   <string name="ui_portrait_seekbar_position">Положение полосы перемотки в портретном режиме</string>
   <string name="ui_landscape_seekbar_position">Положение полосы перемотки в альбомном режиме</string>
   <string name="pref_player_buttons_opacity">Непрозрачность фона кнопок плеера</string>
@@ -2880,10 +2878,8 @@
   <string name="clip_quick_length">Быстрый выбор длины</string>
   <string name="clip_length_seconds">%1$d с</string>
   <string name="clip_crop_reset">Использовать весь кадр</string>
-  <string name="pref_layout_center_seekbar_above">По центру · шкала над кнопками</string>
-  <string name="pref_layout_center_seekbar_below">По центру · шкала под кнопками</string>
-  <string name="pref_layout_playback_above">Воспроизведение и кнопки над шкалой</string>
-  <string name="pref_layout_playback_below">Воспроизведение и кнопки под шкалой</string>
+  <string name="pref_layout_seekbar_above">Полоса перемотки сверху</string>
+  <string name="pref_layout_seekbar_below">Полоса перемотки снизу</string>
   <string name="player_layout_preset_title">Расположение управления</string>
   <string name="player_layout_preview_hint">Только пример. Изменения сохраняются сразу.</string>
   <string name="player_layout_shared_landscape_hint">Общее для всех зон в альбомном режиме.</string>

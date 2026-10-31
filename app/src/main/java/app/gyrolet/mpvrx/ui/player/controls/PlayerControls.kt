@@ -402,10 +402,6 @@ fun PlayerControls(
       liquidGlassInHdr = liquidGlassInHdr,
     )
   val forceDarkButtonBackground by appearancePreferences.forceDarkPlayerButtonsBackground.collectAsState()
-  val portraitPlaybackControlsPosition by
-    appearancePreferences.portraitPlaybackControlsPosition.collectAsState()
-  val landscapePlaybackControlsPosition by
-    appearancePreferences.landscapePlaybackControlsPosition.collectAsState()
   val portraitSeekbarPlacement by appearancePreferences.portraitSeekbarPlacement.collectAsState()
   val landscapeSeekbarPlacement by appearancePreferences.landscapeSeekbarPlacement.collectAsState()
   val playerButtonsBackgroundOpacity by appearancePreferences.playerButtonsBackgroundOpacity.collectAsState()
@@ -1102,10 +1098,6 @@ fun PlayerControls(
           val (customLeftButtonsRef, customRightButtonsRef) = createRefs()
           val customButtonsPortraitRef = createRef()
 
-          val playbackPosition =
-            if (isPortrait) portraitPlaybackControlsPosition else landscapePlaybackControlsPosition
-          val hasPlaylistControls =
-            playlistMode && (playlistItems.size > 1 || viewModel.getPlaylistTotalCount() > 1)
           val automaticQualityButton =
             showVideoQualitySelector &&
               !(if (isPortrait) portraitHasConfiguredQualityButton else landscapeHasConfiguredQualityButton)
@@ -1118,17 +1110,9 @@ fun PlayerControls(
               })
           val controlsWidth =
             if (playerBounds.width > 0) with(density) { playerBounds.width.toDp() } else configuration.screenWidthDp.dp
-          val safeHorizontalInsets = with(density) {
-            val insets = WindowInsets.safeDrawing
-            (insets.getLeft(this, LayoutDirection.Ltr) + insets.getRight(this, LayoutDirection.Ltr)).toDp()
-          }
           val playbackGeometry = resolvePlaybackControlsGeometry(
             width = controlsWidth,
-            playbackPosition = playbackPosition,
-            hasPlaylistControls = hasPlaylistControls,
-            hasActions = hasBottomActions,
             spacing = spacing,
-            horizontalInsets = safeHorizontalInsets,
           )
           val playPauseSize = playbackGeometry.playPauseSize
           val skipButtonSize = playbackGeometry.skipButtonSize
@@ -1136,26 +1120,12 @@ fun PlayerControls(
           val bottomLayout =
             resolveBottomControlsLayout(
               seekbarPlacement = if (isPortrait) portraitSeekbarPlacement else landscapeSeekbarPlacement,
-              playbackPosition = playbackPosition,
               hasButtons = hasBottomActions,
-              allowSharedRow = playbackGeometry.canShareRow,
             )
-          val buttonsBesidePlayback = bottomLayout.buttonsBesidePlayback
-          val playbackNearSeekbar = buttonsBesidePlayback
-          val portraitLeftButtons =
-            if (buttonsBesidePlayback) portraitBottomButtons.take(portraitBottomButtons.size / 2) else emptyList()
-          val portraitRightButtons =
-            if (buttonsBesidePlayback) portraitBottomButtons.drop(portraitBottomButtons.size / 2) else portraitBottomButtons
-          val hasLeftButtons = if (isPortrait) portraitLeftButtons.isNotEmpty() else bottomLeftButtons.isNotEmpty()
+          val hasLeftButtons = !isPortrait && bottomLeftButtons.isNotEmpty()
           val hasRightButtons =
-            automaticQualityButton || (if (isPortrait) portraitRightButtons.isNotEmpty() else bottomRightButtons.isNotEmpty())
+            automaticQualityButton || (if (isPortrait) portraitBottomButtons.isNotEmpty() else bottomRightButtons.isNotEmpty())
           val sharedPlaybackRowCenterX = createGuidelineFromStart(0.5f)
-          val sharedRowSideInset =
-            if (buttonsBesidePlayback) {
-              playbackGeometry.rowHalfWidth + playbackGeometry.sideGap
-            } else {
-              0.dp
-            }
           val bottomStack = bottomLayout.bottomToTop
 
           fun measured(
@@ -1170,8 +1140,7 @@ fun PlayerControls(
 
           fun bandHeight(slot: BottomSlot): Dp =
             when (slot) {
-              BottomSlot.Buttons -> if (buttonsBesidePlayback) maxOf(buttonsHeight, playPauseSize) else buttonsHeight
-              BottomSlot.Playback -> playPauseSize
+              BottomSlot.Buttons -> buttonsHeight
               BottomSlot.Seekbar -> measured(bottomHeights.seekbar, BottomClusterFallbackRowHeight)
             }
 
@@ -1193,16 +1162,10 @@ fun PlayerControls(
           }
           val buttonsBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Buttons] ?: clusterEdge)
           val seekbarBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Seekbar] ?: clusterEdge)
-          val playbackBandCenter =
-            createGuidelineFromBottom(
-              bandCenters[if (buttonsBesidePlayback) BottomSlot.Buttons else BottomSlot.Playback] ?: clusterEdge,
-            )
-
           fun ConstrainScope.linkInBottomStack(slot: BottomSlot) {
             val center =
               when (slot) {
                 BottomSlot.Buttons -> buttonsBandCenter
-                BottomSlot.Playback -> playbackBandCenter
                 BottomSlot.Seekbar -> seekbarBandCenter
               }
             top.linkTo(center)
@@ -1959,12 +1922,8 @@ fun PlayerControls(
               Modifier.constrainAs(playerPauseButton) {
                 start.linkTo(parent.absoluteLeft)
                 end.linkTo(parent.absoluteRight)
-                if (playbackNearSeekbar) {
-                  linkInBottomStack(BottomSlot.Playback)
-                } else {
-                  top.linkTo(parent.top)
-                  bottom.linkTo(parent.bottom)
-                }
+                top.linkTo(parent.top)
+                bottom.linkTo(parent.bottom)
               },
           ) {
             val hasPlaylistControls =
@@ -2335,26 +2294,18 @@ fun PlayerControls(
                   },
                 ).constrainAs(bottomRightControls) {
                   linkInBottomStack(BottomSlot.Buttons)
-                  if (isPortrait && !buttonsBesidePlayback) {
+                  end.linkTo(parent.end, spacing.large)
+                  if (isPortrait || !hasLeftButtons) {
                     start.linkTo(parent.start, spacing.large)
-                    end.linkTo(parent.end, spacing.large)
-                    width = Dimension.fillToConstraints
                   } else {
-                    end.linkTo(parent.end, spacing.large)
-                    if (buttonsBesidePlayback) {
-                      start.linkTo(sharedPlaybackRowCenterX, sharedRowSideInset)
-                    } else if (hasLeftButtons) {
-                      start.linkTo(sharedPlaybackRowCenterX, spacing.smaller)
-                    } else {
-                      start.linkTo(parent.start, spacing.large)
-                    }
-                    width = Dimension.fillToConstraints
+                    start.linkTo(sharedPlaybackRowCenterX, spacing.smaller)
                   }
+                  width = Dimension.fillToConstraints
                 }.onSizeChanged { bottomHeights.rightButtons = it.height },
           ) {
             if (isPortrait) {
               BottomPlayerControlsPortrait(
-                buttons = portraitRightButtons,
+                buttons = portraitBottomButtons,
                 showVideoQualitySelector = automaticQualityButton,
                 chapters = chapters,
                 currentChapter = currentChapter,
@@ -2369,16 +2320,8 @@ fun PlayerControls(
                 onOpenPanel = onOpenPanel,
                 viewModel = viewModel,
                 activity = playerActivity,
-                alignToEnd = buttonsBesidePlayback,
-                horizontalArrangement =
-                  if (buttonsBesidePlayback) {
-                    Arrangement.spacedBy(spacing.extraSmall, Alignment.End)
-                  } else {
-                    Arrangement.spacedBy(
-                      spacing.medium,
-                      Alignment.CenterHorizontally,
-                    )
-                  },
+                alignToEnd = false,
+                horizontalArrangement = Arrangement.spacedBy(spacing.medium, Alignment.CenterHorizontally),
               )
             } else {
               val rowScrollState = rememberScrollState()
@@ -2398,7 +2341,7 @@ fun PlayerControls(
                 onOpenPanel = onOpenPanel,
                 viewModel = viewModel,
                 activity = playerActivity,
-                // Beside play/pause the group keeps its buttons at the screen edge and scrolls toward the centre.
+                // The landscape action group scrolls toward the centre when there are many buttons.
                 modifier = Modifier.fillMaxWidth().fadingHorizontalScroll(rowScrollState, reverseScrolling = true),
                 horizontalArrangement =
                   Arrangement.spacedBy(spacing.extraSmall, Alignment.End),
@@ -2426,35 +2369,13 @@ fun PlayerControls(
                   linkInBottomStack(BottomSlot.Buttons)
                   start.linkTo(parent.start, spacing.large)
                   width = Dimension.fillToConstraints
-                  if (buttonsBesidePlayback) {
-                    end.linkTo(sharedPlaybackRowCenterX, sharedRowSideInset)
-                  } else if (hasRightButtons) {
+                  if (hasRightButtons) {
                     end.linkTo(sharedPlaybackRowCenterX, spacing.smaller)
                   } else {
                     end.linkTo(parent.end, spacing.large)
                   }
                 }.onSizeChanged { bottomHeights.leftButtons = it.height },
           ) {
-            if (isPortrait) {
-              BottomPlayerControlsPortrait(
-                buttons = portraitLeftButtons,
-                showVideoQualitySelector = false,
-                chapters = chapters,
-                currentChapter = currentChapter,
-                isSpeedNonOne = isSpeedNonOne,
-                currentZoom = currentZoom,
-                aspect = aspect,
-                mediaTitle = mediaTitle,
-                decoder = decoder,
-                playbackSpeed = playbackSpeed ?: 1f,
-                onBackPress = onBackPress,
-                onOpenSheet = onOpenSheet,
-                onOpenPanel = onOpenPanel,
-                viewModel = viewModel,
-                activity = playerActivity,
-                horizontalArrangement = Arrangement.spacedBy(spacing.extraSmall, Alignment.Start),
-              )
-            } else {
               val rowScrollState = rememberScrollState()
               BottomLeftPlayerControlsLandscape(
                 buttons = bottomLeftButtons,
@@ -2473,7 +2394,6 @@ fun PlayerControls(
                 activity = playerActivity,
                 modifier = Modifier.fillMaxWidth().fadingHorizontalScroll(rowScrollState),
               )
-            }
           }
         }
       }

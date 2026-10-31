@@ -118,13 +118,9 @@ data class ControlLayoutEditorScreen(
     val portraitButtons = remember(portraitState) { preferences.parseButtons(portraitState, mutableSetOf()) }
     val seekbarPreference =
       if (region.isPortrait) preferences.portraitSeekbarPlacement else preferences.landscapeSeekbarPlacement
-    val playbackPreference =
-      if (region.isPortrait) preferences.portraitPlaybackControlsPosition else preferences.landscapePlaybackControlsPosition
     val seekbarPlacement by seekbarPreference.collectAsState()
-    val playbackPosition by playbackPreference.collectAsState()
-    val preset = VideoControlsLayoutPreset.fromPreferences(seekbarPlacement, playbackPosition)
+    val preset = VideoControlsLayoutPreset.fromPreferences(seekbarPlacement)
     val seekbarTitle = if (region.isPortrait) R.string.ui_portrait_seekbar_position else R.string.ui_landscape_seekbar_position
-    val playbackTitle = if (region.isPortrait) R.string.ui_portrait_playback_buttons else R.string.ui_landscape_playback_buttons
     var previewPlaylist by rememberSaveable(region) { mutableStateOf(true) }
     val embeddedInPlayer = LocalPlayerSettingsPanel.current
     val title = stringResource(region.titleRes)
@@ -228,12 +224,9 @@ data class ControlLayoutEditorScreen(
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
               ) {
                 AppListPreference(
-                  modifier = Modifier.settingsSearchTarget(seekbarTitle).settingsSearchTarget(playbackTitle),
+                  modifier = Modifier.settingsSearchTarget(seekbarTitle),
                   value = preset,
-                  onValueChange = {
-                    seekbarPreference.set(it.seekbarPlacement)
-                    playbackPreference.set(it.playbackPosition)
-                  },
+                  onValueChange = { seekbarPreference.set(it.seekbarPlacement) },
                   values = VideoControlsLayoutPreset.entries,
                   valueToText = { AnnotatedString(stringResource(it.titleRes)) },
                   title = { Text(stringResource(R.string.player_layout_preset_title)) },

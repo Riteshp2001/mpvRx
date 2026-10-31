@@ -109,10 +109,6 @@ class AppearancePreferences(
   val unplayedOldVideoDays = preferenceStore.getInt("unplayed_old_video_days", 7)
   val showNetworkThumbnails = preferenceStore.getBoolean("show_network_thumbnails", false)
   val seekbarStyle = preferenceStore.getEnum("seekbar_style", SeekbarStyle.Thick)
-  val portraitPlaybackControlsPosition =
-    preferenceStore.getEnum("portrait_playback_controls_position", PlaybackControlsPosition.Center)
-  val landscapePlaybackControlsPosition =
-    preferenceStore.getEnum("landscape_playback_controls_position", PlaybackControlsPosition.Center)
   val portraitSeekbarPlacement =
     preferenceStore.getEnum("portrait_seekbar_placement", SeekbarPlacement.AboveButtons)
   val landscapeSeekbarPlacement =
@@ -267,12 +263,6 @@ class AppearancePreferences(
       }.filter { it != PlayerButton.NONE }
       .filter { usedButtons.add(it) }
       .toList()
-}
-
-enum class PlaybackControlsPosition {
-  Center,
-  BelowSeekbar,
-  AboveSeekbar,
 }
 
 enum class SeekbarPlacement {

@@ -1807,14 +1807,10 @@
   <string name="ui_no_storage_location_configured">No storage location configured</string>
   <string name="ui_script_file_not_found">Script file not found</string>
   <string name="ui_search_models">Search models...</string>
-  <string name="ui_portrait_playback_buttons">Portrait playback buttons</string>
-  <string name="ui_landscape_playback_buttons">Landscape playback buttons</string>
   <string name="ui_portrait_seekbar_position">Portrait seekbar position</string>
   <string name="ui_landscape_seekbar_position">Landscape seekbar position</string>
-  <string name="pref_layout_center_seekbar_above">Centered · seekbar above actions</string>
-  <string name="pref_layout_center_seekbar_below">Centered · seekbar below actions</string>
-  <string name="pref_layout_playback_above">Playback and actions above seekbar</string>
-  <string name="pref_layout_playback_below">Playback and actions below seekbar</string>
+  <string name="pref_layout_seekbar_above">Seekbar above</string>
+  <string name="pref_layout_seekbar_below">Seekbar below</string>
   <string name="pref_player_buttons_opacity">Player button background opacity</string>
   <string name="ui_time_network_clock">Time + Network clock</string>
   <string name="ui_show_media_info_in_chooser">Show Media Info in chooser</string>
