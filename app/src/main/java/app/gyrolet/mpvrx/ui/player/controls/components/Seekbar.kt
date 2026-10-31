@@ -50,12 +50,14 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -343,6 +345,8 @@ internal fun SeekbarWithTimers(
   isPortrait: Boolean = false,
   applyHorizontalPadding: Boolean = true,
   timerTextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+  thumbnailPreview: (@Composable (Float, Boolean) -> Unit)? = null,
+  onValueChangeCancelled: () -> Unit = {},
   centerContent: @Composable () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
@@ -388,6 +392,8 @@ internal fun SeekbarWithTimers(
         positionProvider = {
           if (isUserInteracting) userPosition else if (externalScrubbing) position else animatedPosition.value
         },
+        thumbnailPreview = thumbnailPreview,
+        onValueChangeCancelled = onValueChangeCancelled,
         committedPosition = committedPosition,
         duration = duration,
         chapters = chapters,
@@ -462,6 +468,8 @@ internal fun SeekbarWithTimers(
         positionProvider = {
           if (isUserInteracting) userPosition else if (externalScrubbing) position else animatedPosition.value
         },
+        thumbnailPreview = thumbnailPreview,
+        onValueChangeCancelled = onValueChangeCancelled,
         committedPosition = committedPosition,
         duration = duration,
         chapters = chapters,
@@ -528,6 +536,8 @@ private fun SeekbarContent(
   animatedPosition: Animatable<Float, *>,
   interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
   showClipRange: Boolean = true,
+  thumbnailPreview: (@Composable (Float, Boolean) -> Unit)? = null,
+  onValueChangeCancelled: () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   val touchAreaHeight = if (isPortrait) 64.dp else 52.dp
@@ -658,6 +668,31 @@ private fun SeekbarContent(
     } else {
       Modifier
     }
+
+  var expandedPreview by remember { mutableStateOf(false) }
+  // Pointer coroutines retain updated callbacks without restarting on each position tick.
+  val updatePosition by rememberUpdatedState<(Float) -> Unit> { target ->
+    onUserInteractionChange(true)
+    latestInteractionPosition = target
+    onUserPositionChange(target)
+    onValueChange(target)
+  }
+  val finishPosition by rememberUpdatedState<(Float) -> Unit> { target ->
+    onValueChangeFinished(target)
+    onUserInteractionChange(false)
+    scope.launch { animatedPosition.snapTo(target) }
+  }
+  val cancelPosition by rememberUpdatedState {
+    onUserInteractionChange(false)
+    onValueChangeCancelled()
+  }
+
+  val activeInteraction by rememberUpdatedState(isUserInteracting)
+  DisposableEffect(thumbnailPreview != null) {
+    onDispose {
+      if (thumbnailPreview != null && activeInteraction) cancelPosition()
+    }
+  }
 
   Box(
     modifier = modifier.then(seekKeyModifier),
@@ -829,7 +864,18 @@ private fun SeekbarContent(
       )
     }
 
-    Seeker(
+    if (thumbnailPreview != null && !isTelevision) {
+      Box(
+        Modifier.fillMaxWidth().height(touchAreaHeight).thumbnailScrubInput(
+          duration = safeDuration,
+          position = positionProvider,
+          onPosition = { updatePosition(it) },
+          onExpanded = { expandedPreview = it },
+          onFinished = { finishPosition(it) },
+          onCancelled = { cancelPosition() },
+        ),
+      )
+    } else Seeker(
       state = seekerState,
       value = safeCommittedPosition,
       thumbValue = safeThumbPosition,
@@ -883,6 +929,11 @@ private fun SeekbarContent(
           .height(touchAreaHeight)
           .graphicsLayer(alpha = 0f),
     )
+    if (thumbnailPreview != null && isUserInteracting && safeDuration > 0f) {
+      SeekThumbnailPopup(safeThumbPosition / safeDuration) {
+        thumbnailPreview(safeThumbPosition, expandedPreview)
+      }
+    }
   }
 }
 

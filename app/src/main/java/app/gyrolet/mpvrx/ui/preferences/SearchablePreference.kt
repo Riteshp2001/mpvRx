@@ -429,6 +429,15 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_seek_preview_mode,
+          summaryRes = R.string.pref_seek_preview_mode_summary,
+          keywords = listOf("seek", "preview", "thumbnail", "scrubbing", "fullscreen", "timeline"),
+          category = "Player",
+          screen = PlayerPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_player_use_precise_seeking,
           keywords = listOf("precise", "seek", "keyframes", "accurate", "navigation"),
           category = "Player",

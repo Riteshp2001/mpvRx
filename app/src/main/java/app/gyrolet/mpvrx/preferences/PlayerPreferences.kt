@@ -40,6 +40,11 @@ enum class PersistentStatusSlot {
   None, PlaybackProgress, CurrentTime, BatteryStatus,
 }
 
+enum class SeekPreviewMode(val titleRes: Int) {
+  Fullscreen(app.gyrolet.mpvrx.R.string.seek_preview_fullscreen),
+  Thumbnail(app.gyrolet.mpvrx.R.string.seek_preview_thumbnail),
+}
+
 enum class PersistentStatusPosition { Top, Bottom }
 
 enum class PlayerClockFormat(
@@ -60,6 +65,7 @@ class PlayerPreferences(
   val holdForMultipleSpeed = preferenceStore.getFloat("hold_for_multiple_speed", 2f)
   val showDoubleTapOvals = preferenceStore.getBoolean("show_double_tap_ovals", true)
   val showSeekTimeWhileSeeking = preferenceStore.getBoolean("show_seek_time_while_seeking", true)
+  val seekPreviewMode = preferenceStore.getEnum("seek_preview_mode", SeekPreviewMode.Fullscreen)
   val usePreciseSeeking = preferenceStore.getBoolean("use_precise_seeking", false)
 
   val showBufferedRange = preferenceStore.getBoolean("show_buffered_range", true)

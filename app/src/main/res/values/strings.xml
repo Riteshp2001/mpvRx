@@ -2998,4 +2998,11 @@
   <string name="pref_measure_enabled_title">Share diagnostics with Measure</string>
   <string name="pref_measure_enabled_summary">Opt in to send crashes, ANRs, performance metrics and session activity to Measure. Disabled by default.</string>
   <string name="pref_measure_not_configured">Diagnostics unavailable: this build has no Measure API key.</string>
+  <string name="pref_seek_preview_mode">Seekbar preview mode</string>
+  <string name="pref_seek_preview_mode_summary">Fullscreen keeps the current live preview. Thumbnail shows a separate scene preview while dragging the video seekbar; drag up for finer seeking. Online previews use data.</string>
+  <string name="seek_preview_fullscreen">Fullscreen (default)</string>
+  <string name="seek_preview_thumbnail">Thumbnail</string>
+  <string name="seek_preview_unavailable">Preview unavailable</string>
+  <string name="seek_preview_precise">Precise seeking</string>
+  <string name="seek_preview_drag_up">Drag up for finer seeking</string>
 </resources>

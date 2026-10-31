@@ -401,6 +401,34 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     defaultRequestHeaders = PlaybackHttpHeaders.withDefault(headers, "Referer", MPVLib.getPropertyString("referrer"))
   }
 
+  internal fun seekPreviewInput(generation: Long): app.gyrolet.mpvrx.ui.player.preview.SeekPreviewInput? =
+    withReadyCore(null) {
+      if (!isCurrentGeneration(generation) || state.value.activeGeneration != generation ||
+        state.value.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+      ) return@withReadyCore null
+      val item = state.value.currentItem ?: return@withReadyCore null
+      if (MPVLib.getPropertyBoolean("seekable") == false || MPVLib.getPropertyInt("vid") == null) {
+        return@withReadyCore null
+      }
+      val runtime = MPVLib.getPropertyString("stream-open-filename")
+      val fields = MPVLib.getPropertyNode("http-header-fields")?.toObject<List<String>>(Json).orEmpty()
+      val headers = PlaybackHttpHeaders.withDefault(
+        PlaybackHttpHeaders.merge(
+          resolveHttpHeaders(item.playableUri, item.headers),
+          PlaybackHttpHeaders.fromHeaderFields(fields),
+          MPVLib.getPropertyString("user-agent")?.let { mapOf("User-Agent" to it) }.orEmpty(),
+        ),
+        "Referer", MPVLib.getPropertyString("referrer"),
+      )
+      app.gyrolet.mpvrx.ui.player.preview.SeekPreviewInput(
+        original = item.originalUri,
+        runtime = runtime,
+        headers = headers,
+        rotation = MPVLib.getPropertyInt("video-params/rotate") ?: 0,
+        ytdlpJson = MPVLib.getPropertyString("user-data/mpv/ytdl/json-subprocess-result/stdout"),
+      )
+    }
+
   val propInt = PlaybackProperty(MPVLib.MpvFormat.MPV_FORMAT_INT64, ::getPropertyInt)
   val propLong = PlaybackProperty(MPVLib.MpvFormat.MPV_FORMAT_INT64, ::getPropertyLong)
   val propBoolean = PlaybackProperty(MPVLib.MpvFormat.MPV_FORMAT_FLAG, ::getPropertyBoolean)

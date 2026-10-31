@@ -458,7 +458,9 @@ fun PlayerControls(
   val videoOpenAnimState by viewModel.videoOpenAnimationState.collectAsState()
   val showLoadingCircle by playerPreferences.showLoadingCircle.collectAsState()
 
-  var isSeeking by remember { mutableStateOf(false) }
+  val seekPreviewMode by playerPreferences.seekPreviewMode.collectAsState()
+  val thumbnailSeeking = seekPreviewMode == app.gyrolet.mpvrx.preferences.SeekPreviewMode.Thumbnail
+  var isSeeking by remember(playbackSessionState.generation) { mutableStateOf(false) }
   // Opening a network item (including link resolution before mpv starts) waits on the network too.
   val openingNetworkStream =
     videoOpenAnimState.isWaitingForVideo &&
@@ -490,7 +492,7 @@ fun PlayerControls(
       Modifier
     }
   // Null until repeated seekbar updates start a scrub; a single tap never pauses playback.
-  var seekbarScrubWasPaused by remember { mutableStateOf<Boolean?>(null) }
+  var seekbarScrubWasPaused by remember(playbackSessionState.generation) { mutableStateOf<Boolean?>(null) }
   val mpvSeeking by PlaybackSession.propBoolean["seeking"].collectAsStateWithLifecycle()
   val isPlayerSeeking = isSeeking || (mpvSeeking ?: false)
   // mpv can remain "seeking" until its cache refills. Only active scrubbing suppresses the spinner;
@@ -2157,54 +2159,67 @@ fun PlayerControls(
               (remaining ?: 0f).takeIf { it > 0f }
                 ?: (seekbarDuration - displayedSeekbarPosition).coerceAtLeast(0f)
 
-            SeekbarWithTimers(
-              position = displayedSeekbarPosition,
-              committedPosition = precisePosition,
-              externalScrubbing = isHorizontalSeekActive,
-              duration = seekbarDuration,
-              remaining = effectiveRemaining,
-              onValueChange = {
-                // Seeker emits one value and then finishes for a tap. Defer decoder preview
-                // and pausing until another value arrives, so a tap commits only one seek.
-                if (isSeeking) {
-                  if (seekbarScrubWasPaused == null) {
-                    val alreadyPaused = paused ?: false
-                    seekbarScrubWasPaused = alreadyPaused
-                    if (!alreadyPaused) {
-                      viewModel.pause()
+            val thumbnailPreview = if (thumbnailSeeking && !isAudioOnly) {
+              app.gyrolet.mpvrx.ui.player.controls.components.rememberSeekThumbnailContent(playbackSessionState.generation)
+            } else null
+            val seekbarGeneration = playbackSessionState.generation
+            androidx.compose.runtime.key(seekbarGeneration, thumbnailSeeking) {
+              SeekbarWithTimers(
+                thumbnailPreview = thumbnailPreview,
+                onValueChangeCancelled = {
+                  if (seekbarScrubWasPaused == false && PlaybackSession.isCurrentGeneration(seekbarGeneration)) viewModel.unpause()
+                  seekbarScrubWasPaused = null
+                  isSeeking = false
+                  resetControlsTimestamp = System.currentTimeMillis()
+                },
+                position = displayedSeekbarPosition,
+                committedPosition = precisePosition,
+                externalScrubbing = isHorizontalSeekActive,
+                duration = seekbarDuration,
+                remaining = effectiveRemaining,
+                onValueChange = {
+                  // Seeker emits one value and then finishes for a tap. Defer decoder preview
+                  // and pausing until another value arrives, so a tap commits only one seek.
+                  if (isSeeking) {
+                    if (seekbarScrubWasPaused == null) {
+                      val alreadyPaused = paused ?: false
+                      seekbarScrubWasPaused = alreadyPaused
+                      if (!alreadyPaused) {
+                        viewModel.pause()
+                      }
                     }
+                    // Stream scrubbing previews the UI only; local files may preview decoder frames.
+                    if (!thumbnailSeeking) viewModel.seekPreviewTo(it)
                   }
-                  // Stream scrubbing previews the UI only; local files may preview decoder frames.
-                  viewModel.seekPreviewTo(it)
-                }
-                isSeeking = true
-                resetControlsTimestamp = System.currentTimeMillis()
-              },
-              onValueChangeFinished = { targetPosition ->
-                val resumePlayback = seekbarScrubWasPaused == false
-                seekbarScrubWasPaused = null
-                isSeeking = false
-                resetControlsTimestamp = System.currentTimeMillis()
-                viewModel.seekFromScrub(targetPosition, resumePlayback = resumePlayback)
-                viewModel.showControls()
-              },
-              timersInverted = Pair(false, invertDuration),
-              durationTimerOnCLick = {
-                resetControlsTimestamp = System.currentTimeMillis()
-                playerPreferences.invertDuration.set(!invertDuration)
-              },
-              positionTimerOnClick = {},
-              chapters = seekbarChapters,
-              skipSegments = skipSegmentsImmutable,
-              paused = paused ?: false,
-              seekbarStyle = seekbarStyle,
-              useWavySeekbar = useWavySeekbar,
-              timerTextColor = Color.White,
-              loopStart = abLoopA?.toFloat(),
-              loopEnd = abLoopB?.toFloat(),
-              bufferDuration = stableDemuxerCacheTime.takeIf { showBufferedRange && it > 0f },
-              isPortrait = isPortrait,
-            )
+                  isSeeking = true
+                  resetControlsTimestamp = System.currentTimeMillis()
+                },
+                onValueChangeFinished = { targetPosition ->
+                  val resumePlayback = seekbarScrubWasPaused == false
+                  seekbarScrubWasPaused = null
+                  isSeeking = false
+                  resetControlsTimestamp = System.currentTimeMillis()
+                  viewModel.seekFromScrub(targetPosition, resumePlayback = resumePlayback)
+                  viewModel.showControls()
+                },
+                timersInverted = Pair(false, invertDuration),
+                durationTimerOnCLick = {
+                  resetControlsTimestamp = System.currentTimeMillis()
+                  playerPreferences.invertDuration.set(!invertDuration)
+                },
+                positionTimerOnClick = {},
+                chapters = seekbarChapters,
+                skipSegments = skipSegmentsImmutable,
+                paused = paused ?: false,
+                seekbarStyle = seekbarStyle,
+                useWavySeekbar = useWavySeekbar,
+                timerTextColor = Color.White,
+                loopStart = abLoopA?.toFloat(),
+                loopEnd = abLoopB?.toFloat(),
+                bufferDuration = stableDemuxerCacheTime.takeIf { showBufferedRange && it > 0f },
+                isPortrait = isPortrait,
+              )
+            }
           }
 
           AnimatedVisibility(

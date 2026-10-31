@@ -595,6 +595,21 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
 
               PreferenceDivider()
 
+              val seekPreviewMode by preferences.seekPreviewMode.collectAsState()
+              ExpressivePreferenceItem {
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_seek_preview_mode),
+                  value = seekPreviewMode,
+                  onValueChange = preferences.seekPreviewMode::set,
+                  values = app.gyrolet.mpvrx.preferences.SeekPreviewMode.entries,
+                  valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                  title = { Text(stringResource(R.string.pref_seek_preview_mode)) },
+                  summary = { Text(stringResource(R.string.pref_seek_preview_mode_summary), color = MaterialTheme.colorScheme.outline) },
+                )
+              }
+
+              PreferenceDivider()
+
               val usePreciseSeeking by preferences.usePreciseSeeking.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_player_use_precise_seeking),
