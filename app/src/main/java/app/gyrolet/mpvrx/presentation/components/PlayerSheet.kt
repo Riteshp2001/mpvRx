@@ -123,6 +123,7 @@ fun PlayerSheet(
   title: String? = null,
   actions: @Composable RowScope.() -> Unit = {},
   useFrostedGlass: Boolean = true,
+  scrimAlpha: Float = 0.5f,
   bottomBar: (@Composable () -> Unit)? = null,
   content: @Composable () -> Unit,
 ) {
@@ -192,9 +193,9 @@ fun PlayerSheet(
   val swipeProgress = if (height > 0) (-scaledSwipeOffset / height).coerceIn(0f, 1f) else 0f
   val targetAlpha =
     if (isSwipeActive) {
-      if (anchoredDraggableState.anchors.size > 0) 0.5f * swipeProgress else 0f
+      if (anchoredDraggableState.anchors.size > 0) scrimAlpha * swipeProgress else 0f
     } else if (anchoredDraggableState.targetValue == 0) {
-      0.5f
+      scrimAlpha
     } else {
       0f
     }

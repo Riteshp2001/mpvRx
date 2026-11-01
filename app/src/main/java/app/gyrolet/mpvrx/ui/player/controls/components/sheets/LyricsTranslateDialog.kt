@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,7 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,8 +47,9 @@ import app.gyrolet.mpvrx.data.lyrics.LyricsLanguageOptions
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.LyricsTranslationDisplayMode
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.presentation.components.AppPickerSheet
+import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSearchField
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.theme.fontFamilyForText
@@ -75,149 +76,149 @@ fun LyricsTranslateDialog(
   }
 
   // Opt into the shared PlayerSheet so the translate picker gets the same liquid glass
-  // material as the other player sheets when liquid glass is turned on.
-  AppPickerSheet(
+  // material as the other player sheets when liquid glass is turned on. Liquid glass
+  // already blurs and dims the backdrop itself, so the sheet keeps the background fully
+  // visible instead of stacking the standard black scrim on top of it.
+  val scrimAlpha = if (liquidGlassActive()) 0f else 0.5f
+
+  PlayerSheet(
     onDismissRequest = onDismiss,
     title = stringResource(R.string.lyrics_translate_title),
-    scrollContent = false,
-    usePlayerSheet = true,
-    actions = {
-      TextButton(onClick = onDismiss) {
-        Text(stringResource(R.string.ui_done), fontWeight = FontWeight.Bold)
-      }
-    },
+    scrimAlpha = scrimAlpha,
   ) {
     Column(
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 20.dp)
+        .padding(bottom = 8.dp),
     ) {
       if (state.isTranslating) {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        CircularProgressIndicator(
-          modifier = Modifier.size(20.dp),
-          strokeWidth = 2.dp,
-          color = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-          text = stringResource(R.string.lyrics_translating),
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-      Spacer(modifier = Modifier.height(10.dp))
-      }
-
-        // Option to toggle off (original lyrics)
-        Surface(
-          modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .clickable {
-              viewModel.showOriginalLyrics()
-              onDismiss()
-            },
-          color =
-            if (LocalPlayerGlassSurfaceActive.current) {
-              playerSheetSelectionColor(!state.isTranslationActive)
-            } else {
-              if (!state.isTranslationActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
-            },
-          shape = RoundedCornerShape(12.dp),
-        ) {
-          Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            RadioButton(
-              selected = !state.isTranslationActive,
-              onClick = null,
-            )
-            Spacer(modifier = Modifier.width(10.dp))
-            Column {
-              Text(
-                text = stringResource(R.string.lyrics_translation_off),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                color = if (!state.isTranslationActive) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
-              )
-              Text(
-                text = stringResource(R.string.lyrics_translation_off_summary),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.outline,
-              )
-            }
-          }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Display Mode Selector (Dual-Line vs Replace)
         Row(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          horizontalArrangement = Arrangement.spacedBy(10.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          FilterChip(
-            selected = displayMode == LyricsTranslationDisplayMode.DualLine,
-            onClick = { audioPreferences.lyricsTranslationDisplayMode.set(LyricsTranslationDisplayMode.DualLine) },
-            label = {
-              Text(
-                stringResource(R.string.lyrics_translation_dual_line),
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-              )
-            },
-            modifier = Modifier.weight(1f),
-            colors = FilterChipDefaults.filterChipColors(
-              selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-              selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ),
+          CircularProgressIndicator(
+            modifier = Modifier.size(20.dp),
+            strokeWidth = 2.dp,
+            color = MaterialTheme.colorScheme.primary,
           )
-          FilterChip(
-            selected = displayMode == LyricsTranslationDisplayMode.Replace,
-            onClick = { audioPreferences.lyricsTranslationDisplayMode.set(LyricsTranslationDisplayMode.Replace) },
-            label = {
-              Text(
-                stringResource(R.string.lyrics_translation_replace),
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-              )
-            },
-            modifier = Modifier.weight(1f),
-            colors = FilterChipDefaults.filterChipColors(
-              selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-              selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ),
-          )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        PlayerSheetSearchField(
-          query = searchQuery,
-          onQueryChange = { searchQuery = it },
-          placeholder = stringResource(R.string.ui_search_language),
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Language List
-        if (filteredLanguages.isEmpty()) {
           Text(
-            text = stringResource(R.string.lyrics_translation_no_languages),
+            text = stringResource(R.string.lyrics_translating),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
           )
-        } else {
-          LazyColumn(
-            modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-          ) {
-            items(filteredLanguages, key = { it.code }) { lang ->
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+      }
+
+      // Option to toggle off (original lyrics)
+      Surface(
+        modifier = Modifier
+          .fillMaxWidth()
+          .clip(RoundedCornerShape(12.dp))
+          .clickable {
+            viewModel.showOriginalLyrics()
+            onDismiss()
+          },
+        color =
+          if (LocalPlayerGlassSurfaceActive.current) {
+            playerSheetSelectionColor(!state.isTranslationActive)
+          } else {
+            if (!state.isTranslationActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+          },
+        shape = RoundedCornerShape(12.dp),
+      ) {
+        Row(
+          modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          RadioButton(
+            selected = !state.isTranslationActive,
+            onClick = null,
+          )
+          Spacer(modifier = Modifier.width(10.dp))
+          Column {
+            Text(
+              text = stringResource(R.string.lyrics_translation_off),
+              style = MaterialTheme.typography.bodyLarge,
+              fontWeight = FontWeight.Bold,
+              color = if (!state.isTranslationActive) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+              text = stringResource(R.string.lyrics_translation_off_summary),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.outline,
+            )
+          }
+        }
+      }
+
+      Spacer(modifier = Modifier.height(10.dp))
+
+      // Display Mode Selector (Dual-Line vs Replace)
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        FilterChip(
+          selected = displayMode == LyricsTranslationDisplayMode.DualLine,
+          onClick = { audioPreferences.lyricsTranslationDisplayMode.set(LyricsTranslationDisplayMode.DualLine) },
+          label = {
+            Text(
+              stringResource(R.string.lyrics_translation_dual_line),
+              fontWeight = FontWeight.Bold,
+              fontSize = 12.sp,
+            )
+          },
+          modifier = Modifier.weight(1f),
+          colors = displayModeChipColors(),
+        )
+        FilterChip(
+          selected = displayMode == LyricsTranslationDisplayMode.Replace,
+          onClick = { audioPreferences.lyricsTranslationDisplayMode.set(LyricsTranslationDisplayMode.Replace) },
+          label = {
+            Text(
+              stringResource(R.string.lyrics_translation_replace),
+              fontWeight = FontWeight.Bold,
+              fontSize = 12.sp,
+            )
+          },
+          modifier = Modifier.weight(1f),
+          colors = displayModeChipColors(),
+        )
+      }
+
+      Spacer(modifier = Modifier.height(10.dp))
+
+      PlayerSheetSearchField(
+        query = searchQuery,
+        onQueryChange = { searchQuery = it },
+        placeholder = stringResource(R.string.ui_search_language),
+      )
+
+      Spacer(modifier = Modifier.height(8.dp))
+
+      // Language List
+      if (filteredLanguages.isEmpty()) {
+        Text(
+          text = stringResource(R.string.lyrics_translation_no_languages),
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        )
+      } else {
+        LazyColumn(
+          modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(max = 320.dp),
+          contentPadding = PaddingValues(vertical = 4.dp),
+          verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+          items(filteredLanguages, key = { it.code }) { lang ->
             val isSelected = state.isTranslationActive && state.targetLanguage.equals(lang.code, ignoreCase = true)
             val frosted = LocalPlayerGlassSurfaceActive.current
             Row(
@@ -261,9 +262,25 @@ fun LyricsTranslateDialog(
                 }
               }
             }
-            }
           }
         }
       }
     }
+  }
 }
+
+/** Chips read from the same frosted selection palette as the other player sheet rows. */
+@Composable
+private fun displayModeChipColors() =
+  if (LocalPlayerGlassSurfaceActive.current) {
+    FilterChipDefaults.filterChipColors(
+      containerColor = playerSheetSelectionColor(false),
+      selectedContainerColor = playerSheetSelectionColor(true),
+      selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    )
+  } else {
+    FilterChipDefaults.filterChipColors(
+      selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+      selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    )
+  }

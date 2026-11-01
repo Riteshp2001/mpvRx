@@ -172,6 +172,7 @@ enum class Sheets {
   VisualizerStyle,
   Lyrics,
   LyricsProvider,
+  LyricsTranslate,
   Scopes,
   PostProcessingConfig,
   BookmarkEditor,
