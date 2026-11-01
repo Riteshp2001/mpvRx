@@ -103,6 +103,7 @@ class PlayerPreferences(
   val persistentStatusPreferFinishTime = preferenceStore.getBoolean("persistent_status_prefer_finish_time", true)
   val persistentStatusShowSpeed = preferenceStore.getBoolean("persistent_status_show_speed", true)
   val persistentStatusMicroBattery = preferenceStore.getBoolean("persistent_status_micro_battery", true)
+  val persistentStatusProgressLine = preferenceStore.getBoolean("persistent_status_progress_line", false)
   val showSystemStatusBar = preferenceStore.getBoolean("show_system_status_bar")
   val showSystemNavigationBar = preferenceStore.getBoolean("show_system_navigation_bar")
   val safeAreaWindow = preferenceStore.getBoolean("safe_area_window", false)

@@ -32,6 +32,7 @@ import app.gyrolet.mpvrx.preferences.PersistentStatusSlot
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.ui.player.controls.PersistentPlaybackProgressLine
 import app.gyrolet.mpvrx.ui.player.controls.PersistentStatusHudRow
 import app.gyrolet.mpvrx.ui.player.controls.rememberHudClock
 import app.gyrolet.mpvrx.ui.tv.isTelevision
@@ -62,6 +63,7 @@ object PersistentStatusBarPreferencesScreen : Screen {
     val preferFinishTime by prefs.persistentStatusPreferFinishTime.collectAsState()
     val showSpeed by prefs.persistentStatusShowSpeed.collectAsState()
     val microBattery by prefs.persistentStatusMicroBattery.collectAsState()
+    val showProgressLine by prefs.persistentStatusProgressLine.collectAsState()
     val clockFormat by prefs.clockFormat.collectAsState()
     val now = rememberHudClock()
     val embeddedInPlayer = LocalPlayerSettingsPanel.current
@@ -108,6 +110,13 @@ object PersistentStatusBarPreferencesScreen : Screen {
                     else Alignment.BottomCenter,
                   ),
                 )
+                if (showProgressLine) {
+                  PersistentPlaybackProgressLine(
+                    positionSeconds = 1200f,
+                    durationSeconds = 3600f,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                  )
+                }
               }
             }
           }
@@ -125,6 +134,13 @@ object PersistentStatusBarPreferencesScreen : Screen {
                 onValueChange = prefs.persistentStatusEnabled::set,
                 title = { Text(stringResource(R.string.pref_persistent_status_enable)) },
                 summary = { Text(stringResource(R.string.pref_persistent_status_enable_summary)) },
+              )
+              PreferenceDivider()
+              SwitchPreference(
+                value = showProgressLine,
+                onValueChange = prefs.persistentStatusProgressLine::set,
+                modifier = Modifier.settingsSearchTarget(R.string.pref_persistent_status_progress_line),
+                title = { Text(stringResource(R.string.pref_persistent_status_progress_line)) },
               )
             }
           }

@@ -3001,4 +3001,5 @@
   <string name="pref_layout_playback_below_seekbar">Below seekbar</string>
   <string name="pref_action_open_page">Open page</string>
   <string name="pref_action_open_dialog">Open dialog</string>
+  <string name="pref_persistent_status_progress_line">Thin playback progress line</string>
 </resources>
