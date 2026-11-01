@@ -2997,9 +2997,11 @@
   <string name="pref_layout_portrait_playback_position">Portrait playback controls</string>
   <string name="pref_layout_landscape_playback_position">Landscape playback controls</string>
   <string name="pref_layout_playback_center">Center of screen</string>
+  <string name="pref_layout_playback_with_buttons">With button row</string>
   <string name="pref_layout_playback_above_seekbar">Above seekbar</string>
   <string name="pref_layout_playback_below_seekbar">Below seekbar</string>
   <string name="pref_action_open_page">Open page</string>
   <string name="pref_action_open_dialog">Open dialog</string>
   <string name="pref_persistent_status_progress_line">Thin playback progress line</string>
 </resources>
+

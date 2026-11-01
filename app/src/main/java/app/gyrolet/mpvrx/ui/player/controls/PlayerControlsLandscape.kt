@@ -38,23 +38,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.preferences.PlayerButton
-import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.LiquidPillButton
-import app.gyrolet.mpvrx.ui.player.Panels
-import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.Sheets
-import app.gyrolet.mpvrx.ui.player.VideoAspect
 import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonBorderColor
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContainerColor
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
 import app.gyrolet.mpvrx.ui.theme.spacing
-import dev.vivvvek.seeker.Segment
-import org.koin.compose.koinInject
 
 @Composable
 fun TopLeftPlayerControlsLandscape(
@@ -241,159 +234,6 @@ fun TopLeftPlayerControlsLandscape(
             color = MaterialTheme.colorScheme.tertiary,
           )
         }
-      }
-    }
-  }
-}
-
-@Composable
-fun TopRightPlayerControlsLandscape(
-  buttons: List<PlayerButton>,
-  chapters: List<Segment>,
-  currentChapter: Int?,
-  isSpeedNonOne: Boolean,
-  currentZoom: Float,
-  aspect: VideoAspect,
-  mediaTitle: String?,
-  decoder: app.gyrolet.mpvrx.ui.player.Decoder,
-  playbackSpeed: Float,
-  onBackPress: () -> Unit,
-  onOpenSheet: (Sheets) -> Unit,
-  onOpenPanel: (Panels) -> Unit,
-  viewModel: PlayerViewModel,
-  activity: PlayerActivity,
-) {
-  PlayerButtonTheme {
-    Row(
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-    ) {
-      buttons.forEach { button ->
-        RenderPlayerButton(
-          button = button,
-          chapters = chapters,
-          currentChapter = currentChapter,
-          isPortrait = false,
-          isSpeedNonOne = isSpeedNonOne,
-          currentZoom = currentZoom,
-          aspect = aspect,
-          mediaTitle = mediaTitle,
-          decoder = decoder,
-          playbackSpeed = playbackSpeed,
-          onBackPress = onBackPress,
-          onOpenSheet = onOpenSheet,
-          onOpenPanel = onOpenPanel,
-          viewModel = viewModel,
-          activity = activity,
-          buttonSize = 48.dp,
-        )
-      }
-    }
-  }
-}
-
-@Composable
-fun BottomRightPlayerControlsLandscape(
-  buttons: List<PlayerButton>,
-  showVideoQualitySelector: Boolean,
-  chapters: List<Segment>,
-  currentChapter: Int?,
-  isSpeedNonOne: Boolean,
-  currentZoom: Float,
-  aspect: VideoAspect,
-  mediaTitle: String?,
-  decoder: app.gyrolet.mpvrx.ui.player.Decoder,
-  playbackSpeed: Float,
-  onBackPress: () -> Unit,
-  onOpenSheet: (Sheets) -> Unit,
-  onOpenPanel: (Panels) -> Unit,
-  viewModel: PlayerViewModel,
-  activity: PlayerActivity,
-  modifier: Modifier = Modifier,
-  horizontalArrangement: Arrangement.Horizontal =
-    Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-) {
-  PlayerButtonTheme {
-    Row(
-      modifier = modifier,
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = horizontalArrangement,
-    ) {
-      buttons.forEach { button ->
-        RenderPlayerButton(
-          button = button,
-          chapters = chapters,
-          currentChapter = currentChapter,
-          isPortrait = false,
-          isSpeedNonOne = isSpeedNonOne,
-          currentZoom = currentZoom,
-          aspect = aspect,
-          mediaTitle = mediaTitle,
-          decoder = decoder,
-          playbackSpeed = playbackSpeed,
-          onBackPress = onBackPress,
-          onOpenSheet = onOpenSheet,
-          onOpenPanel = onOpenPanel,
-          viewModel = viewModel,
-          activity = activity,
-          buttonSize = 48.dp,
-        )
-      }
-      if (showVideoQualitySelector) {
-        ControlsButton(
-          icon = Icons.RoundedFilled.Hd,
-          onClick = { onOpenSheet(Sheets.VideoQuality) },
-          title = stringResource(R.string.player_video_quality_button),
-          modifier = Modifier.size(48.dp),
-        )
-      }
-    }
-  }
-}
-
-@Composable
-fun BottomLeftPlayerControlsLandscape(
-  buttons: List<PlayerButton>,
-  chapters: List<Segment>,
-  currentChapter: Int?,
-  isSpeedNonOne: Boolean,
-  currentZoom: Float,
-  aspect: VideoAspect,
-  mediaTitle: String?,
-  decoder: app.gyrolet.mpvrx.ui.player.Decoder,
-  playbackSpeed: Float,
-  onBackPress: () -> Unit,
-  onOpenSheet: (Sheets) -> Unit,
-  onOpenPanel: (Panels) -> Unit,
-  viewModel: PlayerViewModel,
-  activity: PlayerActivity,
-  modifier: Modifier = Modifier,
-) {
-  PlayerButtonTheme {
-    Row(
-      modifier = modifier,
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-    ) {
-      buttons.forEach { button ->
-        RenderPlayerButton(
-          button = button,
-          chapters = chapters,
-          currentChapter = currentChapter,
-          isPortrait = false,
-          isSpeedNonOne = isSpeedNonOne,
-          currentZoom = currentZoom,
-          aspect = aspect,
-          mediaTitle = mediaTitle,
-          decoder = decoder,
-          playbackSpeed = playbackSpeed,
-          onBackPress = onBackPress,
-          onOpenSheet = onOpenSheet,
-          onOpenPanel = onOpenPanel,
-          viewModel = viewModel,
-          activity = activity,
-          buttonSize = 48.dp,
-        )
       }
     }
   }

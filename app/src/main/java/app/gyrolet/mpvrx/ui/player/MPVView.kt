@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.player
 
 import android.content.Context
+import android.content.res.Configuration
 import android.os.Environment
 import android.util.AttributeSet
 import android.util.Log
@@ -599,7 +600,10 @@ class MPVView(
     val resolvedInsets =
       insets ?: androidx.core.view.ViewCompat
         .getRootWindowInsets(this)
-    val cutoutInsets = resolvedInsets?.getInsets(WindowInsetsCompat.Type.displayCutout())
+    val cutoutInsets =
+      if (playerPreferences.safeAreaWindow.get()) {
+        resolvedInsets?.getInsets(WindowInsetsCompat.Type.displayCutout())
+      } else null
     val horizontalMargin =
       maxOf(cutoutInsets?.left ?: 0, cutoutInsets?.right ?: 0).coerceAtLeast(DEFAULT_OSD_SAFE_MARGIN)
     val verticalMargin = (cutoutInsets?.top ?: 0).coerceAtLeast(DEFAULT_OSD_SAFE_MARGIN)
@@ -812,7 +816,10 @@ class MPVView(
     val subDelay = (subtitlesPreferences.defaultSubDelay.get() / 1000.0).toString()
     val subSpeed = subtitlesPreferences.defaultSubSpeed.get().toString()
 
-    val scaleByWindow = if (subtitlesPreferences.scaleByWindow.get()) "yes" else "no"
+    val windowOptions = subtitleWindowOptions(
+      scaleByWindow = subtitlesPreferences.scaleByWindow.get(),
+      isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT,
+    )
     val blendMode = subtitleBlendMode()
 
     return buildList {
@@ -858,8 +865,7 @@ class MPVView(
       add("sub-shadow-offset" to subtitlesPreferences.shadowOffset.get().toString())
       add("sub-scale" to subtitlesPreferences.subScale.get().toString())
       add("sub-pos" to clampSubtitlePosition(subtitlesPreferences.subPos.get()).toString())
-      add("sub-scale-by-window" to scaleByWindow)
-      add("sub-use-margins" to scaleByWindow)
+      addAll(windowOptions)
       // Secondary has its own position/scale only.
       add("secondary-sub-scale" to subtitlesPreferences.secondarySubScale.get().toString())
       add(
@@ -1071,4 +1077,5 @@ class MPVView(
     )
   }
 }
+
 

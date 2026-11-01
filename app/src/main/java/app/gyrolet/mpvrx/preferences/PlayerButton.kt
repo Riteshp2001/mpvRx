@@ -53,6 +53,7 @@ enum class PlayerButton(
   TIME_NETWORK(Icons.RoundedFilled.AccessTime),
   EQUALIZER(Icons.RoundedFilled.Equalizer),
   SCOPES(Icons.RoundedFilled.Mystery),
+  PLAYLIST(Icons.RoundedFilled.PlaylistPlay),
   NONE(Icons.RoundedFilled.Bookmarks),
 }
 
@@ -104,5 +105,7 @@ fun getPlayerButtonLabel(button: PlayerButton): String =
     PlayerButton.TIME_NETWORK -> stringResource(R.string.btn_label_time_network)
     PlayerButton.EQUALIZER -> stringResource(R.string.btn_label_equalizer)
     PlayerButton.SCOPES -> stringResource(R.string.btn_label_scopes)
+    PlayerButton.PLAYLIST -> stringResource(R.string.ui_playlist)
     PlayerButton.NONE -> stringResource(R.string.btn_label_none)
   }
+

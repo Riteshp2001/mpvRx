@@ -316,6 +316,8 @@ private fun normalizeSeekerSegments(
   }
 }
 
+private const val SEEK_POSITION_SNAP_THRESHOLD_SECONDS = 2f
+
 @Composable
 internal fun SeekbarWithTimers(
   position: Float,
@@ -350,7 +352,7 @@ internal fun SeekbarWithTimers(
   var isUserInteracting by remember { mutableStateOf(false) }
   var userPosition by remember { mutableFloatStateOf(position) }
 
-  // Animated position for smooth transitions
+  // Animate only continuous playback ticks; saved-position restores and seeks must land instantly.
   val animatedPosition = remember { Animatable(position) }
   val scope = rememberCoroutineScope()
 
@@ -360,8 +362,8 @@ internal fun SeekbarWithTimers(
       // When `position` changes on the next poll, the effect is cancelled and relaunched,
       // which retargets the same Animatable smoothly instead of stacking independent
       // spring coroutines that fight each other and leak work every ~50ms.
-      if (externalScrubbing || position == 0f) {
-        // Gesture preview already updates at pointer-event frequency; no delayed spring.
+      if (externalScrubbing || position == 0f || kotlin.math.abs(position - animatedPosition.value) > SEEK_POSITION_SNAP_THRESHOLD_SECONDS) {
+        // Resume, media switches and seeks are discontinuities, not playback ticks.
         animatedPosition.snapTo(position)
       } else {
         animatedPosition.animateTo(
@@ -386,7 +388,7 @@ internal fun SeekbarWithTimers(
     ) {
       SeekbarContent(
         positionProvider = {
-          if (isUserInteracting) userPosition else if (externalScrubbing) position else animatedPosition.value
+          if (isUserInteracting) userPosition else if (externalScrubbing || kotlin.math.abs(position - animatedPosition.value) > SEEK_POSITION_SNAP_THRESHOLD_SECONDS) position else animatedPosition.value
         },
         committedPosition = committedPosition,
         duration = duration,
@@ -460,7 +462,7 @@ internal fun SeekbarWithTimers(
 
       SeekbarContent(
         positionProvider = {
-          if (isUserInteracting) userPosition else if (externalScrubbing) position else animatedPosition.value
+          if (isUserInteracting) userPosition else if (externalScrubbing || kotlin.math.abs(position - animatedPosition.value) > SEEK_POSITION_SNAP_THRESHOLD_SECONDS) position else animatedPosition.value
         },
         committedPosition = committedPosition,
         duration = duration,
@@ -1693,7 +1695,11 @@ private fun LiquidSeekbar(
   val currentPosition = positionProvider()
   LaunchedEffect(currentPosition) {
     if (currentPosition.isFinite()) {
-      dampedDragAnimation.updateValue(currentPosition)
+      if (!isThumbInteracting && kotlin.math.abs(currentPosition - dampedDragAnimation.value) > SEEK_POSITION_SNAP_THRESHOLD_SECONDS) {
+        dampedDragAnimation.snapToValue(currentPosition)
+      } else {
+        dampedDragAnimation.updateValue(currentPosition)
+      }
     }
   }
   LaunchedEffect(isThumbInteracting) {
@@ -1711,7 +1717,11 @@ private fun LiquidSeekbar(
     val trackWidthPx = constraints.maxWidth.toFloat()
     val playedFraction =
       if (safeDuration > 0f) {
-        dampedDragAnimation.progress.coerceIn(0f, 1f)
+        if (!isThumbInteracting && kotlin.math.abs(currentPosition - dampedDragAnimation.value) > SEEK_POSITION_SNAP_THRESHOLD_SECONDS) {
+          (currentPosition / safeDuration).coerceIn(0f, 1f)
+        } else {
+          dampedDragAnimation.progress.coerceIn(0f, 1f)
+        }
       } else {
         0f
       }

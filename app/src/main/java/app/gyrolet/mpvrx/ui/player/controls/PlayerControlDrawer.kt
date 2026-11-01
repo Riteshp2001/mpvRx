@@ -24,6 +24,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Arrangement
@@ -87,6 +88,7 @@ internal fun PlayerControlDrawer(
   controlsVisible: Boolean,
   panelVisible: Boolean,
   onPanelVisibilityChanged: (Boolean) -> Unit,
+  safeAreaWindow: Boolean,
   renderButton: @Composable (PlayerButton) -> Unit,
 ) {
   val reducedMotion = AppMotion.playerReducedMotion()
@@ -100,7 +102,11 @@ internal fun PlayerControlDrawer(
   val closePanel = { onPanelVisibilityChanged(false) }
   BackHandler(enabled = panelVisible, onBack = closePanel)
 
-  Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
+  Box(
+    Modifier.fillMaxSize().windowInsetsPadding(
+      if (safeAreaWindow) WindowInsets.safeDrawing else WindowInsets.navigationBars,
+    ),
+  ) {
     AnimatedVisibility(
       visible = controlsVisible && buttons.isNotEmpty() && !panelVisible,
       modifier = Modifier.align(AbsoluteAlignment.CenterRight),
@@ -439,3 +445,4 @@ private val EdgePullMaximum = 92.dp
 private const val PanelIconScale = 1.24f
 private const val EdgeTouchHeightFraction = 0.34f
 private const val PanelColumnCount = 3
+

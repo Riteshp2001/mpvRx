@@ -4452,6 +4452,7 @@ class PlayerActivity :
     if (!mpvInitialized) return
     updateOrientationForWindow()
     viewModel.onOrientationChanged()
+    applySubtitleWindowing(newConfig.orientation == Configuration.ORIENTATION_PORTRAIT)
     binding.root.post(::updateVideoAmbientPlayerBounds)
     if (isReady) {
       handleConfigurationChange()
@@ -5199,10 +5200,6 @@ class PlayerActivity :
     val backgroundColor = subtitlesPreferences.backgroundColor.get().toColorHexString()
     val shadowColor = subtitlesPreferences.shadowColor.get().toColorHexString()
 
-    // Miscellaneous settings
-    val scaleByWindow = subtitlesPreferences.scaleByWindow.get()
-    val scaleValue = if (scaleByWindow) "yes" else "no"
-
     // Ambient Mode can change this property independently of subtitle preferences, so the helper
     // compares the effective mpv value instead of forcing a write on every preference refresh.
     applySubtitleBlendMode()
@@ -5221,8 +5218,7 @@ class PlayerActivity :
     PlaybackSession.setPropertyString("sub-border-color", borderColor)
     PlaybackSession.setPropertyString("sub-back-color", backgroundColor)
     PlaybackSession.setPropertyString("sub-shadow-color", shadowColor)
-    PlaybackSession.setPropertyString("sub-scale-by-window", scaleValue)
-    PlaybackSession.setPropertyString("sub-use-margins", scaleValue)
+    applySubtitleWindowing(resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT)
     applySubtitleScales()
 
     applySubtitleLayout(

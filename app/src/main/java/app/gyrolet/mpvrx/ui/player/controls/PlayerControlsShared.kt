@@ -84,6 +84,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
 import app.gyrolet.mpvrx.ui.player.controls.components.CurrentChapter
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonBorderColor
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContainerColor
+import app.gyrolet.mpvrx.ui.player.controls.components.formatSpeed
 import app.gyrolet.mpvrx.ui.theme.controlColor as defaultControlColor
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.theme.AppMotion
@@ -242,6 +243,16 @@ fun RenderPlayerButton(
       }
     }
 
+    PlayerButton.PLAYLIST -> {
+      ControlsButton(
+        icon = Icons.RoundedFilled.PlaylistPlay,
+        onClick = { onOpenSheet(Sheets.Playlist) },
+        enabled = viewModel.hasPlaylistSupport(),
+        title = stringResource(R.string.ui_playlist),
+        modifier = Modifier.size(buttonSize),
+      )
+    }
+
     PlayerButton.BOOKMARKS_CHAPTERS -> {
       ControlsButton(
         Icons.RoundedFilled.Bookmarks,
@@ -257,7 +268,7 @@ fun RenderPlayerButton(
     PlayerButton.PLAYBACK_SPEED -> {
       val configOwned = isMpvOptionOwnedByConfig("speed")
       val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-      if (isSpeedNonOne && !compact) {
+      if (isSpeedNonOne) {
         if (enableLiquidGlass) {
           LiquidPillButton(
             onClick = {
@@ -278,7 +289,7 @@ fun RenderPlayerButton(
               tint = if (configOwned) disabledColor else MaterialTheme.colorScheme.primary,
               modifier = Modifier.size(20.dp),
             )
-            val speedText = String.format("%.2fx", playbackSpeed)
+            val speedText = "${playbackSpeed.formatSpeed()}x"
             Text(
               text = speedText,
               maxLines = 1,
@@ -339,7 +350,7 @@ fun RenderPlayerButton(
                 tint = if (configOwned) disabledColor else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp),
               )
-              val speedText = String.format("%.2fx", playbackSpeed)
+              val speedText = "${playbackSpeed.formatSpeed()}x"
               Text(
                 text = speedText,
                 maxLines = 1,
@@ -1885,3 +1896,4 @@ private fun readNetworkBytesPerSecond(): Double {
   // creates native error spam and the sum is not a reliable measurement of network throughput.
   return 0.0
 }
+

@@ -257,7 +257,7 @@ fun BottomPlayerControlsPortrait(
   alignToEnd: Boolean = false,
   horizontalArrangement: Arrangement.Horizontal =
     Arrangement.spacedBy(
-      MaterialTheme.spacing.medium,
+      MaterialTheme.spacing.small,
       Alignment.CenterHorizontally,
     ),
 ) {
@@ -272,7 +272,7 @@ fun BottomPlayerControlsPortrait(
           // Vertical room is only for the liquid-glass shadow; the player places this row with its shared gaps.
           .padding(
             horizontal = if (enableLiquidGlass) 8.dp else 0.dp,
-            vertical = if (enableLiquidGlass) 6.dp else 0.dp,
+            vertical = if (enableLiquidGlass) PortraitActionShadowRoom else 0.dp,
           ),
       horizontalArrangement = horizontalArrangement,
       verticalAlignment = Alignment.CenterVertically,
