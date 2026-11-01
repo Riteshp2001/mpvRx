@@ -188,6 +188,10 @@ class TorrentStreamingEngine(
    */
   suspend fun prepareTorrent(source: String): TorrentCatalog =
     withContext(Dispatchers.IO) {
+      // libtorrent is native and connects to peers/trackers worldwide; the Java guard can't see it.
+      check(!app.gyrolet.mpvrx.network.HomeNetworkGuard.enabled) {
+        app.gyrolet.mpvrx.network.HomeNetworkGuard.blockedMessage("Torrent peers")
+      }
       val startGeneration = generation.incrementAndGet()
       lifecycleMutex.withLock {
         check(!closed) { "Torrent streaming engine is shut down" }
@@ -204,6 +208,9 @@ class TorrentStreamingEngine(
 
   suspend fun startStream(request: TorrentStreamRequest): TorrentStreamResult =
     withContext(Dispatchers.IO) {
+      check(!app.gyrolet.mpvrx.network.HomeNetworkGuard.enabled) {
+        app.gyrolet.mpvrx.network.HomeNetworkGuard.blockedMessage("Torrent peers")
+      }
       val startGeneration = generation.incrementAndGet()
       lifecycleMutex.withLock {
         check(!closed) { "Torrent streaming engine is shut down" }

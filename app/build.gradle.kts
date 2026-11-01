@@ -432,6 +432,10 @@ dependencies {
   implementation(libs.mediainfo.lib)
   implementation(libs.androidx.profileinstaller)
   implementation(libs.google.cast.framework)
+  // Free on-device subtitle translation and language detection.
+  implementation(libs.mlkit.translate)
+  implementation(libs.mlkit.language.id)
+  testImplementation(libs.junit)
 
   "standardImplementation"(variantOf(libs.mpvlib.standard) { artifactType("aar") })
   "playstoreImplementation"(variantOf(libs.mpvlib.standard) { artifactType("aar") })

@@ -237,6 +237,8 @@ object SubtitleOps : KoinComponent {
       withContext(Dispatchers.Main) {
         subtitles.forEachIndexed { index, subtitle ->
           if (!isGenerationCurrent(expectedGeneration)) return@forEachIndexed
+          // Saved-state restore may have added this file already; adding it again duplicates the track.
+          if (isLoaded(subtitle)) return@forEachIndexed
           // MPV command format: sub-add <url> [<flags> [<title>]]
           // Keep tracks available while respecting the user's current subtitle-off state.
           val flag = if (index == 0 && selectFirst) "select" else "auto"
@@ -257,6 +259,17 @@ object SubtitleOps : KoinComponent {
           Log.d(TAG, "Loaded local subtitle: ${subtitle.name} (flag=$flag)")
         }
       }
+    }
+  }
+
+  private fun isLoaded(subtitle: File): Boolean {
+    val count = PlaybackSession.getPropertyInt("track-list/count") ?: return false
+    val target = runCatching { subtitle.canonicalPath }.getOrDefault(subtitle.absolutePath)
+    return (0 until count).any { i ->
+      PlaybackSession.getPropertyString("track-list/$i/type") == "sub" &&
+        PlaybackSession.getPropertyString("track-list/$i/external-filename")?.let { loaded ->
+          loaded == subtitle.absolutePath || runCatching { File(loaded).canonicalPath == target }.getOrDefault(false)
+        } == true
     }
   }
 

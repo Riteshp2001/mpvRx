@@ -346,9 +346,44 @@ object AdvancedPreferencesScreen : Screen {
               .padding(padding)
               .then(settingsHighlight),
         ) {
+          // Privacy Section
+          item {
+            PreferenceSectionHeader(position = PreferenceSectionPosition.First, title = stringResource(R.string.pref_section_privacy))
+          }
+
+          item {
+            PreferenceCard {
+              val homeNetworkOnly by preferences.homeNetworkOnly.collectAsState()
+              val blockedHosts = remember(homeNetworkOnly) { app.gyrolet.mpvrx.network.HomeNetworkGuard.blockedHosts() }
+              SwitchPreference(
+                value = homeNetworkOnly,
+                onValueChange = { preferences.homeNetworkOnly.set(it) },
+                title = { Text(stringResource(R.string.pref_home_network_only)) },
+                summary = {
+                  Text(
+                    buildString {
+                      append(
+                        stringResource(
+                          if (homeNetworkOnly) R.string.pref_home_network_only_on else R.string.pref_home_network_only_off,
+                        ),
+                      )
+                      if (homeNetworkOnly && blockedHosts.isNotEmpty()) {
+                        append("\n\n")
+                        append(stringResource(R.string.pref_home_network_only_blocked, blockedHosts.size))
+                        append("\n")
+                        append(blockedHosts.take(12).joinToString("\n"))
+                      }
+                    },
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+            }
+          }
+
           // Backup & Restore Section
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.First, title = stringResource(R.string.pref_section_backup_restore))
+            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_backup_restore))
           }
 
           item {

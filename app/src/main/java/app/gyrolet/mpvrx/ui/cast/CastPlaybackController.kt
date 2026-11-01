@@ -178,6 +178,12 @@ class CastPlaybackController(
 
   fun start() {
     released = false
+    // Cast runs inside Google Play services, outside this app's network guard, and reports usage
+    // to Google; with "Home network only" on it isn't started at all.
+    if (app.gyrolet.mpvrx.network.HomeNetworkGuard.enabled) {
+      Log.i(TAG, "Google Cast disabled: home network only")
+      return
+    }
     try {
       CastContext
         .getSharedInstance(activity.applicationContext, ContextCompat.getMainExecutor(activity))

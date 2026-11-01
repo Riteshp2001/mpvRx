@@ -67,6 +67,10 @@ import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitle
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleOrchestrator
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchMode
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchRequest
+import app.gyrolet.mpvrx.repository.subtitle.translation.SubtitleOutputWriter
+import app.gyrolet.mpvrx.repository.subtitle.translation.SubtitleTranslationException
+import app.gyrolet.mpvrx.repository.subtitle.translation.SubtitleTranslationService
+import app.gyrolet.mpvrx.repository.subtitle.translation.TranslationLanguages
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
 import app.gyrolet.mpvrx.ui.player.ScriptCurlBridge
 import app.gyrolet.mpvrx.ui.player.anime4k.Anime4KUiState
@@ -233,6 +237,8 @@ class PlayerViewModel(
   private val playbackStateDao: app.gyrolet.mpvrx.database.dao.PlaybackStateDao by inject()
   private val playbackBookmarkDao: app.gyrolet.mpvrx.database.dao.PlaybackBookmarkDao by inject()
   private val aiService: app.gyrolet.mpvrx.repository.ai.AiService by inject()
+  private val subtitleTranslationService: SubtitleTranslationService by inject()
+  private val subtitleTranslationPreferences: app.gyrolet.mpvrx.preferences.SubtitleTranslationPreferences by inject()
   private val subtitleGenerationService: SubtitleGenerationService by inject()
   private val realtimeSubtitleService: app.gyrolet.mpvrx.repository.ai.RealtimeSubtitleService by inject()
   private val wyzieRepository: WyzieSearchRepository by inject()
@@ -3539,6 +3545,11 @@ fun restartFromBeginning() {
     const val INTRO_MARKER_CACHE_LOADED = "loaded"
     const val INTRO_MARKER_CACHE_NO_SEGMENTS = "no_segments"
     const val INTRO_MARKER_CACHE_UNRESOLVED = "unresolved"
+
+    /** mpv codec names of bitmap subtitles (PGS, VobSub, DVB, XSUB); translating them would need OCR. */
+    val IMAGE_SUBTITLE_CODECS =
+      setOf("hdmv_pgs_subtitle", "pgssub", "dvd_subtitle", "dvdsub", "vobsub", "dvb_subtitle", "dvbsub", "xsub")
+
     val VALID_SUBTITLE_EXTENSIONS =
       setOf(
         // Common & modern
@@ -3702,13 +3713,23 @@ fun restartFromBeginning() {
         // Keep the original URI even when mpv already auto-loaded this file.
         mpvPathToUriMap[mpvPath] = uri.toString()
 
-        // Check if MPV already auto-loaded this subtitle (prevents duplication)
-        val existingTrack = subtitleTracks.value.find { it.externalFilename == mpvPath }
-        if (existingTrack != null) {
+        // Check if MPV already loaded this subtitle (prevents duplication). The check and the
+        // sub-add run together on the main thread, where autoload also adds files, so the two
+        // can't interleave; mpv's track-list is asked directly because the flow lags behind.
+        val localPath = uri.resolveLocalPath(appContext)
+        val existingTrackId =
+          withContext(Dispatchers.Main) {
+            val loaded =
+              findLoadedSubtitleTrackId(mpvPath, localPath)
+                ?: subtitleTracks.value.find { it.externalFilename == mpvPath }?.id
+            if (loaded == null) PlaybackSession.command("sub-add", mpvPath, mode, fileName)
+            loaded
+          }
+        if (existingTrackId != null) {
           android.util.Log.d("PlayerViewModel", "Subtitle already loaded by MPV, skipping sub-add: $mpvPath")
           if (select) {
             withContext(Dispatchers.Main) {
-              runCatching { PlaybackSession.setPropertyInt("sid", existingTrack.id) }
+              runCatching { PlaybackSession.setPropertyInt("sid", existingTrackId) }
             }
           }
           // Still track it in _externalSubtitles if it's not there
@@ -3716,10 +3737,6 @@ fun restartFromBeginning() {
             _externalSubtitles.add(uriString)
           }
           return@withLock
-        }
-
-        withContext(Dispatchers.Main) {
-          PlaybackSession.command("sub-add", mpvPath, mode, fileName)
         }
 
         // Track external subtitle URI for persistence
@@ -3749,73 +3766,106 @@ fun restartFromBeginning() {
   internal fun clipSubtitleSource(externalPath: String): String =
     mpvPathToUriMap[externalPath] ?: externalPath
 
+  /** @param targetLanguage a language name from the picker ("Arabic") or an ISO code ("ar"). */
   fun translateSubtitle(
     track: TrackNode,
     targetLanguage: String,
   ) {
-    val externalPath = track.externalFilename ?: return
-    val uriString = mpvPathToUriMap[externalPath] ?: externalPath
-
-    // Convert file path to proper URI if needed
+    if (track.isImageBasedSubtitle()) {
+      showToast(
+        "This is an image-based subtitle (${track.codec?.uppercase() ?: "bitmap"}). " +
+          "It can't be translated because it contains pictures, not text.",
+      )
+      return
+    }
+    val externalPath = track.externalFilename
+    val target = TranslationLanguages.fromNameOrCode(targetLanguage)
+    if (target == null) {
+      showToast("Unknown target language: $targetLanguage")
+      return
+    }
+    // The last language picked drives dual subtitles and automatic translation.
+    subtitleTranslationPreferences.targetLanguage.set(target.code)
+    // External file, or a track embedded in the video (extracted from the MKV, which stays untouched).
     val uri =
-      if (uriString.startsWith("/")) {
-        File(uriString).toUri()
-      } else {
-        Uri.parse(uriString)
+      externalPath?.let { path ->
+        val uriString = mpvPathToUriMap[path] ?: path
+        if (uriString.startsWith("/")) File(uriString).toUri() else Uri.parse(uriString)
       }
+    val embedded =
+      if (externalPath == null) {
+        SubtitleTranslationService.EmbeddedTrack(
+          matroskaTrackNumber = trackSourceId(track.id),
+          ordinal = subtitleTracks.value.filter { it.external != true }.indexOfFirst { it.id == track.id },
+        )
+      } else {
+        null
+      }
+    val subtitleFont = PlaybackSession.getPropertyString("sub-font")
 
     translationJob?.cancel()
     translationJob =
       viewModelScope.launch(Dispatchers.IO) {
         _isTranslatingSub.value = true
         _translatingTrackId.value = track.id
+        val fileName = uri?.let { getFileNameFromUri(it) } ?: externalPath?.substringAfterLast('/')
         _translatingTrackName.value =
-          getFileNameFromUri(uri)?.let { it.substringBeforeLast(".") }?.lowercase() ?: "subtitle"
+          fileName?.substringBeforeLast(".") ?: listOfNotNull(track.title, track.lang?.uppercase()).joinToString(" · ").ifBlank { "subtitle" }
         _translationProgress.value = 0f
-        _translationStatus.value = "Preparing translation"
+        _translationStatus.value = "Preparing"
 
         try {
-          val content =
-            appContext.contentResolver.openInputStream(uri)?.use {
-              it.readBytes().decodeToString()
-            } ?: throw Exception("Could not read subtitle file")
-
-          val originalFileName = getFileNameFromUri(uri) ?: "subtitle.srt"
-          val extension = originalFileName.substringAfterLast('.', "srt")
-
-          val result =
-            aiService.translateSubtitle(content, targetLanguage, extension) { progress ->
-              _translationProgress.value = progress.progress
-              _translationStatus.value =
-                buildString {
-                  append(if (progress.isResuming) "Resuming" else "Translating")
-                  append(" ${progress.completedChunks}/${progress.totalChunks}")
+          val request =
+            SubtitleTranslationService.Request(
+              subtitleUri = uri,
+              subtitleFileName = fileName,
+              videoUri = currentVideoUriForSubtitleGeneration(),
+              mediaTitle = currentMediaTitle,
+              trackLanguage = track.lang,
+              targetLanguage = target.code,
+              embeddedTrack = embedded,
+              subtitleFont = subtitleFont,
+            )
+          val outcome =
+            subtitleTranslationService.translate(request) { status ->
+              when (status) {
+                is SubtitleTranslationService.Status.Preparing -> _translationStatus.value = status.message
+                is SubtitleTranslationService.Status.Extracting -> {
+                  _translationProgress.value = status.fraction
+                  _translationStatus.value = "Extracting from video ${(status.fraction * 100).toInt()}%"
                 }
-            }
-
-          result
-            .onSuccess { translatedContent ->
-              val baseName = originalFileName.substringBeforeLast(".").ifBlank { "subtitle" }
-              val sanitizedLang = targetLanguage.replace(" ", "_").ifBlank { "translated" }
-              val newFileName = "$baseName.$sanitizedLang.AI.$extension"
-
-              val savedUri =
-                saveTranslatedSubtitle(uri, newFileName, extension, targetLanguage, translatedContent)
-                  ?: throw Exception("Could not save translated subtitle")
-
-              withContext(Dispatchers.Main) {
-                addSubtitle(savedUri, select = true)
-                showToast("Translation complete: $newFileName")
-              }
-            }.onFailure { error ->
-              withContext(Dispatchers.Main) {
-                showToast("Translation failed: ${error.message}")
+                is SubtitleTranslationService.Status.Translating -> {
+                  val progress = status.progress
+                  _translationProgress.value = progress.fraction
+                  _translationStatus.value =
+                    "${if (progress.resumed) "Resuming" else "Translating"} ${progress.completedBatches}/${progress.totalBatches}"
+                }
+                SubtitleTranslationService.Status.Saving -> _translationStatus.value = "Saving"
               }
             }
-        } catch (e: Exception) {
+
           withContext(Dispatchers.Main) {
-            showToast("Error: ${e.message}")
+            when (outcome) {
+              is SubtitleTranslationService.Outcome.Saved -> {
+                addSubtitle(outcome.uri, select = true, silent = true)
+                val partial = if (outcome.failedUnits > 0) " (${outcome.failedUnits} lines kept in the original language)" else ""
+                showToast("Saved ${outcome.fileName} ${outcome.location.description}$partial")
+              }
+              is SubtitleTranslationService.Outcome.Reused -> {
+                addSubtitle(outcome.uri, select = true, silent = true)
+                showToast("Loaded existing translation: ${outcome.fileName}")
+              }
+              is SubtitleTranslationService.Outcome.AlreadyInTargetLanguage ->
+                showToast("This subtitle is already in ${outcome.language}")
+            }
           }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+          throw e
+        } catch (e: SubtitleTranslationException) {
+          withContext(Dispatchers.Main) { showToast(e.message ?: "Translation failed") }
+        } catch (e: Exception) {
+          android.util.Log.e("PlayerViewModel", "Subtitle translation failed", e)
+          withContext(Dispatchers.Main) { showToast("Translation failed: ${e.message}") }
         } finally {
           _isTranslatingSub.value = false
           _translatingTrackId.value = null
@@ -3827,6 +3877,7 @@ fun restartFromBeginning() {
       }
   }
 
+  /** Stops the current translation. Finished batches are kept, so translating again resumes. */
   fun cancelTranslation() {
     translationJob?.cancel()
     translationJob = null
@@ -3835,13 +3886,80 @@ fun restartFromBeginning() {
     _translatingTrackName.value = ""
     _translationProgress.value = 0f
     _translationStatus.value = ""
-    val cacheDir = java.io.File(appContext.filesDir, "ai_translation_cache")
-    if (cacheDir.exists()) {
-      cacheDir.listFiles()?.forEach { it.delete() }
-      cacheDir.delete()
-    }
-    showToast("Translation cancelled")
+    showToast("Translation stopped. Translate again to resume where it left off.")
   }
+
+  /** External files first, then English, avoiding commentary tracks and forced (signs-only) tracks. */
+  private fun preferredTranslationSource(candidates: List<TrackNode>): TrackNode? =
+    candidates.maxByOrNull { track ->
+      var score = 0
+      if (track.external == true) score += 4
+      if (TranslationLanguages.normalizeCode(track.lang) == "en") score += 2
+      if (track.title?.contains("commentary", ignoreCase = true) == true) score -= 10
+      if (track.forced == true) score -= 5
+      score
+    }
+
+  private var autoTranslateJob: Job? = null
+
+  /** Waits for subtitles to settle after a video opens, then translates if the target language is missing. */
+  private fun scheduleAutoTranslate(mediaTitle: String) {
+    autoTranslateJob?.cancel()
+    if (!subtitleTranslationPreferences.autoTranslate.get() || !subtitleTranslationPreferences.enabled.get()) return
+    autoTranslateJob =
+      viewModelScope.launch {
+        delay(4_000)
+        if (currentMediaTitle != mediaTitle || _isTranslatingSub.value) return@launch
+        val video = currentVideoUriForSubtitleGeneration() ?: return@launch
+        val target = subtitleTranslationPreferences.targetLanguage.get()
+        val tracks = subtitleTracks.value
+        val hasTarget =
+          tracks.any { track ->
+            (TranslationLanguages.normalizeCode(track.lang) ?: track.externalFilename?.let(TranslationLanguages::fromFileName)) == target
+          }
+        if (hasTarget) return@launch
+        val candidates =
+          tracks.filterNot { it.isImageBasedSubtitle() }.filter { track ->
+            // Embedded tracks need the file itself; network streams can't be read that way.
+            track.external == true || video.scheme in setOf("file", "content")
+          }
+        val source = preferredTranslationSource(candidates) ?: return@launch
+        showToast("Translating subtitles to ${TranslationLanguages.displayName(target)} in the background…")
+        translateSubtitle(source, target)
+      }
+  }
+
+  /** An already-loaded external subtitle with this path, compared as resolved local files when possible. */
+  private fun findLoadedSubtitleTrackId(
+    mpvPath: String,
+    localPath: String?,
+  ): Int? {
+    val count = PlaybackSession.getPropertyInt("track-list/count") ?: return null
+    for (i in 0 until count) {
+      if (PlaybackSession.getPropertyString("track-list/$i/type") != "sub") continue
+      val loaded = PlaybackSession.getPropertyString("track-list/$i/external-filename") ?: continue
+      val sameFile =
+        loaded == mpvPath ||
+          (localPath != null && runCatching { File(loaded).canonicalPath == File(localPath).canonicalPath }.getOrDefault(false))
+      if (sameFile) return PlaybackSession.getPropertyInt("track-list/$i/id")
+    }
+    return null
+  }
+
+  /** mpv's src-id for a track; for MKV files this is the Matroska track number. */
+  private fun trackSourceId(trackId: Int): Long? {
+    val count = PlaybackSession.getPropertyInt("track-list/count") ?: return null
+    for (i in 0 until count) {
+      if (PlaybackSession.getPropertyString("track-list/$i/type") != "sub") continue
+      if (PlaybackSession.getPropertyInt("track-list/$i/id") != trackId) continue
+      return PlaybackSession.getPropertyInt("track-list/$i/src-id")?.toLong()
+    }
+    return null
+  }
+
+  private fun TrackNode.isImageBasedSubtitle(): Boolean =
+    image == true || codec?.lowercase(Locale.ROOT) in IMAGE_SUBTITLE_CODECS ||
+      externalFilename?.substringAfterLast('.')?.lowercase(Locale.ROOT) in setOf("sup", "idx")
 
   fun generateSubtitles(
     language: String,
@@ -3889,7 +4007,7 @@ fun restartFromBeginning() {
             val sanitizedLang = actualLanguage.replace(" ", "_")
             val newFileName = "$baseName.$sanitizedLang.AI.${generated.extension}"
             val savedUri =
-              saveTranslatedSubtitle(videoUri, newFileName, generated.extension, sanitizedLang, generated.content)
+              saveTranslatedSubtitle(videoUri, newFileName, generated.content)
                 ?: throw Exception("Could not save generated subtitles")
             withContext(Dispatchers.Main) {
               addSubtitle(savedUri, select = true)
@@ -4129,79 +4247,37 @@ fun restartFromBeginning() {
     }
   }
 
+  /**
+   * Saves generated subtitles next to the video when its folder is writable (resolving content://
+   * URIs to real paths), else in the subtitle save folder, else app storage.
+   */
   private fun saveTranslatedSubtitle(
     originalUri: Uri,
     newFileName: String,
-    extension: String,
-    targetLanguage: String,
     translatedContent: String,
-  ): Uri? {
-    if (originalUri.scheme == "file") {
-      val parent = originalUri.path?.let { File(it).parentFile }
-      if (parent?.exists() == true) {
-        val saved = File(parent, newFileName).also { it.writeText(translatedContent) }.toUri()
-        // Clean up common buggy patterns: .AI.ext, lang.AI.ext, ..AI.ext
-        listOf(
-          ".AI.$extension",
-          "$targetLanguage.AI.$extension",
-          "..AI.$extension",
-        ).filter { it.isNotBlank() }.forEach { pattern ->
-          val buggy = File(parent, pattern)
-          if (buggy.exists() && buggy.name != newFileName) buggy.delete()
-        }
-        return saved
-      }
-    }
-
-    if (originalUri.scheme == "content") {
-      val sourceDocument = DocumentFile.fromSingleUri(appContext, originalUri)
-      val parentDocument = sourceDocument?.parentFile
-      if (parentDocument?.canWrite() == true) {
-        val mimeType =
-          MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
-            ?: "text/plain"
-        val targetDocument =
-          parentDocument.findFile(newFileName)
-            ?: parentDocument.createFile(mimeType, newFileName)
-
-        if (targetDocument != null) {
-          appContext.contentResolver.openOutputStream(targetDocument.uri)?.use { output ->
-            output.write(translatedContent.toByteArray())
-          }
-          // Clean up common buggy patterns
-          listOf(
-            ".AI.$extension",
-            "$targetLanguage.AI.$extension",
-            "..AI.$extension",
-          ).filter { it.isNotBlank() }.forEach { pattern ->
-            parentDocument.findFile(pattern)?.let { buggy ->
-              if (buggy.uri != targetDocument.uri) buggy.delete()
-            }
-          }
-          return targetDocument.uri
-        }
-      }
-    }
-
-    val fallbackDir = appContext.getExternalFilesDir(null) ?: appContext.filesDir
-    val backupFile =
-      File(File(fallbackDir, "Subtitles"), newFileName).apply {
-        parentFile?.mkdirs()
-      }
-    backupFile.writeText(translatedContent)
-    // Clean up common buggy patterns in fallback dir
-    val backupParent = backupFile.parentFile
-    if (backupParent != null) {
-      listOf(".AI.$extension", "$targetLanguage.AI.$extension", "..AI.$extension").filter { it.isNotBlank() }.forEach { pattern ->
-        val buggy = File(backupParent, pattern)
-        if (buggy.exists() && buggy.name != newFileName) buggy.delete()
-      }
-    }
-    return backupFile.toUri()
-  }
+  ): Uri? =
+    runCatching {
+      SubtitleOutputWriter(appContext)
+        .write(
+          fileNames = listOf(newFileName),
+          bytes = translatedContent.toByteArray(),
+          videoUri = originalUri,
+          subtitleUri = originalUri,
+          subtitleFolderTree = subtitlesPreferences.subtitleSaveFolder.get(),
+          mediaFolderName = currentMediaTitle.substringBeforeLast("."),
+          isOurs = { true },
+        ).uri
+    }.onFailure { android.util.Log.e("PlayerViewModel", "Could not save subtitles", it) }.getOrNull()
 
   private fun scanLocalSubtitles(mediaTitle: String) {
     viewModelScope.launch(Dispatchers.IO) {
+      // Without a save folder, online downloads land in app storage (Movies/<crc32 of title>);
+      // reload those too, so a downloaded subtitle comes back when the video is reopened.
+      val appFolder = File(File(appContext.getExternalFilesDir(null), "Movies"), ChecksumUtils.getCRC32(mediaTitle))
+      appFolder.listFiles()?.filter { it.isFile && isValidSubtitleFile(it.name) }?.forEach { file ->
+        addSubtitleSuspend(file.toUri(), select = false, silent = true)
+      }
+
       val saveFolderUri = subtitlesPreferences.subtitleSaveFolder.get()
       if (saveFolderUri.isBlank()) return@launch
 
@@ -4264,6 +4340,7 @@ fun restartFromBeginning() {
       // Reset subtitle hash when media changes.
       _videoHash.value = null
       scanLocalSubtitles(mediaTitle)
+      scheduleAutoTranslate(mediaTitle)
       syncplayManager.updateFileInfo(currentSyncplayFileInfo())
 
       restoreSavedVideoAspect(showUpdate = false)
@@ -5036,7 +5113,18 @@ fun restartFromBeginning() {
       _isDownloadingSub.value = true
       onlineSubtitleOrchestrator
         .download(subtitle, currentMediaTitle)
-        .onSuccess { uri ->
+        .onSuccess { downloaded ->
+          // Keep downloaded subtitles in the movie's own folder, where translations also go.
+          val language =
+            TranslationLanguages.normalizeCode(subtitle.language)
+              ?: TranslationLanguages.fromNameOrCode(subtitle.displayLanguage)?.code
+              ?: "und"
+          val uri =
+            withContext(Dispatchers.IO) {
+              runCatching { SubtitleOutputWriter(appContext).moveNextToVideo(downloaded, currentVideoUriForSubtitleGeneration(), language) }
+                .onFailure { Log.w(TAG, "Couldn't move subtitle next to the video", it) }
+                .getOrNull()
+            } ?: downloaded
           if (subtitle.isHashMatch) {
             PlaybackSession.setPropertyDouble("sub-delay", 0.0)
             PlaybackSession.setPropertyDouble("secondary-sub-delay", 0.0)

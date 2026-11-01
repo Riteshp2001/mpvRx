@@ -38,6 +38,8 @@ fun CastPlayerButton(
   onInvoked: () -> Unit = {},
   contentColor: ComposeColor? = null,
 ) {
+  // Cast lives in Google Play services, outside the home-network guard.
+  if (app.gyrolet.mpvrx.network.HomeNetworkGuard.enabled) return
   val castContentDescription =
     androidx.compose.ui.res
       .stringResource(app.gyrolet.mpvrx.R.string.ui_cast)

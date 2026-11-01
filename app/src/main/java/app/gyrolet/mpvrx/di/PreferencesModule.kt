@@ -24,6 +24,7 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
 import app.gyrolet.mpvrx.preferences.SeerrPreferences
 import app.gyrolet.mpvrx.preferences.SettingsManager
+import app.gyrolet.mpvrx.preferences.SubtitleTranslationPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.preferences.preference.AndroidPreferenceStore
@@ -42,6 +43,7 @@ val PreferencesModule =
     singleOf(::GesturePreferences)
     singleOf(::DecoderPreferences)
     singleOf(::SubtitlesPreferences)
+    singleOf(::SubtitleTranslationPreferences)
     singleOf(::AudioPreferences)
     singleOf(::AdvancedPreferences)
     single { BrowserPreferences(get(), androidContext()) }

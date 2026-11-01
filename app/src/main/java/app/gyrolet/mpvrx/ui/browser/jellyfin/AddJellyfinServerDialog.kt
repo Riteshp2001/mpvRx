@@ -88,7 +88,8 @@ fun AddJellyfinServerDialog(
         authMode,
         username.trim(),
         password,
-        token.trim(),
+        // Copying from the dashboard easily picks up a ':' or quotes around the key.
+        token.trim().trim(':', '"', '\'', ' '),
       )
     },
     headerIcon = {

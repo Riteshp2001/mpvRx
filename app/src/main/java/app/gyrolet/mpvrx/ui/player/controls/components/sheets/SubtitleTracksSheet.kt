@@ -117,6 +117,8 @@ fun SubtitlesSheet(
   subtitlesOff: Boolean = false,
   onDisableSubtitles: () -> Unit = {},
   delayControlEnabled: Boolean = true,
+  /** Name of the default translation language; listed first in the language picker. */
+  defaultTargetLanguage: String = "",
   modifier: Modifier = Modifier,
 ) {
   val isTelevision = DeviceFormFactor.isTelevision(LocalContext.current)
@@ -268,7 +270,7 @@ fun SubtitlesSheet(
             configuredLanguages.mapNotNull { codeToName[it] }
           } else {
             allLanguages
-          }
+          }.sortedByDescending { it == defaultTargetLanguage }
         if (langSearch.isBlank()) {
           source
         } else {
@@ -392,7 +394,7 @@ fun SubtitlesSheet(
         )
       }
 
-      if (aiEnabled && isTranslating) {
+      if (isTranslating) {
         item(key = "translation_progress") {
         Column(
           modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
@@ -637,15 +639,17 @@ fun SubtitleTrackRow(
           strokeWidth = MaterialTheme.spacing.smaller,
         )
       }
+      // Embedded tracks translate too (text tracks are extracted from the MKV); image tracks
+      // keep the button so the player can explain why they can't be translated.
+      if (translationEnabled) {
+        PlayerSheetAction(
+          icon = Icons.RoundedFilled.Translate,
+          label = stringResource(R.string.ui_translate),
+          onClick = onTranslate,
+          enabled = !isCurrentlyTranslating,
+        )
+      }
       if (isExternal) {
-        if (translationEnabled) {
-          PlayerSheetAction(
-            icon = Icons.RoundedFilled.Translate,
-            label = stringResource(R.string.ui_translate),
-            onClick = onTranslate,
-            enabled = !isCurrentlyTranslating,
-          )
-        }
         PlayerSheetAction(Icons.RoundedFilled.Delete, stringResource(R.string.ui_remove), onRemove)
       }
     }

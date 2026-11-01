@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx.preferences
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.preferences.preference.Preference
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
+import app.gyrolet.mpvrx.preferences.preference.getEncryptedString
 import app.gyrolet.mpvrx.preferences.preference.getEnum
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -64,12 +65,13 @@ class AiPreferences(
 
   val provider = preferenceStore.getEnum("ai_provider", AiProvider.OPENCODE)
 
-  val openCodeApiKey = preferenceStore.getString("ai_opencode_api_key", "")
-  val groqApiKey = preferenceStore.getString("ai_groq_api_key", "")
-  val openaiApiKey = preferenceStore.getString("ai_openai_api_key", "")
-  val anthropicApiKey = preferenceStore.getString("ai_anthropic_api_key", "")
-  val openrouterApiKey = preferenceStore.getString("ai_openrouter_api_key", "")
-  val togetherApiKey = preferenceStore.getString("ai_together_api_key", "")
+  // Encrypted with the Android Keystore; plaintext values from older versions migrate on first read.
+  val openCodeApiKey = preferenceStore.getEncryptedString("ai_opencode_api_key")
+  val groqApiKey = preferenceStore.getEncryptedString("ai_groq_api_key")
+  val openaiApiKey = preferenceStore.getEncryptedString("ai_openai_api_key")
+  val anthropicApiKey = preferenceStore.getEncryptedString("ai_anthropic_api_key")
+  val openrouterApiKey = preferenceStore.getEncryptedString("ai_openrouter_api_key")
+  val togetherApiKey = preferenceStore.getEncryptedString("ai_together_api_key")
 
   val selectedModel = preferenceStore.getString("ai_selected_model", "")
 
