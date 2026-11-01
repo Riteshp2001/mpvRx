@@ -112,9 +112,7 @@ import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionNeighbors
-import app.gyrolet.mpvrx.ui.browser.cards.animatedSelectionColor
 import app.gyrolet.mpvrx.ui.browser.cards.mediaCardClickable
-import app.gyrolet.mpvrx.ui.browser.cards.rememberMediaSelectionShape
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
@@ -879,8 +877,8 @@ fun JellyfinResumeCard(
       }
     }
 
-  // The artwork sits inside the tonal card, so its corners follow the card's, inset by its padding.
-  val artworkShape = RoundedCornerShape(JellyfinSpacing.inner(28.dp))
+  // Artwork sits flush at the row edge now that cards have no tonal background.
+  val artworkShape = RoundedCornerShape(12.dp)
   val posterBorderModifier =
     if (isSelected) {
       Modifier.clip(artworkShape).border(2.dp, MaterialTheme.colorScheme.primary, artworkShape)
@@ -889,8 +887,7 @@ fun JellyfinResumeCard(
     }
 
   Column(
-    modifier = modifier.width(280.dp).clip(MaterialTheme.shapes.extraLarge)
-      .background(MaterialTheme.colorScheme.surfaceContainerLow).padding(JellyfinSpacing.CardPadding),
+    modifier = modifier.width(280.dp),
   ) {
     Box(
       modifier =
@@ -1010,7 +1007,7 @@ fun JellyfinResumeCard(
       modifier =
         Modifier
           .fillMaxWidth()
-          .padding(start = 4.dp, end = 4.dp, top = 8.dp, bottom = 2.dp),
+          .padding(top = 8.dp),
       horizontalAlignment = Alignment.Start,
     ) {
       val title = item.seriesName ?: item.name
@@ -1095,28 +1092,28 @@ fun JellyfinPosterCard(
       modifier.fillMaxWidth()
     }
 
-  val cardShape = rememberMediaSelectionShape(isSelected, true, selectionNeighbors)
+  // Flush poster with no tonal card behind it; only the artwork carries rounded corners —
+  // the title and ratings below stay unclipped so nothing cuts into their text.
+  val posterShape = RoundedCornerShape(8.dp)
+  val selectionBorderModifier =
+    if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, posterShape) else Modifier
 
   Column(
     modifier = cardModifier
       .tvFocusMemory(listOf("JellyfinPosterCard", server.id, focusKey))
-      .tvFocusHighlight(cardShape, focusedScale = 1.03f)
-      .clip(cardShape)
-      .background(MaterialTheme.colorScheme.surfaceContainerLow)
-      .background(animatedSelectionColor(isSelected))
+      .tvFocusHighlight(posterShape, focusedScale = 1.03f)
       .semantics { selected = isSelected }
       .tvContextMenu(onLongClick)
-      .mediaCardClickable(onClick = onClick, onLongClick = onLongClick)
-      .padding(JellyfinSpacing.CardPadding),
+      .mediaCardClickable(onClick = onClick, onLongClick = onLongClick),
   ) {
     Box(
       modifier =
         Modifier
           .fillMaxWidth()
           .aspectRatio(2f / 3f)
-          // Concentric with the card's resting 16 dp corners.
-          .clip(RoundedCornerShape(JellyfinSpacing.inner(16.dp)))
-          .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+          .clip(posterShape)
+          .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+          .then(selectionBorderModifier),
     ) {
       if (!posterImageTag.isNullOrBlank()) {
         RemoteImage(
@@ -1223,7 +1220,7 @@ fun JellyfinPosterCard(
       modifier =
         Modifier
           .fillMaxWidth()
-          .padding(start = 2.dp, end = 2.dp, top = 8.dp),
+          .padding(top = 8.dp),
       horizontalAlignment = Alignment.Start,
     ) {
       val title = if (item.type == "Episode" && !item.seriesName.isNullOrBlank()) item.seriesName else item.name
@@ -1538,7 +1535,6 @@ fun JellyfinLibraryCard(
 ) {
   val (url, icon) = rememberLibraryArtwork(item, server)
   val cardShape = MaterialTheme.shapes.extraLarge
-  val artworkShape = RoundedCornerShape(JellyfinSpacing.inner(28.dp))
 
   Column(
     modifier =
@@ -1546,17 +1542,14 @@ fun JellyfinLibraryCard(
         .width(cardWidth)
         .tvFocusMemory(listOf("JellyfinLibraryCard", server.id, item.id))
         .tvFocusHighlight(cardShape, focusedScale = 1.02f)
-        .clip(cardShape)
-        .background(MaterialTheme.colorScheme.surfaceContainerLow)
-        .clickable(onClick = onClick)
-        .padding(JellyfinSpacing.CardPadding),
+        .clickable(onClick = onClick),
   ) {
     Box {
       LibraryArtwork(
         item = item,
         url = url,
         icon = icon,
-        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(artworkShape),
+        modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(cardShape),
       )
       LibraryTypeBadge(icon, Modifier.align(Alignment.BottomEnd).padding(8.dp))
     }
@@ -1567,7 +1560,7 @@ fun JellyfinLibraryCard(
       color = MaterialTheme.colorScheme.onSurface,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
-      modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 10.dp, bottom = 6.dp),
+      modifier = Modifier.padding(top = 10.dp, bottom = 6.dp),
     )
   }
 }
