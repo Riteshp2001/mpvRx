@@ -233,9 +233,11 @@ fun JellyfinHeroBanner(
 
   val configuration = LocalConfiguration.current
   val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+  // Landscape previously pinned a short 300 dp strip; scale with the display width instead so
+  // the slide keeps cinema-like proportions on tablets instead of a cramped banner.
   val heroHeight = (when {
-    isTelevision -> 360.dp
-    isLandscape -> 300.dp
+    isTelevision -> 420.dp
+    isLandscape -> (configuration.screenWidthDp.dp * 0.42f).coerceIn(360.dp, 480.dp)
     else -> 440.dp
   }) * configuration.fontScale.coerceAtLeast(1f)
 
