@@ -39,7 +39,9 @@ internal data class PlaybackControlsGeometry(
 internal fun resolvePlaybackControlsGeometry(
   width: Dp,
   spacing: Spacing,
+  landscape: Boolean = false,
 ): PlaybackControlsGeometry {
+  if (landscape) return PlaybackControlsGeometry(56.dp, 48.dp, 8.dp)
   val compact = width < 360.dp
   return PlaybackControlsGeometry(
     playPauseSize = if (compact) 56.dp else 68.dp,
@@ -53,9 +55,20 @@ internal fun resolveBottomControlsLayout(
   seekbarPlacement: SeekbarPlacement,
   hasButtons: Boolean = true,
   playbackControlsPlacement: PlaybackControlsPlacement = PlaybackControlsPlacement.Center,
+  sharedLandscapeRow: Boolean = false,
 ): BottomControlsLayout =
   BottomControlsLayout(
     bottomToTop = buildList {
+      if (sharedLandscapeRow) {
+        if (seekbarPlacement == SeekbarPlacement.AboveButtons) {
+          add(BottomSlot.Playback)
+          add(BottomSlot.Seekbar)
+        } else {
+          add(BottomSlot.Seekbar)
+          add(BottomSlot.Playback)
+        }
+        return@buildList
+      }
       if (hasButtons && seekbarPlacement == SeekbarPlacement.AboveButtons) add(BottomSlot.Buttons)
       if (playbackControlsPlacement == PlaybackControlsPlacement.BelowSeekbar) add(BottomSlot.Playback)
       add(BottomSlot.Seekbar)
@@ -63,3 +76,4 @@ internal fun resolveBottomControlsLayout(
       if (hasButtons && seekbarPlacement == SeekbarPlacement.BelowButtons) add(BottomSlot.Buttons)
     },
   )
+

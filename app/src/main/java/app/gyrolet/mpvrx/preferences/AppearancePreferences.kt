@@ -114,11 +114,13 @@ class AppearancePreferences(
   val portraitSeekbarPlacement =
     preferenceStore.getEnum("portrait_seekbar_placement", SeekbarPlacement.AboveButtons)
   val landscapeSeekbarPlacement =
-    preferenceStore.getEnum("landscape_seekbar_placement", SeekbarPlacement.BelowButtons)
+    preferenceStore.getEnum("landscape_seekbar_placement", SeekbarPlacement.AboveButtons)
   val portraitPlaybackControlsPlacement =
     preferenceStore.getEnum("portrait_playback_controls_placement", PlaybackControlsPlacement.Center)
+  // Reuse the existing key so an explicitly saved Center choice is restored.
+  // Both legacy seekbar-relative values use the combined landscape button row.
   val landscapePlaybackControlsPlacement =
-    preferenceStore.getEnum("landscape_playback_controls_placement", PlaybackControlsPlacement.Center)
+    preferenceStore.getEnum("landscape_playback_controls_placement", PlaybackControlsPlacement.BelowSeekbar)
   // Absolute background level: 0.55 keeps each button's designed tint, 1 is opaque, 0 is clear.
   // A new key, because "player_buttons_opacity" stored a multiplier whose 100% kept buttons translucent.
   val playerButtonsBackgroundOpacity = preferenceStore.getFloat("player_buttons_background_opacity", 0.55f)
@@ -176,13 +178,13 @@ class AppearancePreferences(
   val bottomRightControls =
     preferenceStore.getString(
       "bottom_right_controls",
-      "PICTURE_IN_PICTURE,ASPECT_RATIO",
+      "PLAYLIST,ASPECT_RATIO",
     )
 
   val bottomLeftControls =
     preferenceStore.getString(
       "bottom_left_controls",
-      "BACKGROUND_PLAYBACK,LOCK_CONTROLS,SCREEN_ROTATION,PLAYBACK_SPEED",
+      "LOCK_CONTROLS,PLAYBACK_SPEED",
     )
 
   val portraitBottomControls =
@@ -339,3 +341,4 @@ fun MultiChoiceSegmentedButton(
     }
   }
 }
+

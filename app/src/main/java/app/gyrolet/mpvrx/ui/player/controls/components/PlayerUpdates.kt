@@ -74,6 +74,7 @@ import app.gyrolet.mpvrx.ui.liquidglass.rememberLiquidGlassSettings
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.roundedfilled.Replay
+import com.composables.icons.materialsymbols.roundedfilled.Speed
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
@@ -81,6 +82,7 @@ import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.Capsule
 import `is`.xyz.mpv.Utils
 import kotlin.math.roundToInt
+import java.util.Locale
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 
@@ -290,9 +292,14 @@ fun CompactSpeedIndicator(
       label = "SpeedJumpAnimation",
     ) { targetSpeed ->
       Row(
-        horizontalArrangement = Arrangement.Center,
+        horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
       ) {
+        Icon(
+          imageVector = MaterialSymbols.RoundedFilled.Speed,
+          contentDescription = stringResource(R.string.ui_playback_speed),
+          modifier = Modifier.size(18.dp),
+        )
         Text(
           text = targetSpeed,
           fontWeight = FontWeight.ExtraBold,
@@ -415,7 +422,7 @@ internal fun Float.formatSpeed(): String {
   return if (rounded % 1f == 0f) {
     rounded.toInt().toString()
   } else {
-    String.format("%.2f", rounded).trimEnd('0')
+    String.format(Locale.ROOT, "%.2f", rounded).trimEnd('0')
   }
 }
 
