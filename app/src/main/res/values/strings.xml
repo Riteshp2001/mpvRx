@@ -2686,6 +2686,8 @@
   <string name="network_server_scan_unavailable">Discovery is unavailable or incomplete. Choose a saved address or type one.</string>
   <string name="network_server_discovery_hint">Finds servers that advertise on your local network. Device addresses are shortcuts, not detected servers. Credentials are entered below.</string>
   <string name="network_smb_share_folder">Share / folder (optional)</string>
+  <string name="network_dlna_description_path">Device description path</string>
+  <string name="network_dlna_description_hint">Find a nearby DLNA server, or enter its device description URL and path.</string>
   <string name="network_smb_share_hint">Leave empty or use / to browse all shared folders. Enter /Media or /Media/Movies to open a specific folder.</string>
   <string name="network_smb_username_hint">Use your username or DOMAIN\\username for a domain account.</string>
   <string name="player_zoom_overlays_follow">Zoom player OSD &amp; subtitles with video</string>

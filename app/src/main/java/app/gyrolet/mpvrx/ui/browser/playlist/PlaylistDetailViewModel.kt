@@ -24,6 +24,7 @@ import android.net.Uri
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.network.ConnectionStatus
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
+import app.gyrolet.mpvrx.domain.network.DlnaPath
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
 import app.gyrolet.mpvrx.domain.network.NetworkProtocol
@@ -473,7 +474,8 @@ class PlaylistDetailViewModel(
     ref: NetworkPlaybackUri.Reference,
     connection: NetworkConnection?,
   ): PlaylistVideoItem {
-    val isAudioFile = FileTypeUtils.isAudioFile(File(item.fileName))
+    val isAudioFile = FileTypeUtils.isAudioFile(File(item.fileName)) ||
+      (connection?.protocol == NetworkProtocol.DLNA && DlnaPath.isAudio(ref.path))
     // A tombstoned connection still names the share it pointed at, so the badge keeps saying
     // "WebDAV", but it is not usable: the row exists only so a re-created connection can revive it.
     val available = connection != null && !connection.isDeleted
@@ -505,7 +507,7 @@ class PlaylistDetailViewModel(
       connectionId = ref.connectionId,
       protocol = connection?.protocol,
       connectionName = connection?.name,
-      sourcePath = ref.path.value,
+      sourcePath = if (connection?.protocol == NetworkProtocol.DLNA) null else ref.path.value,
       isAvailable = available,
       unavailableReasonRes = if (available) null else R.string.playlist_unavailable_connection,
     )

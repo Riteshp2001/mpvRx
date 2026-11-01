@@ -27,7 +27,7 @@ data class NetworkAddress(
         NetworkProtocol.SMB -> "smb"
         NetworkProtocol.FTP -> "ftp"
         NetworkProtocol.SFTP -> "sftp"
-        NetworkProtocol.WEBDAV -> if (useHttps) "https" else "http"
+        NetworkProtocol.WEBDAV, NetworkProtocol.DLNA -> if (useHttps) "https" else "http"
       }
       val url = when {
         input.startsWith("\\\\") -> "smb://${input.drop(2).replace('\\', '/')}"
@@ -42,7 +42,8 @@ data class NetworkAddress(
         "smb" -> NetworkProtocol.SMB
         "ftp" -> NetworkProtocol.FTP
         "sftp" -> NetworkProtocol.SFTP
-        "http", "https", "webdav", "webdavs", "dav", "davs" -> NetworkProtocol.WEBDAV
+        "http", "https" -> if (protocol == NetworkProtocol.DLNA) NetworkProtocol.DLNA else NetworkProtocol.WEBDAV
+        "webdav", "webdavs", "dav", "davs" -> NetworkProtocol.WEBDAV
         else -> throw IllegalArgumentException("Unsupported network protocol")
       }
       // Some NAS hostnames contain underscores, which java.net.URI does not consider DNS hosts.

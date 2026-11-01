@@ -1497,6 +1497,7 @@ fun FileSystemSortDialog(
 fun NetworkSortDialog(
   isOpen: Boolean,
   onDismiss: () -> Unit,
+  showSortOptions: Boolean = true,
 ) {
   val browserPreferences = koinInject<BrowserPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
@@ -1588,7 +1589,7 @@ fun NetworkSortDialog(
         else -> Pair("Asc", "Desc")
       }
     },
-    showSortOptions = true,
+    showSortOptions = showSortOptions,
     layoutModeSelector =
       ViewModeSelector(
         label = "Layout",

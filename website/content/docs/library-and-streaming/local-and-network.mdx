@@ -1,6 +1,6 @@
 ---
 title: Local and network libraries
-description: Browse local storage and connect SMB, FTP, SFTP, or WebDAV media sources.
+description: Browse local storage and connect SMB, FTP, SFTP, WebDAV, or DLNA media sources.
 ---
 
 The main browser supports local folders and saved network connections. Album view emphasizes media collections; Tree view follows the underlying folder hierarchy.
@@ -17,8 +17,9 @@ Grant video and audio access for broad library scanning, or use Android's docume
 | FTP | `21` | Traditional file servers. Prefer a trusted network because plain FTP is not encrypted. |
 | SFTP | `22` | SSH-backed encrypted file access. |
 | WebDAV | `80` | HTTP-based storage. Enable HTTPS and use the server's TLS port when available. |
+| DLNA | Varies | Discover UPnP/DLNA media servers and browse their music, video, and playlist containers. |
 
-A connection can include a display name, host, port, base path, username, and password. Available fields depend on the selected protocol.
+A connection can include a display name, host, port, base path, username, and password. Available fields depend on the selected protocol. DLNA servers normally allow anonymous access. In Add network connection, tap **Find nearby servers** and select the server to fill in its device description address. If discovery is unavailable, select DLNA and enter the server's device description URL. DLNA music is shown in its browser even when the general audio-in-browser setting is off; album and playlist containers retain the server's track order.
 
 <Steps>
   <Step title="Verify the server outside mpvRx">

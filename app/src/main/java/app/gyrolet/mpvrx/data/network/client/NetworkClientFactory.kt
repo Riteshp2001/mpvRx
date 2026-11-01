@@ -21,6 +21,7 @@ object NetworkClientFactory {
       NetworkProtocol.FTP -> FtpClient(connection)
       NetworkProtocol.WEBDAV -> WebDavClient(connection)
       NetworkProtocol.SFTP -> SftpClient(connection)
+      NetworkProtocol.DLNA -> DlnaClient(connection)
     }
   }
 }

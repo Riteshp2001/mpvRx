@@ -56,6 +56,7 @@ enum class NetworkProtocol(
   FTP("FTP", 21),
   WEBDAV("WebDAV", 80),
   SFTP("SFTP", 22),
+  DLNA("DLNA", 80),
 }
 
 /**

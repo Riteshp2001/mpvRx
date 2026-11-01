@@ -19,6 +19,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
+import app.gyrolet.mpvrx.domain.network.DlnaPath
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
 import app.gyrolet.mpvrx.domain.network.NetworkPath
@@ -117,7 +118,10 @@ class NetworkBrowserViewModel(
           .listFiles(connection, currentPath)
           .onSuccess { fileList ->
             coroutineContext.ensureActive()
-            _files.value =
+            _files.value = if (connection.protocol == NetworkProtocol.DLNA &&
+              DlnaPath.isOrderedContainer(NetworkPath.from(currentPath))) {
+              fileList
+            } else
               // A stable base order for consumers that do not re-sort. Display order is applied in
               // NetworkBrowserScreen and the playback queue re-sorts in
               // currentDirectoryPlayableFiles, so the preference-based sort that used to run here
@@ -261,20 +265,20 @@ class NetworkBrowserViewModel(
   }
 
   private fun currentDirectoryPlayableFiles(clickedFile: NetworkFile): List<NetworkFile> {
-    val includeAudio = browserPreferences.includeAudioBrowser.get()
-    if (!playerPreferences.shouldBuildAutomaticQueue(clickedFile.isPlayableNetworkAudio()) ||
+    val isDlna = _connection.value?.protocol == NetworkProtocol.DLNA
+    val orderedContainer = isDlna && DlnaPath.isOrderedContainer(NetworkPath.from(currentPath))
+    val includeAudio = isDlna || browserPreferences.includeAudioBrowser.get()
+    if ((!orderedContainer && !playerPreferences.shouldBuildAutomaticQueue(clickedFile.isPlayableNetworkAudio())) ||
       !clickedFile.isPlayableNetworkMedia(includeAudio)
     ) {
       return listOf(clickedFile)
     }
 
-    val files =
-      _files.value
-        .filter { it.isPlayableNetworkMedia(includeAudio) }
-        .sortedForNetworkBrowser(
-          sortType = browserPreferences.networkSortType.get(),
-          sortOrder = browserPreferences.networkSortOrder.get(),
-        )
+    val playable = _files.value.filter { it.isPlayableNetworkMedia(includeAudio) }
+    val files = if (orderedContainer) playable else playable.sortedForNetworkBrowser(
+      sortType = browserPreferences.networkSortType.get(),
+      sortOrder = browserPreferences.networkSortOrder.get(),
+    )
 
     return if (files.any { it.path == clickedFile.path }) {
       files
@@ -300,13 +304,15 @@ class NetworkBrowserViewModel(
     connection: NetworkConnection,
   ): NetworkPath? =
     runCatching {
+      // DLNA references are ContentDirectory IDs, not paths below the description URL.
+      if (connection.protocol == NetworkProtocol.DLNA) return@runCatching null
       val uri = URI(rawUri)
       val expectedScheme =
         when (connection.protocol) {
           NetworkProtocol.SMB -> "smb"
           NetworkProtocol.FTP -> "ftp"
           NetworkProtocol.SFTP -> "sftp"
-          NetworkProtocol.WEBDAV -> if (connection.useHttps) "https" else "http"
+          NetworkProtocol.WEBDAV, NetworkProtocol.DLNA -> if (connection.useHttps) "https" else "http"
         }
       if (!uri.scheme.equals(expectedScheme, ignoreCase = true) ||
         !uri.host.equals(connection.host.trim('[', ']'), ignoreCase = true) ||

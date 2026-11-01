@@ -116,7 +116,9 @@ internal fun ConnectionEditorSheet(
   }
   val isPathValid = normalizedPath != null &&
     (effectiveProtocol != NetworkProtocol.SMB || runCatching { SmbSharePath(normalizedPath) }.isSuccess)
-  val canSave = address != null && isPortValid && isPathValid && (isAnonymous || username.isNotBlank())
+  val dlna = effectiveProtocol == NetworkProtocol.DLNA
+  val anonymous = isAnonymous || dlna
+  val canSave = address != null && isPortValid && isPathValid && (anonymous || username.isNotBlank())
   val resolvedConnection = remember(host, port, protocol, path, useHttps, initialConnection) {
     runCatching {
       initialConnection.copy(host = host, port = parsedPort ?: 0, protocol = protocol, path = path, useHttps = useHttps).normalizedAddress()
@@ -141,13 +143,13 @@ internal fun ConnectionEditorSheet(
           protocol = effectiveProtocol,
           host = resolvedAddress.host,
           port = resolvedAddress.port,
-          username = if (isAnonymous) "" else username.trim(),
-          password = if (isAnonymous) "" else password,
+          username = if (anonymous) "" else username.trim(),
+          password = if (anonymous) "" else password,
           path = requireNotNull(normalizedPath),
-          isAnonymous = isAnonymous,
+          isAnonymous = anonymous,
           useHttps = resolvedAddress.useHttps,
         ),
-        isAnonymous || clearPassword || (destinationChanged && password.isEmpty()),
+        anonymous || clearPassword || (destinationChanged && password.isEmpty()),
       )
     }
   }
@@ -189,7 +191,7 @@ internal fun ConnectionEditorSheet(
         onSelect = { selectedProtocol ->
           protocol = selectedProtocol
           port = selectedProtocol.defaultPort.toString()
-          if (selectedProtocol != NetworkProtocol.WEBDAV) useHttps = false
+          if (selectedProtocol != NetworkProtocol.WEBDAV && selectedProtocol != NetworkProtocol.DLNA) useHttps = false
         },
         optionLabel = { it.displayName },
         label = stringResource(R.string.ui_protocol),
@@ -252,29 +254,35 @@ internal fun ConnectionEditorSheet(
       OutlinedTextField(
         value = path,
         onValueChange = { path = it },
-        label = { FieldLabel(if (effectiveProtocol == NetworkProtocol.SMB) R.string.network_smb_share_folder else R.string.ui_path) },
+        label = { FieldLabel(when (effectiveProtocol) {
+          NetworkProtocol.SMB -> R.string.network_smb_share_folder
+          NetworkProtocol.DLNA -> R.string.network_dlna_description_path
+          else -> R.string.ui_path
+        }) },
         modifier = Modifier.fillMaxWidth().focusRequester(pathFocusRequester),
         singleLine = true,
         placeholder = { Text(if (effectiveProtocol == NetworkProtocol.SMB) "/Media/Movies" else "/", maxLines = 1) },
         isError = !isPathValid,
         supportingText = if (effectiveProtocol == NetworkProtocol.SMB) {
           { Text(stringResource(R.string.network_smb_share_hint)) }
+        } else if (dlna) {
+          { Text(stringResource(R.string.network_dlna_description_hint)) }
         } else null,
-        keyboardOptions = KeyboardOptions(imeAction = if (isAnonymous) ImeAction.Done else ImeAction.Next),
+        keyboardOptions = KeyboardOptions(imeAction = if (anonymous) ImeAction.Done else ImeAction.Next),
         keyboardActions =
           KeyboardActions(
-            onNext = { usernameFocusRequester.requestFocus() },
+            onNext = { if (anonymous) focusManager.clearFocus() else usernameFocusRequester.requestFocus() },
             onDone = { focusManager.clearFocus() },
           ),
       )
 
-      ConnectionToggle(
+      if (!dlna) ConnectionToggle(
         checked = isAnonymous,
         onCheckedChange = { isAnonymous = it },
         label = stringResource(R.string.ui_anonymous_guest_access),
       )
 
-      if (protocol == NetworkProtocol.WEBDAV) {
+      if (protocol == NetworkProtocol.WEBDAV || protocol == NetworkProtocol.DLNA) {
         ConnectionToggle(
           checked = useHttps,
           onCheckedChange = { enabled ->
@@ -289,67 +297,69 @@ internal fun ConnectionEditorSheet(
         )
       }
 
-      OutlinedTextField(
-        value = username,
-        onValueChange = { username = it },
-        label = { FieldLabel(R.string.ui_username) },
-        modifier = Modifier.fillMaxWidth().focusRequester(usernameFocusRequester),
-        singleLine = true,
-        enabled = !isAnonymous,
-        supportingText = if (protocol == NetworkProtocol.SMB && !isAnonymous) {
-          { Text(stringResource(R.string.network_smb_username_hint)) }
-        } else null,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-        keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
-      )
-
-      OutlinedTextField(
-        value = password,
-        onValueChange = {
-          password = it
-          if (it.isNotEmpty()) clearPassword = false
-        },
-        label = {
-          FieldLabel(if (isEditing && !destinationChanged) R.string.ui_new_password_keep_existing else R.string.ui_password)
-        },
-        modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
-        singleLine = true,
-        enabled = !isAnonymous && !clearPassword,
-        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        trailingIcon = {
-          IconButton(
-            onClick = { passwordVisible = !passwordVisible },
-            enabled = !isAnonymous && !clearPassword,
-          ) {
-            Icon(
-              imageVector =
-                if (passwordVisible) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility,
-              contentDescription =
-                stringResource(
-                  if (passwordVisible) {
-                    R.string.playlist_xtream_hide_password
-                  } else {
-                    R.string.playlist_xtream_show_password
-                  },
-                ),
-              modifier = Modifier.size(20.dp),
-            )
-          }
-        },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { save() }),
-      )
-
-      if (isEditing) {
-        ConnectionToggle(
-          checked = clearPassword,
-          onCheckedChange = { clear ->
-            clearPassword = clear
-            if (clear) password = ""
-          },
-          label = stringResource(R.string.ui_clear_saved_password),
+      if (!dlna) {
+        OutlinedTextField(
+          value = username,
+          onValueChange = { username = it },
+          label = { FieldLabel(R.string.ui_username) },
+          modifier = Modifier.fillMaxWidth().focusRequester(usernameFocusRequester),
+          singleLine = true,
           enabled = !isAnonymous,
+          supportingText = if (protocol == NetworkProtocol.SMB && !isAnonymous) {
+            { Text(stringResource(R.string.network_smb_username_hint)) }
+          } else null,
+          keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+          keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
         )
+
+        OutlinedTextField(
+          value = password,
+          onValueChange = {
+            password = it
+            if (it.isNotEmpty()) clearPassword = false
+          },
+          label = {
+            FieldLabel(if (isEditing && !destinationChanged) R.string.ui_new_password_keep_existing else R.string.ui_password)
+          },
+          modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
+          singleLine = true,
+          enabled = !isAnonymous && !clearPassword,
+          visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+          trailingIcon = {
+            IconButton(
+              onClick = { passwordVisible = !passwordVisible },
+              enabled = !isAnonymous && !clearPassword,
+            ) {
+              Icon(
+                imageVector =
+                  if (passwordVisible) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility,
+                contentDescription =
+                  stringResource(
+                    if (passwordVisible) {
+                      R.string.playlist_xtream_hide_password
+                    } else {
+                      R.string.playlist_xtream_show_password
+                    },
+                  ),
+                modifier = Modifier.size(20.dp),
+              )
+            }
+          },
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+          keyboardActions = KeyboardActions(onDone = { save() }),
+        )
+
+        if (isEditing) {
+          ConnectionToggle(
+            checked = clearPassword,
+            onCheckedChange = { clear ->
+              clearPassword = clear
+              if (clear) password = ""
+            },
+            label = stringResource(R.string.ui_clear_saved_password),
+            enabled = !isAnonymous,
+          )
+        }
       }
 
       FlowRow(

@@ -541,6 +541,7 @@ object NetworkStreamingScreen : Screen {
                       connectionId = item.connection.id,
                       connectionName = item.connection.name,
                       currentPath = item.bookmark.path,
+                      currentFolderName = item.bookmark.folderName,
                     ),
                   )
                 },

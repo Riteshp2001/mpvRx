@@ -208,6 +208,7 @@ object NetworkBookmarksScreen : Screen {
                     connectionId = bookmark.connection.id,
                     connectionName = bookmark.connection.name,
                     currentPath = bookmark.bookmark.path,
+                    currentFolderName = bookmark.bookmark.folderName,
                   ),
                 )
               },

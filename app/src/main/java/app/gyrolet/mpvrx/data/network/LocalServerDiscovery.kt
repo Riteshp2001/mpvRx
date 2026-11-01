@@ -24,7 +24,10 @@ import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.domain.network.normalizedAddress
 import java.net.Inet4Address
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
@@ -162,6 +165,8 @@ class LocalServerDiscovery(context: Context) {
       }
     }
 
+    var dlnaScan: Job? = null
+
     val finish = Runnable {
       trySend(ServerDiscoveryState(results.values.toList(), unavailable = unavailable))
       close()
@@ -169,13 +174,26 @@ class LocalServerDiscovery(context: Context) {
     handler.post {
       if (closed.get()) return@post
       try {
-        if (Build.VERSION.SDK_INT < 34) {
-          multicastLock = context.getSystemService(WifiManager::class.java)
-            ?.createMulticastLock("mpvrx-server-discovery")?.apply {
-              setReferenceCounted(false)
-              acquire()
+        // SSDP needs multicast on all supported Android versions.
+        multicastLock = context.getSystemService(WifiManager::class.java)
+          ?.createMulticastLock("mpvrx-server-discovery")?.apply {
+            setReferenceCounted(false)
+            acquire()
+          }
+      } catch (_: RuntimeException) {
+        unavailable = true
+      }
+      dlnaScan = launch(Dispatchers.IO) {
+        DlnaServerDiscovery(context).discover { server ->
+          handler.post {
+            if (!closed.get()) {
+              results["dlna:${server.host}:${server.port}:${server.path}"] = server
+              emit()
             }
+          }
         }
+      }
+      try {
         SERVICE_TYPES.keys.forEach { type ->
           val listener = object : NsdManager.DiscoveryListener {
             override fun onDiscoveryStarted(serviceType: String) = Unit
@@ -215,6 +233,7 @@ class LocalServerDiscovery(context: Context) {
     }
     awaitClose {
       closed.set(true)
+      dlnaScan?.cancel()
       handler.post {
         handler.removeCallbacks(finish)
         listeners.forEach { runCatching { manager.stopServiceDiscovery(it) } }

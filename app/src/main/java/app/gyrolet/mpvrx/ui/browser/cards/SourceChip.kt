@@ -62,5 +62,6 @@ fun sourceChipColor(
     NetworkProtocol.SMB -> Color(0xFF8E24AA)
     NetworkProtocol.FTP -> Color(0xFFF4511E)
     NetworkProtocol.SFTP -> Color(0xFF00897B)
+    NetworkProtocol.DLNA -> Color(0xFF5E35B1)
     null -> if (isNetwork) Color(0xFF607D8B) else Color(0xFF2E7D32)
   }
