@@ -15,14 +15,10 @@ import app.gyrolet.mpvrx.preferences.AiPreferences
 import app.gyrolet.mpvrx.preferences.AiProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import java.io.File
-import java.security.MessageDigest
-import java.util.Locale
 
 class AiService(
   private val context: Context,
@@ -48,20 +44,6 @@ class AiService(
       AiProvider.OPENROUTER to openRouterClient,
       AiProvider.TOGETHER to togetherClient,
     )
-
-  @Serializable
-  private data class SubtitleTranslationCache(
-    val key: String,
-    val translatedChunks: List<String?>,
-    val updatedAtMs: Long,
-  )
-
-  data class SubtitleTranslationProgress(
-    val progress: Float,
-    val completedChunks: Int,
-    val totalChunks: Int,
-    val isResuming: Boolean = false,
-  )
 
   suspend fun fetchModels(): Result<List<AiModelInfo>> =
     withContext(Dispatchers.IO) {
@@ -187,6 +169,16 @@ class AiService(
   suspend fun translateRealtimeCues(
     texts: List<String>,
     targetLanguage: String,
+  ): Result<List<String>> = translateCueTexts(texts, targetLanguage)
+
+  /**
+   * Translates single-line cue texts and validates that every cue came back. `⟦n⟧` tokens stand for
+   * subtitle markup and must survive translation unchanged.
+   */
+  suspend fun translateCueTexts(
+    texts: List<String>,
+    targetLanguage: String,
+    sourceLanguage: String? = null,
   ): Result<List<String>> =
     withContext(Dispatchers.IO) {
       if (texts.isEmpty()) return@withContext Result.success(emptyList())
@@ -198,8 +190,10 @@ class AiService(
         }.joinToString("\n")
       val instruction =
         "TARGET LANGUAGE: $targetLanguage\n" +
+          (sourceLanguage?.let { "SOURCE LANGUAGE: $it\n" } ?: "") +
           "Translate each cue independently. Return exactly one line per cue using the unchanged " +
-          "[CUE_n] marker followed by its translation. Preserve cue order and do not add commentary."
+          "[CUE_n] marker followed by its translation. Keep placeholders like ⟦0⟧ exactly as written, " +
+          "in a natural position. Preserve cue order and do not add commentary."
 
       generateWithAi(input, AiTask.TRANSLATE, instruction).mapCatching { response ->
         val cleaned = response.replace(Regex("<think>.*?</think>", RegexOption.DOT_MATCHES_ALL), "").trim()
@@ -330,250 +324,6 @@ class AiService(
       AiProvider.OPENROUTER -> preferences.openrouterApiKey.get()
       AiProvider.TOGETHER -> preferences.togetherApiKey.get()
     }
-
-  suspend fun translateSubtitle(
-    content: String,
-    targetLanguage: String,
-    subtitleFormat: String? = null,
-    onProgress: (SubtitleTranslationProgress) -> Unit = {},
-  ): Result<String> =
-    withContext(Dispatchers.IO) {
-      try {
-        val fmt = subtitleFormat?.lowercase(Locale.ROOT)
-        val normalizedContent = content.replace("\r\n", "\n").replace("\r", "\n")
-
-        // ASS/SSA: header must be preserved verbatim; only Dialogue: lines translated
-        if (fmt == "ass" || fmt == "ssa") {
-          return@withContext translateAssContent(normalizedContent, targetLanguage, onProgress)
-        }
-
-        val chunks =
-          when (fmt) {
-            "srt", "vtt", "sbv", "srv1", "srv2", "srv3" ->
-              normalizedContent.split(Regex("\n{2,}")).map(String::trim).filter { it.isNotBlank() }
-            "ttml", "dfxp", "itt", "imsc" ->
-              Regex("<p\\b[^>]*>.*?</p>", RegexOption.DOT_MATCHES_ALL)
-                .findAll(normalizedContent)
-                .map { it.value }
-                .toList()
-            "lrc", "krc" ->
-              normalizedContent.lines().filter { it.isNotBlank() }
-            else ->
-              normalizedContent.lines().filter { it.isNotBlank() }
-          }
-
-        if (chunks.isEmpty()) return@withContext Result.success(content)
-
-        val chunkSize = 15
-        val totalChunks = (chunks.size + chunkSize - 1) / chunkSize
-        val cacheKey = translationCacheKey(normalizedContent, targetLanguage, fmt)
-        val cacheFile = translationCacheFile(cacheKey)
-        val cachedChunks = loadTranslationCache(cacheKey, totalChunks)
-        val translatedChunks = MutableList<String?>(totalChunks) { index -> cachedChunks.getOrNull(index) }
-        val cachedCount = translatedChunks.count { it != null }
-        if (cachedCount > 0) {
-          onProgress(
-            SubtitleTranslationProgress(
-              progress = cachedCount.toFloat() / totalChunks,
-              completedChunks = cachedCount,
-              totalChunks = totalChunks,
-              isResuming = true,
-            ),
-          )
-        }
-
-        for (i in 0 until totalChunks) {
-          if (translatedChunks[i] != null) {
-            continue
-          }
-          val start = i * chunkSize
-          val end = minOf(start + chunkSize, chunks.size)
-          val chunk = chunks.subList(start, end).joinToString("\n\n")
-
-          val extra =
-            buildString {
-              append("TARGET LANGUAGE: $targetLanguage\n")
-              append("OUTPUT FORMAT: keep the exact subtitle format and structure of the original file.")
-              subtitleFormat?.let { append("\nSOURCE FORMAT: .$it") }
-            }
-
-          val result = generateWithAi(chunk, AiTask.TRANSLATE, extra)
-          result
-            .onSuccess {
-              val clean = it.replace(Regex("<think>.*?</think>", RegexOption.DOT_MATCHES_ALL), "").trim()
-              translatedChunks[i] = clean
-              saveTranslationCache(cacheFile, cacheKey, translatedChunks)
-            }.onFailure { return@withContext Result.failure(it) }
-
-          onProgress(
-            SubtitleTranslationProgress(
-              progress = translatedChunks.count { it != null }.toFloat() / totalChunks,
-              completedChunks = translatedChunks.count { it != null },
-              totalChunks = totalChunks,
-              isResuming = cachedCount > 0,
-            ),
-          )
-        }
-
-        cacheFile.delete()
-        Result.success(translatedChunks.filterNotNull().joinToString("\n\n"))
-      } catch (e: Exception) {
-        Log.e(TAG, "Subtitle translation failed", e)
-        Result.failure(e)
-      }
-    }
-
-  /**
-   * ASS/SSA translation strategy:
-   * - All header/style sections are kept verbatim (never sent to AI).
-   * - Only the free-text field of each `Dialogue:` line is translated.
-   * - A batch delimiter allows one AI call per 30 dialogue lines instead of N calls.
-   */
-  private suspend fun translateAssContent(
-    content: String,
-    targetLanguage: String,
-    onProgress: (SubtitleTranslationProgress) -> Unit,
-  ): Result<String> {
-    data class DLine(
-      val lineIdx: Int,
-      val prefix: String,
-      val text: String,
-    )
-
-    val lines = content.lines()
-    val dialogueLines = mutableListOf<DLine>()
-
-    lines.forEachIndexed { idx, line ->
-      if (line.startsWith("Dialogue:", ignoreCase = true)) {
-        // ASS has 10 comma-separated fields; text starts after the 9th comma
-        var pos = -1
-        var count = 0
-        while (count < 9) {
-          pos = line.indexOf(',', pos + 1)
-          if (pos == -1) break
-          count++
-        }
-        if (pos != -1 && pos + 1 < line.length) {
-          dialogueLines.add(DLine(idx, line.substring(0, pos + 1), line.substring(pos + 1)))
-        }
-      }
-    }
-
-    if (dialogueLines.isEmpty()) return Result.success(content)
-
-    val delimiter = "\u2016" // double vertical line, unlikely to appear in subtitles
-    val chunks = dialogueLines.chunked(15)
-    val translatedTextByIdx = mutableMapOf<Int, String>()
-    val cacheKey = translationCacheKey(content, targetLanguage, "ass")
-    val cacheFile = translationCacheFile(cacheKey)
-    val cachedChunks = loadTranslationCache(cacheKey, chunks.size)
-    val translatedChunkTexts = MutableList<String?>(chunks.size) { index -> cachedChunks.getOrNull(index) }
-    val cachedCount = translatedChunkTexts.count { it != null }
-
-    chunks.forEachIndexed { chunkIdx, chunk ->
-      translatedChunkTexts[chunkIdx]?.let { cached ->
-        cached.split(delimiter).forEachIndexed { partIdx, text ->
-          if (partIdx < chunk.size) translatedTextByIdx[chunk[partIdx].lineIdx] = text.trim()
-        }
-        onProgress(
-          SubtitleTranslationProgress(
-            progress = translatedChunkTexts.count { it != null }.toFloat() / chunks.size,
-            completedChunks = translatedChunkTexts.count { it != null },
-            totalChunks = chunks.size,
-            isResuming = cachedCount > 0,
-          ),
-        )
-        return@forEachIndexed
-      }
-
-      val batchInput = chunk.joinToString(delimiter) { it.text }
-      val extra =
-        "TARGET LANGUAGE: $targetLanguage\n" +
-          "OUTPUT FORMAT: Return ONLY the translated segments in the same order separated by '$delimiter'. " +
-          "Preserve ALL ASS override tags like {\\an8}, {\\pos()}, {\\i1}, {\\b1} exactly. " +
-          "Do NOT add or remove any '$delimiter' separators."
-
-      val result = generateWithAi(batchInput, AiTask.TRANSLATE, extra)
-      result
-        .onSuccess { translated ->
-          translatedChunkTexts[chunkIdx] = translated
-          saveTranslationCache(cacheFile, cacheKey, translatedChunkTexts)
-          val parts = translated.split(delimiter)
-          parts.forEachIndexed { partIdx, text ->
-            if (partIdx < chunk.size) translatedTextByIdx[chunk[partIdx].lineIdx] = text.trim()
-          }
-        }.onFailure { return Result.failure(it) }
-
-      onProgress(
-        SubtitleTranslationProgress(
-          progress = translatedChunkTexts.count { it != null }.toFloat() / chunks.size,
-          completedChunks = translatedChunkTexts.count { it != null },
-          totalChunks = chunks.size,
-          isResuming = cachedCount > 0,
-        ),
-      )
-    }
-
-    val resultLines =
-      lines.mapIndexed { idx, line ->
-        val dl = dialogueLines.find { it.lineIdx == idx }
-        if (dl != null) "${dl.prefix}${translatedTextByIdx[idx] ?: dl.text}" else line
-      }
-    cacheFile.delete()
-    return Result.success(resultLines.joinToString("\n"))
-  }
-
-  private fun translationCacheKey(
-    content: String,
-    targetLanguage: String,
-    format: String?,
-  ): String {
-    val provider = preferences.provider.get()
-    val model = preferences.selectedModelFor(provider).get()
-    val input = listOf(content, targetLanguage, format.orEmpty(), provider.name, model).joinToString("\u001f")
-    val digest = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
-    return digest.joinToString("") { "%02x".format(it) }
-  }
-
-  private fun translationCacheFile(key: String): File =
-    File(context.filesDir, "ai_translation_cache").also { it.mkdirs() }.resolve("$key.json")
-
-  private fun loadTranslationCache(
-    key: String,
-    totalChunks: Int,
-  ): List<String?> {
-    val file = translationCacheFile(key)
-    if (!file.exists()) return emptyList()
-    return runCatching {
-      val cache = json.decodeFromString(SubtitleTranslationCache.serializer(), file.readText())
-      if (cache.key == key && cache.translatedChunks.size == totalChunks) {
-        cache.translatedChunks
-      } else {
-        emptyList()
-      }
-    }.getOrDefault(emptyList())
-  }
-
-  private fun saveTranslationCache(
-    file: File,
-    key: String,
-    chunks: List<String?>,
-  ) {
-    runCatching {
-      file.writeText(
-        json.encodeToString(
-          SubtitleTranslationCache.serializer(),
-          SubtitleTranslationCache(
-            key = key,
-            translatedChunks = chunks,
-            updatedAtMs = System.currentTimeMillis(),
-          ),
-        ),
-      )
-    }.onFailure {
-      Log.w(TAG, "Could not save translation cache", it)
-    }
-  }
 
   private fun extractTaskValue(
     raw: String,

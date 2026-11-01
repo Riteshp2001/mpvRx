@@ -618,6 +618,11 @@ object YtdlpManager {
         val pythonBinary = getExecutablePath(context)
         val ytDlp = File(ytdlDir, "yt-dlp").absolutePath
         if (!BuildConfig.ENABLE_YTDLP) return@withLock false
+        // The Python process bypasses the Java network guard.
+        if (app.gyrolet.mpvrx.network.HomeNetworkGuard.enabled) {
+          onLog(app.gyrolet.mpvrx.network.HomeNetworkGuard.blockedMessage("yt-dlp update server"))
+          return@withLock false
+        }
         val command = mutableListOf(pythonBinary, ytDlp, "--update")
         val updated = runPythonProcess("Updating yt-dlp...", command, context, onLog)
         if (updated) {
@@ -643,6 +648,10 @@ object YtdlpManager {
         val pythonBinary = getExecutablePath(context)
         val ytDlp = File(ytdlDir, "yt-dlp").absolutePath
         if (!BuildConfig.ENABLE_YTDLP) return@withLock false
+        if (app.gyrolet.mpvrx.network.HomeNetworkGuard.enabled) {
+          onLog(app.gyrolet.mpvrx.network.HomeNetworkGuard.blockedMessage("yt-dlp update server"))
+          return@withLock false
+        }
         val command = mutableListOf(pythonBinary, ytDlp, "--update-to", "nightly")
         val updated = runPythonProcess("Updating to yt-dlp nightly...", command, context, onLog)
         if (updated) {

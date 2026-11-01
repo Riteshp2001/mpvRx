@@ -6330,6 +6330,15 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
         null
       }
     ensureCurrentMediaRequest(requestGeneration)
+    // mpv, yt-dlp and the torrent engine are native and bypass the Java network guard, so outside
+    // URLs (web streams, magnets) are refused here before anything is fetched.
+    sequenceOf(item.originalUri, item.playableUri)
+      .firstOrNull { !app.gyrolet.mpvrx.network.HomeNetworkGuard.allowsUrl(it) }
+      ?.let { blockedUrl ->
+        val host = runCatching { android.net.Uri.parse(blockedUrl).host }.getOrNull() ?: blockedUrl.substringBefore(':')
+        app.gyrolet.mpvrx.network.HomeNetworkGuard.record(host)
+        throw IllegalStateException(app.gyrolet.mpvrx.network.HomeNetworkGuard.blockedMessage(host))
+      }
     val ytdlpSource =
       sequenceOf(item.originalUri, item.playableUri)
         .firstOrNull(YtdlpManager::requiresYtdlp)

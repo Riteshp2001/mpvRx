@@ -3005,5 +3005,33 @@
   <string name="pref_action_open_page">Open page</string>
   <string name="pref_action_open_dialog">Open dialog</string>
   <string name="pref_persistent_status_progress_line">Thin playback progress line</string>
+  <string name="pref_section_privacy">Privacy</string>
+  <string name="pref_home_network_only">Home network only</string>
+  <string name="pref_home_network_only_on">On: the app can only reach devices on your home network (your PC, Jellyfin, NAS, TV). Online subtitle search, lyrics, update checks, web streams, torrents, online translation and Google telemetry are blocked.</string>
+  <string name="pref_home_network_only_off">Off: the app may connect to the internet.</string>
+  <string name="pref_home_network_only_blocked">Blocked this session (%1$d):</string>
+  <string name="pref_subtitle_translation_enabled">Translate subtitles</string>
+  <string name="pref_subtitle_translation_enabled_summary">Adds a Translate button to subtitle files in the player\'s subtitle list. Translations are saved next to the video and reused.</string>
+  <string name="pref_subtitle_translation_provider">Translation provider</string>
+  <string name="pref_subtitle_translation_libre_url">LibreTranslate server</string>
+  <string name="pref_subtitle_translation_libre_url_hint">Required: address of your LibreTranslate server</string>
+  <string name="pref_subtitle_translation_libre_key">LibreTranslate API key</string>
+  <string name="pref_subtitle_translation_libre_key_none">Optional. Only needed if your server requires one</string>
+  <string name="pref_subtitle_translation_test">Test connection</string>
+  <string name="pref_subtitle_translation_mymemory_email">MyMemory email (optional)</string>
+  <string name="pref_subtitle_translation_mymemory_email_summary">Raises MyMemory\'s free daily limit. Only sent to MyMemory.</string>
+  <string name="pref_subtitle_translation_rtl">Fix right-to-left punctuation</string>
+  <string name="pref_subtitle_translation_rtl_summary">Keeps punctuation on the correct side in Arabic, Persian, Hebrew and Urdu SRT/VTT translations</string>
+  <string name="pref_subtitle_translation_privacy_offline">On-device translation keeps subtitle text on this device. Image-based subtitles (PGS, VobSub) can\'t be translated.</string>
+  <string name="pref_subtitle_translation_target">Translate to</string>
+  <string name="pref_subtitle_translation_auto">Translate automatically</string>
+  <string name="pref_subtitle_translation_auto_summary">When a video opens without a %1$s subtitle, translate its best text subtitle in the background</string>
+  <string name="pref_subtitle_translation_offline_models">Offline languages</string>
+  <string name="pref_subtitle_translation_offline_models_none">No languages downloaded yet. Tap to download (~30 MB each)</string>
+  <string name="pref_subtitle_translation_offline_models_ready">Ready offline: %1$s</string>
+  <string name="pref_subtitle_translation_offline_models_hint">Tap a language to download it from Google once (~30 MB). After that, translating to or from it works without internet. Tap again to delete it.</string>
+  <string name="pref_subtitle_translation_offline_builtin">Built in</string>
+  <string name="pref_subtitle_translation_offline_download">Download</string>
+  <string name="pref_subtitle_translation_offline_delete">Delete</string>
+  <string name="pref_subtitle_translation_privacy_online">Online providers receive the subtitle text you translate. Image-based subtitles (PGS, VobSub) can\'t be translated.</string>
 </resources>
-

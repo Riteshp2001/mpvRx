@@ -33,6 +33,7 @@ import app.gyrolet.mpvrx.repository.ai.SubtitleGenerationService
 import app.gyrolet.mpvrx.repository.ai.TogetherClient
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleFileStore
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleOrchestrator
+import app.gyrolet.mpvrx.repository.subtitle.translation.SubtitleTranslationService
 import app.gyrolet.mpvrx.repository.subtitlehub.MpvRxSubtitleHubRepository
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
 import app.gyrolet.mpvrx.ui.player.MpvConfigCache
@@ -92,6 +93,9 @@ val domainModule =
         get<AiClient>(named("together")),
         get<Json>(),
       )
+    }
+    single {
+      SubtitleTranslationService(androidContext(), get(), get(), get(), get(), get<OkHttpClient>(), get<Json>())
     }
     single {
       app.gyrolet.mpvrx.domain.syncplay

@@ -250,11 +250,15 @@ class JellyfinClient(
 
           val result =
             httpClient.newCall(request).awaitResponse().use { response ->
-              if (!response.isSuccessful) {
-                throw IOException("Token validation failed: HTTP ${response.code} ${response.message}")
-              }
-              val bodyStr = response.body.string()
-              val userObj = json.parseToJsonElement(bodyStr).jsonObject
+              val userObj =
+                when {
+                  response.isSuccessful -> json.parseToJsonElement(response.body.string()).jsonObject
+                  // A server API key (Dashboard > API Keys) belongs to no user, so /Users/Me is a
+                  // 400. Such keys may list users: use the server's administrator account.
+                  response.code == 400 -> userForApiKey(candidate, token)
+                  response.code == 401 -> throw IOException("The server rejected this key (HTTP 401). Check that it was copied completely.")
+                  else -> throw IOException("Token validation failed: HTTP ${response.code} ${response.message}")
+                }
               val userId = userObj["Id"]?.jsonPrimitive?.content ?: throw IOException("Missing User.Id")
               val uname = userObj["Name"]?.jsonPrimitive?.content ?: "User"
               val serverId = userObj["ServerId"]?.jsonPrimitive?.content
@@ -281,6 +285,30 @@ class JellyfinClient(
       }
       Result.failure(lastError)
     }
+
+  /** For server API keys: the first enabled administrator, else the first enabled user. */
+  private suspend fun userForApiKey(
+    baseUrl: String,
+    token: String,
+  ): JsonObject {
+    val request =
+      Request
+        .Builder()
+        .url("$baseUrl/Users")
+        .addJellyfinHeaders(token)
+        .get()
+        .build()
+    return httpClient.newCall(request).awaitResponse().use { response ->
+      if (!response.isSuccessful) {
+        throw IOException("This key isn't linked to a user and can't list users (HTTP ${response.code}). Sign in with username and password instead.")
+      }
+      val users = json.parseToJsonElement(response.body.string()).jsonArray.map { it.jsonObject }
+      fun JsonObject.policy(flag: String) = (this["Policy"] as? JsonObject)?.get(flag)?.jsonPrimitive?.content == "true"
+      val enabled = users.filterNot { it.policy("IsDisabled") }
+      enabled.firstOrNull { it.policy("IsAdministrator") } ?: enabled.firstOrNull()
+        ?: throw IOException("The server has no enabled users.")
+    }
+  }
 
   suspend fun getUserLibraries(
     serverUrl: String,

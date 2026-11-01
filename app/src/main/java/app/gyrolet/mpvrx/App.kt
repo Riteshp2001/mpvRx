@@ -117,6 +117,8 @@ class App :
 
   override fun attachBaseContext(base: android.content.Context) {
     super.attachBaseContext(base)
+    // First: no HTTP client or library may connect outside the home network unless allowed.
+    app.gyrolet.mpvrx.network.HomeNetworkGuard.install(base)
     // Before content providers and onCreate run, so no startup crash escapes the handler. The
     // crash screen's own process keeps the platform handler, so a failing recovery cannot loop.
     if (CrashMonitor.currentProcessName() != "$packageName:crash") CrashMonitor.install(this)

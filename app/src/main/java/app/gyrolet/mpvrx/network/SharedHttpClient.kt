@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx.network
 import okhttp3.ConnectionPool
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -31,7 +32,16 @@ object SharedHttpClient {
       .readTimeout(30, TimeUnit.SECONDS)
       .writeTimeout(30, TimeUnit.SECONDS)
       .retryOnConnectionFailure(true)
-      .build()
+      // HomeNetworkGuard's ProxySelector already stops outside connections; failing here first
+      // gives callers a readable reason instead of a loopback connection error.
+      .addInterceptor { chain ->
+        val host = chain.request().url.host
+        if (!HomeNetworkGuard.allows(host)) {
+          HomeNetworkGuard.record(host)
+          throw IOException(HomeNetworkGuard.blockedMessage(host))
+        }
+        chain.proceed(chain.request())
+      }.build()
   }
 
   /** Derives a client that shares this pool/dispatcher, overriding only what the caller needs. */

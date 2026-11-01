@@ -43,6 +43,9 @@ class AdvancedPreferences(
   /** This is deliberately false for every fresh install; only a user can grant consent. */
   val measureEnabled = preferenceStore.getBoolean(MEASURE_ENABLED_KEY, false)
 
+  /** On by default: the app connects to the home network only (see HomeNetworkGuard). */
+  val homeNetworkOnly = preferenceStore.getBoolean(app.gyrolet.mpvrx.network.HomeNetworkGuard.PREF_KEY, true)
+
   val enabledStatisticsPage = preferenceStore.getInt("enabled_stats_page", 0)
 
   val enableRecentlyPlayed = preferenceStore.getBoolean("enable_recently_played", true)

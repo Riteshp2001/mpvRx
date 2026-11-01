@@ -201,8 +201,16 @@ fun PlayerSheets(
       val aiPreferences = koinInject<app.gyrolet.mpvrx.preferences.AiPreferences>()
       val aiEnabled by aiPreferences.enabled.collectAsState()
       val realtimeSubsEnabled by aiPreferences.realtimeSubsEnabled.collectAsState()
-      val translationEnabled by aiPreferences.subtitleTranslationEnabled.collectAsState()
+      val aiTranslationEnabled by aiPreferences.subtitleTranslationEnabled.collectAsState()
       val autoTranslateLanguages by aiPreferences.autoTranslateLanguages.collectAsState()
+      val translationPreferences = koinInject<app.gyrolet.mpvrx.preferences.SubtitleTranslationPreferences>()
+      val subtitleTranslationEnabled by translationPreferences.enabled.collectAsState()
+      val translationProvider by translationPreferences.provider.collectAsState()
+      val translationTargetLanguage by translationPreferences.targetLanguage.collectAsState()
+      // Machine-translation providers work without AI; the AI provider keeps its AI-settings switches.
+      val translationEnabled =
+        subtitleTranslationEnabled &&
+          (translationProvider != app.gyrolet.mpvrx.preferences.SubtitleTranslationProvider.AI || (aiEnabled && aiTranslationEnabled))
 
       val subtitlesOff = subtitles.none { isSubtitleSelected(it.id) }
 
@@ -240,7 +248,10 @@ fun PlayerSheets(
         translationProgress = translationProgress,
         translationStatus = translationStatus,
         realtimeSubsStatus = realtimeSubsStatus,
-        translationEnabled = aiEnabled && translationEnabled,
+        translationEnabled = translationEnabled,
+        defaultTargetLanguage =
+          app.gyrolet.mpvrx.repository.subtitle.translation.TranslationLanguages
+            .displayName(translationTargetLanguage),
         isGeneratingSubtitles = isGeneratingSubtitles,
         isRealtimeSubsActive = isRealtimeSubsActive,
         realtimeSubsProgress = realtimeSubsProgress,

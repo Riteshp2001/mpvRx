@@ -587,6 +587,13 @@ object SubtitlesPreferencesScreen : Screen {
           }
 
           }
+          // === TRANSLATION SECTION ===
+          if (!playerPanel) {
+            item {
+              PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_translation_section))
+            }
+            item { SubtitleTranslationSettingsCard() }
+          }
           // === ONLINE SUBTITLE SECTION ===
           item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Last, 
