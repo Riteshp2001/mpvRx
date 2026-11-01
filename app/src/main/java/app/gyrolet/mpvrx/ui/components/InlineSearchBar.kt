@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.Dp
@@ -48,6 +49,11 @@ fun InlineSearchBar(
   leadingIcon: (@Composable () -> Unit)? = null,
   trailingIcon: (@Composable () -> Unit)? = null,
   shape: Shape = SearchBarDefaults.inputFieldShape,
+  /**
+   * Overrides the solid default container color. The default keeps every existing call site on
+   * the plain SearchBar styling; glass surfaces pass a translucent tint instead.
+   */
+  containerColor: Color? = null,
   tonalElevation: Dp = SearchBarDefaults.TonalElevation,
   shadowElevation: Dp = SearchBarDefaults.ShadowElevation,
   windowInsets: WindowInsets = SearchBarDefaults.windowInsets,
@@ -83,7 +89,7 @@ fun InlineSearchBar(
   Surface(
     modifier = Modifier.windowInsetsPadding(windowInsets).then(modifier),
     shape = shape,
-    color = SearchBarDefaults.colors().containerColor,
+    color = containerColor ?: SearchBarDefaults.colors().containerColor,
     tonalElevation = tonalElevation,
     shadowElevation = shadowElevation,
   ) {

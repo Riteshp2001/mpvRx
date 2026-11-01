@@ -1386,6 +1386,7 @@ fun AudioPlayerControls(
             modifier = Modifier.fillMaxSize(),
             isLyricsFullscreen = isLyricsFullscreen,
             onTap = resetInactivityTimer,
+            onOpenTranslateSheet = { onOpenSheet(Sheets.LyricsTranslate) },
           )
         } else {
           AnimatedContent(
@@ -2626,6 +2627,7 @@ fun AudioPlayerControls(
             playlist = filteredPlaylist,
             selectedTab = tabletDualPaneTab,
             onTabSelected = { tabletDualPaneTab = it },
+            onOpenTranslateSheet = { onOpenSheet(Sheets.LyricsTranslate) },
           )
         }
       }
@@ -2727,6 +2729,7 @@ private fun DualPaneSidePanel(
   playlist: List<PlaylistItem>,
   selectedTab: Int = 0,
   onTabSelected: (Int) -> Unit = {},
+  onOpenTranslateSheet: (() -> Unit)? = null,
 ) {
   val playbackState by PlaybackSession.state.collectAsStateWithLifecycle()
   val isAudiobook = playbackState.currentItem?.audiobook != null
@@ -2780,6 +2783,7 @@ private fun DualPaneSidePanel(
         app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
           viewModel = viewModel,
           showTitleHeader = false,
+          onOpenTranslateSheet = onOpenTranslateSheet,
         )
       }
     }

@@ -681,6 +681,13 @@ fun PlayerSheets(
       )
     }
 
+    Sheets.LyricsTranslate -> {
+      app.gyrolet.mpvrx.ui.player.controls.components.sheets.LyricsTranslateDialog(
+        viewModel = viewModel,
+        onDismiss = onDismissRequest,
+      )
+    }
+
     Sheets.Scopes -> {
       ScopesSheet(
         viewModel = viewModel,
