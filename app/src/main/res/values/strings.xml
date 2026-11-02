@@ -362,7 +362,7 @@
   <string name="pref_subtitles_font_no_custom">No custom fonts loaded</string>
   <string name="pref_subtitles_font_copy_failed">Could not load fonts: %1$s</string>
   <string name="pref_subtitles_autoload_title">Automatically load subtitles</string>
-  <string name="pref_subtitles_autoload_summary">Automatically load external subtitles with the same name.</string>
+  <string name="pref_subtitles_autoload_summary">Automatically find matching subtitles beside the video and up to two subfolders deep.</string>
   <string name="pref_subtitles_search_online">Online Subtitle Search…</string>
   <string name="pref_subtitles_search_languages">Subtitle Languages</string>
   <string name="all_languages">All (Selective Filtering)</string>

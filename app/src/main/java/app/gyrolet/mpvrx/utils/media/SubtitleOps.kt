@@ -17,19 +17,24 @@ import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
-import java.util.Locale
+import java.nio.file.Files
+import java.nio.file.LinkOption.NOFOLLOW_LINKS
+import java.nio.file.attribute.BasicFileAttributes
 
 /**
  * Simple utility for automatically loading subtitle files
- * Finds subtitles in the same directory that match the video filename
+ * Finds matching sidecars beside the video and up to two subdirectories below it.
  */
 object SubtitleOps : KoinComponent {
   private const val TAG = "SubtitleOps"
   private val networkRepository: NetworkRepository by inject()
+  private val directoryCache = SubtitleDirectoryCache()
 
   suspend fun autoloadSubtitles(
     videoFilePath: String,
@@ -39,7 +44,9 @@ object SubtitleOps : KoinComponent {
     selectFirst: Boolean = true,
   ) = withContext(Dispatchers.IO) {
     try {
-      if (!isGenerationCurrent(expectedGeneration)) return@withContext
+      if (!isGenerationCurrent(expectedGeneration) ||
+        MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.SUBTITLE_DISCOVERY)
+      ) return@withContext
 
       // PlayerActivity is singleTask and its original launch Intent can outlive several queue
       // selections. For a network queue, PlaybackSession is the authoritative source for the item
@@ -78,8 +85,6 @@ object SubtitleOps : KoinComponent {
         return@withContext
       }
 
-      if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.SUBTITLE_DISCOVERY)) return@withContext
-
       // Check if this is a network stream (http, https, ftp, ftps, smb, webdav, etc.)
       val isNetworkStream = effectiveVideoFilePath.matches(Regex("^[a-zA-Z][a-zA-Z0-9+.-]*://.*"))
 
@@ -99,7 +104,7 @@ object SubtitleOps : KoinComponent {
 
   /**
    * Autoload subtitles for network files (SMB/FTP/WebDAV)
-   * Lists files in the same directory and loads matching subtitle files via proxy
+   * Uses the same bounded discovery rules as local playback, loading matching files via proxy.
    */
   private suspend fun autoloadNetworkFileSubtitles(
     videoFilePath: String,
@@ -124,31 +129,42 @@ object SubtitleOps : KoinComponent {
 
       Log.d(TAG, "Scanning directory: $directoryPath")
 
-      // Get base name without extension
-      val baseName =
-        normalizedVideoPath.segments.lastOrNull()?.substringBeforeLast('.')
-          ?: videoFileName.substringBeforeLast('.')
-
-      // List files in the directory
-      val filesResult = networkRepository.listFiles(connection, directoryPath)
-      if (filesResult.isFailure) {
-        Log.w(TAG, "Failed to list network directory: ${filesResult.exceptionOrNull()?.message}")
-        return
-      }
-
-      val files = filesResult.getOrNull() ?: emptyList()
-      if (!isGenerationCurrent(expectedGeneration)) return
-
-      // Filter for subtitle files that match the video base name
       val subtitles =
-        files.filter { file ->
-          !file.isDirectory &&
-            isSubtitleFile(file.name) &&
-            file.name.substringBeforeLast('.').startsWith(baseName, ignoreCase = true)
+        SubtitleDiscovery.find(
+          directoryPath = directoryPath,
+          videoFileName = normalizedVideoPath.segments.lastOrNull() ?: videoFileName,
+          videoPath = normalizedVideoPath.value,
+          isCurrent = { isGenerationCurrent(expectedGeneration) },
+        ) { path, limit, shouldContinue ->
+          val key = "network:${connection.id}:$path"
+          directoryCache.get(key, null, limit)?.let { return@find it }
+          currentCoroutineContext().ensureActive()
+          if (!shouldContinue()) return@find SubtitleDiscovery.Listing(emptyList(), complete = false)
+          val files = networkRepository.listFiles(connection, path).getOrElse { error ->
+            if (error is CancellationException) throw error
+            Log.w(TAG, "Failed to list subtitle directory: ${error.message}")
+            return@find SubtitleDiscovery.Listing(emptyList(), complete = false)
+          }
+          val parent = NetworkPath.from(path)
+          val entries = files.take(limit).map { file ->
+            currentCoroutineContext().ensureActive()
+            // DLNA paths contain opaque IDs, not display names. Validate containment without
+            // rebuilding the path from the name, which could point at a different remote file.
+            val child = runCatching { NetworkPath.from(file.path) }.getOrNull()
+              ?.takeIf { it.segments.dropLast(1) == parent.segments }
+            SubtitleDiscovery.Entry(
+              name = if (child != null) file.name else "",
+              path = child?.value.orEmpty(),
+              isDirectory = child != null && file.isDirectory,
+              size = file.size,
+            )
+          }
+          SubtitleDiscovery.Listing(entries, complete = files.size <= limit)
+            .also { directoryCache.put(key, null, it) }
         }
 
       if (subtitles.isEmpty()) {
-        Log.d(TAG, "No matching subtitle files found for: $baseName")
+        Log.d(TAG, "No matching subtitle files found for: $videoFileName")
         return
       }
 
@@ -160,6 +176,7 @@ object SubtitleOps : KoinComponent {
         subtitles.forEachIndexed { index, subtitle ->
           var registeredProxyUrl: String? = null
           try {
+            currentCoroutineContext().ensureActive()
             if (!isGenerationCurrent(expectedGeneration)) return@forEachIndexed
             // Extract just the filename without path for display
             // Handle both forward slashes and backslashes
@@ -223,20 +240,63 @@ object SubtitleOps : KoinComponent {
     selectFirst: Boolean,
   ) {
     val videoFile = File(videoFilePath)
-    val videoDirectory = videoFile.parentFile ?: return
-    val baseName = videoFileName.substringBeforeLast('.')
+    val videoDirectory = videoFile.canonicalFile.parentFile ?: return
 
     val subtitles =
-      videoDirectory.listFiles()?.filter { file ->
-        file.isFile &&
-          isSubtitleFile(file.name) &&
-          file.nameWithoutExtension.startsWith(baseName, ignoreCase = true)
-      } ?: emptyList()
+      SubtitleDiscovery.find(
+        directoryPath = videoDirectory.path,
+        videoFileName = videoFile.name.ifBlank { videoFileName },
+        videoPath = videoFile.canonicalPath,
+        isCurrent = { isGenerationCurrent(expectedGeneration) },
+      ) { path, limit, shouldContinue ->
+        val stamp = File(path).lastModified()
+        directoryCache.get(path, stamp, limit)?.let { return@find it }
+        val entries = mutableListOf<SubtitleDiscovery.Entry>()
+        var complete = true
+        try {
+          // DirectoryStream avoids allocating an unbounded File[] for large download folders.
+          Files.newDirectoryStream(File(path).toPath()).use { children ->
+            for (child in children) {
+              currentCoroutineContext().ensureActive()
+              if (entries.size >= limit || !shouldContinue()) {
+                complete = false
+                break
+              }
+              val attributes =
+                runCatching { Files.readAttributes(child, BasicFileAttributes::class.java, NOFOLLOW_LINKS) }.getOrNull()
+              // Count every directory entry against the budget, but never follow symlinks or
+              // open special files. An empty name makes these entries ineligible for discovery.
+              val name =
+                if (attributes?.isRegularFile == true || attributes?.isDirectory == true) {
+                  child.fileName.toString()
+                } else {
+                  ""
+                }
+              entries.add(SubtitleDiscovery.Entry(
+                name = name,
+                path = child.toString(),
+                isDirectory = attributes?.isDirectory == true,
+              ))
+            }
+          }
+        } catch (cancellation: CancellationException) {
+          throw cancellation
+        } catch (error: Exception) {
+          complete = false
+          Log.d(TAG, "Cannot list subtitle directory: $path", error)
+        }
+        SubtitleDiscovery.Listing(entries, complete).also { directoryCache.put(path, stamp, it) }
+      }
 
     if (subtitles.isNotEmpty()) {
       withContext(Dispatchers.Main) {
+        if (!isGenerationCurrent(expectedGeneration)) return@withContext
+        val loadedPaths = (0 until (PlaybackSession.getPropertyInt("track-list/count") ?: 0).coerceAtMost(512))
+          .mapNotNullTo(hashSetOf()) { PlaybackSession.getPropertyString("track-list/$it/external-filename") }
         subtitles.forEachIndexed { index, subtitle ->
+          currentCoroutineContext().ensureActive()
           if (!isGenerationCurrent(expectedGeneration)) return@forEachIndexed
+          if (subtitle.path in loadedPaths) return@forEachIndexed
           // MPV command format: sub-add <url> [<flags> [<title>]]
           // Keep tracks available while respecting the user's current subtitle-off state.
           val flag = if (index == 0 && selectFirst) "select" else "auto"
@@ -245,12 +305,12 @@ object SubtitleOps : KoinComponent {
               PlaybackSession.commandForGeneration(
                 generation,
                 "sub-add",
-                subtitle.absolutePath,
+                subtitle.path,
                 flag,
                 subtitle.name,
               )
             } ?: run {
-              PlaybackSession.command("sub-add", subtitle.absolutePath, flag, subtitle.name)
+              PlaybackSession.command("sub-add", subtitle.path, flag, subtitle.name)
               true
             }
           if (!added) return@forEachIndexed
@@ -258,54 +318,6 @@ object SubtitleOps : KoinComponent {
         }
       }
     }
-  }
-
-  private fun isSubtitleFile(fileName: String): Boolean {
-    val extension = fileName.substringAfterLast('.', "").lowercase(Locale.getDefault())
-    return extension in
-      setOf(
-        // Common & modern
-        "srt",
-        "vtt",
-        "ass",
-        "ssa",
-        // DVD / Blu-ray
-        "sub",
-        "idx",
-        "sup",
-        // Streaming / XML / Professional
-        "xml",
-        "ttml",
-        "dfxp",
-        "itt",
-        "ebu",
-        "imsc",
-        "usf",
-        // Online platforms
-        "sbv",
-        "srv1",
-        "srv2",
-        "srv3",
-        "json",
-        // Legacy & niche
-        "sami",
-        "smi",
-        "mpl",
-        "pjs",
-        "stl",
-        "rt",
-        "psb",
-        "cap",
-        // Broadcast captions
-        "scc",
-        "vttx",
-        // Karaoke / lyrics
-        "lrc",
-        "krc",
-        // Fallback / raw text
-        "txt",
-        "pgs",
-      )
   }
 
   private fun isGenerationCurrent(expectedGeneration: Long?): Boolean =

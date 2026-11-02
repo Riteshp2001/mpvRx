@@ -491,6 +491,7 @@ class PlayerActivity :
   private var systemBarsAutoHideJob: Job? = null
   private var videoParamRefreshJob: Job? = null
   private var intentSubtitleJob: Job? = null
+  private var subtitleAutoloadJob: Job? = null
   private var mediaLoadJob: Job? = null
   private var playbackLoadRetryJob: Job? = null
   private var playbackLoadWatchdogJob: Job? = null
@@ -1912,6 +1913,7 @@ class PlayerActivity :
     // native command can restart MediaCodec after its output surface has already been detached.
     viewModel.prepareForPlayerTeardown()
     intentSubtitleJob?.cancel()
+    subtitleAutoloadJob?.cancel()
     videoParamRefreshJob?.cancel()
     backgroundServiceSyncJob?.cancel()
     backgroundHandoffJob?.cancel()
@@ -2923,6 +2925,7 @@ class PlayerActivity :
   private fun beginMediaRequest(): Boolean =
     PlaybackActivityOwner.beginRequest(playbackOwnerToken) {
       lastExitBackPressAtMs = null
+      subtitleAutoloadJob?.cancel()
       mediaRequestGeneration++
     }
 
@@ -4830,6 +4833,7 @@ class PlayerActivity :
    */
   private fun handleFileLoaded(loadGeneration: Long) {
     if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return
+    subtitleAutoloadJob?.cancel()
     val positionRestoreOverride = PlaybackSession.positionRestoreOverride(loadGeneration)
     val initialPositionApplied = PlaybackSession.wasInitialPositionApplied(loadGeneration)
     if (!initialPositionApplied) {
@@ -4867,6 +4871,7 @@ class PlayerActivity :
     val loadedMediaIdentifier = mediaIdentifier
     val loadedLegacyIdentifier = legacyMediaIdentifier
     val loadedIntent = Intent(intent)
+    val loadedPlaybackItem = PlaybackSession.queue.value.currentItem
     val loadedPlaylistIndex = playlistIndex
     val loadedPlaylist = playlist.toList()
     if (loadedMediaIdentifier.isNotBlank()) {
@@ -5000,11 +5005,13 @@ class PlayerActivity :
       subtitlesPreferences.autoEnableSubtitles.get() &&
       subtitlesPreferences.autoloadMatchingSubtitles.get()
     ) {
-      lifecycleScope.launch {
+      subtitleAutoloadJob = lifecycleScope.launch(Dispatchers.IO) {
         if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
         // For network files played via proxy (SMB/WebDAV/FTP), use the original network file path
-        val networkFilePath = loadedIntent.getStringExtra("network_file_path")
-        val networkConnectionId = loadedIntent.getLongExtra("network_connection_id", -1L)
+        val networkFilePath = loadedPlaybackItem?.networkSource?.relativePath
+          ?: loadedIntent.getStringExtra("network_file_path").takeIf { loadedPlaybackItem == null }
+        val networkConnectionId = loadedPlaybackItem?.networkSource?.connectionId
+          ?: if (loadedPlaybackItem == null) loadedIntent.getLongExtra("network_connection_id", -1L) else -1L
 
         if (networkFilePath != null && networkConnectionId != -1L) {
           // Pass network file path and connection ID for subtitle discovery
@@ -5016,7 +5023,12 @@ class PlayerActivity :
           )
         } else {
           // Regular file or direct network stream
-          val filePath = parsePathFromIntent(loadedIntent)
+          // The launch intent can still refer to the first episode after next/previous. Use
+          // the item that actually loaded, and keep all URI/provider work off the UI thread.
+          val source = loadedPlaybackItem?.playableUri
+          val filePath = source?.let { path ->
+            if (path.startsWith('/')) path else Uri.parse(path).resolveUri(this@PlayerActivity, allowFdFallback = false)
+          } ?: parsePathFromIntent(loadedIntent)
           if (filePath != null) {
             SubtitleOps.autoloadSubtitles(
               videoFilePath = filePath,
