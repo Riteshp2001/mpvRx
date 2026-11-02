@@ -144,8 +144,8 @@ object PlaylistScreen : Screen {
       viewModel(factory = PlaylistViewModel.factory(context.applicationContext as android.app.Application))
 
     androidx.lifecycle.compose.LifecycleResumeEffect(viewModel) {
-      viewModel.refresh()
-      onPauseOrDispose { }
+      viewModel.startMonitoring()
+      onPauseOrDispose { viewModel.stopMonitoring() }
     }
     app.gyrolet.mpvrx.utils.permission.PermissionUtils.handleStoragePermission {
       viewModel.refresh(scanLocalFiles = true)

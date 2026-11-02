@@ -224,8 +224,8 @@ object ProfileScreen : Screen {
     val snapshotViewModel: SnapshotLibraryViewModel = viewModel(factory = SnapshotLibraryViewModel.factory(application))
 
     LifecycleResumeEffect(playlistViewModel) {
-      playlistViewModel.refresh()
-      onPauseOrDispose { }
+      playlistViewModel.startMonitoring()
+      onPauseOrDispose { playlistViewModel.stopMonitoring() }
     }
 
     val recentItems by recentsViewModel.recentItems.collectAsState()

@@ -29,7 +29,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -58,6 +60,8 @@ class PlaylistViewModel(
   val playlistsWithCount: StateFlow<List<PlaylistWithCount>> = _playlistsWithCount.asStateFlow()
 
   private val refreshMutex = Mutex()
+  private var monitoringJob: Job? = null
+  private var refreshJob: Job? = null
   private val _isLoading = MutableStateFlow(true)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -97,21 +101,36 @@ class PlaylistViewModel(
         Log.e(TAG, "Error loading cached playlists", e)
       }
     }
+  }
 
-    // Then observe for updates with actual counts
-    viewModelScope.launch(Dispatchers.IO) {
-      repository.observeAllPlaylists().collectLatest { playlistsFromDb ->
-        _playlistsWithCount.value = loadPlaylistsWithCounts(playlistsFromDb)
-        _hasCompletedInitialLoad.value = true
+  /** Only resumed playlist/profile screens may watch storage or start discovery. */
+  fun startMonitoring() {
+    if (monitoringJob?.isActive == true) return
+    monitoringJob = viewModelScope.launch {
+      launch(Dispatchers.IO) {
+        repository.observeAllPlaylists().collectLatest { playlistsFromDb ->
+          _playlistsWithCount.value = loadPlaylistsWithCounts(playlistsFromDb)
+          _hasCompletedInitialLoad.value = true
+        }
       }
+      // Complete an in-flight scan during a foreground notification burst, then process the
+      // latest change. Leaving the screen cancels this entire job and unregisters the observer.
+      merge(MediaLibraryEvents.changes, LocalPlaylistScanner.changes(getApplication()))
+        .conflate()
+        .collect {
+          delay(750)
+          withContext(Dispatchers.IO) { refreshPlaylists(scanLocalFiles = true) }
+        }
     }
-    refresh(scanLocalFiles = true)
-    viewModelScope.launch {
-      merge(MediaLibraryEvents.changes, LocalPlaylistScanner.changes(getApplication())).collectLatest {
-        delay(750)
-        withContext(Dispatchers.IO) { refreshPlaylists(scanLocalFiles = true) }
-      }
-    }
+    // Reconcile changes missed while stopped, without reparsing every unchanged M3U file.
+    refresh(scanLocalFiles = true, forceLocalFiles = false)
+  }
+
+  fun stopMonitoring() {
+    monitoringJob?.cancel()
+    monitoringJob = null
+    refreshJob?.cancel()
+    refreshJob = null
   }
 
   /**
@@ -191,10 +210,16 @@ class PlaylistViewModel(
   private fun visiblePlaylists(playlists: List<PlaylistEntity>): List<PlaylistEntity> =
     repository.prioritizeUserPlaylists(playlists)
 
-  fun refresh(scanLocalFiles: Boolean = false): Job =
-    viewModelScope.launch(Dispatchers.IO) {
-      refreshPlaylists(scanLocalFiles, forceLocalFiles = scanLocalFiles)
-    }
+  fun refresh(scanLocalFiles: Boolean = false): Job = refresh(scanLocalFiles, forceLocalFiles = scanLocalFiles)
+
+  private fun refresh(scanLocalFiles: Boolean, forceLocalFiles: Boolean): Job {
+    refreshJob?.cancel()
+    return viewModelScope.launch(Dispatchers.IO) {
+      // Permission callbacks can arrive after the screen has paused. The next resume reconciles
+      // them; do not let such a callback restart a storage walk in the cached process.
+      if (monitoringJob?.isActive == true) refreshPlaylists(scanLocalFiles, forceLocalFiles)
+    }.also { refreshJob = it }
+  }
 
   private suspend fun refreshPlaylists(scanLocalFiles: Boolean, forceLocalFiles: Boolean = false) = refreshMutex.withLock {
     try {
