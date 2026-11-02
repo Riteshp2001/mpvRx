@@ -383,7 +383,7 @@ object MediaUtils {
     context.startActivity(intent)
   }
 
-  private fun playbackIdentity(video: Video): String =
+  internal fun playbackIdentity(video: Video): String =
     if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && video.uri.scheme == "content") {
       app.gyrolet.mpvrx.ui.browser.videolist.videoPlaybackIdentifiers(video).first()
     } else if (video.uri.scheme.equals("archive", ignoreCase = true)) {

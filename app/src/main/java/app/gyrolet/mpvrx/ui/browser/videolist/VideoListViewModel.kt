@@ -87,10 +87,12 @@ internal fun buildVideoWithPlaybackInfo(
   newLabelDays: Int,
   watchedThreshold: Int,
 ): VideoWithPlaybackInfo {
-  // MediaStore cannot see .nomedia files, and a SAF provider may not report their
-  // duration. The player can still supply total seconds through saved position + remaining.
+  // ZIP entries have no scanned duration; scoped providers can also omit it. Reuse the player's
+  // saved position + remaining seconds without opening or probing any media in the list.
   val recordedDuration =
-    if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && video.uri.scheme == "content") {
+    if (ZipArchiveMedia.isPlaybackUri(video.path) ||
+      (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && video.uri.scheme == "content")
+    ) {
       playbackState?.let { (it.lastPosition.toLong() + it.timeRemaining.toLong()).takeIf { total -> total > 0L } }
     } else null
   val durationSeconds = (video.duration / 1000L).takeIf { it > 0L } ?: recordedDuration ?: 0L

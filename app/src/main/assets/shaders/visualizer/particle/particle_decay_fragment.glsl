@@ -1,6 +1,6 @@
 #version 300 es
 precision highp float;
-uniform sampler2D uTrail;
+uniform highp sampler2D uTrail;
 uniform vec2 uTexel;
 uniform float uDecay, uDiff;
 in vec2 vUv;

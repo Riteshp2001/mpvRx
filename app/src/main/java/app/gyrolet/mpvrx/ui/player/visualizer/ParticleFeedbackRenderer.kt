@@ -31,15 +31,16 @@ internal class ParticleFeedbackRenderer(
   @Volatile private var reducedMotionEnabled = reducedMotion
 
   private object Cfg {
-    // 16,384 particles instead of 147,456: let individual points and short trails breathe.
-    const val SIM_SIZE = 128
+    // 20,736 particles: a modest density increase while keeping simulation and fill cost bounded.
+    const val SIM_SIZE = 144
     const val NUM_PARTICLES = SIM_SIZE * SIM_SIZE
-    const val TRAIL_SCALE = 0.65f
-    const val MAX_TRAIL_DIMENSION = 960f
+    const val TRAIL_SCALE = 0.75f
+    const val MAX_TRAIL_DIMENSION = 1152f
     const val DECAY = 0.90f // Retention per 1/60 second, not per display frame.
     const val DIFFUSE = 0.004f
-    const val BRIGHT = 0.18f
-    const val EXPOSURE = 1.15f
+    // Keep aggregate light comparable as density rises, preserving individual particle detail.
+    const val BRIGHT = 0.18f * 16_384f / NUM_PARTICLES
+    const val EXPOSURE = 0.45f
   }
 
   private var appliedPalette: VisualizerPalette? = null
@@ -104,9 +105,7 @@ internal class ParticleFeedbackRenderer(
   private var uPtsBass = -1
   private var uPtsFlux = -1
   private var uPtsBright = -1
-  private var uPtsTreble = -1
-  private var uPtsPrimaryColor = -1
-  private var uPtsSecondaryColor = -1
+  private var uPtsEmission = -1
 
   private var uDecayTrail = -1
   private var uDecayTexel = -1
@@ -115,6 +114,8 @@ internal class ParticleFeedbackRenderer(
 
   private var uCompTrail = -1
   private var uCompExposure = -1
+  private var uCompPrimaryColor = -1
+  private var uCompSecondaryColor = -1
 
   private var previousFrameNanos = 0L
   private var elapsedSeconds = 0f
@@ -266,9 +267,7 @@ internal class ParticleFeedbackRenderer(
     GLES30.glUniform1f(uPtsBass, bassSmoothed)
     GLES30.glUniform1f(uPtsFlux, fluxSmoothed)
     GLES30.glUniform1f(uPtsBright, Cfg.BRIGHT * emission)
-    GLES30.glUniform1f(uPtsTreble, highSmoothed)
-    GLES30.glUniform3f(uPtsPrimaryColor, primaryRgb[0], primaryRgb[1], primaryRgb[2])
-    GLES30.glUniform3f(uPtsSecondaryColor, secondaryRgb[0], secondaryRgb[1], secondaryRgb[2])
+    GLES30.glUniform1f(uPtsEmission, emission)
     GLES30.glDrawArrays(GLES30.GL_POINTS, 0, Cfg.NUM_PARTICLES)
     GLES30.glDisable(GLES30.GL_BLEND)
     trailSrc = nextTrail
@@ -296,6 +295,8 @@ internal class ParticleFeedbackRenderer(
     GLES30.glUseProgram(pComp)
     GLES30.glUniform1i(uCompTrail, 0)
     GLES30.glUniform1f(uCompExposure, Cfg.EXPOSURE)
+    GLES30.glUniform3f(uCompPrimaryColor, primaryRgb[0], primaryRgb[1], primaryRgb[2])
+    GLES30.glUniform3f(uCompSecondaryColor, secondaryRgb[0], secondaryRgb[1], secondaryRgb[2])
     GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3)
 
     GLES30.glDisable(GLES30.GL_BLEND)
@@ -449,9 +450,7 @@ internal class ParticleFeedbackRenderer(
     uPtsBass = GLES30.glGetUniformLocation(pPts, "uBass")
     uPtsFlux = GLES30.glGetUniformLocation(pPts, "uFlux")
     uPtsBright = GLES30.glGetUniformLocation(pPts, "uBright")
-    uPtsTreble = GLES30.glGetUniformLocation(pPts, "uTreble")
-    uPtsPrimaryColor = GLES30.glGetUniformLocation(pPts, "uPrimaryColor")
-    uPtsSecondaryColor = GLES30.glGetUniformLocation(pPts, "uSecondaryColor")
+    uPtsEmission = GLES30.glGetUniformLocation(pPts, "uEmission")
 
     uDecayTrail = GLES30.glGetUniformLocation(pDecay, "uTrail")
     uDecayTexel = GLES30.glGetUniformLocation(pDecay, "uTexel")
@@ -460,5 +459,7 @@ internal class ParticleFeedbackRenderer(
 
     uCompTrail = GLES30.glGetUniformLocation(pComp, "uTrail")
     uCompExposure = GLES30.glGetUniformLocation(pComp, "uExposure")
+    uCompPrimaryColor = GLES30.glGetUniformLocation(pComp, "uPrimaryColor")
+    uCompSecondaryColor = GLES30.glGetUniformLocation(pComp, "uSecondaryColor")
   }
 }

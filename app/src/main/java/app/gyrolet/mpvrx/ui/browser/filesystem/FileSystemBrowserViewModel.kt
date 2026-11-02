@@ -805,13 +805,15 @@ class FileSystemBrowserViewModel(
           PlaybackIdentity.forUri("file://${video.path}"),
         )
       val playbackState = playbackIdentifiers.firstNotNullOfOrNull { playbackStates[it] }
-      val scopedInfo = if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
-        app.gyrolet.mpvrx.ui.browser.videolist.buildVideoWithPlaybackInfo(
-          video, playbackState, currentTime, appearancePreferences.unplayedOldVideoDays.get(), watchedThreshold,
-        )
-      } else null
+      // ZIP entries are never probed; the shared builder recovers their duration from the saved state.
+      val sharedInfo =
+        if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY || ZipArchiveMedia.isPlaybackUri(video.path)) {
+          app.gyrolet.mpvrx.ui.browser.videolist.buildVideoWithPlaybackInfo(
+            video, playbackState, currentTime, appearancePreferences.unplayedOldVideoDays.get(), watchedThreshold,
+          )
+        } else null
       val progressValue =
-        if (scopedInfo != null) scopedInfo.progressPercentage ?: 0f
+        if (sharedInfo != null) sharedInfo.progressPercentage ?: 0f
         else if (playbackState != null && video.duration > 0) {
           val durationSeconds = video.duration / 1000.0
           val watched = durationSeconds - playbackState.timeRemaining.toDouble()
@@ -819,7 +821,7 @@ class FileSystemBrowserViewModel(
         } else {
           0f
         }
-      val isWatched = scopedInfo?.isWatched ?: (
+      val isWatched = sharedInfo?.isWatched ?: (
         playbackState?.hasBeenWatched == true ||
           (watchedThreshold > 0 && progressValue >= watchedThreshold / 100f))
       if (isWatched) watchedIds += video.id

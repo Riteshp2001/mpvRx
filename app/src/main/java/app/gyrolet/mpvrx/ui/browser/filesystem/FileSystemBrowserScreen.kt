@@ -1464,7 +1464,7 @@ private fun FileSystemBrowserContent(
         showResolutionChip = showResolutionChip && !archiveMode,
         showFramerateInResolution = showFramerateInResolution && !archiveMode,
         showCodecSupportIndicator = showCodecSupportIndicator && !archiveMode,
-        showProgressBar = showProgressBar && !archiveMode,
+        showProgressBar = showProgressBar,
         showDateChip = showDateChip,
         showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,
         unplayedOldVideoDays = unplayedOldVideoDays,
@@ -1951,7 +1951,7 @@ private fun FileSystemSearchContent(
         showResolutionChip = showResolutionChip && !archiveMode,
         showFramerateInResolution = showFramerateInResolution && !archiveMode,
         showCodecSupportIndicator = showCodecSupportIndicator && !archiveMode,
-        showProgressBar = showProgressBar && !archiveMode,
+        showProgressBar = showProgressBar,
         showDateChip = showDateChip,
         showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,
         unplayedOldVideoDays = unplayedOldVideoDays,
@@ -2140,7 +2140,9 @@ private fun FileSystemSearchContent(
                   val archiveEntry = ZipArchiveMedia.isPlaybackUri(videoFile.video.uri.toString())
                   VideoCard(
                     video = videoFile.video,
-                    progressPercentage = videoFilesWithPlayback[videoFile.video.id],
+                    progressPercentage =
+                      videoFilesWithPlayback[videoFile.video.id]
+                        ?: swipePlaybackInfo[videoFile.video.path]?.progressPercentage,
                     isRecentlyPlayed = false,
                     isSelected = false,
                     onClick = { onVideoClick(videoFile.video) },
@@ -2229,7 +2231,9 @@ private fun FileSystemSearchContent(
                 val archiveEntry = ZipArchiveMedia.isPlaybackUri(videoFile.video.uri.toString())
                 VideoCard(
                   video = videoFile.video,
-                  progressPercentage = videoFilesWithPlayback[videoFile.video.id],
+                  progressPercentage =
+                    videoFilesWithPlayback[videoFile.video.id]
+                      ?: swipePlaybackInfo[videoFile.video.path]?.progressPercentage,
                   isRecentlyPlayed = false,
                   isSelected = false,
                   onClick = { onVideoClick(videoFile.video) },

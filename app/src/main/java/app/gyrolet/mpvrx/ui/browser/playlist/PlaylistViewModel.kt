@@ -189,7 +189,7 @@ class PlaylistViewModel(
   }
 
   private fun visiblePlaylists(playlists: List<PlaylistEntity>): List<PlaylistEntity> =
-    repository.prioritizeFavorites(playlists)
+    repository.prioritizeUserPlaylists(playlists)
 
   fun refresh(scanLocalFiles: Boolean = false): Job =
     viewModelScope.launch(Dispatchers.IO) {

@@ -232,9 +232,9 @@ class PlaylistRepository(
     }
   }
 
-  fun prioritizeFavorites(playlists: List<PlaylistEntity>): List<PlaylistEntity> {
+  fun prioritizeUserPlaylists(playlists: List<PlaylistEntity>): List<PlaylistEntity> {
     return playlists.sortedWith(
-      compareByDescending<PlaylistEntity> { isProtectedPlaylist(it) }
+      compareBy<PlaylistEntity> { isProtectedPlaylist(it) }
         .thenBy { it.name.lowercase() }
     )
   }
@@ -246,7 +246,7 @@ class PlaylistRepository(
       } else {
         classifyAndFilterPlaylists(playlists, isAudio)
       }
-      prioritizeFavorites(filtered)
+      prioritizeUserPlaylists(filtered)
     }
 
   suspend fun getAllPlaylists(isAudio: Boolean? = null): List<PlaylistEntity> {
@@ -256,7 +256,7 @@ class PlaylistRepository(
     } else {
       classifyAndFilterPlaylists(playlists, isAudio)
     }
-    return prioritizeFavorites(filtered)
+    return prioritizeUserPlaylists(filtered)
   }
 
   private suspend fun classifyAndFilterPlaylists(
@@ -287,7 +287,7 @@ class PlaylistRepository(
         result.add(playlist)
       }
     }
-    return prioritizeFavorites(result)
+    return prioritizeUserPlaylists(result)
   }
 
   suspend fun getPlaylistById(playlistId: Int): PlaylistEntity? = playlistDao.getPlaylistById(playlistId)

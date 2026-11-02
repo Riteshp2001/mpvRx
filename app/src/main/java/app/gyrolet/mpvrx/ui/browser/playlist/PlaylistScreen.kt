@@ -111,14 +111,14 @@ private fun PlaylistEntity.belongsToAudioLibrary(): Boolean = isAudio && !isM3uP
 private fun PlaylistEntity.isFavoritesPlaylist(): Boolean =
   name.equals(PlaylistRepository.FAVORITES_PLAYLIST_NAME, ignoreCase = true)
 
-/** Favorites stay pinned on top; the chosen sort only orders the user's own playlists. */
+/** Added playlists come first; the chosen sort orders them ahead of the built-in favorites. */
 private fun arrangePlaylists(
   items: List<PlaylistWithCount>,
   type: PlaylistSortType,
   order: SortOrder,
 ): List<PlaylistWithCount> {
   val (favorites, others) = items.partition { it.playlist.isFavoritesPlaylist() }
-  return favorites + sortPlaylists(others, type, order)
+  return sortPlaylists(others, type, order) + favorites
 }
 
 private val LIBRARY_SORT_TYPES =

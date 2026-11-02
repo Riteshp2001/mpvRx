@@ -111,7 +111,6 @@ import app.gyrolet.mpvrx.ui.components.InlineSearchBar
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.ContainerGeometryProbe
-import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 import app.gyrolet.mpvrx.ui.player.PlaybackItem
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
@@ -337,9 +336,7 @@ data class PlaylistDetailScreen(
             val headersMap = headerExtra?.let { mapOf(it[0] to it[1]) }.orEmpty()
             PlaybackItem.fromUri(
               uri = uri.toString(),
-              stableId = if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && playlistEntry.video.uri.scheme == "content") {
-                app.gyrolet.mpvrx.ui.browser.videolist.videoPlaybackIdentifiers(playlistEntry.video).first()
-              } else playlistEntry.video.path.takeIf(String::isNotBlank)?.let(PlaybackIdentity::forLocalPath),
+              stableId = MediaUtils.playbackIdentity(playlistEntry.video),
               title = playlistEntry.playlistItem.fileName,
               mimeType = if (isAudio) "audio/*" else playlistEntry.video.mimeType,
               headers = headersMap,
@@ -363,7 +360,8 @@ data class PlaylistDetailScreen(
           action = Intent.ACTION_VIEW
           data = playUri
           putExtra("internal_launch", true)
-          putExtra("local_media_path", item.video.path)
+          // ZIP/stream entries must keep the URI identity the playlist queue uses, or progress is never saved.
+          item.video.path.takeIf { it.startsWith('/') }?.let { putExtra("local_media_path", it) }
           putExtra("playlist_index", startIndex)
           putExtra("playlist_id", playlistId)
           putExtra("launch_source", if (playlist?.isM3uPlaylist == true) "m3u_playlist" else "playlist")
@@ -978,6 +976,8 @@ private fun PlaylistVideoListContent(
     }
 
   val itemContent: @Composable (PlaylistVideoItem, Boolean, Int, MediaSelectionNeighbors, Modifier) -> Unit = { item, grid, columns, neighbors, itemModifier ->
+    val playbackInfo = swipePlaybackInfo[item.video.path]
+    val displayVideo = playbackInfo?.video ?: item.video
     val sourceLabel = when {
       isM3uPlaylist -> null
       item.protocol != null -> item.protocol.displayName
@@ -1018,13 +1018,11 @@ private fun PlaylistVideoListContent(
       )
     } else {
       VideoCard(
-        video = if (isAudio && !item.video.isAudio) item.video.copy(isAudio = true) else item.video,
+        video = if (isAudio && !displayVideo.isAudio) displayVideo.copy(isAudio = true) else displayVideo,
         onSwipeAction = swipeActions.video.takeUnless { selectionManager.isInSelectionMode || isReorderMode },
-        isWatched = swipePlaybackInfo[item.video.path]?.isWatched == true,
-        isOldAndUnplayed = swipePlaybackInfo[item.video.path]?.isOldAndUnplayed == true,
-        progressPercentage = if (item.playlistItem.lastPosition > 0 && item.video.duration > 0) {
-          item.playlistItem.lastPosition.toFloat() / item.video.duration.toFloat() * 100f
-        } else null,
+        isWatched = playbackInfo?.isWatched == true,
+        isOldAndUnplayed = playbackInfo?.isOldAndUnplayed == true,
+        progressPercentage = playbackInfo?.progressPercentage,
         isRecentlyPlayed = item.playlistItem.id == mostRecentlyPlayedItem?.playlistItem?.id,
         isSelected = selectionManager.isSelected(item),
         selectionNeighbors = neighbors,

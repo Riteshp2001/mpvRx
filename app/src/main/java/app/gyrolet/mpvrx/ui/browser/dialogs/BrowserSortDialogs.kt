@@ -1128,7 +1128,6 @@ private val ARCHIVE_UNSUPPORTED_TOGGLES =
     "Framerate",
     "Codec support",
     "Subtitle",
-    "Progress Bar",
     "Folder Thumbnails",
   )
 
