@@ -9,8 +9,10 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.os.Environment
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -81,6 +83,7 @@ import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSourceItem
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSources
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSourcesResponse
+import app.gyrolet.mpvrx.ui.browser.dialogs.FolderPickerDialog
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
@@ -93,7 +96,7 @@ import app.gyrolet.mpvrx.utils.media.copyFontsFromDirectory
 import app.gyrolet.mpvrx.utils.media.loadCustomFontEntries
 import app.gyrolet.mpvrx.utils.media.subtitleFontChoices
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleStorageDirectory
-import com.github.k1rakishou.fsaf.FileManager
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -116,15 +119,16 @@ object SubtitlesPreferencesScreen : Screen {
     val appearancePreferences = koinInject<AppearancePreferences>()
     val googleFontsRepository = koinInject<GoogleFontsRepository>()
     val configOwnedOptions = currentMpvConfigOverrideOptions()
-    val fileManager = koinInject<FileManager>()
     val wyzieSearchRepository = koinInject<WyzieSearchRepository>()
     val scope = rememberCoroutineScope()
+    val fontsFolder by preferences.fontsFolder.collectAsState()
     var fontRefreshKey by remember { mutableStateOf(0) }
+    var showLocalFontFolderPicker by rememberSaveable { mutableStateOf(false) }
 
     fun reloadFontsFrom(uriString: String) {
       if (uriString.isBlank()) return
       scope.launch(Dispatchers.IO) {
-        val copiedFonts = copyFontsFromDirectory(context, fileManager, uriString)
+        val copiedFonts = copyFontsFromDirectory(context, uriString)
         withContext(Dispatchers.Main) {
           fontRefreshKey++
           Toast
@@ -159,12 +163,30 @@ object SubtitlesPreferencesScreen : Screen {
               context.getString(R.string.pref_subtitles_font_copy_failed, error.message ?: "Unknown error"),
               Toast.LENGTH_SHORT,
             ).show()
+          return@rememberLauncherForActivityResult
         }
 
         val uriString = uri.toString()
         preferences.fontsFolder.set(uriString)
         reloadFontsFrom(uriString)
       }
+
+    if (showLocalFontFolderPicker) {
+      val sourceUri = Uri.parse(fontsFolder)
+      FolderPickerDialog(
+        isOpen = true,
+        currentPath = sourceUri.takeIf { it.scheme == "file" }?.path
+          ?: Environment.getExternalStorageDirectory().absolutePath,
+        allowCurrentFolderSelection = true,
+        onDismiss = { showLocalFontFolderPicker = false },
+        onFolderSelected = { path ->
+          showLocalFontFolderPicker = false
+          val uriString = Uri.fromFile(File(path)).toString()
+          preferences.fontsFolder.set(uriString)
+          reloadFontsFrom(uriString)
+        },
+      )
+    }
 
     Scaffold(
       contentWindowInsets = settingsContentWindowInsets(),
@@ -177,7 +199,6 @@ object SubtitlesPreferencesScreen : Screen {
     ) { padding ->
       ProvideExpressivePreferenceLocals {
         val subtitleSaveFolder by preferences.subtitleSaveFolder.collectAsState()
-        val fontsFolder by preferences.fontsFolder.collectAsState()
         val selectedFont by preferences.font.collectAsState()
         val appFontFamily by appearancePreferences.googleFontFamily.collectAsState()
         val wyzieHearingImpaired by preferences.wyzieHearingImpaired.collectAsState()
@@ -453,7 +474,10 @@ object SubtitlesPreferencesScreen : Screen {
                       stringResource(R.string.pref_subtitles_font_directory_summary)
                     } else {
                       val displayPath =
-                        runCatching { getSimplifiedPathFromUri(fontsFolder) }
+                        runCatching {
+                          val uri = Uri.parse(fontsFolder)
+                          if (uri.scheme == "file") uri.path ?: fontsFolder else getSimplifiedPathFromUri(fontsFolder)
+                        }
                           .getOrElse { Uri.decode(fontsFolder) ?: fontsFolder }
                       stringResource(R.string.pref_subtitles_font_directory_selected, displayPath)
                     }
@@ -471,7 +495,17 @@ object SubtitlesPreferencesScreen : Screen {
                     tint = MaterialTheme.colorScheme.primary,
                   )
                 },
-                onClick = { fontFolderPicker.launch(null) },
+                onClick = {
+                  // Some TV firmware omits DocumentsUI entirely. Launch directly rather than
+                  // relying on package visibility queries, and use our browser if it is absent.
+                  try {
+                    fontFolderPicker.launch(null)
+                  } catch (_: ActivityNotFoundException) {
+                    showLocalFontFolderPicker = true
+                  } catch (_: SecurityException) {
+                    showLocalFontFolderPicker = true
+                  }
+                },
               )
               }
 
