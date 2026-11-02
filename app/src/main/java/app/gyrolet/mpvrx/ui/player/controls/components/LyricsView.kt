@@ -125,6 +125,7 @@ fun LyricsView(
   showTitleHeader: Boolean = false,
   isLyricsFullscreen: Boolean = false,
   onTap: (() -> Unit)? = null,
+  onOpenTranslateSheet: (() -> Unit)? = null,
 ) {
   val audioPreferences = koinInject<AudioPreferences>()
   val translationDisplayMode by audioPreferences.lyricsTranslationDisplayMode.collectAsState()
@@ -135,7 +136,11 @@ fun LyricsView(
   val listState = rememberLazyListState()
   val density = LocalDensity.current
   var lyricsViewportPx by remember { mutableIntStateOf(0) }
-  var showTranslateDialog by remember { mutableStateOf(false) }
+  // When a sheet-level callback is provided the translate dialog is shown at the top-level
+  // PlayerSheets composable (no nested PlayerSheet scrim). Fall back to local state for
+  // call-sites that do not wire the callback (e.g. the in-sheet lyrics panel).
+  var showTranslateDialogLocal by remember { mutableStateOf(false) }
+  val openTranslateSheet: () -> Unit = onOpenTranslateSheet ?: { showTranslateDialogLocal = true }
 
   val currentPosMs = remember(precisePosition, state.syncOffsetMs) {
     (precisePosition * 1000).toLong() + state.syncOffsetMs
@@ -699,7 +704,7 @@ fun LyricsView(
           // Translate button on Left (40.dp square with rounded corners)
           if (!app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD) {
           Surface(
-            onClick = { showTranslateDialog = true },
+            onClick = { openTranslateSheet() },
             shape = RoundedCornerShape(12.dp),
             color = if (state.isTranslationActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
             modifier = Modifier.size(40.dp),
@@ -830,10 +835,10 @@ fun LyricsView(
     }
   }
 
-  if (showTranslateDialog) {
+  if (showTranslateDialogLocal) {
     LyricsTranslateDialog(
       viewModel = viewModel,
-      onDismiss = { showTranslateDialog = false },
+      onDismiss = { showTranslateDialogLocal = false },
     )
   }
 }

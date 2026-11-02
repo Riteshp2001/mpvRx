@@ -71,6 +71,7 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
+import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.controls.components.MiniAudioVisualizer
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -575,7 +576,7 @@ private fun DragHandle(
           .clip(RoundedCornerShape(14.dp))
           .background(
             if (isDragging) MaterialTheme.colorScheme.primaryContainer
-            else MaterialTheme.colorScheme.surfaceContainerHighest,
+            else playlistUnselectedRowColor(),
           )
           .draggableHandle(
             interactionSource = feedback.interactions,
@@ -632,7 +633,7 @@ fun PlaylistTrackListItem(
     color = if (effectiveItem.isPlaying) {
       animatedPlayerSheetSelectionColor(true, label = "playlistItemSelection")
     } else {
-      MaterialTheme.colorScheme.surfaceContainerLow
+      playlistUnselectedRowColor()
     },
     shape = shape,
   ) {
@@ -739,14 +740,7 @@ fun PlaylistTrackListItem(
           // Duration chip
           if (item.duration.isNotEmpty()) {
             Surface(
-              color =
-                if (item.isPlaying) {
-                  accentColor.copy(
-                    alpha = 0.15f,
-                  )
-                } else {
-                  MaterialTheme.colorScheme.surfaceContainerHighest
-                },
+              color = playlistChipColor(item.isPlaying),
               shape = RoundedCornerShape(4.dp),
             ) {
               Text(
@@ -766,14 +760,7 @@ fun PlaylistTrackListItem(
           // Resolution chip
           if (item.resolution.isNotEmpty()) {
             Surface(
-              color =
-                if (item.isPlaying) {
-                  accentColor.copy(
-                    alpha = 0.15f,
-                  )
-                } else {
-                  MaterialTheme.colorScheme.surfaceContainerHighest
-                },
+              color = playlistChipColor(item.isPlaying),
               shape = RoundedCornerShape(4.dp),
             ) {
               Text(
@@ -848,7 +835,7 @@ fun PlaylistTrackGridItem(
     color = if (effectiveItem.isPlaying) {
       animatedPlayerSheetSelectionColor(true, label = "playlistItemSelection")
     } else {
-      MaterialTheme.colorScheme.surfaceContainerLow
+      playlistUnselectedRowColor()
     },
     shape = shape,
   ) {
@@ -1007,14 +994,7 @@ fun PlaylistTrackGridItem(
           // Resolution chip
           if (item.resolution.isNotEmpty()) {
             Surface(
-              color =
-                if (item.isPlaying) {
-                  accentColor.copy(
-                    alpha = 0.15f,
-                  )
-                } else {
-                  MaterialTheme.colorScheme.surfaceContainerHighest
-                },
+              color = playlistChipColor(item.isPlaying),
               shape = RoundedCornerShape(4.dp),
             ) {
               Text(
@@ -1118,5 +1098,26 @@ private fun String.stripExtension(): String {
   val ext = substring(dotIndex + 1)
   return if (ext.length in 2..5 && ext.none { it.isWhitespace() }) substring(0, dotIndex) else this
 }
+
+/**
+ * Unselected playlist rows read the shared frosted palette on a liquid-glass sheet and
+ * keep their plain, non-glass container when the sheet is solid.
+ */
+@Composable
+private fun playlistUnselectedRowColor(): Color =
+  if (LocalPlayerGlassSurfaceActive.current) {
+    playerSheetSelectionColor(false)
+  } else {
+    MaterialTheme.colorScheme.surfaceContainerLow
+  }
+
+/** Small duration/resolution/status chips, translated the same way as the rows. */
+@Composable
+private fun playlistChipColor(isPlaying: Boolean): Color =
+  when {
+    isPlaying -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+    LocalPlayerGlassSurfaceActive.current -> playerSheetSelectionColor(false)
+    else -> MaterialTheme.colorScheme.surfaceContainerHighest
+  }
 
 private const val PLAYLIST_SCROLL_APPROACH_ITEMS = 6

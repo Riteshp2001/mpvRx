@@ -873,10 +873,10 @@ fun JellyfinContent(
                     state = gridState,
                     columns = GridCells.Adaptive(minSize = 130.dp),
                     modifier = Modifier.fillMaxSize().tvContentFocus(),
-                    // Cards carry their own padding, so the grid edge plus that padding lands on the gutter.
+                    // Cards are padding-less now, so the grid edge lands directly on the gutter.
                     contentPadding = PaddingValues(
-                      start = gutter - JellyfinSpacing.CardPadding,
-                      end = gutter - JellyfinSpacing.CardPadding,
+                      start = gutter,
+                      end = gutter,
                       top = topBarHeight + 8.dp,
                       bottom = navigationBarHeight + 96.dp,
                     ),
