@@ -12,6 +12,13 @@ import android.util.Log
 import android.view.Choreographer
 import android.view.TextureView
 import android.view.View
+import javax.microedition.khronos.opengles.GL10
+
+internal interface VsyncRenderer : GLSurfaceView.Renderer {
+  fun onFrame(frameTimeNanos: Long)
+
+  override fun onDrawFrame(gl: GL10?) = onFrame(System.nanoTime())
+}
 
 internal abstract class VisualizerTextureView(
   context: Context,
@@ -97,7 +104,7 @@ internal abstract class VisualizerTextureView(
     private var context = EGL14.EGL_NO_CONTEXT
     private var surface = EGL14.EGL_NO_SURFACE
     private var choreographer: Choreographer? = null
-    private val frameCallback = Choreographer.FrameCallback { drawFrame() }
+    private val frameCallback = Choreographer.FrameCallback { frameTimeNanos -> drawFrame(frameTimeNanos) }
     private var surfaceWidth = width.coerceAtLeast(1)
     private var surfaceHeight = height.coerceAtLeast(1)
     private var sizeChanged = true
@@ -166,14 +173,18 @@ internal abstract class VisualizerTextureView(
       choreographer?.postFrameCallback(frameCallback)
     }
 
-    private fun drawFrame() {
+    private fun drawFrame(frameTimeNanos: Long) {
       if (!ready || stopping) return
       try {
         if (sizeChanged) {
           renderer.onSurfaceChanged(null, surfaceWidth, surfaceHeight)
           sizeChanged = false
         }
-        renderer.onDrawFrame(null)
+        if (renderer is VsyncRenderer) {
+          renderer.onFrame(frameTimeNanos)
+        } else {
+          renderer.onDrawFrame(null)
+        }
         check(EGL14.eglSwapBuffers(display, surface)) { "Unable to swap visualizer buffers" }
         if (renderingEnabled) requestFrame()
       } catch (error: RuntimeException) {

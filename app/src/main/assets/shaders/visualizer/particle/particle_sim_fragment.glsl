@@ -67,10 +67,10 @@ vec4 spawn(vec2 fc, float t, float seed){
   vec2 p;
   if (fam < 0.70){
     float sy = (r3 < 0.42) ? 0.12 : 0.65;
-    p = vec2(g1*0.008, g2*sy);
+    p = vec2(g1*0.024, g2*sy);
   } else {
     float sx = (r3 < 0.5) ? 0.14 : 0.60;
-    p = vec2(g1*sx, g2*(0.008 + 0.06*r4*r4));
+    p = vec2(g1*sx, g2*(0.018 + 0.06*r4*r4));
   }
   float life = 1.4 + 3.8*hash12(fc*5.137 + seed*7.7);
   return vec4(p, life, seed);
@@ -78,6 +78,8 @@ vec4 spawn(vec2 fc, float t, float seed){
 
 uniform highp sampler2D uState;
 uniform float uTime, uDt, uSubBass, uBass, uLowMid, uMid, uHighMid, uTreble, uBeat, uEnergy, uFlux;
+uniform vec3 uPointer; // Aspect-correct position and smoothly released influence.
+uniform float uMotion;
 out vec4 o;
 
 void main(){
@@ -119,7 +121,15 @@ void main(){
   float beatForce = (uBeat * 1.4 + uFlux * 0.8);
   v += (p/r) * (beatForce * beatForce) * 0.032 * exp(-r * 2.5);
 
+  // Follow input across the viewport; nearby particles curl gently around the pointer.
+  // This is a velocity field, so displacement is integrated with the same dt as the music.
+  vec2 toPointer = uPointer.xy - p;
+  float distanceSq = dot(toPointer, toPointer);
+  float influence = exp(-distanceSq * 5.0) * uPointer.z;
+  vec2 tangent = vec2(-toPointer.y, toPointer.x);
+  v += toPointer * (0.003 * uPointer.z) + (toPointer * 0.026 + tangent * 0.018) * influence;
+
   float sp = 0.55 + 0.95*fract(seed*5.19);
-  p += v * sp * (uDt*60.0);
+  p += v * sp * (uDt*60.0) * uMotion;
   o = vec4(p, life, seed);
 }

@@ -11,7 +11,6 @@ package app.gyrolet.mpvrx.ui.player.visualizer
 
 import android.content.Context
 import android.opengl.GLES30
-import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -21,13 +20,15 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 
 internal class BlobRenderer(
   private val context: Context,
   private val sourceAudio: AudioFeatures,
   initialPalette: VisualizerPalette,
   reducedMotion: Boolean,
-) : GLSurfaceView.Renderer {
+  private val interaction: VisualizerInteraction,
+) : VsyncRenderer {
   private val audio = AudioFeatures()
   private val audioSmoother = AudioReactiveSmoother()
 
@@ -166,7 +167,7 @@ internal class BlobRenderer(
     reducedMotionEnabled = value
   }
 
-  private var startNanos = 0L
+  private var elapsedSeconds = 0f
   private var previousFrameNanos = 0L
   private var frameTimeEmaMs = 16.6f
   private var qualityFrameCounter = 0
@@ -213,8 +214,8 @@ internal class BlobRenderer(
     createMesh()
     createQuad()
     createSpectrumTexture()
-    startNanos = System.nanoTime()
-    previousFrameNanos = startNanos
+    elapsedSeconds = 0f
+    previousFrameNanos = 0L
     targetsDirty = true
   }
 
@@ -238,20 +239,24 @@ internal class BlobRenderer(
     Matrix.setLookAtM(view, 0, 0f, -0.18f, zoomDistance, 0f, 0f, 0f, 0f, 1f, 0f)
   }
 
-  override fun onDrawFrame(gl: GL10?) {
-    val now = System.nanoTime()
-    val time = (now - startNanos) / 1_000_000_000f
-    val frameMs = (now - previousFrameNanos) / 1_000_000f
-    previousFrameNanos = now
-    frameTimeEmaMs += (frameMs.coerceAtMost(50f) - frameTimeEmaMs) * 0.025f
-    updateSmoothedAudio(frameMs / 1_000f)
+  override fun onFrame(frameTimeNanos: Long) {
+    val frameSeconds = if (previousFrameNanos == 0L || frameTimeNanos - previousFrameNanos > 250_000_000L) {
+      1f / 60f
+    } else {
+      ((frameTimeNanos - previousFrameNanos) / 1_000_000_000f).coerceIn(0f, 0.05f)
+    }
+    previousFrameNanos = frameTimeNanos
+    elapsedSeconds += frameSeconds
+    frameTimeEmaMs += (frameSeconds * 1_000f - frameTimeEmaMs) * (1f - 0.975f.pow(frameSeconds * 60f))
+    updateSmoothedAudio(frameSeconds)
+    interaction.advance(frameSeconds)
     updatePaletteIfNeeded()
 
     if (targetsDirty) recreateTargets()
     updateAdaptiveQuality()
-    val visualTime = if (reducedMotionEnabled) 0f else time
-    updateMatrices(visualTime)
-    updateColor(visualTime)
+    val visualTime = if (reducedMotionEnabled) 0f else elapsedSeconds
+    updateMatrices(visualTime, frameSeconds)
+    updateColor(visualTime, frameSeconds)
 
     renderBlob(visualTime)
     extractBrightPass()
@@ -430,14 +435,22 @@ internal class BlobRenderer(
   }
 
   @Suppress("LocalVariableName")
-  private fun updateMatrices(time: Float) {
-    yaw += (targetYaw - yaw) * 0.065f
-    pitch += (targetPitch - pitch) * 0.065f
+  private fun updateMatrices(time: Float, deltaSeconds: Float) {
+    val follow = 1f - 0.935f.pow(deltaSeconds * 60f)
+    yaw += (targetYaw - yaw) * follow
+    pitch += (targetPitch - pitch) * follow
 
     Matrix.setIdentityM(model, 0)
+    val pointerMotion = if (reducedMotionEnabled) 0.2f else 1f
+    Matrix.translateM(
+      model, 0,
+      interaction.x * 0.35f * pointerMotion,
+      interaction.y * 0.25f * pointerMotion,
+      0f,
+    )
     val idleRotation = time * (4.5f + audio.mid * 5f)
-    Matrix.rotateM(model, 0, if (reducedMotionEnabled) 0f else yaw + idleRotation, 0f, 1f, 0f)
-    Matrix.rotateM(model, 0, if (reducedMotionEnabled) 0f else pitch + time * 1.7f, 1f, 0f, 0f)
+    Matrix.rotateM(model, 0, if (reducedMotionEnabled) 0f else yaw + idleRotation + interaction.x * 14f, 0f, 1f, 0f)
+    Matrix.rotateM(model, 0, if (reducedMotionEnabled) 0f else pitch + time * 1.7f - interaction.y * 10f, 1f, 0f, 0f)
     val reactiveScale =
       if (reducedMotionEnabled) {
         1.20f + audio.energy * 0.025f
@@ -450,7 +463,7 @@ internal class BlobRenderer(
     Matrix.multiplyMM(mvp, 0, projection, 0, viewModel, 0)
   }
 
-  private fun updateColor(time: Float) {
+  private fun updateColor(time: Float, deltaSeconds: Float) {
     val drift = if (reducedMotionEnabled) 0f else (kotlin.math.sin(time * 0.24f) + 1f) * 0.08f
     val spectralMix = (audio.centroid * 0.72f + audio.treble * 0.18f + drift).coerceIn(0f, 1f)
     val beatMix = (audio.beat * 0.68f + audio.spectralFlux * 0.32f).coerceIn(0f, 1f)
@@ -458,7 +471,7 @@ internal class BlobRenderer(
     val targetG = lerp(lerp(primaryRgb[1], secondaryRgb[1], spectralMix), tertiaryRgb[1], beatMix)
     val targetB = lerp(lerp(primaryRgb[2], secondaryRgb[2], spectralMix), tertiaryRgb[2], beatMix)
 
-    val colorSpeed = 0.055f + audio.energy * 0.08f + audio.beat * 0.12f
+    val colorSpeed = 1f - (1f - (0.055f + audio.energy * 0.08f + audio.beat * 0.12f)).pow(deltaSeconds * 60f)
     smoothR += (targetR - smoothR) * colorSpeed
     smoothG += (targetG - smoothG) * colorSpeed
     smoothB += (targetB - smoothB) * colorSpeed

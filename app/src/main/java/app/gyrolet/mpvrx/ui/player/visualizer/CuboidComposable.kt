@@ -29,11 +29,14 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.isActive
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
@@ -93,16 +96,11 @@ private class CuboidTunnelState {
   var time = 0f
     private set
 
-  var pointerX = Random.nextFloat()
-    private set
-
-  var pointerY = Random.nextFloat()
-    private set
-
-  var pointerActive = false
-    private set
-
-  var reverse = false
+  val interaction = VisualizerInteraction()
+  val pointerX: Float get() = (interaction.x + 1f) * 0.5f
+  val pointerY: Float get() = (1f - interaction.y) * 0.5f
+  val reverse: Boolean get() = interaction.pressed
+  var audioRetention = CUBOID_AUDIO_SMOOTHING
     private set
 
   var invertValue = 0f
@@ -121,26 +119,10 @@ private class CuboidTunnelState {
   var slowColor = CuboidRgb(0.45f, 0.45f, 0.45f)
     private set
 
-  fun updatePointer(
-    normalizedX: Float,
-    normalizedY: Float,
-    pressed: Boolean,
-  ) {
-    pointerX = normalizedX.coerceIn(0f, 1f)
-    pointerY = normalizedY.coerceIn(0f, 1f)
-    pointerActive = pressed
-    reverse = pressed
-  }
-
   fun advance(frameScale: Float) {
-    val safeScale = frameScale.coerceIn(0.1f, 3f)
-
-    if (!pointerActive) {
-      // The CodePen very slowly settles the tunnel centre after the pointer leaves.
-      val settle = (0.00025f * safeScale).coerceAtMost(0.01f)
-      pointerX += (0.5f - pointerX) * settle
-      pointerY += (0.5f - pointerY) * settle
-    }
+    val safeScale = frameScale.coerceIn(0f, 3f)
+    interaction.advance(safeScale / 60f)
+    audioRetention = CUBOID_AUDIO_SMOOTHING.pow(safeScale)
 
     var wrapped = false
     val travel = CUBOID_SPEED * safeScale
@@ -211,10 +193,10 @@ internal fun CuboidOverlay(
     while (isActive) {
       withFrameNanos { now ->
         val frameScale =
-          if (lastFrameNanos == 0L) {
+          if (lastFrameNanos == 0L || now - lastFrameNanos > 250_000_000L) {
             1f
           } else {
-            (((now - lastFrameNanos) / 1_000_000_000f) * 60f).coerceIn(0.1f, 3f)
+            (((now - lastFrameNanos) / 1_000_000_000f) * 60f).coerceIn(0f, 3f)
           }
         lastFrameNanos = now
         state.advance(frameScale)
@@ -227,22 +209,31 @@ internal fun CuboidOverlay(
     modifier =
       modifier
         .fillMaxSize()
-        .pointerInput(Unit) {
-          awaitPointerEventScope {
-            while (true) {
-              val event = awaitPointerEvent()
-              val primary = event.changes.firstOrNull()
-              if (primary != null) {
-                val width = size.width.coerceAtLeast(1)
-                val height = size.height.coerceAtLeast(1)
-                state.updatePointer(
-                  normalizedX = primary.position.x / width.toFloat(),
-                  normalizedY = primary.position.y / height.toFloat(),
-                  pressed = event.changes.any { it.pressed },
-                )
+        .pointerInput(isSheetOpen) {
+          if (isSheetOpen) {
+            state.interaction.release()
+            return@pointerInput
+          }
+          try {
+            awaitPointerEventScope {
+              while (true) {
+                val event = awaitPointerEvent()
+                val primary = event.changes.firstOrNull { it.pressed } ?: event.changes.firstOrNull()
+                if (primary != null) {
+                  val pressed = event.changes.any { it.pressed }
+                  val hovering = primary.type != PointerType.Touch && event.type != PointerEventType.Exit
+                  state.interaction.update(
+                    normalizedX = primary.position.x / size.width.coerceAtLeast(1).toFloat(),
+                    normalizedY = primary.position.y / size.height.coerceAtLeast(1).toFloat(),
+                    active = pressed || hovering,
+                    pressed = pressed,
+                  )
+                }
+                event.changes.forEach { if (it.pressed || it.previousPressed) it.consume() }
               }
-              event.changes.forEach { it.consume() }
             }
+          } finally {
+            state.interaction.release()
           }
         },
   ) {
@@ -320,8 +311,8 @@ private fun DrawScope.drawCuboidTunnel(
           0f
         }
       val frequency =
-        ring.smoothedFrequencies[segmentIndex] * CUBOID_AUDIO_SMOOTHING +
-          frequencyTarget * (1f - CUBOID_AUDIO_SMOOTHING)
+        ring.smoothedFrequencies[segmentIndex] * state.audioRetention +
+          frequencyTarget * (1f - state.audioRetention)
       ring.smoothedFrequencies[segmentIndex] = frequency
       val frequencyAdd = frequency / 20f
       // Reference behavior: audio pulls the inner face inward by frequency / 20.

@@ -10,15 +10,12 @@
 package app.gyrolet.mpvrx.ui.player.visualizer
 
 import android.content.Context
-import android.graphics.Color
 import android.opengl.GLES30
-import android.opengl.GLSurfaceView
-import java.util.Random
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.exp
-import kotlin.math.log2
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 
 internal class ParticleFeedbackRenderer(
@@ -26,30 +23,28 @@ internal class ParticleFeedbackRenderer(
   private val sourceAudio: AudioFeatures,
   palette: VisualizerPalette,
   reducedMotion: Boolean,
-) : GLSurfaceView.Renderer {
+  private val interaction: VisualizerInteraction,
+) : VsyncRenderer {
   private val audioSmoother = AudioReactiveSmoother()
 
   @Volatile private var requestedPalette = palette
   @Volatile private var reducedMotionEnabled = reducedMotion
 
   private object Cfg {
-    // 384² still provides ~147k particles, but removes ~44% of the simulation/point work compared
-    // with 512². Trails carry most of the perceived density, so the visual difference is tiny on a
-    // phone while GPU bandwidth and the dummy vertex allocation fall substantially.
-    const val SIM_SIZE = 384
+    // 16,384 particles instead of 147,456: let individual points and short trails breathe.
+    const val SIM_SIZE = 128
     const val NUM_PARTICLES = SIM_SIZE * SIM_SIZE
     const val TRAIL_SCALE = 0.65f
-    const val MIPMAP_INTERVAL_FRAMES = 2L
-    const val DECAY = 0.880f
+    const val MAX_TRAIL_DIMENSION = 960f
+    const val DECAY = 0.90f // Retention per 1/60 second, not per display frame.
     const val DIFFUSE = 0.004f
-    const val BRIGHT = 0.008f
-    const val EXPOSURE = 0.45f
-    const val CHROMATIC_ABERRATION = 0.004f
-    const val GRAIN = 0.015f
-    const val VIGNETTE = 0.0f
+    const val BRIGHT = 0.18f
+    const val EXPOSURE = 1.15f
   }
 
-  private val random = Random()
+  private var appliedPalette: VisualizerPalette? = null
+  private var primaryRgb = palette.primaryRgb()
+  private var secondaryRgb = palette.secondaryRgb()
 
   private var subBassSmoothed = 0.08f
   private var bassSmoothed = 0.10f
@@ -61,9 +56,6 @@ internal class ParticleFeedbackRenderer(
   private var fluxSmoothed = 0.05f
   private var beatSmoothed = 0f
   private var lastBeatNanos = 0L
-  private var hueCurrent = 0.55f
-  private var hueTarget = 0.55f
-  private var flareSmoothed = 0.15f
 
   private var pInit = 0
   private var pSim = 0
@@ -71,8 +63,7 @@ internal class ParticleFeedbackRenderer(
   private var pDecay = 0
   private var pComp = 0
 
-  private var dummyVao = 0
-  private var dummyVbo = 0
+  private var pointVao = 0
 
   private val simTex = IntArray(2)
   private val simFbo = IntArray(2)
@@ -96,7 +87,9 @@ internal class ParticleFeedbackRenderer(
   private var uSimLowMid = -1
   private var uSimMid = -1
   private var uSimHighMid = -1
-  private var uSimHigh = -1
+  private var uSimTreble = -1
+  private var uSimPointer = -1
+  private var uSimMotion = -1
   private var uSimBeat = -1
   private var uSimEnergy = -1
   private var uSimFlux = -1
@@ -105,15 +98,15 @@ internal class ParticleFeedbackRenderer(
   private var uPtsSimSize = -1
   private var uPtsAspect = -1
   private var uPtsViewportHeight = -1
-  private var uPtsHue = -1
   private var uPtsEnergy = -1
   private var uPtsBeat = -1
   private var uPtsSubBass = -1
   private var uPtsBass = -1
-  private var uPtsMid = -1
-  private var uPtsHigh = -1
   private var uPtsFlux = -1
   private var uPtsBright = -1
+  private var uPtsTreble = -1
+  private var uPtsPrimaryColor = -1
+  private var uPtsSecondaryColor = -1
 
   private var uDecayTrail = -1
   private var uDecayTexel = -1
@@ -121,34 +114,25 @@ internal class ParticleFeedbackRenderer(
   private var uDecayDiff = -1
 
   private var uCompTrail = -1
-  private var uCompAspect = -1
-  private var uCompFlare = -1
-  private var uCompHue = -1
-  private var uCompFrame = -1
-  private var uCompGrain = -1
-  private var uCompCA = -1
   private var uCompExposure = -1
-  private var uCompVig = -1
-  private var uCompPrimaryColor = -1
-  private var uCompSecondaryColor = -1
 
   private var previousFrameNanos = 0L
   private var elapsedSeconds = 0f
-  private var frameCounter = 0L
 
   fun updatePalette(palette: VisualizerPalette) {
     requestedPalette = palette
-    updateDynamicPaletteHue()
   }
 
   fun setReducedMotion(reducedMotion: Boolean) {
     reducedMotionEnabled = reducedMotion
   }
 
-  private fun updateDynamicPaletteHue() {
-    val hsv = FloatArray(3)
-    Color.colorToHSV(requestedPalette.primary, hsv)
-    hueTarget = hsv[0] / 360f
+  private fun updatePaletteIfNeeded() {
+    val palette = requestedPalette
+    if (appliedPalette == palette) return
+    primaryRgb = palette.primaryRgb()
+    secondaryRgb = palette.secondaryRgb()
+    appliedPalette = palette
   }
 
   override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
@@ -177,43 +161,56 @@ internal class ParticleFeedbackRenderer(
       GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_comp_fragment.glsl"),
     )
 
+    // Texture names from a retired EGL context must never be deleted in the new context.
+    trailTex.fill(0)
+    trailFbo.fill(0)
     cacheUniforms()
-    createDummyVao()
+    createVao()
     createSimPingPong()
-    updateDynamicPaletteHue()
 
     // Initialize particles state
     GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, simFbo[0])
     GLES30.glViewport(0, 0, Cfg.SIM_SIZE, Cfg.SIM_SIZE)
     GLES30.glUseProgram(pInit)
-    GLES30.glBindVertexArray(dummyVao)
+    GLES30.glBindVertexArray(pointVao)
     GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3)
     GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
 
-    previousFrameNanos = System.nanoTime()
+    previousFrameNanos = 0L
+    simSrc = 0
     elapsedSeconds = 0f
-    frameCounter = 0L
   }
 
   override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
     viewportWidth = max(2, width)
     viewportHeight = max(2, height)
-    trailWidth = max(2, (viewportWidth * Cfg.TRAIL_SCALE).toInt())
-    trailHeight = max(2, (viewportHeight * Cfg.TRAIL_SCALE).toInt())
+    // Bound feedback bandwidth on large/high-density displays while preserving the aspect ratio.
+    val scale = min(Cfg.TRAIL_SCALE, Cfg.MAX_TRAIL_DIMENSION / max(viewportWidth, viewportHeight))
+    trailWidth = max(4, (viewportWidth * scale).toInt())
+    trailHeight = max(4, (viewportHeight * scale).toInt())
     allocTrailBuffers()
   }
 
-  override fun onDrawFrame(gl: GL10?) {
-    val nowNanos = System.nanoTime()
-    val dtSeconds = ((nowNanos - previousFrameNanos) / 1_000_000_000f).coerceIn(1f / 240f, 1f / 24f)
-    previousFrameNanos = nowNanos
+  override fun onFrame(frameTimeNanos: Long) {
+    val dtSeconds = if (previousFrameNanos == 0L || frameTimeNanos - previousFrameNanos > 250_000_000L) {
+      1f / 60f
+    } else {
+      ((frameTimeNanos - previousFrameNanos) / 1_000_000_000f).coerceIn(0f, 0.05f)
+    }
+    previousFrameNanos = frameTimeNanos
     elapsedSeconds += dtSeconds
-    frameCounter++
+    val frameScale = dtSeconds * 60f
+    val decay = Cfg.DECAY.pow(frameScale)
+    // Scale emission with the amount lost to decay, keeping steady brightness at any refresh rate.
+    val emission = (1f - decay) / (1f - Cfg.DECAY)
+    val diffusion = (1f - (1f - 4f * Cfg.DIFFUSE).pow(frameScale)) * 0.25f
 
+    updatePaletteIfNeeded()
     updateAudioAnalysis(dtSeconds, elapsedSeconds)
+    interaction.advance(dtSeconds)
     val aspect = viewportWidth.toFloat() / viewportHeight.toFloat()
 
-    GLES30.glBindVertexArray(dummyVao)
+    GLES30.glBindVertexArray(pointVao)
     GLES30.glDisable(GLES30.GL_BLEND)
 
     /* 1. Simulate */
@@ -226,12 +223,14 @@ internal class ParticleFeedbackRenderer(
     GLES30.glUniform1i(uSimState, 0)
     GLES30.glUniform1f(uSimTime, elapsedSeconds)
     GLES30.glUniform1f(uSimDt, dtSeconds)
+    GLES30.glUniform3f(uSimPointer, interaction.x * aspect, interaction.y, interaction.strength)
+    GLES30.glUniform1f(uSimMotion, if (reducedMotionEnabled) 0.2f else 1f)
     GLES30.glUniform1f(uSimSubBass, subBassSmoothed)
     GLES30.glUniform1f(uSimBass, bassSmoothed)
     GLES30.glUniform1f(uSimLowMid, lowMidSmoothed)
     GLES30.glUniform1f(uSimMid, midSmoothed)
     GLES30.glUniform1f(uSimHighMid, highMidSmoothed)
-    GLES30.glUniform1f(uSimHigh, highSmoothed)
+    GLES30.glUniform1f(uSimTreble, highSmoothed)
     GLES30.glUniform1f(uSimBeat, beatSmoothed)
     GLES30.glUniform1f(uSimEnergy, energySmoothed)
     GLES30.glUniform1f(uSimFlux, fluxSmoothed)
@@ -247,8 +246,8 @@ internal class ParticleFeedbackRenderer(
     GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, trailTex[trailSrc])
     GLES30.glUniform1i(uDecayTrail, 0)
     GLES30.glUniform2f(uDecayTexel, 1f / trailWidth, 1f / trailHeight)
-    GLES30.glUniform1f(uDecayFactor, Cfg.DECAY)
-    GLES30.glUniform1f(uDecayDiff, Cfg.DIFFUSE)
+    GLES30.glUniform1f(uDecayFactor, decay)
+    GLES30.glUniform1f(uDecayDiff, diffusion)
     GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3)
 
     /* 3. Additive Points into Trail FBO */
@@ -261,31 +260,27 @@ internal class ParticleFeedbackRenderer(
     GLES30.glUniform1i(uPtsSimSize, Cfg.SIM_SIZE)
     GLES30.glUniform1f(uPtsAspect, aspect)
     GLES30.glUniform1f(uPtsViewportHeight, trailHeight.toFloat())
-    GLES30.glUniform1f(uPtsHue, hueCurrent)
     GLES30.glUniform1f(uPtsEnergy, energySmoothed)
     GLES30.glUniform1f(uPtsBeat, beatSmoothed)
     GLES30.glUniform1f(uPtsSubBass, subBassSmoothed)
     GLES30.glUniform1f(uPtsBass, bassSmoothed)
-    GLES30.glUniform1f(uPtsMid, midSmoothed)
-    GLES30.glUniform1f(uPtsHigh, highSmoothed)
     GLES30.glUniform1f(uPtsFlux, fluxSmoothed)
-    GLES30.glUniform1f(uPtsBright, Cfg.BRIGHT)
+    GLES30.glUniform1f(uPtsBright, Cfg.BRIGHT * emission)
+    GLES30.glUniform1f(uPtsTreble, highSmoothed)
+    GLES30.glUniform3f(uPtsPrimaryColor, primaryRgb[0], primaryRgb[1], primaryRgb[2])
+    GLES30.glUniform3f(uPtsSecondaryColor, secondaryRgb[0], secondaryRgb[1], secondaryRgb[2])
     GLES30.glDrawArrays(GLES30.GL_POINTS, 0, Cfg.NUM_PARTICLES)
     GLES30.glDisable(GLES30.GL_BLEND)
     trailSrc = nextTrail
 
-    /* 4. Generate bloom mip levels every other frame. The base trail is still updated every frame. */
+    // Refresh both alternating buffers. Updating every other frame only ever refreshed one of
+    // them, making bloom alternate between fresh and stale/empty data. Only three levels exist.
     GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
     GLES30.glActiveTexture(GLES30.GL_TEXTURE0)
     GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, trailTex[trailSrc])
-    if (frameCounter % Cfg.MIPMAP_INTERVAL_FRAMES == 0L) {
-      GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D)
-    }
+    GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D)
 
-    /* 5. Composite Pass to Screen with Dynamic Colors & Theme Adaptation */
-    val primaryRgb = requestedPalette.primaryRgb()
-    val secondaryRgb = requestedPalette.secondaryRgb()
-
+    /* Composite the palette-colored trail with bounded opacity. */
     GLES30.glViewport(0, 0, viewportWidth, viewportHeight)
     GLES30.glClearColor(0f, 0f, 0f, 0f)
     GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
@@ -300,16 +295,7 @@ internal class ParticleFeedbackRenderer(
 
     GLES30.glUseProgram(pComp)
     GLES30.glUniform1i(uCompTrail, 0)
-    GLES30.glUniform1f(uCompAspect, aspect)
-    GLES30.glUniform1f(uCompFlare, flareSmoothed)
-    GLES30.glUniform1f(uCompHue, hueCurrent)
-    GLES30.glUniform1f(uCompFrame, (frameCounter % 1024).toFloat())
-    GLES30.glUniform1f(uCompGrain, Cfg.GRAIN)
-    GLES30.glUniform1f(uCompCA, Cfg.CHROMATIC_ABERRATION)
     GLES30.glUniform1f(uCompExposure, Cfg.EXPOSURE)
-    GLES30.glUniform1f(uCompVig, Cfg.VIGNETTE)
-    GLES30.glUniform3f(uCompPrimaryColor, primaryRgb[0], primaryRgb[1], primaryRgb[2])
-    GLES30.glUniform3f(uCompSecondaryColor, secondaryRgb[0], secondaryRgb[1], secondaryRgb[2])
     GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3)
 
     GLES30.glDisable(GLES30.GL_BLEND)
@@ -372,11 +358,6 @@ internal class ParticleFeedbackRenderer(
     }
 
     beatSmoothed *= exp(-dt * 5.5f)
-    var dh = hueTarget - hueCurrent
-    if (dh > 0.5f) dh -= 1f
-    if (dh < -0.5f) dh += 1f
-    hueCurrent = (hueCurrent + dh * (1f - exp(-dt * 1.2f)) + 1f) % 1f
-    flareSmoothed = 0.15f + 1.1f * bassSmoothed.pow(1.4f) + 0.7f * beatSmoothed
   }
 
   private fun smoothVal(cur: Float, target: Float, dt: Float, upRate: Float, dnRate: Float): Float {
@@ -384,22 +365,11 @@ internal class ParticleFeedbackRenderer(
     return cur + (target - cur) * (1f - exp(-dt * rate))
   }
 
-  private fun createDummyVao() {
+  private fun createVao() {
     val vaos = IntArray(1)
-    val vbos = IntArray(1)
     GLES30.glGenVertexArrays(1, vaos, 0)
-    GLES30.glGenBuffers(1, vbos, 0)
-    dummyVao = vaos[0]
-    dummyVbo = vbos[0]
-
-    GLES30.glBindVertexArray(dummyVao)
-    GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, dummyVbo)
-    // Attribute 0 consumes one float per point. The previous 4-float allocation was never read.
-    val dummyData = FloatArray(Cfg.NUM_PARTICLES)
-    GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, dummyData.size * Float.SIZE_BYTES, GlUtils.floatBuffer(dummyData), GLES30.GL_STATIC_DRAW)
-    GLES30.glEnableVertexAttribArray(0)
-    GLES30.glVertexAttribPointer(0, 1, GLES30.GL_FLOAT, false, 0, 0)
-    GLES30.glBindVertexArray(0)
+    pointVao = vaos[0]
+    // Both shaders use gl_VertexID; no per-particle dummy vertex buffer is needed.
   }
 
   private fun createSimPingPong() {
@@ -429,13 +399,14 @@ internal class ParticleFeedbackRenderer(
     }
     GLES30.glGenTextures(2, trailTex, 0)
     GLES30.glGenFramebuffers(2, trailFbo, 0)
-    // Bloom/feedback is intentionally rendered below display resolution and upscaled in the final
-    // composite. At 0.65x this cuts trail FBO pixels by ~58% while the soft feedback hides scaling.
-    val levels = max(1, log2(max(trailWidth, trailHeight).toDouble()).toInt() + 1)
+    // The composite samples only levels 0 and 2, so do not allocate a full mip chain.
+    val levels = 3
+    trailSrc = 0
     for (i in 0 until 2) {
       GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, trailTex[i])
       GLES30.glTexStorage2D(GLES30.GL_TEXTURE_2D, levels, GLES30.GL_RGBA16F, trailWidth, trailHeight)
       GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR_MIPMAP_LINEAR)
+      GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAX_LEVEL, levels - 1)
       GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR)
       GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE)
       GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
@@ -461,7 +432,9 @@ internal class ParticleFeedbackRenderer(
     uSimLowMid = GLES30.glGetUniformLocation(pSim, "uLowMid")
     uSimMid = GLES30.glGetUniformLocation(pSim, "uMid")
     uSimHighMid = GLES30.glGetUniformLocation(pSim, "uHighMid")
-    uSimHigh = GLES30.glGetUniformLocation(pSim, "uHigh")
+    uSimTreble = GLES30.glGetUniformLocation(pSim, "uTreble")
+    uSimPointer = GLES30.glGetUniformLocation(pSim, "uPointer")
+    uSimMotion = GLES30.glGetUniformLocation(pSim, "uMotion")
     uSimBeat = GLES30.glGetUniformLocation(pSim, "uBeat")
     uSimEnergy = GLES30.glGetUniformLocation(pSim, "uEnergy")
     uSimFlux = GLES30.glGetUniformLocation(pSim, "uFlux")
@@ -470,15 +443,15 @@ internal class ParticleFeedbackRenderer(
     uPtsSimSize = GLES30.glGetUniformLocation(pPts, "uSimSize")
     uPtsAspect = GLES30.glGetUniformLocation(pPts, "uAspect")
     uPtsViewportHeight = GLES30.glGetUniformLocation(pPts, "uViewportHeight")
-    uPtsHue = GLES30.glGetUniformLocation(pPts, "uHue")
     uPtsEnergy = GLES30.glGetUniformLocation(pPts, "uEnergy")
     uPtsBeat = GLES30.glGetUniformLocation(pPts, "uBeat")
     uPtsSubBass = GLES30.glGetUniformLocation(pPts, "uSubBass")
     uPtsBass = GLES30.glGetUniformLocation(pPts, "uBass")
-    uPtsMid = GLES30.glGetUniformLocation(pPts, "uMid")
-    uPtsHigh = GLES30.glGetUniformLocation(pPts, "uHigh")
     uPtsFlux = GLES30.glGetUniformLocation(pPts, "uFlux")
     uPtsBright = GLES30.glGetUniformLocation(pPts, "uBright")
+    uPtsTreble = GLES30.glGetUniformLocation(pPts, "uTreble")
+    uPtsPrimaryColor = GLES30.glGetUniformLocation(pPts, "uPrimaryColor")
+    uPtsSecondaryColor = GLES30.glGetUniformLocation(pPts, "uSecondaryColor")
 
     uDecayTrail = GLES30.glGetUniformLocation(pDecay, "uTrail")
     uDecayTexel = GLES30.glGetUniformLocation(pDecay, "uTexel")
@@ -486,15 +459,6 @@ internal class ParticleFeedbackRenderer(
     uDecayDiff = GLES30.glGetUniformLocation(pDecay, "uDiff")
 
     uCompTrail = GLES30.glGetUniformLocation(pComp, "uTrail")
-    uCompAspect = GLES30.glGetUniformLocation(pComp, "uAspect")
-    uCompFlare = GLES30.glGetUniformLocation(pComp, "uFlare")
-    uCompHue = GLES30.glGetUniformLocation(pComp, "uHue")
-    uCompFrame = GLES30.glGetUniformLocation(pComp, "uFrame")
-    uCompGrain = GLES30.glGetUniformLocation(pComp, "uGrain")
-    uCompCA = GLES30.glGetUniformLocation(pComp, "uCA")
     uCompExposure = GLES30.glGetUniformLocation(pComp, "uExposure")
-    uCompVig = GLES30.glGetUniformLocation(pComp, "uVig")
-    uCompPrimaryColor = GLES30.glGetUniformLocation(pComp, "uPrimaryColor")
-    uCompSecondaryColor = GLES30.glGetUniformLocation(pComp, "uSecondaryColor")
   }
 }

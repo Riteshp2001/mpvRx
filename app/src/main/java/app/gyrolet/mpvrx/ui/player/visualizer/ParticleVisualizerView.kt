@@ -10,24 +10,23 @@
 package app.gyrolet.mpvrx.ui.player.visualizer
 
 import android.content.Context
-import android.view.MotionEvent
 
 internal class ParticleVisualizerView(
   context: Context,
   features: AudioFeatures,
   palette: VisualizerPalette,
   reducedMotion: Boolean = false,
-) : VisualizerTextureView(context), PaletteConsumer {
+) : InteractiveVisualizerView(context), PaletteConsumer {
   private val renderer = ParticleFeedbackRenderer(
     context.applicationContext,
     features,
     palette,
     reducedMotion,
+    interaction,
   )
 
   init {
     setRenderer(renderer)
-    isClickable = true
   }
 
   override fun updatePalette(value: VisualizerPalette) {
@@ -36,29 +35,5 @@ internal class ParticleVisualizerView(
 
   fun setReducedMotion(reducedMotion: Boolean) {
     renderer.setReducedMotion(reducedMotion)
-  }
-
-  override fun onTouchEvent(event: MotionEvent): Boolean {
-    when (event.actionMasked) {
-      MotionEvent.ACTION_DOWN -> {
-        parent?.requestDisallowInterceptTouchEvent(true)
-        return true
-      }
-      MotionEvent.ACTION_UP -> {
-        parent?.requestDisallowInterceptTouchEvent(false)
-        performClick()
-        return true
-      }
-      MotionEvent.ACTION_CANCEL -> {
-        parent?.requestDisallowInterceptTouchEvent(false)
-        return true
-      }
-    }
-    return super.onTouchEvent(event)
-  }
-
-  override fun performClick(): Boolean {
-    super.performClick()
-    return true
   }
 }

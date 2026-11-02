@@ -39,7 +39,7 @@ internal class AudioReactiveSmoother {
     target: AudioFeatureFrame,
     deltaSeconds: Float,
   ): AudioFeatureFrame {
-    val dt = deltaSeconds.coerceIn(1f / 240f, 1f / 20f)
+    val dt = deltaSeconds.coerceIn(0f, 1f / 20f)
     current =
       AudioFeatureFrame(
         energy = approach(current.energy, target.energy, dt, 0.050f, 0.22f),
