@@ -256,6 +256,10 @@ private fun PlaylistThumbnail(
 private const val PLAYLIST_THUMBNAIL_WIDTH = 512
 private const val PLAYLIST_THUMBNAIL_HEIGHT = 288
 
+// Inset plus thumbnail radius equals the connected outer corner, so the end items round concentrically.
+private val PlaylistItemInset = 12.dp
+private val PlaylistThumbnailCorner = AppConnectedShapeTokens.outerCorner - PlaylistItemInset
+
 @Composable
 fun PlaylistSheet(
   playlist: ImmutableList<PlaylistItem>,
@@ -641,7 +645,7 @@ fun PlaylistTrackListItem(
       modifier =
         Modifier
           .fillMaxWidth()
-          .padding(MaterialTheme.spacing.smaller),
+          .padding(PlaylistItemInset),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
@@ -655,7 +659,7 @@ fun PlaylistTrackListItem(
               } else {
                 Modifier.width(100.dp).height(56.dp)
               },
-            ).clip(RoundedCornerShape(8.dp))
+            ).clip(RoundedCornerShape(PlaylistThumbnailCorner))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
       ) {
@@ -840,7 +844,7 @@ fun PlaylistTrackGridItem(
     shape = shape,
   ) {
     Column(
-      modifier = Modifier.padding(MaterialTheme.spacing.smaller),
+      modifier = Modifier.padding(PlaylistItemInset),
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
     ) {
       // Thumbnail with 1:1 aspect ratio for audio, fixed height for video
@@ -854,7 +858,7 @@ fun PlaylistTrackGridItem(
               } else {
                 Modifier.height(112.dp)
               },
-            ).clip(RoundedCornerShape(8.dp))
+            ).clip(RoundedCornerShape(PlaylistThumbnailCorner))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh),
         contentAlignment = Alignment.Center,
       ) {
