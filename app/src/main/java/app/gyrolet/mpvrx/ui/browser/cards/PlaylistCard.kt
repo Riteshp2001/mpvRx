@@ -367,10 +367,15 @@ private suspend fun resolvePlaylistItemArtwork(
   thumbnailWidthPx: Int,
   thumbnailHeightPx: Int,
 ): Bitmap? {
-  if (app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia.isPlaybackUri(item.filePath)) return null
   return withContext(Dispatchers.IO) {
     try {
-      val path = item.filePath.substringBefore('|')
+      // A ZIP entry URI separates the archive and the entry with '|', so it stays whole.
+      val path =
+        if (app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia.isPlaybackUri(item.filePath)) {
+          item.filePath
+        } else {
+          item.filePath.substringBefore('|')
+        }
       val uri =
         Uri.parse(path).let {
           if (it.scheme.isNullOrBlank()) Uri.fromFile(File(path)) else it

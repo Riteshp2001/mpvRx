@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -221,8 +222,12 @@ fun FolderCard(
           return@withContext
         }
         val videos =
-          app.gyrolet.mpvrx.repository.MediaFileRepository
-            .getVideosInFolder(context, folder.bucketId)
+          if (ZipArchiveMedia.isBrowserPath(folder.bucketId)) {
+            ZipArchiveMedia.allMedia(context, folder.bucketId, includeAudio).getOrDefault(emptyList())
+          } else {
+            app.gyrolet.mpvrx.repository.MediaFileRepository
+              .getVideosInFolder(context, folder.bucketId)
+          }
         if (videos.isNotEmpty()) {
           // On narrow cells keep one full cover instead of an unreadable 4-tile preview.
           val preview = videos.take(if (showPreviewCollage) 4 else 1)

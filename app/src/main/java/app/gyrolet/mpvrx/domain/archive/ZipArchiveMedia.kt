@@ -26,8 +26,10 @@ import app.gyrolet.mpvrx.domain.browser.FileSystemItem
 import app.gyrolet.mpvrx.domain.browser.PathComponent
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import java.io.Closeable
 import java.io.EOFException
 import java.io.File
+import java.io.FileDescriptor
 import java.io.FileNotFoundException
 import java.io.IOException
 import java.io.RandomAccessFile
@@ -56,12 +58,17 @@ object ZipArchiveMedia {
   private const val ZIP64_EOCD_LENGTH = 56
   private const val CENTRAL_HEADER_SIGNATURE = 0x02014b50
   private const val CENTRAL_HEADER_LENGTH = 46
+  private const val LOCAL_HEADER_SIGNATURE = 0x04034b50
+  private const val LOCAL_HEADER_LENGTH = 30
 
   private class ArchiveEntry(
     val name: String,
     val isDirectory: Boolean,
     val size: Long,
     val time: Long,
+    // Uncompressed and unencrypted, so its bytes can be read in place.
+    val stored: Boolean,
+    val localHeaderOffset: Long,
   )
 
   data class Location(
@@ -172,8 +179,9 @@ object ZipArchiveMedia {
 
     var entryCount = tail.u16(eocd + 10).toLong()
     var directorySize = tail.u32(eocd + 12)
+    var directoryOffset = tail.u32(eocd + 16)
     var directoryEnd = tailStart + eocd
-    if (entryCount == 0xFFFFL || directorySize == 0xFFFFFFFFL || tail.u32(eocd + 16) == 0xFFFFFFFFL) {
+    if (entryCount == 0xFFFFL || directorySize == 0xFFFFFFFFL || directoryOffset == 0xFFFFFFFFL) {
       val locatorPosition = directoryEnd - ZIP64_LOCATOR_LENGTH
       if (locatorPosition >= 0L) {
         val locator = readFully(channel, locatorPosition, ZIP64_LOCATOR_LENGTH)
@@ -184,6 +192,7 @@ object ZipArchiveMedia {
           if (zip64.getInt(0) != ZIP64_EOCD_SIGNATURE) throw ZipException("Invalid ZIP64 directory")
           entryCount = zip64.getLong(32)
           directorySize = zip64.getLong(40)
+          directoryOffset = zip64.getLong(48)
           directoryEnd = zip64Position
         }
       }
@@ -195,6 +204,8 @@ object ZipArchiveMedia {
 
     // The directory immediately precedes its end record; this also tolerates prefixed archives.
     val directory = readFully(channel, directoryEnd - directorySize, directorySize.toInt())
+    // A prefixed archive records offsets from the start of the original ZIP.
+    val offsetShift = directoryEnd - directorySize - directoryOffset
     val bytes = directory.array()
     val entries = ArrayList<ArchiveEntry>(entryCount.toInt())
     var position = 0
@@ -211,24 +222,40 @@ object ZipArchiveMedia {
 
       val name = String(bytes, nameStart, nameLength, Charsets.UTF_8)
       var size = directory.u32(position + 24)
-      if (size == 0xFFFFFFFFL) {
+      var compressedSize = directory.u32(position + 20)
+      var localHeaderOffset = directory.u32(position + 42)
+      if (size == 0xFFFFFFFFL || compressedSize == 0xFFFFFFFFL || localHeaderOffset == 0xFFFFFFFFL) {
         var extra = nameStart + nameLength
         val extraEnd = extra + extraLength
         while (extra + 4 <= extraEnd) {
           val id = directory.u16(extra)
           val length = directory.u16(extra + 2)
-          if (id == 0x0001 && length >= 8 && extra + 12 <= extraEnd) {
-            size = directory.getLong(extra + 4)
+          if (id == 0x0001) {
+            // ZIP64 lists only the overflowed fields, in this order.
+            var field = extra + 4
+            val fieldEnd = minOf(field + length, extraEnd)
+            if (size == 0xFFFFFFFFL && field + 8 <= fieldEnd) {
+              size = directory.getLong(field)
+              field += 8
+            }
+            if (compressedSize == 0xFFFFFFFFL && field + 8 <= fieldEnd) {
+              compressedSize = directory.getLong(field)
+              field += 8
+            }
+            if (localHeaderOffset == 0xFFFFFFFFL && field + 8 <= fieldEnd) localHeaderOffset = directory.getLong(field)
             break
           }
           extra += 4 + length
         }
       }
+      val encrypted = (directory.u16(position + 8) and 1) != 0
       entries += ArchiveEntry(
         name = name,
         isDirectory = name.endsWith('/') || name.endsWith('\\'),
         size = size,
         time = dosToJavaTime(directory.u16(position + 14), directory.u16(position + 12)),
+        stored = directory.u16(position + 10) == 0 && !encrypted && compressedSize == size,
+        localHeaderOffset = localHeaderOffset + offsetShift,
       )
       position = next
     }
@@ -263,6 +290,56 @@ object ZipArchiveMedia {
       descriptor.close()
       throw error
     }
+  }
+
+  /** A stored entry's byte range inside its archive; close it once the reader is done. */
+  class StoredEntry(
+    private val descriptor: ParcelFileDescriptor,
+    val offset: Long,
+    val length: Long,
+  ) : Closeable {
+    val fileDescriptor: FileDescriptor get() = descriptor.fileDescriptor
+
+    override fun close() = descriptor.close()
+  }
+
+  /**
+   * Opens the entry behind playback URI [value] for reading in place. Returns null unless the entry
+   * is stored uncompressed: compressed entries are never inflated or extracted.
+   */
+  fun openStoredEntry(context: Context, value: String): StoredEntry? {
+    val location = parsePlaybackLocation(value) ?: return null
+    val descriptor =
+      if (location.archivePath.startsWith("content://")) {
+        openDescriptor(context, Uri.parse(location.archivePath))
+      } else {
+        ParcelFileDescriptor.open(File(location.archivePath), ParcelFileDescriptor.MODE_READ_ONLY)
+      }
+    val range =
+      try {
+        // Only the duplicate closes with this stream; the decoder reads through the original.
+        ParcelFileDescriptor.AutoCloseInputStream(descriptor.dup()).use { storedRange(it.channel, location.entryPath) }
+      } catch (error: Exception) {
+        descriptor.close()
+        throw error
+      }
+    if (range == null) {
+      descriptor.close()
+      return null
+    }
+    return StoredEntry(descriptor, range.first, range.second)
+  }
+
+  /** Start and length of [entryPath]'s bytes, or null unless the entry is stored uncompressed. */
+  private fun storedRange(channel: FileChannel, entryPath: String): Pair<Long, Long>? {
+    val entry =
+      readCentralDirectory(channel).firstOrNull { !it.isDirectory && normalizedEntryName(it) == entryPath }
+        ?: return null
+    if (!entry.stored || entry.size <= 0L || entry.localHeaderOffset < 0L) return null
+    val header = readFully(channel, entry.localHeaderOffset, LOCAL_HEADER_LENGTH)
+    if (header.getInt(0) != LOCAL_HEADER_SIGNATURE) return null
+    val start = entry.localHeaderOffset + LOCAL_HEADER_LENGTH + header.u16(26) + header.u16(28)
+    return (start to entry.size).takeIf { start + entry.size <= channel.size() }
   }
 
   fun sourceOf(value: String): String? = parsePlaybackLocation(value)?.archivePath

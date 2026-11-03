@@ -1708,8 +1708,7 @@ private fun FileSystemBrowserContent(
                       overrideShowSizeChip = null,
                       overrideShowResolutionChip = null,
                       useFolderNameStyle = false,
-                      allowThumbnailGeneration = !archiveEntry && isOpenedFolder,
-                      allowThumbnailLoading = !archiveEntry,
+                      allowThumbnailGeneration = isOpenedFolder,
                       uiConfig = videoCardUiConfig,
                   )
                 }
@@ -1839,8 +1838,7 @@ private fun FileSystemBrowserContent(
                     overrideShowSizeChip = null,
                     overrideShowResolutionChip = null,
                     useFolderNameStyle = false,
-                    allowThumbnailGeneration = !archiveEntry && isOpenedFolder,
-                    allowThumbnailLoading = !archiveEntry,
+                    allowThumbnailGeneration = isOpenedFolder,
                     uiConfig = videoCardUiConfig,
                     thumbnailWidthPx = if (videoFile.video.isAudio) audioCoverArtSizePx else null,
                     thumbnailHeightPx = if (videoFile.video.isAudio) audioCoverArtSizePx else null,
@@ -2137,7 +2135,6 @@ private fun FileSystemSearchContent(
                   contentType = { "video_item" },
                   span = { GridItemSpan(spansInfo.videoSpan) },
                 ) { videoFile ->
-                  val archiveEntry = ZipArchiveMedia.isPlaybackUri(videoFile.video.uri.toString())
                   VideoCard(
                     video = videoFile.video,
                     progressPercentage =
@@ -2155,8 +2152,6 @@ private fun FileSystemSearchContent(
                     overrideShowSizeChip = null,
                     overrideShowResolutionChip = null,
                     useFolderNameStyle = false,
-                    allowThumbnailGeneration = !archiveEntry,
-                    allowThumbnailLoading = !archiveEntry,
                     uiConfig = videoCardUiConfig,
                   )
                 }
@@ -2247,8 +2242,6 @@ private fun FileSystemSearchContent(
                   overrideShowSizeChip = null,
                   overrideShowResolutionChip = null,
                   useFolderNameStyle = false,
-                  allowThumbnailGeneration = !archiveEntry,
-                  allowThumbnailLoading = !archiveEntry,
                   uiConfig = videoCardUiConfig,
                   thumbnailWidthPx = if (videoFile.video.isAudio) audioCoverArtSizePx else null,
                   thumbnailHeightPx = if (videoFile.video.isAudio) audioCoverArtSizePx else null,

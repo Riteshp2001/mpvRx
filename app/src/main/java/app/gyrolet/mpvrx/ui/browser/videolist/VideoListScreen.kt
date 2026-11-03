@@ -1057,7 +1057,7 @@ internal fun VideoListContent(
         ) {
           val generationId = "$folderId:${mediaLayoutMode.name}"
           try {
-            if (showVideoThumbnails && !archiveFolder && latestVideosWithInfo.isNotEmpty()) {
+            if (showVideoThumbnails && latestVideosWithInfo.isNotEmpty()) {
               snapshotFlow {
                 if (mediaLayoutMode == MediaLayoutMode.LIST) listState.isScrollInProgress
                 else gridState.isScrollInProgress
@@ -1169,8 +1169,6 @@ internal fun VideoListContent(
                       thumbnailWidthPx = thumbWidthPx,
                       thumbnailHeightPx = thumbHeightPx,
                       showSubtitleIndicator = showSubtitleIndicator,
-                      allowThumbnailGeneration = !archiveFolder,
-                      allowThumbnailLoading = !archiveFolder,
                       uiConfig = videoCardUiConfig,
                   )
                 }
@@ -1239,8 +1237,6 @@ internal fun VideoListContent(
                       isGridMode = false,
                       onSwipeAction = swipeActions.video.takeUnless { archiveFolder || selectionManager.isInSelectionMode },
                       showSubtitleIndicator = showSubtitleIndicator,
-                      allowThumbnailGeneration = !archiveFolder,
-                      allowThumbnailLoading = !archiveFolder,
                       uiConfig = videoCardUiConfig,
                       thumbnailWidthPx = if (isAudio || videoWithInfo.video.isAudio) with(density) { musicCoverArtSize.dp.roundToPx() } else null,
                       thumbnailHeightPx = if (isAudio || videoWithInfo.video.isAudio) with(density) { musicCoverArtSize.dp.roundToPx() } else null,

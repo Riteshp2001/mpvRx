@@ -1906,7 +1906,6 @@ private fun SearchResultsContent(
             span = { GridItemSpan(spansInfo.videoSpan) },
           ) { index ->
             val video = videos[index]
-            val archiveEntry = ZipArchiveMedia.isPlaybackUri(video.uri.toString())
             VideoCard(
               video = video,
               isWatched = swipePlaybackInfo[video.path]?.isWatched == true,
@@ -1917,8 +1916,6 @@ private fun SearchResultsContent(
               onThumbClick = { onVideoClick(video) },
               isGridMode = true,
               showSubtitleIndicator = showSubtitleIndicator,
-              allowThumbnailGeneration = !archiveEntry,
-              allowThumbnailLoading = !archiveEntry,
               uiConfig = videoCardUiConfig,
             )
           }
@@ -1976,8 +1973,6 @@ private fun SearchResultsContent(
             isWatched = swipePlaybackInfo[video.path]?.isWatched == true,
             isOldAndUnplayed = swipePlaybackInfo[video.path]?.isOldAndUnplayed == true,
             showSubtitleIndicator = showSubtitleIndicator,
-            allowThumbnailGeneration = !archiveEntry,
-            allowThumbnailLoading = !archiveEntry,
             uiConfig = videoCardUiConfig,
             thumbnailWidthPx = if (video.isAudio) audioCoverArtSizePx else null,
             thumbnailHeightPx = if (video.isAudio) audioCoverArtSizePx else null,
