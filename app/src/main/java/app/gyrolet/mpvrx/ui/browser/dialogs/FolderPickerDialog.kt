@@ -65,7 +65,6 @@ fun FolderPickerDialog(
   currentPath: String = Environment.getExternalStorageDirectory().absolutePath,
   onDismiss: () -> Unit,
   onFolderSelected: (String) -> Unit,
-  allowCurrentFolderSelection: Boolean = false,
 ) {
   if (!isOpen) return
 
@@ -221,7 +220,7 @@ fun FolderPickerDialog(
       }
       Button(
         onClick = { selectedPath?.let { onFolderSelected(it) } },
-        enabled = selectedPath != null && (allowCurrentFolderSelection || !isSameAsSource),
+        enabled = selectedPath != null && !isSameAsSource,
         colors =
           ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,

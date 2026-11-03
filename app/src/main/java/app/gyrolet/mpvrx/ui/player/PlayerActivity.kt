@@ -140,7 +140,6 @@ import app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
 import app.gyrolet.mpvrx.utils.media.SubtitleOps
 import app.gyrolet.mpvrx.utils.media.listTreeFilesSafely
 import app.gyrolet.mpvrx.utils.media.openPersistedTreeDocument
-import app.gyrolet.mpvrx.utils.media.resolveSubtitleFontDirectory
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
@@ -3477,7 +3476,7 @@ class PlayerActivity :
     val fontsFolderUri = subtitlesPreferences.fontsFolder.get()
     if (fontsFolderUri.isBlank()) return null
 
-    val sourceDir = resolveSubtitleFontDirectory(this, fontsFolderUri) ?: return null
+    val sourceDir = openPersistedTreeDocument(this, fontsFolderUri) ?: return null
 
     // Older builds auto-pointed the subtitle font folder at the whole storage/config root.
     // Use its fonts/ child instead so playback never recursively scans a large media folder.

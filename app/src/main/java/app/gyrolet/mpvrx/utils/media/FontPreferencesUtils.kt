@@ -14,44 +14,36 @@ import android.content.Context
 import android.graphics.Typeface
 import android.net.Uri
 import android.util.Log
-import androidx.documentfile.provider.DocumentFile
+import com.github.k1rakishou.fsaf.FileManager
 import com.yubyf.truetypeparser.TTFFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
 
-/** Opens a font source selected through SAF or the in-app folder browser. */
-fun resolveSubtitleFontDirectory(context: Context, uriString: String): DocumentFile? {
-  if (uriString.isBlank()) return null
-  val uri = Uri.parse(uriString)
-  return if (uri.scheme == "file") {
-    uri.path?.let(::File)
-      ?.takeIf { it.isDirectory && it.canRead() }
-      ?.let(DocumentFile::fromFile)
-  } else {
-    openPersistedTreeDocument(context, uriString)
-  }
-}
-
 /** Copies font files from the selected directory to the app's internal storage. */
 @SuppressLint("UseKtx")
 fun copyFontsFromDirectory(
   context: Context,
+  fileManager: FileManager,
   uriString: String,
 ): Int {
   return runCatching {
     val destinationPath = context.filesDir.path + "/fonts"
-    File(destinationPath).mkdirs()
+    val destinationDir = fileManager.fromPath(destinationPath)
     var copiedCount = 0
 
-    val sourceDir = resolveSubtitleFontDirectory(context, uriString)
-    if (sourceDir != null) {
-      listTreeFilesSafely(sourceDir).forEach { file ->
-        if (file.isFile) {
-          val fileName = file.name ?: return@forEach
+    if (!fileManager.exists(destinationDir)) {
+      File(destinationPath).mkdirs()
+    }
+
+    val sourceDir = fileManager.fromUri(Uri.parse(uriString))
+    if (sourceDir != null && fileManager.exists(sourceDir)) {
+      fileManager.listFiles(sourceDir).forEach { file ->
+        if (fileManager.isFile(file)) {
+          val fileName = fileManager.getName(file)
           if (fileName.lowercase(Locale.ROOT).matches(".*\\.(ttf|otf|ttc)$".toRegex())) {
-            val inputStream = context.contentResolver.openInputStream(file.uri) ?: return@forEach
+            val inputStream = fileManager.getInputStream(file) ?: return@forEach
             val outputFile = File(destinationPath, fileName)
             outputFile.outputStream().use { outputStream ->
               inputStream.use { it.copyTo(outputStream) }
