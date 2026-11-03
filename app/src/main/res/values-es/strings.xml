@@ -1045,6 +1045,9 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="player_horizontal_flip_off">Volteo horizontal desactivado</string>
   <string name="player_vertical_flip_on">Volteo vertical activado</string>
   <string name="player_vertical_flip_off">Volteo vertical desactivado</string>
+  <string name="player_hwplus_unsupported">%1$s no es compatible con el modo HW+. Cambia a decodificación HW o SW para usarlo.</string>
+  <string name="player_hwplus_use_hw">Usar HW</string>
+  <string name="player_hwplus_cpu_deband">Eliminación de bandas por CPU</string>
   <string name="btn_label_back">Flecha atrás</string>
   <string name="btn_label_title">Título del video</string>
   <string name="btn_label_bookmarks">Capítulos / Marcadores</string>

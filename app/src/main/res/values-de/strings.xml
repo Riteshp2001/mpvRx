@@ -1045,6 +1045,9 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="player_horizontal_flip_off">Horizontal spiegeln aus</string>
   <string name="player_vertical_flip_on">Vertikal spiegeln ein</string>
   <string name="player_vertical_flip_off">Vertikal spiegeln aus</string>
+  <string name="player_hwplus_unsupported">%1$s wird im HW+-Modus nicht unterstützt. Wechsle zur HW- oder SW-Decodierung, um diese Funktion zu nutzen.</string>
+  <string name="player_hwplus_use_hw">HW nutzen</string>
+  <string name="player_hwplus_cpu_deband">CPU-Debanding</string>
   <string name="btn_label_back">Zurück-Pfeil</string>
   <string name="btn_label_title">Videotitel</string>
   <string name="btn_label_bookmarks">Kapitel / Lesezeichen</string>

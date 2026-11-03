@@ -1291,6 +1291,9 @@
   <string name="player_horizontal_flip_off">Horizontal flip off</string>
   <string name="player_vertical_flip_on">Vertical flip on</string>
   <string name="player_vertical_flip_off">Vertical flip off</string>
+  <string name="player_hwplus_unsupported">%1$s isn\'t supported in HW+ mode. Switch to HW or SW decoding to use it.</string>
+  <string name="player_hwplus_use_hw">Use HW</string>
+  <string name="player_hwplus_cpu_deband">CPU Debanding</string>
   <string name="btn_label_back">Back Arrow</string>
   <string name="btn_label_title">Video Title</string>
   <string name="btn_label_bookmarks">Chapters / Bookmarks</string>

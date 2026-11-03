@@ -1115,6 +1115,9 @@
   <string name="player_horizontal_flip_off">Горизонтальне віддзеркалення: ВИМК</string>
   <string name="player_vertical_flip_on">Вертикальне віддзеркалення: УВІМК</string>
   <string name="player_vertical_flip_off">Вертикальне віддзеркалення: ВИМК</string>
+  <string name="player_hwplus_unsupported">%1$s не підтримується в режимі HW+. Перейдіть на декодування HW або SW, щоб скористатися цією функцією.</string>
+  <string name="player_hwplus_use_hw">Увімкнути HW</string>
+  <string name="player_hwplus_cpu_deband">Дебандинг на CPU</string>
   <string name="btn_label_back">Стрілка «Назад»</string>
   <string name="btn_label_title">Назва відео</string>
   <string name="btn_label_bookmarks">Розділи / Закладки</string>

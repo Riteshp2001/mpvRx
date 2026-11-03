@@ -959,6 +959,9 @@
   <string name="player_horizontal_flip_off">हॉरिजॉन्टल फ्लिप ऑफ</string>
   <string name="player_vertical_flip_on">वर्टिकल फ्लिप ऑन</string>
   <string name="player_vertical_flip_off">वर्टिकल फ्लिप ऑफ</string>
+  <string name="player_hwplus_unsupported">%1$s HW+ मोड में सपोर्टेड नहीं है। इसे इस्तेमाल करने के लिए HW या SW डिकोडिंग पर स्विच करें।</string>
+  <string name="player_hwplus_use_hw">HW इस्तेमाल करें</string>
+  <string name="player_hwplus_cpu_deband">CPU डीबैंडिंग</string>
   <string name="btn_label_back">बैक एरो</string>
   <string name="btn_label_title">वीडियो टाइटल</string>
   <string name="btn_label_bookmarks">चैप्टर / बुकमार्क</string>

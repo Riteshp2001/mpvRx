@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
@@ -44,6 +45,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.DebandSettings
 import app.gyrolet.mpvrx.ui.player.Debanding
+import app.gyrolet.mpvrx.ui.player.HwPlusGuard
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.theme.spacing
@@ -58,6 +60,7 @@ fun VideoSettingsDebandCard(
   shape: Shape = MaterialTheme.shapes.large,
 ) {
   val decoderPreferences = koinInject<DecoderPreferences>()
+  val context = LocalContext.current
   val configOwnedOptions = currentMpvConfigOverrideOptions()
   val modeOptions = setOf("deband", "vf")
   val modeEnabled = modeOptions.none(configOwnedOptions::contains)
@@ -87,16 +90,21 @@ fun VideoSettingsDebandCard(
             .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          Debanding.entries.forEach {
+          Debanding.entries.forEach { mode ->
             IconToggleButton(
-              checked = deband == it,
+              checked = deband == mode,
               enabled = modeEnabled,
               onCheckedChange = { _ ->
-                decoderPreferences.debanding.set(it)
-                PlaybackSession.applyDebanding(it)
+                val select: () -> Unit = {
+                  decoderPreferences.debanding.set(mode)
+                  PlaybackSession.applyDebanding(mode)
+                }
+                val blocked =
+                  mode == Debanding.CPU && HwPlusGuard.blocks(context, R.string.player_hwplus_cpu_deband, select)
+                if (!blocked) select()
               },
             ) {
-              when (it) {
+              when (mode) {
                 Debanding.None -> Icon(Icons.RoundedFilled.NotInterested, null)
                 Debanding.CPU -> Icon(Icons.RoundedFilled.Memory, null)
                 Debanding.GPU -> Icon(Icons.RoundedFilled.DeveloperBoard, null)

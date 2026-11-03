@@ -1045,6 +1045,9 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="player_horizontal_flip_off">Retournement horizontal désactivé</string>
   <string name="player_vertical_flip_on">Retournement vertical activé</string>
   <string name="player_vertical_flip_off">Retournement vertical désactivé</string>
+  <string name="player_hwplus_unsupported">%1$s : non pris en charge en mode HW+. Passez au décodage HW ou SW pour l\'utiliser.</string>
+  <string name="player_hwplus_use_hw">Utiliser HW</string>
+  <string name="player_hwplus_cpu_deband">Réduction des bandes par CPU</string>
   <string name="btn_label_back">Flèche Retour</string>
   <string name="btn_label_title">Titre de la vidéo</string>
   <string name="btn_label_bookmarks">Chapitres / Signets</string>

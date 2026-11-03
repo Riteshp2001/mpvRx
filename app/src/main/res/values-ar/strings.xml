@@ -1057,6 +1057,9 @@
   <string name="player_horizontal_flip_off">الانعكاس الأفقي متوقف</string>
   <string name="player_vertical_flip_on">الانعكاس العمودي مفعّل</string>
   <string name="player_vertical_flip_off">الانعكاس العمودي متوقف</string>
+  <string name="player_hwplus_unsupported">%1$s غير مدعوم في وضع HW+. بدّل إلى فك الترميز HW أو SW لاستخدام هذه الميزة.</string>
+  <string name="player_hwplus_use_hw">استخدام HW</string>
+  <string name="player_hwplus_cpu_deband">إزالة التدرجات عبر CPU</string>
   <string name="btn_label_back">سهم الرجوع</string>
   <string name="btn_label_title">عنوان الفيديو</string>
   <string name="btn_label_bookmarks">الفصول / الإشارات المرجعية</string>

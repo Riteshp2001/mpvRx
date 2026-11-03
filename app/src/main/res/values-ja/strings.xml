@@ -1041,6 +1041,9 @@
   <string name="player_horizontal_flip_off">左右反転オフ</string>
   <string name="player_vertical_flip_on">上下反転オン</string>
   <string name="player_vertical_flip_off">上下反転オフ</string>
+  <string name="player_hwplus_unsupported">%1$s は HW+ モードでは使用できません。使用するには HW または SW デコードに切り替えてください。</string>
+  <string name="player_hwplus_use_hw">HW を使用</string>
+  <string name="player_hwplus_cpu_deband">CPU バンディング除去</string>
   <string name="btn_label_back">戻る矢印</string>
   <string name="btn_label_title">動画タイトル</string>
   <string name="btn_label_bookmarks">チャプター／ブックマーク</string>

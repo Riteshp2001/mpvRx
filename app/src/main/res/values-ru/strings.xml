@@ -1053,6 +1053,9 @@
   <string name="player_horizontal_flip_off">Отражение по горизонтали выключено</string>
   <string name="player_vertical_flip_on">Отражение по вертикали включено</string>
   <string name="player_vertical_flip_off">Отражение по вертикали выключено</string>
+  <string name="player_hwplus_unsupported">%1$s не поддерживается в режиме HW+. Переключитесь на декодирование HW или SW, чтобы использовать эту функцию.</string>
+  <string name="player_hwplus_use_hw">Включить HW</string>
+  <string name="player_hwplus_cpu_deband">Устранение полос (CPU)</string>
   <string name="btn_label_back">Стрелка «Назад»</string>
   <string name="btn_label_title">Название видео</string>
   <string name="btn_label_bookmarks">Главы / Закладки</string>

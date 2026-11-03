@@ -7136,6 +7136,7 @@ fun restartFromBeginning() {
 
   fun toggleMirroring() {
     val newMirrorState = !_transformState.value.isMirrored
+    if (newMirrorState && HwPlusGuard.blocks(appContext, R.string.btn_label_mirror, ::toggleMirroring)) return
     _transformState.update { it.copy(isMirrored = newMirrorState) }
 
     // Use labeled video filter for mirroring to avoid state desync
@@ -7154,6 +7155,7 @@ fun restartFromBeginning() {
 
   fun toggleVerticalFlip() {
     val newState = !_transformState.value.isVerticalFlipped
+    if (newState && HwPlusGuard.blocks(appContext, R.string.ui_vertical_flip, ::toggleVerticalFlip)) return
     _transformState.update { it.copy(isVerticalFlipped = newState) }
 
     // Use labeled video filter for vflip to avoid state desync
@@ -7266,6 +7268,12 @@ fun restartFromBeginning() {
 
   fun selectAnime4KMode(mode: Anime4KManager.Mode) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.ANIME4K)) return
+    // ArtCNN only hooks the LUMA plane, which HW+ frames don't have.
+    if (mode == Anime4KManager.Mode.ARTCNN &&
+      HwPlusGuard.blocks(appContext, R.string.anime4k_mode_artcnn) { selectAnime4KMode(mode) }
+    ) {
+      return
+    }
     decoderPreferences.anime4kMode.set(mode.name)
     viewModelScope.launch(Dispatchers.Default) {
       runCatching {

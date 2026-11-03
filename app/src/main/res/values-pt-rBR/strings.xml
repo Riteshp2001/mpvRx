@@ -1045,6 +1045,9 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="player_horizontal_flip_off">Inversão horizontal desativada</string>
   <string name="player_vertical_flip_on">Inversão vertical ativada</string>
   <string name="player_vertical_flip_off">Inversão vertical desativada</string>
+  <string name="player_hwplus_unsupported">%1$s não é compatível com o modo HW+. Mude para a decodificação HW ou SW para usar.</string>
+  <string name="player_hwplus_use_hw">Usar HW</string>
+  <string name="player_hwplus_cpu_deband">Remoção de faixas por CPU</string>
   <string name="btn_label_back">Seta de voltar</string>
   <string name="btn_label_title">Título do vídeo</string>
   <string name="btn_label_bookmarks">Capítulos / Favoritos</string>

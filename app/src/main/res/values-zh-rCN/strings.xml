@@ -1045,6 +1045,9 @@
   <string name="player_horizontal_flip_off">水平翻转已关闭</string>
   <string name="player_vertical_flip_on">垂直翻转已开启</string>
   <string name="player_vertical_flip_off">垂直翻转已关闭</string>
+  <string name="player_hwplus_unsupported">HW+ 模式不支持%1$s。请切换到 HW 或 SW 解码后使用。</string>
+  <string name="player_hwplus_use_hw">使用 HW</string>
+  <string name="player_hwplus_cpu_deband">CPU 去色带</string>
   <string name="btn_label_back">返回箭头</string>
   <string name="btn_label_title">视频标题</string>
   <string name="btn_label_bookmarks">章节/书签</string>
