@@ -22,6 +22,7 @@ import android.content.ServiceConnection
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
@@ -6625,8 +6626,12 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
       pendingPipExitResolution = false
       wasInPipMode = true
       handledPipDismissal = false
+      // Android expands PiP into the requested orientation, so settle on the video's way round now.
+      setOrientation()
       ensurePipPlaybackNotification()
     } else if (wasInPipMode) {
+      // PiP showed the system bars; hide them before the expand animation draws the player.
+      if (!isFinishing) setupSystemUI()
       // Android reports the same PiP exit callback for expansion and close. Resolve it after
       // lifecycle delivery confirms whether the Activity resumed or the PiP task was dismissed.
       schedulePipExitResolution()
@@ -6729,8 +6734,12 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
 
   // ==================== Orientation Management ====================
 
-  private fun usesAdaptiveOrientation(): Boolean =
-    !isTelevision && (isInMultiWindowMode || resources.configuration.smallestScreenWidthDp >= 600)
+  private fun usesAdaptiveOrientation(): Boolean {
+    if (isTelevision) return false
+    // PiP is multi-window with a tiny window; it must keep the phone's orientation for the way back.
+    if (isInPictureInPictureMode) return Resources.getSystem().configuration.smallestScreenWidthDp >= 600
+    return isInMultiWindowMode || resources.configuration.smallestScreenWidthDp >= 600
+  }
 
   private fun updateOrientationForWindow() {
     // Folding or entering split-screen can change whether a fixed orientation is appropriate.

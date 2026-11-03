@@ -112,7 +112,10 @@ class MPVPipHelper(
       .apply {
         getVideoAspectRatio()?.let { aspectRatio ->
           setAspectRatio(aspectRatio)
-          calculateSourceRect(aspectRatio)?.let { sourceRect -> setSourceRectHint(sourceRect) }
+          // In PiP the view reports PiP-window bounds; keep the full-screen hint for the expand animation.
+          if (!activity.isInPictureInPictureMode) {
+            calculateSourceRect(aspectRatio)?.let { sourceRect -> setSourceRectHint(sourceRect) }
+          }
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
