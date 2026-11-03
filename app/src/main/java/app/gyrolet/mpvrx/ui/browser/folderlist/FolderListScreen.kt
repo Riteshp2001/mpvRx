@@ -1523,10 +1523,6 @@ private fun GridContent(
     remember(foldersWithNewCount) {
       foldersWithNewCount.associate { it.folder.bucketId to it.newVideoCount }
     }
-  val watchedBucketIds =
-    remember(foldersWithNewCount) {
-      foldersWithNewCount.filter { it.isWatched }.mapTo(HashSet()) { it.folder.bucketId }
-    }
   val recentlyPlayedParent = remember(recentlyPlayedFilePath) { recentlyPlayedFilePath?.let(::File)?.parent }
 
   BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -1593,7 +1589,6 @@ private fun GridContent(
               { onFolderClick(folder) }
             },
           newVideoCount = newCount,
-          isWatched = folder.bucketId in watchedBucketIds,
           customIcon = if (archiveFolder) Icons.RoundedFilled.FolderZip else null,
           isGridMode = true,
           gridRowMinHeight = with(density) { tallestContentInRow.toDp() },
@@ -1667,10 +1662,6 @@ private fun ListContent(
     remember(foldersWithNewCount) {
       foldersWithNewCount.associate { it.folder.bucketId to it.newVideoCount }
     }
-  val watchedBucketIds =
-    remember(foldersWithNewCount) {
-      foldersWithNewCount.filter { it.isWatched }.mapTo(HashSet()) { it.folder.bucketId }
-    }
   val recentlyPlayedParent = remember(recentlyPlayedFilePath) { recentlyPlayedFilePath?.let(::File)?.parent }
 
   Box(modifier = Modifier.fillMaxSize()) {
@@ -1715,7 +1706,6 @@ private fun ListContent(
               { onFolderClick(folder) }
             },
           newVideoCount = newCount,
-          isWatched = folder.bucketId in watchedBucketIds,
           customIcon = if (archiveFolder) Icons.RoundedFilled.FolderZip else null,
           isGridMode = false,
           uiConfig = folderCardUiConfig,

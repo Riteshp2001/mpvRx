@@ -1670,7 +1670,6 @@ private fun FileSystemBrowserContent(
                       },
                     customIcon = if (ZipArchiveMedia.isArchiveRoot(folder.path)) Icons.RoundedFilled.FolderZip else null,
                     newVideoCount = folder.newCount,
-                    isWatched = folder.isWatched,
                     isGridMode = true,
                     allowThumbnailGeneration = false,
                   )
@@ -1798,7 +1797,6 @@ private fun FileSystemBrowserContent(
                       { onFolderClick(folder) }
                     },
                   newVideoCount = folder.newCount,
-                  isWatched = folder.isWatched,
                   isGridMode = false,
                   allowThumbnailGeneration = false,
                   customIcon = if (ZipArchiveMedia.isArchiveRoot(folder.path)) Icons.RoundedFilled.FolderZip else null,
@@ -2126,7 +2124,6 @@ private fun FileSystemSearchContent(
                     onLongClick = null,
                     onThumbClick = { onFolderClick(folder) },
                     newVideoCount = folder.newCount,
-                    isWatched = folder.isWatched,
                     isGridMode = true,
                     uiConfig = folderCardUiConfig,
                     customIcon = if (ZipArchiveMedia.isArchiveRoot(folder.path)) Icons.RoundedFilled.FolderZip else null,
@@ -2218,7 +2215,6 @@ private fun FileSystemSearchContent(
                   onLongClick = null,
                   onThumbClick = { onFolderClick(folder) },
                   newVideoCount = folder.newCount,
-                  isWatched = folder.isWatched,
                   isGridMode = false,
                   uiConfig = folderCardUiConfig,
                   customIcon = if (ZipArchiveMedia.isArchiveRoot(folder.path)) Icons.RoundedFilled.FolderZip else null,
