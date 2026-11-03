@@ -1407,7 +1407,6 @@ fun GestureHandler(
             var hasStartedSeeking = false
             var initialVideoPosition = 0f
             var pendingSeekPosition: Float? = null
-            var wasPlayerAlreadyPaused = false
             // Use the sensitivity preference instead of hardcoded value
             val seekSensitivity = horizontalSwipeSensitivity
 
@@ -1480,12 +1479,6 @@ fun GestureHandler(
                             ?: 0f
                           pendingSeekPosition = initialVideoPosition
 
-                          // Pause before seeking to prevent decoder stalls
-                          wasPlayerAlreadyPaused = paused ?: false
-                          if (!wasPlayerAlreadyPaused) {
-                            viewModel.pause()
-                          }
-
                           change.consume()
                         }
                       }
@@ -1496,10 +1489,8 @@ fun GestureHandler(
                         val targetPosition = (initialVideoPosition + seekAmount).coerceAtLeast(0f)
                         val maxDuration = duration?.toFloat() ?: 0f
                         val clampedPosition = targetPosition.coerceAtMost(maxDuration)
+                        viewModel.gestureSeekTo(clampedPosition)
                         pendingSeekPosition = clampedPosition
-
-                        // Stream targets update feedback only; local decoder previews stay bounded.
-                        viewModel.seekPreviewTo(clampedPosition)
 
                         // Format and display time position updates
                         val currentPos = clampedPosition.toInt()
@@ -1529,9 +1520,6 @@ fun GestureHandler(
                   if (hasStartedSeeking) {
                     hasStartedSeeking = false
                     // Clean up seeking state without showing controls
-                    if (gestureType == "horizontal_seek" && !wasPlayerAlreadyPaused) {
-                      viewModel.unpause()
-                    }
                     viewModel.playerUpdate.update { PlayerUpdates.None }
                   }
                   releaseGesture(GestureOwner.HORIZONTAL_SEEK)
@@ -1541,18 +1529,13 @@ fun GestureHandler(
               } while (event.changes.any { it.pressed })
             } finally {
               if (gestureType == "subtitle_dialog_seek") viewModel.setSubtitleGestureHighlight(false)
+              // Also runs on cancellation, so the seekbar never stays detached from playback.
+              if (gestureType == "horizontal_seek") {
+                viewModel.finishGestureSeek(pendingSeekPosition.takeIf { hasStartedSeeking })
+              }
             }
 
-            // Apply the final seek when gesture ends
             if (hasStartedSeeking) {
-              pendingSeekPosition?.let {
-                if (gestureType == "horizontal_seek") {
-                  viewModel.seekFromScrub(it, resumePlayback = !wasPlayerAlreadyPaused)
-                } else {
-                  viewModel.seekTo(it.toInt())
-                }
-              }
-
               // Keep the chip visible briefly after the gesture settles.
               coroutineScope.launch {
                 delay(300)

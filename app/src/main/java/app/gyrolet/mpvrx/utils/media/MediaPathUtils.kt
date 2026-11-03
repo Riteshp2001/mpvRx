@@ -9,9 +9,6 @@
 
 package app.gyrolet.mpvrx.utils.media
 
-import app.gyrolet.mpvrx.preferences.PlayerPreferences
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 /**
  * Extracts the file extension from a path or URI string, stripping query
  * parameters and fragment identifiers before extracting the last dot-delimited
@@ -33,15 +30,4 @@ fun String.fileExtension(): String {
   } else {
     ""
   }
-}
-
-/**
- * Returns the MPV seek mode string based on the user's precise-seeking preference
- * and the current media duration.  Videos shorter than 2 minutes always use
- * precise seeking for a better scrubbing experience.
- */
-fun resolveSeekMode(playerPreferences: PlayerPreferences): String {
-  val duration = PlaybackSession.getPropertyDouble("duration")?.toInt() ?: 0
-  val usePrecise = playerPreferences.usePreciseSeeking.get() || duration < 120
-  return if (usePrecise) "relative+exact" else "relative+keyframes"
 }

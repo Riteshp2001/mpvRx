@@ -103,7 +103,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
@@ -2421,19 +2420,14 @@ fun restartFromBeginning() {
         }
     }
 
-    // Single adaptive polling loop for playback position.
-    //  1. An event-driven collect on PlaybackSession.propInt["time-pos"]
-    //  2. This polling loop via PlaybackSession.getPropertyDouble("time-pos")
-    // Having both caused redundant StateFlow emissions and double recompositions of the
-    // seek bar on every MPV property event.  The polling loop alone is sufficient:
-    //  - It provides Double precision (vs integer from the observer)
-    //  - It drives maybeAutoSkipIntro() which needs sub-second accuracy
-    //  - The adaptive interval keeps CPU cost proportional to actual UI demand
+    // Adaptive polling adds sub-second motion to the seek bar and drives maybeAutoSkipIntro(),
+    // which needs sub-second accuracy. Seeks are also published from the time-pos observer in
+    // startMpvStateCollectors(), so they reach the UI at once even while paused.
     //
     // Intervals:
-    //   50 ms  – seek bar / controls visible (smooth scrubbing)
-    //   500 ms – uninterrupted playback (halved from original 250 ms to cut idle overhead)
-    //   500 ms – paused
+    //   100 ms  – seek bar / controls visible (smooth scrubbing)
+    //   500 ms  – uninterrupted playback
+    //   1000 ms – paused
     viewModelScope.launch(playbackStateDispatcher) {
       while (isActive) {
         val playbackPhase = PlaybackSession.state.value.phase
@@ -2446,13 +2440,7 @@ fun restartFromBeginning() {
         runCatching {
           val time = PlaybackSession.getPropertyDouble("time-pos")
           if (time != null) {
-            val posFloat = time.toFloat()
-            // While a seek is in flight, the player's reported time-pos is still the pre-seek
-            // position; overwriting it would snap the thumb backwards mid-gesture.
-            if (_precisePosition.value != posFloat && !shouldHoldOptimisticPosition(posFloat)) {
-              _precisePosition.value = posFloat
-              updateLyricsActiveLine()
-            }
+            publishPrecisePosition(time)
             maybeAutoSkipIntro(time)
           }
         }.onFailure { error ->
@@ -2664,33 +2652,15 @@ fun restartFromBeginning() {
       }
     }
 
-    // Monitor duration and AB loop changes to automatically enable precise seeking
+    // Like mpv-android, seeks follow mpv's default hr-seek policy (precise absolute, fast relative).
+    // "Use precise seeking" makes every seek exact. Reapplied per file because the core outlives this screen.
     viewModelScope.launch(playbackStateDispatcher) {
-      combine(_duration, abLoopState) { duration, abLoop ->
-        Pair(duration, abLoop)
-      }.collect { (duration, abLoop) ->
-        if (!_isMpvCoreReady.value) return@collect
-        val videoDuration = duration ?: 0
-        if (videoDuration > 0) {
-          val isLoopActive = abLoop.a != null || abLoop.b != null
-          val shouldUsePreciseSeeking = playerPreferences.usePreciseSeeking.get() || videoDuration < 120 || isLoopActive
-          PlaybackSession.setPropertyString("hr-seek", if (shouldUsePreciseSeeking) "yes" else "no")
-          PlaybackSession.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
-        }
-      }
-    }
-
-    // Monitor precise seeking preference toggle dynamically
-    viewModelScope.launch {
-      playerPreferences.usePreciseSeeking.changes().collect { usePrecise ->
-        if (!_isMpvCoreReady.value) return@collect
-        val videoDuration = _duration.value ?: 0
-        if (videoDuration > 0) {
-          val isLoopActive = _abLoopState.value.a != null || _abLoopState.value.b != null
-          val shouldUsePreciseSeeking = usePrecise || videoDuration < 120 || isLoopActive
-          PlaybackSession.setPropertyString("hr-seek", if (shouldUsePreciseSeeking) "yes" else "no")
-          PlaybackSession.setPropertyString("hr-seek-framedrop", if (shouldUsePreciseSeeking) "no" else "yes")
-        }
+      combine(_duration, playerPreferences.usePreciseSeeking.changes()) { duration, usePrecise ->
+        Pair(duration, usePrecise)
+      }.collect { (duration, usePrecise) ->
+        if (!_isMpvCoreReady.value || (duration ?: 0) <= 0) return@collect
+        PlaybackSession.setPropertyString("hr-seek", if (usePrecise) "yes" else "default")
+        PlaybackSession.setPropertyString("hr-seek-framedrop", if (usePrecise) "no" else "yes")
       }
     }
 
@@ -2848,7 +2818,16 @@ fun restartFromBeginning() {
     mpvStateCollectorsJob =
       viewModelScope.launch(playbackStateDispatcher) {
         launch { PlaybackSession.propBoolean["pause"].collect { _paused.value = it } }
-        launch { PlaybackSession.propInt["time-pos"].collect { _pos.value = it } }
+        launch {
+          PlaybackSession.propInt["time-pos"].collect {
+            _pos.value = it
+            // Like mpv-android's time-pos observer: a seek reaches the UI now, not on the next poll.
+            val phase = PlaybackSession.state.value.phase
+            if (phase == PlaybackPhase.READY || phase == PlaybackPhase.BACKGROUND) {
+              PlaybackSession.getPropertyDouble("time-pos")?.let(::publishPrecisePosition)
+            }
+          }
+        }
         launch { PlaybackSession.propInt["duration"].collect { _duration.value = it } }
         launch { PlaybackSession.propInt["volume-max"].collect { _volumeBoostCap.value = it } }
         launch {
@@ -2964,11 +2943,9 @@ fun restartFromBeginning() {
       tvSeekFeedbackJob = null
       _seekState.value = SeekState()
     }
-    cancelSeekPreview()
     cancelFrameSeek()
-    seekCommitJob?.cancel()
-    seekCommitJob = null
-    cancelPendingRelativeSeek()
+    isGestureSeeking = false
+    lastScrubTarget = Double.NaN
     lyricsLoadJob?.cancel()
     lyricsLoadJob = null
     lyricsTranslateJob?.cancel()
@@ -3426,66 +3403,17 @@ fun restartFromBeginning() {
     appContext.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
   }
 
-  // Seek coalescing for smooth performance
-  private val seekCoalesceLock = Any()
-  private var pendingSeekOffset: Int = 0
-  private var pendingSeekGeneration: Long? = null
-  private var seekCoalesceRevision = 0L
-  private var seekCoalesceJob: Job? = null
-  private val seekPreviewLock = Any()
-  private var pendingSeekPreviewPosition: Float? = null
-  private var seekPreviewIsFrame = false
-
-  // Move the thumb immediately while a native seek runs. The poller resumes when an exact
-  // target lands or the bounded hold expires, allowing fast keyframe seeks to settle too.
-  private var seekFeedbackHoldUntilElapsed = 0L
-  private var seekFeedbackTargetPosition = 0f
-
-  /** How close the player's reported position must be to count as "the seek landed". */
-  private fun seekFeedbackTolerance(): Double = SEEK_FEEDBACK_TOLERANCE_SECONDS
-
-  private fun beginSeekFeedbackHold(targetPosition: Float, holdMillis: Long) {
-    seekFeedbackTargetPosition = targetPosition
-    seekFeedbackHoldUntilElapsed = android.os.SystemClock.elapsedRealtime() + holdMillis
-  }
-
-  private fun shouldHoldOptimisticPosition(reportedPosition: Float): Boolean {
-    val now = android.os.SystemClock.elapsedRealtime()
-    if (now >= seekFeedbackHoldUntilElapsed) return false
-    if (kotlin.math.abs(reportedPosition - seekFeedbackTargetPosition) <= seekFeedbackTolerance()) {
-      // The player caught up with the requested position: resume normal polling.
-      seekFeedbackHoldUntilElapsed = 0L
-      return false
-    }
-    return true
-  }
-
-  // Runs on the UI thread during a double-tap, so it clamps against the already-polled duration and
-  // position rather than reading mpv here.
-  private fun previewSeekPositionOptimistically(offsetSeconds: Int) {
-    val maxDuration = duration ?: _preciseDuration.value.toInt()
-    val base = _precisePosition.value.toDouble()
-    val clamped =
-      if (maxDuration > 0) (base + offsetSeconds).coerceIn(0.0, maxDuration.toDouble())
-      else (base + offsetSeconds).coerceAtLeast(0.0)
-    _precisePosition.value = clamped.toFloat()
-    beginSeekFeedbackHold(clamped.toFloat(), RELATIVE_SEEK_FEEDBACK_HOLD_MS)
-  }
-
-  // Called from both the drag handler and the seek path, so it clamps against the polled duration
-  // rather than reading mpv on the UI thread.
-  private fun previewAbsoluteSeekPositionOptimistically(positionSeconds: Double) {
-    val maxDuration = duration ?: _preciseDuration.value.toInt()
-    val clamped =
-      if (maxDuration > 0) positionSeconds.coerceIn(0.0, maxDuration.toDouble())
-      else positionSeconds.coerceAtLeast(0.0)
-    _precisePosition.value = clamped.toFloat()
-    beginSeekFeedbackHold(clamped.toFloat(), ABSOLUTE_SEEK_FEEDBACK_HOLD_MS)
-  }
-
-  private var seekPreviewJob: Job? = null
-  private var seekCommitJob: Job? = null
+  // Like mpv-android's userIsOperatingSeekbar: playback positions never move the thumb mid-swipe.
+  @Volatile private var isGestureSeeking = false
+  private var lastScrubTarget = Double.NaN
   private var frameSeekJob: Job? = null
+
+  private fun publishPrecisePosition(time: Double) {
+    val posFloat = time.toFloat()
+    if (isGestureSeeking || _precisePosition.value == posFloat) return
+    _precisePosition.value = posFloat
+    updateLyricsActiveLine()
+  }
 
   private companion object {
     const val TAG = "PlayerViewModel"
@@ -3504,15 +3432,8 @@ fun restartFromBeginning() {
     const val AUTO_CROP_ACTIVE_FRAME_TIMEOUT_MS = 2_500L
     const val AUTO_CROP_ACTIVE_FRAME_INTERVAL_MS = 300L
     const val AUTO_SHOW_SKIP_CHIP_DURATION = 10.0
-    const val SEEK_COALESCE_DELAY_MS = 60L
-    // Reported positions within this distance of the requested target count as "landed".
-    const val SEEK_FEEDBACK_TOLERANCE_SECONDS = 0.35
-    // Upper bound on how long the optimistic thumb may outrun the player.
-    const val RELATIVE_SEEK_FEEDBACK_HOLD_MS = 1500L
-    const val ABSOLUTE_SEEK_FEEDBACK_HOLD_MS = 3000L
-    // The thumb updates immediately; decoder previews only need a modest cadence.
-    const val PREVIEW_SEEK_INTERVAL_MS = 200L
-    const val NETWORK_FRAME_PREVIEW_SEEK_INTERVAL_MS = 800L
+    // mpv-android's seekbar step (SEEK_BAR_PRECISION = 2). Finer moves only re-decode the same frame.
+    const val SCRUB_SEEK_STEP_SECONDS = 0.5
     const val FRAME_SEEK_POLL_INTERVAL_MS = 10L
     const val FRAME_SEEK_MIN_SETTLE_POLLS = 8
     const val FRAME_SEEK_MAX_SETTLE_POLLS = 75
@@ -5188,11 +5109,7 @@ fun restartFromBeginning() {
    * Cancels UI-originated native work before PlayerActivity releases its Surface.
    */
   fun prepareForPlayerTeardown() {
-    cancelSeekPreview()
     cancelFrameSeek()
-    seekCommitJob?.cancel()
-    seekCommitJob = null
-    cancelPendingRelativeSeek()
 
     synchronized(ambientScheduleLock) {
       ambientUpdateGeneration.incrementAndGet()
@@ -5215,11 +5132,29 @@ fun restartFromBeginning() {
   }
 
   // ==================== Seeking ====================
+  // Mirrors mpv-android: every seek goes straight to mpv, which coalesces queued seeks itself.
 
   fun seekBy(offset: Int) {
     cancelFrameSeek()
-    coalesceSeek(offset)
-    previewSeekPositionOptimistically(offset)
+    if (offset == 0) return
+    if (PlaybackSession.state.value.currentItem?.audiobook != null) {
+      AudiobookPlayback.seekBy(offset)
+      return
+    }
+    val durationSeconds = PlaybackSession.getPropertyDouble("duration") ?: _preciseDuration.value.toDouble()
+    val currentPos = PlaybackSession.getPropertyDouble("time-pos") ?: _precisePosition.value.toDouble()
+    val reachesEnd = durationSeconds > 0.0 && currentPos + offset >= durationSeconds
+    if (reachesEnd) {
+      // Keep the existing explicit EOF transition when skipping past the final frame.
+      PlaybackSession.command("seek", "100", "absolute-percent+exact")
+    } else {
+      PlaybackSession.command("seek", offset.toString(), "relative")
+    }
+    syncplayManager.updatePlayerState(
+      if (reachesEnd) durationSeconds else (currentPos + offset).coerceAtLeast(0.0),
+      paused ?: false,
+      doSeek = true,
+    )
   }
 
   /** TV scrubbing never consults the phone's touch/double-tap mappings or saved duration. */
@@ -5238,190 +5173,71 @@ fun restartFromBeginning() {
     seekBy(offset)
   }
 
-  /**
-   * Conflated live preview used by the legacy/full-screen seek mode and the audio seekbar.
-   * Pointer events can arrive much faster than a decoder can seek, so only the newest target is
-   * applied at a bounded rate. Local preview seeks are keyframe-only and never spam Syncplay peers.
-   * Network targets update the thumb/time only until release, preserving the demuxer's read-ahead.
-   */
-  fun seekPreviewTo(position: Float) = scheduleSeekPreview(position, framePreview = false)
+  /** Keeps a user seek inside the media and inside an active A-B loop. */
+  private fun clampSeekTarget(position: Double): Double {
+    val durationSeconds = _preciseDuration.value.toDouble()
+    val target = if (durationSeconds > 0.0) position.coerceIn(0.0, durationSeconds) else position.coerceAtLeast(0.0)
+    val loopA = _abLoopState.value.a
+    val loopB = _abLoopState.value.b
+    return if (loopA != null && loopB != null) target.coerceIn(minOf(loopA, loopB), maxOf(loopA, loopB)) else target
+  }
 
-  private fun scheduleSeekPreview(position: Float, framePreview: Boolean) {
+  /** Seekbar drag, as in mpv-android: time-pos follows the thumb at once, in 0.5 s steps. */
+  fun scrubTo(position: Float) {
+    if (!position.isFinite()) return
+    val target = clampSeekTarget(position.toDouble())
+    if (abs(target - lastScrubTarget) < SCRUB_SEEK_STEP_SECONDS) return
     cancelFrameSeek()
-    val generation = PlaybackSession.state.value.generation
-    previewAbsoluteSeekPositionOptimistically(position.coerceAtLeast(0f).toDouble())
-    synchronized(seekPreviewLock) {
-      pendingSeekPreviewPosition = position.coerceAtLeast(0f)
-      if (seekPreviewJob?.isActive == true && seekPreviewIsFrame == framePreview) return
-      seekPreviewJob?.cancel()
-      seekPreviewIsFrame = framePreview
-      seekPreviewJob = viewModelScope.launch(Dispatchers.IO, start = CoroutineStart.LAZY) {
-        runSeekPreviewLoop(generation, framePreview)
-      }
-      seekPreviewJob?.start()
-    }
+    lastScrubTarget = target
+    PlaybackSession.setPropertyDouble("time-pos", target)
   }
 
-  private suspend fun runSeekPreviewLoop(generation: Long, framePreview: Boolean) {
-    var lastSentPosition: Float? = null
-    val owner = currentCoroutineContext()[Job]
-    val networkFrame = framePreview && PlaybackSession.state.value.currentItem?.let {
-      it.networkSource != null || it.originalUri.startsWith("mpvrx-network://")
-    } == true
-    val intervalMs = if (networkFrame) NETWORK_FRAME_PREVIEW_SEEK_INTERVAL_MS else PREVIEW_SEEK_INTERVAL_MS
-    try {
-      while (currentCoroutineContext().isActive) {
-        val target = synchronized(seekPreviewLock) {
-          if (seekPreviewJob !== owner) return
-          pendingSeekPreviewPosition?.also { pendingSeekPreviewPosition = null } ?: return
-        }
-        val previous = lastSentPosition
-        if (previous != null && kotlin.math.abs(target - previous) < 0.5f) continue
-        val issued = synchronized(seekPreviewLock) {
-          // Cancellation and native issuance share this lock, so a late preview cannot overtake release.
-          if (seekPreviewJob !== owner || owner?.isActive != true) return
-          if (framePreview) {
-            PlaybackSession.commandForGeneration(generation, "seek", target.toString(), "absolute+keyframes")
-          } else {
-            PlaybackSession.previewSeekForGeneration(generation, target)
-          }
-        }
-        if (!issued) return
-        lastSentPosition = target
-        delay(intervalMs)
-      }
-    } finally {
-      synchronized(seekPreviewLock) {
-        if (seekPreviewJob === owner) {
-          seekPreviewJob = null
-          pendingSeekPreviewPosition = null
-        }
-      }
+  /** Ends a seekbar drag. The drag already seeked live, so only a different target seeks again. */
+  fun seekFromScrub(position: Float) {
+    if (!position.isFinite()) return
+    val target = clampSeekTarget(position.toDouble())
+    if (target != lastScrubTarget) {
+      cancelFrameSeek()
+      PlaybackSession.setPropertyDouble("time-pos", target)
     }
+    lastScrubTarget = Double.NaN
+    _precisePosition.value = target.toFloat()
+    syncplayManager.updatePlayerState(target, paused ?: false, doSeek = true)
   }
 
-  private fun cancelSeekPreview() {
-    synchronized(seekPreviewLock) {
-      seekPreviewJob?.cancel()
-      seekPreviewJob = null
-      pendingSeekPreviewPosition = null
+  /** Horizontal swipe, as mpv-android's seek gesture: a fast keyframe seek as the finger moves. */
+  fun gestureSeekTo(position: Float) {
+    if (!position.isFinite()) return
+    val target = clampSeekTarget(position.toDouble())
+    isGestureSeeking = true
+    _precisePosition.value = target.toFloat()
+    if (abs(target - lastScrubTarget) < SCRUB_SEEK_STEP_SECONDS) return
+    cancelFrameSeek()
+    lastScrubTarget = target
+    PlaybackSession.command("seek", target.toString(), "absolute+keyframes")
+  }
+
+  /** Ends a swipe (null cancels it). With precise seeking on, it lands exactly where the swipe stopped. */
+  fun finishGestureSeek(position: Float?) {
+    isGestureSeeking = false
+    lastScrubTarget = Double.NaN
+    val target = position?.takeIf { it.isFinite() }?.let { clampSeekTarget(it.toDouble()) }
+    if (target != null && playerPreferences.usePreciseSeeking.get()) {
+      PlaybackSession.setPropertyDouble("time-pos", target)
+    } else {
+      PlaybackSession.getPropertyDouble("time-pos")?.let(::publishPrecisePosition)
     }
+    if (target != null) syncplayManager.updatePlayerState(target, paused ?: false, doSeek = true)
   }
 
   fun seekTo(
     position: Int,
     fast: Boolean = false,
   ) {
-    commitSeek(position, if (fast) "absolute+keyframes" else "absolute+exact")
-  }
-
-  /** Like relative skips, a user scrub honors hr-seek and mpv.conf instead of forcing exact decoding. */
-  fun seekFromScrub(position: Float, resumePlayback: Boolean = false) {
-    if (!position.isFinite()) {
-      Log.w(TAG, "Ignoring a non-finite scrub target")
-      return
-    }
-    commitSeek(position.toInt(), "absolute", resumePlayback)
-  }
-
-  private fun commitSeek(position: Int, seekMode: String, resumePlayback: Boolean = false) {
     cancelFrameSeek()
-    cancelSeekPreview()
-    val generation = PlaybackSession.state.value.generation
-    seekCommitJob?.cancel()
-    seekCommitJob = viewModelScope.launch(playbackStateDispatcher) {
-      if (!PlaybackSession.isCurrentGeneration(generation)) return@launch
-      val maxDuration =
-        (PlaybackSession.getPropertyDouble("duration")?.toInt() ?: duration ?: _preciseDuration.value.toInt())
-          .coerceAtLeast(0)
-      var clampedPosition =
-        if (maxDuration > 0) position.coerceIn(0, maxDuration) else position.coerceAtLeast(0)
-
-      // Clamp within AB loop if active
-      val loopA = _abLoopState.value.a
-      val loopB = _abLoopState.value.b
-      if (loopA != null && loopB != null) {
-        val min = minOf(loopA.toInt(), loopB.toInt())
-        val max = maxOf(loopA.toInt(), loopB.toInt())
-        clampedPosition = clampedPosition.coerceIn(min, max)
-      }
-
-      if (maxDuration > 0 && clampedPosition !in 0..maxDuration) return@launch
-
-      previewAbsoluteSeekPositionOptimistically(clampedPosition.toDouble())
-
-      // Cancel pending relative seek before absolute seek
-      cancelPendingRelativeSeek()
-
-      currentCoroutineContext().ensureActive()
-      if (!PlaybackSession.commandForGeneration(generation, "seek", clampedPosition.toString(), seekMode)) return@launch
-      if (resumePlayback) {
-        val focusGranted = withContext(Dispatchers.Main) { host?.requestAudioFocus() ?: false }
-        currentCoroutineContext().ensureActive()
-        if (!PlaybackSession.isCurrentGeneration(generation)) return@launch
-        if (focusGranted && !PlaybackSession.setPausedForGeneration(generation, false)) return@launch
-      }
-      syncplayManager.updatePlayerState(
-        clampedPosition.toDouble(),
-        PlaybackSession.getPropertyBoolean("pause") ?: false,
-        doSeek = true,
-      )
-    }
-  }
-
-  private fun cancelPendingRelativeSeek() {
-    synchronized(seekCoalesceLock) {
-      seekCoalesceRevision++
-      seekCoalesceJob?.cancel()
-      seekCoalesceJob = null
-      pendingSeekOffset = 0
-      pendingSeekGeneration = null
-    }
-  }
-
-  private fun coalesceSeek(offset: Int) {
-    val generation = PlaybackSession.state.value.generation
-    synchronized(seekCoalesceLock) {
-      if (pendingSeekGeneration != generation) pendingSeekOffset = 0
-      pendingSeekGeneration = generation
-      pendingSeekOffset += offset
-      val revision = ++seekCoalesceRevision
-      seekCoalesceJob?.cancel()
-      seekCoalesceJob = viewModelScope.launch(Dispatchers.IO) {
-        delay(SEEK_COALESCE_DELAY_MS)
-        // UI taps and IO workers share this total. An older cancelled worker must never
-        // consume or clear an offset already reserved for a newer batch.
-        val toApply = synchronized(seekCoalesceLock) {
-          if (revision != seekCoalesceRevision) return@launch
-          pendingSeekOffset.also { pendingSeekOffset = 0 }
-        }
-        if (toApply == 0 || !PlaybackSession.isCurrentGeneration(generation)) return@launch
-        if (PlaybackSession.state.value.currentItem?.audiobook != null) {
-          AudiobookPlayback.seekBy(toApply)
-          return@launch
-        }
-        val duration = PlaybackSession.getPropertyDouble("duration")?.toInt()
-          ?: duration ?: _preciseDuration.value.toInt()
-        val currentPos = PlaybackSession.getPropertyDouble("time-pos") ?: (pos ?: 0).toDouble()
-        val reachesEnd = duration > 0 && currentPos + toApply >= duration
-        val issued = if (reachesEnd) {
-          // Keep the existing explicit EOF transition when skipping past the final frame.
-          PlaybackSession.commandForGeneration(generation, "seek", "100", "absolute-percent+exact")
-        } else {
-          // MPSEEK_DEFAULT inherits hr-seek, including Fast/Precise, short-video/AB-loop
-          // policy and user-owned mpv.conf. An explicit +exact overrides all those choices.
-          PlaybackSession.commandForGeneration(generation, "seek", toApply.toString(), "relative")
-        }
-        if (!issued) return@launch
-        // Use the pre-seek snapshot; reading an already-updated position would add the skip twice.
-        val synchronizedPosition = if (reachesEnd) duration.toDouble() else (currentPos + toApply).coerceAtLeast(0.0)
-        syncplayManager.updatePlayerState(
-          synchronizedPosition,
-          PlaybackSession.getPropertyBoolean("pause") ?: false,
-          doSeek = true,
-        )
-      }
-    }
+    val target = clampSeekTarget(position.toDouble())
+    PlaybackSession.command("seek", target.toString(), if (fast) "absolute+keyframes" else "absolute+exact")
+    syncplayManager.updatePlayerState(target, paused ?: false, doSeek = true)
   }
 
   fun leftSeek() {
@@ -6551,16 +6367,15 @@ fun restartFromBeginning() {
       }
 
     if (!finished) {
-      scheduleSeekPreview(targetPosition.toFloat(), framePreview = true)
+      cancelFrameSeek()
+      PlaybackSession.command("seek", targetPosition.toString(), "absolute+keyframes")
       return
     }
 
-    cancelSeekPreview()
     cancelFrameSeek()
     frameSeekJob =
       viewModelScope.launch(Dispatchers.IO) {
         if (!PlaybackSession.isCurrentGeneration(generation)) return@launch
-        cancelPendingRelativeSeek()
         if (PlaybackSession.getPropertyBoolean("pause") != true) {
           PlaybackSession.setPropertyBoolean("pause", true)
           withContext(Dispatchers.Main) { host?.abandonAudioFocus() }

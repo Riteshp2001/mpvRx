@@ -165,8 +165,6 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   private val BUFFERING_STATUS_PROPERTIES = setOf("pause", "paused-for-cache", "seeking", "demuxer-via-network", "eof-reached")
-  private const val SEEK_AUDIO_RESTORE_DELAY_MS = 60L
-  private const val SEEK_AUDIO_FALLBACK_RESTORE_MS = 750L
   private const val PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS = 180L
   private const val AMBIENT_SHADER_PREFIX = "ambient_"
   private const val AMBIENT_SHADER_SUFFIX = ".glsl"
@@ -242,7 +240,6 @@ object PlaybackSession : MPVLib.EventObserver {
   private val _videoPanY = MutableStateFlow(0f)
   private val streamSequence = AtomicLong()
   private val observedProperties = mutableSetOf<Pair<String, Int>>()
-  private val seekAudioGuardHandler = Handler(Looper.getMainLooper())
   private val playbackTransitionAudioGuardHandler = Handler(Looper.getMainLooper())
 
   val state: StateFlow<PlaybackSessionState> = _state.asStateFlow()
@@ -310,8 +307,6 @@ object PlaybackSession : MPVLib.EventObserver {
   private var pendingPositionRestoreGeneration = 0L
   private var pendingPositionRestoreOverride: Pair<Long, PlaybackPositionRestoreOverride>? = null
   private var initialPositionGeneration = 0L
-  private var seekAudioGuardToken = 0L
-  private var seekAudioGuardPreviousMute: Boolean? = null
   private var playbackTransitionAudioGuardToken = 0L
   private var playbackTransitionAudioGuardPreviousMute: Boolean? = null
   private var playbackTransitionAudioGuardCanRestore = false
@@ -448,7 +443,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         pendingPositionRestoreGeneration = 0L
         pendingPositionRestoreOverride = null
         initialPositionGeneration = 0L
-        clearSeekAudioGuardLocked(restoreMute = false)
         clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
         resetAmbientShaderTrackingLocked()
         updateState { it.copy(phase = PlaybackPhase.INITIALIZING, error = null) }
@@ -508,7 +502,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
           pendingPositionRestoreGeneration = 0L
           pendingPositionRestoreOverride = null
           initialPositionGeneration = 0L
-          clearSeekAudioGuardLocked(restoreMute = false)
           clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
           resetAmbientShaderTrackingLocked()
           updateState {
@@ -749,10 +742,8 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       clearAmbientShadersLocked(resetDesired = true)
 
       // Stop/quit must silence the native audio output before its decoder/output queues are torn
-      // down. Restoring a seek guard's mute state before stop previously let a short buffered tail
-      // escape after the Activity had already disappeared.
+      // down, so no buffered tail escapes after the Activity has already disappeared.
       beginPlaybackTransitionAudioGuardLocked(canRestore = false)
-      clearSeekAudioGuardLocked(restoreMute = false)
       runCatching { MPVLib.setPropertyBoolean("pause", true) }
       pendingStopClearQueue = clearQueue
       updateState {
@@ -895,7 +886,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     deferredVideoSelectionGeneration = null
     pendingStopClearQueue = false
     supersededStopGeneration = 0L
-    clearSeekAudioGuardLocked(restoreMute = false)
     clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
     runCatching { MPVLib.setPropertyBoolean("mute", true) }
     runCatching { MPVLib.setPropertyBoolean("pause", true) }
@@ -1179,7 +1169,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       // A saved video-track id belongs to the outgoing file only. Never carry it into a new load.
       suspendedVideoTrack = null
       desiredPaused = positionRestoreOverride?.paused ?: false
-      clearSeekAudioGuardLocked(restoreMute = true)
 
       // Keep replacement/startup audio muted until mpv has restarted cleanly. FILE_LOADED can be
       // followed by saved-position and audio-track restoration; without this guard tiny fragments
@@ -1356,15 +1345,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       val preparedCommand = prepareSeekCommandLocked(command)
       if (!handleAmbientShaderCommandLocked(preparedCommand)) MPVLib.command(*preparedCommand)
       true
-    }
-
-  /** Network scrubbing updates the UI only; speculative decoder seeks can evict useful read-ahead. */
-  internal fun previewSeekForGeneration(expectedGeneration: Long, position: Float): Boolean =
-    withReadyCore(false) {
-      if (_state.value.generation != expectedGeneration || loadedGeneration != expectedGeneration ||
-        activeFileUsesNetworkLocked()
-      ) return@withReadyCore false
-      commandForGeneration(expectedGeneration, "seek", position.toString(), "absolute+keyframes")
     }
 
   internal fun setPausedForGeneration(expectedGeneration: Long, paused: Boolean): Boolean =
@@ -1597,18 +1577,10 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         updateState { it.copy(paused = value) }
         propBoolean.emit(property, value)
         refreshBufferingState()
-      } else if (
-        property == "mute" &&
-        (playbackTransitionAudioGuardPreviousMute != null || seekAudioGuardPreviousMute != null)
-      ) {
-        // A user mute/unmute action while either audio guard is active should update the value that
-        // will be restored, but must not open a guard and leak seek/transition audio immediately.
-        if (playbackTransitionAudioGuardPreviousMute != null) {
-          playbackTransitionAudioGuardPreviousMute = value
-        }
-        if (seekAudioGuardPreviousMute != null) {
-          seekAudioGuardPreviousMute = value
-        }
+      } else if (property == "mute" && playbackTransitionAudioGuardPreviousMute != null) {
+        // A user mute/unmute action while the transition guard is active should update the value that
+        // will be restored, but must not open the guard and leak transition audio immediately.
+        playbackTransitionAudioGuardPreviousMute = value
         MPVLib.setPropertyBoolean("mute", true)
       } else {
         MPVLib.setPropertyBoolean(property, value)
@@ -1640,7 +1612,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   private fun prepareSeekCommandLocked(command: Array<out String>): Array<out String> {
     if (command.firstOrNull() != "seek") return command
     loadedAudiobookEnded = false
-    beginSeekAudioGuardLocked()
     val target = command.getOrNull(1)?.toDoubleOrNull() ?: return command
     val flags = command.getOrNull(2)?.split('+') ?: listOf("relative")
     val fromEof = rememberEofSeekLocked(target, flags)
@@ -2047,7 +2018,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
             }
             pendingEofSeekGeneration = null
             applySpatialAudioLocked()
-            scheduleSeekAudioGuardRestoreLocked(SEEK_AUDIO_RESTORE_DELAY_MS)
             if (_state.value.phase != PlaybackPhase.STOPPING) {
               schedulePlaybackTransitionAudioGuardRestoreLocked(PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS)
             }
@@ -2136,7 +2106,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
             initialPositionGeneration = 0L
             pendingStopClearQueue = false
             supersededStopGeneration = 0L
-            clearSeekAudioGuardLocked(restoreMute = false)
             clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
             resetAmbientShaderTrackingLocked()
             initialized = false
@@ -2258,58 +2227,13 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       .firstOrNull { value -> value.isNotBlank() && value != "0" }
 
   /**
-   * Rapid keyframe/exact seeks can expose tiny decoded audio fragments between decoder flushes,
-   * which sounds like echo/warble while scrubbing. Temporarily mute only the active seek window;
-   * the user's original mute state is restored after mpv reports playback restart.
-   */
-  private fun beginSeekAudioGuardLocked() {
-    if (_state.value.paused || _state.value.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return
-
-    if (seekAudioGuardPreviousMute == null) {
-      val wasMuted = MPVLib.getPropertyBoolean("mute") ?: false
-      seekAudioGuardPreviousMute = wasMuted
-      if (!wasMuted) runCatching { MPVLib.setPropertyBoolean("mute", true) }
-    }
-
-    seekAudioGuardToken++
-    scheduleSeekAudioGuardRestoreLocked(SEEK_AUDIO_FALLBACK_RESTORE_MS)
-  }
-
-  private fun scheduleSeekAudioGuardRestoreLocked(delayMs: Long) {
-    if (seekAudioGuardPreviousMute == null) return
-    val token = seekAudioGuardToken
-    seekAudioGuardHandler.postDelayed(
-      {
-        nativeLock.withLock {
-          if (!initialized || token != seekAudioGuardToken) return@withLock
-          clearSeekAudioGuardLocked(restoreMute = true)
-        }
-      },
-      delayMs,
-    )
-  }
-
-  private fun clearSeekAudioGuardLocked(restoreMute: Boolean) {
-    val previousMute = seekAudioGuardPreviousMute
-    seekAudioGuardPreviousMute = null
-    seekAudioGuardToken++
-    if (restoreMute && initialized && previousMute != null) {
-      runCatching { MPVLib.setPropertyBoolean("mute", previousMute) }
-    }
-  }
-
-  /**
-   * Mutes only decoder/output transitions. Unlike the seek guard this can span stop -> next load,
-   * which guarantees that an Android AudioTrack cannot drain a stale tail after quit and that the
+   * Mutes only decoder/output transitions. This can span stop -> next load, which guarantees
+   * that an Android AudioTrack cannot drain a stale tail after quit and that the
    * first audible samples of a new file are from its settled timeline/track state.
    */
   private fun beginPlaybackTransitionAudioGuardLocked(canRestore: Boolean) {
     if (playbackTransitionAudioGuardPreviousMute == null) {
-      // Closing or replacing media can overlap the short seek guard. In that window mpv reports
-      // mute=true even when the user was unmuted. Preserve the pre-seek value so a later load does
-      // not restore the temporary guard mute and remain permanently silent.
-      playbackTransitionAudioGuardPreviousMute =
-        seekAudioGuardPreviousMute ?: (MPVLib.getPropertyBoolean("mute") ?: false)
+      playbackTransitionAudioGuardPreviousMute = MPVLib.getPropertyBoolean("mute") ?: false
     }
     runCatching { MPVLib.setPropertyBoolean("mute", true) }
     playbackTransitionAudioGuardCanRestore = canRestore
@@ -2568,7 +2492,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     setPropertyString("cookies-file", AndroidCookieJar.playbackCookieFile(context).absolutePath)
     setPropertyString("cache", "auto")
     setPropertyString("cache-pause", "yes")
-    setPropertyString("cache-pause-wait", "2")
     setPropertyString("demuxer-max-bytes", "64MiB")
     setPropertyString("tls-verify", "yes")
     setPropertyString("tls-ca-file", "${context.filesDir.path}/cacert.pem")

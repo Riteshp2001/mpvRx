@@ -26,7 +26,6 @@ import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.utils.media.resolveSeekMode
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -74,12 +73,11 @@ class MPVPipHelper(
           context: Context?,
           intent: Intent?,
         ) {
-          val seekMode = resolveSeekMode(playerPreferences)
           when (intent?.getIntExtra(PIP_INTENT_ACTION, 0)) {
             PIP_PLAY -> PlaybackSession.setPropertyBoolean("pause", false)
             PIP_PAUSE -> PlaybackSession.setPropertyBoolean("pause", true)
-            PIP_REWIND -> PlaybackSession.command("seek", "-10", seekMode)
-            PIP_FORWARD -> PlaybackSession.command("seek", "10", seekMode)
+            PIP_REWIND -> PlaybackSession.command("seek", "-10", "relative")
+            PIP_FORWARD -> PlaybackSession.command("seek", "10", "relative")
             PIP_CLOSE -> {
               MediaPlaybackService.stopForTerminalDismissal()
               activity.finishAndRemoveTask()

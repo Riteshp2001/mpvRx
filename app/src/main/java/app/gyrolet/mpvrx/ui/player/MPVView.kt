@@ -548,7 +548,7 @@ class MPVView(
     PlaybackSession.setOptionString("keep-open", "yes")
     PlaybackSession.setOptionString("input-default-bindings", "yes")
     PlaybackSession.setOptionString("screenshot-directory", inputs.screenshotDirectoryPath)
-    PlaybackSession.setOptionString("hr-seek", if (inputs.preciseSeek) "yes" else "no")
+    PlaybackSession.setOptionString("hr-seek", if (inputs.preciseSeek) "yes" else "default")
     PlaybackSession.setOptionString("hr-seek-framedrop", if (inputs.preciseSeek) "no" else "yes")
   }
 
