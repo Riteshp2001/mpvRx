@@ -665,7 +665,6 @@ class MediaInfoActivity : AppCompatActivity() {
       columns = 2,
       onClick = {
         SafeClipboard.copyPlainText(context, title, value)
-        Toast.makeText(context, context.getString(R.string.toast_copied_value, value), Toast.LENGTH_SHORT).show()
       },
       modifier = modifier,
     )
@@ -1194,12 +1193,6 @@ class MediaInfoActivity : AppCompatActivity() {
                   scope.launch {
                     val content = properties.joinToString("\n") { "${it.first}: ${it.second}" }
                     SafeClipboard.copyPlainText(context, title, content)
-                    Toast
-                      .makeText(
-                        context,
-                        context.getString(app.gyrolet.mpvrx.R.string.ui_copied_specifications_to_clipboard),
-                        Toast.LENGTH_SHORT,
-                      ).show()
                   }
                 },
             contentAlignment = Alignment.Center,
@@ -1426,12 +1419,6 @@ class MediaInfoActivity : AppCompatActivity() {
                     .clickable {
                       scope.launch {
                         SafeClipboard.copyPlainText(context, "Chapter timestamp", timestamp)
-                        Toast
-                          .makeText(
-                            context,
-                            context.getString(R.string.toast_copied_value, timestamp),
-                            Toast.LENGTH_SHORT,
-                          ).show()
                       }
                     }.padding(horizontal = 12.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.Top,
@@ -1586,7 +1573,6 @@ class MediaInfoActivity : AppCompatActivity() {
         TextButton(
           onClick = {
             SafeClipboard.copyPlainText(context, label, value)
-            Toast.makeText(context, context.getString(R.string.toast_copied_value, value), Toast.LENGTH_SHORT).show()
             onDismiss()
           },
         ) {
@@ -1715,11 +1701,6 @@ class MediaInfoActivity : AppCompatActivity() {
           Surface(
             onClick = {
               SafeClipboard.copyPlainText(context, "MediaInfo", rawText)
-              Toast.makeText(
-                context,
-                context.getString(R.string.ui_copied_specifications_to_clipboard),
-                Toast.LENGTH_SHORT,
-              ).show()
             },
             shape = MaterialTheme.shapes.large,
             color = colors.onPrimaryContainer.copy(alpha = 0.13f),

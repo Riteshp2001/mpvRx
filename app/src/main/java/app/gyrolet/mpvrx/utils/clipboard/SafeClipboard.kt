@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx.utils.clipboard
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.TransactionTooLargeException
@@ -59,7 +60,7 @@ object SafeClipboard {
     val first = truncateUtf8(rawText, MAX_CLIPBOARD_BYTES)
     return try {
       clipboard.setPrimaryClip(ClipData.newPlainText(label, first.text))
-      if (showToast) showToast(context, first.toastMessage())
+      if (showToast) showCopyFeedback(context, first)
       CopyResult(first.copiedBytes, first.originalBytes, first.truncated)
     } catch (error: TransactionTooLargeException) {
       retrySmallClipboard(context, clipboard, label, rawText, showToast)
@@ -127,8 +128,19 @@ object SafeClipboard {
   ): CopyResult {
     val small = truncateUtf8(text, RETRY_BYTES)
     clipboard.setPrimaryClip(ClipData.newPlainText(label, small.text))
-    if (showToast) showToast(context, small.toastMessage())
+    if (showToast) showCopyFeedback(context, small)
     return CopyResult(small.copiedBytes, small.originalBytes, truncated = true)
+  }
+
+  private fun showCopyFeedback(
+    context: Context,
+    copied: TruncatedText,
+  ) {
+    // Android 13+ already confirms clipboard writes. Only add feedback for older devices
+    // or when the system preview cannot tell the user that their text was truncated.
+    if (copied.truncated || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+      showToast(context, copied.toastMessage())
+    }
   }
 
   private fun TruncatedText.toastMessage(): String =

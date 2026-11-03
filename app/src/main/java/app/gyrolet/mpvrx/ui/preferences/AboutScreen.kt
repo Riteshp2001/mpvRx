@@ -403,14 +403,7 @@ object AboutScreen : Screen {
                         context = context,
                         label = "mpvrx_upi_id",
                         text = "panditritesh2001@okhdfcbank",
-                        showToast = false,
                       )
-                      Toast
-                        .makeText(
-                          context,
-                          context.getString(app.gyrolet.mpvrx.R.string.ui_upi_id_copied),
-                          Toast.LENGTH_SHORT,
-                        ).show()
                     }.padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,

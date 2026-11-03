@@ -98,7 +98,7 @@ fun TopLeftPlayerControlsLandscape(
                 mediaTitle ?: "",
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f, fill = false),
               )
               viewModel.getPlaylistInfo()?.let { playlistInfo ->
@@ -106,7 +106,7 @@ fun TopLeftPlayerControlsLandscape(
                   " • $playlistInfo",
                   maxLines = 1,
                   overflow = TextOverflow.Visible,
-                  style = MaterialTheme.typography.bodySmall,
+                  style = MaterialTheme.typography.bodyMedium,
                 )
               }
             }
@@ -151,7 +151,7 @@ fun TopLeftPlayerControlsLandscape(
                     mediaTitle ?: "",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f, fill = false),
                   )
                   viewModel.getPlaylistInfo()?.let { playlistInfo ->
@@ -159,7 +159,7 @@ fun TopLeftPlayerControlsLandscape(
                       " • $playlistInfo",
                       maxLines = 1,
                       overflow = TextOverflow.Visible,
-                      style = MaterialTheme.typography.bodySmall,
+                      style = MaterialTheme.typography.bodyMedium,
                     )
                   }
                 }

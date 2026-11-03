@@ -9,10 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.networkstreaming
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -72,6 +68,7 @@ import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 
@@ -414,10 +411,7 @@ fun TorrentDetailSheet(
             // Copy Magnet Action
             FilledTonalIconButton(
               onClick = {
-                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("Magnet URI", group.canonicalSourceUri)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(context, "Magnet URL copied to clipboard", Toast.LENGTH_SHORT).show()
+                SafeClipboard.copyPlainText(context, "Magnet URI", group.canonicalSourceUri)
               },
               modifier = Modifier.size(48.dp),
               shape = RoundedCornerShape(14.dp),

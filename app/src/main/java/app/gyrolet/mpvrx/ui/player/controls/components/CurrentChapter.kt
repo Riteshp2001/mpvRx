@@ -86,7 +86,7 @@ fun CurrentChapter(
         Text(
           text = timeText,
           fontWeight = FontWeight.Bold,
-          style = MaterialTheme.typography.bodyMedium,
+          style = MaterialTheme.typography.titleMedium,
           maxLines = 1,
           overflow = TextOverflow.Clip,
           color = if (borderless) chapterContentColor else MaterialTheme.colorScheme.primary,
@@ -95,7 +95,7 @@ fun CurrentChapter(
           Text(
             text = Typography.bullet.toString(),
             textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
             color = chapterContentColor,
             overflow = TextOverflow.Clip,
@@ -103,7 +103,7 @@ fun CurrentChapter(
           Text(
             text = it,
             textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             fontWeight = FontWeight.ExtraBold,

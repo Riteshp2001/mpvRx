@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.editor
 
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -128,8 +127,7 @@ data class MpvHelpScreen(
           HelpEntryKind.PROPERTY -> entry.name
           HelpEntryKind.JS_API -> entry.signature.substringBefore("(") + "()"
         }
-      SafeClipboard.copyPlainText(context, "mpv_help", text, showToast = false)
-      Toast.makeText(context, context.getString(R.string.toast_copied_value, text), Toast.LENGTH_SHORT).show()
+      SafeClipboard.copyPlainText(context, "mpv_help", text)
     }
 
     LaunchedEffect(Unit) {

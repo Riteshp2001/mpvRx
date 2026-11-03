@@ -110,14 +110,14 @@ fun TopPlayerControlsPortrait(
                   mediaTitle ?: "",
                   maxLines = 1,
                   overflow = TextOverflow.Ellipsis,
-                  style = MaterialTheme.typography.bodyMedium,
+                  style = MaterialTheme.typography.titleMedium,
                   modifier = Modifier.weight(1f, fill = false),
                 )
                 viewModel.getPlaylistInfo()?.let { playlistInfo ->
                   Text(
                     " • $playlistInfo",
                     maxLines = 1,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = LocalContentColor.current.copy(alpha = 0.7f),
                   )
                 }
@@ -149,14 +149,14 @@ fun TopPlayerControlsPortrait(
                     mediaTitle ?: "",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f, fill = false),
                   )
                   viewModel.getPlaylistInfo()?.let { playlistInfo ->
                     Text(
                       " • $playlistInfo",
                       maxLines = 1,
-                      style = MaterialTheme.typography.bodySmall,
+                      style = MaterialTheme.typography.bodyMedium,
                       color = LocalContentColor.current.copy(alpha = 0.7f),
                     )
                   }
