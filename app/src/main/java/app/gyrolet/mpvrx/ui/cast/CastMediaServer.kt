@@ -18,6 +18,9 @@ import fi.iki.elonen.NanoHTTPD
 import java.io.FilterInputStream
 import java.io.InputStream
 import java.net.Inet4Address
+import java.net.InetAddress
+import java.net.InterfaceAddress
+import java.net.NetworkInterface
 import java.util.UUID
 
 /** Serves one Android-local media item to the selected Cast receiver. */
@@ -166,9 +169,10 @@ internal class CastMediaServer private constructor(
       context: Context,
       source: Uri,
       mimeType: String,
+      receiver: InetAddress?,
     ): String? {
       stop()
-      val host = runCatching { findLanAddress(context) }.getOrNull() ?: return null
+      val host = runCatching { findLanAddress(context, receiver) }.getOrNull() ?: return null
       val token = UUID.randomUUID().toString().replace("-", "")
       val server =
         CastMediaServer(
@@ -206,16 +210,49 @@ internal class CastMediaServer private constructor(
       } ?: -1L
     }
 
-    private fun findLanAddress(context: Context): String? {
+    private fun findLanAddress(
+      context: Context,
+      receiver: InetAddress?,
+    ): String? {
+      val local =
+        runCatching { NetworkInterface.getNetworkInterfaces()?.toList() }
+          .getOrNull()
+          .orEmpty()
+          .filter { runCatching { it.isUp && !it.isLoopback }.getOrDefault(false) }
+          .sortedBy { it.isVpn() }
+          .flatMap { network -> network.interfaceAddresses.map { network to it } }
+          .filter { (_, address) -> address.address is Inet4Address }
+      // Hotspot, VPN or mobile-data setups put the receiver outside the active network, so match its subnet first.
+      if (receiver is Inet4Address) {
+        local
+          .firstOrNull { (_, address) -> address.sharesSubnet(receiver) }
+          ?.let { return it.second.address.hostAddress }
+      }
       val connectivity = context.getSystemService(ConnectivityManager::class.java)
-      val properties = connectivity.getLinkProperties(connectivity.activeNetwork)
-      return properties
+      connectivity.getLinkProperties(connectivity.activeNetwork)
         ?.linkAddresses
         ?.asSequence()
         ?.map { it.address }
         ?.filterIsInstance<Inet4Address>()
         ?.firstOrNull { !it.isLoopbackAddress && it.isSiteLocalAddress }
+        ?.let { return it.hostAddress }
+      return local
+        .firstOrNull { (network, address) -> !network.isVpn() && address.address.isSiteLocalAddress }
+        ?.second
+        ?.address
         ?.hostAddress
     }
+
+    private fun NetworkInterface.isVpn(): Boolean = name.startsWith("tun") || name.startsWith("ppp")
+
+    private fun InterfaceAddress.sharesSubnet(target: Inet4Address): Boolean {
+      val prefix = networkPrefixLength.toInt()
+      if (prefix !in 1..32) return false
+      val mask = -1 shl (32 - prefix)
+      return (address.ipv4Bits() and mask) == (target.ipv4Bits() and mask)
+    }
+
+    private fun InetAddress.ipv4Bits(): Int =
+      address.fold(0) { bits, byte -> (bits shl 8) or (byte.toInt() and 0xFF) }
   }
 }

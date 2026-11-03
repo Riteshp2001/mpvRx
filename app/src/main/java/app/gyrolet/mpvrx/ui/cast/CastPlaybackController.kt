@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.net.InetAddress
 
 data class CastMediaSnapshot(
   val source: Uri,
@@ -278,7 +279,7 @@ class CastPlaybackController(
       return
     }
 
-    val contentUrl = resolveContentUrl(snapshot)
+    val contentUrl = resolveContentUrl(snapshot, session.castDevice?.inetAddress)
     if (contentUrl == null) {
       notifyUser("This media source cannot be reached by the Cast device")
       castContext?.sessionManager?.endCurrentSession(true)
@@ -419,7 +420,10 @@ class CastPlaybackController(
     capturedRemoteEndState = true
   }
 
-  private fun resolveContentUrl(snapshot: CastMediaSnapshot): String? {
+  private fun resolveContentUrl(
+    snapshot: CastMediaSnapshot,
+    receiver: InetAddress?,
+  ): String? {
     val scheme = snapshot.source.scheme?.lowercase()
     if (scheme == "http" || scheme == "https") {
       val host = snapshot.source.host.orEmpty()
@@ -433,6 +437,7 @@ class CastPlaybackController(
         context = activity,
         source = snapshot.source,
         mimeType = snapshot.mimeType ?: inferMimeType(snapshot.source),
+        receiver = receiver,
       )
     }
     return null
