@@ -2652,15 +2652,16 @@ fun restartFromBeginning() {
       }
     }
 
-    // Like mpv-android, seeks follow mpv's default hr-seek policy (precise absolute, fast relative).
-    // "Use precise seeking" makes every seek exact. Reapplied per file because the core outlives this screen.
+    // Precise seeks decode from the previous keyframe, which visibly stalls long-GOP files, so seeks
+    // snap to keyframes unless asked, or for clips under 2 minutes and A-B loops where exactness is cheap.
     viewModelScope.launch(playbackStateDispatcher) {
-      combine(_duration, playerPreferences.usePreciseSeeking.changes()) { duration, usePrecise ->
-        Pair(duration, usePrecise)
-      }.collect { (duration, usePrecise) ->
-        if (!_isMpvCoreReady.value || (duration ?: 0) <= 0) return@collect
-        PlaybackSession.setPropertyString("hr-seek", if (usePrecise) "yes" else "default")
-        PlaybackSession.setPropertyString("hr-seek-framedrop", if (usePrecise) "no" else "yes")
+      combine(_duration, abLoopState, playerPreferences.usePreciseSeeking.changes()) { duration, abLoop, usePrecise ->
+        Triple(duration ?: 0, abLoop.a != null || abLoop.b != null, usePrecise)
+      }.collect { (duration, isLoopActive, usePrecise) ->
+        if (!_isMpvCoreReady.value || duration <= 0) return@collect
+        val precise = usePrecise || duration < 120 || isLoopActive
+        PlaybackSession.setPropertyString("hr-seek", if (precise) "yes" else "no")
+        PlaybackSession.setPropertyString("hr-seek-framedrop", if (precise) "no" else "yes")
       }
     }
 
@@ -5182,30 +5183,32 @@ fun restartFromBeginning() {
     return if (loopA != null && loopB != null) target.coerceIn(minOf(loopA, loopB), maxOf(loopA, loopB)) else target
   }
 
-  /** Seekbar drag, as in mpv-android: time-pos follows the thumb at once, in 0.5 s steps. */
+  /** Seekbar drag or tap: seeks follow the thumb at once, in 0.5 s steps. */
   fun scrubTo(position: Float) {
     if (!position.isFinite()) return
     val target = clampSeekTarget(position.toDouble())
     if (abs(target - lastScrubTarget) < SCRUB_SEEK_STEP_SECONDS) return
     cancelFrameSeek()
     lastScrubTarget = target
-    PlaybackSession.setPropertyDouble("time-pos", target)
+    // Unlike setting time-pos, `seek` lets mpv show a frame from each spot before taking the next one.
+    PlaybackSession.command("seek", target.toString(), "absolute")
   }
 
-  /** Ends a seekbar drag. The drag already seeked live, so only a different target seeks again. */
+  /** Ends a seekbar drag or tap, which already seeked live. */
   fun seekFromScrub(position: Float) {
     if (!position.isFinite()) return
     val target = clampSeekTarget(position.toDouble())
-    if (target != lastScrubTarget) {
+    // Re-seeking within one step of the live seek would replay the decode and freeze the picture.
+    if (lastScrubTarget.isNaN() || abs(target - lastScrubTarget) >= SCRUB_SEEK_STEP_SECONDS) {
       cancelFrameSeek()
-      PlaybackSession.setPropertyDouble("time-pos", target)
+      PlaybackSession.command("seek", target.toString(), "absolute")
     }
     lastScrubTarget = Double.NaN
     _precisePosition.value = target.toFloat()
     syncplayManager.updatePlayerState(target, paused ?: false, doSeek = true)
   }
 
-  /** Horizontal swipe, as mpv-android's seek gesture: a fast keyframe seek as the finger moves. */
+  /** Horizontal swipe, as mpv-android's seek gesture: seeks follow the finger at once, in 0.5 s steps. */
   fun gestureSeekTo(position: Float) {
     if (!position.isFinite()) return
     val target = clampSeekTarget(position.toDouble())
@@ -5214,20 +5217,16 @@ fun restartFromBeginning() {
     if (abs(target - lastScrubTarget) < SCRUB_SEEK_STEP_SECONDS) return
     cancelFrameSeek()
     lastScrubTarget = target
-    PlaybackSession.command("seek", target.toString(), "absolute+keyframes")
+    PlaybackSession.command("seek", target.toString(), "absolute")
   }
 
-  /** Ends a swipe (null cancels it). With precise seeking on, it lands exactly where the swipe stopped. */
+  /** Ends a swipe (null cancels it). Its live seeks already landed, so none is repeated here. */
   fun finishGestureSeek(position: Float?) {
     isGestureSeeking = false
     lastScrubTarget = Double.NaN
-    val target = position?.takeIf { it.isFinite() }?.let { clampSeekTarget(it.toDouble()) }
-    if (target != null && playerPreferences.usePreciseSeeking.get()) {
-      PlaybackSession.setPropertyDouble("time-pos", target)
-    } else {
-      PlaybackSession.getPropertyDouble("time-pos")?.let(::publishPrecisePosition)
-    }
-    if (target != null) syncplayManager.updatePlayerState(target, paused ?: false, doSeek = true)
+    PlaybackSession.getPropertyDouble("time-pos")?.let(::publishPrecisePosition)
+    val target = position?.takeIf { it.isFinite() }?.let { clampSeekTarget(it.toDouble()) } ?: return
+    syncplayManager.updatePlayerState(target, paused ?: false, doSeek = true)
   }
 
   fun seekTo(
