@@ -204,8 +204,6 @@
   <string name="pref_player_gestures_volume">Gestos de volumen</string>
   <string name="pref_player_gestures_pinch_to_zoom">Pellizcar para ampliar</string>
   <string name="pref_player_gestures_pinch_to_zoom_subtitles">Pellizcar para ampliar subtítulos</string>
-  <string name="pref_player_gestures_two_finger_speed_swipe">Deslizar con dos dedos para la velocidad</string>
-  <string name="pref_player_gestures_two_finger_speed_swipe_summary">Desliza hacia arriba o hacia abajo con dos dedos para cambiar la velocidad en 0,25x, de 0,5x a 4x</string>
   <string name="pref_subtitles_secondary_pinch_zoom">Pellizcar amplía el subtítulo secundario</string>
   <string name="pref_subtitles_secondary_pinch_zoom_summary">Al pellizcar el subtítulo principal, también se escala el secundario</string>
   <string name="pref_player_gestures_swipe_subtitles_to_seek_dialog">Deslizar subtítulos para abrir el diálogo de búsqueda</string>

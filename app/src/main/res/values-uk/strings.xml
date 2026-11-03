@@ -247,8 +247,6 @@
   <string name="pref_player_gestures_volume">Жести гучності</string>
   <string name="pref_player_gestures_pinch_to_zoom">Масштабування щипком</string>
   <string name="pref_player_gestures_pinch_to_zoom_subtitles">Масштабування субтитрів щипком</string>
-  <string name="pref_player_gestures_two_finger_speed_swipe">Швидкість свайпом двома пальцями</string>
-  <string name="pref_player_gestures_two_finger_speed_swipe_summary">Проведіть двома пальцями вгору або вниз, щоб змінювати швидкість відтворення на 0,25x, від 0,5x до 4x</string>
   <string name="pref_player_gestures_swipe_subtitles_to_seek_dialog">Проведення по субтитрах для діалогу пошуку</string>
   <string name="pref_player_gestures_swipe_subtitles_invert_direction">Інвертувати напрямок проведення по субтитрах</string>
   <string name="pref_player_gestures_swipe_subtitles_invert_direction_summary">Проведення справа наліво перемотує вперед, зліва направо — назад</string>

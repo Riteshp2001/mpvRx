@@ -282,8 +282,6 @@
   <string name="pref_player_gestures_volume">Volume gestures</string>
   <string name="pref_player_gestures_pinch_to_zoom">Pinch to zoom</string>
   <string name="pref_player_gestures_pinch_to_zoom_subtitles">Pinch to zoom subtitles</string>
-  <string name="pref_player_gestures_two_finger_speed_swipe">Two-finger swipe for speed</string>
-  <string name="pref_player_gestures_two_finger_speed_swipe_summary">Swipe up or down with two fingers to change playback speed by 0.25x, from 0.5x to 4x</string>
   <string name="pref_subtitles_secondary_pinch_zoom">Pinch zooms secondary subtitle</string>
   <string name="pref_subtitles_secondary_pinch_zoom_summary">When pinching the primary subtitle, also scale the secondary subtitle</string>
   <string name="pref_player_gestures_swipe_subtitles_to_seek_dialog">Swipe subtitles to seek dialog</string>

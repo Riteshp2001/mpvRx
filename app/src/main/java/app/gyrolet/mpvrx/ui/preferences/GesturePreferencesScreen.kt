@@ -176,17 +176,6 @@ object GesturePreferencesScreen : Screen {
 
               PreferenceDivider()
 
-              val twoFingerSpeedSwipe by preferences.twoFingerSpeedSwipe.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_two_finger_speed_swipe),
-                value = twoFingerSpeedSwipe,
-                onValueChange = preferences.twoFingerSpeedSwipe::set,
-                title = { Text(stringResource(R.string.pref_player_gestures_two_finger_speed_swipe)) },
-                summary = { Text(stringResource(R.string.pref_player_gestures_two_finger_speed_swipe_summary)) },
-              )
-
-              PreferenceDivider()
-
               val swipeSubtitlesToSeekDialog by preferences.swipeSubtitlesToSeekDialog.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_swipe_subtitles_to_seek_dialog),

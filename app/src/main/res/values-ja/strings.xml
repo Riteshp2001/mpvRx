@@ -204,8 +204,6 @@
   <string name="pref_player_gestures_volume">音量ジェスチャー</string>
   <string name="pref_player_gestures_pinch_to_zoom">ピンチでズーム</string>
   <string name="pref_player_gestures_pinch_to_zoom_subtitles">ピンチで字幕を拡大</string>
-  <string name="pref_player_gestures_two_finger_speed_swipe">2本指スワイプで速度変更</string>
-  <string name="pref_player_gestures_two_finger_speed_swipe_summary">2本指で上下にスワイプすると、再生速度を0.25xずつ0.5xから4xの範囲で変更します</string>
   <string name="pref_subtitles_secondary_pinch_zoom">ピンチで第2字幕も拡大</string>
   <string name="pref_subtitles_secondary_pinch_zoom_summary">プライマリ字幕をピンチするとセカンダリ字幕も拡大されます</string>
   <string name="pref_player_gestures_swipe_subtitles_to_seek_dialog">字幕をスワイプしてシーク画面を開く</string>

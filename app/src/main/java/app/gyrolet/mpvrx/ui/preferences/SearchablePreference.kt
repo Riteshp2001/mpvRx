@@ -1690,7 +1690,6 @@ object SearchablePreferences {
         screen = GesturePreferencesScreen,
         anchorItemIndex = 1,
         SearchEntrySpec(R.string.pref_player_gestures_pinch_to_zoom_subtitles, listOf("pinch", "zoom", "subtitle", "gesture")),
-        SearchEntrySpec(R.string.pref_player_gestures_two_finger_speed_swipe, listOf("two finger", "swipe", "speed", "playback speed", "gesture")),
         SearchEntrySpec(R.string.pref_player_gestures_swipe_subtitles_to_seek_dialog, listOf("swipe", "subtitle", "seek", "dialog")),
         SearchEntrySpec(R.string.pref_player_gestures_swipe_subtitles_invert_direction, listOf("swipe", "subtitle", "invert", "direction")),
         SearchEntrySpec(R.string.pref_player_gestures_enable_center_swipe_up_gesture, listOf("swipe up", "center", "playlist", "gesture")),
