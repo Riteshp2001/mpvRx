@@ -951,25 +951,6 @@ fun PlayerControls(
     )
   }
 
-  GestureHandler(
-    viewModel = viewModel,
-    externalPanelShown = isPlayerDrawerShown,
-    onDismissExternalPanel = { setPlayerDrawerShown(false) },
-    onLockedTouchSideChanged = { isLeft ->
-      showUnlockOnLeft = isLeft
-      resetControlsTimestamp = System.currentTimeMillis()
-    },
-    onSeekRipple = { seekRippleRequest = it },
-  )
-
-  DoubleTapToSeekOvals(
-    amount = doubleTapSeekAmount,
-    showOvals = showDoubleTapOvals,
-    showSeekIcon = showSeekTime,
-    showSeekTime = showSeekTime,
-    rippleRequest = seekRippleRequest,
-  )
-
   val glassSource = rememberVideoGlassSource(videoSurface)
   val videoSurfaceReady = videoSurface?.surfaceReady?.collectAsState()?.value == true
   val videoFrameReady = videoSurface?.textureFrameReadyState?.collectAsState()?.value == true
@@ -999,13 +980,29 @@ fun PlayerControls(
     LocalPlayerButtonsOpacity provides playerButtonsBackgroundOpacity.coerceIn(0f, 1f),
   ) {
     PlayerControlsContentTheme {
-      Box(
+      GestureHandler(
+        viewModel = viewModel,
+        externalPanelShown = isPlayerDrawerShown,
+        onDismissExternalPanel = { setPlayerDrawerShown(false) },
+        onLockedTouchSideChanged = { isLeft ->
+          showUnlockOnLeft = isLeft
+          resetControlsTimestamp = System.currentTimeMillis()
+        },
+        onSeekRipple = { seekRippleRequest = it },
         modifier =
           modifier
             .fillMaxSize()
             .clipToBounds()
             .onSizeChanged { playerBounds = it },
       ) {
+    DoubleTapToSeekOvals(
+      amount = doubleTapSeekAmount,
+      showOvals = showDoubleTapOvals,
+      showSeekIcon = showSeekTime,
+      showSeekTime = showSeekTime,
+      rippleRequest = seekRippleRequest,
+    )
+
     VideoOpenAnimationOverlay(
       style = videoOpenAnim,
       speedMultiplier = animSpeed,

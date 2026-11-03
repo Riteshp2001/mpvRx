@@ -15,6 +15,7 @@ import android.view.ViewConfiguration as AndroidViewConfiguration
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
@@ -30,6 +31,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -99,6 +101,7 @@ fun GestureHandler(
   onDismissExternalPanel: () -> Unit = {},
   onLockedTouchSideChanged: (isLeft: Boolean) -> Unit = {},
   onSeekRipple: (SeekRippleRequest) -> Unit = {},
+  content: @Composable BoxScope.() -> Unit = {},
 ) {
   val playerPreferences = koinInject<PlayerPreferences>()
   val audioPreferences = koinInject<AudioPreferences>()
@@ -142,6 +145,9 @@ fun GestureHandler(
   val allowPanelGesturesPreference by playerPreferences.allowGesturesInPanels.collectAsState()
   val settingsPanelShown = panelShown == Panels.PlayerSettings
   val allowGesturesInPanels = allowPanelGesturesPreference && !settingsPanelShown
+  val playlistSwipeBlocked by rememberUpdatedState(anyPanelShown && !allowGesturesInPanels)
+  val currentExternalPanelShown by rememberUpdatedState(externalPanelShown)
+  val currentOnDismissExternalPanel by rememberUpdatedState(onDismissExternalPanel)
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
   val duration by PlaybackSession.propInt["duration"].collectAsState()
   val position by PlaybackSession.propInt["time-pos"].collectAsState()
@@ -317,9 +323,79 @@ fun GestureHandler(
     viewModel.updateSeekAmount(0)
   }
 
-  Box(
-    modifier =
-      modifier
+  // The playlist detector must be an ancestor of the controls: a background sibling never
+  // receives gestures starting on buttons, the title or the seekbar. Wait for an upward drag
+  // before consuming anything so their taps and horizontal drags still reach those controls.
+  val playlistSwipeModifier = Modifier.pointerInput(
+    areControlsLocked,
+    enableCenterSwipeUpGesture,
+    mediaGeneration,
+  ) {
+    if (areControlsLocked || !enableCenterSwipeUpGesture) return@pointerInput
+
+    awaitEachGesture {
+      val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+      if (
+        playlistSwipeBlocked || viewModel.sheetShown.value != Sheets.None ||
+        down.position.x !in (size.width / 3f)..(size.width * 2f / 3f) ||
+        !viewModel.hasPlaylistSupport()
+      ) {
+        return@awaitEachGesture
+      }
+      beginGesture(down.id.value, down.uptimeMillis)
+      val dragThreshold = max(viewConfiguration.touchSlop, 20f)
+      var playlistSwipeStarted = false
+      var longPressEligible = true
+
+      try {
+        do {
+          val event = awaitPointerEvent(PointerEventPass.Initial)
+          if (event.changes.count { it.pressed } > 1) break
+          val change = event.changes.firstOrNull { it.id == down.id } ?: break
+          val drag = change.position - down.position
+
+          if (!playlistSwipeStarted) {
+            if (
+              !change.pressed || gestureOwner != null || playlistSwipeBlocked ||
+              viewModel.sheetShown.value != Sheets.None
+            ) {
+              break
+            }
+            if (longPressEligible) {
+              if (change.uptimeMillis - down.uptimeMillis >= viewConfiguration.longPressTimeoutMillis) break
+              if (drag.getDistance() > viewConfiguration.touchSlop) longPressEligible = false
+            }
+            if (drag.y > dragThreshold || (abs(drag.x) > dragThreshold && abs(drag.x) >= abs(drag.y))) break
+            if (drag.y >= -dragThreshold || abs(drag.y) <= abs(drag.x) * 1.5f) continue
+            if (!viewModel.hasPlaylistSupport() || !claimGesture(GestureOwner.PLAYLIST)) break
+
+            playlistSwipeStarted = true
+            speedHoldPending = false
+            tapCount = 0
+            pendingSingleTapRegion = null
+            actionHaptics.pickup()
+            viewModel.isPlaylistSwipeActive.value = true
+            viewModel.playlistSwipeOffset.value = drag.y
+            viewModel.sheetShown.update { Sheets.Playlist }
+            viewModel.hideControls()
+            viewModel.panelShown.update { Panels.None }
+            if (currentExternalPanelShown) currentOnDismissExternalPanel()
+          }
+
+          viewModel.playlistSwipeOffset.value = drag.y
+          change.consume()
+        } while (change.pressed)
+      } finally {
+        if (playlistSwipeStarted) {
+          viewModel.isPlaylistSwipeActive.value = false
+          releaseGesture(GestureOwner.PLAYLIST)
+        }
+      }
+    }
+  }
+
+  val backgroundGestureModifier =
+      Modifier
         .fillMaxSize()
         .pointerInput(
           areControlsLocked,
@@ -628,6 +704,12 @@ fun GestureHandler(
                 val event = awaitPointerEvent()
                 val pointerCount = event.changes.count { it.pressed }
 
+                if (gestureOwner == GestureOwner.PLAYLIST) {
+                  speedHoldPending = false
+                  longPressJob.cancel()
+                  continue
+                }
+
                 if (pointerCount == 1) {
                   event.changes.forEach { change ->
                     if (change.pressed) {
@@ -660,7 +742,7 @@ fun GestureHandler(
                           }
                           speedHoldPending = false
                           val isCenterTouch =
-                            enableCenterSwipeUpGesture && startPosition.x in (size.width * 0.35f)..(size.width * 0.65f)
+                            enableCenterSwipeUpGesture && startPosition.x in (size.width / 3f)..(size.width * 2f / 3f)
                           val isMinimizeTouch = enableVideoMiniPlayer && !externalPanelShown &&
                             !isVerticalGestureDeadZone && startPosition.x in (size.width / 3f)..(size.width * 2f / 3f)
                           if (
@@ -676,22 +758,8 @@ fun GestureHandler(
                             gestureType = "minimize"
                           } else if (isCenterTouch && isVerticalDrag) {
                             longPressJob.cancel()
-                            if (
-                              deltaY < -20f &&
-                              viewModel.hasPlaylistSupport() &&
-                              claimGesture(GestureOwner.PLAYLIST)
-                            ) {
-                              gestureType = "playlist_swipe"
-                              actionHaptics.pickup()
-                              viewModel.isPlaylistSwipeActive.value = true
-                              viewModel.playlistSwipeOffset.value = deltaY
-                              viewModel.sheetShown.update { Sheets.Playlist }
-                              viewModel.hideControls()
-                              viewModel.panelShown.update { Panels.None }
-                              if (externalPanelShown) onDismissExternalPanel()
-                            } else {
-                              return@forEach
-                            }
+                            // The ancestor handles playlist swipes across the full center strip.
+                            return@forEach
                           } else {
                             // Cancel long press if drag started
                             longPressJob.cancel()
@@ -757,10 +825,6 @@ fun GestureHandler(
                       when (gestureType) {
                         "minimize" -> {
                           minimizeDistance = deltaY.coerceAtLeast(0f)
-                          change.consume()
-                        }
-                        "playlist_swipe" -> {
-                          viewModel.playlistSwipeOffset.value = deltaY
                           change.consume()
                         }
                         "speed_control" -> {
@@ -945,9 +1009,6 @@ fun GestureHandler(
                   longPressJob.cancel()
                   if (gestureType != null) {
                     when (gestureType) {
-                      "playlist_swipe" -> {
-                        viewModel.isPlaylistSwipeActive.value = false
-                      }
                       "vertical",
                       "subtitle_vertical",
                       -> {
@@ -966,7 +1027,6 @@ fun GestureHandler(
                     GestureOwner.SPEED,
                     GestureOwner.VERTICAL,
                     GestureOwner.SUBTITLE_VERTICAL,
-                    GestureOwner.PLAYLIST,
                     -> gestureOwner = null
                     else -> Unit
                   }
@@ -1005,9 +1065,6 @@ fun GestureHandler(
                 viewModel.playerUpdate.update { PlayerUpdates.None }
               }
 
-              if (gestureType == "playlist_swipe") {
-                viewModel.isPlaylistSwipeActive.value = false
-              }
               if (gestureType == "minimize" && minimizeDistance >= 80.dp.toPx()) {
                 if (viewModel.minimizeToMiniPlayer()) actionHaptics.pickup()
               }
@@ -1030,7 +1087,6 @@ fun GestureHandler(
                 GestureOwner.SPEED,
                 GestureOwner.VERTICAL,
                 GestureOwner.SUBTITLE_VERTICAL,
-                GestureOwner.PLAYLIST,
                 -> gestureOwner = null
                 else -> Unit
               }
@@ -1436,8 +1492,12 @@ fun GestureHandler(
             releaseGesture(GestureOwner.HORIZONTAL_SEEK)
             releaseGesture(GestureOwner.SUBTITLE_SEEK)
           }
-        },
-  )
+        }
+
+  Box(modifier = modifier.fillMaxSize().then(playlistSwipeModifier)) {
+    Box(modifier = backgroundGestureModifier)
+    content()
+  }
 }
 
 fun calculateNewVerticalGestureValue(
