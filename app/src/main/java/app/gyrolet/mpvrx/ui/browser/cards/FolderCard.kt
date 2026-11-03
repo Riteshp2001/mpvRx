@@ -175,6 +175,7 @@ fun FolderCard(
   uiConfig: FolderCardUiConfig? = null,
   allowThumbnailGeneration: Boolean = true,
   selectionNeighbors: MediaSelectionNeighbors = MediaSelectionNeighbors(),
+  isWatched: Boolean = false,
 ) {
   val resolvedUiConfig = uiConfig ?: rememberFolderCardUiConfig(viewPreferences)
   val unlimitedNameLines = resolvedUiConfig.unlimitedNameLines
@@ -397,6 +398,10 @@ fun FolderCard(
 
             SelectionIndicator(isSelected, Modifier.align(Alignment.TopEnd).padding(6.dp))
 
+            if (isWatched && !showSelectionBadge) {
+              WatchedFolderBadge(Modifier.align(Alignment.TopEnd).padding(6.dp))
+            }
+
             if (isPinned) {
               PinnedFolderBadge(
                 modifier =
@@ -433,6 +438,7 @@ fun FolderCard(
               when {
                 isActive -> MaterialTheme.colorScheme.primary
                 isRecentlyPlayed -> MaterialTheme.colorScheme.tertiary
+                isWatched -> MaterialTheme.colorScheme.onSurface.onWallpaper().copy(alpha = 0.6f)
                 else -> MaterialTheme.colorScheme.onSurface.onWallpaper()
               },
             maxLines = maxLines,
@@ -530,6 +536,10 @@ fun FolderCard(
 
             SelectionIndicator(isSelected, Modifier.align(Alignment.TopEnd).padding(4.dp))
 
+            if (isWatched && !showSelectionBadge) {
+              WatchedFolderBadge(Modifier.align(Alignment.TopEnd).padding(4.dp))
+            }
+
             if (isPinned) {
               PinnedFolderBadge(
                 modifier =
@@ -550,6 +560,7 @@ fun FolderCard(
                 when {
                   isActive -> MaterialTheme.colorScheme.primary
                   isRecentlyPlayed -> MaterialTheme.colorScheme.tertiary
+                  isWatched -> MaterialTheme.colorScheme.onSurface.onWallpaper().copy(alpha = 0.6f)
                   else -> MaterialTheme.colorScheme.onSurface.onWallpaper()
                 },
               maxLines = maxLines,
@@ -668,6 +679,16 @@ private fun formatDuration(durationMs: Long): String {
     minutes > 0 -> "${minutes}m"
     else -> "${secs}s"
   }
+}
+
+@Composable
+private fun WatchedFolderBadge(modifier: Modifier = Modifier) {
+  Icon(
+    Icons.RoundedFilled.Check,
+    contentDescription = androidx.compose.ui.res.stringResource(R.string.video_label_watched),
+    modifier = modifier.cardOverlay().padding(2.dp).size(16.dp),
+    tint = Color.White,
+  )
 }
 
 private fun formatFileSize(bytes: Long): String {

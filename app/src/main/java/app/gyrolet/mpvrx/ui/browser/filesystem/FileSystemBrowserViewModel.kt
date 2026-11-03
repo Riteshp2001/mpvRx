@@ -227,6 +227,11 @@ class FileSystemBrowserViewModel(
       }
     }
 
+    // Folder NEW and watched marks come from the tree snapshot, which may be rebuilt in the background.
+    viewModelScope.launch {
+      TreeViewScanner.backgroundRefreshes.collect { loadCurrentDirectory() }
+    }
+
     // Apply sorting whenever items or sort preferences change
     // Based on Fossify's ChangeSortingDialog callback and sorting logic
     viewModelScope.launch {

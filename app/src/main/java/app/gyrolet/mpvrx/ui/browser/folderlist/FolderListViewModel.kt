@@ -57,6 +57,7 @@ import java.io.File
 data class FolderWithNewCount(
   val folder: VideoFolder,
   val newVideoCount: Int = 0,
+  val isWatched: Boolean = false,
 )
 
 class FolderListViewModel(
@@ -366,13 +367,8 @@ class FolderListViewModel(
   ): FolderIdentityIndex? {
     folderVideos.keys.retainAll(folders.toSet())
     try {
+      // Runs with NEW labels off too, because the fully watched folder mark comes from the same pass.
       val parameters = newBadgeParameters()
-      if (parameters == null) {
-        folderVideos.clear()
-        _foldersWithNewCount.value = folders.map { FolderWithNewCount(it, 0) }
-        // Badges are off, so playback saves have nothing to update.
-        return FolderIdentityIndex.EMPTY
-      }
       // One snapshot per pass: per-video lookups issued up to four Room queries for every video in
       // every folder, which mostly miss because most videos were never played.
       val playbackByIdentifier = playbackStateRepository.getAllPlaybackStates().associateBy { it.mediaTitle }
@@ -390,13 +386,13 @@ class FolderListViewModel(
               folderVideos[folder] = it
             }
 
-            val newCount =
-              countNewVideos(videos, parameters) { identifiers ->
+            val marks =
+              countFolderMarks(videos, parameters) { identifiers ->
                 indexBuilder.add(identifiers, folderIndex)
                 identifiers.firstNotNullOfOrNull(playbackByIdentifier::get)
               }
 
-            FolderWithNewCount(folder, newCount)
+            FolderWithNewCount(folder, marks.newCount, marks.isWatched)
           } catch (cancellation: CancellationException) {
             throw cancellation
           } catch (e: Exception) {
@@ -422,34 +418,36 @@ class FolderListViewModel(
     folders: List<VideoFolder>,
     folderVideos: Map<VideoFolder, List<Video>>,
   ) {
-    val parameters = newBadgeParameters() ?: return
+    val parameters = newBadgeParameters()
     val recounted =
       folders.mapNotNull { folder ->
         val videos = folderVideos[folder] ?: return@mapNotNull null
         folder to
-          countNewVideos(videos, parameters) { identifiers ->
+          countFolderMarks(videos, parameters) { identifiers ->
             identifiers.firstNotNullOfOrNull { playbackStateRepository.getVideoDataByTitle(it) }
           }
       }.toMap()
     if (recounted.isEmpty()) return
     currentCoroutineContext().ensureActive()
     _foldersWithNewCount.update { current ->
-      current.map { entry -> recounted[entry.folder]?.let { entry.copy(newVideoCount = it) } ?: entry }
+      current.map { entry ->
+        recounted[entry.folder]?.let { entry.copy(newVideoCount = it.newCount, isWatched = it.isWatched) } ?: entry
+      }
     }
   }
 
   private class NewBadgeParameters(
+    val showNewLabels: Boolean,
     val currentTime: Long,
     val thresholdMillis: Long,
     val newLabelDays: Int,
     val watchedThreshold: Int,
   )
 
-  /** Null while the NEW label is turned off. */
-  private fun newBadgeParameters(): NewBadgeParameters? {
-    if (!appearancePreferences.showUnplayedOldVideoLabel.get()) return null
+  private fun newBadgeParameters(): NewBadgeParameters {
     val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
     return NewBadgeParameters(
+      showNewLabels = appearancePreferences.showUnplayedOldVideoLabel.get(),
       currentTime = System.currentTimeMillis(),
       thresholdMillis = thresholdDays * 24 * 60 * 60 * 1000L,
       newLabelDays = thresholdDays,
@@ -457,36 +455,55 @@ class FolderListViewModel(
     )
   }
 
-  private suspend fun countNewVideos(
+  private class FolderMarks(
+    val newCount: Int,
+    val isWatched: Boolean,
+  )
+
+  private suspend fun countFolderMarks(
     videos: List<Video>,
     parameters: NewBadgeParameters,
     playbackStateFor: suspend (identifiers: Set<String>) -> PlaybackStateEntity?,
-  ): Int =
-    videos.count { video ->
-      val videoAge = parameters.currentTime - (video.dateModified * 1000)
-      val isRecent = videoAge <= parameters.thresholdMillis
+  ): FolderMarks {
+    var newCount = 0
+    var watchedCount = 0
+    for (video in videos) {
       val playbackState =
         playbackStateFor(app.gyrolet.mpvrx.ui.browser.videolist.videoPlaybackIdentifiers(video))
-
-      if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
-        return@count app.gyrolet.mpvrx.ui.browser.videolist.buildVideoWithPlaybackInfo(
+      // The video list check mark uses this rule, so a folder is marked only when every row is.
+      val info =
+        app.gyrolet.mpvrx.ui.browser.videolist.buildVideoWithPlaybackInfo(
           video, playbackState, parameters.currentTime, parameters.newLabelDays, parameters.watchedThreshold,
-        ).isOldAndUnplayed
-      }
-      val isUnplayed =
-        if (playbackState != null && video.duration > 0) {
-          val durationSeconds = video.duration / 1000
-          val watched = durationSeconds - playbackState.timeRemaining.toLong()
-          val progressValue =
-            (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
-          parameters.watchedThreshold <= 0 || progressValue < (parameters.watchedThreshold / 100f)
-        } else {
-          playbackState == null
-        }
-
-      playbackState?.hasBeenWatched != true &&
-        (playbackState?.newLabelOverride ?: (isRecent && isUnplayed))
+        )
+      if (info.isWatched) watchedCount++
+      if (parameters.showNewLabels && isNewVideo(video, playbackState, info.isOldAndUnplayed, parameters)) newCount++
     }
+    return FolderMarks(newCount, videos.isNotEmpty() && watchedCount == videos.size)
+  }
+
+  private fun isNewVideo(
+    video: Video,
+    playbackState: PlaybackStateEntity?,
+    isOldAndUnplayed: Boolean,
+    parameters: NewBadgeParameters,
+  ): Boolean {
+    if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) return isOldAndUnplayed
+    val videoAge = parameters.currentTime - (video.dateModified * 1000)
+    val isRecent = videoAge <= parameters.thresholdMillis
+    val isUnplayed =
+      if (playbackState != null && video.duration > 0) {
+        val durationSeconds = video.duration / 1000
+        val watched = durationSeconds - playbackState.timeRemaining.toLong()
+        val progressValue =
+          (watched.toFloat() / durationSeconds.toFloat()).coerceIn(0f, 1f)
+        parameters.watchedThreshold <= 0 || progressValue < (parameters.watchedThreshold / 100f)
+      } else {
+        playbackState == null
+      }
+
+    return playbackState?.hasBeenWatched != true &&
+      (playbackState?.newLabelOverride ?: (isRecent && isUnplayed))
+  }
 
   /**
    * Which folders hold a video with a given playback identity. Stores identity hashes, since the
@@ -527,10 +544,6 @@ class FolderListViewModel(
       }
 
       fun build(): FolderIdentityIndex = FolderIdentityIndex(folders, entries.copyOf(size).apply { sort() })
-    }
-
-    companion object {
-      val EMPTY = FolderIdentityIndex(emptyList(), LongArray(0))
     }
   }
 

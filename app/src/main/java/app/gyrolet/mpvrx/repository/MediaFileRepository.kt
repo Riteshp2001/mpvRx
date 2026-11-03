@@ -98,9 +98,15 @@ object MediaFileRepository : KoinComponent {
   private suspend fun getTreeViewNewBadgeParams(): TreeViewNewBadgeParams {
     val showNewLabels = appearancePreferences.showUnplayedOldVideoLabel.get()
     val thresholdDays = appearancePreferences.unplayedOldVideoDays.get()
-    val states = if (showNewLabels) playbackStateRepository.getAllPlaybackStates() else emptyList()
+    // Watched titles also mark fully watched Tree folders, so load them even with NEW labels off.
+    val states = playbackStateRepository.getAllPlaybackStates()
     val playedMediaTitles = states.filter { it.hasBeenWatched }.mapTo(mutableSetOf()) { it.mediaTitle }
-    val overrides = states.mapNotNull { state -> state.newLabelOverride?.let { state.mediaTitle to it } }.toMap()
+    val overrides =
+      if (showNewLabels) {
+        states.mapNotNull { state -> state.newLabelOverride?.let { state.mediaTitle to it } }.toMap()
+      } else {
+        emptyMap()
+      }
 
     return TreeViewNewBadgeParams(showNewLabels, thresholdDays, playedMediaTitles, overrides)
   }
@@ -708,6 +714,7 @@ object MediaFileRepository : KoinComponent {
               totalDuration = folderData.totalDuration,
               hasSubfolders = folderData.hasSubfolders,
               newCount = folderData.newCount,
+              watchedCount = folderData.watchedCount,
             ),
           )
         }
@@ -778,6 +785,7 @@ object MediaFileRepository : KoinComponent {
               totalDuration = folderData?.totalDuration ?: 0L,
               hasSubfolders = true,
               newCount = folderData?.newCount ?: 0,
+              watchedCount = folderData?.watchedCount ?: 0,
             ),
           )
         }
@@ -814,6 +822,7 @@ object MediaFileRepository : KoinComponent {
                   totalDuration = folderData?.totalDuration ?: 0L,
                   hasSubfolders = true,
                   newCount = folderData?.newCount ?: 0,
+                  watchedCount = folderData?.watchedCount ?: 0,
                 ),
               )
             }
