@@ -24,10 +24,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
@@ -479,17 +482,24 @@ private fun IconBuilder(
       val choices: List<IconMark?> = IconMark.entries + listOf(null)
       BoxWithConstraints(Modifier.fillMaxWidth()) {
         val columns = (maxWidth / (104.dp * fontScale)).toInt().coerceIn(1, choices.size)
+        // 12dp padding twice, the 44dp icon, the 8dp gap and two label lines: one size for every tile.
+        val tileMinHeight =
+          76.dp + with(LocalDensity.current) { (MaterialTheme.typography.bodySmall.lineHeight * 2).toDp() }
         Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing)) {
           choices.chunked(columns).forEachIndexed { row, marks ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing)) {
+            Row(
+              Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+              horizontalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
+            ) {
               marks.forEachIndexed { column, mark ->
                 val shape = connectedShape(row * columns + column, choices.size, ConnectedLayout.Grid, columns)
+                val tileModifier = Modifier.weight(1f).fillMaxHeight().heightIn(min = tileMinHeight)
                 if (mark == null) {
                   CustomBackgroundTile(
                     selected = customBackground,
                     onClick = { onCustomBackground(!customBackground) },
                     shape = shape,
-                    modifier = Modifier.weight(1f),
+                    modifier = tileModifier,
                   )
                 } else {
                   val background = if (customBackground) nearestIcon.background else pending.background
@@ -502,7 +512,7 @@ private fun IconBuilder(
                     customColor = if (customBackground) Color(customColor or 0xFF000000.toInt()) else null,
                     onClick = { if (customBackground) onCustomMark(mark) else icon?.let(onPick) },
                     shape = shape,
-                    modifier = Modifier.weight(1f),
+                    modifier = tileModifier,
                   )
                 }
               }
@@ -544,7 +554,7 @@ private fun CustomBackgroundTile(
       .selectable(selected = selected, role = Role.Checkbox, onClick = onClick)
       .padding(horizontal = 8.dp, vertical = 12.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(8.dp),
+    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
   ) {
     Icon(Icons.RoundedFilled.Palette, null, modifier = Modifier.size(44.dp), tint = MaterialTheme.colorScheme.primary)
     Text(
@@ -552,7 +562,6 @@ private fun CustomBackgroundTile(
       style = MaterialTheme.typography.bodySmall,
       fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
       textAlign = TextAlign.Center,
-      minLines = 2,
     )
   }
 }
@@ -603,7 +612,7 @@ private fun MarkTile(
       )
       .padding(horizontal = 8.dp, vertical = 12.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(8.dp),
+    verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
   ) {
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
       Box(Modifier.alpha(if (enabled) 1f else 0.35f)) {
@@ -630,7 +639,6 @@ private fun MarkTile(
       color = (if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface)
         .copy(alpha = if (enabled) 1f else 0.5f),
       textAlign = TextAlign.Center,
-      minLines = 2,
     )
   }
 }
