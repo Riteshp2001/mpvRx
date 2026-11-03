@@ -246,12 +246,16 @@ internal object ClipSubtitleLoader {
     private val scratch = ByteArray(8192)
     private val decoder = CueDecoder()
 
+    // Container ASS/SSA events carry their own durations and may overlap, so none replaces another.
+    private val Format.clipCueBehavior: Int
+      get() = if (codecs == MimeTypes.TEXT_SSA) Format.CUE_REPLACEMENT_BEHAVIOR_MERGE else cueReplacementBehavior
+
     override fun format(format: Format) {
       trackFormat = format
       if (selected) {
         validateFormat()
       } else if (!samples.parsed) {
-        samples = SubtitleSamples(format.cueReplacementBehavior)
+        samples = SubtitleSamples(format.clipCueBehavior)
       }
     }
 
@@ -274,10 +278,10 @@ internal object ClipSubtitleLoader {
       check(format.sampleMimeType == MimeTypes.APPLICATION_MEDIA3_CUES) {
         context.getString(R.string.clip_subtitle_unsupported)
       }
-      check(!samples.parsed || samples.replacementBehavior == format.cueReplacementBehavior) {
+      check(!samples.parsed || samples.replacementBehavior == format.clipCueBehavior) {
         context.getString(R.string.clip_subtitle_unsupported)
       }
-      if (!samples.parsed) samples = SubtitleSamples(format.cueReplacementBehavior)
+      if (!samples.parsed) samples = SubtitleSamples(format.clipCueBehavior)
     }
 
     override fun sampleData(input: DataReader, length: Int, allowEndOfInput: Boolean, sampleDataPart: Int): Int {
