@@ -57,6 +57,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.areNavigationBarsVisible
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -121,6 +122,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1817,8 +1819,10 @@ fun PlayerControls(
               navigationEndPaddingModifier
                 .constrainAs(skipSegmentChip) {
                   end.linkTo(parent.end, spacing.large)
-                  bottom.linkTo(parent.bottom, skipChipBottomOffset)
-                },
+                  bottom.linkTo(parent.bottom)
+                }
+                // ConstraintLayout can miss state reads in constrainAs, so the animated lift is placement-only.
+                .offset { IntOffset(0, -skipChipBottomOffset.roundToPx()) },
           ) {
             val segment = currentSkippableSegment ?: return@AnimatedVisibility
             val segmentColor = segment.type.accentColor
