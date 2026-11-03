@@ -1501,7 +1501,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="oss_androidx_documentfile_description">Capa de abstracción para acceder al almacenamiento de documentos.</string>
   <string name="oss_androidx_media_description">API de sesión multimedia y reproducción de Android.</string>
   <string name="oss_androidx_palette_description">Extrae paletas de colores dominantes y vibrantes de las imágenes.</string>
-  <string name="oss_androidx_profile_installer_description">Precarga clases y métodos para acelerar el inicio de la aplicación.</string>
   <string name="oss_google_material_description">Componentes de Material Design y biblioteca de temas.</string>
   <string name="oss_google_cast_description">Framework de Chromecast para transmitir contenido multimedia.</string>
   <string name="oss_material_symbols_description">Conjunto de iconos Material Symbols para Compose.</string>

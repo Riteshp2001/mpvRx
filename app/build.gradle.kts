@@ -61,7 +61,6 @@ val previewVersionCode =
 
 plugins {
   alias(libs.plugins.android.application)
-  alias(libs.plugins.baselineprofile)
   alias(libs.plugins.kotlin.compose.compiler)
   alias(libs.plugins.kotlinx.serialization)
   alias(libs.plugins.ksp)
@@ -363,15 +362,18 @@ room {
   schemaDirectory("$projectDir/schemas")
 }
 
-baselineProfile {
-  // Ordinary release/preview builds must not require an emulator or launch instrumentation tests.
-  automaticGenerationDuringBuild = false
-  saveInSrc = true
+// Ship no ART profiles: AGP otherwise compiles the AndroidX libraries' own profiles into each release.
+tasks.configureEach {
+  if (name.startsWith("compile") && name.endsWith("ArtProfile")) enabled = false
+}
+
+configurations.configureEach {
+  // AndroidX pulls ProfileInstaller in only to install those profiles.
+  exclude(group = "androidx.profileinstaller", module = "profileinstaller")
 }
 
 dependencies {
   implementation("sh.measure:measure-android:0.22.0")
-  baselineProfile(project(":baselineprofile"))
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.ext.junit)
   implementation(libs.androidx.activity.compose)
@@ -430,7 +432,6 @@ dependencies {
   implementation(libs.truetype.parser)
   implementation(libs.fsaf)
   implementation(libs.mediainfo.lib)
-  implementation(libs.androidx.profileinstaller)
   implementation(libs.google.cast.framework)
 
   "standardImplementation"(variantOf(libs.mpvlib.standard) { artifactType("aar") })

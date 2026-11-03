@@ -1714,7 +1714,6 @@
   <string name="oss_androidx_documentfile_description">Шар абстракції для доступу до документів у сховищі.</string>
   <string name="oss_androidx_media_description">API медіасеансів та взаємодії з відтворенням в Android.</string>
   <string name="oss_androidx_palette_description">Вилучення палітри кольорів із зображень.</string>
-  <string name="oss_androidx_profile_installer_description">Попередня компіляція для швидшого запуску додатку.</string>
   <string name="oss_google_material_description">Бібліотека компонентів та тем Material Design.</string>
   <string name="oss_google_cast_description">Платформа Google Cast для трансляції медіа.</string>
   <string name="oss_material_symbols_description">Набір значків Material Symbols для Compose.</string>

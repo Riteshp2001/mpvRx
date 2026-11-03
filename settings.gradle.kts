@@ -53,4 +53,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "mpvRx"
 include(":app")
-include(":baselineprofile")

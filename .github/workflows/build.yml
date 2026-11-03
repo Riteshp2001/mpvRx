@@ -105,22 +105,9 @@ jobs:
           set -euo pipefail
           ./gradlew "bundle${GRADLE_FLAVOR}Release" --stacktrace --no-daemon --max-workers=2
 
-      - name: Compile artwork regressions and performance capture
+      - name: Compile artwork regression tests
         if: matrix.distribution.id == 'standard'
-        run: ./gradlew :app:compileStandardDebugAndroidTestKotlin :baselineprofile:compileStandardNonMinifiedReleaseKotlin -PtargetAbi=x86_64 --stacktrace --no-daemon --max-workers=2
-
-      - name: Report APK and bundle contents
-        run: |
-          python3 scripts/report_android_size.py --json size-report.json --markdown size-report.md
-          cat size-report.md >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload archive size report
-        uses: actions/upload-artifact@v7
-        with:
-          name: size-report-${{ matrix.distribution.id }}
-          path: |
-            size-report.json
-            size-report.md
+        run: ./gradlew :app:compileStandardDebugAndroidTestKotlin -PtargetAbi=x86_64 --stacktrace --no-daemon --max-workers=2
 
       - name: Sign bundle when signing secrets are available
         if: ${{ matrix.distribution.package == 'aab' }}

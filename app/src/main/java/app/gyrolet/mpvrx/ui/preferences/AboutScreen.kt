@@ -953,13 +953,6 @@ internal val OPEN_SOURCE_LIBRARIES =
       url = "https://developer.android.com/jetpack/androidx/releases/palette",
     ),
     OpenSourceLibrary(
-      name = "AndroidX Profile Installer",
-      artifact = "androidx.profileinstaller:profileinstaller",
-      descriptionRes = R.string.oss_androidx_profile_installer_description,
-      license = "Apache-2.0",
-      url = "https://developer.android.com/jetpack/androidx/releases/profileinstaller",
-    ),
-    OpenSourceLibrary(
       name = "Google Material",
       artifact = "com.google.android.material:material",
       descriptionRes = R.string.oss_google_material_description,

@@ -1494,7 +1494,6 @@
   <string name="oss_androidx_documentfile_description">ドキュメントストレージアクセスの抽象化レイヤー。</string>
   <string name="oss_androidx_media_description">Androidのメディアセッションおよび再生API。</string>
   <string name="oss_androidx_palette_description">画像から支配的で鮮やかなカラーパレットを抽出します。</string>
-  <string name="oss_androidx_profile_installer_description">アプリ起動を高速化するためクラスとメソッドを事前取得します。</string>
   <string name="oss_google_material_description">Material Designコンポーネントとテーマライブラリ。</string>
   <string name="oss_google_cast_description">メディアキャスト向けChromecastフレームワーク。</string>
   <string name="oss_material_symbols_description">Compose向けMaterial Symbolsアイコンセット。</string>

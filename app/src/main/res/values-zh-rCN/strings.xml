@@ -1521,7 +1521,6 @@
   <string name="oss_androidx_documentfile_description">用于文档存储访问的抽象层。</string>
   <string name="oss_androidx_media_description">Android 媒体会话和播放 API。</string>
   <string name="oss_androidx_palette_description">从图像中提取主要和鲜明的调色板。</string>
-  <string name="oss_androidx_profile_installer_description">预取类和方法以加快应用启动速度。</string>
   <string name="oss_google_material_description">Material Design 组件和主题库。</string>
   <string name="oss_google_cast_description">用于媒体投屏的 Chromecast 框架。</string>
   <string name="oss_material_symbols_description">用于 Compose 的 Material Symbols 图标集。</string>
