@@ -1,6 +1,7 @@
 package app.gyrolet.mpvrx.ui.components
 
 import android.os.Build
+import android.os.SystemClock
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -64,7 +65,7 @@ import dev.chrisbanes.haze.blur.hazeBlur
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -96,6 +97,10 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
   val reducedMotion = AppMotion.shouldReduceMotion()
   val sink = remember(toaster, lifecycle, activity, view, accessibility) {
     object : AppToastSink {
+      // Timed toasts share the newest deadline, so a stack leaves together instead of one by one.
+      private var groupDeadline = 0L
+      private var groupExpiry: Job? = null
+
       override fun show(message: AppToastMessage): Boolean {
         if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) || !view.isAttachedToWindow ||
           activity?.isInPictureInPictureMode == true
@@ -107,13 +112,13 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
           }
         }
         messages[message.id] = message
-        val duration = if (message.type == AppToastType.Loading) {
-          Duration.INFINITE
-        } else {
+        if (message.type != AppToastType.Loading) {
           val timeout = if (message.duration == AppToast.LENGTH_LONG) 6_000L else 3_500L
-          (accessibility?.calculateRecommendedTimeoutMillis(
-            timeout, containsIcons = true, containsText = true, containsControls = true,
-          ) ?: timeout).milliseconds
+          extendGroup(
+            accessibility?.calculateRecommendedTimeoutMillis(
+              timeout, containsIcons = true, containsText = true, containsControls = true,
+            ) ?: timeout,
+          )
         }
         val type = when (message.type) {
           AppToastType.Success -> ToastType.Success
@@ -122,12 +127,25 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
           AppToastType.Error -> ToastType.Error
           AppToastType.Normal, AppToastType.Loading -> ToastType.Normal
         }
-        toaster.show(message = message.text, id = message.id, type = type, duration = duration)
+        toaster.show(message = message.text, id = message.id, type = type, duration = Duration.INFINITE)
         return true
       }
 
       override fun dismiss(id: Long) {
         toaster.dismiss(id)
+      }
+
+      private fun extendGroup(timeoutMillis: Long) {
+        // Accessibility can ask to keep toasts until the user dismisses them.
+        if (timeoutMillis >= Int.MAX_VALUE) return
+        val deadline = SystemClock.uptimeMillis() + timeoutMillis
+        if (groupExpiry?.isActive == true && deadline <= groupDeadline) return
+        groupDeadline = deadline
+        groupExpiry?.cancel()
+        groupExpiry = cleanupScope.launch {
+          delay(timeoutMillis)
+          messages.values.filter { it.type != AppToastType.Loading }.forEach { toaster.dismiss(it.id) }
+        }
       }
     }
   }
