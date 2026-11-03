@@ -355,14 +355,25 @@ fun FolderCard(
           ) {
             val folderImageBitmap = remember(folderThumbnail) { folderThumbnail?.asImageBitmap() }
             val resolvedThumbnail = thumbnail ?: folderImageBitmap.takeIf { showFolderThumbnails }
-            if (thumbnail == null && showFolderThumbnails && folderPreviewFrames.size > 1 &&
-              folderPreviewFrames.any { it != null }) {
-              FolderPreviewMosaic(folderPreviewFrames, Modifier.matchParentSize().clip(AppShapeScale.medium))
+            val showMosaic = thumbnail == null && showFolderThumbnails && folderPreviewFrames.size > 1 &&
+              folderPreviewFrames.any { it != null }
+            val previewReveal =
+              rememberThumbnailReveal(
+                showMosaic || resolvedThumbnail != null,
+                folder.bucketId,
+                thumbnailGenerator,
+                thumbnailCacheRevision,
+              )
+            if (showMosaic) {
+              FolderPreviewMosaic(
+                folderPreviewFrames,
+                Modifier.matchParentSize().clip(AppShapeScale.medium).thumbnailReveal(previewReveal),
+              )
             } else if (resolvedThumbnail != null) {
               androidx.compose.foundation.Image(
                 bitmap = resolvedThumbnail,
                 contentDescription = null,
-                modifier = Modifier.matchParentSize().clip(AppShapeScale.medium),
+                modifier = Modifier.matchParentSize().clip(AppShapeScale.medium).thumbnailReveal(previewReveal),
                 contentScale = ContentScale.Crop,
               )
             } else {
