@@ -167,8 +167,11 @@ internal fun ScreenNavDisplay(
           }
         val entryColor =
           if (entryOpaque) MaterialTheme.colorScheme.background else wallpaperAwareBackgroundColor()
+        // The Preferences list handles its own bottom scroll clearance. Insetting its
+        // whole NavEntry instead leaves a large blank strip above the mini-player.
+        val scrollHandlesOverlay = route == app.gyrolet.mpvrx.ui.preferences.PreferencesScreen
         val insetByHost = bottomOverlayExempt != null && route != bottomOverlayExempt &&
-          !NavigationBarState.isInSelectionMode
+          !NavigationBarState.isInSelectionMode && !scrollHandlesOverlay
         val inheritedClearance = LocalNavigationBarHeight.current
         CompositionLocalProvider(
           LocalCurrentScreen provides route,

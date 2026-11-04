@@ -82,6 +82,7 @@ import app.gyrolet.mpvrx.ui.securefolder.SecureFolderSettingsScreen
 import app.gyrolet.mpvrx.ui.remote.RemoteControlScreen
 import app.gyrolet.mpvrx.ui.theme.LocalEmphasizedTypography
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
@@ -224,7 +225,9 @@ object PreferencesScreen : Screen {
             .fillMaxSize()
             .tvContentFocus()
             .padding(padding),
-        contentPadding = PaddingValues(bottom = 28.dp),
+        // Keep the settings page full-height and let its list scroll clear of any
+        // transient mini-player overlay without clipping the entire screen.
+        contentPadding = PaddingValues(bottom = 28.dp + LocalNavigationBarHeight.current),
         verticalArrangement = Arrangement.spacedBy(4.dp),
       ) {
         item {
