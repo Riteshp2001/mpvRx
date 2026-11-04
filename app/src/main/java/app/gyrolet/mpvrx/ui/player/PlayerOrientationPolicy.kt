@@ -40,6 +40,13 @@ internal object PlayerOrientationPolicy {
     lastVideoAspect?.takeIf { mediaId != null && it.first == mediaId }?.second
 
   /**
+   * Orientation picked with the rotation button. It outranks the video preference for later videos
+   * and re-entry until the next media launch, without changing the preference itself.
+   */
+  @Volatile
+  var manualOrientation: Int? = null
+
+  /**
    * Maps a user preference to an orientation, or null when the preference needs video geometry that
    * mpv has not reported yet.
    *

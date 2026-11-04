@@ -670,6 +670,10 @@ class PlayerActivity :
     }
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    // A fresh launch drops the rotation picked for the previous session; re-entry keeps it.
+    if (savedInstanceState == null && intent.action != MediaPlaybackService.ACTION_OPEN_PLAYER) {
+      PlayerOrientationPolicy.manualOrientation = null
+    }
     applyInitialVideoOrientation(intent)
     if (intent.action == MediaPlaybackService.ACTION_OPEN_PLAYER) {
       applyLiveSessionOrientation(isAudioHint = intent.getBooleanExtra("is_audio", false))
@@ -958,6 +962,8 @@ class PlayerActivity :
 
     lifecycleScope.launch {
       playerPreferences.orientation.changes().drop(1).collect {
+        // A preference picked in settings replaces the rotation-button choice.
+        PlayerOrientationPolicy.manualOrientation = null
         if (!isKnownAudioLaunch(intent) && !viewModel.isAudioOnly.value) setOrientation()
       }
     }
@@ -5864,6 +5870,8 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     val previousItemWasReady = isReady
 
     setIntent(intent)
+    // A new media launch drops the rotation picked for the previous video.
+    PlayerOrientationPolicy.manualOrientation = null
     applyInitialVideoOrientation(intent)
     applyPlaybackBrightnessPolicy(isAudio = isCurrentMediaKnownAudio())
     if (!beginMediaRequest()) return
@@ -6762,7 +6770,8 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
   /**
    * Applies the orientation for the current media, per [PlayerOrientationPolicy].
    *
-   * Preferences remain the single source of truth; the rotation button overrides this temporarily
+   * Preferences remain the single source of truth; a rotation-button choice
+   * ([PlayerOrientationPolicy.manualOrientation]) outranks them for videos until the next launch
    * without changing them. Nothing is applied when the geometry needed to decide is not known yet,
    * so the launch orientation survives until mpv reports it.
    *
@@ -6775,9 +6784,12 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
       return
     }
 
+    val manual = PlayerOrientationPolicy.manualOrientation
     val target =
       if (isCurrentMediaKnownAudio() || viewModel.isAudioOnly.value) {
         PlayerOrientationPolicy.forAudioPreference(audioPreferences.audioOrientation.get())
+      } else if (manual != null) {
+        manual
       } else {
         val preference = playerPreferences.orientation.get()
         // A saved custom ratio is re-applied to every file and is already part of mpv's reported
@@ -6824,9 +6836,10 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
       if (isAudio) {
         PlayerOrientationPolicy.forAudioPreference(audioPreferences.audioOrientation.get())
       } else {
-        PlayerOrientationPolicy.forPreference(playerPreferences.orientation.get()) {
-          PlayerOrientationPolicy.rememberedVideoAspect(item?.stableId)
-        }
+        PlayerOrientationPolicy.manualOrientation
+          ?: PlayerOrientationPolicy.forPreference(playerPreferences.orientation.get()) {
+            PlayerOrientationPolicy.rememberedVideoAspect(item?.stableId)
+          }
       } ?: return
     if (requestedOrientation != target) requestedOrientation = target
   }
@@ -6854,6 +6867,12 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     }
     if (isTelevision) {
       requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+      return
+    }
+    val manual = PlayerOrientationPolicy.manualOrientation
+    if (manual != null && !isKnownAudioLaunch(sourceIntent)) {
+      // A restored or re-entered player keeps the rotation picked for this session.
+      requestedOrientation = manual
       return
     }
     if (playerPreferences.orientation.get() != PlayerOrientation.Video || isKnownAudioLaunch(sourceIntent)) return
@@ -6919,6 +6938,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
         withContext(Dispatchers.IO) { runCatching { pending.get(LATE_GEOMETRY_WAIT_MS, TimeUnit.MILLISECONDS) }.getOrNull() }
           ?: return@launch
       if (decisionId != launchOrientationDecisionId || orientationFromPlayback || isFinishing) return@launch
+      if (PlayerOrientationPolicy.manualOrientation != null) return@launch
       val hasSize = width > 0 && height > 0
       val lateTarget =
         PlayerOrientationPolicy.forSourceGeometry(

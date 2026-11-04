@@ -6087,20 +6087,26 @@ fun restartFromBeginning() {
       currentHost.hostRequestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
       return
     }
-    // Temporarily cycle orientation WITHOUT modifying preferences
-    // Preferences remain the single source of truth and will be reapplied on next video
-    currentHost.hostRequestedOrientation =
-      when (currentHost.hostRequestedOrientation) {
+    // Held until the next media launch without touching preferences; PlayerActivity re-applies it.
+    val landscape =
+      when (PlayerOrientationPolicy.manualOrientation ?: currentHost.hostRequestedOrientation) {
         ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
         ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
         ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
-        -> {
-          ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-        }
-        else -> {
-          ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        }
+        -> false
+        else -> true
       }
+    val target =
+      if (landscape) {
+        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+      } else {
+        ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+      }
+    PlayerOrientationPolicy.manualOrientation = target
+    currentHost.hostRequestedOrientation = target
+    val label =
+      if (landscape) R.string.pref_player_orientation_landscape else R.string.pref_player_orientation_portrait
+    playerUpdate.value = PlayerUpdates.ShowText(appContext.getString(label))
   }
 
   // ==================== Lua Invocation Handling ====================
