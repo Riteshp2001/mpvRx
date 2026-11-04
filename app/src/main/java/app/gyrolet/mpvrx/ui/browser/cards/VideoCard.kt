@@ -684,7 +684,7 @@ fun VideoCard(
 
               if (hasDateMetadataChip) {
                 Text(
-                  formatDate(video.dateModified),
+                  formatVideoCardDate(video.dateModified),
                   style = MaterialTheme.typography.labelSmall,
                   modifier =
                     Modifier
@@ -1014,7 +1014,7 @@ fun VideoCard(
 
                 if (hasDateMetadataChip) {
                   Text(
-                    formatDate(video.dateModified),
+                    formatVideoCardDate(video.dateModified),
                     style = MaterialTheme.typography.labelSmall,
                     modifier =
                       Modifier
@@ -1093,5 +1093,5 @@ private val CARD_DATE_FORMATTER: java.time.format.DateTimeFormatter =
     .ofPattern("MMM dd, yyyy")
     .withZone(java.time.ZoneId.systemDefault())
 
-private fun formatDate(timestampSeconds: Long): String =
+internal fun formatVideoCardDate(timestampSeconds: Long): String =
   CARD_DATE_FORMATTER.format(java.time.Instant.ofEpochSecond(timestampSeconds))

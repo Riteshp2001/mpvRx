@@ -85,7 +85,10 @@ class BrowserPreferences(
       inheritGlobalLayout = false,
     )
   val recentView = BrowserPageViewPreferences(preferenceStore, "recent", thumbnailsByDefault = !television)
-  val playlistView = BrowserPageViewPreferences(preferenceStore, "playlist_library", folderDefaults = true)
+  val playlistView = BrowserPageViewPreferences(
+    preferenceStore, "playlist_library", folderDefaults = true,
+    thumbnailsByDefault = true, inheritGlobalThumbnails = false,
+  )
   val playlistItemView =
     BrowserPageViewPreferences(preferenceStore, "playlist_item", thumbnailsByDefault = !television)
   val showPlaylistLocation = preferenceStore.getBoolean("show_playlist_location", true)
@@ -206,6 +209,7 @@ class BrowserPageViewPreferences internal constructor(
    */
   inheritGlobalLayout: Boolean = true,
   thumbnailsByDefault: Boolean = !folderDefaults,
+  inheritGlobalThumbnails: Boolean = true,
 ) {
   val layoutMode =
     if (inheritGlobalLayout) {
@@ -226,11 +230,13 @@ class BrowserPageViewPreferences internal constructor(
     0,
     if (folderDefaults) "folder_grid_columns_landscape" else "video_grid_columns_landscape",
   )
-  val showThumbnails = boolean(
-    "show_thumbnails",
-    thumbnailsByDefault,
-    if (folderDefaults) "show_folder_thumbnails" else "show_video_thumbnails",
-  )
+  val showThumbnails =
+    if (inheritGlobalThumbnails) {
+      boolean("show_thumbnails", thumbnailsByDefault, if (folderDefaults) "show_folder_thumbnails" else "show_video_thumbnails")
+    } else {
+      // Playlist covers start visible independently of the folder-thumbnail setting.
+      preferenceStore.getBoolean("${prefix}_show_thumbnails", thumbnailsByDefault)
+    }
   val unlimitedNameLines = boolean("unlimited_name_lines", false)
   val centerGridTitles = boolean("center_grid_titles", true)
   val showExtensionField = boolean("show_extension_field", false)

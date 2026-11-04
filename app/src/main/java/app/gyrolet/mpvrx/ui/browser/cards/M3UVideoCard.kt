@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -46,6 +47,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
@@ -120,6 +122,9 @@ fun M3UVideoCard(
   showStreamDetails: Boolean = true,
   onThumbClick: () -> Unit = onClick,
   uiConfig: VideoCardUiConfig? = null,
+  listThumbnailWidth: Dp = 128.dp,
+  showSubtitleIndicator: Boolean = false,
+  progressPercentage: Float? = null,
 ) {
   val displayConfig = uiConfig ?: rememberVideoCardUiConfig()
   val thumbnailRepository = koinInject<ThumbnailRepository>()
@@ -237,7 +242,7 @@ fun M3UVideoCard(
     }
   val location = sourceSubtitle?.takeIf(String::isNotBlank) ?: playlistSourceLocation(url)
 
-  val thumbnailWidth = 128.dp
+  val thumbnailWidth = listThumbnailWidth
   val cardShape = rememberMediaSelectionShape(isSelected, isGridMode, selectionNeighbors)
   val selectionColor = animatedSelectionColor(isSelected)
 
@@ -274,7 +279,7 @@ fun M3UVideoCard(
         modifier =
           Modifier
             .then(if (isGridMode) Modifier.fillMaxWidth() else Modifier.width(thumbnailWidth))
-            .aspectRatio(16f / 9f)
+            .aspectRatio(if (video?.isAudio == true) 1f else 16f / 9f)
             .onSizeChanged { thumbnailSize = it }
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
@@ -313,6 +318,18 @@ fun M3UVideoCard(
             modifier = Modifier.size(42.dp),
             tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.65f),
           )
+        }
+
+        if (displayConfig.showProgressBar && progressPercentage != null) {
+          Box(
+            modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth().height(3.dp)
+              .background(MaterialTheme.colorScheme.surfaceVariant),
+          ) {
+            Box(
+              modifier = Modifier.fillMaxWidth(progressPercentage.coerceIn(0f, 1f)).height(3.dp)
+                .background(MaterialTheme.colorScheme.primary),
+            )
+          }
         }
 
         if (isSelected) {
@@ -391,18 +408,27 @@ fun M3UVideoCard(
         ) {
           if (sourceLabel != null) {
             SourceChip(label = sourceLabel, color = sourceColor ?: MaterialTheme.colorScheme.surfaceContainerHigh)
-            val sizeText = video?.sizeFormatted
-            if (displayConfig.showSizeChip && !sizeText.isNullOrBlank() && sizeText != "0 B" && sizeText != "--") {
-              // Deliberately not M3UMetadataChip: that one is a pill. This sits next to the source
-              // badge, and matching VideoCard's rounded-rect metadata chips keeps a mixed
-              // playlist's third line reading as one row instead of two chip systems.
+            val fields = buildList {
+              video?.let { media ->
+                if (displayConfig.showSizeChip) add(media.sizeFormatted)
+                if (displayConfig.showDurationField) add(media.durationFormatted)
+                if (displayConfig.showDateChip && media.dateModified > 0L) add(formatVideoCardDate(media.dateModified))
+                if (!media.isAudio) {
+                  if (displayConfig.showResolutionChip) add(media.resolution.substringBefore('@').trim())
+                  if (displayConfig.showFramerateInResolution && media.fps.isFinite() && media.fps > 0f) {
+                    add("${media.fps} FPS")
+                  }
+                  if (displayConfig.showCodecSupportIndicator) add(media.videoCodec)
+                  if (showSubtitleIndicator && media.hasEmbeddedSubtitles) add(media.subtitleCodec)
+                }
+              }
+            }.filter { it.isNotBlank() && it != "--" && it != "0 B" }
+            fields.forEach { field ->
               Text(
-                text = sizeText,
+                text = field,
                 style = MaterialTheme.typography.labelSmall,
-                modifier =
-                  Modifier
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, AppShapeScale.small)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainerHigh, AppShapeScale.small)
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
               )

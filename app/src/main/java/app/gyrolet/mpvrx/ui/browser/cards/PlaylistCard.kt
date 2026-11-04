@@ -52,6 +52,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
@@ -115,6 +116,11 @@ fun PlaylistCard(
   val thumbnailCacheRevision by thumbnailRepository.cacheRevision.collectAsState()
   val thumbnailFramePosition by preferences.thumbnailFramePosition.collectAsState()
   val showLocation by viewPreferences.showLocation.collectAsState()
+  val showThumbnails by viewPreferences.showThumbnails.collectAsState()
+  val showItemCount by viewPreferences.showItemCount.collectAsState()
+  val fullNames by viewPreferences.unlimitedNameLines.collectAsState()
+  val centerTitles by viewPreferences.centerGridTitles.collectAsState()
+  val audioCoverArtSize by viewPreferences.audioCoverArtSize.collectAsState()
   val sourceLocation =
     remember(playlist.m3uSourceUrl, playlist.xtreamServerUrl) {
       app.gyrolet.mpvrx.ui.browser.playlist.playlistSourceLocation(
@@ -140,8 +146,7 @@ fun PlaylistCard(
     } else {
       thumbnailWidthPx
     }
-  // Playlist artwork is intrinsic to the playlist card, like YouTube's playlist cover, so it
-  // does not follow the generic folder-thumbnail visibility toggle. The DAO gives position 0.
+  // Use the playlist page's own visibility preference in both layouts. The DAO gives position 0.
   // Audio prefers embedded/MediaStore cover art. Local video prefers a freshly generated frame
   // at the card's real 16:9 target so a tiny supplied artwork is never stretched across the tile.
   val resolvedThumbnail by
@@ -161,9 +166,10 @@ fun PlaylistCard(
       thumbnailCacheRevision,
       thumbnailFramePosition,
       showNetworkThumbnails,
+      showThumbnails,
     ) {
-      value = thumbnail
-      if (thumbnail != null) return@produceState
+      value = thumbnail.takeIf { showThumbnails }
+      if (!showThumbnails || thumbnail != null) return@produceState
       val item = firstItem ?: return@produceState
       value =
         resolvePlaylistItemArtwork(
@@ -180,6 +186,7 @@ fun PlaylistCard(
     produceState<Bitmap?>(
       initialValue = null,
       playlist.id,
+      isGridMode,
       secondItem?.filePath,
       secondItem?.tvgLogo,
       secondItem?.addedAt,
@@ -192,9 +199,10 @@ fun PlaylistCard(
       thumbnailCacheRevision,
       thumbnailFramePosition,
       showNetworkThumbnails,
+      showThumbnails,
     ) {
       val item = secondItem
-      if (item == null) {
+      if (!showThumbnails || !isGridMode || item == null) {
         value = null
         return@produceState
       }
@@ -242,8 +250,8 @@ fun PlaylistCard(
     }
   val playlistLabel = stringResource(R.string.ui_playlist)
   val metadata = "$sourceSummary · $playlistLabel"
-  val thumbnailBitmap = remember(resolvedThumbnail) { resolvedThumbnail?.asImageBitmap() }
-  val secondThumbnailBitmap = remember(resolvedSecondThumbnail) { resolvedSecondThumbnail?.asImageBitmap() }
+  val thumbnailBitmap = remember(resolvedThumbnail, showThumbnails) { resolvedThumbnail?.takeIf { showThumbnails }?.asImageBitmap() }
+  val secondThumbnailBitmap = remember(resolvedSecondThumbnail, showThumbnails) { resolvedSecondThumbnail?.takeIf { showThumbnails }?.asImageBitmap() }
   val placeholderIcon =
     when {
       isFavorites && playlist.isAudio -> Icons.RoundedFilled.Favorite
@@ -259,6 +267,10 @@ fun PlaylistCard(
       displayName = displayName,
       metadata = metadata,
       itemCount = itemCount,
+      showItemCount = showItemCount,
+      fullNames = fullNames,
+      centerTitles = centerTitles,
+      sourceLocation = sourceLocation.takeIf { showLocation }.orEmpty(),
       thumbnail = thumbnailBitmap,
       secondThumbnail = secondThumbnailBitmap,
       placeholderIcon = placeholderIcon,
@@ -328,7 +340,7 @@ fun PlaylistCard(
         )
       }
     }
-    if (!playlist.isZipPlaylist && showLocation && sourceLocation.isNotBlank()) {
+    if (showLocation && sourceLocation.isNotBlank()) {
       Text(
         text = sourceLocation,
         modifier = Modifier.fillMaxWidth(),
@@ -356,6 +368,7 @@ fun PlaylistCard(
     thumbnail = thumbnailBitmap,
     placeholderIconSize = if (isFavorites) 32.dp else null,
     viewPreferences = viewPreferences,
+    listThumbnailSize = if (isAudio) audioCoverArtSize.dp else 72.dp,
   )
 }
 
@@ -438,6 +451,10 @@ private fun YouTubePlaylistGridCard(
   displayName: String,
   metadata: String,
   itemCount: Int,
+  showItemCount: Boolean,
+  fullNames: Boolean,
+  centerTitles: Boolean,
+  sourceLocation: String,
   thumbnail: ImageBitmap?,
   secondThumbnail: ImageBitmap? = null,
   placeholderIcon: AppIcon,
@@ -531,31 +548,33 @@ private fun YouTubePlaylistGridCard(
           )
         }
 
-        Surface(
-          shape = AppShapeScale.small,
-          color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.94f),
-          contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-          shadowElevation = 2.dp,
-          modifier =
-            Modifier
-              .align(Alignment.BottomEnd)
-              .padding(8.dp),
-        ) {
-          Row(
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        if (showItemCount) {
+          Surface(
+            shape = AppShapeScale.small,
+            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.94f),
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            shadowElevation = 2.dp,
+            modifier =
+              Modifier
+                .align(Alignment.BottomEnd)
+                .padding(8.dp),
           ) {
-            Icon(
-              imageVector = Icons.RoundedFilled.PlaylistPlay,
-              contentDescription = null,
-              modifier = Modifier.size(18.dp),
-            )
-            Text(
-              text = itemCount.toString(),
-              style = MaterialTheme.typography.labelLarge,
-              fontWeight = FontWeight.SemiBold,
-            )
+            Row(
+              modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+              horizontalArrangement = Arrangement.spacedBy(5.dp),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Icon(
+                imageVector = Icons.RoundedFilled.PlaylistPlay,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+              )
+              Text(
+                text = itemCount.toString(),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+              )
+            }
           }
         }
 
@@ -586,17 +605,32 @@ private fun YouTubePlaylistGridCard(
           style = MaterialTheme.typography.titleMedium,
           color = MaterialTheme.colorScheme.onSurface,
           fontWeight = FontWeight.SemiBold,
-          maxLines = 2,
+          maxLines = if (fullNames) Int.MAX_VALUE else 2,
+          modifier = Modifier.fillMaxWidth(),
+          textAlign = if (centerTitles) TextAlign.Center else TextAlign.Start,
           overflow = TextOverflow.Ellipsis,
         )
         Spacer(Modifier.height(2.dp))
         Text(
           text = metadata,
+          modifier = Modifier.fillMaxWidth(),
+          textAlign = if (centerTitles) TextAlign.Center else TextAlign.Start,
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
         )
+        if (sourceLocation.isNotBlank()) {
+          Text(
+            text = sourceLocation,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = if (centerTitles) TextAlign.Center else TextAlign.Start,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
       }
 
       Box {

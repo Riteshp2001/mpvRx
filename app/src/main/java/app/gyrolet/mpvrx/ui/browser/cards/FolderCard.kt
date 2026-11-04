@@ -175,6 +175,7 @@ fun FolderCard(
   viewPreferences: BrowserPageViewPreferences? = null,
   uiConfig: FolderCardUiConfig? = null,
   allowThumbnailGeneration: Boolean = true,
+  listThumbnailSize: Dp = 72.dp,
   selectionNeighbors: MediaSelectionNeighbors = MediaSelectionNeighbors(),
 ) {
   val resolvedUiConfig = uiConfig ?: rememberFolderCardUiConfig(viewPreferences)
@@ -497,7 +498,7 @@ fun FolderCard(
           Box(
             modifier =
               Modifier
-                .size(72.dp)
+                .size(listThumbnailSize)
                 .tvFocusHighlight(AppShapeScale.medium, focusedScale = 1.03f)
                 .mediaCardClickable(
                   onClick = onThumbClick,

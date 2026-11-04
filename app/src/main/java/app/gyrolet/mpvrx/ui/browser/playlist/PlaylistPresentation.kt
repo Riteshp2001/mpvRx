@@ -1,6 +1,7 @@
 package app.gyrolet.mpvrx.ui.browser.playlist
 
 import android.net.Uri
+import app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
 import app.gyrolet.mpvrx.preferences.PlaylistSortType
 import app.gyrolet.mpvrx.preferences.SortOrder
 import app.gyrolet.mpvrx.utils.sort.SortUtils
@@ -26,6 +27,7 @@ internal fun playlistSortLabelRes(type: PlaylistSortType): Int =
 
 internal fun playlistSourceLocation(source: String?): String {
   if (source.isNullOrBlank()) return ""
+  ZipArchiveMedia.displayPath(source)?.let { return playlistSourceLocation(it) }
   val uri = Uri.parse(source)
   return when (uri.scheme?.lowercase(Locale.ROOT)) {
     null -> source

@@ -1459,7 +1459,7 @@ private fun FileSystemBrowserContent(
     ) {
       VideoCardUiConfig(
         unlimitedNameLines = unlimitedNameLines,
-        showThumbnails = showVideoThumbnails && !archiveMode,
+        showThumbnails = showVideoThumbnails,
         showSizeChip = showSizeChip,
         showResolutionChip = showResolutionChip && !archiveMode,
         showFramerateInResolution = showFramerateInResolution && !archiveMode,
@@ -1478,12 +1478,12 @@ private fun FileSystemBrowserContent(
       )
     }
 
-  // ZIP entries carry no probed metadata or thumbnails; suppress fields that would stay empty.
+  // ZIP entries support thumbnails, but folder totals have no probed duration.
   val baseFolderCardUiConfig = rememberFolderCardUiConfig()
   val folderCardUiConfig =
     remember(baseFolderCardUiConfig, archiveMode) {
       if (archiveMode) {
-        baseFolderCardUiConfig.copy(showTotalDurationChip = false, showFolderThumbnails = false)
+        baseFolderCardUiConfig.copy(showTotalDurationChip = false)
       } else {
         baseFolderCardUiConfig
       }
@@ -1671,7 +1671,7 @@ private fun FileSystemBrowserContent(
                     customIcon = if (ZipArchiveMedia.isArchiveRoot(folder.path)) Icons.RoundedFilled.FolderZip else null,
                     newVideoCount = folder.newCount,
                     isGridMode = true,
-                    allowThumbnailGeneration = false,
+                    allowThumbnailGeneration = archiveFolder && isOpenedFolder,
                   )
                 }
 
@@ -1797,7 +1797,7 @@ private fun FileSystemBrowserContent(
                     },
                   newVideoCount = folder.newCount,
                   isGridMode = false,
-                  allowThumbnailGeneration = false,
+                  allowThumbnailGeneration = archiveFolder && isOpenedFolder,
                   customIcon = if (ZipArchiveMedia.isArchiveRoot(folder.path)) Icons.RoundedFilled.FolderZip else null,
                   onSwipeAction =
                     swipeActions.folder.takeUnless { archiveFolder || selectionManager.isInSelectionMode || isInSelectionMode },
@@ -1944,7 +1944,7 @@ private fun FileSystemSearchContent(
     ) {
       VideoCardUiConfig(
         unlimitedNameLines = unlimitedNameLines,
-        showThumbnails = showVideoThumbnails && !archiveMode,
+        showThumbnails = showVideoThumbnails,
         showSizeChip = showSizeChip,
         showResolutionChip = showResolutionChip && !archiveMode,
         showFramerateInResolution = showFramerateInResolution && !archiveMode,
@@ -1963,12 +1963,12 @@ private fun FileSystemSearchContent(
       )
     }
 
-  // ZIP entries carry no probed metadata or thumbnails; suppress fields that would stay empty.
+  // ZIP entries support thumbnails, but folder totals have no probed duration.
   val baseFolderCardUiConfig = rememberFolderCardUiConfig()
   val folderCardUiConfig =
     remember(baseFolderCardUiConfig, archiveMode) {
       if (archiveMode) {
-        baseFolderCardUiConfig.copy(showTotalDurationChip = false, showFolderThumbnails = false)
+        baseFolderCardUiConfig.copy(showTotalDurationChip = false)
       } else {
         baseFolderCardUiConfig
       }
