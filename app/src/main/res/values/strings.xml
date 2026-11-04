@@ -2904,6 +2904,9 @@
   <string name="jellyfin_details">Details</string>
   <string name="jellyfin_trailer">Trailer</string>
   <string name="jellyfin_open_trailer_error">No app is available to open trailers.</string>
+  <string name="no_app_for_action">No app on this device can open this.</string>
+  <string name="tv_picker_file_exists">A file with this name already exists.</string>
+  <string name="tv_picker_no_access">This location is not accessible to mpvRx.</string>
   <string name="jellyfin_libraries">Libraries</string>
   <string name="jellyfin_continue_watching">Continue watching</string>
   <string name="jellyfin_latest_movies">Latest movies</string>

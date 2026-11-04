@@ -2732,6 +2732,9 @@
   <string name="jellyfin_details">Відомості</string>
   <string name="jellyfin_trailer">Трейлер</string>
   <string name="jellyfin_open_trailer_error">Немає застосунку для відкриття трейлерів.</string>
+  <string name="no_app_for_action">На цьому пристрої немає застосунку, який може це відкрити.</string>
+  <string name="tv_picker_file_exists">Файл із такою назвою вже існує.</string>
+  <string name="tv_picker_no_access">mpvRx не має доступу до цього розташування.</string>
   <string name="jellyfin_libraries">Медіатеки</string>
   <string name="jellyfin_continue_watching">Продовжити перегляд</string>
   <string name="jellyfin_latest_movies">Нові фільми</string>

@@ -124,6 +124,7 @@ import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.ui.remote.RemotePairingPrompt
 import app.gyrolet.mpvrx.ui.torrent.torrentSelectionActivityClass
+import app.gyrolet.mpvrx.ui.tv.startForResultOrToast
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.ui.player.controls.tvScrubStepSeconds
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
@@ -668,6 +669,10 @@ class PlayerActivity :
         }
       }
     }
+
+  @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
+  override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) =
+    startForResultOrToast(intent, requestCode) { target -> super.startActivityForResult(target, requestCode, options) }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     // A fresh launch drops the rotation picked for the previous session; re-entry keeps it.

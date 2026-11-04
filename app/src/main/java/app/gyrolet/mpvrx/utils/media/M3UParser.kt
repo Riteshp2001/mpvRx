@@ -162,7 +162,7 @@ object M3UParser {
     withContext(Dispatchers.IO) {
       try {
         val sourceUrl =
-          if (uri.authority == "com.android.externalstorage.documents" && DocumentsContract.isTreeUri(uri)) {
+          if (isPathBasedDocumentAuthority(uri.authority) && DocumentsContract.isTreeUri(uri)) {
             uri.toString()
           } else {
             uri.resolveLocalPath(context) ?: uri.toString()
@@ -413,7 +413,7 @@ object M3UParser {
     }
 
     if (File(resource).isAbsolute) return normalizeLocalMediaReference(resource + optionSuffix)
-    if (parsedSource?.scheme == "content" && parsedSource.authority == "com.android.externalstorage.documents") {
+    if (parsedSource?.scheme == "content" && isPathBasedDocumentAuthority(parsedSource.authority)) {
       val sourceUri = Uri.parse(source)
       if (DocumentsContract.isTreeUri(sourceUri)) {
         val documentId = DocumentsContract.getDocumentId(sourceUri)

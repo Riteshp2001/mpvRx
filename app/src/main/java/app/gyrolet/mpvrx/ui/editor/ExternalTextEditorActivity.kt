@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.ui.player.MpvConfigCache
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
+import app.gyrolet.mpvrx.ui.tv.startForResultOrToast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -57,6 +58,10 @@ import java.util.Locale
  * never replaces the active app configuration.
  */
 class ExternalTextEditorActivity : AppCompatActivity() {
+  @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
+  override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) =
+    startForResultOrToast(intent, requestCode) { target -> super.startActivityForResult(target, requestCode, options) }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     val sourceIntent = intent ?: run { finish(); return }

@@ -12,6 +12,10 @@ package app.gyrolet.mpvrx.utils.media
 import android.content.Context
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
+import app.gyrolet.mpvrx.BuildConfig
+
+internal fun isPathBasedDocumentAuthority(authority: String?): Boolean =
+  authority == "com.android.externalstorage.documents" || authority == "${BuildConfig.APPLICATION_ID}.tvdocuments"
 
 fun openPersistedTreeDocument(
   context: Context,

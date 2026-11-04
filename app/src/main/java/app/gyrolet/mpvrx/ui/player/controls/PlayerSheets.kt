@@ -57,6 +57,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.sheets.VideoZoomSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.VideoQualitySheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.VisualizerStyleSheet
 import app.gyrolet.mpvrx.ui.player.setTrackSelectionId
+import app.gyrolet.mpvrx.ui.tv.launchOrInApp
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import dev.vivvvek.seeker.Segment
 import kotlinx.collections.immutable.ImmutableList
@@ -102,7 +103,8 @@ fun PlayerSheets(
   onShowSheet: (Sheets) -> Unit,
   onDismissRequest: () -> Unit,
 ) {
-  val isTelevision = DeviceFormFactor.isTelevision(LocalContext.current)
+  val context = LocalContext.current
+  val isTelevision = DeviceFormFactor.isTelevision(context)
   val qualityDownloadAction = rememberQualityDownloadAction(viewModel)
   val advancedPreferences = koinInject<AdvancedPreferences>()
   val storedConfigOverrides by advancedPreferences.mpvConfOverrides.collectAsState()
@@ -137,19 +139,17 @@ fun PlayerSheets(
           if (it == null) return@rememberLauncherForActivityResult
           onAddSubtitle(it)
         }
-      val openSystemSubtitlePicker = {
-        subtitlesPicker.launch(
-          arrayOf(
-            "text/plain",
-            "text/srt",
-            "text/vtt",
-            "application/x-subrip",
-            "application/x-subtitle",
-            "text/x-ssa",
-            "*/*",
-          ),
+      val subtitleMimeTypes =
+        arrayOf(
+          "text/plain",
+          "text/srt",
+          "text/vtt",
+          "application/x-subrip",
+          "application/x-subtitle",
+          "text/x-ssa",
+          "*/*",
         )
-      }
+      val openSystemSubtitlePicker = { subtitlesPicker.launch(subtitleMimeTypes) }
 
       val subtitlesPreferences = koinInject<app.gyrolet.mpvrx.preferences.SubtitlesPreferences>()
       val savedPickerPath = subtitlesPreferences.pickerPath.get()
@@ -219,9 +219,8 @@ fun PlayerSheets(
         isSubtitleSelected = isSubtitleSelected,
         subtitleSelectionIndicator = subtitleSelectionIndicator,
         onAddSubtitle = {
-          if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
-            openSystemSubtitlePicker()
-          } else {
+          val inAppAvailable = !app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY
+          subtitlesPicker.launchOrInApp(context, subtitleMimeTypes, isTelevision, inAppAvailable) {
             showFilePicker = true
           }
         },
@@ -319,18 +318,16 @@ fun PlayerSheets(
 
       val audioPreferences = koinInject<app.gyrolet.mpvrx.preferences.AudioPreferences>()
       val savedPickerPath = audioPreferences.pickerPath.get()
-      val openSystemAudioPicker = {
-        audioPicker.launch(
-          arrayOf(
-            "audio/*",
-            "application/ogg",
-            "application/x-flac",
-            "video/x-matroska",
-            "video/*",
-            "*/*",
-          ),
+      val audioMimeTypes =
+        arrayOf(
+          "audio/*",
+          "application/ogg",
+          "application/x-flac",
+          "video/x-matroska",
+          "video/*",
+          "*/*",
         )
-      }
+      val openSystemAudioPicker = { audioPicker.launch(audioMimeTypes) }
 
       val currentMediaTitle = viewModel.currentMediaTitle
       val matchToName =
@@ -395,9 +392,8 @@ fun PlayerSheets(
           if (isTelevision) onDismissRequest()
         },
         onAddAudioTrack = {
-          if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
-            openSystemAudioPicker()
-          } else {
+          val inAppAvailable = !app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY
+          audioPicker.launchOrInApp(context, audioMimeTypes, isTelevision, inAppAvailable) {
             showAudioFilePicker = true
           }
         },

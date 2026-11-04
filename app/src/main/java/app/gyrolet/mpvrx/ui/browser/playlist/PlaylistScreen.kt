@@ -557,7 +557,7 @@ object PlaylistScreen : Screen {
     val folderGridColumnsPortrait by viewPreferences.gridColumnsPortrait.collectAsState()
     val folderGridColumnsLandscape by viewPreferences.gridColumnsLandscape.collectAsState()
     val navigationBarHeight = LocalNavigationBarHeight.current
-    val bottomOverlayClearance = maxOf(navigationBarHeight, NavigationBarState.miniPlayerClearance)
+    val bottomOverlayClearance = navigationBarHeight
     val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
     val hasEnoughItems = playlistsWithCount.size > 20
     val bottomPadding =

@@ -2662,6 +2662,9 @@
   <string name="jellyfin_details">जानकारी</string>
   <string name="jellyfin_trailer">ट्रेलर</string>
   <string name="jellyfin_open_trailer_error">ट्रेलर खोलने के लिए कोई ऐप उपलब्ध नहीं है।</string>
+  <string name="no_app_for_action">इस डिवाइस पर कोई ऐप इसे नहीं खोल सकता।</string>
+  <string name="tv_picker_file_exists">इस नाम की फ़ाइल पहले से मौजूद है।</string>
+  <string name="tv_picker_no_access">mpvRx इस स्थान तक नहीं पहुँच सकता।</string>
   <string name="jellyfin_libraries">लाइब्रेरी</string>
   <string name="jellyfin_continue_watching">देखना जारी रखें</string>
   <string name="jellyfin_latest_movies">नई फ़िल्में</string>

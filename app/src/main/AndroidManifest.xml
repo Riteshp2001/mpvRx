@@ -48,6 +48,25 @@
         android:name="android.software.leanback"
         android:required="false" />
 
+    <!-- Lets pickers check for a system document picker first; many TVs (Fire TV) ship none. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.OPEN_DOCUMENT" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.OPEN_DOCUMENT_TREE" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.CREATE_DOCUMENT" />
+            <data android:mimeType="*/*" />
+        </intent>
+    </queries>
+
     <application
         android:name=".App"
         android:appCategory="video"
@@ -1587,6 +1606,19 @@
             </intent-filter>
         </receiver>
 
+        <activity
+            android:name=".ui.tv.TvPickerActivity"
+            android:exported="false" />
+        <provider
+            android:name=".ui.tv.TvDocumentsProvider"
+            android:authorities="${applicationId}.tvdocuments"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"

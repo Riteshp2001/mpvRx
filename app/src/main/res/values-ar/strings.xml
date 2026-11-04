@@ -2824,6 +2824,9 @@
   <string name="jellyfin_details">التفاصيل</string>
   <string name="jellyfin_trailer">المقطع الدعائي</string>
   <string name="jellyfin_open_trailer_error">لا يوجد تطبيق لفتح المقاطع الدعائية.</string>
+  <string name="no_app_for_action">لا يوجد تطبيق على هذا الجهاز يمكنه فتح هذا.</string>
+  <string name="tv_picker_file_exists">يوجد ملف بهذا الاسم بالفعل.</string>
+  <string name="tv_picker_no_access">لا يمكن لـ mpvRx الوصول إلى هذا الموقع.</string>
   <string name="jellyfin_libraries">المكتبات</string>
   <string name="jellyfin_continue_watching">متابعة المشاهدة</string>
   <string name="jellyfin_latest_movies">أحدث الأفلام</string>

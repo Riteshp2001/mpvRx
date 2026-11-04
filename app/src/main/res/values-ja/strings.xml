@@ -2741,6 +2741,9 @@
   <string name="jellyfin_details">詳細</string>
   <string name="jellyfin_trailer">予告編</string>
   <string name="jellyfin_open_trailer_error">予告編を開くアプリがありません。</string>
+  <string name="no_app_for_action">このデバイスにはこれを開けるアプリがありません。</string>
+  <string name="tv_picker_file_exists">同じ名前のファイルがすでに存在します。</string>
+  <string name="tv_picker_no_access">mpvRx はこの場所にアクセスできません。</string>
   <string name="jellyfin_libraries">ライブラリ</string>
   <string name="jellyfin_continue_watching">視聴を続ける</string>
   <string name="jellyfin_latest_movies">新着映画</string>

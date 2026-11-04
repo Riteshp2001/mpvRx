@@ -2741,6 +2741,9 @@
   <string name="jellyfin_details">详情</string>
   <string name="jellyfin_trailer">预告片</string>
   <string name="jellyfin_open_trailer_error">没有可打开预告片的应用。</string>
+  <string name="no_app_for_action">此设备上没有可以打开此项的应用。</string>
+  <string name="tv_picker_file_exists">已存在同名文件。</string>
+  <string name="tv_picker_no_access">mpvRx 无法访问此位置。</string>
   <string name="jellyfin_libraries">媒体库</string>
   <string name="jellyfin_continue_watching">继续观看</string>
   <string name="jellyfin_latest_movies">最新电影</string>

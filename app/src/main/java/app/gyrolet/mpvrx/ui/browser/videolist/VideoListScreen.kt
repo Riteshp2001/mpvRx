@@ -857,11 +857,9 @@ internal fun VideoListContent(
   val configuration = androidx.compose.ui.platform.LocalConfiguration.current
   val density = LocalDensity.current
   val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
-  val miniPlayerClearance = app.gyrolet.mpvrx.ui.browser.NavigationBarState.miniPlayerClearance
   val bottomPadding =
     maxOf(
       navigationBarHeight,
-      miniPlayerClearance,
       if (showFloatingBottomBar) app.gyrolet.mpvrx.ui.browser.NavigationBarState.selectionBarClearance else 0.dp,
     )
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()

@@ -20,7 +20,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -32,13 +34,17 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.ui.NavDisplay
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
+import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
 import app.gyrolet.mpvrx.ui.player.LocalInAppMusicSheet
 import app.gyrolet.mpvrx.ui.theme.AppMotion
@@ -111,6 +117,8 @@ internal fun ScreenNavDisplay(
   tvSafeArea: Boolean = false,
   tvAutoFocus: Boolean = true,
   tvFocusRequestKey: Any? = Unit,
+  bottomOverlayClearance: Dp = 0.dp,
+  bottomOverlayExempt: Screen? = null,
   onBack: () -> Unit = { backStack.popSafely() },
   content: @Composable (Screen) -> Unit = { it.Content() },
 ) {
@@ -159,17 +167,25 @@ internal fun ScreenNavDisplay(
           }
         val entryColor =
           if (entryOpaque) MaterialTheme.colorScheme.background else wallpaperAwareBackgroundColor()
-        CompositionLocalProvider(LocalCurrentScreen provides route) {
+        val insetByHost = bottomOverlayExempt != null && route != bottomOverlayExempt &&
+          !NavigationBarState.isInSelectionMode
+        val inheritedClearance = LocalNavigationBarHeight.current
+        CompositionLocalProvider(
+          LocalCurrentScreen provides route,
+          LocalNavigationBarHeight provides if (insetByHost) 0.dp else inheritedClearance,
+        ) {
           Surface(Modifier.fillMaxSize(), color = entryColor) {
-            // TV: predictable initial focus, focus restored on Back, and overscan-safe content.
-            TvScreenFocusHost(
-              scope = route,
-              safeArea = tvSafeArea && route !is TvEdgeToEdgeScreen,
-              active = route == backStack.lastOrNull(),
-              autoFocus = tvAutoFocus,
-              focusRequestKey = tvFocusRequestKey,
-            ) {
-              content(route)
+            Box(Modifier.fillMaxSize().padding(bottom = if (insetByHost) bottomOverlayClearance else 0.dp)) {
+              // TV: predictable initial focus, focus restored on Back, and overscan-safe content.
+              TvScreenFocusHost(
+                scope = route,
+                safeArea = tvSafeArea && route !is TvEdgeToEdgeScreen,
+                active = route == backStack.lastOrNull(),
+                autoFocus = tvAutoFocus,
+                focusRequestKey = tvFocusRequestKey,
+              ) {
+                content(route)
+              }
             }
           }
         }

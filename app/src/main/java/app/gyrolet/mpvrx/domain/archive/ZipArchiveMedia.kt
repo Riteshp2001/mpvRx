@@ -25,6 +25,7 @@ import android.text.format.Formatter
 import app.gyrolet.mpvrx.domain.browser.FileSystemItem
 import app.gyrolet.mpvrx.domain.browser.PathComponent
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.utils.media.isPathBasedDocumentAuthority
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import java.io.Closeable
 import java.io.EOFException
@@ -369,7 +370,7 @@ object ZipArchiveMedia {
     }
 
     val uri = Uri.parse(source)
-    if (uri.authority == "com.android.externalstorage.documents") {
+    if (isPathBasedDocumentAuthority(uri.authority)) {
       val documentId = runCatching { DocumentsContract.getDocumentId(uri) }.getOrNull()
       val volumeId = documentId?.substringBefore(':')
       val relativePath = documentId?.substringAfter(':', "")?.let(::normalizeEntryPath)
@@ -389,14 +390,15 @@ object ZipArchiveMedia {
     if (context.checkUriPermission(uri, Process.myPid(), Process.myUid(), Intent.FLAG_GRANT_READ_URI_PERMISSION) != PackageManager.PERMISSION_GRANTED) {
       return false
     }
-    val volumeFile = when (uri.authority) {
-      "com.android.externalstorage.documents" -> {
+    val volumeFile = when {
+      isPathBasedDocumentAuthority(uri.authority) -> {
         val volumeId = runCatching { DocumentsContract.getDocumentId(uri).substringBefore(':') }.getOrNull() ?: return false
         if (volumeId == "primary") Environment.getExternalStorageDirectory()
         else if (volumeId.matches(Regex("[A-Za-z0-9-]+"))) File("/storage/$volumeId")
         else return false
       }
-      "com.android.providers.downloads.documents", "com.android.providers.media.documents" -> Environment.getExternalStorageDirectory()
+      uri.authority == "com.android.providers.downloads.documents" ||
+        uri.authority == "com.android.providers.media.documents" -> Environment.getExternalStorageDirectory()
       else -> return false
     }
     if (Environment.getExternalStorageState(volumeFile) !in mountedStates) return false

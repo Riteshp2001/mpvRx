@@ -42,14 +42,8 @@ object ScopedHiddenFolderScanner {
     DocumentsContract.buildDocumentUri(uri.authority, id).toString()
   }.getOrDefault(uri.toString())
 
-  private const val EXTERNAL_STORAGE_AUTHORITY = "com.android.externalstorage.documents"
-
-  /**
-   * Filesystem path behind an external-storage document. Only that provider defines document IDs
-   * as `volume:relative/path`; it is used to recognise items MediaStore already lists.
-   */
   fun localPathOf(uri: Uri): String? {
-    if (uri.authority != EXTERNAL_STORAGE_AUTHORITY) return null
+    if (!isPathBasedDocumentAuthority(uri.authority)) return null
     val id = runCatching { DocumentsContract.getDocumentId(uri) }
       .recoverCatching { DocumentsContract.getTreeDocumentId(uri) }
       .getOrNull() ?: return null

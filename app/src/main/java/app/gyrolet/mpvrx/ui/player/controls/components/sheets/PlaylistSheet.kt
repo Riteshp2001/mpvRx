@@ -20,6 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -60,6 +61,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -338,6 +340,12 @@ fun PlaylistSheet(
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     modifier = Modifier.fillMaxWidth(),
+    customMaxWidth =
+      if (!isPortrait && !isListMode && configuration.smallestScreenWidthDp >= 600) {
+        (configuration.screenWidthDp.dp - 48.dp).coerceAtMost(1280.dp)
+      } else {
+        null
+      },
     customMaxHeight = if (isPortrait) configuration.screenHeightDp.dp * 0.55f else null,
     isSwipeActive = isSwipeActive,
     swipeOffset = swipeOffset,
@@ -524,29 +532,30 @@ fun PlaylistSheet(
             }
           }
         } else {
-          // Horizontal grid mode
-          LazyRow(
-            state = lazyListState,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding =
-              PaddingValues(
-                horizontal = if (isListMode) MaterialTheme.spacing.medium else 0.dp,
-                vertical = MaterialTheme.spacing.small,
-              ),
-            horizontalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
-          ) {
-            items(playlist.size, key = { playlist[it].queueEntryId }) { index ->
-              val item = playlist[index]
-              PlaylistTrackGridItem(
-                item = item,
-                shape = connectedShape(index, playlist.size, ConnectedLayout.Horizontal),
-                thumbnailRepository = thumbnailRepository,
-                onClick = {
-                  onItemClick(item)
-                },
-                skipThumbnail = false,
-                isAudioOnly = isAudioOnly,
-              )
+          BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val cardWidth = if (configuration.smallestScreenWidthDp >= 600) {
+              ((maxWidth - AppConnectedShapeTokens.spacing * 4) / 5 - 1.dp).coerceIn(140.dp, 200.dp)
+            } else {
+              200.dp
+            }
+            LazyRow(
+              state = lazyListState,
+              modifier = Modifier.fillMaxWidth(),
+              contentPadding = PaddingValues(vertical = MaterialTheme.spacing.small),
+              horizontalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
+            ) {
+              items(playlist.size, key = { playlist[it].queueEntryId }) { index ->
+                val item = playlist[index]
+                PlaylistTrackGridItem(
+                  item = item,
+                  shape = connectedShape(index, playlist.size, ConnectedLayout.Horizontal),
+                  thumbnailRepository = thumbnailRepository,
+                  onClick = { onItemClick(item) },
+                  skipThumbnail = false,
+                  isAudioOnly = isAudioOnly,
+                  cardWidth = cardWidth,
+                )
+              }
             }
           }
         }
@@ -820,6 +829,7 @@ fun PlaylistTrackGridItem(
   isAudioOnly: Boolean = false,
   modifier: Modifier = Modifier,
   shape: Shape = RoundedCornerShape(12.dp),
+  cardWidth: Dp = 200.dp,
 ) {
   val isAudioItem = item.isAudio || isAudioOnly
   val effectiveItem =
@@ -833,7 +843,7 @@ fun PlaylistTrackGridItem(
   Surface(
     modifier =
       modifier
-        .width(200.dp)
+        .width(cardWidth)
         .clip(shape)
         .clickable(onClick = onClick),
     color = if (effectiveItem.isPlaying) {
@@ -855,6 +865,8 @@ fun PlaylistTrackGridItem(
             .then(
               if (isAudioItem) {
                 Modifier.aspectRatio(1f)
+              } else if (cardWidth < 200.dp) {
+                Modifier.aspectRatio(16f / 9f)
               } else {
                 Modifier.height(112.dp)
               },

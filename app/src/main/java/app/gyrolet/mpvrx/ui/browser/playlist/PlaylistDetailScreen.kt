@@ -901,10 +901,7 @@ private fun PlaylistVideoListContent(
   val showLocation by viewPreferences.showLocation.collectAsState()
   val showCategory by viewPreferences.showCategory.collectAsState()
   val showStreamDetails by viewPreferences.showStreamDetails.collectAsState()
-  val bottomClearance = maxOf(
-    app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current,
-    app.gyrolet.mpvrx.ui.browser.NavigationBarState.miniPlayerClearance,
-  ) + 80.dp
+  val bottomClearance = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current + 80.dp
   val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
   val showSubtitleIndicator by viewPreferences.showSubtitleIndicator.collectAsState()
   val unlimitedNameLines by viewPreferences.unlimitedNameLines.collectAsState()

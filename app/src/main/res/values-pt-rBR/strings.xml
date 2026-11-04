@@ -2758,6 +2758,9 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="jellyfin_details">Detalhes</string>
   <string name="jellyfin_trailer">Trailer</string>
   <string name="jellyfin_open_trailer_error">Nenhum aplicativo disponível para abrir trailers.</string>
+  <string name="no_app_for_action">Nenhum aplicativo neste dispositivo consegue abrir isto.</string>
+  <string name="tv_picker_file_exists">Já existe um arquivo com este nome.</string>
+  <string name="tv_picker_no_access">O mpvRx não pode acessar este local.</string>
   <string name="jellyfin_libraries">Bibliotecas</string>
   <string name="jellyfin_continue_watching">Continuar assistindo</string>
   <string name="jellyfin_latest_movies">Filmes recentes</string>

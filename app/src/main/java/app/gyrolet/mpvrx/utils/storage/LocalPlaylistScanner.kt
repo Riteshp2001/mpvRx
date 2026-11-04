@@ -14,6 +14,7 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.core.content.ContextCompat
 import app.gyrolet.mpvrx.ui.player.resolveLocalPath
+import app.gyrolet.mpvrx.utils.media.isPathBasedDocumentAuthority
 import java.io.File
 import java.nio.file.Files
 import kotlinx.coroutines.Dispatchers
@@ -140,7 +141,9 @@ internal object LocalPlaylistScanner {
     val visited = mutableSetOf<String>()
     for (permission in context.contentResolver.persistedUriPermissions) {
       val treeUri = permission.uri
-      if (!permission.isReadPermission || !DocumentsContract.isTreeUri(treeUri) || treeUri.authority !in localDocumentProviders) continue
+      if (!permission.isReadPermission || !DocumentsContract.isTreeUri(treeUri) ||
+        (treeUri.authority !in localDocumentProviders && !isPathBasedDocumentAuthority(treeUri.authority))
+      ) continue
       val directories = ArrayDeque<String>()
       directories.addLast(DocumentsContract.getTreeDocumentId(treeUri))
       while (directories.isNotEmpty()) {

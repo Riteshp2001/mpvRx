@@ -786,7 +786,7 @@ private fun LocalNetworkContent(
   onManageBookmarks: () -> Unit,
 ) {
   val navBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
-  val bottomOverlayClearance = maxOf(navBarHeight, app.gyrolet.mpvrx.ui.browser.NavigationBarState.miniPlayerClearance)
+  val bottomOverlayClearance = navBarHeight
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
     contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = bottomOverlayClearance + 16.dp),
@@ -865,7 +865,7 @@ private fun MediaContent(
 
   var selectedDetailGroup by remember { mutableStateOf<MediaStreamGroup?>(null) }
   val navBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
-  val bottomOverlayClearance = maxOf(navBarHeight, app.gyrolet.mpvrx.ui.browser.NavigationBarState.miniPlayerClearance)
+  val bottomOverlayClearance = navBarHeight
 
   val heroGroups =
     remember(mediaGroups) {

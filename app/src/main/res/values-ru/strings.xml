@@ -2792,6 +2792,9 @@
   <string name="jellyfin_details">Сведения</string>
   <string name="jellyfin_trailer">Трейлер</string>
   <string name="jellyfin_open_trailer_error">Нет приложения для открытия трейлеров.</string>
+  <string name="no_app_for_action">На этом устройстве нет приложения, которое может это открыть.</string>
+  <string name="tv_picker_file_exists">Файл с таким именем уже существует.</string>
+  <string name="tv_picker_no_access">У mpvRx нет доступа к этому расположению.</string>
   <string name="jellyfin_libraries">Медиатеки</string>
   <string name="jellyfin_continue_watching">Продолжить просмотр</string>
   <string name="jellyfin_latest_movies">Новые фильмы</string>
