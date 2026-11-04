@@ -473,12 +473,8 @@ data class VideoListScreen(
               onClick = {
                 coroutineScope.launch {
                   if (scopedFolder) {
-                    val folderPaths = sortedVideos.mapTo(hashSetOf()) { it.path }
-                    val lastPlayed =
-                      RecentlyPlayedOps.getRecentlyPlayed(limit = 100)
-                        .firstOrNull { it.filePath in folderPaths }
-                    val startIndex =
-                      sortedVideos.indexOfFirst { it.path == lastPlayed?.filePath }.coerceAtLeast(0)
+                    val lastPlayed = RecentlyPlayedOps.lastPlayedOf(sortedVideos)
+                    val startIndex = lastPlayed?.let(sortedVideos::indexOf)?.coerceAtLeast(0) ?: 0
                     if (playerPreferences.shouldBuildAutomaticQueue(sortedVideos[startIndex].isAudio)) {
                       MediaUtils.playFiles(sortedVideos, context, startIndex, "video_list")
                     } else {
@@ -486,22 +482,12 @@ data class VideoListScreen(
                     }
                     return@launch
                   }
-                  val folderPath =
-                    sortedVideosWithInfo
-                      .firstOrNull()
-                      ?.video
-                      ?.path
-                      ?.let { File(it).parent } ?: ""
-                  val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 100)
-                  val lastPlayedInFolder =
-                    recentlyPlayedVideos.firstOrNull {
-                      File(it.filePath).parent == folderPath
-                    }
+                  val lastPlayedInFolder = RecentlyPlayedOps.lastPlayedOf(sortedVideos)
 
                   if (archiveFolder) {
                     MediaUtils.playFiles(sortedVideos, context, launchSource = "zip_folder")
                   } else if (lastPlayedInFolder != null) {
-                    MediaUtils.playFile(lastPlayedInFolder.filePath, context, "recently_played_button")
+                    MediaUtils.playFile(lastPlayedInFolder, context, "recently_played_button")
                   } else {
                     MediaUtils.playFile(sortedVideosWithInfo.first().video, context, "first_video_button")
                   }

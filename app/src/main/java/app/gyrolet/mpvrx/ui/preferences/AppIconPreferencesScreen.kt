@@ -3,6 +3,7 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import android.os.Build
 import android.app.Activity
+import android.content.Context
 import android.widget.ImageView
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.animation.AnimatedContent
@@ -268,14 +269,7 @@ object AppIconPreferencesScreen : Screen {
           }
           if (customBackground) {
             TextButton(onClick = {
-              val result = CustomIconShortcut.apply(context, customColor, customMark)
-              val message = when (result) {
-                CustomIconShortcut.Result.Requested -> R.string.app_icon_shortcut_requested
-                CustomIconShortcut.Result.Updated -> R.string.app_icon_shortcut_updated
-                CustomIconShortcut.Result.Unsupported -> R.string.app_icon_shortcut_unsupported
-                CustomIconShortcut.Result.Failed -> R.string.app_icon_change_failed
-              }
-              Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+              showShortcutResult(context, CustomIconShortcut.apply(context, customColor, customMark))
             }) { Text(stringResource(R.string.app_icon_create_custom_shortcut)) }
           }
         }
@@ -289,7 +283,14 @@ object AppIconPreferencesScreen : Screen {
           confirmingCustomColor = null
         },
         title = { Text(stringResource(R.string.app_icon_confirm_title)) },
-        text = { Text(stringResource(R.string.app_icon_confirm_message, iconName(target))) },
+        text = {
+          Text(
+            stringResource(
+              if (confirmingCustomColor != null) R.string.app_icon_confirm_custom_message else R.string.app_icon_confirm_message,
+              iconName(target),
+            ),
+          )
+        },
         confirmButton = {
           TextButton(
             onClick = {
@@ -310,6 +311,11 @@ object AppIconPreferencesScreen : Screen {
               } catch (_: Exception) {
                 Toast.makeText(context, R.string.app_icon_change_failed, Toast.LENGTH_LONG).show()
                 current = runCatching { LauncherIconManager.current(context) }.getOrDefault(current)
+                return@TextButton
+              }
+              // The app drawer can only show a built-in icon, so the exact color goes to the home screen.
+              if (chosenCustomColor != null) {
+                showShortcutResult(context, CustomIconShortcut.apply(context, chosenCustomColor, customMark))
               }
             },
           ) { Text(stringResource(R.string.app_icon_confirm_action)) }
@@ -323,6 +329,16 @@ object AppIconPreferencesScreen : Screen {
       )
     }
   }
+}
+
+private fun showShortcutResult(context: Context, result: CustomIconShortcut.Result) {
+  val message = when (result) {
+    CustomIconShortcut.Result.Requested -> R.string.app_icon_shortcut_requested
+    CustomIconShortcut.Result.Updated -> R.string.app_icon_shortcut_updated
+    CustomIconShortcut.Result.Unsupported -> R.string.app_icon_shortcut_unsupported
+    CustomIconShortcut.Result.Failed -> R.string.app_icon_change_failed
+  }
+  Toast.makeText(context, message, Toast.LENGTH_LONG).show()
 }
 
 /** Name of an icon: its background, plus the logo when that is not the one the background leads with. */

@@ -22,6 +22,7 @@ import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
+import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
 import app.gyrolet.mpvrx.utils.media.VisibleDirectoryWatcher
@@ -41,6 +42,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -165,17 +167,20 @@ class VideoListViewModel(
             ?.let { File(it).parent }
         if (folderPath != null) {
           recentlyPlayedList
-            .firstOrNull { entity ->
+            .firstNotNullOfOrNull { entity ->
+              // Play Store history keys MediaStore videos by content:// URI; compare their paths.
+              val path = RecentlyPlayedOps.localPathForKey(entity.filePath)
               try {
-                File(entity.filePath).parent == folderPath
+                path.takeIf { File(it).parent == folderPath }
               } catch (_: Exception) {
-                false
+                null
               }
-            }?.filePath
+            }
         } else {
           null
         }
       }.distinctUntilChanged()
+      .flowOn(Dispatchers.IO)
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
   // Track previous video count to detect if folder became empty

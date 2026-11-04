@@ -7,6 +7,8 @@ import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.drawable.AdaptiveIconDrawable
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Icon
 import android.os.Build
 import androidx.core.content.ContextCompat
@@ -62,6 +64,19 @@ internal object CustomIconShortcut {
     foreground.setBounds(0, 0, size, size)
     foreground.draw(canvas)
     return bitmap
+  }
+
+  /**
+   * The icon cut to the device's icon shape, the way launchers show the built-in icons. Recents
+   * draws task icons as given, so [render]'s full-bleed adaptive layer would show as a plain square.
+   */
+  fun renderMasked(context: Context, color: Int, mark: IconMark, size: Int): Bitmap? {
+    val foreground = ContextCompat.getDrawable(context, mark.layer)?.mutate() ?: return null
+    val icon = AdaptiveIconDrawable(ColorDrawable(color or 0xFF000000.toInt()), foreground)
+    return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also {
+      icon.setBounds(0, 0, size, size)
+      icon.draw(Canvas(it))
+    }
   }
 
   /** Optional custom color shortcut, subject to launcher's pin confirmation. */

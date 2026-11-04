@@ -527,16 +527,8 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
                 onCheckedChange = {
                   if (quickPlayFabDirect) {
                     coroutineScope.launch {
-                      val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 1)
-                      val lastPlayed = recentlyPlayedVideos.firstOrNull()
-                      val targetVideo =
-                        if (lastPlayed != null) {
-                          filteredVideosWithInfo.firstOrNull { it.video.path == lastPlayed.filePath }?.video
-                        } else {
-                          null
-                        }
-
-                      playFromMediaLibrary(targetVideo ?: filteredVideosWithInfo.first().video)
+                      val videos = filteredVideosWithInfo.map { it.video }
+                      playFromMediaLibrary(RecentlyPlayedOps.lastPlayedOf(videos) ?: videos.first())
                     }
                   } else {
                     isFabExpanded.value = !isFabExpanded.value
@@ -578,16 +570,8 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
               onClick = {
                 isFabExpanded.value = false
                 coroutineScope.launch {
-                  val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 1)
-                  val lastPlayed = recentlyPlayedVideos.firstOrNull()
-                  val targetVideo =
-                    if (lastPlayed != null) {
-                      filteredVideosWithInfo.firstOrNull { it.video.path == lastPlayed.filePath }?.video
-                    } else {
-                      null
-                    }
-
-                  playFromMediaLibrary(targetVideo ?: filteredVideosWithInfo.first().video)
+                  val videos = filteredVideosWithInfo.map { it.video }
+                  playFromMediaLibrary(RecentlyPlayedOps.lastPlayedOf(videos) ?: videos.first())
                 }
               },
               icon = { Icon(Icons.RoundedFilled.PlayArrow, contentDescription = null) },

@@ -2746,6 +2746,7 @@
   <string name="app_icon_pending">Preview · not applied</string>
   <string name="app_icon_confirm_title">Change app icon?</string>
   <string name="app_icon_confirm_message">Your launcher icon will switch to %1$s.</string>
+  <string name="app_icon_confirm_custom_message">Your app drawer icon will switch to %1$s, the closest built-in icon. Your exact color will be added to the home screen.</string>
   <string name="app_icon_confirm_action">Change icon</string>
   <string name="app_icon_name_combined" translatable="false">%1$s · %2$s</string>
 
@@ -2808,7 +2809,7 @@
     <string name="color_picker_selected">Selected color</string>
     <string name="color_picker_quick_colors">Quick colors</string>
     <string name="app_icon_custom_background">Custom background</string>
-    <string name="app_icon_custom_background_hint">Choose a color. Android uses the closest built-in icon in your app drawer. Your exact color can be saved as a home-screen icon and used in Recents.</string>
+    <string name="app_icon_custom_background_hint">Choose a color. Android only allows built-in icons in the app drawer, so the closest one is used there. Applying also adds your exact color to the home screen, and Recents shows it too.</string>
     <string name="app_icon_custom_logo_hint">Choose any logo to overlay on your custom background.</string>
     <string name="app_icon_custom_requested">Your design</string>
     <string name="app_icon_custom_native_match">Actual launcher icon</string>

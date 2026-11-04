@@ -262,7 +262,7 @@ internal object LauncherIconManager {
       val icon = current(activity)
       val customMode = CustomIconShortcut.appliedMode(activity)
       val bitmap = if (customMode == "color") {
-        CustomIconShortcut.render(activity, CustomIconShortcut.savedColor(activity),
+        CustomIconShortcut.renderMasked(activity, CustomIconShortcut.savedColor(activity),
           CustomIconShortcut.savedMark(activity, icon.mark), size = 128) ?: return@runCatching
       } else {
         cachedArtwork?.takeIf { it.first == icon && icon.background != IconBackground.Wallpaper }?.second ?: run {

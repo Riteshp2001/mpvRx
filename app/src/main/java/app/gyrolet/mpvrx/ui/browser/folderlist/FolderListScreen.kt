@@ -894,8 +894,7 @@ object FolderListScreen : Screen {
                 onClick = {
                   isFabExpanded.value = false
                   coroutineScope.launch {
-                    val recentlyPlayedVideos = RecentlyPlayedOps.getRecentlyPlayed(limit = 1)
-                    val lastPlayed = recentlyPlayedVideos.firstOrNull()
+                    val lastPlayed = RecentlyPlayedOps.getLastPlayedEntity()
                     if (lastPlayed != null) {
                       MediaUtils.playFile(lastPlayed.filePath, context, "recently_played_button")
                     }

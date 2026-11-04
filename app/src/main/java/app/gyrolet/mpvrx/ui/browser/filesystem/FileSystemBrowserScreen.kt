@@ -764,11 +764,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 onClick = {
                   isFabExpanded.value = false
                   coroutineScope.launch {
-                    val recentlyPlayedVideos =
-                      app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps.getRecentlyPlayed(
-                        limit = 1,
-                      )
-                    val lastPlayed = recentlyPlayedVideos.firstOrNull()
+                    val lastPlayed = app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps.getLastPlayedEntity()
                     if (lastPlayed != null) {
                       MediaUtils.playFile(lastPlayed.filePath, context, "recently_played_button")
                     }
