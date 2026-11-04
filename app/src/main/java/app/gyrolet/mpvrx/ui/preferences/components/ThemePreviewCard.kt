@@ -194,14 +194,14 @@ fun ThemePreviewCard(
           }
         }
 
-        // Bottom section - button simulation
+        // Bottom section - filled button simulation
         Box(
           modifier =
             Modifier
               .fillMaxWidth()
               .height(14.dp)
               .clip(RoundedCornerShape(4.dp))
-              .background(colorScheme.surfaceVariant),
+              .background(colorScheme.primaryContainer),
         )
 
         // Bottom accent dot

@@ -328,6 +328,7 @@ object AppearancePreferencesScreen : Screen {
                     customThemes = pickerThemes,
                     selectedCustomThemeName = selectedCustomThemeName,
                     isDarkMode = isDarkMode,
+                    amoledMode = amoledMode,
                     onThemeSelected = { theme, position ->
                       if ((theme != appTheme || selectedCustomThemeName.isNotBlank()) && themeTransition?.isAnimating != true) {
                         themeTransition?.startTransition(position)

@@ -59,6 +59,7 @@ fun ThemePicker(
   customThemes: List<CustomThemeDefinition>,
   selectedCustomThemeName: String,
   isDarkMode: Boolean,
+  amoledMode: Boolean,
   onThemeSelected: (AppTheme, Offset) -> Unit,
   onAddCustomTheme: () -> Unit,
   onCustomThemeSelected: (CustomThemeDefinition, Offset) -> Unit,
@@ -103,7 +104,11 @@ fun ThemePicker(
         val isSelected = selectedCustomThemeName.isBlank() && theme == currentTheme
         ThemePreviewCard(
           label = stringResource(theme.titleRes),
-          colorScheme = if (isDarkMode) theme.getDarkColorScheme() else theme.getLightColorScheme(),
+          colorScheme = when {
+            isDarkMode && amoledMode -> theme.getAmoledColorScheme()
+            isDarkMode -> theme.getDarkColorScheme()
+            else -> theme.getLightColorScheme()
+          },
           isSelected = isSelected,
           onClick = { position -> onThemeSelected(theme, position) },
           modifier =
@@ -121,7 +126,7 @@ fun ThemePicker(
         val isSelected = theme.name == selectedCustomThemeName
         ThemePreviewCard(
           label = theme.name,
-          colorScheme = if (isDarkMode) theme.darkColorScheme() else theme.lightColorScheme(),
+          colorScheme = if (isDarkMode) theme.darkColorScheme(amoledMode) else theme.lightColorScheme(),
           isSelected = isSelected,
           onClick = { position -> onCustomThemeSelected(theme, position) },
           modifier = if (isSelected) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,

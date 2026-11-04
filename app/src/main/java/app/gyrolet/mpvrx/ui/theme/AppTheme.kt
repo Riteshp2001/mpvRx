@@ -9,6 +9,7 @@
 
 package app.gyrolet.mpvrx.ui.theme
 
+import android.util.Base64
 import androidx.annotation.StringRes
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
@@ -17,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import app.gyrolet.mpvrx.R
-import android.util.Base64
 import java.nio.charset.StandardCharsets
 
 data class CustomThemeDefinition(
@@ -30,6 +30,8 @@ data class CustomThemeDefinition(
   val tertiaryDark: Color,
   val backgroundLight: Color,
   val backgroundDark: Color,
+  val lightOverrides: Map<ThemeColorRole, Color> = emptyMap(),
+  val darkOverrides: Map<ThemeColorRole, Color> = emptyMap(),
 ) {
   fun serialize(): String =
     listOf(
@@ -42,81 +44,197 @@ data class CustomThemeDefinition(
       tertiaryDark.toHex(),
       backgroundLight.toHex(),
       backgroundDark.toHex(),
-    )
-      .joinToString("|")
+      serializeOverrides(lightOverrides),
+      serializeOverrides(darkOverrides),
+    ).joinToString("|")
 
-  fun lightColorScheme(): ColorScheme {
-    val primaryContainer = primaryLight.copy(alpha = 0.20f).compositeOver(backgroundLight)
-    val secondaryContainer = secondaryLight.copy(alpha = 0.20f).compositeOver(backgroundLight)
-    val tertiaryContainer = tertiaryLight.copy(alpha = 0.20f).compositeOver(backgroundLight)
-    val surfaceVariant = primaryLight.copy(alpha = 0.10f).compositeOver(backgroundLight)
+  fun lightColorScheme(): ColorScheme = baseLightColorScheme().withOverrides(lightOverrides)
+
+  fun darkColorScheme(amoledMode: Boolean = false): ColorScheme {
+    val scheme = baseDarkColorScheme().withOverrides(darkOverrides)
+    // AMOLED is a separate display option, so it wins over custom surface overrides.
+    return if (amoledMode) scheme.withAmoledSurfaces() else scheme
+  }
+
+  private fun baseLightColorScheme(): ColorScheme {
+    val softOnColor = Color(0xFFFFF9FC)
+    val primaryContainer = primaryLight.copy(alpha = 0.22f).compositeOver(backgroundLight)
+    val secondaryContainer = secondaryLight.copy(alpha = 0.22f).compositeOver(backgroundLight)
+    val tertiaryContainer = tertiaryLight.copy(alpha = 0.22f).compositeOver(backgroundLight)
+    val surfaceVariant = primaryLight.copy(alpha = 0.10f).compositeOver(backgroundLight.darken(0.035f))
+    val surfaceDim = backgroundLight.darken(0.075f)
+    val surfaceBright = backgroundLight.lighten(0.012f)
+    val surfaceContainerLowest = backgroundLight.lighten(0.018f)
+    val surfaceContainerLow = primaryLight.copy(alpha = 0.030f).compositeOver(backgroundLight)
+    val surfaceContainer = primaryLight.copy(alpha = 0.050f).compositeOver(backgroundLight)
+    val surfaceContainerHigh = primaryLight.copy(alpha = 0.075f).compositeOver(backgroundLight)
+    val surfaceContainerHighest = primaryLight.copy(alpha = 0.105f).compositeOver(backgroundLight)
+    val accentSurfaces =
+      listOf(
+        backgroundLight,
+        surfaceVariant,
+        surfaceDim,
+        surfaceBright,
+        surfaceContainerLowest,
+        surfaceContainerLow,
+        surfaceContainer,
+        surfaceContainerHigh,
+        surfaceContainerHighest,
+      )
+    val primary = primaryLight.withMinimumContrastAgainst(accentSurfaces)
+    val secondary = secondaryLight.withMinimumContrastAgainst(accentSurfaces)
+    val tertiary = tertiaryLight.withMinimumContrastAgainst(accentSurfaces)
     return lightColorScheme(
-      primary = primaryLight,
-      onPrimary = primaryLight.accessibleContentColor(),
+      primary = primary,
+      surfaceTint = primary,
+      scrim = Color.Black,
+      primaryFixed = primaryLight.copy(alpha = 0.22f).compositeOver(Color(0xFFF7F5F8)),
+      primaryFixedDim = primaryLight.copy(alpha = 0.40f).compositeOver(Color(0xFFF7F5F8)),
+      onPrimaryFixed = Color(0xFF1C1B1F),
+      onPrimaryFixedVariant = Color(0xFF313033),
+      secondaryFixed = secondaryLight.copy(alpha = 0.22f).compositeOver(Color(0xFFF7F5F8)),
+      secondaryFixedDim = secondaryLight.copy(alpha = 0.40f).compositeOver(Color(0xFFF7F5F8)),
+      onSecondaryFixed = Color(0xFF1C1B1F),
+      onSecondaryFixedVariant = Color(0xFF313033),
+      tertiaryFixed = tertiaryLight.copy(alpha = 0.22f).compositeOver(Color(0xFFF7F5F8)),
+      tertiaryFixedDim = tertiaryLight.copy(alpha = 0.40f).compositeOver(Color(0xFFF7F5F8)),
+      onTertiaryFixed = Color(0xFF1C1B1F),
+      onTertiaryFixedVariant = Color(0xFF313033),
+      onPrimary = primary.accessibleContentColor(),
       primaryContainer = primaryContainer,
       onPrimaryContainer = primaryContainer.accessibleContentColor(),
-      secondary = secondaryLight,
-      onSecondary = secondaryLight.accessibleContentColor(),
+      secondary = secondary,
+      onSecondary = secondary.accessibleContentColor(),
       secondaryContainer = secondaryContainer,
       onSecondaryContainer = secondaryContainer.accessibleContentColor(),
-      tertiary = tertiaryLight,
-      onTertiary = tertiaryLight.accessibleContentColor(),
+      tertiary = tertiary,
+      onTertiary = tertiary.accessibleContentColor(),
       tertiaryContainer = tertiaryContainer,
       onTertiaryContainer = tertiaryContainer.accessibleContentColor(),
+      error = Color(0xFFBA1A1A),
+      onError = softOnColor,
+      errorContainer = Color(0xFFFFDAD6),
+      onErrorContainer = Color(0xFF93000A),
       background = backgroundLight,
+      onBackground = Color(0xFF1C1B1F).withMinimumContrastAgainst(backgroundLight),
       surface = backgroundLight,
-      onBackground = backgroundLight.accessibleContentColor(),
-      onSurface = backgroundLight.accessibleContentColor(),
+      onSurface = Color(0xFF1C1B1F).withMinimumContrastAgainst(backgroundLight),
       surfaceVariant = surfaceVariant,
-      onSurfaceVariant = surfaceVariant.accessibleContentColor(),
-      outline = secondaryLight.copy(alpha = 0.62f),
-      outlineVariant = primaryLight.copy(alpha = 0.24f).compositeOver(backgroundLight),
-      surfaceContainerLowest = backgroundLight,
-      surfaceContainerLow = primaryLight.copy(alpha = 0.03f).compositeOver(backgroundLight),
-      surfaceContainer = primaryLight.copy(alpha = 0.05f).compositeOver(backgroundLight),
-      surfaceContainerHigh = primaryLight.copy(alpha = 0.08f).compositeOver(backgroundLight),
-      surfaceContainerHighest = primaryLight.copy(alpha = 0.11f).compositeOver(backgroundLight),
+      onSurfaceVariant = Color(0xFF49454F).withMinimumContrastAgainst(surfaceVariant),
+      outline = secondaryLight.copy(alpha = 0.6f).compositeOver(Color(0xFF79747E)),
+      outlineVariant = primaryLight.copy(alpha = 0.20f).compositeOver(Color(0xFFCAC4D0)),
+      inverseSurface = backgroundDark,
+      inverseOnSurface = Color(0xFFF4EFF4),
+      inversePrimary = primaryDark.withMinimumContrastAgainst(backgroundDark),
+      surfaceDim = surfaceDim,
+      surfaceBright = surfaceBright,
+      surfaceContainerLowest = surfaceContainerLowest,
+      surfaceContainerLow = surfaceContainerLow,
+      surfaceContainer = surfaceContainer,
+      surfaceContainerHigh = surfaceContainerHigh,
+      surfaceContainerHighest = surfaceContainerHighest,
     )
   }
 
-  fun darkColorScheme(): ColorScheme {
-    val primaryContainer = primaryDark.copy(alpha = 0.24f).compositeOver(backgroundDark)
-    val secondaryContainer = secondaryDark.copy(alpha = 0.24f).compositeOver(backgroundDark)
-    val tertiaryContainer = tertiaryDark.copy(alpha = 0.24f).compositeOver(backgroundDark)
-    val surfaceVariant = primaryDark.copy(alpha = 0.16f).compositeOver(backgroundDark)
+  private fun baseDarkColorScheme(): ColorScheme {
+    val primaryContainer = primaryLight.darken(0.2f)
+    val secondaryContainer = secondaryLight.darken(0.2f)
+    val tertiaryContainer = tertiaryLight.darken(0.2f)
+    val surfaceVariant = primaryDark.copy(alpha = 0.18f).compositeOver(Color(0xFF2A2A2A))
+    val surfaceContainerLowest = backgroundDark.darken(0.2f)
+    val surfaceContainerLow = primaryDark.copy(alpha = 0.08f).compositeOver(backgroundDark)
+    val surfaceContainer = primaryDark.copy(alpha = 0.08f).compositeOver(backgroundDark)
+    val surfaceContainerHigh = primaryDark.copy(alpha = 0.12f).compositeOver(backgroundDark)
+    val surfaceContainerHighest = primaryDark.copy(alpha = 0.16f).compositeOver(backgroundDark)
+    val accentSurfaces =
+      listOf(
+        backgroundDark,
+        surfaceVariant,
+        surfaceContainerLowest,
+        surfaceContainerLow,
+        surfaceContainer,
+        surfaceContainerHigh,
+        surfaceContainerHighest,
+      )
+    val primary = primaryDark.withMinimumContrastAgainst(accentSurfaces)
+    val secondary = secondaryDark.withMinimumContrastAgainst(accentSurfaces)
+    val tertiary = tertiaryDark.withMinimumContrastAgainst(accentSurfaces)
     return darkColorScheme(
-      primary = primaryDark,
-      onPrimary = primaryDark.accessibleContentColor(),
+      primary = primary,
+      surfaceTint = primary,
+      scrim = Color.Black,
+      primaryFixed = primaryLight.copy(alpha = 0.22f).compositeOver(Color(0xFFF7F5F8)),
+      primaryFixedDim = primaryLight.copy(alpha = 0.40f).compositeOver(Color(0xFFF7F5F8)),
+      onPrimaryFixed = Color(0xFF1C1B1F),
+      onPrimaryFixedVariant = Color(0xFF313033),
+      secondaryFixed = secondaryLight.copy(alpha = 0.22f).compositeOver(Color(0xFFF7F5F8)),
+      secondaryFixedDim = secondaryLight.copy(alpha = 0.40f).compositeOver(Color(0xFFF7F5F8)),
+      onSecondaryFixed = Color(0xFF1C1B1F),
+      onSecondaryFixedVariant = Color(0xFF313033),
+      tertiaryFixed = tertiaryLight.copy(alpha = 0.22f).compositeOver(Color(0xFFF7F5F8)),
+      tertiaryFixedDim = tertiaryLight.copy(alpha = 0.40f).compositeOver(Color(0xFFF7F5F8)),
+      onTertiaryFixed = Color(0xFF1C1B1F),
+      onTertiaryFixedVariant = Color(0xFF313033),
+      onPrimary = primary.accessibleContentColor(),
       primaryContainer = primaryContainer,
       onPrimaryContainer = primaryContainer.accessibleContentColor(),
-      secondary = secondaryDark,
-      onSecondary = secondaryDark.accessibleContentColor(),
+      secondary = secondary,
+      onSecondary = secondary.accessibleContentColor(),
       secondaryContainer = secondaryContainer,
       onSecondaryContainer = secondaryContainer.accessibleContentColor(),
-      tertiary = tertiaryDark,
-      onTertiary = tertiaryDark.accessibleContentColor(),
+      tertiary = tertiary,
+      onTertiary = tertiary.accessibleContentColor(),
       tertiaryContainer = tertiaryContainer,
       onTertiaryContainer = tertiaryContainer.accessibleContentColor(),
+      error = Color(0xFFFFB4AB),
+      onError = Color(0xFF690005),
+      errorContainer = Color(0xFF93000A),
+      onErrorContainer = Color(0xFFFFDAD6),
       background = backgroundDark,
+      onBackground = Color(0xFFE6E1E5).withMinimumContrastAgainst(backgroundDark),
       surface = backgroundDark,
-      onBackground = backgroundDark.accessibleContentColor(),
-      onSurface = backgroundDark.accessibleContentColor(),
+      onSurface = Color(0xFFE6E1E5).withMinimumContrastAgainst(backgroundDark),
       surfaceVariant = surfaceVariant,
-      onSurfaceVariant = surfaceVariant.accessibleContentColor(),
-      outline = secondaryDark.copy(alpha = 0.58f),
-      outlineVariant = primaryDark.copy(alpha = 0.22f).compositeOver(backgroundDark),
-      surfaceContainerLowest = backgroundDark,
-      surfaceContainerLow = primaryDark.copy(alpha = 0.06f).compositeOver(backgroundDark),
-      surfaceContainer = primaryDark.copy(alpha = 0.08f).compositeOver(backgroundDark),
-      surfaceContainerHigh = primaryDark.copy(alpha = 0.12f).compositeOver(backgroundDark),
-      surfaceContainerHighest = primaryDark.copy(alpha = 0.16f).compositeOver(backgroundDark),
+      onSurfaceVariant = Color(0xFFCAC4D0).withMinimumContrastAgainst(surfaceVariant),
+      outline = secondaryDark.copy(alpha = 0.5f).compositeOver(Color(0xFF938F99)),
+      outlineVariant = primaryDark.copy(alpha = 0.22f).compositeOver(Color(0xFF49454F)),
+      inverseSurface = backgroundLight,
+      inverseOnSurface = Color(0xFF313033),
+      inversePrimary = primaryLight.withMinimumContrastAgainst(backgroundLight),
+      surfaceDim = backgroundDark,
+      surfaceBright = primaryDark.copy(alpha = 0.20f).compositeOver(backgroundDark),
+      surfaceContainerLowest = surfaceContainerLowest,
+      surfaceContainerLow = surfaceContainerLow,
+      surfaceContainer = surfaceContainer,
+      surfaceContainerHigh = surfaceContainerHigh,
+      surfaceContainerHighest = surfaceContainerHighest,
     )
   }
 
   companion object {
+    /** Capture every role when copying a system-generated palette. */
+    fun fromColorSchemes(
+      name: String,
+      light: ColorScheme,
+      dark: ColorScheme,
+    ): CustomThemeDefinition =
+      CustomThemeDefinition(
+        name = name,
+        primaryLight = light.primary,
+        primaryDark = dark.primary,
+        secondaryLight = light.secondary,
+        secondaryDark = dark.secondary,
+        tertiaryLight = light.tertiary,
+        tertiaryDark = dark.tertiary,
+        backgroundLight = light.background,
+        backgroundDark = dark.background,
+        lightOverrides = ThemeColorRole.entries.associateWith { it.color(light) },
+        darkOverrides = ThemeColorRole.entries.associateWith { it.color(dark) },
+      )
+
     fun parse(serialized: String): CustomThemeDefinition? {
       val parts = serialized.split('|')
-      if ((parts.size != 5 && parts.size != 9) || parts[0].isBlank()) return null
+      if ((parts.size != 5 && parts.size != 9 && parts.size != 11) || parts[0].isBlank()) return null
       return runCatching {
         val primaryLight = Color(android.graphics.Color.parseColor(parts[1]))
         val primaryDark = Color(android.graphics.Color.parseColor(parts[2]))
@@ -124,12 +242,14 @@ data class CustomThemeDefinition(
           name = parts[0],
           primaryLight = primaryLight,
           primaryDark = primaryDark,
-          secondaryLight = if (parts.size == 9) Color(android.graphics.Color.parseColor(parts[3])) else primaryLight,
-          secondaryDark = if (parts.size == 9) Color(android.graphics.Color.parseColor(parts[4])) else primaryDark,
-          tertiaryLight = if (parts.size == 9) Color(android.graphics.Color.parseColor(parts[5])) else primaryLight,
-          tertiaryDark = if (parts.size == 9) Color(android.graphics.Color.parseColor(parts[6])) else primaryDark,
-          backgroundLight = Color(android.graphics.Color.parseColor(parts[if (parts.size == 9) 7 else 3])),
-          backgroundDark = Color(android.graphics.Color.parseColor(parts[if (parts.size == 9) 8 else 4])),
+          secondaryLight = if (parts.size >= 9) Color(android.graphics.Color.parseColor(parts[3])) else primaryLight,
+          secondaryDark = if (parts.size >= 9) Color(android.graphics.Color.parseColor(parts[4])) else primaryDark,
+          tertiaryLight = if (parts.size >= 9) Color(android.graphics.Color.parseColor(parts[5])) else primaryLight,
+          tertiaryDark = if (parts.size >= 9) Color(android.graphics.Color.parseColor(parts[6])) else primaryDark,
+          backgroundLight = Color(android.graphics.Color.parseColor(parts[if (parts.size >= 9) 7 else 3])),
+          backgroundDark = Color(android.graphics.Color.parseColor(parts[if (parts.size >= 9) 8 else 4])),
+          lightOverrides = parts.getOrNull(9)?.let(::parseOverrides).orEmpty(),
+          darkOverrides = parts.getOrNull(10)?.let(::parseOverrides).orEmpty(),
         )
       }.getOrNull()
     }
@@ -534,171 +654,54 @@ enum class AppTheme(
   ),
   ;
 
-  /**
-   * Get the light color scheme for this theme
-   */
-  fun getLightColorScheme(): ColorScheme {
-    val softOnColor = Color(0xFFFFF9FC)
-    val primaryContainer = primaryLight.copy(alpha = 0.22f).compositeOver(backgroundLight)
-    val secondaryContainer = secondaryLight.copy(alpha = 0.22f).compositeOver(backgroundLight)
-    val tertiaryContainer = tertiaryLight.copy(alpha = 0.22f).compositeOver(backgroundLight)
-    val surfaceVariant = primaryLight.copy(alpha = 0.10f).compositeOver(backgroundLight.darken(0.035f))
-    val surfaceDim = backgroundLight.darken(0.075f)
-    val surfaceBright = backgroundLight.lighten(0.012f)
-    val surfaceContainerLowest = backgroundLight.lighten(0.018f)
-    val surfaceContainerLow = primaryLight.copy(alpha = 0.030f).compositeOver(backgroundLight)
-    val surfaceContainer = primaryLight.copy(alpha = 0.050f).compositeOver(backgroundLight)
-    val surfaceContainerHigh = primaryLight.copy(alpha = 0.075f).compositeOver(backgroundLight)
-    val surfaceContainerHighest = primaryLight.copy(alpha = 0.105f).compositeOver(backgroundLight)
-    val accentSurfaces =
-      listOf(
-        backgroundLight,
-        surfaceVariant,
-        surfaceDim,
-        surfaceBright,
-        surfaceContainerLowest,
-        surfaceContainerLow,
-        surfaceContainer,
-        surfaceContainerHigh,
-        surfaceContainerHighest,
-      )
-    val primary = primaryLight.withMinimumContrastAgainst(accentSurfaces)
-    val secondary = secondaryLight.withMinimumContrastAgainst(accentSurfaces)
-    val tertiary = tertiaryLight.withMinimumContrastAgainst(accentSurfaces)
-    return lightColorScheme(
-      primary = primary,
-      onPrimary = primary.accessibleContentColor(),
-      primaryContainer = primaryContainer,
-      onPrimaryContainer = primaryContainer.accessibleContentColor(),
-      secondary = secondary,
-      onSecondary = secondary.accessibleContentColor(),
-      secondaryContainer = secondaryContainer,
-      onSecondaryContainer = secondaryContainer.accessibleContentColor(),
-      tertiary = tertiary,
-      onTertiary = tertiary.accessibleContentColor(),
-      tertiaryContainer = tertiaryContainer,
-      onTertiaryContainer = tertiaryContainer.accessibleContentColor(),
-      error = Color(0xFFBA1A1A),
-      onError = softOnColor,
-      errorContainer = Color(0xFFFFDAD6),
-      onErrorContainer = Color(0xFF93000A),
-      background = backgroundLight,
-      onBackground = Color(0xFF1C1B1F),
-      surface = backgroundLight,
-      onSurface = Color(0xFF1C1B1F),
-      surfaceVariant = surfaceVariant,
-      onSurfaceVariant = Color(0xFF49454F),
-      outline = secondaryLight.copy(alpha = 0.6f).compositeOver(Color(0xFF79747E)),
-      outlineVariant = primaryLight.copy(alpha = 0.20f).compositeOver(Color(0xFFCAC4D0)),
-      inverseSurface = backgroundDark,
-      inverseOnSurface = Color(0xFFF4EFF4),
-      inversePrimary = primaryDark.withMinimumContrastAgainst(backgroundDark),
-      surfaceDim = surfaceDim,
-      surfaceBright = surfaceBright,
-      surfaceContainerLowest = surfaceContainerLowest,
-      surfaceContainerLow = surfaceContainerLow,
-      surfaceContainer = surfaceContainer,
-      surfaceContainerHigh = surfaceContainerHigh,
-      surfaceContainerHighest = surfaceContainerHighest,
+  fun toCustomTheme(name: String): CustomThemeDefinition =
+    CustomThemeDefinition(
+      name = name,
+      primaryLight = primaryLight,
+      primaryDark = primaryDark,
+      secondaryLight = secondaryLight,
+      secondaryDark = secondaryDark,
+      tertiaryLight = tertiaryLight,
+      tertiaryDark = tertiaryDark,
+      backgroundLight = backgroundLight,
+      backgroundDark = backgroundDark,
     )
-  }
 
-  /**
-   * Get the dark color scheme for this theme
-   */
-  fun getDarkColorScheme(): ColorScheme {
-    val primaryContainer = primaryLight.darken(0.2f)
-    val secondaryContainer = secondaryLight.darken(0.2f)
-    val tertiaryContainer = tertiaryLight.darken(0.2f)
-    val surfaceVariant = primaryDark.copy(alpha = 0.18f).compositeOver(Color(0xFF2A2A2A))
-    val surfaceContainerLowest = backgroundDark.darken(0.2f)
-    val surfaceContainerLow = primaryDark.copy(alpha = 0.08f).compositeOver(backgroundDark)
-    val surfaceContainer = primaryDark.copy(alpha = 0.08f).compositeOver(backgroundDark)
-    val surfaceContainerHigh = primaryDark.copy(alpha = 0.12f).compositeOver(backgroundDark)
-    val surfaceContainerHighest = primaryDark.copy(alpha = 0.16f).compositeOver(backgroundDark)
-    val accentSurfaces =
-      listOf(
-        backgroundDark,
-        surfaceVariant,
-        surfaceContainerLowest,
-        surfaceContainerLow,
-        surfaceContainer,
-        surfaceContainerHigh,
-        surfaceContainerHighest,
-      )
-    val primary = primaryDark.withMinimumContrastAgainst(accentSurfaces)
-    val secondary = secondaryDark.withMinimumContrastAgainst(accentSurfaces)
-    val tertiary = tertiaryDark.withMinimumContrastAgainst(accentSurfaces)
-    return darkColorScheme(
-      primary = primary,
-      onPrimary = primary.accessibleContentColor(),
-      primaryContainer = primaryContainer,
-      onPrimaryContainer = primaryContainer.accessibleContentColor(),
-      secondary = secondary,
-      onSecondary = secondary.accessibleContentColor(),
-      secondaryContainer = secondaryContainer,
-      onSecondaryContainer = secondaryContainer.accessibleContentColor(),
-      tertiary = tertiary,
-      onTertiary = tertiary.accessibleContentColor(),
-      tertiaryContainer = tertiaryContainer,
-      onTertiaryContainer = tertiaryContainer.accessibleContentColor(),
-      error = Color(0xFFFFB4AB),
-      onError = Color(0xFF690005),
-      errorContainer = Color(0xFF93000A),
-      onErrorContainer = Color(0xFFFFDAD6),
-      background = backgroundDark,
-      onBackground = Color(0xFFE6E1E5),
-      surface = backgroundDark,
-      onSurface = Color(0xFFE6E1E5),
-      surfaceVariant = surfaceVariant,
-      onSurfaceVariant = Color(0xFFCAC4D0),
-      outline = secondaryDark.copy(alpha = 0.5f).compositeOver(Color(0xFF938F99)),
-      outlineVariant = primaryDark.copy(alpha = 0.22f).compositeOver(Color(0xFF49454F)),
-      inverseSurface = backgroundLight,
-      inverseOnSurface = Color(0xFF313033),
-      inversePrimary = primaryLight.withMinimumContrastAgainst(backgroundLight),
-      surfaceContainerLowest = surfaceContainerLowest,
-      surfaceContainerLow = surfaceContainerLow,
-      surfaceContainer = surfaceContainer,
-      surfaceContainerHigh = surfaceContainerHigh,
-      surfaceContainerHighest = surfaceContainerHighest,
-    )
-  }
+  fun getLightColorScheme(): ColorScheme = toCustomTheme(name).lightColorScheme()
 
-  /**
-   * Get the AMOLED (pure black) color scheme for this theme
-   */
-  fun getAmoledColorScheme(): ColorScheme =
-    getDarkColorScheme().copy(
-      background = Color.Black,
-      surface = Color.Black,
-      surfaceVariant = primaryDark.copy(alpha = 0.08f).compositeOver(Color(0xFF1A1A1A)),
-      // Consistent lifted surface for settings and connected controls in AMOLED;
-      // only the page background and lowest level stay pure black.
-      surfaceContainer = primaryDark.copy(alpha = 0.05f).compositeOver(Color(0xFF151515)),
-      surfaceContainerLow = primaryDark.copy(alpha = 0.05f).compositeOver(Color(0xFF151515)),
-      surfaceContainerLowest = Color.Black,
-      surfaceContainerHigh = primaryDark.copy(alpha = 0.05f).compositeOver(Color(0xFF151515)),
-      surfaceContainerHighest = primaryDark.copy(alpha = 0.08f).compositeOver(Color(0xFF1F1F1F)),
-      surfaceDim = Color.Black,
-      surfaceBright = primaryDark.copy(alpha = 0.06f).compositeOver(Color(0xFF2A2A2A)),
-    )
+  fun getDarkColorScheme(): ColorScheme = toCustomTheme(name).darkColorScheme()
+
+  fun getAmoledColorScheme(): ColorScheme = toCustomTheme(name).darkColorScheme(amoledMode = true)
 }
 
-// Extension functions for color manipulation
-private const val MinimumTextContrast = 4.5f
+/** Keep accents and text while lifting cards above an independently black canvas. */
+private fun ColorScheme.withAmoledSurfaces(): ColorScheme =
+  copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceVariant = primary.copy(alpha = 0.08f).compositeOver(Color(0xFF1A1A1A)),
+    surfaceContainer = primary.copy(alpha = 0.05f).compositeOver(Color(0xFF151515)),
+    surfaceContainerLow = primary.copy(alpha = 0.05f).compositeOver(Color(0xFF151515)),
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerHigh = primary.copy(alpha = 0.05f).compositeOver(Color(0xFF151515)),
+    surfaceContainerHighest = primary.copy(alpha = 0.08f).compositeOver(Color(0xFF1F1F1F)),
+    surfaceDim = Color.Black,
+    surfaceBright = primary.copy(alpha = 0.06f).compositeOver(Color(0xFF2A2A2A)),
+  )
 
-private fun Color.accessibleContentColor(): Color {
+// Extension functions for color manipulation
+private const val MINIMUM_TEXT_CONTRAST = 4.5f
+
+internal fun Color.accessibleContentColor(): Color {
   val blackContrast = contrastRatio(Color.Black)
   val whiteContrast = contrastRatio(Color.White)
   return if (blackContrast >= whiteContrast) Color.Black else Color.White
 }
 
-private fun Color.withMinimumContrastAgainst(background: Color): Color =
-  withMinimumContrastAgainst(listOf(background))
+private fun Color.withMinimumContrastAgainst(background: Color): Color = withMinimumContrastAgainst(listOf(background))
 
 private fun Color.withMinimumContrastAgainst(backgrounds: List<Color>): Color {
-  if (backgrounds.minOf { background -> contrastRatio(background) } >= MinimumTextContrast) return this
+  if (backgrounds.minOf { background -> contrastRatio(background) } >= MINIMUM_TEXT_CONTRAST) return this
 
   val blackContrast = backgrounds.minOf { background -> Color.Black.contrastRatio(background) }
   val whiteContrast = backgrounds.minOf { background -> Color.White.contrastRatio(background) }
@@ -708,7 +711,7 @@ private fun Color.withMinimumContrastAgainst(backgrounds: List<Color>): Color {
   repeat(12) {
     val fraction = (insufficientFraction + sufficientFraction) / 2f
     val candidate = blendToward(target, fraction)
-    if (backgrounds.minOf { background -> candidate.contrastRatio(background) } >= MinimumTextContrast) {
+    if (backgrounds.minOf { background -> candidate.contrastRatio(background) } >= MINIMUM_TEXT_CONTRAST) {
       sufficientFraction = fraction
     } else {
       insufficientFraction = fraction
@@ -725,7 +728,10 @@ private fun Color.contrastRatio(other: Color): Float {
   return (lighter + 0.05f) / (darker + 0.05f)
 }
 
-private fun Color.blendToward(target: Color, fraction: Float): Color =
+private fun Color.blendToward(
+  target: Color,
+  fraction: Float,
+): Color =
   Color(
     red = red + (target.red - red) * fraction,
     green = green + (target.green - green) * fraction,

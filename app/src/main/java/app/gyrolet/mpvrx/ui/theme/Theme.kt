@@ -406,7 +406,7 @@ internal fun resolveAppColorScheme(
   amoledMode: Boolean,
 ): ColorScheme =
   customTheme?.let { definition ->
-    if (useDarkTheme) definition.darkColorScheme() else definition.lightColorScheme()
+    if (useDarkTheme) definition.darkColorScheme(amoledMode) else definition.lightColorScheme()
   } ?: when {
     appTheme.isDynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
       when {
