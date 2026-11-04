@@ -1437,7 +1437,7 @@ private fun ClipCropControls(
 
   Surface(
     shape = CircleShape,
-    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor = MaterialTheme.colorScheme.onSurface,
     tonalElevation = 6.dp,
     shadowElevation = 8.dp,

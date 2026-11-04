@@ -551,7 +551,7 @@ private fun YouTubePlaylistGridCard(
         if (showItemCount) {
           Surface(
             shape = AppShapeScale.small,
-            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.94f),
+            color = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             shadowElevation = 2.dp,
             modifier =

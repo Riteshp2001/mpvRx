@@ -18,6 +18,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -1165,7 +1166,21 @@ private fun PlaylistVideoListContent(
               val elevation = dragElevation(isDragging)
 
               Row(
-                modifier = Modifier.fillMaxWidth().shadow(elevation, MaterialTheme.shapes.medium, clip = false),
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .shadow(elevation, MaterialTheme.shapes.medium, clip = false)
+                    // The row has no fill of its own; a lifted row needs one or its shadow shows through.
+                    .then(
+                      if (elevation > 0.dp) {
+                        Modifier.background(
+                          MaterialTheme.colorScheme.surfaceContainerHigh,
+                          MaterialTheme.shapes.medium,
+                        )
+                      } else {
+                        Modifier
+                      },
+                    ),
                 verticalAlignment = Alignment.CenterVertically,
               ) {
                 itemContent(item, false, 1, neighbors, Modifier.weight(1f))

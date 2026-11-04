@@ -39,9 +39,11 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.paneTitle
@@ -213,19 +215,28 @@ internal fun PlayerSettingsPanel(
                 .padding(bottom = 12.dp)
                 .clipToBounds(),
             ) {
-              ScreenNavDisplay(backStack = backStack, onBack = back) { screen ->
-                when (screen) {
-                  PlayerSettingsHome -> SettingsPanelHome(categories, query, { query = it }, backStack) {
-                    query = ""
-                    keyboard?.hide()
-                  }
-                  else -> screen.Content()
-                }
-              }
               // Keep the current page mounted beneath search, preserving its scroll position
               // and any expanded sections when search is dismissed without choosing a result.
+              // Hiding it instead of covering it keeps search on the panel's own single background.
+              Box(
+                if (searchMode) {
+                  Modifier.fillMaxSize().graphicsLayer { alpha = 0f }.clearAndSetSemantics {}
+                } else {
+                  Modifier.fillMaxSize()
+                },
+              ) {
+                ScreenNavDisplay(backStack = backStack, onBack = back) { screen ->
+                  when (screen) {
+                    PlayerSettingsHome -> SettingsPanelHome(categories, query, { query = it }, backStack) {
+                      query = ""
+                      keyboard?.hide()
+                    }
+                    else -> screen.Content()
+                  }
+                }
+              }
               if (searchMode) {
-                Surface(Modifier.fillMaxSize(), color = colors.surfaceContainer) {
+                Surface(Modifier.fillMaxSize(), color = Color.Transparent) {
                   SettingsPanelHome(categories, query, { query = it }, backStack, requestSearchFocus = true) {
                     searchMode = false
                     query = ""

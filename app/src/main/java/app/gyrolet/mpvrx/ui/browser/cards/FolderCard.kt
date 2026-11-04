@@ -270,7 +270,7 @@ fun FolderCard(
   fun PinnedFolderBadge(modifier: Modifier = Modifier) {
     Surface(
       shape = AppShapeScale.full,
-      color = MaterialTheme.colorScheme.primary.copy(alpha = 0.94f),
+      color = MaterialTheme.colorScheme.primary,
       contentColor = MaterialTheme.colorScheme.onPrimary,
       shadowElevation = 3.dp,
       modifier = modifier.rotate(-18f),

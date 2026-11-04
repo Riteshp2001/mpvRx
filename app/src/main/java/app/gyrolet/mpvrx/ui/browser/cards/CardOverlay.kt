@@ -22,6 +22,7 @@ internal fun Modifier.cardOverlay(
   shape: Shape = AppShapeScale.extraSmall,
   containerColor: Color = Color.Black.copy(alpha = 0.72f),
 ): Modifier =
-  shadow(elevation = 3.dp, shape = shape, clip = false)
+  // A shadow shows through a see-through fill as a darker inner box, so only opaque fills get one.
+  (if (containerColor.alpha >= 1f) shadow(elevation = 3.dp, shape = shape, clip = false) else this)
     .clip(shape)
     .background(containerColor)

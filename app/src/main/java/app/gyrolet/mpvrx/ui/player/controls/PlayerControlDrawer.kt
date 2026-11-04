@@ -19,7 +19,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -286,11 +285,6 @@ private fun PlayerControlPanel(
   DraggablePanel(
     modifier = Modifier.fillMaxSize(),
     header = { PlayerControlPanelHeader(onDismissRequest) },
-    shape = MaterialTheme.shapes.extraLargeIncreased,
-    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f),
-    tonalElevation = 2.dp,
-    shadowElevation = 10.dp,
-    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
   ) {
     CompositionLocalProvider(
       LocalBorderlessPlayerControls provides true,

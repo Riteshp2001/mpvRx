@@ -507,7 +507,7 @@ fun TorrentResumeCard(
       // Center Play Pill
       Surface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+        color = MaterialTheme.colorScheme.primary,
         modifier =
           Modifier
             .align(Alignment.Center)
