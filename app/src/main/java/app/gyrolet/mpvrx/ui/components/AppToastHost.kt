@@ -1,7 +1,7 @@
 package app.gyrolet.mpvrx.ui.components
 
-import android.os.Build
 import android.os.SystemClock
+import android.view.View
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -11,16 +11,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -55,15 +50,9 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import com.dokar.sonner.ToastType
+import com.dokar.sonner.ToastWidthPolicy
 import com.dokar.sonner.Toaster
 import com.dokar.sonner.rememberToasterState
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.blur.HazeBlurStyle
-import dev.chrisbanes.haze.blur.HazeColorEffect
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlin.time.Duration
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -93,7 +82,6 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
       if (messages[id] === dismissed) messages.remove(id)
     }
   })
-  val haze = rememberHazeState()
   val reducedMotion = AppMotion.shouldReduceMotion()
   val sink = remember(toaster, lifecycle, activity, view, accessibility) {
     object : AppToastSink {
@@ -162,30 +150,34 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
         else -> Unit
       }
     }
+    val attachment = object : View.OnAttachStateChangeListener {
+      override fun onViewAttachedToWindow(view: View) {
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) AppToastRouter.register(owner, sink)
+      }
+
+      override fun onViewDetachedFromWindow(view: View) = deactivate()
+    }
     lifecycle.addObserver(observer)
+    view.addOnAttachStateChangeListener(attachment)
     if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) AppToastRouter.register(owner, sink)
     onDispose {
       lifecycle.removeObserver(observer)
+      view.removeOnAttachStateChangeListener(attachment)
       deactivate()
     }
   }
   CompositionLocalProvider(LocalAppToastHost provides true) {
     Box(Modifier.fillMaxSize()) {
-      Box(
-        Modifier.fillMaxSize().then(
-          if (messages.isNotEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Modifier.hazeSource(haze)
-          else Modifier,
-        ),
-      ) { content() }
+      content()
       Toaster(
         state = toaster,
         modifier = Modifier.widthIn(max = 440.dp)
-          .zIndex(Float.MAX_VALUE)
-          .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)),
+          .zIndex(Float.MAX_VALUE),
         maxVisibleToasts = 2,
         swipeable = false,
         alignment = Alignment.BottomCenter,
         contentPadding = { PaddingValues(0.dp) },
+        widthPolicy = { ToastWidthPolicy(max = 400.dp, fillMaxWidth = false) },
         containerPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         elevation = 0.dp,
         border = { BorderStroke(0.dp, Color.Transparent) },
@@ -201,7 +193,7 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
           if (message != null) {
             androidx.compose.runtime.key(message.id) {
               SwipeDismissibleToast(onDismiss = { toaster.dismiss(toast.id) }) {
-                AppToastContent(message, haze, reducedMotion, onDismiss = { toaster.dismiss(toast.id) })
+                AppToastContent(message, reducedMotion, onDismiss = { toaster.dismiss(toast.id) })
               }
             }
           }
@@ -212,7 +204,7 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun AppToastContent(message: AppToastMessage, haze: HazeState, reducedMotion: Boolean, onDismiss: () -> Unit) {
+private fun AppToastContent(message: AppToastMessage, reducedMotion: Boolean, onDismiss: () -> Unit) {
   val colors = MaterialTheme.colorScheme
   val tone = when (message.type) {
     AppToastType.Success, AppToastType.Loading -> colors.primary
@@ -223,15 +215,6 @@ private fun AppToastContent(message: AppToastMessage, haze: HazeState, reducedMo
   }
   val surface = lerp(colors.surfaceContainerHigh, tone, 0.06f)
   val shape = RoundedCornerShape(24.dp)
-  val blurStyle = remember(surface) {
-    HazeBlurStyle {
-      blurRadius(24.dp)
-      backgroundColor(surface)
-      colorEffects(listOf(HazeColorEffect.tint(surface.copy(alpha = 0.48f))))
-      fallbackColorEffect(HazeColorEffect.tint(surface.copy(alpha = 0.94f)))
-      noiseFactor(0.01f)
-    }
-  }
   val defaultIcon = when (message.type) {
     AppToastType.Success -> Icons.RoundedFilled.CheckCircle
     AppToastType.Warning -> Icons.RoundedFilled.Warning
@@ -242,10 +225,7 @@ private fun AppToastContent(message: AppToastMessage, haze: HazeState, reducedMo
     modifier = Modifier
       .widthIn(max = 400.dp)
       .clip(shape)
-      .then(
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Modifier.hazeBlur(input = HazeInput.Sources(haze), style = blurStyle)
-        else Modifier.background(surface),
-      )
+      .background(surface)
       .border(1.dp, colors.outlineVariant.copy(alpha = 0.55f), shape)
       .semantics { liveRegion = LiveRegionMode.Polite }
       .padding(horizontal = 12.dp, vertical = 4.dp),
@@ -266,9 +246,9 @@ private fun AppToastContent(message: AppToastMessage, haze: HazeState, reducedMo
       message.text,
       style = MaterialTheme.typography.bodyMedium,
       color = colors.onSurface,
-      maxLines = 4,
+      maxLines = 2,
       overflow = TextOverflow.Ellipsis,
-      modifier = Modifier.weight(1f).padding(vertical = 6.dp),
+      modifier = Modifier.weight(1f, fill = false).padding(vertical = 6.dp),
     )
     message.action?.let { action ->
       TextButton(onClick = { onDismiss(); action.onClick() }, modifier = Modifier.widthIn(max = 112.dp)) {

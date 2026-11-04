@@ -1,9 +1,12 @@
 package app.gyrolet.mpvrx.ui.components
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.StringRes
+import app.gyrolet.mpvrx.App
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import java.lang.ref.WeakReference
@@ -29,10 +32,12 @@ internal data class AppToastMessage(
 )
 
 class AppToast private constructor(
-  private val context: Context,
+  context: Context,
   text: CharSequence?,
   duration: Int,
 ) {
+  private val activity = WeakReference(context.findActivity())
+  private val context = context.applicationContext
   private val id = nextId.incrementAndGet()
   private val revision = AtomicLong()
   @Volatile private var message: CharSequence = text ?: ""
@@ -74,8 +79,17 @@ class AppToast private constructor(
       if (text.isBlank()) return@post
       nativeToast?.cancel()
       nativeToast = null
-      if (!AppToastRouter.show(AppToastMessage(id, text, duration, type, icon, action))) {
-        nativeToast = NativeToast.makeText(context, text, duration).also { it.show() }
+      val fallback = {
+        if (revision.get() == token) {
+          nativeToast = NativeToast.makeText(context, text, duration).also { it.show() }
+        }
+      }
+      val owner = activity.get()
+      val waitForHost = owner != null && !owner.isFinishing && !owner.isDestroyed && !owner.isInPictureInPictureMode
+      val isCurrent = { revision.get() == token }
+      val toastMessage = AppToastMessage(id, text, duration, type, icon, action)
+      if (!AppToastRouter.show(toastMessage, waitForHost, isCurrent, fallback)) {
+        fallback()
       }
     }
   }
@@ -95,7 +109,7 @@ class AppToast private constructor(
     private val nextId = AtomicLong()
 
     fun makeText(context: Context, text: CharSequence?, duration: Int): AppToast =
-      AppToast(context.applicationContext, text, duration)
+      AppToast(context, text, duration)
 
     fun makeText(context: Context, @StringRes resourceId: Int, duration: Int): AppToast =
       makeText(context, context.getText(resourceId), duration).withType(
@@ -130,24 +144,66 @@ internal interface AppToastSink {
 }
 
 internal object AppToastRouter {
+  private const val HOST_WAIT_MS = 1_500L
+  private const val MAX_PENDING = 6
+
+  private data class PendingToast(
+    val message: AppToastMessage,
+    val isCurrent: () -> Boolean,
+    val fallback: () -> Unit,
+    val expiry: Runnable,
+  )
+
   val mainHandler = Handler(Looper.getMainLooper())
   private val sinks = linkedMapOf<Any, WeakReference<AppToastSink>>()
+  private val pending = linkedMapOf<Long, PendingToast>()
 
   fun register(owner: Any, sink: AppToastSink) {
     sinks.remove(owner)
     sinks[owner] = WeakReference(sink)
+    pending.values.toList().forEach { entry ->
+      if (!entry.isCurrent() || deliver(entry.message)) removePending(entry.message.id)
+    }
   }
 
   fun unregister(owner: Any) {
     sinks.remove(owner)
   }
 
-  fun show(message: AppToastMessage): Boolean {
+  fun show(message: AppToastMessage, waitForHost: Boolean, isCurrent: () -> Boolean, fallback: () -> Unit): Boolean {
+    removePending(message.id)
+    if (deliver(message)) return true
+    if (!waitForHost && !App.isInForeground) return false
+    if (pending.size >= MAX_PENDING) pending.keys.firstOrNull()?.let(::removePending)
+    val expiry = Runnable {
+      pending.remove(message.id)?.let { entry -> if (entry.isCurrent()) entry.fallback() }
+    }
+    pending[message.id] = PendingToast(message, isCurrent, fallback, expiry)
+    mainHandler.postDelayed(expiry, HOST_WAIT_MS)
+    return true
+  }
+
+  private fun deliver(message: AppToastMessage): Boolean {
     sinks.entries.removeAll { it.value.get() == null }
     return sinks.values.toList().asReversed().any { it.get()?.show(message) == true }
   }
 
   fun dismiss(id: Long) {
+    removePending(id)
     sinks.values.forEach { it.get()?.dismiss(id) }
   }
+
+  private fun removePending(id: Long) {
+    pending.remove(id)?.let { mainHandler.removeCallbacks(it.expiry) }
+  }
+}
+
+private fun Context.findActivity(): Activity? {
+  var current: Context = this
+  val visited = mutableSetOf<Context>()
+  while (visited.add(current)) {
+    if (current is Activity) return current
+    current = (current as? ContextWrapper)?.baseContext ?: return null
+  }
+  return null
 }
