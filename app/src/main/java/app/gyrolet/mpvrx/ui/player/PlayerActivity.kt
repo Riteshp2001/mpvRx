@@ -412,6 +412,7 @@ class PlayerActivity :
   private var pendingSavedPlaylistSelection: SavedPlaylistSelection? = null
   private var acceptedPreparedPlaybackLaunch: PreparedPlaybackLaunch? = null
   private var scriptRuntimeRestartPending = false
+  private var coreRecoveryPending = false
 
   /**
    * Playlist ID for tracking play history (optional, only for custom playlists)
@@ -765,7 +766,9 @@ class PlayerActivity :
     val setupResult = setupMPV(initError)
     if (setupResult != null) {
       isUserFinishing = true
-      Toast.makeText(this, getString(R.string.toast_playback_load_failed) + ": " + setupResult, Toast.LENGTH_LONG).show()
+      val title = getString(R.string.toast_playback_load_failed)
+      val message = if (setupResult == title) title else "$title: $setupResult"
+      Toast.makeText(this, message, Toast.LENGTH_LONG).show()
       finish()
       return
     }
@@ -1839,6 +1842,7 @@ class PlayerActivity :
         (pendingHandoffReturned || PlayerLifecyclePolicy.shouldKeepBackgroundPlaybackAliveOnDestroy(
           backgroundPlaybackEnabled = playbackWasInitialized && isBackgroundPlaybackEnabled(),
           backgroundPlaybackSessionActive = isBackgroundPlaybackSessionActive,
+          isChangingConfigurations = isChangingConfigurations,
         ))
 
 
@@ -1872,7 +1876,7 @@ class PlayerActivity :
       // Otherwise the Activity's focus listener would receive LOSS and pause playback just as
       // the user minimizes into the Mini Player.
       cleanupAudio()
-      if (ownsPlaybackSession && keepBackgroundPlaybackAlive) {
+      if (ownsPlaybackSession && keepBackgroundPlaybackAlive && !isChangingConfigurations) {
         MediaPlaybackService.takeAudioOwnershipForDetachedPlayback()
       }
       cleanupReceivers()
@@ -1894,11 +1898,13 @@ class PlayerActivity :
       viewModel.detachHost(this)
       viewModelHostAttached = false
     }
+    PlaybackActivityOwner.release(playbackOwnerToken)
   }
 
   private fun restorePendingPlayerHandoff(): Boolean {
     if (mpvInitialized || playerCreationJob == null || !reusingPlaybackSessionOnLaunch ||
-      !MediaPlaybackService.isNotificationOwnerReady() || PlaybackSession.state.value.currentItem == null
+      !PlaybackSession.isInitialized || !MediaPlaybackService.isNotificationOwnerReady() ||
+      PlaybackSession.state.value.currentItem == null
     ) return false
     MediaPlaybackService.activityForeground = false
     PlaybackSession.markBackground()
@@ -2305,7 +2311,7 @@ class PlayerActivity :
     }
     if (viewModelHostAttached) viewModel.setAmbientLifecycleActive(false)
     if (isVideoAmbientPresentationActive) setVideoAmbientPresentationActive(false)
-    if (!ownsPlaybackSession()) {
+    if (!ownsPlaybackSession() || isChangingConfigurations) {
       cleanupReceivers()
       if (::pipHelper.isInitialized) runCatching { pipHelper.onStop() }
       super.onStop()
@@ -2491,7 +2497,12 @@ class PlayerActivity :
   }
 
   private fun onPlaybackStarted() {
-    if (!mpvInitialized || !ownsPlaybackSession()) return
+    if (!ownsPlaybackSession()) return
+    if (coreRecoveryPending) {
+      restartAfterCoreShutdown()
+      return
+    }
+    if (!mpvInitialized) return
     if (finishStoppedBackgroundPlaybackIfNeeded()) return
     MediaPlaybackService.activityForeground = !isDeviceScreenOffOrLocked()
 
@@ -2757,8 +2768,8 @@ class PlayerActivity :
           PlaybackLaunchPreparation.REPLACE_CURRENT_MEDIA,
           PlaybackLaunchPreparation.WAIT_FOR_STOP,
         )
+    MediaPlaybackService.prepareForActivityHandoff()
     if (reusingPlaybackSessionOnLaunch) {
-      MediaPlaybackService.prepareForActivityHandoff()
       if (preparation != PlaybackLaunchPreparation.WAIT_FOR_STOP) PlaybackSession.markForeground()
     }
   }
@@ -3000,7 +3011,7 @@ class PlayerActivity :
     val waitStartedAt = android.os.SystemClock.elapsedRealtime()
     return try {
       val preparation = mpvCorePreparationJob
-      if (preparation != null) preparation.await() else withContext(Dispatchers.IO) { initializeMpvCore() }
+      if (preparation != null) preparation.await() else withContext(Dispatchers.IO) { initializeMpvCoreWithRetry() }
     } catch (error: CancellationException) {
       throw error
     } catch (error: Exception) {
@@ -3017,20 +3028,57 @@ class PlayerActivity :
     mpvCorePreparationJob =
       lifecycleScope.async(Dispatchers.IO) {
         mpvAssetPreparationJob?.join()
-        initializeMpvCore()
+        initializeMpvCoreWithRetry()
       }
   }
 
-  private fun initializeMpvCore(): String? =
+  private suspend fun initializeMpvCoreWithRetry(): String? {
+    val preparationContext = kotlin.coroutines.coroutineContext
+    val ownerIsActive = {
+      preparationContext.isActive && ownsPlaybackSession() && !isFinishing && !isDestroyed
+    }
+    val deadline = SystemClock.elapsedRealtime() + MPV_CORE_RETRY_TIMEOUT_MS
+    while (true) {
+      preparationContext.ensureActive()
+      if (!ownerIsActive()) throw CancellationException("Playback owner changed before initialization")
+      val error = initializeMpvCore(ownerIsActive)
+      if (!PlayerLifecyclePolicy.isShutdownInProgress(error)) return error
+      if (SystemClock.elapsedRealtime() >= deadline) return getString(R.string.toast_playback_load_failed)
+      delay(MPV_CORE_RETRY_INTERVAL_MS)
+    }
+  }
+
+  private fun initializeMpvCore(ownerIsActive: () -> Boolean): String? =
     synchronized(USER_MPV_ASSET_LOCK) {
+      if (!ownerIsActive()) throw CancellationException("Playback owner changed before initialization")
       val cleanupFailure = runCatching { removeDisabledCachedScripts() }.exceptionOrNull()
       if (cleanupFailure != null) {
         Log.e(TAG, "Could not remove disabled cached scripts", cleanupFailure)
         cleanupFailure.message ?: getString(R.string.toast_playback_load_failed)
       } else {
-        initializePlayerWithRendererFallback()
+        initializePlayerWithRendererFallback(ownerIsActive)
       }
     }
+
+  private fun restartAfterCoreShutdown() {
+    if (!coreRecoveryPending || !ownsPlaybackSession() || isFinishing || isDestroyed) return
+    coreRecoveryPending = false
+    val now = SystemClock.elapsedRealtime()
+    val previousRecovery = intent.getLongExtra(EXTRA_CORE_RECOVERY_AT, 0L)
+    if (previousRecovery > 0L && now - previousRecovery in 0 until CORE_RECOVERY_WINDOW_MS) {
+      viewModel.showToast(getString(R.string.toast_playback_load_failed))
+      finish()
+      return
+    }
+    val stableId = PlaybackSession.queue.value.currentItem?.stableId
+    val restore = PlaybackSession.consumeShutdownPositionRestore(stableId)
+    val nextIntent = currentPlaybackIntentForScriptReload(restore) ?: run { finish(); return }
+    nextIntent.putExtra(EXTRA_CORE_RECOVERY_AT, now)
+    scriptRuntimeRestartPending = true
+    setIntent(nextIntent)
+    MediaPlaybackService.prepareForActivityHandoff()
+    recreate()
+  }
 
   /**
    * Starts the multi-MB asset copy and the user mpv.conf SAF walk on IO. Called at the top of
@@ -3148,12 +3196,14 @@ class PlayerActivity :
       .apply()
   }
 
-  private fun initializePlayerWithRendererFallback(): String? {
+  private fun initializePlayerWithRendererFallback(ownerIsActive: () -> Boolean): String? {
     player.forceOpenGlFallback = false
-    val firstAttempt = player.initializeCoreSession(filesDir.path, cacheDir.path)
+    val firstAttempt = player.initializeCoreSession(filesDir.path, cacheDir.path, ownerIsActive)
     if (firstAttempt.isSuccess) return null
 
     val firstError = firstAttempt.exceptionOrNull()
+    if (firstError is CancellationException) throw firstError
+    PlayerLifecyclePolicy.shutdownInProgressMessage(firstError)?.let { return it }
     if (!decoderPreferences.useVulkan.get() || !VulkanCapabilities.isAvailable(this)) {
       Log.e(TAG, "Failed to initialize MPV", firstError)
       return firstError?.message ?: firstError?.toString() ?: "Unknown error"
@@ -3161,9 +3211,12 @@ class PlayerActivity :
 
     Log.w(TAG, "MPV Vulkan init failed, retrying with OpenGL fallback for this session", firstError)
     player.forceOpenGlFallback = true
-    val fallbackAttempt = player.initializeCoreSession(filesDir.path, cacheDir.path)
-    fallbackAttempt.exceptionOrNull()?.let { error -> Log.e(TAG, "Failed to initialize MPV", error) }
-    return if (fallbackAttempt.isSuccess) null else fallbackAttempt.exceptionOrNull()?.message ?: fallbackAttempt.exceptionOrNull()?.toString() ?: "Unknown fallback error"
+    val fallbackAttempt = player.initializeCoreSession(filesDir.path, cacheDir.path, ownerIsActive)
+    val fallbackError = fallbackAttempt.exceptionOrNull()
+    if (fallbackError is CancellationException) throw fallbackError
+    PlayerLifecyclePolicy.shutdownInProgressMessage(fallbackError)?.let { return it }
+    fallbackError?.let { error -> Log.e(TAG, "Failed to initialize MPV", error) }
+    return if (fallbackAttempt.isSuccess) null else fallbackError?.message ?: "Unknown fallback error"
   }
 
   /**
@@ -3689,14 +3742,14 @@ class PlayerActivity :
    * Finds the script in the user's MPV directory, copies it to internal storage,
    * and commands MPV to load it.
    */
-  private fun currentPlaybackIntentForScriptReload(): Intent? {
+  private fun currentPlaybackIntentForScriptReload(restore: PlaybackPositionRestoreOverride? = null): Intent? {
     val session = PlaybackSession.state.value
     val queue = PlaybackSession.queue.value
     val items = queue.items.ifEmpty { listOfNotNull(session.currentItem) }
     if (items.isEmpty()) return null
     val index = queue.currentIndex.coerceIn(items.indices)
     val item = items[index]
-    val position = PlaybackSession.getPropertyDouble("time-pos")?.takeIf {
+    val position = restore?.positionSeconds ?: PlaybackSession.getPropertyDouble("time-pos")?.takeIf {
       it.isFinite() && it >= 0 && session.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
     }
     val token = PreparedPlaybackLaunchStore.stage(items, index, queue.isExplicitQueue, queue.isM3u)
@@ -3712,7 +3765,10 @@ class PlayerActivity :
       putExtra("is_audio", item.declaredMediaKind() == DeclaredPlaybackMediaKind.AUDIO)
       putExtra(EXTRA_SCRIPT_RUNTIME_RESTART, true)
       putExtra(EXTRA_SCRIPT_RESTORE_MEDIA_ID, item.stableId)
-      putExtra(EXTRA_SCRIPT_RESTORE_PAUSED, PlaybackSession.getPropertyBoolean("pause") ?: session.paused)
+      putExtra(
+        EXTRA_SCRIPT_RESTORE_PAUSED,
+        restore?.paused ?: PlaybackSession.getPropertyBoolean("pause") ?: session.paused,
+      )
       if (position != null) putExtra(EXTRA_SCRIPT_RESTORE_POSITION, position)
       else removeExtra(EXTRA_SCRIPT_RESTORE_POSITION)
     }
@@ -4780,6 +4836,20 @@ class PlayerActivity :
    */
   internal fun event(eventId: Int) {
     when (eventId) {
+      MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> {
+        if (scriptRuntimeRestartPending || isFinishing || isDestroyed || !beginMediaRequest()) return
+        mediaLoadJob?.cancel()
+        cancelPlaybackLoadRecovery()
+        isReady = false
+        playWhenFileLoaded = false
+        mpvInitialized = false
+        player.isExiting = true
+        player.onSurfaceReady = null
+        player.releaseSurface()
+        viewModel.onMpvCoreStopping()
+        coreRecoveryPending = true
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) restartAfterCoreShutdown()
+      }
       MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> {
         val loadGeneration = PlaybackSession.state.value.activeGeneration
         if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return
@@ -9060,6 +9130,9 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     private const val NETWORK_PLAYBACK_LOAD_TIMEOUT_MS = 60_000L
 
     private const val PLAYBACK_LOAD_RETRY_DELAY_MS = 200L
+    private const val MPV_CORE_RETRY_INTERVAL_MS = 250L
+    private const val MPV_CORE_RETRY_TIMEOUT_MS = 10_000L
+    private const val CORE_RECOVERY_WINDOW_MS = 30_000L
     private const val PLAYBACK_LOAD_ERROR_SETTLE_MS = 300L
     private const val MAX_PLAYBACK_LOAD_RETRIES = 1
     private const val POST_FIRST_FRAME_IO_DELAY_MS = 2_000L
@@ -9080,6 +9153,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     const val EXTRA_PREPARED_PLAYBACK_QUEUE = "prepared_playback_queue"
     const val EXTRA_PREPARED_PLAYBACK_TOKEN = "prepared_playback_token"
     private const val EXTRA_SCRIPT_RUNTIME_RESTART = "script_runtime_restart"
+    private const val EXTRA_CORE_RECOVERY_AT = "core_recovery_at"
     private const val EXTRA_SCRIPT_RESTORE_MEDIA_ID = "script_restore_media_id"
     private const val EXTRA_SCRIPT_RESTORE_POSITION = "script_restore_position"
     private const val EXTRA_SCRIPT_RESTORE_PAUSED = "script_restore_paused"

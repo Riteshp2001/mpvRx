@@ -29,6 +29,7 @@ import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -108,6 +109,8 @@ class PlaybackProperty<T> internal constructor(
     states[property]?.value = value
   }
 
+  internal fun cachedValue(property: String): T? = states[property]?.value
+
   internal fun reobserve() {
     states.forEach { (property, state) ->
       PlaybackSession.observeProperty(property, format)
@@ -135,10 +138,18 @@ object PlaybackSession : MPVLib.EventObserver {
   private var nativeObserver: NativeEventObserver? = null
 
   private class NativeEventObserver : MPVLib.EventObserver {
-    private fun enqueue(action: () -> Unit) {
+    @Volatile private var fileGeneration: Long? = null
+
+    private fun enqueue(eventId: Int? = null, action: () -> Unit) {
+      val expectedGeneration = fileGeneration
       nativeEvents.launch {
         nativeLock.withLock {
-          if (nativeObserver === this@NativeEventObserver) action()
+          val completingStop = eventId == MPVLib.MpvEvent.MPV_EVENT_END_FILE &&
+            (_state.value.phase == PlaybackPhase.STOPPING || supersededStopGeneration != 0L)
+          if (nativeObserver === this@NativeEventObserver &&
+            (expectedGeneration == null || expectedGeneration == _state.value.generation || completingStop ||
+              eventId == MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN)
+          ) action()
         }
       }
     }
@@ -155,7 +166,11 @@ object PlaybackSession : MPVLib.EventObserver {
 
     override fun eventProperty(property: String, value: MPVNode) = enqueue { PlaybackSession.eventProperty(property, value) }
 
-    override fun event(eventId: Int, data: MPVNode) = enqueue { PlaybackSession.event(eventId, data) }
+    override fun event(eventId: Int, data: MPVNode) {
+      if (eventId == MPVLib.MpvEvent.MPV_EVENT_START_FILE) fileGeneration = _state.value.generation
+      enqueue(eventId) { PlaybackSession.event(eventId, data) }
+      if (eventId == MPVLib.MpvEvent.MPV_EVENT_END_FILE) fileGeneration = null
+    }
   }
 
   private fun unregisterNativeObserver() {
@@ -306,6 +321,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private var defaultUserAgent: String? = null
   private var pendingPositionRestoreGeneration = 0L
   private var pendingPositionRestoreOverride: Pair<Long, PlaybackPositionRestoreOverride>? = null
+  private var shutdownPositionRestore: Pair<String, PlaybackPositionRestoreOverride>? = null
   private var initialPositionGeneration = 0L
   private var playbackTransitionAudioGuardToken = 0L
   private var playbackTransitionAudioGuardPreviousMute: Boolean? = null
@@ -414,9 +430,11 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     postInitOptions: () -> Unit,
     observeProperties: () -> Unit,
     userScriptsKey: String? = null,
+    ownerIsActive: () -> Boolean = { true },
   ): Result<Boolean> =
     runCatching {
       nativeLock.withLock {
+        if (!ownerIsActive()) throw CancellationException("Playback owner changed before initialization")
         if (initialized && activeCoreConfigurationKey == coreConfigurationKey) {
           return@withLock false
         }
@@ -446,8 +464,10 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
         resetAmbientShaderTrackingLocked()
         updateState { it.copy(phase = PlaybackPhase.INITIALIZING, error = null) }
+        var coreCreated = false
         try {
           MPVLib.create(context.applicationContext)
+          coreCreated = true
           MPVLib.setOptionString("config", "yes")
           MPVLib.setOptionString("config-dir", configDir)
           MPVLib.setOptionString("gpu-shader-cache-dir", cacheDir)
@@ -485,7 +505,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
           true
         } catch (error: Throwable) {
           runCatching { unregisterNativeObserver() }
-          runCatching { MPVLib.destroy() }
+          if (coreCreated) runCatching { MPVLib.destroy() }
           initialized = false
           nativeCoreReady = false
           activeCoreConfigurationKey = null
@@ -715,6 +735,21 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   }
 
   /** Stop playback while keeping the app-scoped core ready for a later screen attachment. */
+  internal fun stopIfDetached(
+    expectedGeneration: Long,
+    ownerIsActive: () -> Boolean,
+    beforeStop: () -> Unit,
+  ): Boolean =
+    nativeLock.withLock {
+      val current = _state.value
+      if (!initialized || current.generation != expectedGeneration || current.surfaceAttached || !ownerIsActive()) {
+        return@withLock false
+      }
+      beforeStop()
+      stop(clearQueue = false)
+      true
+    }
+
   fun stop(clearQueue: Boolean = true) {
     withCore(Unit) {
       AudiobookPlayback.capture()
@@ -850,6 +885,16 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
+  fun destroyIfIdle(): Boolean =
+    nativeLock.withLock {
+      val current = _state.value
+      if (!initialized || current.phase != PlaybackPhase.IDLE || current.currentItem != null ||
+        _queue.value.currentItem != null || current.surfaceAttached || PlaybackActivityOwner.hasOwner.value
+      ) return@withLock false
+      destroyLocked()
+      true
+    }
+
   /**
    * Silence the audio output immediately without pausing/stopping playback or altering the
    * playback position.
@@ -868,12 +913,25 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     withCore(Unit) { beginPlaybackTransitionAudioGuardLocked(canRestore = false) }
   }
 
-  private fun destroyLocked() {
-    AudiobookPlayback.capture()
+  private fun destroyLocked(nativeShutdown: Boolean = false) {
+    val nextGeneration = _state.value.generation + 1L
+    if (!nativeShutdown) AudiobookPlayback.capture()
     loadedPlaybackItem = null
     speedBeforeAudiobook = null
     AudiobookPlayback.clearTimer()
-    updateState { it.copy(phase = PlaybackPhase.STOPPING) }
+    updateState {
+      if (nativeShutdown) {
+        it.copy(
+          phase = PlaybackPhase.UNINITIALIZED,
+          generation = nextGeneration,
+          activeGeneration = 0L,
+          surfaceAttached = false,
+          paused = true,
+        )
+      } else {
+        it.copy(phase = PlaybackPhase.STOPPING)
+      }
+    }
     desiredPaused = true
     loadedGeneration = 0L
     defaultUserAgent = null
@@ -887,10 +945,12 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     pendingStopClearQueue = false
     supersededStopGeneration = 0L
     clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
-    runCatching { MPVLib.setPropertyBoolean("mute", true) }
-    runCatching { MPVLib.setPropertyBoolean("pause", true) }
-    runCatching { MPVLib.setPropertyString("vo", "null") }
-    runCatching { MPVLib.detachSurface() }
+    if (!nativeShutdown) {
+      runCatching { MPVLib.setPropertyBoolean("mute", true) }
+      runCatching { MPVLib.setPropertyBoolean("pause", true) }
+      runCatching { MPVLib.setPropertyString("vo", "null") }
+      runCatching { MPVLib.detachSurface() }
+    }
     rendererOutputReady = false
     attachedSurfaceOwner = null
     attachedSurfaceWidth = 0
@@ -912,8 +972,19 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     activeCoreConfigurationKey = null
     activeUserScriptsKey = null
     clearTimelinePropertiesLocked()
-    updateState { PlaybackSessionState(phase = PlaybackPhase.UNINITIALIZED) }
+    updateState {
+      PlaybackSessionState(
+        phase = PlaybackPhase.UNINITIALIZED,
+        generation = nextGeneration,
+        currentItem = _queue.value.currentItem,
+      )
+    }
   }
+
+  internal fun consumeShutdownPositionRestore(stableId: String?): PlaybackPositionRestoreOverride? =
+    nativeLock.withLock {
+      shutdownPositionRestore?.takeIf { it.first == stableId }?.second.also { shutdownPositionRestore = null }
+    }
 
   fun replaceQueue(
     items: List<PlaybackItem>,
@@ -1933,6 +2004,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     eventId: Int,
     data: MPVNode,
   ) {
+    val shutdownObservers = if (eventId == MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN) observerSnapshot() else null
     val shouldForward =
       nativeLock.withLock {
         when (eventId) {
@@ -2088,30 +2160,15 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
             true
           }
           MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN -> {
-            activeUserScriptsKey = null
-            loadedPlaybackItem = null
-            releaseActiveNetworkStream()
-            releaseAuxiliaryNetworkStreams()
-            suspendedVideoTrack = null
-            rendererOutputReady = false
-            deferredVideoSelectionGeneration = null
-            desiredPaused = true
-            loadedGeneration = 0L
-            pendingEofSeekGeneration = null
-            defaultUserAgent = null
-            defaultRequestHeaders = emptyMap()
-            appliedUserAgent = null
-            pendingPositionRestoreGeneration = 0L
-            pendingPositionRestoreOverride = null
-            initialPositionGeneration = 0L
-            pendingStopClearQueue = false
-            supersededStopGeneration = 0L
-            clearPlaybackTransitionAudioGuardLocked(restoreMute = false)
-            resetAmbientShaderTrackingLocked()
-            initialized = false
-            nativeCoreReady = false
-            clearTimelinePropertiesLocked()
-            updateState { it.copy(phase = PlaybackPhase.UNINITIALIZED, surfaceAttached = false, paused = true) }
+            val current = _state.value
+            shutdownPositionRestore = current.currentItem?.let { item ->
+              val position = propDouble.cachedValue("time-pos")?.takeIf {
+                it.isFinite() && it >= 0.0 && loadedGeneration == current.generation &&
+                  loadedPlaybackItem?.stableId == item.stableId
+              }
+              item.stableId to PlaybackPositionRestoreOverride(position, desiredPaused)
+            }
+            destroyLocked(nativeShutdown = true)
             true
           }
           else -> true
@@ -2119,7 +2176,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       }
 
     if (shouldForward) {
-      observerSnapshot().forEach { observer -> runCatching { observer.event(eventId, data) } }
+      (shutdownObservers ?: observerSnapshot()).forEach { observer -> runCatching { observer.event(eventId, data) } }
     }
   }
 

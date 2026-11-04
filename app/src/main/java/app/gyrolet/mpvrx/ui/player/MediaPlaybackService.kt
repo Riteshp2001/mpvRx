@@ -1167,14 +1167,18 @@ class MediaPlaybackService :
     stopSelf()
   }
 
-  private fun stopDetachedPlaybackIfNeeded() {
+  private fun stopDetachedPlaybackIfNeeded(expectedGeneration: Long? = null) {
     // Never kill the shared PlaybackSession media while an Activity is taking it back over.
     // A fresh launch may already have destroyed and recreated the shared session before this
     // service's asynchronous onDestroy() callback reaches here.
-    if (mpvAccessReleased || activityForeground || handingBackToActivity) return
-    if (PlaybackSession.state.value.surfaceAttached) return
-    torrentStreamingEngine.stopStream()
-    PlaybackSession.stop(clearQueue = false)
+    if ((mpvAccessReleased && expectedGeneration == null) || activityForeground || handingBackToActivity ||
+      activeInstance !== this
+    ) return
+    PlaybackSession.stopIfDetached(
+      expectedGeneration = expectedGeneration ?: PlaybackSession.state.value.generation,
+      ownerIsActive = { activeInstance === this && !activityForeground && !handingBackToActivity },
+      beforeStop = { torrentStreamingEngine.stopStream() },
+    )
   }
 
   private fun handleDetachedEndOfFile(expectedGeneration: Long, naturalEnd: Boolean = false) {
@@ -2155,6 +2159,12 @@ class MediaPlaybackService :
   }
 
   override fun onDestroy() {
+    val detachedGeneration =
+      if (mpvAccessReleased || activityForeground || handingBackToActivity || activeInstance !== this) {
+        null
+      } else {
+        PlaybackSession.state.value.takeUnless { it.surfaceAttached }?.generation
+      }
     try {
       Log.d(TAG, "Service destroyed")
 
@@ -2167,7 +2177,7 @@ class MediaPlaybackService :
         runCatching { unregisterReceiver(noisyReceiver) }
         noisyReceiverRegistered = false
       }
-      isServiceRunning = false
+      if (activeInstance === this) isServiceRunning = false
 
       try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -2209,9 +2219,14 @@ class MediaPlaybackService :
     } catch (e: Exception) {
       Log.e(TAG, "Error in onDestroy", e)
     } finally {
-      isServiceRunning = false
-      if (activeInstance === this) activeInstance = null
-      stopDetachedPlaybackIfNeeded()
+      if (detachedGeneration != null) {
+        runCatching { stopDetachedPlaybackIfNeeded(detachedGeneration) }
+          .onFailure { Log.e(TAG, "Error stopping detached playback after service destruction", it) }
+      }
+      if (activeInstance === this) {
+        isServiceRunning = false
+        activeInstance = null
+      }
       handingBackToActivity = false
       super.onDestroy()
     }

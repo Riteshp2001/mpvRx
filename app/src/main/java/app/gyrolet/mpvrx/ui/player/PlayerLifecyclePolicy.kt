@@ -13,18 +13,34 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 internal object PlaybackActivityOwner {
   private val sequence = AtomicLong()
   private val ownershipLock = ReentrantReadWriteLock(true)
-  private var activeToken = 0L
+  @Volatile private var activeToken = 0L
+  private val _hasOwner = MutableStateFlow(false)
+  val hasOwner = _hasOwner.asStateFlow()
 
   fun claim(): Long =
     ownershipLock.write {
-      sequence.incrementAndGet().also { token -> activeToken = token }
+      sequence.incrementAndGet().also { token ->
+        activeToken = token
+        _hasOwner.value = true
+      }
     }
 
-  fun owns(token: Long): Boolean = ownershipLock.read { token > 0L && activeToken == token }
+  fun release(token: Long) {
+    ownershipLock.write {
+      if (token > 0L && activeToken == token) {
+        activeToken = 0L
+        _hasOwner.value = false
+      }
+    }
+  }
+
+  fun owns(token: Long): Boolean = token > 0L && activeToken == token
 
   fun beginRequest(
     token: Long,
@@ -55,6 +71,12 @@ internal enum class PlaybackLaunchPreparation {
 }
 
 internal object PlayerLifecyclePolicy {
+  fun isShutdownInProgress(message: String?): Boolean =
+    message?.contains("shutdown", ignoreCase = true) == true && message.contains("progress", ignoreCase = true)
+
+  fun shutdownInProgressMessage(error: Throwable?): String? =
+    generateSequence(error) { it.cause }.take(8).mapNotNull { it.message }.firstOrNull(::isShutdownInProgress)
+
   fun launchPreparation(
     coreInitialized: Boolean,
     phase: PlaybackPhase,
@@ -102,7 +124,8 @@ internal object PlayerLifecyclePolicy {
   fun shouldKeepBackgroundPlaybackAliveOnDestroy(
     backgroundPlaybackEnabled: Boolean,
     backgroundPlaybackSessionActive: Boolean,
-  ): Boolean = backgroundPlaybackEnabled && backgroundPlaybackSessionActive
+    isChangingConfigurations: Boolean = false,
+  ): Boolean = isChangingConfigurations || (backgroundPlaybackEnabled && backgroundPlaybackSessionActive)
 
   fun shouldTreatStopAsPipDismissal(
     wasInPictureInPictureMode: Boolean,

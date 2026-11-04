@@ -16,7 +16,14 @@ class PlayerObserver(
   private val activity: PlayerActivity,
 ) : MPVLib.EventObserver {
   private fun shouldIgnoreCallback(): Boolean =
-    activity.player.isExiting || !activity.isActivePlaybackOwner()
+    activity.isDestroyed || activity.player.isExiting || !activity.isActivePlaybackOwner()
+
+  private fun dispatchToUi(action: () -> Unit) {
+    val generation = PlaybackSession.state.value.generation
+    activity.runOnUiThread {
+      if (!shouldIgnoreCallback() && PlaybackSession.state.value.generation == generation) action()
+    }
+  }
 
   private fun isVideoGeometryProperty(property: String): Boolean =
     property == "video-params/aspect" ||
@@ -29,9 +36,7 @@ class PlayerObserver(
 
   override fun eventProperty(property: String) {
     if (shouldIgnoreCallback()) return
-    activity.runOnUiThread {
-      if (!shouldIgnoreCallback()) activity.onObserverEvent(property)
-    }
+    dispatchToUi { activity.onObserverEvent(property) }
   }
 
   override fun eventProperty(
@@ -42,9 +47,7 @@ class PlayerObserver(
     if (shouldBypassUiThread(property)) {
       activity.runIfActivePlaybackOwner { activity.onObserverEvent(property, value) }
     } else {
-      activity.runOnUiThread {
-        if (!shouldIgnoreCallback()) activity.onObserverEvent(property, value)
-      }
+      dispatchToUi { activity.onObserverEvent(property, value) }
     }
   }
 
@@ -56,9 +59,7 @@ class PlayerObserver(
     // keep-open holds the last frame instead of emitting a natural END_FILE, so the raw
     // eof-reached edge is the only end-of-playback signal; PlayerActivity validates it by
     // position before advancing (a network stall can flip it mid-file).
-    activity.runOnUiThread {
-      if (!shouldIgnoreCallback()) activity.onObserverEvent(property, value)
-    }
+    dispatchToUi { activity.onObserverEvent(property, value) }
   }
 
   override fun eventProperty(
@@ -66,9 +67,7 @@ class PlayerObserver(
     value: String,
   ) {
     if (shouldIgnoreCallback()) return
-    activity.runOnUiThread {
-      if (!shouldIgnoreCallback()) activity.onObserverEvent(property, value)
-    }
+    dispatchToUi { activity.onObserverEvent(property, value) }
   }
 
   override fun eventProperty(
@@ -79,9 +78,7 @@ class PlayerObserver(
     if (shouldBypassUiThread(property)) {
       activity.runIfActivePlaybackOwner { activity.onObserverEvent(property, value) }
     } else {
-      activity.runOnUiThread {
-        if (!shouldIgnoreCallback()) activity.onObserverEvent(property, value)
-      }
+      dispatchToUi { activity.onObserverEvent(property, value) }
     }
   }
 
@@ -91,9 +88,7 @@ class PlayerObserver(
     value: MPVNode,
   ) {
     if (shouldIgnoreCallback()) return
-    activity.runOnUiThread {
-      if (!shouldIgnoreCallback()) activity.onObserverEvent(property, value)
-    }
+    dispatchToUi { activity.onObserverEvent(property, value) }
   }
 
   override fun event(
@@ -102,8 +97,7 @@ class PlayerObserver(
   ) {
     if (shouldIgnoreCallback()) return
     val naturalEnd = eventId == MPVLib.MpvEvent.MPV_EVENT_END_FILE && PlaybackSession.isNaturalEndFile(data)
-    activity.runOnUiThread {
-      if (shouldIgnoreCallback()) return@runOnUiThread
+    dispatchToUi {
       activity.event(eventId)
       if (naturalEnd) {
         activity.onObserverEvent("eof-reached", true)
