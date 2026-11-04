@@ -264,6 +264,15 @@ jobs:
               ;;
           esac
 
+      - name: Upload native debug symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: native-debug-symbols-${{ matrix.distribution.id }}-${{ github.sha }}
+          path: app/build/outputs/native-debug-symbols/
+          if-no-files-found: warn
+          retention-days: 30
+          compression-level: 0
+
       - name: Upload R8 diagnostics
         uses: actions/upload-artifact@v7
         with:

@@ -47,7 +47,8 @@ internal class DlnaServerDiscovery(context: Context) {
     }.getOrDefault(emptyList())
     val seen = ConcurrentHashMap.newKeySet<String>()
     // Use each local network even if mobile data is the default route.
-    (networks.map { it as Network? }.ifEmpty { listOf(null) }).forEach { network ->
+    val scanNetworks: List<Network?> = networks.ifEmpty { listOf(null) }
+    scanNetworks.forEach { network ->
       launch(Dispatchers.IO) { scanNetwork(network, seen, onServer) }
     }
   }

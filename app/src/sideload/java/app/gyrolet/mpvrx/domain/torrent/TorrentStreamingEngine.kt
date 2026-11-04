@@ -8,6 +8,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
+import app.gyrolet.mpvrx.utils.telemetry.withMeasureTelemetry
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -163,6 +164,7 @@ class TorrentStreamingEngine(
   private val httpClient =
     OkHttpClient
       .Builder()
+      .withMeasureTelemetry()
       .connectTimeout(20L, TimeUnit.SECONDS)
       .readTimeout(30L, TimeUnit.SECONDS)
       .callTimeout(45L, TimeUnit.SECONDS)

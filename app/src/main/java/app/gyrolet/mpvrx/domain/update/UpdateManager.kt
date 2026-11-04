@@ -14,6 +14,7 @@ import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.network.awaitResponse
+import app.gyrolet.mpvrx.utils.telemetry.withMeasureTelemetry
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -37,7 +38,7 @@ private object RetryWithoutRangeSignal : IOException("Stored partial is not resu
 class UpdateManager(
   private val context: Context,
 ) {
-  private val client = OkHttpClient()
+  private val client = OkHttpClient.Builder().withMeasureTelemetry().build()
   private val json = Json {
     ignoreUnknownKeys = true
     coerceInputValues = true

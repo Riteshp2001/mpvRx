@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx.ui.securefolder
 import android.app.Activity
 import android.app.KeyguardManager
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -71,9 +72,7 @@ fun rememberDeviceCredentialPrompt(
           BiometricPrompt(activity, ContextCompat.getMainExecutor(context), callback).authenticate(info)
         }
         else -> {
-          val intent =
-            context.getSystemService(KeyguardManager::class.java)
-              ?.createConfirmDeviceCredentialIntent(title, subtitle)
+          val intent = legacyCredentialIntent(context, title, subtitle)
           if (intent != null) legacyLauncher.launch(intent) else currentOnUnavailable()
         }
       }
@@ -83,3 +82,9 @@ fun rememberDeviceCredentialPrompt(
 
 private fun isDeviceSecure(context: Context): Boolean =
   context.getSystemService(KeyguardManager::class.java)?.isDeviceSecure == true
+
+// DEVICE_CREDENTIAL alone is unsupported by BiometricPrompt before Android 11.
+// Keep the system credential fallback for those devices and non-FragmentActivity hosts.
+@Suppress("DEPRECATION")
+private fun legacyCredentialIntent(context: Context, title: String, subtitle: String): Intent? =
+  context.getSystemService(KeyguardManager::class.java)?.createConfirmDeviceCredentialIntent(title, subtitle)

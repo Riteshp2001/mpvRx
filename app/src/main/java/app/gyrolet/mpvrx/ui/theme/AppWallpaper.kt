@@ -49,6 +49,7 @@ import app.gyrolet.mpvrx.ui.background.AnimatedBackground
 import app.gyrolet.mpvrx.ui.background.BackdropGate
 import app.gyrolet.mpvrx.ui.background.BackgroundType
 import app.gyrolet.mpvrx.ui.background.rememberActiveBackground
+import app.gyrolet.mpvrx.utils.telemetry.withMeasureTelemetry
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -415,7 +416,7 @@ private const val MAX_WALLPAPER_DOWNLOAD_BYTES = 25L * 1024 * 1024
 private const val WALLPAPER_DOWNLOAD_DIR = "wallpaper_downloads"
 
 private val wallpaperDownloadClient by lazy {
-  OkHttpClient.Builder()
+  OkHttpClient.Builder().withMeasureTelemetry()
     .connectTimeout(15, TimeUnit.SECONDS)
     .readTimeout(30, TimeUnit.SECONDS)
     .callTimeout(90, TimeUnit.SECONDS)

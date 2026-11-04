@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -113,8 +114,8 @@ internal fun rememberTilt(enabled: Boolean): State<Offset> {
   val context = LocalContext.current
   val lifecycle = LocalLifecycleOwner.current
   val tilt = remember { mutableStateOf(Offset.Zero) }
-  val windowManager = remember(context) { context.getSystemService(Context.WINDOW_SERVICE) as? android.view.WindowManager }
-  DisposableEffect(enabled, lifecycle, context) {
+  val view = LocalView.current
+  DisposableEffect(enabled, lifecycle, context, view) {
     if (!enabled) {
       tilt.value = Offset.Zero
       return@DisposableEffect onDispose { }
@@ -131,7 +132,7 @@ internal fun rememberTilt(enabled: Boolean): State<Offset> {
         override fun onSensorChanged(event: SensorEvent) {
           // 9.81 m/s^2 along an axis means the device is fully on its side; ~5 is a hearty tilt
           // Sensors use the device's natural orientation, whereas the canvas uses display axes.
-          val rotation = windowManager?.defaultDisplay?.rotation
+          val rotation = view.display?.rotation
             ?: android.view.Surface.ROTATION_0
           val (gx, gy) = when (rotation) {
             android.view.Surface.ROTATION_90 -> -event.values[1] to event.values[0]
