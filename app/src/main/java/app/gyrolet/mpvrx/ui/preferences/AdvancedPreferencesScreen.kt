@@ -202,6 +202,15 @@ object AdvancedPreferencesScreen : Screen {
               onSuccess = { stats ->
                 importStats = stats
                 showImportDialog = true
+                if (stats.failed > 0) {
+                  val text =
+                    context.resources.getQuantityString(
+                      R.plurals.pref_import_skipped_invalid,
+                      stats.failed,
+                      stats.failed,
+                    )
+                  Toast.warning(context, text)
+                }
               },
               onFailure = { error ->
                 Toast

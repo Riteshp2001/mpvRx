@@ -2240,7 +2240,10 @@
     <item quantity="one">%1$s से सेटिंग्स बहाल हुईं। %2$d खराब प्रविष्टि छोड़ दी गई। डाउनलोड Configuration/Downloads का उपयोग करेंगे।</item>
     <item quantity="other">%1$s से सेटिंग्स बहाल हुईं। %2$d खराब प्रविष्टियाँ छोड़ दी गईं। डाउनलोड Configuration/Downloads का उपयोग करेंगे।</item>
   </plurals>
-  <string name="settings_restore_reverted">%1$s से बहाल की गई सेटिंग्स के कारण ऐप क्रैश हुआ, इसलिए उन्हें वापस ले लिया गया।</string>
+  <plurals name="pref_import_skipped_invalid">
+    <item quantity="one">%1$d अमान्य सेटिंग छोड़ी गई</item>
+    <item quantity="other">%1$d अमान्य सेटिंग्स छोड़ी गईं</item>
+  </plurals>
   <string name="onboarding_configuration_restore_failed">फ़ोल्डर सेटअप पूरा नहीं हुआ: %1$s</string>
   <string name="navbar_glow_title">ग्लास की चमक</string>
   <string name="navbar_glow_summary">नेविगेशन बार की किनारे की रोशनी और स्पर्श चमक दिखाएं</string>

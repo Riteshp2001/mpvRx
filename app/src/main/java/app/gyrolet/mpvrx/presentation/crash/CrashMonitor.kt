@@ -126,23 +126,6 @@ internal object CrashMonitor {
     }
   }
 
-  /**
-   * Whether the app died abnormally after [since], for callers that must react before anything
-   * else runs: from the platform's exit history on Android 11+, and on older versions from a
-   * session that ended on screen without a reported exception. Synchronous and cheap.
-   */
-  fun diedAbnormallySince(
-    context: Context,
-    since: Long,
-  ): Boolean =
-    runCatching {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        crashedSince(context, since)
-      } else {
-        previousVisibleSession(context) != null
-      }
-    }.getOrDefault(false)
-
   /** A crash this process has already reported must not also count as an unexplained death. */
   fun clearSessionMarker(context: Context) {
     runCatching { sessionMarker(context).delete() }
@@ -212,28 +195,6 @@ internal object CrashMonitor {
       details = details,
       processId = session.processId,
     )
-  }
-
-  @RequiresApi(Build.VERSION_CODES.R)
-  private fun crashedSince(
-    context: Context,
-    since: Long,
-  ): Boolean {
-    val activityManager = context.getSystemService(ActivityManager::class.java) ?: return false
-    val crashProcess = "${context.packageName}:crash"
-    return activityManager.getHistoricalProcessExitReasons(context.packageName, 0, MAX_EXITS).any { exit ->
-      exit.timestamp >= since &&
-        exit.pid != Process.myPid() &&
-        exit.processName != crashProcess &&
-        when (exit.reason) {
-          ApplicationExitInfo.REASON_CRASH,
-          ApplicationExitInfo.REASON_CRASH_NATIVE,
-          ApplicationExitInfo.REASON_ANR,
-          ApplicationExitInfo.REASON_INITIALIZATION_FAILURE,
-          -> true
-          else -> false
-        }
-    }
   }
 
   /** Opens the recovery screen for a crash the user has not seen yet. */

@@ -6,7 +6,6 @@ package app.gyrolet.mpvrx.presentation.crash
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import app.gyrolet.mpvrx.preferences.SettingsRestoreGuard
 import app.gyrolet.mpvrx.utils.telemetry.MeasureTelemetry
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
@@ -32,9 +31,6 @@ class GlobalExceptionHandler(
       // Frees headroom so an OutOfMemoryError can still be written out.
       CrashMonitor.releaseMemoryReserve()
       runCatching { Log.e(TAG, "FATAL EXCEPTION: ${t.name}", e) }
-      // Settings restored moments ago are the likeliest cause; put them back before relaunching.
-      runCatching { SettingsRestoreGuard.revertAfterCrash(context) }
-        .onFailure { Log.e(TAG, "Unable to revert restored settings", it) }
       // In the background Android blocks opening the recovery screen; it is shown on next launch.
       val canPresent = CrashMonitor.isAppVisible
       val reportId = runCatching { CrashReportStore.capture(context, t, e, presented = canPresent) }

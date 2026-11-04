@@ -2324,7 +2324,9 @@
   <plurals name="onboarding_configuration_restored_partial">
     <item quantity="other">%1$s から設定を復元しました。破損した %2$d 件の項目をスキップしました。ダウンロードは Configuration/Downloads を使用します。</item>
   </plurals>
-  <string name="settings_restore_reverted">%1$s から復元した設定が原因でクラッシュしたため、元に戻しました。</string>
+  <plurals name="pref_import_skipped_invalid">
+    <item quantity="other">無効な設定を %1$d 件スキップしました</item>
+  </plurals>
   <string name="onboarding_configuration_restore_failed">フォルダーの設定を完了できませんでした: %1$s</string>
   <string name="navbar_glow_title">ガラスの輝き</string>
   <string name="navbar_glow_summary">ナビゲーションバーの縁の光とタッチ時の輝きを表示</string>

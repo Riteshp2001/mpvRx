@@ -110,8 +110,7 @@ class SettingsManager(
         val size = DocumentFile.fromSingleUri(context, inputUri)?.length() ?: 0L
         require(size <= MAX_BACKUP_BYTES) { "Settings backup is too large" }
         context.contentResolver.openInputStream(inputUri)?.use { inputStream ->
-          val source = DocumentFile.fromSingleUri(context, inputUri)?.name ?: inputUri.lastPathSegment.orEmpty()
-          val stats = readSettingsFromXml(inputStream, source)
+          val stats = readSettingsFromXml(inputStream)
           Result.success(stats)
         } ?: Result.failure(Exception("Failed to open input stream"))
       } catch (cancelled: CancellationException) {
@@ -394,10 +393,7 @@ class SettingsManager(
     serializer.endTag(null, TAG_NETWORK_CONNECTION)
   }
 
-  private suspend fun readSettingsFromXml(
-    inputStream: InputStream,
-    source: String,
-  ): ImportStats {
+  private suspend fun readSettingsFromXml(inputStream: InputStream): ImportStats {
     declareAllPreferences()
     val parser: XmlPullParser = Xml.newPullParser()
     parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
@@ -474,15 +470,9 @@ class SettingsManager(
     }
 
     if (imported.isNotEmpty()) {
-      val preferences = context.defaultSharedPreferences()
-      val current = preferences.all
-      val changes = imported.mapNotNull { (key, value) ->
-        val previous = current[key]
-        if (previous == value) null else SettingsRestoreGuard.Change(key, previous, value)
-      }
-      SettingsRestoreGuard.arm(context, source, changes)
-      val editor = preferences.edit()
-      changes.forEach { change -> putValue(editor, change.key, change.imported) }
+      // Every valid entry is kept for good; invalid ones were skipped above and counted in stats.failed.
+      val editor = context.defaultSharedPreferences().edit()
+      imported.forEach { (key, value) -> putValue(editor, key, value) }
       check(editor.commit()) { "Failed to save imported preferences" }
       stats.imported += imported.size
     }

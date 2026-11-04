@@ -2332,7 +2332,9 @@
   <plurals name="onboarding_configuration_restored_partial">
     <item quantity="other">已从 %1$s 恢复设置，跳过了 %2$d 个损坏的条目。下载将使用 Configuration/Downloads。</item>
   </plurals>
-  <string name="settings_restore_reverted">从 %1$s 恢复的设置导致应用崩溃，因此已撤销。</string>
+  <plurals name="pref_import_skipped_invalid">
+    <item quantity="other">已跳过 %1$d 项无效设置</item>
+  </plurals>
   <string name="onboarding_configuration_restore_failed">无法完成文件夹设置：%1$s</string>
   <string name="navbar_glow_title">玻璃辉光</string>
   <string name="navbar_glow_summary">显示导航栏边缘光照和触摸辉光</string>

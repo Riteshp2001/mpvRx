@@ -2332,7 +2332,10 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
     <item quantity="one">Réglages restaurés depuis %1$s. %2$d entrée endommagée a été ignorée. Les téléchargements utiliseront Configuration/Downloads.</item>
     <item quantity="other">Réglages restaurés depuis %1$s. %2$d entrées endommagées ont été ignorées. Les téléchargements utiliseront Configuration/Downloads.</item>
   </plurals>
-  <string name="settings_restore_reverted">Les réglages restaurés depuis %1$s ont provoqué un plantage ; ils ont donc été annulés.</string>
+  <plurals name="pref_import_skipped_invalid">
+    <item quantity="one">%1$d réglage non valide ignoré</item>
+    <item quantity="other">%1$d réglages non valides ignorés</item>
+  </plurals>
   <string name="onboarding_configuration_restore_failed">La configuration du dossier a échoué : %1$s</string>
   <string name="navbar_glow_title">Éclat du verre</string>
   <string name="navbar_glow_summary">Afficher l’éclairage du bord et l’éclat au toucher de la barre de navigation</string>

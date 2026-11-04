@@ -2362,7 +2362,14 @@
     <item quantity="many">تمت استعادة الإعدادات من %1$s. تم تخطي %2$d إدخالًا تالفًا. ستستخدم التنزيلات Configuration/Downloads.</item>
     <item quantity="other">تمت استعادة الإعدادات من %1$s. تم تخطي %2$d إدخال تالف. ستستخدم التنزيلات Configuration/Downloads.</item>
   </plurals>
-  <string name="settings_restore_reverted">تسببت الإعدادات المستعادة من %1$s في تعطل التطبيق، لذا تم التراجع عنها.</string>
+  <plurals name="pref_import_skipped_invalid">
+    <item quantity="zero">تم تخطي %1$d إعداد غير صالح</item>
+    <item quantity="one">تم تخطي إعداد واحد غير صالح (%1$d)</item>
+    <item quantity="two">تم تخطي إعدادين غير صالحين (%1$d)</item>
+    <item quantity="few">تم تخطي %1$d إعدادات غير صالحة</item>
+    <item quantity="many">تم تخطي %1$d إعدادًا غير صالح</item>
+    <item quantity="other">تم تخطي %1$d إعداد غير صالح</item>
+  </plurals>
   <string name="onboarding_configuration_restore_failed">تعذر إكمال إعداد المجلد: %1$s</string>
   <string name="navbar_glow_title">توهج الزجاج</string>
   <string name="navbar_glow_summary">إظهار إضاءة حافة شريط التنقل وتوهج اللمس</string>

@@ -2332,7 +2332,10 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
     <item quantity="one">Ajustes restaurados de %1$s. %2$d entrada danificada foi ignorada. Os downloads usarão Configuration/Downloads.</item>
     <item quantity="other">Ajustes restaurados de %1$s. %2$d entradas danificadas foram ignoradas. Os downloads usarão Configuration/Downloads.</item>
   </plurals>
-  <string name="settings_restore_reverted">Os ajustes restaurados de %1$s causaram uma falha, por isso foram revertidos.</string>
+  <plurals name="pref_import_skipped_invalid">
+    <item quantity="one">%1$d ajuste inválido ignorado</item>
+    <item quantity="other">%1$d ajustes inválidos ignorados</item>
+  </plurals>
   <string name="onboarding_configuration_restore_failed">Não foi possível concluir a configuração da pasta: %1$s</string>
   <string name="navbar_glow_title">Brilho do vidro</string>
   <string name="navbar_glow_summary">Mostrar iluminação da borda e brilho ao tocar na barra de navegação</string>

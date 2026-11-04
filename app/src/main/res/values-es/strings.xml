@@ -2332,7 +2332,10 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
     <item quantity="one">Ajustes restaurados desde %1$s. Se omitió %2$d entrada dañada. Las descargas usarán Configuration/Downloads.</item>
     <item quantity="other">Ajustes restaurados desde %1$s. Se omitieron %2$d entradas dañadas. Las descargas usarán Configuration/Downloads.</item>
   </plurals>
-  <string name="settings_restore_reverted">Los ajustes restaurados desde %1$s provocaron un cierre inesperado, así que se revirtieron.</string>
+  <plurals name="pref_import_skipped_invalid">
+    <item quantity="one">Se omitió %1$d ajuste no válido</item>
+    <item quantity="other">Se omitieron %1$d ajustes no válidos</item>
+  </plurals>
   <string name="onboarding_configuration_restore_failed">No se pudo completar la configuración de la carpeta: %1$s</string>
   <string name="navbar_glow_title">Brillo del cristal</string>
   <string name="navbar_glow_summary">Mostrar luz del borde y brillo al tocar la barra de navegación</string>

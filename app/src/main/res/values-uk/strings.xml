@@ -2355,7 +2355,12 @@
     <item quantity="many">Відновлено налаштування з %1$s. Пропущено %2$d пошкоджених записів. Завантаження використовуватимуть Configuration/Downloads.</item>
     <item quantity="other">Відновлено налаштування з %1$s. Пропущено %2$d пошкодженого запису. Завантаження використовуватимуть Configuration/Downloads.</item>
   </plurals>
-  <string name="settings_restore_reverted">Налаштування, відновлені з %1$s, спричинили збій, тому їх скасовано.</string>
+  <plurals name="pref_import_skipped_invalid">
+    <item quantity="one">Пропущено %1$d недійсне налаштування</item>
+    <item quantity="few">Пропущено %1$d недійсні налаштування</item>
+    <item quantity="many">Пропущено %1$d недійсних налаштувань</item>
+    <item quantity="other">Пропущено %1$d недійсного налаштування</item>
+  </plurals>
   <string name="onboarding_configuration_restore_failed">Не вдалося завершити налаштування папки: %1$s</string>
   <string name="navbar_glow_title">Світіння скла</string>
   <string name="navbar_glow_summary">Підсвічування краю та дотиків панелі навігації</string>

@@ -2348,7 +2348,12 @@
     <item quantity="many">Настройки восстановлены из %1$s. Пропущено %2$d повреждённых записей. Загрузки будут сохраняться в Configuration/Downloads.</item>
     <item quantity="other">Настройки восстановлены из %1$s. Пропущено %2$d повреждённой записи. Загрузки будут сохраняться в Configuration/Downloads.</item>
   </plurals>
-  <string name="settings_restore_reverted">Настройки, восстановленные из %1$s, вызвали сбой, поэтому они были отменены.</string>
+  <plurals name="pref_import_skipped_invalid">
+    <item quantity="one">Пропущена %1$d недопустимая настройка</item>
+    <item quantity="few">Пропущены %1$d недопустимые настройки</item>
+    <item quantity="many">Пропущено %1$d недопустимых настроек</item>
+    <item quantity="other">Пропущено %1$d недопустимой настройки</item>
+  </plurals>
   <string name="onboarding_configuration_restore_failed">Не удалось завершить настройку папки: %1$s</string>
   <string name="navbar_glow_title">Свечение стекла</string>
   <string name="navbar_glow_summary">Подсветка края и касаний панели навигации</string>

@@ -39,7 +39,6 @@ import app.gyrolet.mpvrx.preferences.SettingsRestoreGuard
 import app.gyrolet.mpvrx.utils.telemetry.MeasureTelemetry
 import app.gyrolet.mpvrx.remote.TvInputDispatcher
 import app.gyrolet.mpvrx.remote.TvRemoteServer
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.presentation.crash.CrashMonitor
 import app.gyrolet.mpvrx.domain.network.NetworkImageRepository
 import app.gyrolet.mpvrx.repository.NetworkRepository
@@ -149,9 +148,8 @@ class App :
 
     configureDebugStrictMode()
 
-    // Before anything reads them: restored settings that kept the app from starting are reverted.
-    runCatching { SettingsRestoreGuard.onProcessStart(this) }
-      .onFailure { Log.w(TAG, "Could not check restored settings", it) }
+    // Imports no longer revert later; drop any rollback an older version left behind.
+    applicationScope.launch(Dispatchers.IO) { runCatching { SettingsRestoreGuard.discardLegacyRollback(this@App) } }
 
     // Initialize Koin
     startKoin {
@@ -182,9 +180,6 @@ class App :
     // A library initialized during startup may have replaced the handler; keep ours on top.
     CrashMonitor.ensureInstalled(this)
     CrashMonitor.recordPreviousExits(this)
-    SettingsRestoreGuard.consumeRevertedSource(this)?.let { source ->
-      Toast.makeText(this, getString(R.string.settings_restore_reverted, source), Toast.LENGTH_LONG).show()
-    }
     startIdleMpvCoreReaper()
     startWidgetUpdates()
     startWatchStatsTracking()
@@ -421,8 +416,6 @@ class App :
 
   override fun onActivityResumed(activity: Activity) {
     TvInputDispatcher.onActivityResumed(activity)
-    // Restored settings count as working once a screen has stayed up with them for a while.
-    SettingsRestoreGuard.onScreenShown(activity)
     if (BuildConfig.ENABLE_UPDATE_FEATURE) {
       applicationScope.launch(Dispatchers.IO) {
         runCatching { app.gyrolet.mpvrx.domain.update.UpdateInstaller.onForeground(this@App) }
@@ -452,7 +445,6 @@ class App :
   }
 
   override fun onActivityPaused(activity: Activity) {
-    SettingsRestoreGuard.onScreenHidden()
     TvInputDispatcher.onActivityPaused(activity)
   }
 

@@ -2659,7 +2659,10 @@
     <item quantity="one">Restored settings from %1$s. Skipped %2$d damaged entry. Downloads will use Configuration/Downloads.</item>
     <item quantity="other">Restored settings from %1$s. Skipped %2$d damaged entries. Downloads will use Configuration/Downloads.</item>
   </plurals>
-  <string name="settings_restore_reverted">Settings restored from %1$s caused a crash, so they were reverted.</string>
+  <plurals name="pref_import_skipped_invalid">
+    <item quantity="one">Skipped %1$d invalid setting</item>
+    <item quantity="other">Skipped %1$d invalid settings</item>
+  </plurals>
   <string name="onboarding_configuration_restore_failed">Folder setup could not be completed: %1$s</string>
   <string name="navbar_glow_title">Glass Glow</string>
   <string name="navbar_glow_summary">Show navbar rim lighting and touch glow</string>
