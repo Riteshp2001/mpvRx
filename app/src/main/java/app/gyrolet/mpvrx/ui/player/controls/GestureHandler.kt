@@ -562,6 +562,8 @@ fun GestureHandler(
           brightnessGesture,
           volumeGesture,
           centerVerticalSubtitlePositionGesture,
+          pinchToZoomSubtitles,
+          secondarySubPinchZoomEnabled,
           enableCenterSwipeUpGesture,
           enableVideoMiniPlayer,
           externalPanelShown,
@@ -630,6 +632,25 @@ fun GestureHandler(
             var subtitleDragStartY = startPosition.y
             var subtitleDragPosition = selectedSubtitle?.position ?: 0f
             var lastDraggedPosition: Float? = null
+            var heldSubScale = selectedSubtitle?.scale ?: 1f
+            var heldScaleChanged = false
+            val secondaryTrackId =
+              if (selectedSubtitle?.target == SubtitleGestureTarget.Primary && secondarySubPinchZoomEnabled) {
+                getTrackSelectionId("secondary-sid")
+              } else 0
+            var heldSecondaryScale =
+              if (secondaryTrackId > 0) {
+                PlaybackSession.getPropertyFloat("secondary-sub-scale") ?: subtitlesPreferences.secondarySubScale.get()
+              } else 1f
+            var heldSecondaryScaleChanged = false
+            var pinchStartDistance = 0f
+            var pinchStartScale = heldSubScale
+            var pinchStartSecondaryScale = heldSecondaryScale
+            var pinchFirstPointerId: Long? = null
+            var pinchSecondPointerId: Long? = null
+            var returningFromPinch = false
+            var heldPinchStarted = false
+            var linkedHighlightShown = false
             // A moving finger is a swipe, not a pending subtitle long-press.
             var subtitleHoldEligible = selectedSubtitle != null
             var subtitleHighlightShown = false
@@ -658,7 +679,10 @@ fun GestureHandler(
                       actionHaptics.pickup()
                       viewModel.playerUpdate.update {
                         PlayerUpdates.ShowText(
-                          context.getString(R.string.player_move_subtitles_hint),
+                          context.getString(
+                            if (pinchToZoomSubtitles) R.string.player_move_resize_subtitles_hint
+                            else R.string.player_move_subtitles_hint,
+                          ),
                         )
                       }
                     } else if (
@@ -710,7 +734,84 @@ fun GestureHandler(
                   continue
                 }
 
+                if (isSubtitleHoldActive && gestureOwner == GestureOwner.SUBTITLE_VERTICAL && pointerCount > 1) {
+                  // Keep the hold's locked track even when the pinch midpoint is nowhere near
+                  // the subtitle text. Two fingers resize only; midpoint drift must not move it.
+                  longPressJob.cancel()
+                  returningFromPinch = true
+                  val pressed = event.changes.filter { it.pressed }
+                  val selected = selectedSubtitle
+                  if (pointerCount == 2 && pinchToZoomSubtitles && selected != null &&
+                    PlaybackSession.state.value.generation == subtitleGestureGeneration &&
+                    getTrackSelectionId(selected.target.selectionProperty) == selected.trackId &&
+                    !MpvConfigOverridePolicy.isOwnedByMpvConf("${selected.target.prefix}-scale")
+                  ) {
+                    val firstPointerId = pressed[0].id.value
+                    val secondPointerId = pressed[1].id.value
+                    val distance = (pressed[0].position - pressed[1].position).getDistance()
+                    if (distance.isFinite() && distance >= 1f) {
+                      if (firstPointerId != pinchFirstPointerId || secondPointerId != pinchSecondPointerId) {
+                        pinchFirstPointerId = firstPointerId
+                        pinchSecondPointerId = secondPointerId
+                        pinchStartDistance = distance
+                        pinchStartScale = heldSubScale
+                        pinchStartSecondaryScale = heldSecondaryScale
+                        heldPinchStarted = false
+                      } else {
+                        if (abs(distance - pinchStartDistance) > 5f) heldPinchStarted = true
+                        if (heldPinchStarted) {
+                          val ratio = distance / pinchStartDistance
+                          val scale = (pinchStartScale * ratio).coerceIn(0.1f, 5f)
+                          if (abs(scale - heldSubScale) > 0.001f) {
+                            heldSubScale = scale
+                            heldScaleChanged = true
+                            viewModel.previewSubtitleScale(scale, selected.target)
+                          }
+                          val linkSecondary = selected.target == SubtitleGestureTarget.Primary &&
+                            secondarySubPinchZoomEnabled && secondaryTrackId > 0 &&
+                            getTrackSelectionId("secondary-sid") == secondaryTrackId &&
+                            !MpvConfigOverridePolicy.isOwnedByMpvConf("secondary-sub-scale")
+                          if (linkSecondary) {
+                            if (!linkedHighlightShown) {
+                              viewModel.setSubtitleGestureHighlight(false)
+                              viewModel.setSubtitleGestureHighlight(true)
+                              linkedHighlightShown = true
+                            }
+                            val secondaryScale = (pinchStartSecondaryScale * ratio).coerceIn(0.1f, 5f)
+                            if (abs(secondaryScale - heldSecondaryScale) > 0.001f) {
+                              heldSecondaryScale = secondaryScale
+                              heldSecondaryScaleChanged = true
+                              viewModel.previewSubtitleScale(secondaryScale, SubtitleGestureTarget.Secondary)
+                            }
+                          }
+                          viewModel.playerUpdate.update {
+                            PlayerUpdates.SubtitleZoom(heldSubScale, selected.target == SubtitleGestureTarget.Secondary)
+                          }
+                        }
+                      }
+                    }
+                  } else {
+                    // Rebase after an extra finger or a temporarily unavailable track/property.
+                    pinchFirstPointerId = null
+                    pinchSecondPointerId = null
+                  }
+                  pressed.forEach { it.consume() }
+                  continue
+                }
+
                 if (pointerCount == 1) {
+                  if (returningFromPinch && isSubtitleHoldActive) {
+                    // Either finger may remain. Its current position becomes the new drag
+                    // origin, so lifting a finger cannot make the subtitle jump.
+                    subtitleDragStartY = event.changes.first { it.pressed }.position.y
+                    subtitleDragPosition = lastDraggedPosition ?: selectedSubtitle?.position ?: subtitleDragPosition
+                    gestureType = "subtitle_vertical"
+                    pinchFirstPointerId = null
+                    pinchSecondPointerId = null
+                    returningFromPinch = false
+                    event.changes.forEach { it.consume() }
+                    continue
+                  }
                   event.changes.forEach { change ->
                     if (change.pressed) {
                       val currentPosition = change.position
@@ -1100,9 +1201,27 @@ fun GestureHandler(
                     viewModel.persistSubtitleGesturePosition(selected.target, position)
                   }
                 }
+                if (selected != null && getTrackSelectionId(selected.target.selectionProperty) == selected.trackId) {
+                  if (heldScaleChanged && !MpvConfigOverridePolicy.isOwnedByMpvConf("${selected.target.prefix}-scale")) {
+                    if (selected.target == SubtitleGestureTarget.Secondary) {
+                      subtitlesPreferences.secondarySubScale.set(heldSubScale)
+                    } else {
+                      subtitlesPreferences.subScale.set(heldSubScale)
+                    }
+                  }
+                  if (heldSecondaryScaleChanged && getTrackSelectionId("secondary-sid") == secondaryTrackId &&
+                    !MpvConfigOverridePolicy.isOwnedByMpvConf("secondary-sub-scale")
+                  ) {
+                    subtitlesPreferences.secondarySubScale.set(heldSecondaryScale)
+                  }
+                }
               }
               isVerticalGestureActive = false
               releaseGesture(GestureOwner.SUBTITLE_VERTICAL)
+              if (isSubtitleHoldActive) {
+                isSubtitleHoldActive = false
+                viewModel.playerUpdate.update { PlayerUpdates.None }
+              }
               if (isLongPressing) {
                 if (!isSpeedLocked) PlaybackSession.setPropertyFloat("speed", originalSpeed)
                 isLongPressing = false
@@ -1168,7 +1287,8 @@ fun GestureHandler(
                 val pressed = event.changes.filter { it.pressed }
 
                 if (pressed.size == 2) {
-                  releaseGesture(GestureOwner.SUBTITLE_VERTICAL)
+                  // An established subtitle hold owns its entire drag/pinch sequence.
+                  if (gestureOwner == GestureOwner.SUBTITLE_VERTICAL) continue
                   if (!claimGesture(GestureOwner.PINCH)) continue
                   val p1 = pressed[0].position
                   val p2 = pressed[1].position

@@ -315,7 +315,7 @@
   <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">Tap once inside the center zone (30% wide by default, 30% tall). Other center taps toggle controls.</string>
   <string name="pref_gesture_use_single_tap_for_right_summary">Tap once instead of twice to run the right-side action.</string>
   <string name="pref_gesture_center_vertical_subtitle_position_title">Hold and drag subtitles</string>
-  <string name="pref_gesture_center_vertical_subtitle_position_summary">Hold the center, then drag up or down to move primary subtitles. Hold directly on either subtitle to move that track independently. Normal swipes still open the playlist.</string>
+  <string name="pref_gesture_center_vertical_subtitle_position_summary">Hold the center, then drag up or down to move primary subtitles. Add a second finger and pinch to resize when subtitle pinch-to-zoom is enabled. Hold directly on either subtitle to move that track independently. Normal swipes still open the playlist.</string>
   <string name="pref_gesture_double_tap_custom_info">You can bind custom actions to these gestures in input.conf using the following key codes:\n\nLeft: MBTN_LEFT_DBL\nCenter: MBTN_MID_DBL\nRight: MBTN_RIGHT_DBL</string>
   <string name="pref_gesture_media_title">Media controls</string>
   <string name="pref_gesture_media_previous">Previous</string>
@@ -1137,6 +1137,7 @@
   <string name="player_ambient_battery_saver_on">Ambient: Battery Saver ON</string>
   <string name="player_ambient_battery_saver_off">Ambient: Battery Saver OFF</string>
   <string name="player_move_subtitles_hint">Drag up/down to move subtitles</string>
+  <string name="player_move_resize_subtitles_hint">Drag to move · Pinch with two fingers to resize</string>
   <string name="player_next_dialog">Next Dialog</string>
   <string name="player_previous_dialog">Previous Dialog</string>
   <string name="diagnostics_playback_decoder_header">PLAYBACK &amp; DECODER</string>
