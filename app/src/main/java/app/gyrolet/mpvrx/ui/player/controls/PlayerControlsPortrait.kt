@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -71,6 +71,7 @@ fun TopPlayerControlsPortrait(
   PlayerButtonTheme {
     val playlistModeEnabled = viewModel.hasPlaylistSupport()
     val clickEvent = LocalPlayerButtonsClickEvent.current
+    val titleHeight = playerTitleHeight(45.dp, MaterialTheme.typography.titleMedium.lineHeight)
 
     Column(
       modifier =
@@ -103,7 +104,7 @@ fun TopPlayerControlsPortrait(
                   }
                 },
                 isInteractive = playlistModeEnabled,
-                height = 45.dp,
+                height = titleHeight,
                 horizontalPadding = 14.dp,
               ) {
                 Text(
@@ -111,7 +112,7 @@ fun TopPlayerControlsPortrait(
                   maxLines = 1,
                   overflow = TextOverflow.Ellipsis,
                   style = MaterialTheme.typography.titleMedium,
-                  modifier = Modifier.weight(1f, fill = false),
+                  modifier = Modifier.weight(1f, fill = false).playerTitleMarquee(),
                 )
                 viewModel.getPlaylistInfo()?.let { playlistInfo ->
                   Text(
@@ -139,18 +140,18 @@ fun TopPlayerControlsPortrait(
                 },
                 enabled = playlistModeEnabled,
                 border = BorderStroke(1.dp, playerButtonBorderColor()),
-                modifier = Modifier.height(45.dp),
+                modifier = Modifier.heightIn(min = titleHeight),
               ) {
                 Row(
                   verticalAlignment = Alignment.CenterVertically,
-                  modifier = Modifier.padding(horizontal = 14.dp),
+                  modifier = Modifier.heightIn(min = titleHeight).padding(horizontal = 14.dp, vertical = 4.dp),
                 ) {
                   Text(
                     mediaTitle ?: "",
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f, fill = false),
+                    modifier = Modifier.weight(1f, fill = false).playerTitleMarquee(),
                   )
                   viewModel.getPlaylistInfo()?.let { playlistInfo ->
                     Text(

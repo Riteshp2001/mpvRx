@@ -26,6 +26,7 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -34,6 +35,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -56,9 +58,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
@@ -96,6 +100,15 @@ import org.koin.compose.koinInject
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import app.gyrolet.mpvrx.ui.icons.Icon as AppSymbolIcon
+
+@Composable
+internal fun playerTitleHeight(minHeight: Dp, lineHeight: TextUnit): Dp =
+  with(LocalDensity.current) { maxOf(minHeight, lineHeight.toDp() + 8.dp) }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+internal fun Modifier.playerTitleMarquee(): Modifier =
+  if (AppMotion.playerReducedMotion()) this else basicMarquee(iterations = Int.MAX_VALUE)
 
 @Composable
 fun RenderPlayerButton(
@@ -145,6 +158,7 @@ fun RenderPlayerButton(
 
     PlayerButton.VIDEO_TITLE -> {
       val playlistModeEnabled = viewModel.hasPlaylistSupport()
+      val titleHeight = playerTitleHeight(buttonSize, MaterialTheme.typography.bodyMedium.lineHeight)
 
       if (enableLiquidGlass) {
         LiquidPillButton(
@@ -155,7 +169,7 @@ fun RenderPlayerButton(
             }
           },
           isInteractive = playlistModeEnabled,
-          height = buttonSize,
+          height = titleHeight,
           horizontalPadding = 12.dp,
         ) {
           Text(
@@ -163,7 +177,7 @@ fun RenderPlayerButton(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(1f, fill = false).playerTitleMarquee(),
           )
           viewModel.getPlaylistInfo()?.let { playlistInfo ->
             Text(
@@ -199,7 +213,7 @@ fun RenderPlayerButton(
             },
           modifier =
             Modifier
-              .height(buttonSize)
+              .heightIn(min = titleHeight)
               .clip(CircleShape)
               .clickable(
                 interactionSource = titleInteractionSource,
@@ -218,9 +232,10 @@ fun RenderPlayerButton(
             verticalAlignment = Alignment.CenterVertically,
             modifier =
               Modifier
+                .heightIn(min = titleHeight)
                 .padding(
                   horizontal = MaterialTheme.spacing.extraSmall,
-                  vertical = MaterialTheme.spacing.small,
+                  vertical = 4.dp,
                 ),
           ) {
             Text(
@@ -228,7 +243,7 @@ fun RenderPlayerButton(
               maxLines = 1,
               overflow = TextOverflow.Ellipsis,
               style = MaterialTheme.typography.bodyMedium,
-              modifier = Modifier.weight(1f, fill = false),
+              modifier = Modifier.weight(1f, fill = false).playerTitleMarquee(),
             )
             viewModel.getPlaylistInfo()?.let { playlistInfo ->
               Text(

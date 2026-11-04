@@ -99,7 +99,7 @@ class TvDocumentsProvider : DocumentsProvider() {
     val parent = existingFile(parentDocumentId)
     val children = parent.listFiles() ?: throw FileNotFoundException("Folder is not accessible")
     return MatrixCursor(projection ?: DOCUMENT_COLUMNS).apply {
-      TvDocumentUris.forEachDocument(requireContext(), children) { child, id ->
+      TvDocumentUris.forEachDocument(requireProviderContext(), children) { child, id ->
         runCatching { addDocument(this, child, id) }
       }
     }
@@ -120,7 +120,7 @@ class TvDocumentsProvider : DocumentsProvider() {
     val child = childFile(parent, displayName)
     val created = if (mimeType == DocumentsContract.Document.MIME_TYPE_DIR) child.mkdir() else child.createNewFile()
     if (!created) throw FileNotFoundException("Could not create document")
-    return TvDocumentUris.documentId(requireContext(), child)
+    return TvDocumentUris.documentId(requireProviderContext(), child)
   }
 
   override fun deleteDocument(documentId: String) {
@@ -134,20 +134,20 @@ class TvDocumentsProvider : DocumentsProvider() {
     val parent = file.parentFile ?: throw FileNotFoundException("Cannot rename storage")
     val target = childFile(parent, displayName)
     if (target.exists() || !file.renameTo(target)) throw FileNotFoundException("Could not rename document")
-    return TvDocumentUris.documentId(requireContext(), target)
+    return TvDocumentUris.documentId(requireProviderContext(), target)
   }
 
   override fun isChildDocument(parentDocumentId: String, documentId: String): Boolean {
-    val parent = TvDocumentUris.file(requireContext(), parentDocumentId)
-    val child = TvDocumentUris.file(requireContext(), documentId)
+    val parent = TvDocumentUris.file(requireProviderContext(), parentDocumentId)
+    val child = TvDocumentUris.file(requireProviderContext(), documentId)
     return child.path.startsWith(parent.path.trimEnd(File.separatorChar) + File.separator)
   }
 
   private fun existingFile(documentId: String): File =
-    TvDocumentUris.file(requireContext(), documentId).takeIf(File::exists)
+    TvDocumentUris.file(requireProviderContext(), documentId).takeIf(File::exists)
       ?: throw FileNotFoundException("Document is unavailable")
 
-  private fun requireContext(): Context = context ?: throw FileNotFoundException("Provider is unavailable")
+  private fun requireProviderContext(): Context = context ?: throw FileNotFoundException("Provider is unavailable")
 
   private fun childFile(parent: File, name: String): File {
     if (name.isBlank() || name == "." || name == ".." || '/' in name || '\\' in name || '\u0000' in name) {
@@ -161,7 +161,7 @@ class TvDocumentsProvider : DocumentsProvider() {
   private fun addDocument(
     cursor: MatrixCursor,
     file: File,
-    documentId: String = TvDocumentUris.documentId(requireContext(), file),
+    documentId: String = TvDocumentUris.documentId(requireProviderContext(), file),
   ) {
     val writable = file.canWrite()
     val flags =
