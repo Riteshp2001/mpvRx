@@ -1346,19 +1346,26 @@
 
                 <data android:mimeType="video/*" />
                 <data android:mimeType="audio/*" />
-                <data android:mimeType="*/rmvb" />
-                <data android:mimeType="*/avi" />
-                <data android:mimeType="*/mkv" />
-                <data android:mimeType="application/3gpp*" />
+                <data android:mimeType="application/rmvb" />
+                <data android:mimeType="application/avi" />
+                <data android:mimeType="application/mkv" />
+                <!-- Android supports type/*, not MIME prefix globs such as application/mpeg*.
+                     Standard 3GPP and Dolby audio/video types are covered by audio/* and video/*. -->
+                <data android:mimeType="application/3gpp" />
+                <data android:mimeType="application/3gpp2" />
                 <data android:mimeType="application/mp4" />
-                <data android:mimeType="application/mpeg*" />
+                <data android:mimeType="application/mpeg" />
+                <data android:mimeType="application/mpeg4-generic" />
+                <data android:mimeType="application/mpeg4-iod" />
+                <data android:mimeType="application/mpeg4-iod-xmt" />
                 <data android:mimeType="application/ogg" />
                 <data android:mimeType="application/sdp" />
-                <data android:mimeType="application/vnd.3gp*" />
                 <data android:mimeType="application/vnd.apple.mpegurl" />
-                <data android:mimeType="application/vnd.dvd*" />
-                <data android:mimeType="application/vnd.dolby*" />
-                <data android:mimeType="application/vnd.rn-realmedia*" />
+                <data android:mimeType="application/vnd.dvd" />
+                <data android:mimeType="application/vnd.dolby.mobile.1" />
+                <data android:mimeType="application/vnd.dolby.mobile.2" />
+                <data android:mimeType="application/vnd.rn-realmedia" />
+                <data android:mimeType="application/vnd.rn-realmedia-vbr" />
                 <data android:mimeType="application/x-extension-mp4" />
                 <data android:mimeType="application/x-flac" />
                 <data android:mimeType="application/x-iso9660-image" />
@@ -1406,6 +1413,8 @@
                 <data android:host="*"
                     tools:ignore="AppLinkUrlError" />
 
+                <!-- Generic media links intentionally accept any host. These are unverified
+                     deep links, not owned-domain App Links; do not enable autoVerify for *. -->
                 <!-- basically copied from mpv-android -->
                 <!-- the duplicate patterns below work around an Android bug: -->
                 <!-- http://stackoverflow.com/questions/3400072/#answer-8599921 -->
@@ -1481,13 +1490,20 @@
                 <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.ogg" />
                 <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.ogg" />
 
-                <data android:pathPattern=".*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\..*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.m3u8*" />
-                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.m3u8*" />
+                <data android:pathPattern=".*\\.m3u" />
+                <data android:pathPattern=".*\\.m3u8" />
+                <data android:pathPattern=".*\\..*\\.m3u" />
+                <data android:pathPattern=".*\\..*\\.m3u8" />
+                <data android:pathPattern=".*\\..*\\..*\\.m3u" />
+                <data android:pathPattern=".*\\..*\\..*\\.m3u8" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.m3u" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.m3u8" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.m3u" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.m3u8" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.m3u" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.m3u8" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.m3u" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.m3u8" />
             </intent-filter>
 
             <!-- Extractor-site handlers are declared only by the sideload manifest. -->

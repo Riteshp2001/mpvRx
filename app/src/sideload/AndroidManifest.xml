@@ -153,8 +153,15 @@
 
                 <data android:scheme="http" />
                 <data android:scheme="https" />
+                <!-- Without a host, Android ignores paths and this captures every web URL. -->
+                <data android:host="*" />
                 <data android:pathPattern=".*\\.torrent" />
                 <data android:pathPattern=".*\\..*\\.torrent" />
+                <data android:pathPattern=".*\\..*\\..*\\.torrent" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.torrent" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.torrent" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.torrent" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.torrent" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
