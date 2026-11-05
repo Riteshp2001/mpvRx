@@ -121,6 +121,8 @@ internal fun NetworkServerField(
         AppComboBoxOption(
           text = stringResource(if (scan.isScanning) R.string.network_server_scanning else R.string.network_server_scan),
           selected = false,
+          index = 0,
+          itemCount = if (suggestions.isEmpty()) 2 else 1,
           enabled = !scan.isScanning,
           leadingIcon = { Icon(Icons.RoundedFilled.Refresh, contentDescription = null, modifier = Modifier.size(20.dp)) },
           onClick = { query = ""; scanRequest++ },
@@ -129,6 +131,8 @@ internal fun NetworkServerField(
           AppComboBoxOption(
             text = stringResource(R.string.network_server_no_matches),
             selected = false,
+            index = 1,
+            itemCount = 2,
             enabled = false,
             onClick = {},
           )

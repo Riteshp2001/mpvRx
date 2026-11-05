@@ -26,7 +26,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -649,8 +649,12 @@ private fun YouTubePlaylistGridCard(
           expanded = menuExpanded,
           onDismissRequest = { menuExpanded = false },
         ) {
+          val actionCount = 1 + (if (onRenameClick != null) 1 else 0) + (if (onDeleteClick != null) 1 else 0)
           DropdownMenuItem(
             text = { Text(stringResource(R.string.playlist_open_action)) },
+            index = 0,
+            itemCount = actionCount,
+            leadingIcon = { Icon(Icons.RoundedFilled.Folder, contentDescription = null) },
             onClick = {
               menuExpanded = false
               onClick()
@@ -659,6 +663,9 @@ private fun YouTubePlaylistGridCard(
           if (onRenameClick != null) {
             DropdownMenuItem(
               text = { Text(stringResource(R.string.rename)) },
+              index = 1,
+              itemCount = actionCount,
+              leadingIcon = { Icon(Icons.RoundedFilled.DriveFileRenameOutline, contentDescription = null) },
               onClick = {
                 menuExpanded = false
                 onRenameClick()
@@ -672,6 +679,11 @@ private fun YouTubePlaylistGridCard(
                   text = stringResource(R.string.delete),
                   color = MaterialTheme.colorScheme.error,
                 )
+              },
+              index = if (onRenameClick != null) 2 else 1,
+              itemCount = actionCount,
+              leadingIcon = {
+                Icon(Icons.RoundedFilled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
               },
               onClick = {
                 menuExpanded = false

@@ -193,10 +193,8 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
       content()
       Toaster(
         state = toaster,
-        // Sonner 0.4.0 subtracts containerPadding from max constraints only. Keep the
-        // popup content-sized and apply spacing here so even tiny windows stay valid.
-        modifier = Modifier.windowInsetsPadding(toastInsets)
-          .widthIn(max = 440.dp)
+        modifier = Modifier.fillMaxSize()
+          .windowInsetsPadding(toastInsets)
           .padding(horizontal = 12.dp, vertical = 8.dp)
           .zIndex(Float.MAX_VALUE),
         maxVisibleToasts = 2,

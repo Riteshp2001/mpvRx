@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
@@ -321,6 +321,8 @@ fun VideoSettingsFilterPresetsCard(
                   ) {
                     DropdownMenuItem(
                       text = { Text(stringResource(R.string.filter_preset_rename)) },
+                      index = 0,
+                      itemCount = 2,
                       leadingIcon = { Icon(Icons.RoundedFilled.Edit, null) },
                       onClick = {
                         presetMenuOwner = null
@@ -331,8 +333,12 @@ fun VideoSettingsFilterPresetsCard(
                       },
                     )
                     DropdownMenuItem(
-                      text = { Text(stringResource(R.string.filter_preset_delete)) },
-                      leadingIcon = { Icon(Icons.RoundedFilled.Delete, null) },
+                      text = {
+                        Text(stringResource(R.string.filter_preset_delete), color = MaterialTheme.colorScheme.error)
+                      },
+                      index = 1,
+                      itemCount = 2,
+                      leadingIcon = { Icon(Icons.RoundedFilled.Delete, null, tint = MaterialTheme.colorScheme.error) },
                       onClick = {
                         presetMenuOwner = null
                         presetPendingDeletion = preset

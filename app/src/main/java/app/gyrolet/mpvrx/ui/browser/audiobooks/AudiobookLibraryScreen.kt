@@ -48,8 +48,6 @@ import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
@@ -184,7 +182,6 @@ fun AudiobookLibraryContent(
   var editing by remember { mutableStateOf<AudiobookEntity?>(null) }
   var opening by remember { mutableStateOf(false) }
   var playbackError by remember { mutableStateOf<String?>(null) }
-  var isLibDropdownOpen by remember { mutableStateOf(false) }
 
   val files = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { model.importFiles(it) }
   val folder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -376,29 +373,16 @@ fun AudiobookLibraryContent(
           },
           additionalActions = {
             if (isAbsSource && absState.libraries.size > 1) {
-              Box {
-                AudiobookIconButton(Icons.RoundedFilled.Folder, "Switch Library", true) { isLibDropdownOpen = true }
-                DropdownMenu(isLibDropdownOpen, onDismissRequest = { isLibDropdownOpen = false }) {
-                  absState.libraries.forEach { lib ->
-                    DropdownMenuItem(
-                      text = {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                          Text(lib.name)
-                          if (lib.id == absState.activeLibrary?.id) {
-                            Spacer(Modifier.width(8.dp))
-                            Icon(Icons.RoundedFilled.Check, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-                          }
-                        }
-                      },
-                      selected = lib.id == absState.activeLibrary?.id,
-                      onClick = {
-                        absModel.selectLibrary(lib)
-                        isLibDropdownOpen = false
-                      }
-                    )
-                  }
-                }
-              }
+              AppComboBoxChip(
+                options = absState.libraries,
+                selected = absState.libraries.firstOrNull { it.id == absState.activeLibrary?.id },
+                onSelect = { absModel.selectLibrary(it) },
+                optionLabel = { it.name },
+                valueText = "",
+                contentDescription = absState.activeLibrary?.name ?: stringResource(R.string.audiobooks_title),
+                leadingIcon = { Icon(Icons.RoundedFilled.Folder, contentDescription = null) },
+                modifier = Modifier.padding(horizontal = 4.dp),
+              )
             }
           },
         )

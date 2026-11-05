@@ -59,7 +59,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -1642,18 +1642,33 @@ private fun AddFolderDialog(
             )
           }
           DropdownMenu(expanded = showDropdown, onDismissRequest = { showDropdown = false }) {
-            DropdownMenuItem(text = { Text(stringResource(R.string.select_all)) }, onClick = {
-              selectionState = selectionState.selectAll(availableFolderPaths)
-              showDropdown = false
-            })
-            DropdownMenuItem(text = { Text(stringResource(R.string.invert_selection)) }, onClick = {
-              selectionState = selectionState.invertSelection(availableFolderPaths)
-              showDropdown = false
-            })
-            DropdownMenuItem(text = { Text(stringResource(R.string.deselect_all)) }, onClick = {
-              selectionState = selectionState.clear()
-              showDropdown = false
-            })
+            DropdownMenuItem(
+              index = 0,
+              itemCount = 3,
+              text = { Text(stringResource(R.string.select_all)) },
+              onClick = {
+                selectionState = selectionState.selectAll(availableFolderPaths)
+                showDropdown = false
+              },
+            )
+            DropdownMenuItem(
+              index = 1,
+              itemCount = 3,
+              text = { Text(stringResource(R.string.invert_selection)) },
+              onClick = {
+                selectionState = selectionState.invertSelection(availableFolderPaths)
+                showDropdown = false
+              },
+            )
+            DropdownMenuItem(
+              index = 2,
+              itemCount = 3,
+              text = { Text(stringResource(R.string.deselect_all)) },
+              onClick = {
+                selectionState = selectionState.clear()
+                showDropdown = false
+              },
+            )
           }
         }
       }

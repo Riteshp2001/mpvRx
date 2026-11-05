@@ -28,10 +28,9 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -52,6 +51,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -59,16 +59,18 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem
+import app.gyrolet.mpvrx.presentation.components.AppComboBox
 import app.gyrolet.mpvrx.ui.components.ExpressiveColorPicker
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
 import app.gyrolet.mpvrx.ui.preferences.components.ThemePreviewCard
 import app.gyrolet.mpvrx.ui.theme.AppTheme
+import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.CustomThemeDefinition
 import app.gyrolet.mpvrx.ui.theme.ThemeColorRole
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.resolveAppColorScheme
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -112,17 +114,21 @@ data class CustomThemeEditorScreen(
     var editorMode by rememberSaveable { mutableStateOf(CustomThemeEditorMode.Light) }
     var selectedKey by rememberSaveable { mutableStateOf("primary") }
     var showValidationErrors by rememberSaveable { mutableStateOf(false) }
-    var baseMenuExpanded by remember { mutableStateOf(false) }
-    var colorMenuExpanded by remember { mutableStateOf(false) }
     var advancedExpanded by rememberSaveable(themeName) { mutableStateOf(selectedKey.startsWith("override_")) }
-    val initialBaseTitle =
-      if (savedThemes.any { it.name == initialTheme.name }) {
-        initialTheme.name
-      } else {
-        AppTheme.entries.firstOrNull { it.name == initialTheme.name }?.let { stringResource(it.titleRes) }
-          ?: initialTheme.name
+    val baseOptions = remember(context, savedThemes) {
+      AppTheme.entries.map { theme ->
+        ThemeBaseOption("built_in_${theme.name}", theme.editorDefinition(context), theme.titleRes)
+      } + savedThemes.map { theme ->
+        ThemeBaseOption("saved_${theme.name}", theme)
       }
-    var baseTitle by rememberSaveable(themeName) { mutableStateOf(initialBaseTitle) }
+    }
+    var baseKey by rememberSaveable(themeName) {
+      mutableStateOf(
+        if (savedThemes.any { it.name == initialTheme.name }) "saved_${initialTheme.name}"
+        else "built_in_${initialTheme.name}",
+      )
+    }
+    val selectedBase = baseOptions.firstOrNull { it.key == baseKey }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -146,11 +152,9 @@ data class CustomThemeEditorScreen(
       if (editorMode.isDark) darkColors = updated else lightColors = updated
     }
 
-    fun applyBase(definition: CustomThemeDefinition, title: String) {
+    fun applyBase(definition: CustomThemeDefinition) {
       lightColors = definition.editorColors(dark = false)
       darkColors = definition.editorColors(dark = true)
-      baseTitle = title
-      baseMenuExpanded = false
       showValidationErrors = false
     }
 
@@ -241,46 +245,19 @@ data class CustomThemeEditorScreen(
                 isError = nameError != null,
                 singleLine = true,
               )
-              Box(Modifier.fillMaxWidth()) {
-                OutlinedButton(
-                  onClick = { baseMenuExpanded = true },
-                  modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                  shape = RoundedCornerShape(8.dp),
-                  contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
-                ) {
-                  Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
-                    Text(
-                      stringResource(R.string.pref_appearance_custom_theme_base),
-                      style = MaterialTheme.typography.labelSmall,
-                      color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(baseTitle, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                  }
-                  Icon(Icons.RoundedFilled.ArrowDropDown, contentDescription = null)
-                }
-                AppDropdownMenu(
-                  expanded = baseMenuExpanded,
-                  onDismissRequest = { baseMenuExpanded = false },
-                  modifier = Modifier.heightIn(max = 280.dp),
-                ) {
-                  AppTheme.entries.forEach { theme ->
-                    val title = stringResource(theme.titleRes)
-                    AppDropdownMenuItem(
-                      text = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                      selected = baseTitle == title,
-                      onClick = { applyBase(theme.editorDefinition(context), title) },
-                    )
-                  }
-                  if (savedThemes.isNotEmpty()) HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                  savedThemes.forEach { theme ->
-                    AppDropdownMenuItem(
-                      text = { Text(theme.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-                      selected = baseTitle == theme.name,
-                      onClick = { applyBase(theme, theme.name) },
-                    )
-                  }
-                }
-              }
+              AppComboBox(
+                options = baseOptions,
+                selected = selectedBase,
+                onSelect = { option ->
+                  applyBase(option.definition)
+                  baseKey = option.key
+                },
+                optionLabel = { option -> option.titleRes?.let { stringResource(it) } ?: option.definition.name },
+                modifier = Modifier.fillMaxWidth(),
+                label = stringResource(R.string.pref_appearance_custom_theme_base),
+                leadingIcon = { ThemeBaseSwatches(previewTheme, editorMode) },
+                optionLeadingIcon = { ThemeBaseSwatches(it.definition, editorMode) },
+              )
             }
           }
           item(key = "preview") {
@@ -306,10 +283,7 @@ data class CustomThemeEditorScreen(
                         previewTheme.lightColorScheme()
                       },
                     isSelected = editorMode == mode,
-                    onClick = {
-                      editorMode = mode
-                      colorMenuExpanded = false
-                    },
+                    onClick = { editorMode = mode },
                   )
                 }
               }
@@ -328,27 +302,32 @@ data class CustomThemeEditorScreen(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
               )
-              paletteFields.chunked(2).forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                  row.forEach { field ->
-                    ThemePaletteColor(
-                      title = stringResource(field.titleRes),
-                      hex = colors.getValue(field.key),
-                      selected = field.key == selectedField.key,
-                      onClick = {
-                        selectedKey = field.key
-                        advancedExpanded = false
-                        colorMenuExpanded = false
-                      },
-                      modifier = Modifier.weight(1f),
-                    )
+              Column(verticalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing)) {
+                paletteFields.chunked(2).forEachIndexed { rowIndex, row ->
+                  Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing),
+                  ) {
+                    row.forEachIndexed { columnIndex, field ->
+                      ThemePaletteColor(
+                        title = stringResource(field.titleRes),
+                        hex = colors.getValue(field.key),
+                        selected = field.key == selectedField.key,
+                        onClick = {
+                          selectedKey = field.key
+                          advancedExpanded = false
+                        },
+                        index = rowIndex * 2 + columnIndex,
+                        itemCount = paletteFields.size,
+                        modifier = Modifier.weight(1f),
+                      )
+                    }
                   }
                 }
               }
               TextButton(
                 onClick = {
                   advancedExpanded = !advancedExpanded
-                  colorMenuExpanded = false
                   selectedKey = if (advancedExpanded) advancedFields.first().key else paletteFields.first().key
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -363,48 +342,22 @@ data class CustomThemeEditorScreen(
                 )
               }
               if (advancedExpanded) {
-                Box(Modifier.fillMaxWidth()) {
-                  OutlinedButton(
-                    onClick = { colorMenuExpanded = true },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
-                  ) {
-                    ThemeColorSwatch(parseThemeColor(selectedHex), Modifier.size(24.dp))
-                    Text(
-                      stringResource(selectedField.titleRes),
-                      modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                      maxLines = 2,
-                      overflow = TextOverflow.Ellipsis,
+                AppComboBox(
+                  options = advancedFields,
+                  selected = selectedField,
+                  onSelect = { selectedKey = it.key },
+                  optionLabel = { stringResource(it.titleRes) },
+                  modifier = Modifier.fillMaxWidth(),
+                  leadingIcon = {
+                    selectedRole?.let { ThemeRoleSwatch(it, editScheme, parseThemeColor(selectedHex)) }
+                  },
+                  optionLeadingIcon = { field ->
+                    val role = ThemeColorRole.entries.first { "override_${it.key}" == field.key }
+                    ThemeRoleSwatch(
+                      role, editScheme, colors[field.key]?.let(::parseThemeColor) ?: role.color(editScheme),
                     )
-                    Icon(Icons.RoundedFilled.ArrowDropDown, contentDescription = null)
-                  }
-                  AppDropdownMenu(
-                    expanded = colorMenuExpanded,
-                    onDismissRequest = { colorMenuExpanded = false },
-                    modifier = Modifier.heightIn(max = 280.dp),
-                  ) {
-                    advancedFields.forEach { field ->
-                      val role = ThemeColorRole.entries.first { "override_${it.key}" == field.key }
-                      AppDropdownMenuItem(
-                        text = {
-                          Text(stringResource(field.titleRes), maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        },
-                        leadingIcon = {
-                          ThemeColorSwatch(
-                            colors[field.key]?.let(::parseThemeColor) ?: role.color(editScheme),
-                            Modifier.size(24.dp),
-                          )
-                        },
-                        selected = field.key == selectedField.key,
-                        onClick = {
-                          selectedKey = field.key
-                          colorMenuExpanded = false
-                        },
-                      )
-                    }
-                  }
-                }
+                  },
+                )
                 if (colors.keys.any { it.startsWith("override_") }) {
                   TextButton(
                     onClick = { updateColors(HashMap(colors.filterKeys { !it.startsWith("override_") })) },
@@ -451,9 +404,13 @@ private fun ThemePaletteColor(
   hex: String,
   selected: Boolean,
   onClick: () -> Unit,
+  index: Int,
+  itemCount: Int,
   modifier: Modifier = Modifier,
 ) {
-  val shape = RoundedCornerShape(8.dp)
+  val shape = rememberConnectedShape(
+    index, itemCount, ConnectedLayout.Grid, columns = 2, tokens = AppConnectedControlShapeTokens,
+  )
   Surface(
     modifier = modifier.clip(shape).selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
     shape = shape,
@@ -490,6 +447,58 @@ private fun ThemeColorSwatch(color: Color?, modifier: Modifier = Modifier) {
   )
 }
 
+@Composable
+private fun ThemeBaseSwatches(theme: CustomThemeDefinition, mode: CustomThemeEditorMode) {
+  val scheme =
+    if (mode.isDark) theme.darkColorScheme(mode == CustomThemeEditorMode.Amoled) else theme.lightColorScheme()
+  Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+    listOf(scheme.primary, scheme.secondary, scheme.background).forEach { color ->
+      ThemeColorSwatch(color, Modifier.size(12.dp))
+    }
+  }
+}
+
+@Composable
+private fun ThemeRoleSwatch(role: ThemeColorRole, scheme: ColorScheme, color: Color?) {
+  val background = when (role) {
+    ThemeColorRole.OnPrimary -> scheme.primary
+    ThemeColorRole.OnSecondary -> scheme.secondary
+    ThemeColorRole.OnTertiary -> scheme.tertiary
+    ThemeColorRole.OnPrimaryContainer -> scheme.primaryContainer
+    ThemeColorRole.OnSecondaryContainer -> scheme.secondaryContainer
+    ThemeColorRole.OnTertiaryContainer -> scheme.tertiaryContainer
+    ThemeColorRole.OnSurface -> scheme.surface
+    ThemeColorRole.OnSurfaceVariant -> scheme.surfaceVariant
+    ThemeColorRole.OnBackground -> scheme.background
+    ThemeColorRole.InverseOnSurface -> scheme.inverseSurface
+    ThemeColorRole.OnError -> scheme.error
+    ThemeColorRole.OnErrorContainer -> scheme.errorContainer
+    ThemeColorRole.OnPrimaryFixed, ThemeColorRole.OnPrimaryFixedVariant -> scheme.primaryFixed
+    ThemeColorRole.OnSecondaryFixed, ThemeColorRole.OnSecondaryFixedVariant -> scheme.secondaryFixed
+    ThemeColorRole.OnTertiaryFixed, ThemeColorRole.OnTertiaryFixedVariant -> scheme.tertiaryFixed
+    else -> null
+  }
+  if (background == null) {
+    ThemeColorSwatch(color, Modifier.size(24.dp))
+  } else {
+    val shape = RoundedCornerShape(6.dp)
+    Box(
+      Modifier.size(36.dp).clip(shape).background(background)
+        .clearAndSetSemantics {}
+        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape),
+      contentAlignment = Alignment.Center,
+    ) {
+      Text(
+        "Aa",
+        color = color ?: MaterialTheme.colorScheme.error,
+        style = MaterialTheme.typography.labelSmall,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+    }
+  }
+}
+
 private enum class CustomThemeEditorMode(
   @StringRes val titleRes: Int,
 ) {
@@ -500,6 +509,12 @@ private enum class CustomThemeEditorMode(
 
   val isDark: Boolean get() = this != Light
 }
+
+private data class ThemeBaseOption(
+  val key: String,
+  val definition: CustomThemeDefinition,
+  @StringRes val titleRes: Int? = null,
+)
 
 private data class ThemeEditorField(
   val key: String,

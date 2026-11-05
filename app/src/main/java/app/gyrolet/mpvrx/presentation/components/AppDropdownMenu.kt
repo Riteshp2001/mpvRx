@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.DropdownMenuItem
@@ -34,7 +35,7 @@ fun AppDropdownMenu(
   offset: DpOffset = DpOffset(0.dp, 0.dp),
   scrollState: ScrollState = rememberScrollState(),
   properties: PopupProperties = PopupProperties(focusable = true),
-  shape: Shape = RoundedCornerShape(24.dp),
+  shape: Shape = AppComboBoxDefaults.MenuShape,
   containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
   tonalElevation: Dp = MenuDefaults.TonalElevation,
   shadowElevation: Dp = MenuDefaults.ShadowElevation,
@@ -42,7 +43,8 @@ fun AppDropdownMenu(
   content: @Composable ColumnScope.() -> Unit,
 ) {
   androidx.compose.material3.DropdownMenu(
-    expanded = expanded, onDismissRequest = onDismissRequest, modifier = modifier.widthIn(min = 200.dp, max = 320.dp),
+    expanded = expanded, onDismissRequest = onDismissRequest,
+    modifier = modifier.heightIn(max = AppComboBoxDefaults.MenuMaxHeight).widthIn(min = 200.dp, max = 320.dp),
     offset = offset, scrollState = scrollState, properties = properties, shape = shape,
     containerColor = containerColor, tonalElevation = tonalElevation, shadowElevation = shadowElevation,
     border = border, content = content,

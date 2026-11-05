@@ -52,7 +52,7 @@ import androidx.compose.material3.CardDefaults
 import app.gyrolet.mpvrx.presentation.components.AppComboBoxChip
 import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
 import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
-import androidx.compose.material3.DropdownMenuItem
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
@@ -808,6 +808,8 @@ fun JellyfinDetailSheet(
                 DropdownMenuItem(
                   modifier = Modifier.tvFocusHighlight(MaterialTheme.shapes.medium, clipToShape = false),
                   text = { Text(stringResource(R.string.downloads_download_season)) },
+                  index = 0,
+                  itemCount = 2,
                   onClick = {
                     isDownloadMenuOpen = false
                     onDownloadSeason?.invoke()
@@ -816,6 +818,8 @@ fun JellyfinDetailSheet(
                 DropdownMenuItem(
                   modifier = Modifier.tvFocusHighlight(MaterialTheme.shapes.medium, clipToShape = false),
                   text = { Text(stringResource(R.string.downloads_download_series)) },
+                  index = 1,
+                  itemCount = 2,
                   onClick = {
                     isDownloadMenuOpen = false
                     onDownloadSeries?.invoke()
