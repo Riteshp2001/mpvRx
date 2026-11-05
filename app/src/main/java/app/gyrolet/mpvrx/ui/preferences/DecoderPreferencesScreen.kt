@@ -58,6 +58,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.Debanding
 import app.gyrolet.mpvrx.ui.player.HwPlusGuard
 import app.gyrolet.mpvrx.ui.player.MPVProfile
+import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.RendererBackendPolicy
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
@@ -499,6 +500,21 @@ object DecoderPreferencesScreen : Screen {
                   }
                 }
               }
+            }
+          }
+
+          if (MotionInterpolation.isBuildSupported) {
+            if (!embeddedInPlayer) item {
+              PreferenceSectionHeader(position = PreferenceSectionPosition.Single,
+                title = stringResource(R.string.motion_title),
+              )
+            }
+
+            item {
+              MotionInterpolationPreferences(
+                preferences = preferences,
+                rendererConfigOwned = rendererBackendConfigOwned,
+              )
             }
           }
         }

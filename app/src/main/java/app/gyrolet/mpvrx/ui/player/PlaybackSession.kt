@@ -718,6 +718,10 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
+  /** The configured video output, even while background playback has swapped mpv to `null`. */
+  val videoOutput: String
+    get() = desiredVideoOutput
+
   fun markBackground() {
     updateState { current ->
       if (current.phase == PlaybackPhase.READY) current.copy(phase = PlaybackPhase.BACKGROUND) else current

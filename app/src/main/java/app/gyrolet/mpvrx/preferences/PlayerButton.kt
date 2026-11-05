@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx.preferences
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icons
 
@@ -54,18 +55,21 @@ enum class PlayerButton(
   EQUALIZER(Icons.RoundedFilled.Equalizer),
   SCOPES(Icons.RoundedFilled.Mystery),
   PLAYLIST(Icons.RoundedFilled.PlaylistPlay),
+  MOTION_INTERPOLATION(Icons.RoundedFilled.MotionInterpolation),
   NONE(Icons.RoundedFilled.Bookmarks),
 }
 
 /**
  * A list of all buttons that the user can choose from in the customization menu.
- * Excludes NONE (placeholder) and constant buttons (BACK_ARROW, VIDEO_TITLE).
+ * Excludes NONE (placeholder) and constant buttons (BACK_ARROW, VIDEO_TITLE), and motion
+ * interpolation on builds whose mpvlib variant does not include it.
  */
 val allPlayerButtons =
   PlayerButton.values().filter {
     it != PlayerButton.NONE &&
       it != PlayerButton.BACK_ARROW &&
-      it != PlayerButton.VIDEO_TITLE
+      it != PlayerButton.VIDEO_TITLE &&
+      (it != PlayerButton.MOTION_INTERPOLATION || MotionInterpolation.isBuildSupported)
   }
 
 /**
@@ -106,6 +110,7 @@ fun getPlayerButtonLabel(button: PlayerButton): String =
     PlayerButton.EQUALIZER -> stringResource(R.string.btn_label_equalizer)
     PlayerButton.SCOPES -> stringResource(R.string.btn_label_scopes)
     PlayerButton.PLAYLIST -> stringResource(R.string.ui_playlist)
+    PlayerButton.MOTION_INTERPOLATION -> stringResource(R.string.btn_label_motion_interpolation)
     PlayerButton.NONE -> stringResource(R.string.btn_label_none)
   }
 

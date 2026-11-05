@@ -2296,6 +2296,15 @@ fun restartFromBeginning() {
   private var ppDebounceJob: Job? = null
   @Volatile private var lastCompiledPpSpec: Pair<PostProcessingPreset, PostProcessingParams>? = null
 
+  // ==================== Motion Interpolation (FongMi) ======================
+  val motionInterpolation =
+    app.gyrolet.mpvrx.ui.player.motion.MotionInterpolationController(
+      context = appContext,
+      preferences = decoderPreferences,
+      scope = viewModelScope,
+      showText = { text -> playerUpdate.value = PlayerUpdates.ShowText(text) },
+    )
+
   // ==================== Custom Buttons ====================
 
   data class CustomButtonState(

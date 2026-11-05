@@ -10,6 +10,8 @@
 package app.gyrolet.mpvrx.preferences
 
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
+import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
+import app.gyrolet.mpvrx.domain.motion.MotionTargetMode
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
 import app.gyrolet.mpvrx.ui.player.Debanding
@@ -60,4 +62,13 @@ class DecoderPreferences(
   val anime4kDarken = preferenceStore.getBoolean("anime4k_darken", false)
   val anime4kThin = preferenceStore.getBoolean("anime4k_thin", false)
   val anime4kDeblur = preferenceStore.getBoolean("anime4k_deblur", false)
+
+  // GPU motion interpolation (FongMi's mpv motion core, FongMi build only)
+  val motionInterpolationEnabled = preferenceStore.getBoolean("motion_interpolation_enabled", false)
+  val motionInterpolationMode = preferenceStore.getEnum("motion_interpolation_mode", MotionTargetMode.AUTO)
+  val motionInterpolationTargetFps =
+    preferenceStore.getInt("motion_interpolation_target_fps", MotionInterpolation.DEFAULT_TARGET_FPS)
+
+  /** Ask Android to run the display at the interpolation target while it runs. */
+  val motionInterpolationSwitchDisplayRate = preferenceStore.getBoolean("motion_interpolation_switch_display_rate", true)
 }

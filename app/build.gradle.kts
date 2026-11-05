@@ -137,6 +137,8 @@ android {
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
+      // FongMi's mpv ships the GPU motion interpolation core.
+      buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "false")
     }
 
     create("playstore") {
@@ -147,6 +149,8 @@ android {
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
+      // FongMi's mpv ships the GPU motion interpolation core.
+      buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "false")
     }
 
     create("noVulkan") {
@@ -157,6 +161,8 @@ android {
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
+      // FongMi's mpv ships the GPU motion interpolation core.
+      buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "false")
     }
 
     create("fongmi") {
@@ -167,6 +173,8 @@ android {
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "true")
+      // FongMi's mpv ships the GPU motion interpolation core.
+      buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "true")
     }
 
     configureEach {

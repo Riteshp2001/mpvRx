@@ -269,6 +269,8 @@ class AppearancePreferences(
           null
         }
       }.filter { it != PlayerButton.NONE }
+      // A layout restored from the FongMi build must not show motion interpolation on another APK.
+      .filter { it in allPlayerButtons || it == PlayerButton.BACK_ARROW || it == PlayerButton.VIDEO_TITLE }
       .filter { usedButtons.add(it) }
       .toList()
 }

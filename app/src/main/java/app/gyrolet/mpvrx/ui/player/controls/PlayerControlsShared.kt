@@ -1028,6 +1028,33 @@ fun RenderPlayerButton(
       )
     }
 
+    PlayerButton.MOTION_INTERPOLATION -> {
+      val motionState by viewModel.motionInterpolation.state.collectAsState()
+      val motionEnabled = motionState.config.enabled
+      val blocked = !motionEnabled && motionState.availability.blocksEnabling
+      ControlsButton(
+        icon = Icons.RoundedFilled.MotionInterpolation,
+        onClick = {
+          viewModel.motionInterpolation.toggle()
+          // A missing requirement (GPU Next + Vulkan) is explained in the sheet.
+          if (blocked) onOpenSheet(Sheets.MotionInterpolation)
+        },
+        onLongClick = { onOpenSheet(Sheets.MotionInterpolation) },
+        title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.btn_label_motion_interpolation),
+        onLongClickLabel = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.motion_configure),
+        color =
+          when {
+            motionState.running -> MaterialTheme.colorScheme.primary
+            // Enabled, but waiting for the player to meet a requirement.
+            motionEnabled -> MaterialTheme.colorScheme.tertiary
+            blocked -> (if (borderless) controlColor else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.38f)
+            borderless -> controlColor
+            else -> MaterialTheme.colorScheme.onSurface
+          },
+        modifier = Modifier.size(buttonSize),
+      )
+    }
+
     PlayerButton.CURRENT_CHAPTER -> {
       val chapter = currentChapter?.let(chapters::getOrNull)
       if (!isPortrait && !compact && chapter != null) {

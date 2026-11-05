@@ -11,10 +11,12 @@ package app.gyrolet.mpvrx.ui.player
 
 import android.content.Context
 import android.content.res.Configuration
+import android.hardware.display.DisplayManager
 import android.os.Environment
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.util.Log
+import android.view.Display
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
 import android.view.Surface
@@ -22,6 +24,9 @@ import androidx.core.view.WindowInsetsCompat
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
+import app.gyrolet.mpvrx.domain.motion.MotionAvailability
+import app.gyrolet.mpvrx.domain.motion.MotionConfig
+import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
@@ -318,6 +323,7 @@ class MPVView(
     val preciseSeek: Boolean,
     val subtitleOptionValues: List<Pair<String, String>>,
     val audioOptionValues: List<Pair<String, String>>,
+    val motionInterpolation: MotionConfig,
   )
 
   @Volatile
@@ -367,6 +373,7 @@ class MPVView(
       preciseSeek = playerPreferences.usePreciseSeeking.get(),
       subtitleOptionValues = computeSubtitleOptionValues(),
       audioOptionValues = computeAudioOptionValues(),
+      motionInterpolation = MotionInterpolation.config(decoderPreferences),
     )
   }
 
@@ -519,6 +526,26 @@ class MPVView(
     // This prevents timing jitter when the display refresh rate doesn't perfectly
     // match the video frame rate (e.g., 24fps content on 60Hz display).
     PlaybackSession.setOptionString("video-sync", "audio")
+
+    // FongMi's GPU motion core renders through gpu-next on Vulkan and needs display sync; on every
+    // other renderer playback keeps the defaults above. Changes after startup come from
+    // MotionInterpolationController.
+    val motion = inputs.motionInterpolation
+    val motionStarts =
+      motion.enabled && MotionInterpolation.barrier(context, decoderPreferences) == MotionAvailability.READY &&
+        backend.vo == "gpu-next" && useVulkan
+    // A new core starts without mpvRx's motion settings; mpv.conf may still enable it.
+    MotionInterpolation.appApplied = motionStarts && !MpvConfigOverridePolicy.isOwnedByMpvConf(MotionInterpolation.OPTION)
+    if (motionStarts) {
+      MotionInterpolation.displayFpsOverride(context)?.let {
+        PlaybackSession.setOptionString("display-fps-override", it)
+      }
+      PlaybackSession.setOptionString("video-sync", "display-resample")
+      PlaybackSession.setOptionString(
+        MotionInterpolation.OPTION,
+        MotionInterpolation.mpvTargetFps(motion, context).toString(),
+      )
+    }
 
     // These are native property/command operations (shader list changes), not mpv options.
     // Running them before MPVLib.init() fails with "mpv_command: core not initialized".
@@ -729,19 +756,33 @@ class MPVView(
   /**
    * Applies the content FPS once per effective value. Both Surface callbacks and mpv's
    * container-fps observer converge here, avoiding duplicate vendor display-mode requests.
+   * While motion interpolation runs, the display follows its target instead.
    */
   internal fun updateFrameRate(fps: Double? = null) {
     if (
       android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R || isExiting ||
       !surfaceBindingEnabled || !isSurfaceReady || !PlaybackSession.state.value.surfaceAttached
     ) return
-    val resolved = fps ?: PlaybackSession.getPropertyDouble("container-fps") ?: return
-    if (!resolved.isFinite() || resolved <= 0.0 || resolved > 1000.0) return
+    val content =
+      (fps ?: PlaybackSession.getPropertyDouble("container-fps"))
+        ?.takeIf { it.isFinite() && it > 0.0 && it <= 1000.0 }
+    val requested =
+      if (isMotionInterpolationRunning()) {
+        val config = MotionInterpolation.config(decoderPreferences)
+        when {
+          // A target at or below the video's rate generates nothing; keep the video's own rate.
+          content != null && MotionInterpolation.mpvTargetFps(config, context) <= content * 1.01 ->
+            content.toFloat()
+          // 0 withdraws the content-rate vote, so the display is not locked to the video's rate.
+          else -> MotionInterpolation.surfaceFrameRate(config, context) ?: 0f
+        }
+      } else {
+        content?.toFloat() ?: return
+      }
 
     val surface = renderSurface ?: return
     if (!surface.isValid) return
 
-    val requested = resolved.toFloat()
     if (lastRequestedFrameRate.isFinite() && abs(lastRequestedFrameRate - requested) < 0.01f) return
 
     try {
@@ -757,6 +798,38 @@ class MPVView(
   }
 
   private fun applyFrameRate() = updateFrameRate()
+
+  private fun isMotionInterpolationRunning(): Boolean =
+    MotionInterpolation.isBuildSupported && (PlaybackSession.getPropertyInt(MotionInterpolation.OPTION) ?: 0) > 0
+
+  /** mpv cannot query Android's refresh rate; keep display sync in step with mode switches. */
+  private val displayListener =
+    object : DisplayManager.DisplayListener {
+      override fun onDisplayAdded(displayId: Int) = Unit
+
+      override fun onDisplayRemoved(displayId: Int) = Unit
+
+      override fun onDisplayChanged(displayId: Int) {
+        if (displayId != Display.DEFAULT_DISPLAY || isExiting || !isMotionInterpolationRunning()) return
+        MotionInterpolation.displayFpsOverride(context)?.let {
+          PlaybackSession.setOptionString("display-fps-override", it)
+        }
+      }
+    }
+
+  override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+    if (MotionInterpolation.isBuildSupported) {
+      context.getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
+    }
+  }
+
+  override fun onDetachedFromWindow() {
+    if (MotionInterpolation.isBuildSupported) {
+      context.getSystemService(DisplayManager::class.java)?.unregisterDisplayListener(displayListener)
+    }
+    super.onDetachedFromWindow()
+  }
 
   private val observedProps =
     mapOf(

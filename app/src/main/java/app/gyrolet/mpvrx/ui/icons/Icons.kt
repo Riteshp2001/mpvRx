@@ -277,6 +277,13 @@ object Icons {
     val ZoomIn by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Zoom_in) }
     val ZoomOutMap by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Zoom_out_map) }
     val PostProcessing by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Auto_awesome) }
+    val MotionInterpolation by lazy(LazyThreadSafetyMode.NONE) {
+      AppIcon(MaterialSymbols.RoundedFilled.Auto_awesome_motion)
+    }
+    val FpsAuto by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Autofps_select) }
+    val Fps24 by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.`24fps_select`) }
+    val Fps30 by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.`30fps_select`) }
+    val Fps60 by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.`60fps_select`) }
   }
 
   object RoundedFilled {
@@ -509,6 +516,11 @@ object Icons {
     val ZoomIn get() = Shared.ZoomIn
     val ZoomOutMap get() = Shared.ZoomOutMap
     val PostProcessing get() = Shared.PostProcessing
+    val MotionInterpolation get() = Shared.MotionInterpolation
+    val FpsAuto get() = Shared.FpsAuto
+    val Fps24 get() = Shared.Fps24
+    val Fps30 get() = Shared.Fps30
+    val Fps60 get() = Shared.Fps60
   }
 
   object Alternatives {

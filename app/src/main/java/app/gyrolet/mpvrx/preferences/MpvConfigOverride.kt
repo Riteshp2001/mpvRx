@@ -158,14 +158,19 @@ enum class MpvConfigOverride(
   PLAYBACK_TIMING(
     preferenceKey = "playback_timing",
     optionNames =
-      setOf(
-        "speed",
-        "audio-pitch-correction",
-        "hr-seek",
-        "hr-seek-framedrop",
-        "video-sync",
-        "framedrop",
-      ),
+      buildSet {
+        add("speed")
+        add("audio-pitch-correction")
+        add("hr-seek")
+        add("hr-seek-framedrop")
+        add("video-sync")
+        add("framedrop")
+        // Only FongMi's mpv has the motion core; display sync for it needs the refresh rate.
+        if (app.gyrolet.mpvrx.BuildConfig.MPV_SUPPORTS_MOTION_INTERPOLATION) {
+          add("motion-interpolation")
+          add("display-fps-override")
+        }
+      },
   ),
   NETWORK_BUFFERING(
     preferenceKey = "network_buffering",

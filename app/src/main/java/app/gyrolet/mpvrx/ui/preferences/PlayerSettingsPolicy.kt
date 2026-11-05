@@ -118,6 +118,11 @@ private val liveSubtitleSettings = setOf(
 private val liveDecoderSettings = setOf(
   R.string.pref_decoder_try_hw_dec_title,
   R.string.pref_decoder_debanding_title,
+  // MotionInterpolationController applies these to the running player immediately.
+  R.string.motion_title,
+  R.string.motion_target_title,
+  R.string.motion_target_fps_title,
+  R.string.motion_switch_display_title,
 )
 
 private val settingNativeOptions = mapOf(

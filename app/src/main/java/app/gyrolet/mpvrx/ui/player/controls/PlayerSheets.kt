@@ -622,6 +622,13 @@ fun PlayerSheets(
       )
     }
 
+    Sheets.MotionInterpolation -> {
+      app.gyrolet.mpvrx.ui.player.controls.components.sheets.MotionInterpolationSheet(
+        controller = viewModel.motionInterpolation,
+        onDismissRequest = onDismissRequest,
+      )
+    }
+
     Sheets.Equalizer -> {
       val equalizerState by viewModel.equalizerState.collectAsState()
       app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerSheet(
