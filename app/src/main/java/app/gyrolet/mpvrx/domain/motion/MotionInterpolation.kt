@@ -16,6 +16,9 @@ import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
+import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
+import app.gyrolet.mpvrx.ui.player.HdrScreenMode
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -57,6 +60,8 @@ enum class MotionAvailability(
 
   /** GPU Next and Vulkan must both be selected in the Decoder settings. */
   NEEDS_RENDERER(R.string.motion_status_needs_renderer, true),
+
+  HDR_CONFIG_OWNED(R.string.motion_status_hdr_config_owned, true),
 
   /** The bundled mpvlib predates the motion core. */
   UNSUPPORTED_LIBMPV(R.string.motion_status_unsupported_libmpv, false),
@@ -119,6 +124,28 @@ object MotionInterpolation {
   val isBuildSupported: Boolean
     get() = BuildConfig.MPV_SUPPORTS_MOTION_INTERPOLATION
 
+  fun requiresHdr(preferences: DecoderPreferences): Boolean =
+    isBuildSupported && preferences.motionInterpolationEnabled.get()
+
+  fun setEnabled(preferences: DecoderPreferences, enabled: Boolean) {
+    if (enabled && isBuildSupported) enableHdr(preferences)
+    preferences.motionInterpolationEnabled.set(enabled)
+  }
+
+  fun ensureHdrEnabled(preferences: DecoderPreferences) {
+    if (requiresHdr(preferences)) enableHdr(preferences)
+  }
+
+  private fun enableHdr(preferences: DecoderPreferences) {
+    if (preferences.hdrScreenMode.get() == HdrScreenMode.OFF) {
+      val savedMode = preferences.lastHdrMode.get()
+      preferences.hdrScreenMode.set(
+        if (savedMode == HdrScreenMode.OFF) HdrScreenMode.defaultEnabledMode else savedMode,
+      )
+    }
+    if (!preferences.hdrScreenOutput.get()) preferences.hdrScreenOutput.set(true)
+  }
+
   /** Whether mpvRx switched the motion core on in the current mpv core, as opposed to mpv.conf. */
   @Volatile var appApplied: Boolean = false
 
@@ -141,6 +168,7 @@ object MotionInterpolation {
       !isBuildSupported -> MotionAvailability.UNSUPPORTED_BUILD
       !isDeviceSupported(context) -> MotionAvailability.UNSUPPORTED_DEVICE
       !isRendererSelected(preferences) -> MotionAvailability.NEEDS_RENDERER
+      MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT) -> MotionAvailability.HDR_CONFIG_OWNED
       else -> MotionAvailability.READY
     }
 

@@ -69,6 +69,7 @@ class MotionInterpolationController(
   private val preferences: DecoderPreferences,
   private val scope: CoroutineScope,
   private val showText: (String) -> Unit,
+  private val requireHdrOutput: () -> Boolean = { true },
 ) {
   private val _state =
     MutableStateFlow(
@@ -112,6 +113,8 @@ class MotionInterpolationController(
         // Leaving GPU Next + Vulkan switches motion interpolation off.
         preferences.gpuNext.changes(),
         preferences.useVulkan.changes(),
+        preferences.hdrScreenOutput.changes(),
+        preferences.hdrScreenMode.changes(),
       )
     scope.launch {
       // The first combination is the stored state, which MPVView applied before the core started.
@@ -159,10 +162,11 @@ class MotionInterpolationController(
     }
     announcePending = true
     if (preferences.motionInterpolationEnabled.get() == enabled) {
+      if (enabled) MotionInterpolation.ensureHdrEnabled(preferences)
       apply()
     } else {
       // The preference observer runs apply() and shows the pending toast.
-      preferences.motionInterpolationEnabled.set(enabled)
+      MotionInterpolation.setEnabled(preferences, enabled)
     }
   }
 
@@ -178,6 +182,7 @@ class MotionInterpolationController(
           barrier.messageRes?.let { showText(context.getString(it)) }
         }
 
+        MotionInterpolation.ensureHdrEnabled(preferences)
         val config = MotionInterpolation.config(preferences)
         val coreReady = PlaybackSession.getPropertyString("mpv-version") != null
         val optionKnown =
@@ -199,7 +204,7 @@ class MotionInterpolationController(
             else -> MotionAvailability.READY
           }
 
-        val shouldRun = config.enabled && coreReady && availability == MotionAvailability.READY
+        val shouldRun = config.enabled && coreReady && availability == MotionAvailability.READY && requireHdrOutput()
         if (optionKnown && !configOwned) {
           if (shouldRun) {
             if (!running) savedVideoSync = PlaybackSession.getPropertyString("video-sync")

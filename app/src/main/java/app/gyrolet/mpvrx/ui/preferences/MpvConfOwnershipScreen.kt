@@ -305,10 +305,21 @@ private fun OwnershipGroupCard(
           ) {
             Checkbox(checked = checked, onCheckedChange = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-              text = optionName,
-              style = MaterialTheme.typography.bodyMedium,
-            )
+            Column(modifier = Modifier.weight(1f)) {
+              Text(text = optionName, style = MaterialTheme.typography.bodyMedium)
+              val description = when (optionName) {
+                "inverse-tone-mapping" -> R.string.hdr_linear_inverse_ownership
+                "tone-mapping" -> R.string.hdr_linear_tone_ownership
+                else -> null
+              }
+              description?.let {
+                Text(
+                  text = stringResource(it),
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+            }
           }
         }
       }
