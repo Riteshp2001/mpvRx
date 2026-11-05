@@ -9,6 +9,9 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
+import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+
 import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.declaredMediaKind
@@ -390,6 +393,7 @@ fun PlayerControls(
   val advancedPreferences = koinInject<AdvancedPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
   val aiPreferences = koinInject<AiPreferences>()
+  val showMediaExtensions by koinInject<BrowserPreferences>().showExtensionField.collectAsState()
   val aiEnabled by aiPreferences.enabled.collectAsState()
   val realtimeSubsEnabled by aiPreferences.realtimeSubsEnabled.collectAsState()
   val liquidGlassPreference by appearancePreferences.liquidGlassEnabled.collectAsState()
@@ -595,10 +599,20 @@ fun PlayerControls(
   val queuedTitle =
     playbackQueue.currentItem?.title?.takeIf { playbackQueue.isExplicitQueue && it.isNotBlank() }
   val mediaTitle =
-    remember(queuedTitle, rawMediaTitle, playerActivity) {
-      queuedTitle
+    remember(queuedTitle, rawMediaTitle, playerActivity, showMediaExtensions) {
+      val title = queuedTitle
         ?: playerActivity.getTitleForControls().takeIf { it.isNotBlank() }
         ?: rawMediaTitle
+      title?.let { rawTitle ->
+        val extension = rawTitle.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT)
+        if (!showMediaExtensions &&
+          (extension in FileTypeUtils.VIDEO_EXTENSIONS || extension in FileTypeUtils.AUDIO_EXTENSIONS)
+        ) {
+          FileTypeUtils.stripExtension(rawTitle)
+        } else {
+          rawTitle
+        }
+      }
     }
 
   val topRightControlsPref by appearancePreferences.topRightControls.collectAsState()

@@ -1421,6 +1421,7 @@ private fun FileSystemBrowserContent(
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val grayscaleWatchedThumbnails by browserPreferences.grayscaleWatchedThumbnails.collectAsState()
   val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
@@ -1440,6 +1441,7 @@ private fun FileSystemBrowserContent(
       showResolutionChip,
       showFramerateInResolution,
       showProgressBar,
+      grayscaleWatchedThumbnails,
       showDateChip,
       showUnplayedOldVideoLabel,
       unplayedOldVideoDays,
@@ -1461,6 +1463,7 @@ private fun FileSystemBrowserContent(
         showFramerateInResolution = showFramerateInResolution && !archiveMode,
         showCodecSupportIndicator = showCodecSupportIndicator && !archiveMode,
         showProgressBar = showProgressBar,
+        grayscaleWatchedThumbnails = grayscaleWatchedThumbnails,
         showDateChip = showDateChip,
         showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,
         unplayedOldVideoDays = unplayedOldVideoDays,
@@ -1905,6 +1908,7 @@ private fun FileSystemSearchContent(
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val grayscaleWatchedThumbnails by browserPreferences.grayscaleWatchedThumbnails.collectAsState()
   val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val unlimitedNameLines by appearancePreferences.unlimitedNameLines.collectAsState()
@@ -1925,6 +1929,7 @@ private fun FileSystemSearchContent(
       showResolutionChip,
       showFramerateInResolution,
       showProgressBar,
+      grayscaleWatchedThumbnails,
       showDateChip,
       showUnplayedOldVideoLabel,
       unplayedOldVideoDays,
@@ -1946,6 +1951,7 @@ private fun FileSystemSearchContent(
         showFramerateInResolution = showFramerateInResolution && !archiveMode,
         showCodecSupportIndicator = showCodecSupportIndicator && !archiveMode,
         showProgressBar = showProgressBar,
+        grayscaleWatchedThumbnails = grayscaleWatchedThumbnails,
         showDateChip = showDateChip,
         showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,
         unplayedOldVideoDays = unplayedOldVideoDays,

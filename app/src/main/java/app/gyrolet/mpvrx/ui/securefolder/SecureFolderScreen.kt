@@ -116,6 +116,7 @@ data object SecureFolderScreen : Screen {
     val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
     val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
     val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+    val grayscaleWatchedThumbnails by browserPreferences.grayscaleWatchedThumbnails.collectAsState()
     val showDateChip by browserPreferences.showDateChip.collectAsState()
     val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
     val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
@@ -139,6 +140,7 @@ data object SecureFolderScreen : Screen {
         showFramerateInResolution,
         showCodecSupportIndicator,
         showProgressBar,
+        grayscaleWatchedThumbnails,
         showDateChip,
         showUnplayedOldVideoLabel,
         unplayedOldVideoDays,
@@ -156,6 +158,7 @@ data object SecureFolderScreen : Screen {
           showFramerateInResolution = showFramerateInResolution,
           showCodecSupportIndicator = showCodecSupportIndicator,
           showProgressBar = showProgressBar,
+          grayscaleWatchedThumbnails = grayscaleWatchedThumbnails,
           showDateChip = showDateChip,
           showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,
           unplayedOldVideoDays = unplayedOldVideoDays,

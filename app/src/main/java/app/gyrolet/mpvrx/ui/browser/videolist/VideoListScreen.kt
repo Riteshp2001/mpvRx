@@ -856,6 +856,7 @@ internal fun VideoListContent(
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val grayscaleWatchedThumbnails by browserPreferences.grayscaleWatchedThumbnails.collectAsState()
   val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
@@ -883,6 +884,7 @@ internal fun VideoListContent(
       showFramerateInResolution,
       showCodecSupportIndicator,
       showProgressBar,
+      grayscaleWatchedThumbnails,
       showDateChip,
       showUnplayedOldVideoLabel,
       unplayedOldVideoDays,
@@ -902,6 +904,7 @@ internal fun VideoListContent(
         showFramerateInResolution = showFramerateInResolution,
         showCodecSupportIndicator = showCodecSupportIndicator,
         showProgressBar = showProgressBar,
+        grayscaleWatchedThumbnails = grayscaleWatchedThumbnails,
         showDateChip = showDateChip,
         showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,
         unplayedOldVideoDays = unplayedOldVideoDays,

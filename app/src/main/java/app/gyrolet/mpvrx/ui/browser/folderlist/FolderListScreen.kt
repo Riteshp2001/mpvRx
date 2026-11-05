@@ -1797,6 +1797,7 @@ private fun SearchResultsContent(
   val showResolutionChip by browserPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val grayscaleWatchedThumbnails by browserPreferences.grayscaleWatchedThumbnails.collectAsState()
   val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
@@ -1819,6 +1820,7 @@ private fun SearchResultsContent(
       showFramerateInResolution,
       showCodecSupportIndicator,
       showProgressBar,
+      grayscaleWatchedThumbnails,
       showDateChip,
       showUnplayedOldVideoLabel,
       unplayedOldVideoDays,
@@ -1838,6 +1840,7 @@ private fun SearchResultsContent(
         showFramerateInResolution = showFramerateInResolution,
         showCodecSupportIndicator = showCodecSupportIndicator,
         showProgressBar = showProgressBar,
+        grayscaleWatchedThumbnails = grayscaleWatchedThumbnails,
         showDateChip = showDateChip,
         showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,
         unplayedOldVideoDays = unplayedOldVideoDays,

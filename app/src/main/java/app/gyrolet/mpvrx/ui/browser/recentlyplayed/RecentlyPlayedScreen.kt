@@ -702,6 +702,7 @@ private fun RecentItemsContent(
   val showResolutionChip by viewPreferences.showResolutionChip.collectAsState()
   val showFramerateInResolution by viewPreferences.showFramerateInResolution.collectAsState()
   val showProgressBar by viewPreferences.showProgressBar.collectAsState()
+  val grayscaleWatchedThumbnails by viewPreferences.grayscaleWatchedThumbnails.collectAsState()
   val showDateChip by viewPreferences.showDateChip.collectAsState()
   val showCodecSupportIndicator by viewPreferences.showCodecSupportIndicator.collectAsState()
   val showUnplayedOldVideoLabel by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
@@ -759,6 +760,7 @@ private fun RecentItemsContent(
       showFramerateInResolution,
       showCodecSupportIndicator,
       showProgressBar,
+      grayscaleWatchedThumbnails,
       showDateChip,
       showUnplayedOldVideoLabel,
       unplayedOldVideoDays,
@@ -778,6 +780,7 @@ private fun RecentItemsContent(
         showFramerateInResolution = showFramerateInResolution,
         showCodecSupportIndicator = showCodecSupportIndicator,
         showProgressBar = showProgressBar,
+        grayscaleWatchedThumbnails = grayscaleWatchedThumbnails,
         showDateChip = showDateChip,
         showUnplayedOldVideoLabel = showUnplayedOldVideoLabel,
         unplayedOldVideoDays = unplayedOldVideoDays,

@@ -345,12 +345,18 @@ private fun mediaDetailsToggles(
   val codecSupport by preferences.showCodecSupportIndicator.collectAsState()
   val date by preferences.showDateChip.collectAsState()
   val progress by preferences.showProgressBar.collectAsState()
+  val grayscaleWatchedThumbnails by preferences.grayscaleWatchedThumbnails.collectAsState()
   return buildList {
     if (includeDuration) {
       add(VisibilityToggle(stringResource(R.string.ui_duration), duration, preferences.showDurationField::set))
     }
     add(VisibilityToggle("Size", size, preferences.showSizeChip::set))
     if (!isAudio) {
+      add(VisibilityToggle(
+        stringResource(R.string.grayscale_watched_thumbnails),
+        grayscaleWatchedThumbnails,
+        preferences.grayscaleWatchedThumbnails::set,
+      ))
       add(VisibilityToggle("Resolution", resolution, preferences.showResolutionChip::set))
       add(VisibilityToggle("Framerate", framerate, preferences.showFramerateInResolution::set))
       add(VisibilityToggle("Subtitle Indicator", subtitles, preferences.showSubtitleIndicator::set))
@@ -741,6 +747,7 @@ fun VideoSortDialog(
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val grayscaleWatchedThumbnails by browserPreferences.grayscaleWatchedThumbnails.collectAsState()
   val showDateChip by browserPreferences.showDateChip.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val showExtensionField by browserPreferences.showExtensionField.collectAsState()
@@ -971,6 +978,15 @@ fun VideoSortDialog(
             onCheckedChange = { browserPreferences.showVideoThumbnails.set(it) },
           ),
         )
+        if (!isAudio && !pickerMode) {
+          add(
+            VisibilityToggle(
+              label = stringResource(R.string.grayscale_watched_thumbnails),
+              checked = grayscaleWatchedThumbnails,
+              onCheckedChange = browserPreferences.grayscaleWatchedThumbnails::set,
+            ),
+          )
+        }
         add(
           VisibilityToggle(
             label = "Extension",
@@ -1158,6 +1174,7 @@ fun FileSystemSortDialog(
   val showFramerateInResolution by browserPreferences.showFramerateInResolution.collectAsState()
   val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val showProgressBar by browserPreferences.showProgressBar.collectAsState()
+  val grayscaleWatchedThumbnails by browserPreferences.grayscaleWatchedThumbnails.collectAsState()
   val showSubtitleIndicator by browserPreferences.showSubtitleIndicator.collectAsState()
   val showExtensionField by browserPreferences.showExtensionField.collectAsState()
   val showDurationField by browserPreferences.showDurationField.collectAsState()
@@ -1324,6 +1341,13 @@ fun FileSystemSortDialog(
             label = "Thumbnails",
             checked = showVideoThumbnails,
             onCheckedChange = { browserPreferences.showVideoThumbnails.set(it) },
+          ),
+        )
+        add(
+          VisibilityToggle(
+            label = stringResource(R.string.grayscale_watched_thumbnails),
+            checked = grayscaleWatchedThumbnails,
+            onCheckedChange = browserPreferences.grayscaleWatchedThumbnails::set,
           ),
         )
         add(

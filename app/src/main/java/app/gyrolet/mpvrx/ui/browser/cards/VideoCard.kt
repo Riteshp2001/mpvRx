@@ -87,6 +87,7 @@ data class VideoCardUiConfig(
   val showDateChip: Boolean,
   val showUnplayedOldVideoLabel: Boolean,
   val unplayedOldVideoDays: Int,
+  val grayscaleWatchedThumbnails: Boolean = true,
   val showExtensionField: Boolean = true,
   val showDurationField: Boolean = true,
   val centerGridTitles: Boolean = false,
@@ -109,6 +110,7 @@ fun rememberVideoCardUiConfig(): VideoCardUiConfig {
   val showFramerateInResolutionConfig by browserPreferences.showFramerateInResolution.collectAsState()
   val showCodecSupportIndicator by browserPreferences.showCodecSupportIndicator.collectAsState()
   val showProgressBarConfig by browserPreferences.showProgressBar.collectAsState()
+  val grayscaleWatchedThumbnailsConfig by browserPreferences.grayscaleWatchedThumbnails.collectAsState()
   val showDateChipConfig by browserPreferences.showDateChip.collectAsState()
   val showUnplayedOldVideoLabelConfig by appearancePreferences.showUnplayedOldVideoLabel.collectAsState()
   val unplayedOldVideoDaysConfig by appearancePreferences.unplayedOldVideoDays.collectAsState()
@@ -128,6 +130,7 @@ fun rememberVideoCardUiConfig(): VideoCardUiConfig {
     showFramerateInResolutionConfig,
     showCodecSupportIndicator,
     showProgressBarConfig,
+    grayscaleWatchedThumbnailsConfig,
     showDateChipConfig,
     showUnplayedOldVideoLabelConfig,
     unplayedOldVideoDaysConfig,
@@ -147,6 +150,7 @@ fun rememberVideoCardUiConfig(): VideoCardUiConfig {
       showFramerateInResolution = showFramerateInResolutionConfig,
       showCodecSupportIndicator = showCodecSupportIndicator,
       showProgressBar = showProgressBarConfig,
+      grayscaleWatchedThumbnails = grayscaleWatchedThumbnailsConfig,
       showDateChip = showDateChipConfig,
       showUnplayedOldVideoLabel = showUnplayedOldVideoLabelConfig,
       unplayedOldVideoDays = unplayedOldVideoDaysConfig,
@@ -297,7 +301,7 @@ fun VideoCard(
 
   val selectionContainerColor = animatedSelectionColor(isSelected)
   val showSelectionBadge = isSelected || selectionContainerColor.alpha > 0.001f
-  val thumbnailColorFilter = if (isWatched) WatchedThumbnailFilter else null
+  val thumbnailColorFilter = if (isWatched && resolvedUiConfig.grayscaleWatchedThumbnails) WatchedThumbnailFilter else null
 
   // Hold the last displayed thumbnail for this file across grid/list size changes.
   // Repository memory remains the source of truth for new requests.
