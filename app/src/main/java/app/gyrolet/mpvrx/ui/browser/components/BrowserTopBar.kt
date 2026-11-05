@@ -442,7 +442,12 @@ private fun NormalTopBar(
             SeasonalTitleIcon(event = seasonalEvent, modifier = Modifier.padding(start = 4.dp))
           }
           if (titleTrailing != null) {
-            titleTrailing()
+            Row(
+              modifier = Modifier.padding(start = 12.dp),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              titleTrailing()
+            }
           }
         }
       }

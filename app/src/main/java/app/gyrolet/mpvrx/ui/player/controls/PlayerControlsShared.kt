@@ -1676,9 +1676,17 @@ fun RenderPlayerButton(
       val clockFormat by playerPreferences.clockFormat.collectAsState()
       val stat by rememberTimeAndNetworkStat(clockFormat)
       val toggleTimeAndNetwork = {
-        val nextPage = if (advancedPreferences.enabledStatisticsPage.get() == 6) 0 else 6
-        PlaybackSession.setStatisticsPage(nextPage)
-        advancedPreferences.enabledStatisticsPage.set(nextPage)
+        if (PlaybackSession.getPropertyBoolean("user-data/mpv/console/open") == true) {
+          PlaybackSession.command("script-message-to", "console", "disable")
+        }
+        if (statisticsPage == 6) {
+          advancedPreferences.enabledStatisticsPage.set(0)
+        } else {
+          if (statisticsPage in 1..5) {
+            PlaybackSession.command("script-binding", "stats/display-stats-toggle")
+          }
+          advancedPreferences.enabledStatisticsPage.set(6)
+        }
         onOpenSheet(Sheets.None)
       }
       if (compact) {

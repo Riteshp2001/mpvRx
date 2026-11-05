@@ -722,25 +722,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   val videoOutput: String
     get() = desiredVideoOutput
 
-  fun setStatisticsPage(page: Int, onlyIfUnset: Boolean = false) {
-    withCore(Unit) {
-      if (page !in 0..7) return@withCore
-      val previousPage = getPropertyString("user-data/mpvrx/statistics-page")?.toIntOrNull()
-      if (onlyIfUnset && previousPage != null) return@withCore
-      val consoleOpen = getPropertyBoolean("user-data/mpv/console/open") == true
-      if (page != 7 && consoleOpen) command("script-message-to", "console", "disable")
-      if (previousPage == page && (page != 7 || consoleOpen)) return@withCore
-      if (previousPage != null && previousPage in 1..5) {
-        command("script-binding", "stats/display-stats-toggle")
-      }
-      when (page) {
-        in 1..5 -> command("script-binding", "stats/display-page-$page-toggle")
-        7 -> if (!consoleOpen) command("script-binding", "console/enable")
-      }
-      setPropertyString("user-data/mpvrx/statistics-page", page.toString())
-    }
-  }
-
   fun markBackground() {
     updateState { current ->
       if (current.phase == PlaybackPhase.READY) current.copy(phase = PlaybackPhase.BACKGROUND) else current

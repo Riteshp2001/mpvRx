@@ -1,6 +1,5 @@
 package app.gyrolet.mpvrx.ui.components
 
-import android.os.SystemClock
 import android.view.View
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.core.animateFloatAsState
@@ -15,6 +14,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -24,11 +25,6 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarData
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,7 +41,6 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onSizeChanged
@@ -76,6 +71,7 @@ import kotlinx.coroutines.launch
 private val LocalAppToastHost = staticCompositionLocalOf { false }
 private const val MAX_QUEUED_TOASTS = 6
 private const val MAX_VISIBLE_TOASTS = 3
+private const val TOAST_ANIMATION_MS = 200
 
 // Equal horizontal insets preserve the window's center when a landscape cutout or
 // navigation bar occupies only one edge. Delegate reads so inset animations stay live.
@@ -93,16 +89,14 @@ private class CenteredToastInsets(private val insets: WindowInsets) : WindowInse
 
 private class AppToastPresentation(
   val toast: AppToastMessage,
-  val host: SnackbarHostState,
-) : SnackbarVisuals {
-  override val message: String get() = toast.text
-  override val actionLabel: String? get() = toast.action?.label
-  override val withDismissAction: Boolean = false
-  override val duration: SnackbarDuration = SnackbarDuration.Indefinite
+  val order: Long,
+) {
+  var exiting by mutableStateOf(false)
 }
 
 private interface AppToastHostSink : AppToastSink {
   fun clear()
+  fun interacting(id: Long, active: Boolean)
 }
 
 @Composable
@@ -123,18 +117,21 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
   val reducedMotion = AppMotion.shouldReduceMotion()
   val density = LocalDensity.current
   var frontToastSize by remember { mutableStateOf(IntSize.Zero) }
-  val stackPeek = with(density) { 8.dp.toPx() }
-  val sink = remember(lifecycle, activity, view, accessibility) {
+  val stackPeek = with(density) { 12.dp.toPx() }
+  val enterDistance = with(density) { 24.dp.toPx() }
+  val sink = remember(lifecycle, activity, view, accessibility, reducedMotion) {
     object : AppToastHostSink {
-      // Timed toasts share the newest deadline, so a stack leaves together instead of one by one.
-      private var groupDeadline = 0L
-      private var groupExpiry: Job? = null
+      private var nextOrder = 0L
+      private val expiryJobs = mutableMapOf<Long, Job>()
+      private val removalJobs = mutableMapOf<Long, Job>()
+      private val interactingIds = mutableSetOf<Long>()
 
       override fun clear() {
-        groupExpiry?.cancel()
-        groupExpiry = null
-        groupDeadline = 0L
-        messages.values.toList().forEach { it.host.currentSnackbarData?.dismiss() }
+        expiryJobs.values.forEach { it.cancel() }
+        removalJobs.values.forEach { it.cancel() }
+        expiryJobs.clear()
+        removalJobs.clear()
+        interactingIds.clear()
         messages.clear()
       }
 
@@ -143,53 +140,60 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
           activity?.isInPictureInPictureMode == true
         ) return false
         if (message.id !in messages && messages.size >= MAX_QUEUED_TOASTS) {
-          messages.keys.minOrNull()?.let { oldest ->
-            messages.remove(oldest)?.host?.currentSnackbarData?.dismiss()
+          messages.values.minByOrNull { it.order }?.toast?.id?.let { oldest ->
+            expiryJobs.remove(oldest)?.cancel()
+            removalJobs.remove(oldest)?.cancel()
+            interactingIds.remove(oldest)
+            messages.remove(oldest)
           }
         }
-        val host = messages[message.id]?.host ?: SnackbarHostState()
-        messages[message.id] = AppToastPresentation(message, host)
-        if (message.type != AppToastType.Loading) {
-          val timeout = if (message.duration == AppToast.LENGTH_LONG) 6_000L else 3_500L
-          extendGroup(
-            accessibility?.calculateRecommendedTimeoutMillis(
-              timeout, containsIcons = true, containsText = true, containsControls = true,
-            ) ?: timeout,
-          )
-        }
+        removalJobs.remove(message.id)?.cancel()
+        messages[message.id] = AppToastPresentation(message, ++nextOrder)
+        scheduleExpiry(message)
         return true
       }
 
       override fun dismiss(id: Long) {
         val dismissed = messages[id] ?: return
-        dismissed.host.currentSnackbarData?.dismiss()
-        cleanupScope.launch {
-          delay(200L)
+        if (dismissed.exiting) return
+        expiryJobs.remove(id)?.cancel()
+        interactingIds.remove(id)
+        if (reducedMotion) {
+          messages.remove(id)
+          return
+        }
+        dismissed.exiting = true
+        removalJobs[id] = cleanupScope.launch {
+          delay(TOAST_ANIMATION_MS.toLong())
           if (messages[id] === dismissed) messages.remove(id)
-          if (messages.isEmpty()) {
-            groupExpiry?.cancel()
-            groupExpiry = null
-            groupDeadline = 0L
-          }
+          removalJobs.remove(id)
         }
       }
 
-      private fun extendGroup(timeoutMillis: Long) {
-        // Accessibility can ask to keep toasts until the user dismisses them.
-        if (timeoutMillis >= Int.MAX_VALUE) {
-          groupExpiry?.cancel()
-          groupExpiry = null
-          groupDeadline = Long.MAX_VALUE
-          return
+      override fun interacting(id: Long, active: Boolean) {
+        val entry = messages[id] ?: return
+        if (entry.exiting) return
+        if (active) {
+          interactingIds.add(id)
+          expiryJobs.remove(id)?.cancel()
+        } else if (interactingIds.remove(id)) {
+          scheduleExpiry(entry.toast)
         }
-        if (groupDeadline == Long.MAX_VALUE) return
-        val deadline = SystemClock.uptimeMillis() + timeoutMillis
-        if (groupExpiry?.isActive == true && deadline <= groupDeadline) return
-        groupDeadline = deadline
-        groupExpiry?.cancel()
-        groupExpiry = cleanupScope.launch {
-          delay(timeoutMillis)
-          messages.values.filter { it.toast.type != AppToastType.Loading }.forEach { dismiss(it.toast.id) }
+      }
+
+      private fun scheduleExpiry(message: AppToastMessage) {
+        expiryJobs.remove(message.id)?.cancel()
+        if (message.type == AppToastType.Loading || message.id in interactingIds) return
+        val timeout = if (message.duration == AppToast.LENGTH_LONG) 6_000L else 3_500L
+        val recommended = accessibility?.calculateRecommendedTimeoutMillis(
+          timeout, containsIcons = true, containsText = true, containsControls = true,
+        ) ?: timeout
+        // Accessibility can ask to keep a toast until it is explicitly dismissed.
+        if (recommended >= Int.MAX_VALUE) return
+        expiryJobs[message.id] = cleanupScope.launch {
+          delay(recommended)
+          expiryJobs.remove(message.id)
+          dismiss(message.id)
         }
       }
     }
@@ -236,58 +240,57 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
           modifier = Modifier.widthIn(max = 400.dp).fillMaxWidth(),
           contentAlignment = Alignment.BottomCenter,
         ) {
-          val visibleToasts = messages.values.sortedBy { it.toast.id }.takeLast(MAX_VISIBLE_TOASTS)
+          // Keep keyed entries composed even behind the visible stack. Revealing an older
+          // toast must not restart its entrance animation or create another snackbar queue.
+          val visibleToasts = messages.values.sortedBy { it.order }
           visibleToasts.forEachIndexed { index, presentation ->
             androidx.compose.runtime.key(presentation.toast.id) {
               val isFront = index == visibleToasts.lastIndex
+              val targetDepth = visibleToasts.lastIndex - index
+              var entered by remember { mutableStateOf(false) }
+              LaunchedEffect(Unit) { entered = true }
+              val visibility by animateFloatAsState(
+                targetValue = if (entered && !presentation.exiting && targetDepth < MAX_VISIBLE_TOASTS) 1f else 0f,
+                animationSpec = if (reducedMotion) snap() else tween(TOAST_ANIMATION_MS),
+                label = "toastVisibility",
+              )
               val depth by animateFloatAsState(
-                targetValue = (visibleToasts.lastIndex - index).toFloat(),
-                animationSpec = if (reducedMotion) snap() else tween(180),
+                targetValue = targetDepth.coerceAtMost(MAX_VISIBLE_TOASTS).toFloat(),
+                animationSpec = if (reducedMotion) snap() else tween(TOAST_ANIMATION_MS),
                 label = "toastStackDepth",
               )
-              LaunchedEffect(presentation) {
-                presentation.host.showSnackbar(presentation)
-                if (messages[presentation.toast.id] === presentation) sink.dismiss(presentation.toast.id)
-              }
-              val toastContent: @Composable (SnackbarData) -> Unit = { data ->
-                val rendered = data.visuals as? AppToastPresentation
-                if (rendered != null) {
-                  Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    SwipeDismissibleToast(onDismiss = { sink.dismiss(rendered.toast.id) }) {
-                      AppToastContent(
-                        rendered.toast,
-                        reducedMotion,
-                        onDismiss = { sink.dismiss(rendered.toast.id) },
-                        modifier = if (isFront) {
-                          Modifier.onSizeChanged { if (it != IntSize.Zero) frontToastSize = it }
-                        } else {
-                          Modifier.fillMaxSize()
-                        },
-                      )
-                    }
-                  }
-                }
-              }
-              val cardSize = if (!isFront && frontToastSize != IntSize.Zero) {
-                with(density) { Modifier.size(frontToastSize.width.toDp(), frontToastSize.height.toDp()) }
-              } else {
-                Modifier.fillMaxWidth()
-              }
               Box(
-                modifier = cardSize
+                modifier = Modifier.fillMaxWidth()
                   .zIndex(index.toFloat())
                   .graphicsLayer {
-                    translationY = -depth * stackPeek
-                    scaleX = 1f - depth * 0.04f
-                    alpha = if (isFront || frontToastSize != IntSize.Zero) 1f else 0f
+                    translationY = -depth * stackPeek + (1f - visibility) * enterDistance
+                    scaleX = 1f - depth * 0.05f
+                    alpha = visibility
                   }
-                  .then(if (isFront) Modifier else Modifier.clipToBounds().clearAndSetSemantics {}),
+                  .then(if (isFront && !presentation.exiting) Modifier else Modifier.clearAndSetSemantics {}),
                 contentAlignment = Alignment.BottomCenter,
               ) {
-                if (reducedMotion) {
-                  presentation.host.currentSnackbarData?.let { toastContent(it) }
+                if (isFront) {
+                  SwipeDismissibleToast(
+                    onDismiss = { sink.dismiss(presentation.toast.id) },
+                    onInteracting = { sink.interacting(presentation.toast.id, it) },
+                  ) {
+                    AppToastContent(
+                      presentation.toast,
+                      reducedMotion,
+                      onDismiss = { sink.dismiss(presentation.toast.id) },
+                      modifier = Modifier.fillMaxWidth()
+                        .onSizeChanged { if (it != IntSize.Zero) frontToastSize = it },
+                    )
+                  }
                 } else {
-                  SnackbarHost(presentation.host, modifier = Modifier.fillMaxWidth(), snackbar = toastContent)
+                  // Back cards expose their surface only, never overlapping text or hidden
+                  // action buttons. Every layer shares the front card's width and height.
+                  ToastCardSurface(
+                    message = presentation.toast,
+                    modifier = Modifier.fillMaxWidth()
+                      .height(with(density) { frontToastSize.height.toDp() }.coerceAtLeast(48.dp)),
+                  ) {}
                 }
               }
             }
@@ -296,6 +299,28 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
       }
     }
   }
+}
+
+@Composable
+private fun ToastCardSurface(
+  message: AppToastMessage,
+  modifier: Modifier = Modifier,
+  content: @Composable () -> Unit,
+) {
+  val colors = MaterialTheme.colorScheme
+  val tone = when (message.type) {
+    AppToastType.Success, AppToastType.Loading -> colors.primary
+    AppToastType.Info -> colors.secondary
+    AppToastType.Warning -> colors.tertiary
+    AppToastType.Error -> colors.error
+    AppToastType.Normal -> colors.onSurfaceVariant
+  }
+  val shape = RoundedCornerShape(24.dp)
+  Box(
+    modifier.clip(shape)
+      .background(lerp(colors.surfaceContainerHigh, tone, 0.06f))
+      .border(1.dp, colors.outlineVariant.copy(alpha = 0.55f), shape),
+  ) { content() }
 }
 
 @Composable
@@ -313,46 +338,42 @@ private fun AppToastContent(
     AppToastType.Error -> colors.error
     AppToastType.Normal -> colors.onSurfaceVariant
   }
-  val surface = lerp(colors.surfaceContainerHigh, tone, 0.06f)
-  val shape = RoundedCornerShape(24.dp)
   val defaultIcon = when (message.type) {
     AppToastType.Success -> Icons.RoundedFilled.CheckCircle
     AppToastType.Warning -> Icons.RoundedFilled.Warning
     AppToastType.Error -> Icons.RoundedFilled.Warning
     AppToastType.Normal, AppToastType.Info, AppToastType.Loading -> Icons.RoundedFilled.Info
   }
-  Row(
-    modifier = modifier
-      .widthIn(max = 400.dp)
-      .clip(shape)
-      .background(surface)
-      .border(1.dp, colors.outlineVariant.copy(alpha = 0.55f), shape)
-      .semantics { liveRegion = LiveRegionMode.Polite }
-      .padding(horizontal = 12.dp, vertical = 4.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(4.dp),
-  ) {
-    if (message.type == AppToastType.Loading && message.icon == null && !reducedMotion) {
-      CircularProgressIndicator(modifier = Modifier.size(20.dp), color = tone, strokeWidth = 2.dp)
-    } else {
-      when (val icon = message.icon) {
-        is AppToastIcon.Symbol -> Icon(icon.value, contentDescription = null, modifier = Modifier.size(20.dp), tint = tone)
-        is AppToastIcon.Emoji -> Text(icon.value, fontSize = 20.sp)
-        null -> Icon(defaultIcon, contentDescription = null, modifier = Modifier.size(20.dp), tint = tone)
+  ToastCardSurface(message, modifier) {
+    Row(
+      modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+        .semantics { liveRegion = LiveRegionMode.Polite }
+        .padding(horizontal = 12.dp, vertical = 4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+      if (message.type == AppToastType.Loading && message.icon == null && !reducedMotion) {
+        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = tone, strokeWidth = 2.dp)
+      } else {
+        when (val icon = message.icon) {
+          is AppToastIcon.Symbol -> Icon(icon.value, contentDescription = null, modifier = Modifier.size(20.dp), tint = tone)
+          is AppToastIcon.Emoji -> Text(icon.value, fontSize = 20.sp)
+          null -> Icon(defaultIcon, contentDescription = null, modifier = Modifier.size(20.dp), tint = tone)
+        }
       }
-    }
-    Spacer(Modifier.width(4.dp))
-    Text(
-      message.text,
-      style = MaterialTheme.typography.bodyMedium,
-      color = colors.onSurface,
-      maxLines = 2,
-      overflow = TextOverflow.Ellipsis,
-      modifier = Modifier.weight(1f, fill = false).padding(vertical = 6.dp),
-    )
-    message.action?.let { action ->
-      TextButton(onClick = { onDismiss(); action.onClick() }, modifier = Modifier.widthIn(max = 112.dp)) {
-        Text(action.label, color = tone, maxLines = 1, overflow = TextOverflow.Ellipsis)
+      Spacer(Modifier.width(4.dp))
+      Text(
+        message.text,
+        style = MaterialTheme.typography.bodyMedium,
+        color = colors.onSurface,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.weight(1f).padding(vertical = 6.dp),
+      )
+      message.action?.let { action ->
+        TextButton(onClick = { onDismiss(); action.onClick() }, modifier = Modifier.widthIn(max = 112.dp)) {
+          Text(action.label, color = tone, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
       }
     }
   }

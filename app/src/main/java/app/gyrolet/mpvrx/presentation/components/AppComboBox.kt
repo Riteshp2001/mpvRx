@@ -292,7 +292,11 @@ fun AppComboBoxChipAnchor(
     border = BorderStroke(1.dp, if (expanded) colors.primary else colors.outlineVariant),
   ) {
     Row(
-      modifier = Modifier.padding(start = if (leadingIcon != null) 10.dp else 16.dp, end = 6.dp),
+      modifier = if (text.isEmpty()) {
+        Modifier.padding(horizontal = 10.dp)
+      } else {
+        Modifier.padding(start = if (leadingIcon != null) 10.dp else 16.dp, end = 6.dp)
+      },
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
