@@ -689,6 +689,9 @@ class PlayerActivity :
     }
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R && !isKnownAudioLaunch(intent)) {
+      applyLegacySystemBars(showStatus = false, showNavigation = false, isAudio = false)
+    }
     // Kick the multi-MB asset copy and the user mpv.conf SAF walk off the main thread first, so
     // they run concurrently with everything below instead of being joined inside setupMPV().
     startMpvAssetPreparation()
@@ -2710,27 +2713,44 @@ class PlayerActivity :
     val showNavigation = isAudio || (controlsVisible && playerPreferences.showSystemNavigationBar.get())
 
     try {
-      // WindowInsetsControllerCompat translates this into the legacy fullscreen/navigation flags
-      // on Android 8-10 and uses WindowInsetsController on Android 11+. Keep immersive behavior
-      // even when only one of the two system bars is hidden.
-      windowInsetsController.apply {
-        systemBarsBehavior =
-          if (isAudio) WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
-          else WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+        applyLegacySystemBars(showStatus, showNavigation, isAudio)
+      } else {
+        windowInsetsController.apply {
+          systemBarsBehavior =
+            if (isAudio) WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+            else WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
-        if (showStatus) show(WindowInsetsCompat.Type.statusBars())
-        else hide(WindowInsetsCompat.Type.statusBars())
+          if (showStatus) show(WindowInsetsCompat.Type.statusBars())
+          else hide(WindowInsetsCompat.Type.statusBars())
 
-        if (showNavigation) show(WindowInsetsCompat.Type.navigationBars())
-        else hide(WindowInsetsCompat.Type.navigationBars())
+          if (showNavigation) show(WindowInsetsCompat.Type.navigationBars())
+          else hide(WindowInsetsCompat.Type.navigationBars())
 
-        isAppearanceLightStatusBars = false
-        isAppearanceLightNavigationBars = false
+          isAppearanceLightStatusBars = false
+          isAppearanceLightNavigationBars = false
+        }
       }
     } catch (e: Exception) {
       Log.e(TAG, "Failed to update player system bars", e)
     }
     updateStatusBarProtection()
+  }
+
+  @Suppress("DEPRECATION")
+  private fun applyLegacySystemBars(showStatus: Boolean, showNavigation: Boolean, isAudio: Boolean) {
+    val layoutFlags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+      View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+    val managedFlags = layoutFlags or View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+      View.SYSTEM_UI_FLAG_IMMERSIVE or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+      View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+    var requestedFlags = layoutFlags
+    if (!showStatus) requestedFlags = requestedFlags or View.SYSTEM_UI_FLAG_FULLSCREEN
+    if (!showNavigation) requestedFlags = requestedFlags or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+    if (!isAudio) requestedFlags = requestedFlags or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+    window.decorView.apply {
+      systemUiVisibility = (systemUiVisibility and managedFlags.inv()) or requestedFlags
+    }
   }
 
   private fun setupSystemUI() {
