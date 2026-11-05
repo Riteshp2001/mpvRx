@@ -478,6 +478,9 @@ class PlayerActivity :
   private var backgroundPlaybackShutdownIssued = false
   private var wasPlayingBeforePause = false // Track if video was playing before pause
   private var resumeAfterUnlockJob: Job? = null
+  private var rendererAfterUnlockJob: Job? = null
+  // On older Android versions, LifecycleRegistry publishes STARTED after onStart returns.
+  private var playbackActivityStarted = false
   private var rendererRecoveryWakeLock: PowerManager.WakeLock? = null
   private var jellyfinSessionReporter: JellyfinSessionReporter? = null
   private var jellyfinProgressJob: Job? = null
@@ -1943,6 +1946,7 @@ class PlayerActivity :
     cancelPlaybackLoadRecovery()
     eofAdvanceJob?.cancel()
     resumeAfterUnlockJob?.cancel()
+    rendererAfterUnlockJob?.cancel()
     runCatching { PlaybackSession.removeObserver(playerObserver) }
       .onFailure { e -> Log.e(TAG, "Error removing MPV observer", e) }
 
@@ -2304,6 +2308,8 @@ class PlayerActivity :
   }
 
   override fun onStop() {
+    playbackActivityStarted = false
+    rendererAfterUnlockJob?.cancel()
     releaseRendererRecoveryWakeLock()
     if (scriptRuntimeRestartPending) {
       super.onStop()
@@ -2493,6 +2499,7 @@ class PlayerActivity :
 
   override fun onStart() {
     super.onStart()
+    playbackActivityStarted = true
     onPlaybackStarted()
   }
 
@@ -3961,7 +3968,13 @@ class PlayerActivity :
   }
 
   private fun restoreForegroundVideoAndAmbientIfUnlocked(): Boolean {
-    if (!mpvInitialized || !ownsPlaybackSession() || isDeviceScreenOffOrLocked()) return false
+    if (
+      !mpvInitialized || !ownsPlaybackSession() || isFinishing || isDestroyed || !playbackActivityStarted
+    ) return false
+    if (isDeviceScreenOffOrLocked()) {
+      scheduleRendererRecoveryAfterUnlock()
+      return false
+    }
     if (!MediaPlaybackService.activityForeground) {
       MediaPlaybackService.activityForeground = true
       if (viewModel.paused != true) requestAudioFocus()
@@ -3975,6 +3988,26 @@ class PlayerActivity :
     viewModel.setAmbientLifecycleActive(true)
     updateKeepScreenOn()
     return true
+  }
+
+  private fun scheduleRendererRecoveryAfterUnlock() {
+    val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+    if (!powerManager.isInteractive || rendererAfterUnlockJob?.isActive == true) return
+    // PiP returns to STARTED, without onResume or window focus. OEM unlock broadcasts can
+    // precede the keyguard state change, so retry that transition independently of auto-resume.
+    rendererAfterUnlockJob = lifecycleScope.launch {
+      repeat(50) {
+        delay(100)
+        if (!mpvInitialized || !ownsPlaybackSession() || isFinishing || isDestroyed ||
+          !playbackActivityStarted || !powerManager.isInteractive
+        ) return@launch
+        if (!isDeviceScreenOffOrLocked()) {
+          restoreForegroundVideoAndAmbientIfUnlocked()
+          resumePlaybackAfterScreenUnlockIfNeeded()
+          return@launch
+        }
+      }
+    }
   }
 
   private fun rememberResumeAfterUnlockBeforeForcedPause() {
@@ -4908,13 +4941,40 @@ class PlayerActivity :
     }
   }
 
-  /**
-   * Handles the file loaded event from MPV.
-   * Initializes playback state, loads saved playback data, restores custom settings,
-   * applies user preferences, and sets up metadata and media session.
-   */
+  /** Adopt native-confirmed metadata even while the Activity's visible queue observer is stopped. */
+  private fun syncLoadedPlaybackItem(loadGeneration: Long): PlaybackItem? {
+    val session = PlaybackSession.state.value
+    val item = session.currentItem ?: return null
+    if (session.generation != loadGeneration || session.activeGeneration != loadGeneration) return null
+
+    // The service can advance while the STARTED-only queue collector is suspended. FILE_LOADED
+    // must adopt the confirmed session item before looking up any saved position or track state.
+    val itemChanged = mediaIdentifier != item.stableId
+    if (itemChanged || fileName.isBlank()) {
+      fileName =
+        item.title?.takeIf { it.isNotBlank() }
+          ?: getFileNameFromUri(Uri.parse(item.originalUri)).ifBlank { "Unknown Video" }
+    }
+    if (itemChanged) {
+      legacyMediaIdentifier = item.networkSource?.let { source ->
+        "network_${source.connectionId}_${source.relativePath.hashCode()}"
+      } ?: if (isRemotePlaybackUri(Uri.parse(item.originalUri))) {
+        "${fileName}_${item.originalUri.hashCode()}"
+      } else {
+        PlaybackIdentity.forUri(item.originalUri)
+      }
+    }
+    mediaIdentifier = item.stableId
+    currentPlayableUri = item.playableUri
+    val queue = PlaybackSession.queue.value
+    syncPlaylistFromSession(queue)
+    if (queue.currentItem?.queueEntryId == item.queueEntryId) playlistIndex = queue.currentIndex
+    return item
+  }
+
+  /** Restore settings and metadata for the file confirmed by this generation's FILE_LOADED. */
   private fun handleFileLoaded(loadGeneration: Long) {
-    if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return
+    val loadedPlaybackItem = syncLoadedPlaybackItem(loadGeneration) ?: return
     subtitleAutoloadJob?.cancel()
     val positionRestoreOverride = PlaybackSession.positionRestoreOverride(loadGeneration)
     val initialPositionApplied = PlaybackSession.wasInitialPositionApplied(loadGeneration)
@@ -4923,37 +4983,17 @@ class PlayerActivity :
         PlaybackSession.setPropertyDouble("time-pos", seconds.coerceAtLeast(0.0))
       }
     }
-    // Extract fileName from intent only if not already set
-    // This preserves fileName set in onNewIntent or onCreate
-    if (fileName.isBlank()) {
-      fileName = getFileName(intent)
-      // Ensure fileName is not blank - use a fallback if necessary
-      if (fileName.isBlank()) {
-        fileName = intent.data?.lastPathSegment ?: "Unknown Video"
-      }
-      legacyMediaIdentifier = getLegacyMediaIdentifier(intent, fileName)
-      mediaIdentifier = getMediaIdentifier(intent, fileName)
-    } else if (mediaIdentifier.isBlank()) {
-      // If fileName was already set, but mediaIdentifier is missing, set it for safety
-      legacyMediaIdentifier = getLegacyMediaIdentifier(intent, fileName)
-      mediaIdentifier = getMediaIdentifier(intent, fileName)
-    }
-
     if (serviceBound || mediaPlaybackService != null) {
       syncBackgroundPlaybackService(updateThumbnail = true)
     }
 
-    val currentUri =
-      if (playlist.isNotEmpty() && playlistIndex in playlist.indices) {
-        playlist[playlistIndex]
-      } else {
-        extractUriFromIntent(intent)
-      }
+    val currentUri = Uri.parse(loadedPlaybackItem.originalUri)
     val loadedFileName = fileName
-    val loadedMediaIdentifier = mediaIdentifier
+    val loadedMediaIdentifier = loadedPlaybackItem.stableId
     val loadedLegacyIdentifier = legacyMediaIdentifier
-    val loadedIntent = Intent(intent)
-    val loadedPlaybackItem = PlaybackSession.queue.value.currentItem
+    val loadedIntent = Intent(intent).apply {
+      setDataAndType(currentUri, loadedPlaybackItem.mimeType)
+    }
     val loadedPlaylistIndex = playlistIndex
     val loadedPlaylist = playlist.toList()
     if (loadedMediaIdentifier.isNotBlank()) {
@@ -4961,12 +5001,12 @@ class PlayerActivity :
       // target it even while its database-backed resume position is still being restored.
       activeSaveMediaIdentifier = loadedMediaIdentifier
     }
-    currentUri?.let { viewModel.calculateVideoHash(it) }
+    viewModel.calculateVideoHash(currentUri)
 
     reportJellyfinStop()
     // Only a remote server can hold a playback session. A local file has no token, no host and no
     // reachable Emby/Jellyfin endpoint, so building a reporter for it is dead work on this path.
-    currentUri?.takeIf { HttpUtils.isNetworkStream(it) }?.toString()?.let { url ->
+    currentUri.takeIf { HttpUtils.isNetworkStream(it) }?.toString()?.let { url ->
       val tokenFromHeader =
         networkPlaylistHeaders.getOrNull(playlistIndex)?.get("X-Emby-Token")
           ?: intent.getStringArrayExtra("headers")?.let { PlaybackHttpHeaders.fromFlatPairs(it)["X-Emby-Token"] }
@@ -5090,10 +5130,8 @@ class PlayerActivity :
       subtitleAutoloadJob = lifecycleScope.launch(Dispatchers.IO) {
         if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
         // For network files played via proxy (SMB/WebDAV/FTP), use the original network file path
-        val networkFilePath = loadedPlaybackItem?.networkSource?.relativePath
-          ?: loadedIntent.getStringExtra("network_file_path").takeIf { loadedPlaybackItem == null }
-        val networkConnectionId = loadedPlaybackItem?.networkSource?.connectionId
-          ?: if (loadedPlaybackItem == null) loadedIntent.getLongExtra("network_connection_id", -1L) else -1L
+        val networkFilePath = loadedPlaybackItem.networkSource?.relativePath
+        val networkConnectionId = loadedPlaybackItem.networkSource?.connectionId ?: -1L
 
         if (networkFilePath != null && networkConnectionId != -1L) {
           // Pass network file path and connection ID for subtitle discovery
@@ -5107,8 +5145,7 @@ class PlayerActivity :
           // Regular file or direct network stream
           // The launch intent can still refer to the first episode after next/previous. Use
           // the item that actually loaded, and keep all URI/provider work off the UI thread.
-          val source = loadedPlaybackItem?.playableUri
-          val filePath = source?.let { path ->
+          val filePath = loadedPlaybackItem.playableUri.let { path ->
             if (path.startsWith('/')) path else Uri.parse(path).resolveUri(this@PlayerActivity, allowFdFallback = false)
           } ?: parsePathFromIntent(loadedIntent)
           if (filePath != null) {

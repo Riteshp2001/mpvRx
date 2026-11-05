@@ -937,7 +937,11 @@ class MediaPlaybackService :
     lastPublishedPositionSeconds = 0.0
     mediaDurationSeconds = 0.0
     paused = false
-    playbackSpeed = 1.0f
+    // Speed is core-wide and may remain unchanged across files, so no new property event is
+    // guaranteed. Preserve the actual 2x/etc. rate used by Android's notification timeline.
+    playbackSpeed =
+      readMpvDouble("speed", playbackSpeed.toDouble())
+        .toFloat().takeIf { it.isFinite() && it > 0f } ?: 1.0f
     isCurrentFavorite = false
     if (itemChanged || artworkChanged) {
       chapters = emptyList()
@@ -1456,10 +1460,9 @@ class MediaPlaybackService :
   }
 
   private fun sanitizedPositionMs(): Long {
-    val livePosition = runCatching { PlaybackSession.getPropertyDouble("time-pos") }.getOrNull()
-    if (livePosition != null && livePosition.isFinite() && livePosition >= 0.0) {
-      currentPositionSeconds = livePosition
-    }
+    // Queue selection publishes the incoming title before native loadfile replaces the old file.
+    // Never put the outgoing position (or a cached position) under the incoming notification.
+    currentPositionSeconds = PlaybackSession.readLoadedPlaybackState(mediaIdentifier) { position, _ -> position } ?: 0.0
     val seconds = currentPositionSeconds.takeIf { it.isFinite() && it > 0.0 } ?: return 0L
     return (seconds * 1000.0)
       .coerceAtMost(Long.MAX_VALUE.toDouble())
