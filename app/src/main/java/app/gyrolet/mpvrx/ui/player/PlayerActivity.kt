@@ -2500,6 +2500,7 @@ class PlayerActivity :
   override fun onStart() {
     super.onStart()
     playbackActivityStarted = true
+    if (::pipHelper.isInitialized && ownsPlaybackSession()) pipHelper.onStart()
     onPlaybackStarted()
   }
 

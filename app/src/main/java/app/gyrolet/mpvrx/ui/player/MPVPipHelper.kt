@@ -57,6 +57,10 @@ class MPVPipHelper(
   private val playerPreferences: PlayerPreferences by inject()
   private var pipReceiver: BroadcastReceiver? = null
 
+  fun onStart() {
+    onPictureInPictureModeChanged(activity.isInPictureInPictureMode)
+  }
+
   fun onPictureInPictureModeChanged(isInPipMode: Boolean) {
     if (isInPipMode) {
       registerPipReceiver()
@@ -67,6 +71,7 @@ class MPVPipHelper(
 
   @Suppress("UnspecifiedRegisterReceiverFlag")
   private fun registerPipReceiver() {
+    if (pipReceiver != null || activity.isFinishing || activity.isDestroyed) return
     pipReceiver =
       object : BroadcastReceiver() {
         override fun onReceive(

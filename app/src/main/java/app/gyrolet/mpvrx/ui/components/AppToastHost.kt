@@ -11,11 +11,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +44,8 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -61,6 +67,20 @@ import kotlinx.coroutines.launch
 private val LocalAppToastHost = staticCompositionLocalOf { false }
 private const val MAX_QUEUED_TOASTS = 6
 
+// Equal horizontal insets preserve the window's center when a landscape cutout or
+// navigation bar occupies only one edge. Delegate reads so inset animations stay live.
+private class CenteredToastInsets(private val insets: WindowInsets) : WindowInsets {
+  override fun getLeft(density: Density, layoutDirection: LayoutDirection): Int =
+    maxOf(insets.getLeft(density, layoutDirection), insets.getRight(density, layoutDirection))
+
+  override fun getRight(density: Density, layoutDirection: LayoutDirection): Int =
+    getLeft(density, layoutDirection)
+
+  override fun getTop(density: Density): Int = insets.getTop(density)
+
+  override fun getBottom(density: Density): Int = insets.getBottom(density)
+}
+
 @Composable
 internal fun AppToastHost(content: @Composable () -> Unit) {
   if (LocalAppToastHost.current) {
@@ -71,6 +91,8 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
   val activity = LocalActivity.current
   val view = LocalView.current
   val accessibility = LocalAccessibilityManager.current
+  val safeDrawing = WindowInsets.safeDrawing
+  val toastInsets = remember(safeDrawing) { CenteredToastInsets(safeDrawing) }
   val owner = remember { Any() }
   val messages = remember { mutableStateMapOf<Long, AppToastMessage>() }
   val cleanupScope = rememberCoroutineScope()
@@ -171,14 +193,18 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
       content()
       Toaster(
         state = toaster,
-        modifier = Modifier.widthIn(max = 440.dp)
+        // Sonner 0.4.0 subtracts containerPadding from max constraints only. Keep the
+        // popup content-sized and apply spacing here so even tiny windows stay valid.
+        modifier = Modifier.windowInsetsPadding(toastInsets)
+          .widthIn(max = 440.dp)
+          .padding(horizontal = 12.dp, vertical = 8.dp)
           .zIndex(Float.MAX_VALUE),
         maxVisibleToasts = 2,
         swipeable = false,
         alignment = Alignment.BottomCenter,
         contentPadding = { PaddingValues(0.dp) },
         widthPolicy = { ToastWidthPolicy(max = 400.dp, fillMaxWidth = false) },
-        containerPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        containerPadding = PaddingValues(0.dp),
         elevation = 0.dp,
         border = { BorderStroke(0.dp, Color.Transparent) },
         background = { SolidColor(Color.Transparent) },
@@ -188,6 +214,10 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
         iconSlot = {},
         actionSlot = {},
         closeButton = null,
+        // Sonner places lazy items at x = 0; center each card within equal-width items.
+        toastBox = { _, toastContent ->
+          Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { toastContent() }
+        },
         messageSlot = { toast ->
           val message = (toast.id as? Long)?.let(messages::get)
           if (message != null) {
