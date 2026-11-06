@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -157,29 +158,9 @@ class VideoListViewModel(
   val videosWereDeletedOrMoved: StateFlow<Boolean> = _videosWereDeletedOrMoved.asStateFlow()
 
   val lastPlayedInFolderPath: StateFlow<String?> =
-    recentlyPlayedRepository
-      .observeRecentlyPlayed(limit = 100)
-      .map { recentlyPlayedList ->
-        val folderPath =
-          _videos.value
-            .firstOrNull()
-            ?.path
-            ?.let { File(it).parent }
-        if (folderPath != null) {
-          recentlyPlayedList
-            .firstNotNullOfOrNull { entity ->
-              // Play Store history keys MediaStore videos by content:// URI; compare their paths.
-              val path = RecentlyPlayedOps.localPathForKey(entity.filePath)
-              try {
-                path.takeIf { File(it).parent == folderPath }
-              } catch (_: Exception) {
-                null
-              }
-            }
-        } else {
-          null
-        }
-      }.distinctUntilChanged()
+    combine(_videos, recentlyPlayedRepository.observeRecentlyPlayed(limit = 100)) { videos, recentlyPlayedList ->
+      RecentlyPlayedOps.lastPlayedVideo(recentlyPlayedList, videos)?.path
+    }.distinctUntilChanged()
       .flowOn(Dispatchers.IO)
       .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 

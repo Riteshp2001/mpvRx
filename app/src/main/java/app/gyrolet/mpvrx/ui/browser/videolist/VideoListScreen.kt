@@ -997,7 +997,7 @@ internal fun VideoListContent(
           remember(folderId, autoScrollToLastPlayed, recentlyPlayedFilePath) {
             if (autoScrollToLastPlayed && recentlyPlayedFilePath != null) {
               videosWithInfo
-                .indexOfFirst { it.video.path == recentlyPlayedFilePath }
+                .indexOfFirst { RecentlyPlayedOps.matchesVideoPath(recentlyPlayedFilePath, it.video) }
                 .coerceAtLeast(0)
             } else {
               0
@@ -1129,7 +1129,7 @@ internal fun VideoListContent(
                   contentType = { "video_item" },
                 ) { index ->
                   val videoWithInfo = videosWithInfo[index]
-                  val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
+                  val isRecentlyPlayed = RecentlyPlayedOps.matchesVideoPath(recentlyPlayedFilePath, videoWithInfo.video)
 
                   VideoCard(
                       video = videoWithInfo.video,
@@ -1199,7 +1199,7 @@ internal fun VideoListContent(
                   contentType = { "video_item" },
                 ) { index ->
                   val videoWithInfo = videosWithInfo[index]
-                  val isRecentlyPlayed = recentlyPlayedFilePath?.let { videoWithInfo.video.path == it } ?: false
+                  val isRecentlyPlayed = RecentlyPlayedOps.matchesVideoPath(recentlyPlayedFilePath, videoWithInfo.video)
 
                   VideoCard(
                       video = videoWithInfo.video,

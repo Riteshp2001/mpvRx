@@ -1522,7 +1522,13 @@ private fun GridContent(
     remember(foldersWithNewCount) {
       foldersWithNewCount.associate { it.folder.bucketId to it.newVideoCount }
     }
-  val recentlyPlayedParent = remember(recentlyPlayedFilePath) { recentlyPlayedFilePath?.let(::File)?.parent }
+  val recentlyPlayedPath =
+    remember(recentlyPlayedFilePath) {
+      recentlyPlayedFilePath?.let {
+        app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner.localPathOf(android.net.Uri.parse(it)) ?: it
+      }
+    }
+  val recentlyPlayedParent = remember(recentlyPlayedPath) { recentlyPlayedPath?.let(::File)?.parent }
 
   BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
     val browserPreferences = org.koin.compose.koinInject<app.gyrolet.mpvrx.preferences.BrowserPreferences>()
@@ -1564,7 +1570,10 @@ private fun GridContent(
       ) { index ->
         val folder = folders[index]
         val archiveFolder = ZipArchiveMedia.isBrowserPath(folder.path)
-        val isRecentlyPlayed = recentlyPlayedParent == folder.path
+        val folderPath =
+          app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner.localPathOf(android.net.Uri.parse(folder.path))
+            ?: folder.path
+        val isRecentlyPlayed = recentlyPlayedParent == folderPath
         val newCount = newCountByBucketId[folder.bucketId] ?: 0
 
         val isActive = isDualPaneActive && folder.bucketId == selectedFolderBucketId
@@ -1661,7 +1670,13 @@ private fun ListContent(
     remember(foldersWithNewCount) {
       foldersWithNewCount.associate { it.folder.bucketId to it.newVideoCount }
     }
-  val recentlyPlayedParent = remember(recentlyPlayedFilePath) { recentlyPlayedFilePath?.let(::File)?.parent }
+  val recentlyPlayedPath =
+    remember(recentlyPlayedFilePath) {
+      recentlyPlayedFilePath?.let {
+        app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner.localPathOf(android.net.Uri.parse(it)) ?: it
+      }
+    }
+  val recentlyPlayedParent = remember(recentlyPlayedPath) { recentlyPlayedPath?.let(::File)?.parent }
 
   Box(modifier = Modifier.fillMaxSize()) {
     LazyColumn(
@@ -1683,7 +1698,10 @@ private fun ListContent(
       ) { index ->
         val folder = folders[index]
         val archiveFolder = ZipArchiveMedia.isBrowserPath(folder.path)
-        val isRecentlyPlayed = recentlyPlayedParent == folder.path
+        val folderPath =
+          app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner.localPathOf(android.net.Uri.parse(folder.path))
+            ?: folder.path
+        val isRecentlyPlayed = recentlyPlayedParent == folderPath
         val newCount = newCountByBucketId[folder.bucketId] ?: 0
 
         val isActive = isDualPaneActive && folder.bucketId == selectedFolderBucketId

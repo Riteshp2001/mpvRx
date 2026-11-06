@@ -17,6 +17,7 @@ import app.gyrolet.mpvrx.database.entities.RecentlyPlayedEntity
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
+import app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -130,13 +131,58 @@ object RecentlyPlayedOps {
   ): Video? =
     withContext(Dispatchers.IO) {
       if (videos.isEmpty()) return@withContext null
-      val byKey = HashMap<String, Video>(videos.size * 2)
-      videos.forEach { video ->
-        video.path.takeIf(String::isNotBlank)?.let { byKey.putIfAbsent(it, video) }
-        byKey.putIfAbsent(video.uri.toString(), video)
+      lastPlayedVideo(repository.getRecentlyPlayed(limit), videos)
+    }
+
+  /**
+   * Matches history against the current listing using both URI and local-file identities.
+   * SAF can return the same document under different tree grants, so raw URI equality alone is
+   * not sufficient for Tree, Library, and hidden-folder listings.
+   */
+  fun lastPlayedVideo(
+    history: List<RecentlyPlayedEntity>,
+    videos: List<Video>,
+  ): Video? {
+    if (history.isEmpty() || videos.isEmpty()) return null
+
+    val videosByKey = HashMap<String, Video>(videos.size * 3)
+    videos.forEach { video ->
+      (mediaIdentityKeys(video.path) + mediaIdentityKeys(video.uri.toString())).forEach { key ->
+        videosByKey.putIfAbsent(key, video)
       }
-      kotlin.runCatching { repository.getRecentlyPlayed(limit) }.getOrDefault(emptyList())
-        .firstNotNullOfOrNull { entity -> byKey[entity.filePath] ?: byKey[localPathForKey(entity.filePath)] }
+    }
+    return history.firstNotNullOfOrNull { entity ->
+      historyIdentityKeys(entity.filePath).firstNotNullOfOrNull(videosByKey::get)
+    }
+  }
+
+  fun matchesVideoPath(
+    historyPath: String?,
+    video: Video,
+  ): Boolean {
+    if (historyPath.isNullOrBlank()) return false
+    val videoKeys = mediaIdentityKeys(video.path) + mediaIdentityKeys(video.uri.toString())
+    return mediaIdentityKeys(historyPath).any(videoKeys::contains)
+  }
+
+  private fun historyIdentityKeys(path: String): Set<String> =
+    buildSet {
+      addAll(mediaIdentityKeys(path))
+      localPathForKey(path).takeIf { it != path }?.let { addAll(mediaIdentityKeys(it)) }
+    }
+
+  private fun mediaIdentityKeys(path: String): Set<String> =
+    buildSet {
+      if (path.isBlank()) return@buildSet
+      add(path)
+      val uri = Uri.parse(path)
+      when (uri.scheme?.lowercase()) {
+        "file" -> uri.path?.let(::add)
+        "content" -> {
+          add(ScopedHiddenFolderScanner.documentKey(uri))
+          ScopedHiddenFolderScanner.localPathOf(uri)?.let(::add)
+        }
+      }
     }
 
   /**
