@@ -195,6 +195,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 |---|---|
 | **8 Orientation Modes** | Free, Video (auto aspect ratio), Portrait, Reverse Portrait, Sensor Portrait, Landscape, Reverse Landscape, Sensor Landscape |
 | **Persistent Per-Video** | Orientation remembered per-video across sessions |
+| **Tablets & Foldables** | Every mode and the rotation button apply on large screens as on phones; split-screen and freeform windows follow the system. On Android 16+ large screens, Android itself ignores fixed portrait/landscape requests unless the app default is restored in the system aspect-ratio settings; Free keeps sensor rotation |
 
 </details>
 
