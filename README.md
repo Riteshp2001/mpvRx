@@ -66,6 +66,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 | **Player Controls Animation** | 5 animation styles: Default, Elastic Bounce, Cinematic Scale, Slide Up, Minimal Fade |
 | **Always Dark Mode** | Option to keep player controls in dark theme regardless of app theme |
 | **Themed Player Controls** | Adaptive controls that match your app theme or system accent |
+| **Adaptive Toasts** | Message-sized pills resize smoothly within safe screen bounds and float above browser navigation, selection actions, and the mini player; swipe dismissal remains available |
 | **Material 3 Expressive UI** | Expressive components, spring-based navigation, responsive grids, and polished predictive-back motion |
 
 </details>

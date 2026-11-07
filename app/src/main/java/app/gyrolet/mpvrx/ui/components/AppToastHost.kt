@@ -2,6 +2,8 @@ package app.gyrolet.mpvrx.ui.components
 
 import android.view.View
 import androidx.activity.compose.LocalActivity
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -61,6 +63,8 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import app.gyrolet.mpvrx.MainActivity
+import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppMotion
@@ -116,6 +120,12 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
   val cleanupScope = rememberCoroutineScope()
   val reducedMotion = AppMotion.shouldReduceMotion()
   val density = LocalDensity.current
+  val browserBottomClearance = if (activity is MainActivity) NavigationBarState.bottomOverlayClearance else 0.dp
+  val bottomPadding by animateDpAsState(
+    targetValue = maxOf(32.dp, browserBottomClearance),
+    animationSpec = if (reducedMotion) snap() else tween(TOAST_ANIMATION_MS),
+    label = "toastBottomPadding",
+  )
   var frontToastSize by remember { mutableStateOf(IntSize.Zero) }
   val stackPeek = with(density) { 12.dp.toPx() }
   val enterDistance = with(density) { 24.dp.toPx() }
@@ -232,7 +242,7 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
       Box(
         modifier = Modifier.matchParentSize()
           .windowInsetsPadding(toastInsets)
-          .padding(horizontal = 12.dp, vertical = 8.dp)
+          .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = bottomPadding)
           .zIndex(Float.MAX_VALUE),
         contentAlignment = Alignment.BottomCenter,
       ) {
@@ -279,8 +289,7 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
                       presentation.toast,
                       reducedMotion,
                       onDismiss = { sink.dismiss(presentation.toast.id) },
-                      modifier = Modifier.fillMaxWidth()
-                        .onSizeChanged { if (it != IntSize.Zero) frontToastSize = it },
+                      modifier = Modifier.onSizeChanged { if (it != IntSize.Zero) frontToastSize = it },
                     )
                   }
                 } else {
@@ -288,7 +297,7 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
                   // action buttons. Every layer shares the front card's width and height.
                   ToastCardSurface(
                     message = presentation.toast,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.width(with(density) { frontToastSize.width.toDp() })
                       .height(with(density) { frontToastSize.height.toDp() }.coerceAtLeast(48.dp)),
                   ) {}
                 }
@@ -346,7 +355,12 @@ private fun AppToastContent(
   }
   ToastCardSurface(message, modifier) {
     Row(
-      modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+      modifier = Modifier
+        .animateContentSize(
+          animationSpec = if (reducedMotion) snap() else tween(TOAST_ANIMATION_MS),
+          alignment = Alignment.Center,
+        )
+        .heightIn(min = 48.dp)
         .semantics { liveRegion = LiveRegionMode.Polite }
         .padding(horizontal = 12.dp, vertical = 4.dp),
       verticalAlignment = Alignment.CenterVertically,
@@ -368,7 +382,7 @@ private fun AppToastContent(
         color = colors.onSurface,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.weight(1f).padding(vertical = 6.dp),
+        modifier = Modifier.weight(1f, fill = false).padding(vertical = 6.dp),
       )
       message.action?.let { action ->
         TextButton(onClick = { onDismiss(); action.onClick() }, modifier = Modifier.widthIn(max = 112.dp)) {
