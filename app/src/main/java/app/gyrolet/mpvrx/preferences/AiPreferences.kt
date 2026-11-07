@@ -28,6 +28,7 @@ enum class AiProvider(
   ANTHROPIC("Anthropic"),
   OPENROUTER("OpenRouter"),
   TOGETHER("Together"),
+  CUSTOM_OPENAI("Custom OpenAI-compatible"),
 }
 
 /** Always off and ignores restored values, so a distribution can omit a feature outright. */
@@ -70,6 +71,8 @@ class AiPreferences(
   val anthropicApiKey = preferenceStore.getString("ai_anthropic_api_key", "")
   val openrouterApiKey = preferenceStore.getString("ai_openrouter_api_key", "")
   val togetherApiKey = preferenceStore.getString("ai_together_api_key", "")
+  val customOpenAiBaseUrl = preferenceStore.getString("ai_custom_openai_base_url", "")
+  val customOpenAiApiKey = preferenceStore.getString("ai_custom_openai_api_key", "")
 
   val selectedModel = preferenceStore.getString("ai_selected_model", "")
 
@@ -81,6 +84,7 @@ class AiPreferences(
   private val anthropicSelectedModel = preferenceStore.getString("ai_selected_model_anthropic", "")
   private val openRouterSelectedModel = preferenceStore.getString("ai_selected_model_openrouter", "")
   private val togetherSelectedModel = preferenceStore.getString("ai_selected_model_together", "")
+  private val customOpenAiSelectedModel = preferenceStore.getString("ai_selected_model_custom_openai", "")
 
   private val openCodeAvailableModels = preferenceStore.getString("ai_available_models_opencode", "[]")
   private val groqAvailableModels = preferenceStore.getString("ai_available_models_groq", "[]")
@@ -88,6 +92,7 @@ class AiPreferences(
   private val anthropicAvailableModels = preferenceStore.getString("ai_available_models_anthropic", "[]")
   private val openRouterAvailableModels = preferenceStore.getString("ai_available_models_openrouter", "[]")
   private val togetherAvailableModels = preferenceStore.getString("ai_available_models_together", "[]")
+  private val customOpenAiAvailableModels = preferenceStore.getString("ai_available_models_custom_openai", "[]")
 
   val subtitleGenerationOutputFormat = preferenceStore.getString("ai_subtitle_generation_output_format", "srt")
 
@@ -124,13 +129,15 @@ class AiPreferences(
 
   init {
     val currentProvider = provider.get()
-    val providerModel = selectedModelFor(currentProvider)
-    if (providerModel.get().isBlank() && selectedModel.get().isNotBlank()) {
-      providerModel.set(selectedModel.get())
-    }
-    val providerModels = availableModelsFor(currentProvider)
-    if (providerModels.get() == "[]" && availableModels.get() != "[]") {
-      providerModels.set(availableModels.get())
+    if (currentProvider != AiProvider.CUSTOM_OPENAI) {
+      val providerModel = selectedModelFor(currentProvider)
+      if (providerModel.get().isBlank() && selectedModel.get().isNotBlank()) {
+        providerModel.set(selectedModel.get())
+      }
+      val providerModels = availableModelsFor(currentProvider)
+      if (providerModels.get() == "[]" && availableModels.get() != "[]") {
+        providerModels.set(availableModels.get())
+      }
     }
     val currentSttProvider = sttProvider.get()
     val providerSttModel = sttModelFor(currentSttProvider)
@@ -151,6 +158,7 @@ class AiPreferences(
       AiProvider.ANTHROPIC -> anthropicSelectedModel
       AiProvider.OPENROUTER -> openRouterSelectedModel
       AiProvider.TOGETHER -> togetherSelectedModel
+      AiProvider.CUSTOM_OPENAI -> customOpenAiSelectedModel
     }
 
   fun availableModelsFor(provider: AiProvider): Preference<String> =
@@ -161,6 +169,7 @@ class AiPreferences(
       AiProvider.ANTHROPIC -> anthropicAvailableModels
       AiProvider.OPENROUTER -> openRouterAvailableModels
       AiProvider.TOGETHER -> togetherAvailableModels
+      AiProvider.CUSTOM_OPENAI -> customOpenAiAvailableModels
     }
 
   fun sttModelFor(provider: AiProvider): Preference<String> =

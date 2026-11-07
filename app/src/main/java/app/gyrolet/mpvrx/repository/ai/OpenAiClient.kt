@@ -14,8 +14,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -56,9 +59,20 @@ private data class OpenAiChatRequest(
   @SerialName("max_completion_tokens") val maxCompletionTokens: Int = 200,
 )
 
+@Serializable
+private data class CompatibleChatRequest(
+  val model: String,
+  val messages: List<OpenAiMessage>,
+  val temperature: Double,
+  @SerialName("max_tokens") val maxTokens: Int,
+)
+
 class OpenAiClient(
   private val client: OkHttpClient,
   private val json: Json,
+  private val baseUrl: () -> String = { BASE_URL },
+  private val providerName: String = "OpenAI",
+  private val compatible: Boolean = false,
 ) : AiClient {
   companion object {
     private const val BASE_URL = "https://api.openai.com/v1"
@@ -71,12 +85,14 @@ class OpenAiClient(
   override suspend fun fetchModels(apiKey: String): Result<List<AiModelInfo>> =
     withContext(Dispatchers.IO) {
       runCatchingCancellable {
-        val request =
-          bearerGetRequest("$BASE_URL/models", apiKey)
+        val target = endpoint("models")
+        val request = requestBuilder(target, apiKey).get().build()
 
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
-          if (!response.isSuccessful) throw Exception("OpenAI API error ${response.code}: ${parseError(body)}")
+          if (!response.isSuccessful) {
+            throw Exception("$providerName at $target returned HTTP ${response.code}: ${parseError(body, apiKey)}")
+          }
 
           val parsed = json.decodeFromString<OpenAiModelListResponse>(body)
           parsed.data.map { model ->
@@ -93,12 +109,16 @@ class OpenAiClient(
   override suspend fun verifyKey(apiKey: String): Result<String> =
     withContext(Dispatchers.IO) {
       runCatchingCancellable {
-        val request =
-          bearerGetRequest("$BASE_URL/models", apiKey)
+        val target = endpoint("models")
+        val request = requestBuilder(target, apiKey).get().build()
 
         apiClient.newCall(request).awaitResponse().use { response ->
-          if (!response.isSuccessful) throw Exception("Invalid API key: ${response.code}")
-          "API key verified successfully"
+          if (!response.isSuccessful) {
+            throw Exception(
+              "$providerName at $target returned HTTP ${response.code}: ${parseError(response.body.string(), apiKey)}",
+            )
+          }
+          if (compatible) "Endpoint ready" else "API key verified successfully"
         }
       }
     }
@@ -112,44 +132,69 @@ class OpenAiClient(
   ): Result<AiGeneratedContent> =
     withContext(Dispatchers.IO) {
       runCatchingCancellable {
+        val messages = listOf(
+          OpenAiMessage(role = if (!compatible && isReasoningModel(model)) "developer" else "system", content = instruction),
+          OpenAiMessage(role = "user", content = userInput),
+        )
         val requestBody =
-          json.encodeToString(
-            OpenAiChatRequest.serializer(),
-            OpenAiChatRequest(
-              model = model,
-              messages =
-                listOf(
-                  OpenAiMessage(role = if (isReasoningModel(model)) "developer" else "system", content = instruction),
-                  OpenAiMessage(role = "user", content = userInput),
-                ),
-              temperature = options.temperature.takeUnless { isReasoningModel(model) },
-              maxCompletionTokens = options.maxTokens,
-            ),
-          )
+          if (compatible) {
+            json.encodeToString(
+              CompatibleChatRequest.serializer(),
+              CompatibleChatRequest(model, messages, options.temperature, options.maxTokens),
+            )
+          } else {
+            json.encodeToString(
+              OpenAiChatRequest.serializer(),
+              OpenAiChatRequest(
+                model = model,
+                messages = messages,
+                temperature = options.temperature.takeUnless { isReasoningModel(model) },
+                maxCompletionTokens = options.maxTokens,
+              ),
+            )
+          }
 
+        val target = endpoint("chat/completions")
         val request =
-          Request
-            .Builder()
-            .url("$BASE_URL/chat/completions")
-            .header("Authorization", "Bearer $apiKey")
+          requestBuilder(target, apiKey)
             .post(requestBody.toRequestBody(JSON_MEDIA_TYPE))
             .build()
 
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
-          if (!response.isSuccessful) throw Exception("OpenAI generate error ${response.code}: ${parseError(body)}")
-          AiResponseParser.openAiCompatible(json, body, "OpenAI")
+          if (!response.isSuccessful) {
+            throw Exception("$providerName at $target returned HTTP ${response.code}: ${parseError(body, apiKey)}")
+          }
+          AiResponseParser.openAiCompatible(json, body, providerName)
         }
       }
     }
 
-  private fun parseError(body: String): String =
-    try {
-      val error = json.decodeFromString<OpenAiErrorBody>(body)
-      error.error?.message ?: body
-    } catch (_: Exception) {
-      body.take(200)
+  private fun endpoint(path: String): HttpUrl {
+    val url = baseUrl().trim().trimEnd('/').toHttpUrlOrNull()
+    requireNotNull(url) { "$providerName base URL must be an absolute HTTP or HTTPS URL" }
+    require(url.username.isEmpty() && url.password.isEmpty() && url.query == null && url.fragment == null) {
+      "$providerName base URL must not contain credentials, a query, or a fragment"
     }
+    return url.newBuilder().addPathSegments(path).build()
+  }
+
+  private fun requestBuilder(target: HttpUrl, apiKey: String): Request.Builder =
+    Request.Builder().url(target).apply {
+      if (apiKey.isNotBlank()) {
+        require(apiKey.all { it.code in 0x21..0x7e }) { "API key must be a single printable token without spaces" }
+        header("Authorization", "Bearer $apiKey")
+      }
+    }
+
+  private fun parseError(body: String, apiKey: String): String {
+    val message = try {
+      json.decodeFromString<OpenAiErrorBody>(body).error?.message ?: body
+    } catch (_: SerializationException) {
+      body
+    }
+    return (if (apiKey.isBlank()) message else message.replace(apiKey, "[redacted]")).take(200)
+  }
 
   private fun isReasoningModel(model: String): Boolean {
     val id = model.substringAfterLast('/').lowercase()

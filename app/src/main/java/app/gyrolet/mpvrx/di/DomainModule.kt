@@ -78,6 +78,16 @@ val domainModule =
     single<AiClient>(named("anthropic")) { AnthropicClient(get(), get()) }
     single<AiClient>(named("openrouter")) { OpenRouterClient(get(), get()) }
     single<AiClient>(named("together")) { TogetherClient(get(), get()) }
+    single<AiClient>(named("custom_openai")) {
+      val preferences = get<AiPreferences>()
+      OpenAiClient(
+        get(),
+        get(),
+        baseUrl = { preferences.customOpenAiBaseUrl.get() },
+        providerName = "Custom OpenAI-compatible",
+        compatible = true,
+      )
+    }
     single { SubtitleGenerationService(androidContext(), get(), get(), get(), get(), get()) }
     single { RealtimeSubtitleService(androidContext(), get(), get(), get(), get(), get(), get()) }
     single {
@@ -90,6 +100,7 @@ val domainModule =
         get<AiClient>(named("anthropic")),
         get<AiClient>(named("openrouter")),
         get<AiClient>(named("together")),
+        get<AiClient>(named("custom_openai")),
         get<Json>(),
       )
     }

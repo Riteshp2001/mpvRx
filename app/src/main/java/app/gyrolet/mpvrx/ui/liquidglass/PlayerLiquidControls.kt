@@ -16,6 +16,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonAlpha
+import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
 import com.kyant.backdrop.Backdrop
 
 object PlayerLiquidTokens {
@@ -26,10 +28,10 @@ object PlayerLiquidTokens {
   val PillHeight: Dp = 40.dp
 
   val contentColor: Color
-    @Composable get() = LiquidControlColors.content
+    @Composable get() = playerButtonContentColor()
 
   val disabledContentColor: Color
-    @Composable get() = LiquidControlColors.disabledContent
+    @Composable get() = contentColor.copy(alpha = PlayerButtonAlpha.DISABLED_CONTENT)
 
   val selectedContentColor: Color
     @Composable get() = LiquidControlColors.accent

@@ -752,7 +752,11 @@ fun PlayerControls(
   // Vignette behind the top and bottom bars. Fades with the bars instead of sliding, so it stays
   // anchored to the frame edges whatever animation style the bars themselves use.
   val edgeVignetteAlpha by animateFloatAsState(
-    if (controlsShown && !areControlsLocked && !areSlidersShown) 1f else 0f,
+    if (controlsShown && !areControlsLocked && !areSlidersShown) {
+      if (enableLiquidGlass) 0.6f else 1f
+    } else {
+      0f
+    },
     animationSpec =
       if (reduceMotion) {
         snap()
@@ -1032,26 +1036,8 @@ fun PlayerControls(
       speedMultiplier = animSpeed,
       animationState = videoOpenAnimState,
     )
-    if (enableLiquidGlass) {
-      if (playerKyantBackdrop != null) {
-        VideoGlassBackdropSource(glassSource, videoBackdrop)
-      }
-      Box(
-        modifier =
-          Modifier
-            .fillMaxSize()
-            .background(
-              Brush.verticalGradient(
-                listOf(
-                  Color.Black,
-                  Color.Transparent,
-                  Color.Transparent,
-                  Color.Black,
-                ),
-              ),
-              alpha = transparentOverlay,
-            ),
-      )
+    if (enableLiquidGlass && playerKyantBackdrop != null) {
+      VideoGlassBackdropSource(glassSource, videoBackdrop)
     }
     if (brightness < 0) {
       Box(
@@ -1120,7 +1106,7 @@ fun PlayerControls(
             Modifier
               .fillMaxSize()
               .drawBehind {
-                if (reduceMotion && transparentOverlay > 0f) {
+                if (reduceMotion && !enableLiquidGlass && transparentOverlay > 0f) {
                   drawRect(FullScreenScrimBrush, alpha = transparentOverlay)
                 }
                 // Only while the bars are up, and only at the edges, so the frame stays clean.
@@ -3142,11 +3128,13 @@ private fun CustomControlButton(
     }
   } else {
     val buttonInteractionSource = remember { MutableInteractionSource() }
+    val hideBackground = LocalPlayerButtonsOpacity.current <= 0f
     Surface(
       shape = CircleShape,
       color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f).asPlayerButtonBackground(),
-      contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-      border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f).asPlayerButtonBackground()),
+      contentColor = if (hideBackground) playerButtonContentColor() else MaterialTheme.colorScheme.onSecondaryContainer,
+      border = if (hideBackground) null else
+        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f).asPlayerButtonBackground()),
       modifier =
         Modifier
           .clip(CircleShape)

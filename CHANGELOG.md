@@ -4,6 +4,10 @@ These notes are written in plain English and focus on what changed for real use.
 
 ## Unreleased
 
+- **Recent-playback markers in Tree mode:** The latest played video now receives the same italic, highlighted title as in other browser views, including Tree list, grid, and search results.
+- **Clearer Liquid Glass player controls:** Removed the extra dark overlay and reduced the edge vignette so subtitles remain easier to read. Text labels match their icons, and hidden regular and custom button backgrounds retain readable content.
+- **Custom OpenAI-compatible AI provider:** Added an API base URL, a separate optional key, manual model IDs, and optional model discovery for Chat Completions. Endpoint errors remain visible without exposing the configured key.
+
 ## 3.0.2 — Android TV, Music and Playback Improvements
 
 **Release date:** October 25, 2026

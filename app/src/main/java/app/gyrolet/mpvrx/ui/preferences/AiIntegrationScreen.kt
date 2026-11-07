@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
@@ -51,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -72,6 +74,7 @@ import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 import me.zhanghai.compose.preference.TextFieldPreference
@@ -144,6 +147,8 @@ object AiIntegrationScreen : Screen {
     val anthropicKey by preferences.anthropicApiKey.collectAsState()
     val openrouterKey by preferences.openrouterApiKey.collectAsState()
     val togetherKey by preferences.togetherApiKey.collectAsState()
+    val customOpenAiKey by preferences.customOpenAiApiKey.collectAsState()
+    val customOpenAiBaseUrl by preferences.customOpenAiBaseUrl.collectAsState()
     val selectedModel by preferences.selectedModelFor(provider).collectAsState()
     val customPromptEnabled by preferences.customPromptEnabled.collectAsState()
     val customPrompt by preferences.customPrompt.collectAsState()
@@ -168,6 +173,9 @@ object AiIntegrationScreen : Screen {
     var modelLoadError by remember { mutableStateOf<String?>(null) }
     var showSubtitleTranslationWarning by remember { mutableStateOf(false) }
     var modelLoadRequestId by remember { mutableStateOf(0) }
+    var configurationRevision by remember { mutableStateOf(0) }
+    var keyVerificationRequestId by remember { mutableStateOf(0) }
+    var modelVerificationRequestId by remember { mutableStateOf(0) }
 
     val json = koinInject<Json>()
     val activeApiKey =
@@ -178,10 +186,27 @@ object AiIntegrationScreen : Screen {
         AiProvider.ANTHROPIC -> anthropicKey
         AiProvider.OPENROUTER -> openrouterKey
         AiProvider.TOGETHER -> togetherKey
+        AiProvider.CUSTOM_OPENAI -> customOpenAiKey
       }
+    val isCustomProvider = provider == AiProvider.CUSTOM_OPENAI
+    val providerConfigured = if (isCustomProvider) customOpenAiBaseUrl.isNotBlank() else activeApiKey.isNotBlank()
+
+    fun isCurrentRequest(
+      revision: Int,
+      requestedProvider: AiProvider,
+      requestedBaseUrl: String,
+      requestedApiKey: String,
+    ): Boolean =
+      revision == configurationRevision && preferences.enabled.get() &&
+        preferences.provider.get() == requestedProvider &&
+        aiService.getApiKey(requestedProvider) == requestedApiKey &&
+        (requestedProvider != AiProvider.CUSTOM_OPENAI || preferences.customOpenAiBaseUrl.get() == requestedBaseUrl)
 
     fun loadModels() {
       val requestedProvider = provider
+      val requestedBaseUrl = customOpenAiBaseUrl
+      val requestedApiKey = activeApiKey
+      val revision = configurationRevision
       val requestId = ++modelLoadRequestId
       scope.launch {
         isLoadingModels = true
@@ -189,8 +214,10 @@ object AiIntegrationScreen : Screen {
         aiService
           .fetchModelsForProvider(requestedProvider)
           .onSuccess { fetchedModels ->
-            if (requestId != modelLoadRequestId) return@onSuccess
-            if (provider == requestedProvider) models = fetchedModels
+            if (requestId != modelLoadRequestId ||
+              !isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
+            ) return@onSuccess
+            models = fetchedModels
             preferences.availableModelsFor(requestedProvider).set(
               json.encodeToString(
                 kotlinx.serialization.builtins.ListSerializer(AiModelInfo.serializer()),
@@ -198,23 +225,37 @@ object AiIntegrationScreen : Screen {
               ),
             )
             val selectedPreference = preferences.selectedModelFor(requestedProvider)
-            if (fetchedModels.none { it.id == selectedPreference.get() }) {
+            if (selectedPreference.get().isBlank() ||
+              (requestedProvider != AiProvider.CUSTOM_OPENAI && fetchedModels.none { it.id == selectedPreference.get() })
+            ) {
               selectedPreference.set(fetchedModels.first().id)
             }
           }.onFailure { e ->
-            if (requestId == modelLoadRequestId && provider == requestedProvider) {
-              modelLoadError = e.message
+            if (requestId == modelLoadRequestId &&
+              isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
+            ) {
+              modelLoadError = e.message ?: context.getString(R.string.generic_unknown_error)
             }
           }
-        if (requestId == modelLoadRequestId) isLoadingModels = false
+        if (requestId == modelLoadRequestId &&
+          isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
+        ) isLoadingModels = false
       }
     }
 
-    LaunchedEffect(provider, activeApiKey) {
+    LaunchedEffect(enabled, provider, activeApiKey, if (isCustomProvider) customOpenAiBaseUrl else "") {
+      configurationRevision++
       modelLoadRequestId++
+      keyVerificationRequestId++
+      modelVerificationRequestId++
       isLoadingModels = false
       modelLoadError = null
       models = emptyList()
+      isVerifying = false
+      isVerifyingModel = false
+      verifyResult = null
+      verifyModelResult = null
+      showApiKey = false
       val stored = preferences.availableModelsFor(provider).get()
       if (stored.isNotBlank() && stored != "[]") {
         try {
@@ -223,13 +264,21 @@ object AiIntegrationScreen : Screen {
               kotlinx.serialization.builtins.ListSerializer(AiModelInfo.serializer()),
               stored,
             )
-        } catch (_: Exception) {
+        } catch (_: SerializationException) {
+          modelLoadError = context.getString(R.string.pref_ai_cached_models_invalid)
         }
       }
-      if (activeApiKey.isNotBlank()) {
+      if (enabled && providerConfigured) {
+        val scheduledRequestId = modelLoadRequestId
         delay(600L)
-        loadModels()
+        if (scheduledRequestId == modelLoadRequestId) loadModels()
       }
+    }
+
+    LaunchedEffect(selectedModel) {
+      modelVerificationRequestId++
+      verifyModelResult = null
+      isVerifyingModel = false
     }
 
     Scaffold(
@@ -363,6 +412,14 @@ val apiKeyInfo =
                       togetherKey,
                       preferences.togetherApiKey::set,
                     )
+                  AiProvider.CUSTOM_OPENAI ->
+                    ApiKeyInfo(
+                      context.getString(R.string.pref_custom_openai_key_title),
+                      context.getString(R.string.pref_custom_openai_key_summary),
+                      "...",
+                      customOpenAiKey,
+                      preferences.customOpenAiApiKey::set,
+                    )
                   else -> null
                 }
 
@@ -376,15 +433,53 @@ val apiKeyInfo =
 
                 item {
                   PreferenceCard {
+                    if (isCustomProvider) {
+                      ExpressivePreferenceItem {
+                        TextFieldPreference(
+                          modifier = Modifier.settingsSearchTarget(R.string.pref_custom_openai_base_url_title),
+                          value = customOpenAiBaseUrl,
+                          onValueChange = { value ->
+                            if (preferences.customOpenAiBaseUrl.get() != value) {
+                              preferences.customOpenAiBaseUrl.set(value)
+                              preferences.availableModelsFor(AiProvider.CUSTOM_OPENAI).set("[]")
+                              preferences.selectedModelFor(AiProvider.CUSTOM_OPENAI).set("")
+                              preferences.lastVerified.set(0L)
+                            }
+                          },
+                          textToValue = { it.trim().trimEnd('/') },
+                          title = { Text(stringResource(R.string.pref_custom_openai_base_url_title)) },
+                          summary = { Text(stringResource(R.string.pref_custom_openai_base_url_summary)) },
+                          textField = { value, onValueChange, _ ->
+                            TextField(
+                              value = value,
+                              onValueChange = onValueChange,
+                              modifier = Modifier.fillMaxWidth(),
+                              placeholder = { Text("https://example.com/v1") },
+                              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                              singleLine = true,
+                            )
+                          },
+                        )
+                      }
+                      PreferenceDivider()
+                    }
                     ExpressivePreferenceItem {
                     TextFieldPreference(
+                      modifier = if (isCustomProvider) {
+                        Modifier.settingsSearchTarget(R.string.pref_custom_openai_key_title)
+                      } else {
+                        Modifier
+                      },
                       value = apiKeyInfo.apiKey,
                       onValueChange = apiKeyInfo.onChange,
                       textToValue = { it.trim() },
                       title = { Text(apiKeyInfo.title) },
                       summary = {
                         if (apiKeyInfo.apiKey.isBlank()) {
-                          Text(apiKeyInfo.hint, color = MaterialTheme.colorScheme.error)
+                          Text(
+                            apiKeyInfo.hint,
+                            color = if (isCustomProvider) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error,
+                          )
                         } else {
                           Text(
                             androidx.compose.ui.res
@@ -441,22 +536,39 @@ val apiKeyInfo =
 
                       Button(
                         onClick = {
+                          val revision = configurationRevision
+                          val requestId = ++keyVerificationRequestId
+                          val requestedProvider = provider
+                          val requestedBaseUrl = customOpenAiBaseUrl
+                          val requestedApiKey = activeApiKey
                           scope.launch {
                             isVerifying = true
                             verifyResult = null
                             aiService
-                              .verifyKey()
+                              .verifyKey(requestedProvider)
                               .onSuccess {
-                                verifyResult = it
-                                preferences.lastVerified.set(System.currentTimeMillis())
+                                if (requestId == keyVerificationRequestId &&
+                                  isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
+                                ) {
+                                  verifyResult = it
+                                  preferences.lastVerified.set(System.currentTimeMillis())
+                                }
                               }.onFailure { e ->
-                                verifyResult = "Verification failed: ${e.message}"
+                                if (requestId == keyVerificationRequestId &&
+                                  isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
+                                ) {
+                                  verifyResult = "Verification failed: ${e.message}"
+                                }
                               }
-                            isVerifying = false
+                            if (requestId == keyVerificationRequestId &&
+                              isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
+                            ) {
+                              isVerifying = false
+                            }
                           }
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = !isVerifying && apiKeyInfo.apiKey.isNotBlank(),
+                        enabled = !isVerifying && providerConfigured,
                         colors =
                           ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
@@ -471,8 +583,7 @@ val apiKeyInfo =
                           )
                         } else {
                           Text(
-                            androidx.compose.ui.res
-                              .stringResource(app.gyrolet.mpvrx.R.string.pref_verify_key),
+                            stringResource(if (isCustomProvider) R.string.pref_custom_openai_check_endpoint else R.string.pref_verify_key),
                           )
                         }
                       }
@@ -513,6 +624,36 @@ val apiKeyInfo =
 
                 item {
                   PreferenceCard {
+                    if (isCustomProvider) {
+                      ExpressivePreferenceItem {
+                        TextFieldPreference(
+                          modifier = Modifier.settingsSearchTarget(R.string.pref_custom_openai_model_title),
+                          value = selectedModel,
+                          onValueChange = preferences.selectedModelFor(AiProvider.CUSTOM_OPENAI)::set,
+                          textToValue = { it.trim() },
+                          title = { Text(stringResource(R.string.pref_custom_openai_model_title)) },
+                          summary = {
+                            Text(
+                              if (selectedModel.isNotBlank()) {
+                                selectedModel
+                              } else {
+                                stringResource(R.string.pref_custom_openai_model_summary)
+                              },
+                              color = MaterialTheme.colorScheme.outline,
+                            )
+                          },
+                          textField = { value, onValueChange, _ ->
+                            TextField(
+                              value = value,
+                              onValueChange = onValueChange,
+                              modifier = Modifier.fillMaxWidth(),
+                              singleLine = true,
+                            )
+                          },
+                        )
+                      }
+                      PreferenceDivider()
+                    }
                     Row(
                       modifier =
                         Modifier
@@ -531,7 +672,7 @@ val apiKeyInfo =
                       )
                       Button(
                         onClick = { loadModels() },
-                        enabled = !isLoadingModels && apiKeyInfo.apiKey.isNotBlank(),
+                        enabled = !isLoadingModels && providerConfigured,
                         colors =
                           ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary,
@@ -634,7 +775,11 @@ val apiKeyInfo =
                       }
                     } else {
                       Text(
-                        text = "Tap 'Fetch Models' to load available models from ${provider.displayName}",
+                        text = if (isCustomProvider) {
+                          stringResource(R.string.pref_custom_openai_model_summary)
+                        } else {
+                          "Tap 'Fetch Models' to load available models from ${provider.displayName}"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -661,20 +806,37 @@ val apiKeyInfo =
 
                       Button(
                         onClick = {
+                          val revision = configurationRevision
+                          val requestId = ++modelVerificationRequestId
+                          val requestedProvider = provider
+                          val requestedBaseUrl = customOpenAiBaseUrl
+                          val requestedApiKey = activeApiKey
+                          val requestedModel = selectedModel
                           scope.launch {
                             isVerifyingModel = true
                             verifyModelResult = null
                             aiService
-                              .verifyModel()
-                              .onSuccess { verifyModelResult = it }
-                              .onFailure { e ->
-                                verifyModelResult = "Error: ${e.message}"
+                              .verifyModel(requestedProvider)
+                              .onSuccess {
+                                if (requestId == modelVerificationRequestId &&
+                                  isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey) &&
+                                  preferences.selectedModelFor(requestedProvider).get() == requestedModel
+                                ) verifyModelResult = it
                               }
-                            isVerifyingModel = false
+                              .onFailure { e ->
+                                if (requestId == modelVerificationRequestId &&
+                                  isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey) &&
+                                  preferences.selectedModelFor(requestedProvider).get() == requestedModel
+                                ) verifyModelResult = "Error: ${e.message}"
+                              }
+                            if (requestId == modelVerificationRequestId &&
+                              isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey) &&
+                              preferences.selectedModelFor(requestedProvider).get() == requestedModel
+                            ) isVerifyingModel = false
                           }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isVerifyingModel && selectedModel.isNotBlank(),
+                        enabled = !isVerifyingModel && providerConfigured && selectedModel.isNotBlank(),
                         colors =
                           ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.tertiary,

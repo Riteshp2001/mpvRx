@@ -993,6 +993,14 @@
   <string name="pref_ai_enabled_title">Enable AI Features</string>
   <string name="pref_ai_provider_section">Provider</string>
   <string name="pref_ai_provider_title">AI Provider</string>
+  <string name="pref_custom_openai_base_url_title">Custom OpenAI-compatible Base URL</string>
+  <string name="pref_custom_openai_base_url_summary">Enter the HTTP(S) API base, such as https://example.com/v1. Chat Completions and optional model discovery are supported. Keep credentials out of the URL.</string>
+  <string name="pref_custom_openai_key_title">Custom provider API key</string>
+  <string name="pref_custom_openai_key_summary">Optional for servers that do not require authentication. Prefer HTTPS when using an API key.</string>
+  <string name="pref_custom_openai_model_title">Custom model ID</string>
+  <string name="pref_custom_openai_model_summary">Enter a model ID manually or fetch models. If model discovery is unavailable, enter the ID and use Check Model Access.</string>
+  <string name="pref_custom_openai_check_endpoint">Check Endpoint</string>
+  <string name="pref_ai_cached_models_invalid">The saved model list could not be read. Fetch models again.</string>
   <string name="pref_api_config_section">API Configuration</string>
   <string name="pref_api_key_saved">API key saved on device</string>
   <string name="pref_hide_key">Hide Key</string>

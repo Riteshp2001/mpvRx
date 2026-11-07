@@ -1440,7 +1440,7 @@ object SearchablePreferences {
       add(
         SearchablePreference(
           titleRes = R.string.pref_ai_provider_title,
-          summary = "Choose OpenCode, Groq, OpenAI, Anthropic, OpenRouter, or Together",
+          summary = "Choose OpenCode, Groq, OpenAI, Anthropic, OpenRouter, Together, or a custom OpenAI-compatible provider",
           keywords =
             listOf(
               "provider",
@@ -1450,6 +1450,9 @@ object SearchablePreferences {
               "anthropic",
               "together",
               "openrouter",
+              "custom",
+              "compatible",
+              "base url",
               "local",
               "offline",
               "api",
@@ -1465,6 +1468,36 @@ object SearchablePreferences {
           keywords = listOf("api key", "key", "authentication", "token", "verify", "opencode", "groq", "openai"),
           category = "AI",
           screen = AiIntegrationScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
+          titleRes = R.string.pref_custom_openai_base_url_title,
+          summaryRes = R.string.pref_custom_openai_base_url_summary,
+          keywords = listOf("custom", "openai", "compatible", "base url", "endpoint", "self hosted", "ollama", "lm studio"),
+          category = "AI",
+          screen = AiIntegrationScreen,
+          targetRes = R.string.pref_ai_provider_title,
+        ),
+      )
+      add(
+        SearchablePreference(
+          titleRes = R.string.pref_custom_openai_key_title,
+          summaryRes = R.string.pref_custom_openai_key_summary,
+          keywords = listOf("custom", "openai", "api key", "authentication", "token"),
+          category = "AI",
+          screen = AiIntegrationScreen,
+          targetRes = R.string.pref_ai_provider_title,
+        ),
+      )
+      add(
+        SearchablePreference(
+          titleRes = R.string.pref_custom_openai_model_title,
+          summaryRes = R.string.pref_custom_openai_model_summary,
+          keywords = listOf("custom", "openai", "model id", "manual", "discovery"),
+          category = "AI",
+          screen = AiIntegrationScreen,
+          targetRes = R.string.pref_ai_provider_title,
         ),
       )
       add(

@@ -7,7 +7,7 @@ mpvRx can connect to supported AI and speech providers for optional workflows. T
 
 ## AI providers
 
-Supported integrations include OpenAI, Anthropic, Groq, OpenRouter, Together, and OpenCode Zen. Available models, pricing, retention, rate limits, and regional access are controlled by each provider.
+Supported integrations include OpenAI, Anthropic, Groq, OpenRouter, Together, OpenCode Zen, and a custom OpenAI-compatible provider. Available models, pricing, retention, rate limits, and regional access are controlled by each provider.
 
 Possible workflows include:
 
@@ -15,6 +15,14 @@ Possible workflows include:
 - Subtitle formatting cleanup
 - Structured file-renaming suggestions
 - Speech-to-subtitle generation through cloud or offline Whisper paths
+
+### Custom OpenAI-compatible provider
+
+Choose **Custom OpenAI-compatible** in the AI provider setting, then enter the API base URL, for example `https://example.com/v1`. Use the API prefix rather than the full `chat/completions` endpoint. Enter the API key in its separate field; it can be blank for a trusted server that does not require authentication. Prefer HTTPS, especially when sending a key or private text, and do not put credentials or query parameters in the base URL.
+
+Enter a model ID directly, or use **Fetch Models** if the server exposes `GET /models`. Discovery does not replace a manually entered model ID. If discovery is unsupported, its error remains visible, but manual selection and **Check Model Access** still work through `POST /chat/completions`.
+
+This provider supports text generation through Chat Completions, including renaming, subtitle formatting, and translation. It does not add Responses, image-generation, or audio-transcription support; the speech-to-text provider remains a separate setting. Changing the base URL clears that custom endpoint's model selection and model list so models from the previous server are not reused.
 
 ## Configure safely
 

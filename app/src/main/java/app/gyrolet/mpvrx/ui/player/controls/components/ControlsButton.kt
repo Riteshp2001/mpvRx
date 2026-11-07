@@ -27,6 +27,7 @@ import app.gyrolet.mpvrx.ui.liquidglass.AdaptiveControlsButton
 import app.gyrolet.mpvrx.ui.liquidglass.PlayerLiquidTokens
 import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonAlpha
 import app.gyrolet.mpvrx.ui.theme.LocalDarkAppColorScheme
+import app.gyrolet.mpvrx.ui.theme.controlColor
 import app.gyrolet.mpvrx.ui.theme.spacing
 
 @Suppress("CompositionLocalAllowlist")
@@ -56,7 +57,12 @@ internal fun playerButtonContainerColor(): Color =
   playerButtonColorScheme().surfaceContainerHigh.copy(alpha = PlayerButtonAlpha.CONTAINER).asPlayerButtonBackground()
 
 @Composable
-internal fun playerButtonContentColor(): Color = playerButtonColorScheme().onSurface
+internal fun playerButtonContentColor(): Color =
+  if (!LocalBorderlessPlayerControls.current && LocalPlayerButtonsOpacity.current <= 0f) {
+    controlColor
+  } else {
+    playerButtonColorScheme().onSurface
+  }
 
 @Composable
 internal fun playerButtonBorderColor(): Color =
