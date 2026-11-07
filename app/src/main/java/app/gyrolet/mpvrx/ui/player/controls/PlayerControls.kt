@@ -423,7 +423,6 @@ fun PlayerControls(
   val navigationBarRequested by playerPreferences.showSystemNavigationBar.collectAsState()
   val showSystemNavigationBar = navigationBarRequested || WindowInsets.areNavigationBarsVisible
   val showControlsDrawer by playerPreferences.showControlsDrawer.collectAsState()
-  var seekRippleRequest by remember { mutableStateOf<SeekRippleRequest?>(null) }
   val controlsShown by viewModel.controlsShown.collectAsState()
   val controlsInteractionEpoch by viewModel.controlsInteractionEpoch.collectAsState()
   val tvPlayFocusRequester = rememberTvInitialFocusRequester(enabled = controlsShown)
@@ -435,6 +434,7 @@ fun PlayerControls(
   val seekBarShown by viewModel.seekBarShown.collectAsState()
   val paused by PlaybackSession.propBoolean["pause"].collectAsStateWithLifecycle()
   val playbackSessionState by PlaybackSession.state.collectAsStateWithLifecycle()
+  var seekRippleRequest by remember(playbackSessionState.generation) { mutableStateOf<SeekRippleRequest?>(null) }
   val duration by PlaybackSession.propInt["duration"].collectAsStateWithLifecycle()
   val playbackQueue by PlaybackSession.queue.collectAsStateWithLifecycle()
   val preciseDuration by viewModel.preciseDuration.collectAsState()
@@ -455,6 +455,8 @@ fun PlayerControls(
   val doubleTapSeekAmount = seekState.amount
   val showDoubleTapOvals by playerPreferences.showDoubleTapOvals.collectAsState()
   val showSeekTime by playerPreferences.showSeekTimeWhileSeeking.collectAsState()
+  val doubleTapSeekAreaWidth by gesturePreferences.doubleTapSeekAreaWidth.collectAsState()
+  val seekAreaFraction = (doubleTapSeekAreaWidth / 100f).coerceIn(0.01f, 0.5f)
   val showSeekbarDuringHorizontalSeeking by gesturePreferences.showSeekbarDuringHorizontalSeeking.collectAsState()
   val showBufferedRange by playerPreferences.showBufferedRange.collectAsState()
   val showChapterIndicators by playerPreferences.showChapterIndicators.collectAsState()
@@ -826,13 +828,16 @@ fun PlayerControls(
             speedMultiplier = animSpeed,
             animationState = videoOpenAnimState,
           )
-          DoubleTapToSeekOvals(
-            amount = doubleTapSeekAmount,
-            showOvals = false,
-            showSeekIcon = true,
-            showSeekTime = true,
-            rippleRequest = seekRippleRequest,
-          )
+          key(playbackSessionState.generation) {
+            DoubleTapToSeekOvals(
+              amount = doubleTapSeekAmount,
+              showOvals = false,
+              showSeekIcon = true,
+              showSeekTime = true,
+              rippleRequest = null,
+              seekAreaFraction = seekAreaFraction,
+            )
+          }
           // Status HUD remains visible even after playback controls fade away.
           PersistentStatusHud(
             viewModel = viewModel,
@@ -1011,13 +1016,16 @@ fun PlayerControls(
             .clipToBounds()
             .onSizeChanged { playerBounds = it },
       ) {
-    DoubleTapToSeekOvals(
-      amount = doubleTapSeekAmount,
-      showOvals = showDoubleTapOvals,
-      showSeekIcon = showSeekTime,
-      showSeekTime = showSeekTime,
-      rippleRequest = seekRippleRequest,
-    )
+    key(playbackSessionState.generation) {
+      DoubleTapToSeekOvals(
+        amount = doubleTapSeekAmount,
+        showOvals = showDoubleTapOvals,
+        showSeekIcon = showSeekTime,
+        showSeekTime = showSeekTime,
+        rippleRequest = seekRippleRequest,
+        seekAreaFraction = seekAreaFraction,
+      )
+    }
 
     VideoOpenAnimationOverlay(
       style = videoOpenAnim,
@@ -3162,4 +3170,3 @@ private fun CustomControlButton(
     }
   }
 }
-

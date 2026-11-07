@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.ui.player.controls
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
@@ -24,6 +25,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -45,24 +49,32 @@ import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.gyrolet.mpvrx.preferences.GesturePreferences
-import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.components.LeftSideOvalShape
 import app.gyrolet.mpvrx.presentation.components.RightSideOvalShape
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.stableNumericWidth
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import kotlinx.coroutines.delay
-import org.koin.compose.koinInject
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.max
@@ -74,6 +86,17 @@ import kotlin.math.min
 class SeekRippleRequest(val position: Offset, val isForward: Boolean)
 
 private const val MAX_SEEK_RIPPLES = 4
+private const val MAX_SEEK_CHEVRONS = 8
+private const val SEEK_SLIDE_DURATION_MS = 400
+private const val SEEK_MORPH_DURATION_MS = 333f
+private const val SEEK_COUNT_COMPRESS_DURATION_MS = 118
+private const val SEEK_COUNT_RELEASE_DURATION_MS = 66
+private val seekSlideEasing = CubicBezierEasing(0.05f, 0f, 0f, 1f)
+private val seekFeedbackEasing = CubicBezierEasing(0.2f, 0f, 0.6f, 1f)
+
+private class SeekChevronWave {
+  val elapsedMillis = Animatable(0f)
+}
 
 @Composable
 fun DoubleTapToSeekOvals(
@@ -82,35 +105,24 @@ fun DoubleTapToSeekOvals(
   showSeekIcon: Boolean,
   showSeekTime: Boolean,
   rippleRequest: SeekRippleRequest?,
+  seekAreaFraction: Float,
+  reducedMotion: Boolean = AppMotion.playerReducedMotion(),
   modifier: Modifier = Modifier,
 ) {
-  val gesturePreferences = koinInject<GesturePreferences>()
-  val doubleTapSeekAreaWidth by gesturePreferences.doubleTapSeekAreaWidth.collectAsState()
-  val reducedMotion = AppMotion.playerReducedMotion()
-  val seekAreaFraction = (doubleTapSeekAreaWidth / 100f).coerceIn(0.01f, 0.5f)
+  val areaFraction = seekAreaFraction.coerceIn(0.01f, 0.5f)
   // Reset active waves when feedback/motion settings change, without replaying the last tap.
-  val waves = remember(showOvals, reducedMotion) { mutableStateListOf<SeekRippleRequest>() }
+  val waves = remember(showOvals, reducedMotion, areaFraction) { mutableStateListOf<SeekRippleRequest>() }
   LaunchedEffect(rippleRequest) {
-    if (showOvals && rippleRequest != null) {
+    if (showOvals && amount != 0 && rippleRequest != null) {
       // Bound overdraw and coroutine count during rapid multi-tap seeking.
       while (waves.size >= MAX_SEEK_RIPPLES) waves.removeAt(0)
       waves.add(rippleRequest)
     }
   }
 
-  var lastNonZeroAmount by remember { mutableIntStateOf(amount) }
-  val labelScale = remember { Animatable(1f) }
-  LaunchedEffect(amount, rippleRequest, reducedMotion) {
-    if (amount != 0) lastNonZeroAmount = amount
-    if (amount == 0 || reducedMotion) {
-      labelScale.snapTo(1f)
-    } else {
-      labelScale.snapTo(1.06f)
-      labelScale.animateTo(1f, tween(220, easing = LinearOutSlowInEasing))
-    }
+  LaunchedEffect(amount == 0) {
+    if (amount == 0) waves.clear()
   }
-  val displayedAmount = if (amount != 0) amount else lastNonZeroAmount
-  val isForward = displayedAmount > 0
 
   Box(modifier.fillMaxSize()) {
     // Wave lifetime is independent of the accumulated seek amount and its reset timer.
@@ -124,51 +136,138 @@ fun DoubleTapToSeekOvals(
           modifier = Modifier
             .align(if (wave.isForward) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft)
             .fillMaxHeight()
-            .fillMaxWidth(seekAreaFraction),
+            .fillMaxWidth(areaFraction),
         )
       }
     }
 
-    AnimatedVisibility(
-      visible = amount != 0 && (showSeekIcon || showSeekTime),
-      modifier = Modifier
-        .align(if (isForward) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft)
-        .fillMaxHeight()
-        .fillMaxWidth(seekAreaFraction),
-      enter = fadeIn(tween(if (reducedMotion) 0 else 70)),
-      exit = fadeOut(tween(if (reducedMotion) 0 else 160)),
-    ) {
-      Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-            modifier = Modifier.graphicsLayer {
-              scaleX = labelScale.value
-              scaleY = labelScale.value
-            },
-          ) {
-            if (showSeekIcon && !isForward) {
-              SeekChevron(false, amount, rippleRequest, reducedMotion)
-            }
-            if (showSeekTime) {
-              val seekText = "${if (isForward) "+" else "−"} ${abs(displayedAmount)}"
-              Text(
-                text = seekText,
-                color = Color.White,
-                style = MaterialTheme.typography.headlineSmall.copy(
-                  fontSize = 22.sp,
-                  fontWeight = FontWeight.Bold,
-                  fontFeatureSettings = "tnum",
-                  shadow = Shadow(Color.Black.copy(alpha = 0.7f), Offset(0f, 1f), 6f),
-                ),
-                modifier = Modifier.stableNumericWidth(seekText),
-              )
-            }
-            if (showSeekIcon && isForward) {
-              SeekChevron(true, amount, rippleRequest, reducedMotion)
-            }
+    listOf(false, true).forEach { isForward ->
+      SeekSideFeedback(
+        amount = if ((amount > 0) == isForward) amount else 0,
+        isForward = isForward,
+        showSeekIcon = showSeekIcon,
+        showSeekTime = showSeekTime,
+        rippleRequest = rippleRequest?.takeIf { it.isForward == isForward },
+        reducedMotion = reducedMotion,
+        modifier = Modifier
+          .align(if (isForward) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft)
+          .fillMaxHeight()
+          .fillMaxWidth(areaFraction),
+      )
+    }
+  }
+}
+
+@Composable
+private fun SeekSideFeedback(
+  amount: Int,
+  isForward: Boolean,
+  showSeekIcon: Boolean,
+  showSeekTime: Boolean,
+  rippleRequest: SeekRippleRequest?,
+  reducedMotion: Boolean,
+  modifier: Modifier,
+) {
+  var lastAmount by remember { mutableIntStateOf(amount) }
+  LaunchedEffect(amount) {
+    if (amount != 0) lastAmount = amount
+  }
+  val labelScale = remember { Animatable(1f) }
+  LaunchedEffect(amount, rippleRequest, reducedMotion, showSeekTime) {
+    if (reducedMotion || !showSeekTime) {
+      labelScale.snapTo(1f)
+    } else {
+      // Retarget from the current scale so another tap never jumps back to full size.
+      if (amount != 0) {
+        labelScale.animateTo(0.9f, tween(SEEK_COUNT_COMPRESS_DURATION_MS, easing = seekFeedbackEasing))
+      }
+      labelScale.animateTo(
+        1f,
+        tween(SEEK_COUNT_RELEASE_DURATION_MS, easing = seekFeedbackEasing),
+      )
+    }
+  }
+  val displayedSeconds = abs(if (amount != 0) amount else lastAmount)
+  val seekSign = if (isForward) "+" else "−"
+  val seekText = "$seekSign $displayedSeconds"
+  val seekTextStyle = MaterialTheme.typography.headlineSmall.copy(
+    fontSize = 24.sp,
+    lineHeight = 24.sp,
+    fontWeight = FontWeight.Bold,
+    fontFeatureSettings = "tnum",
+    shadow = Shadow(Color.Black.copy(alpha = 0.7f), Offset(0f, 1f), 6f),
+  )
+  val textMeasurer = rememberTextMeasurer()
+  // Only the layout slot is two digits wide; the actual number can grow inward without a limit.
+  val counterSlotWidth = with(LocalDensity.current) {
+    textMeasurer.measure(
+      text = "$seekSign 99",
+      style = seekTextStyle,
+      maxLines = 1,
+      softWrap = false,
+      layoutDirection = LayoutDirection.Ltr,
+    ).size.width.toDp()
+  }
+  val durationText = pluralStringResource(R.plurals.seconds, displayedSeconds, displayedSeconds)
+  val seekDescription = stringResource(
+    if (isForward) R.string.player_seek_forward else R.string.player_seek_backward,
+    durationText,
+  )
+
+  AnimatedVisibility(
+    visible = amount != 0 && (showSeekIcon || showSeekTime),
+    modifier = modifier,
+    enter = fadeIn(tween(if (reducedMotion) 0 else 200, easing = seekFeedbackEasing)),
+    exit = fadeOut(tween(if (reducedMotion) 0 else 200, easing = seekFeedbackEasing)),
+  ) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+      CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
+          modifier = Modifier
+            .wrapContentWidth(unbounded = true)
+            .semantics(mergeDescendants = true) { contentDescription = seekDescription },
+        ) {
+          if (showSeekIcon && !isForward) SeekMorphingChevrons(isForward, amount, rippleRequest, reducedMotion)
+          if (showSeekTime) {
+            Text(
+              text = seekText,
+              color = Color.White,
+              maxLines = 1,
+              softWrap = false,
+              style = seekTextStyle,
+              textAlign = when {
+                !showSeekIcon -> TextAlign.Center
+                isForward -> TextAlign.End
+                else -> TextAlign.Start
+              },
+              modifier = Modifier
+                .width(counterSlotWidth)
+                .wrapContentWidth(
+                  align = when {
+                    !showSeekIcon -> Alignment.CenterHorizontally
+                    isForward -> Alignment.End
+                    else -> Alignment.Start
+                  },
+                  unbounded = true,
+                )
+                .stableNumericWidth(seekText)
+                .graphicsLayer {
+                  transformOrigin = TransformOrigin(
+                    pivotFractionX = when {
+                      !showSeekIcon -> 0.5f
+                      isForward -> 1f
+                      else -> 0f
+                    },
+                    pivotFractionY = 0.5f,
+                  )
+                  scaleX = if (reducedMotion) 1f else labelScale.value
+                  scaleY = scaleX
+                },
+            )
           }
+          if (showSeekIcon && isForward) SeekMorphingChevrons(isForward, amount, rippleRequest, reducedMotion)
         }
       }
     }
@@ -186,7 +285,7 @@ private fun SeekRippleWave(
   val currentOnFinished by rememberUpdatedState(onFinished)
   LaunchedEffect(request) {
     if (reducedMotion) {
-      // A short, stationary touch cue; no expanding halo, bouncing label or moving chevrons.
+      // Keep the touch cue stationary when spatial motion is disabled.
       delay(160)
     } else {
       progress.animateTo(1f, tween(460, easing = LinearEasing))
@@ -204,8 +303,6 @@ private fun SeekRippleWave(
           .coerceAtLeast(1f)
         val startRadius = min(20.dp.toPx(), maxRadius * 0.12f)
         val staticRadius = min(56.dp.toPx(), maxRadius)
-        // Unit-radius brushes are cached and scaled in the draw phase. No per-frame shaders,
-        // bitmap capture or backdrop sampling is needed for this translucent touch feedback.
         val brush =
           Brush.radialGradient(
             0f to Color.White.copy(alpha = 0.20f),
@@ -236,38 +333,94 @@ private fun SeekRippleWave(
 }
 
 @Composable
-private fun SeekChevron(
+private fun SeekMorphingChevrons(
   isForward: Boolean,
   amount: Int,
-  request: SeekRippleRequest?,
+  rippleRequest: SeekRippleRequest?,
   reducedMotion: Boolean,
 ) {
-  val progress = remember { Animatable(1f) }
-  LaunchedEffect(amount, request, reducedMotion) {
-    if (reducedMotion || amount == 0) {
-      progress.snapTo(1f)
+  val entranceMillis = remember { Animatable(if (reducedMotion) SEEK_SLIDE_DURATION_MS.toFloat() else 0f) }
+  val incoming = remember { mutableStateListOf<SeekChevronWave>() }
+  var lastRequest by remember { mutableStateOf(rippleRequest) }
+  var lastAmount by remember { mutableIntStateOf(amount) }
+
+  // The settled arrow's entrance belongs to the visible session, never to later taps.
+  LaunchedEffect(reducedMotion) {
+    if (reducedMotion) {
+      entranceMillis.snapTo(SEEK_SLIDE_DURATION_MS.toFloat())
     } else {
-      progress.snapTo(0f)
-      progress.animateTo(1f, tween(240, easing = LinearOutSlowInEasing))
-    }
-  }
-  Box(Modifier.size(48.dp).graphicsLayer { scaleX = if (isForward) 1f else -1f }) {
-    Icon(
-      imageVector = Icons.RoundedFilled.KeyboardArrowRight,
-      contentDescription = null,
-      tint = Color.White,
-      modifier = Modifier.fillMaxSize(),
-    )
-    if (!reducedMotion) {
-      Icon(
-        imageVector = Icons.RoundedFilled.KeyboardArrowRight,
-        contentDescription = null,
-        tint = Color.White,
-        modifier = Modifier.fillMaxSize().graphicsLayer {
-          alpha = (1f - progress.value) * 0.65f
-          translationX = -14.dp.toPx() * (1f - progress.value)
-        },
+      entranceMillis.animateTo(
+        SEEK_SLIDE_DURATION_MS.toFloat(),
+        tween(SEEK_SLIDE_DURATION_MS, easing = LinearEasing),
       )
     }
   }
+
+  LaunchedEffect(amount, rippleRequest, reducedMotion) {
+    val newTap = if (rippleRequest != null) rippleRequest !== lastRequest else amount != lastAmount
+    if (reducedMotion) {
+      incoming.clear()
+    } else if (amount != 0 && newTap) {
+      while (incoming.size >= MAX_SEEK_CHEVRONS) incoming.removeAt(0)
+      incoming.add(SeekChevronWave())
+    }
+    lastRequest = rippleRequest
+    lastAmount = amount
+  }
+
+  incoming.forEach { wave ->
+    key(wave) {
+      LaunchedEffect(wave) {
+        wave.elapsedMillis.animateTo(
+          SEEK_SLIDE_DURATION_MS.toFloat(),
+          tween(SEEK_SLIDE_DURATION_MS, easing = LinearEasing),
+        )
+        incoming.remove(wave)
+      }
+    }
+  }
+
+  Box(
+    Modifier.size(width = 22.dp, height = 24.dp)
+      .graphicsLayer { scaleX = if (isForward) 1f else -1f }
+      .drawWithCache {
+        // Preserve the vector's aspect ratio and fixed upper/lower anchors as the tip unfolds.
+        val unit = min(size.width / 22f, size.height / 32f)
+        val left = (size.width - 22f * unit) / 2f + 4f * unit
+        val top = (size.height - 32f * unit) / 2f + 4f * unit
+        val bottom = top + 24f * unit
+        val path = Path()
+        val stroke = Stroke(width = 4f * unit, cap = StrokeCap.Round, join = StrokeJoin.Miter)
+        val travel = 20.dp.toPx()
+        val mergeDistance = (stroke.width * 0.5f).coerceAtLeast(0.1f)
+        onDrawBehind {
+          val entrance = if (reducedMotion) SEEK_SLIDE_DURATION_MS.toFloat() else entranceMillis.value
+          val baseMorph = seekSlideEasing.transform((entrance / SEEK_MORPH_DURATION_MS).coerceIn(0f, 1f))
+          val baseSlide = seekSlideEasing.transform((entrance / SEEK_SLIDE_DURATION_MS).coerceIn(0f, 1f))
+
+          fun drawChevron(morph: Float, slide: Float, alpha: Float) {
+            path.reset()
+            path.moveTo(left, top)
+            path.lineTo(left + 12f * unit * morph, size.height / 2f)
+            path.lineTo(left, bottom)
+            withTransform({ translate(left = -travel * (1f - slide)) }) {
+              drawPath(path, Color.White, alpha = alpha, style = stroke)
+            }
+          }
+
+          if (!reducedMotion) {
+            incoming.forEach { wave ->
+              val elapsed = wave.elapsedMillis.value
+              val morph = seekSlideEasing.transform((elapsed / SEEK_MORPH_DURATION_MS).coerceIn(0f, 1f))
+              val slide = seekSlideEasing.transform((elapsed / SEEK_SLIDE_DURATION_MS).coerceIn(0f, 1f))
+              val separation = travel * abs(baseSlide - slide) + 12f * unit * abs(baseMorph - morph)
+              // Crossfade only once both paths coincide within half a stroke; removal cannot pop.
+              val merge = seekFeedbackEasing.transform((1f - separation / mergeDistance).coerceIn(0f, 1f))
+              drawChevron(morph, slide, (slide * 2f).coerceIn(0f, 1f) * (1f - merge))
+            }
+          }
+          drawChevron(baseMorph, baseSlide, 1f)
+        }
+      },
+  )
 }

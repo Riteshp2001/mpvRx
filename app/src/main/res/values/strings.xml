@@ -299,6 +299,8 @@
   <string name="pref_gesture">Gestures</string>
   <string name="pref_gesture_summary">Single/double tap, media controls</string>
   <string name="pref_gesture_double_tap_title">Tap gestures</string>
+  <string name="pref_gesture_require_double_tap_title">Require double tap for every seek</string>
+  <string name="pref_gesture_require_double_tap_summary">Require a fresh double tap for each seek in double-tap regions. Turn off to keep seeking with single taps while feedback is visible. Single-tap regions are unchanged.</string>
   <string name="pref_gesture_double_tap_none">None</string>
   <string name="pref_gesture_double_tap_seek">Seek</string>
   <string name="pref_gesture_double_tap_play">Play/Pause</string>
@@ -3121,4 +3123,3 @@
   <string name="theme_color_secondary">Secondary accent</string>
   <string name="theme_color_tertiary">Highlight accent</string>
 </resources>
-

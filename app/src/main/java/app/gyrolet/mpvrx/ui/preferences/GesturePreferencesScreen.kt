@@ -296,6 +296,17 @@ object GesturePreferencesScreen : Screen {
 
           item {
             PreferenceCard {
+              val requireDoubleTapForEverySeek by preferences.requireDoubleTapForEverySeek.collectAsState()
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_require_double_tap_title),
+                value = requireDoubleTapForEverySeek,
+                onValueChange = preferences.requireDoubleTapForEverySeek::set,
+                title = { Text(stringResource(R.string.pref_gesture_require_double_tap_title)) },
+                summary = { Text(stringResource(R.string.pref_gesture_require_double_tap_summary)) },
+              )
+
+              PreferenceDivider()
+
               val doubleTapSeekDuration by preferences.doubleTapToSeekDuration.collectAsState()
               val predefinedValues = listOf(3, 5, 10, 15, 20, 25, 30)
               val isCustomValue = !predefinedValues.contains(doubleTapSeekDuration)

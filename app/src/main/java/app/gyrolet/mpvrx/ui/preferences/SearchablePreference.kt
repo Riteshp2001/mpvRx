@@ -720,6 +720,15 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_gesture_require_double_tap_title,
+          summaryRes = R.string.pref_gesture_require_double_tap_summary,
+          keywords = listOf("seek", "double tap", "strict", "single tap", "continuous", "youtube", "repeat"),
+          category = "Gestures",
+          screen = GesturePreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_double_tap_seek_area_width_title,
           summaryRes = R.string.pref_double_tap_seek_area_width_summary,
           keywords = listOf("area", "width", "single tap", "double tap", "seek", "region", "percent"),

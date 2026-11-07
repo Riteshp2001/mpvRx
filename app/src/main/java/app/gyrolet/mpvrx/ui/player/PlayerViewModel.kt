@@ -2077,7 +2077,17 @@ fun restartFromBeginning() {
     val text: String? = null,
     val amount: Int = 0,
     val isForwards: Boolean = false,
-  )
+  ) {
+    fun withTapSeek(offset: Int): SeekState {
+      val sameDirection = (amount < 0 && offset < 0) || (amount > 0 && offset > 0)
+      val requestedAmount = if (sameDirection) amount.toLong() + offset else offset.toLong()
+      return copy(
+        amount = requestedAmount.coerceIn(-Int.MAX_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt(),
+        isForwards = offset > 0,
+        text = null,
+      )
+    }
+  }
 
   private val _seekState = MutableStateFlow(SeekState())
   val seekState: StateFlow<SeekState> = _seekState.asStateFlow()
@@ -2954,8 +2964,8 @@ fun restartFromBeginning() {
     if (tvSeekFeedbackJob != null) {
       tvSeekFeedbackJob?.cancel()
       tvSeekFeedbackJob = null
-      _seekState.value = SeekState()
     }
+    _seekState.value = SeekState()
     cancelFrameSeek()
     isGestureSeeking = false
     lastScrubTarget = Double.NaN
@@ -5253,29 +5263,14 @@ fun restartFromBeginning() {
 
   fun leftSeek() {
     val seconds = doubleTapToSeekDuration
-    if ((pos ?: 0) > 0) {
-      _seekState.update { state ->
-        state.copy(amount = state.amount - seconds, isForwards = false)
-      }
-    } else {
-      _seekState.update { state ->
-        state.copy(isForwards = false)
-      }
-    }
+    // Feedback counts requested steps even when mpv clamps the seek at the media boundary.
+    _seekState.update { it.withTapSeek(-seconds) }
     seekBy(-seconds)
   }
 
   fun rightSeek() {
     val seconds = doubleTapToSeekDuration
-    if ((pos ?: 0) < (duration ?: 0)) {
-      _seekState.update { state ->
-        state.copy(amount = state.amount + seconds, isForwards = true)
-      }
-    } else {
-      _seekState.update { state ->
-        state.copy(isForwards = true)
-      }
-    }
+    _seekState.update { it.withTapSeek(seconds) }
     seekBy(seconds)
   }
 
@@ -8469,4 +8464,3 @@ private fun String.md5(): String {
   val digest = MessageDigest.getInstance("MD5").digest(toByteArray())
   return digest.joinToString("") { byte -> "%02x".format(byte) }
 }
-

@@ -161,6 +161,7 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_player_gestures_horizontal_swipe_sensitivity, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_player_gestures_hold_for_multiple_speed, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_player_double_tap_seek_duration, itemIndex = 3),
+        SettingsSearchListAnchor(titleRes = R.string.pref_gesture_require_double_tap_title, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_double_tap_seek_area_width_title, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_gesture_double_tap_left_title, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_gesture_double_tap_center_title, itemIndex = 3),

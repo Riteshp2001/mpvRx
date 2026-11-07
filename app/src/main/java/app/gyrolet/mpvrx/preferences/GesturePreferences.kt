@@ -21,6 +21,7 @@ class GesturePreferences(
   val confirmBackToExit = preferenceStore.getBoolean("confirm_back_to_exit", false)
   val showSeekbarDuringHorizontalSeeking = preferenceStore.getBoolean("show_seekbar_during_horizontal_seeking", false)
   val doubleTapToSeekDuration = preferenceStore.getInt("double_tap_to_seek_duration", 10)
+  val requireDoubleTapForEverySeek = preferenceStore.getBoolean("require_double_tap_for_every_seek", false)
   val doubleTapSeekAreaWidth = preferenceStore.getInt("double_tap_seek_area_width", 35)
   val leftSingleActionGesture = preferenceStore.getEnum("left_double_tap_gesture", SingleActionGesture.Seek)
   val centerSingleActionGesture = preferenceStore.getEnum("center_drag_gesture", SingleActionGesture.PlayPause)
