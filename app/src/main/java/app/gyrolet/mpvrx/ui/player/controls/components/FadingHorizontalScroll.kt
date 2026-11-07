@@ -1,7 +1,3 @@
-/*
- * SPDX-License-Identifier: AGPL-3.0-or-later
- */
-
 package app.gyrolet.mpvrx.ui.player.controls.components
 
 import androidx.compose.foundation.ScrollState
@@ -20,13 +16,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 
-/**
- * Horizontal scrolling for a row of player buttons that may not fit its slot.
- *
- * An edge fades only while buttons are scrolled past it, and the fade deepens with the hidden
- * distance, so a row that fits is drawn unchanged. [shadowRoom] keeps button shadows inside the
- * offscreen layer the fade needs; without it they would be cut flat at the row's top and bottom.
- */
 internal fun Modifier.fadingHorizontalScroll(
   state: ScrollState,
   reverseScrolling: Boolean = false,
@@ -40,8 +29,6 @@ internal fun Modifier.fadingHorizontalScroll(
       drawContent()
       val fadePx = fadeLength.toPx().coerceAtMost(size.width / 2f)
       if (fadePx <= 0f || state.maxValue <= 0) return@drawWithContent
-      // ScrollState counts from the row's first item, which sits on the right for RTL or a
-      // reversed scroll.
       val firstItemOnRight = (layoutDirection == LayoutDirection.Rtl) != reverseScrolling
       val hiddenBefore = state.value.toFloat()
       val hiddenAfter = (state.maxValue - state.value).toFloat()

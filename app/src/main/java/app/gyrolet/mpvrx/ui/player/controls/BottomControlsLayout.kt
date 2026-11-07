@@ -11,8 +11,8 @@ import app.gyrolet.mpvrx.ui.theme.Spacing
 
 internal enum class BottomSlot { Buttons, Seekbar, Playback }
 
-// Keep portrait gaps relative to the visible button surface, excluding glass shadow padding.
-internal val PortraitSectionGap = 12.dp
+// Keep gaps relative to the visible button surface, excluding glass shadow padding.
+internal val PlayerSectionGap = 8.dp
 internal val PortraitActionShadowRoom = 6.dp
 internal val PlaybackShadowRoom = 8.dp
 

@@ -172,7 +172,6 @@ import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButto
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalPlayerButtonsOpacity
 import app.gyrolet.mpvrx.ui.player.controls.components.asPlayerButtonBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.MediaScopesOverlay
-import app.gyrolet.mpvrx.ui.player.controls.components.fadingHorizontalScroll
 import app.gyrolet.mpvrx.ui.player.controls.components.MultipleSpeedPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.ResumeAvailablePlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.ResumedFromPlayerUpdate
@@ -1186,27 +1185,24 @@ fun PlayerControls(
 
           // Keep the seekbar close to its controls. Bands come from remembered heights, so a
           // layer leaving the layout (buffering, volume/brightness sliders, hidden controls) moves nothing.
-          // Subtract transparent glass shadow room when positioning portrait bands.
-          // Keep the visible bottom edge and inter-section gaps at 12dp, regardless of glass.
-          fun portraitInset(slot: BottomSlot?): Dp =
-            if (isPortrait) portraitGlassShadowRoom(slot, enableLiquidGlass) else 0.dp
-
-          val clusterEdge =
-            if (isPortrait) {
-              PortraitSectionGap - portraitInset(bottomStack.firstOrNull { bandHeight(it) > 0.dp })
-            } else {
-              spacing.medium
+          fun shadowInset(slot: BottomSlot?): Dp =
+            when {
+              isPortrait -> portraitGlassShadowRoom(slot, enableLiquidGlass)
+              enableLiquidGlass && slot == BottomSlot.Playback -> PlaybackShadowRoom
+              else -> 0.dp
             }
-          val clusterGap = if (isPortrait) PortraitSectionGap else spacing.extraSmall
-          val customButtonsGap = spacing.smaller * 2
+
+          val clusterEdge = PlayerSectionGap - shadowInset(bottomStack.firstOrNull { bandHeight(it) > 0.dp })
+          val clusterGap = PlayerSectionGap
+          val customButtonsGap = PlayerSectionGap
           val bandCenters = HashMap<BottomSlot, Dp>()
           var nextBandBottom = clusterEdge
           var bottomClusterTop = clusterEdge
           var previousVisibleSlot: BottomSlot? = null
           for (slot in bottomStack) {
             val height = bandHeight(slot)
-            if (height > 0.dp && isPortrait && previousVisibleSlot != null) {
-              nextBandBottom -= portraitInset(previousVisibleSlot) + portraitInset(slot)
+            if (height > 0.dp && previousVisibleSlot != null) {
+              nextBandBottom -= shadowInset(previousVisibleSlot) + shadowInset(slot)
             }
             bandCenters[slot] = nextBandBottom + height / 2
             if (height > 0.dp) {
@@ -1986,8 +1982,7 @@ fun PlayerControls(
               Box(Modifier.width(landscapePlaybackWidth).height(playPauseSize))
             } else if (hasPlaylistControls) {
               androidx.compose.foundation.layout.Row(
-                modifier = (if (fullWidthPlaybackRow) Modifier.fillMaxWidth() else Modifier)
-                  .fadingHorizontalScroll(rememberScrollState(), shadowRoom = 0.dp),
+                modifier = if (fullWidthPlaybackRow) Modifier.fillMaxWidth() else Modifier,
                 horizontalArrangement =
                   Arrangement.spacedBy(playbackButtonGap, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
@@ -2333,13 +2328,15 @@ fun PlayerControls(
                   },
                 ).constrainAs(topRightControls) {
                   top.linkTo(parent.top, spacing.small)
+                  start.linkTo(parent.start, spacing.large + LandscapeActionSize + spacing.small)
                   end.linkTo(parent.end, spacing.large)
+                  width = Dimension.preferredWrapContent
+                  horizontalBias = 1f
                 },
           ) {
             PlayerButtonTheme {
               LandscapeActionGroup(
                 buttons = topRightButtons,
-                modifier = Modifier.widthIn(max = resolveLandscapeHeaderMaxWidth(controlsWidth)),
                 endAligned = true,
                 fillWidth = false,
                 renderButton = renderLandscapeButton,

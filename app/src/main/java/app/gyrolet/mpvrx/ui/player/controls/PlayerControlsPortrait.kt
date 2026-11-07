@@ -11,16 +11,15 @@ package app.gyrolet.mpvrx.ui.player.controls
 
 import androidx.compose.foundation.BorderStroke
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -264,19 +263,18 @@ fun BottomPlayerControlsPortrait(
 ) {
   PlayerButtonTheme {
     val enableLiquidGlass = liquidGlassActive()
-    Row(
+    FlowRow(
       modifier =
         Modifier
           .fillMaxWidth()
-          .horizontalScroll(rememberScrollState(), reverseScrolling = alignToEnd)
-          // Padding after horizontalScroll belongs to scroll content, not its clipping viewport.
-          // Vertical room is only for the liquid-glass shadow; the player places this row with its shared gaps.
           .padding(
             horizontal = if (enableLiquidGlass) 8.dp else 0.dp,
             vertical = if (enableLiquidGlass) PortraitActionShadowRoom else 0.dp,
           ),
-      horizontalArrangement = horizontalArrangement,
-      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = if (alignToEnd) {
+        Arrangement.spacedBy(MaterialTheme.spacing.small, Alignment.End)
+      } else horizontalArrangement,
+      verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
       buttons.forEach { button ->
         RenderPlayerButton(

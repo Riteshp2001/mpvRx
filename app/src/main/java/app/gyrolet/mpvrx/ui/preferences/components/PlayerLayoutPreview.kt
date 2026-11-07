@@ -3,19 +3,18 @@ package app.gyrolet.mpvrx.ui.preferences.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -59,10 +58,9 @@ import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
 import app.gyrolet.mpvrx.ui.player.controls.LandscapeActionGroup
 import app.gyrolet.mpvrx.ui.player.controls.LandscapeActionSize
 import app.gyrolet.mpvrx.ui.player.controls.LandscapeControlsRow
-import app.gyrolet.mpvrx.ui.player.controls.resolveLandscapeHeaderWidth
 import app.gyrolet.mpvrx.ui.player.controls.BottomSlot
 import app.gyrolet.mpvrx.ui.player.controls.PlaybackControlsGeometry
-import app.gyrolet.mpvrx.ui.player.controls.PortraitSectionGap
+import app.gyrolet.mpvrx.ui.player.controls.PlayerSectionGap
 import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonTheme
 import app.gyrolet.mpvrx.ui.player.controls.PlayerControlsContentTheme
 import app.gyrolet.mpvrx.ui.player.controls.VideoControlsLayoutPreset
@@ -70,7 +68,6 @@ import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalPlayerButtonsOpacity
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarStylePreview
-import app.gyrolet.mpvrx.ui.player.controls.components.fadingHorizontalScroll
 import app.gyrolet.mpvrx.ui.player.controls.resolveBottomControlsLayout
 import app.gyrolet.mpvrx.ui.player.controls.resolvePlaybackControlsGeometry
 import app.gyrolet.mpvrx.ui.preferences.ControlRegion
@@ -222,9 +219,12 @@ private fun PreviewScene(
         if (!region.isPortrait) {
           LandscapeActionGroup(
             buttons = topRightButtons,
-            modifier = Modifier.width(resolveLandscapeHeaderWidth(topRightButtons, sceneWidth))
-              .then(highlightRegion(region == ControlRegion.TOP_RIGHT)),
+            modifier = Modifier.widthIn(
+              max = (sceneWidth - spacing.large * 2 - LandscapeActionSize - spacing.small)
+                .coerceAtLeast(LandscapeActionSize),
+            ).then(highlightRegion(region == ControlRegion.TOP_RIGHT)),
             endAligned = true,
+            fillWidth = false,
             renderButton = previewLandscapeButton,
           )
         }
@@ -239,8 +239,8 @@ private fun PreviewScene(
       Column(
         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
           .padding(horizontal = if (region.isPortrait) spacing.large else 0.dp,
-            vertical = if (region.isPortrait) PortraitSectionGap else spacing.medium),
-        verticalArrangement = Arrangement.spacedBy(if (region.isPortrait) PortraitSectionGap else spacing.extraSmall),
+            vertical = PlayerSectionGap),
+        verticalArrangement = Arrangement.spacedBy(PlayerSectionGap),
       ) {
         layout.bottomToTop.asReversed().forEach { slot ->
           when (slot) {
@@ -259,7 +259,7 @@ private fun PreviewScene(
                   rightButtons = bottomRightButtons,
                   playbackWidth = if (playlist) geometry.playPauseSize + geometry.skipButtonSize * 2 + geometry.buttonGap * 2
                     else geometry.playPauseSize,
-                  modifier = Modifier.padding(horizontal = spacing.medium, vertical = if (glassEnabled) 8.dp else 0.dp),
+                  modifier = Modifier.padding(horizontal = spacing.medium),
                   leftModifier = highlightRegion(region == ControlRegion.BOTTOM_LEFT),
                   rightModifier = highlightRegion(region == ControlRegion.BOTTOM_RIGHT),
                   renderButton = previewLandscapeButton,
@@ -330,13 +330,13 @@ private fun PreviewButtons(
         else Modifier,
       ),
   ) {
-    Row(
-      Modifier.fillMaxWidth().horizontalScroll(rememberScrollState(), reverseScrolling = endAligned),
-      verticalAlignment = Alignment.CenterVertically,
+    FlowRow(
+      Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.spacedBy(
         buttonGap,
         if (endAligned) Alignment.End else if (centered) Alignment.CenterHorizontally else Alignment.Start,
       ),
+      verticalArrangement = Arrangement.spacedBy(buttonGap),
     ) {
       buttons.forEach { button ->
         AdaptiveControlsContainer(
@@ -367,7 +367,7 @@ private fun PreviewPlayback(
   modifier: Modifier = Modifier,
 ) {
   Row(
-    modifier.fadingHorizontalScroll(rememberScrollState(), shadowRoom = 0.dp),
+    modifier,
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(geometry.buttonGap, Alignment.CenterHorizontally),
   ) {
