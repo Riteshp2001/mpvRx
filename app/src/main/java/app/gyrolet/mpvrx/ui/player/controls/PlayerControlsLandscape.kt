@@ -34,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -82,7 +83,16 @@ fun TopLeftPlayerControlsLandscape(
           modifier = Modifier.size(48.dp),
         )
 
-        Column {
+        Column(
+          modifier = Modifier.layout { measurable, constraints ->
+            if (mediaTitle.isNullOrBlank() || constraints.maxWidth < 80.dp.roundToPx()) {
+              layout(0, 0) {}
+            } else {
+              val placeable = measurable.measure(constraints)
+              layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+            }
+          },
+        ) {
           if (enableLiquidGlass) {
             LiquidPillButton(
               onClick = {

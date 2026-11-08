@@ -146,6 +146,7 @@ enum class AudioPlayerOrientation(
   Auto(R.string.pref_audio_channels_auto),
   Portrait(R.string.pref_player_orientation_portrait),
   Landscape(R.string.pref_player_orientation_landscape),
+  Free(R.string.pref_player_orientation_free),
 }
 
 enum class AudioVisualizerStyle(

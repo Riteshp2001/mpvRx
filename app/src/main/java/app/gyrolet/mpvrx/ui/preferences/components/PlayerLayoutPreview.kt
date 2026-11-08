@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -68,6 +68,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalPlayerButtonsOpacity
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarStylePreview
+import app.gyrolet.mpvrx.ui.player.controls.components.fadingHorizontalScroll
 import app.gyrolet.mpvrx.ui.player.controls.resolveBottomControlsLayout
 import app.gyrolet.mpvrx.ui.player.controls.resolvePlaybackControlsGeometry
 import app.gyrolet.mpvrx.ui.preferences.ControlRegion
@@ -220,7 +221,7 @@ private fun PreviewScene(
           LandscapeActionGroup(
             buttons = topRightButtons,
             modifier = Modifier.widthIn(
-              max = (sceneWidth - spacing.large * 2 - LandscapeActionSize - spacing.small)
+              max = (sceneWidth - spacing.large * 2 - LandscapeActionSize - spacing.extraSmall)
                 .coerceAtLeast(LandscapeActionSize),
             ).then(highlightRegion(region == ControlRegion.TOP_RIGHT)),
             endAligned = true,
@@ -330,13 +331,13 @@ private fun PreviewButtons(
         else Modifier,
       ),
   ) {
-    FlowRow(
-      Modifier.fillMaxWidth(),
+    Row(
+      Modifier.fillMaxWidth().fadingHorizontalScroll(rememberScrollState(), shadowRoom = 0.dp),
       horizontalArrangement = Arrangement.spacedBy(
         buttonGap,
         if (endAligned) Alignment.End else if (centered) Alignment.CenterHorizontally else Alignment.Start,
       ),
-      verticalArrangement = Arrangement.spacedBy(buttonGap),
+      verticalAlignment = Alignment.CenterVertically,
     ) {
       buttons.forEach { button ->
         AdaptiveControlsContainer(

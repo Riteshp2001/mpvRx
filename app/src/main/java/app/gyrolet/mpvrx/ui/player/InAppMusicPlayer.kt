@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -94,6 +95,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.ui.background.BackdropGate
+import app.gyrolet.mpvrx.preferences.AudioPlayerOrientation
+import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.player.controls.AudioPlayerScreen
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
@@ -639,6 +643,22 @@ private fun InAppMusicPlayerContent(
   store: InAppMusicPlayerStore,
 ) {
   val activity = LocalActivity.current as? ComponentActivity ?: return
+  val preferences = org.koin.compose.koinInject<AudioPreferences>()
+  val audioOrientation by preferences.audioOrientation.collectAsState()
+  val browserOrientation = rememberSaveable { activity.requestedOrientation }
+  LaunchedEffect(activity, state.isVisible, audioOrientation) {
+    val target = if (state.isVisible && audioOrientation != AudioPlayerOrientation.Auto) {
+      PlayerOrientationPolicy.forAudioPreference(audioOrientation)
+    } else browserOrientation
+    if (activity.requestedOrientation != target) activity.requestedOrientation = target
+  }
+  DisposableEffect(activity) {
+    onDispose {
+      if (!activity.isChangingConfigurations && activity.requestedOrientation != browserOrientation) {
+        activity.requestedOrientation = browserOrientation
+      }
+    }
+  }
   val viewModel = remember(store, store.generation) { store.playerViewModel() }
   val host = remember(activity, state) { InAppMusicPlayerHost(activity) { state.collapse() } }
   DisposableEffect(viewModel, host) {
@@ -708,10 +728,11 @@ private class InAppMusicPlayerHost(
   override val hostContentResolver: ContentResolver
     get() = activity.contentResolver
 
-  // The browser owns its orientation; the music player never rotates it.
   override var hostRequestedOrientation: Int
     get() = activity.requestedOrientation
-    set(value) = Unit
+    set(value) {
+      if (activity.requestedOrientation != value) activity.requestedOrientation = value
+    }
 
   override fun requestAudioFocus(): Boolean = MediaPlaybackService.takeAudioOwnershipForDetachedPlayback()
 

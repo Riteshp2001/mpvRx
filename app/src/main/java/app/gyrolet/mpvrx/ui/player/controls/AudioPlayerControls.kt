@@ -54,7 +54,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -68,11 +67,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -486,6 +489,7 @@ private fun AudioVisualizerViewport(
   onClick: () -> Unit,
   onLongClick: () -> Unit,
   modifier: Modifier = Modifier,
+  landscape: Boolean = false,
 ) {
   Box(
     modifier =
@@ -496,11 +500,21 @@ private fun AudioVisualizerViewport(
       Modifier
         .fillMaxSize()
         .then(
-          if (style == AudioVisualizerStyle.Cuboid) {
+          if (landscape || style == AudioVisualizerStyle.Cuboid) {
             Modifier
               .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
               .drawWithCache {
-                val bottomFade =
+                // Landscape melts into the controls beside it, portrait into the controls below.
+                val edgeFade = if (landscape) {
+                  val rtl = layoutDirection == LayoutDirection.Rtl
+                  Brush.horizontalGradient(
+                    0f to Color.White,
+                    0.72f to Color.White,
+                    1f to Color.Transparent,
+                    startX = if (rtl) size.width else 0f,
+                    endX = if (rtl) 0f else size.width,
+                  )
+                } else {
                   Brush.verticalGradient(
                     0f to Color.White,
                     0.78f to Color.White,
@@ -508,9 +522,10 @@ private fun AudioVisualizerViewport(
                     startY = 0f,
                     endY = size.height,
                   )
+                }
                 onDrawWithContent {
                   drawContent()
-                  drawRect(brush = bottomFade, blendMode = BlendMode.DstIn)
+                  drawRect(brush = edgeFade, blendMode = BlendMode.DstIn)
                 }
               }
           } else {
@@ -679,7 +694,7 @@ private fun CoverArtCardImage(
   }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AudioPlayerControls(
   viewModel: PlayerViewModel,
@@ -1111,7 +1126,6 @@ fun AudioPlayerControls(
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val isTabletLandscape = !isPortrait && isTablet
   val isTabletPortrait = isPortrait && isTablet
-  val isCompactLandscape = !isPortrait && configuration.screenHeightDp < 480
 
   LaunchedEffect(isTabletLandscape) {
     if (isTabletLandscape) {
@@ -1211,7 +1225,9 @@ fun AudioPlayerControls(
   // The header keeps the side and top padding the root gives up while the lyrics are flush.
   val headerContentPadding =
     if (flushInPlaceLyrics) Modifier.padding(start = 16.dp, top = 6.dp, end = 16.dp) else Modifier
-  Box(
+  // Visibility-independent insets keep the layout still while bars re-dispatch on resume.
+  val stableInsets = WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout)
+  BoxWithConstraints(
     modifier =
       modifier
         .then(
@@ -1269,15 +1285,27 @@ fun AudioPlayerControls(
           }
         }
         .windowInsetsPadding(
-          if (edgeToEdgeVisualizer) {
-            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+          if (!isPortrait) {
+            WindowInsets(0, 0, 0, 0)
+          } else if (edgeToEdgeVisualizer) {
+            stableInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
           } else {
-            WindowInsets.safeDrawing
+            stableInsets
           },
         )
-        .padding(horizontal = if (edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 16.dp)
-        .padding(top = if (edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 6.dp, bottom = 12.dp),
+        .padding(horizontal = if (!isPortrait || edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 16.dp)
+        .padding(top = if (!isPortrait || edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 6.dp,
+          bottom = if (isPortrait) 12.dp else 0.dp),
   ) {
+    val availableHeight = maxHeight - with(LocalDensity.current) {
+      (stableInsets.getTop(this) + stableInsets.getBottom(this)).toDp()
+    }
+    val isCompactLandscape = !isPortrait && availableHeight < 480.dp
+    val isShortLandscape = !isPortrait && availableHeight < 320.dp
+    val showLandscapeSidePanel = isTabletLandscape && availableHeight >= 560.dp
+    val audioActionSize = if (isCompactLandscape) 36.dp else 40.dp
+    val audioFooterSize = if (isCompactLandscape) 40.dp else 48.dp
+    val audioHeaderSize = if (isShortLandscape) 28.dp else if (isCompactLandscape) 36.dp else 48.dp
     val headerBar = @Composable {
       Box(modifier = Modifier.fillMaxWidth()) {
         ReactiveIconButton(
@@ -1290,7 +1318,7 @@ fun AudioPlayerControls(
               onBackPress()
             }
           },
-          modifier = Modifier.align(Alignment.CenterStart),
+          modifier = Modifier.align(Alignment.CenterStart).size(audioHeaderSize),
         ) {
           Icon(
             imageVector = if (showInPlaceLyrics || isLyricsFullscreen) Icons.RoundedFilled.ArrowBack else Icons.RoundedFilled.ExpandMore,
@@ -1301,18 +1329,23 @@ fun AudioPlayerControls(
         }
 
         Text(
-          text = stringResource(R.string.ui_now_playing),
+          text = if (isCompactLandscape && audioFormatInfo != null) {
+            "${audioFormatInfo.codecLabel} · $qualityLabel"
+          } else stringResource(R.string.ui_now_playing),
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           letterSpacing = 2.sp,
-          modifier = Modifier.align(Alignment.Center),
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.align(Alignment.Center).padding(horizontal = audioHeaderSize + 4.dp)
+            .clickable(enabled = isCompactLandscape && audioFormatInfo != null) { onOpenSheet(Sheets.AudioProperties) },
         )
 
         Row(
           modifier = Modifier.align(Alignment.CenterEnd),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          ReactiveIconButton(onClick = { onOpenSheet(Sheets.AudioProperties) }) {
+          ReactiveIconButton(onClick = { onOpenSheet(Sheets.AudioProperties) }, modifier = Modifier.size(audioHeaderSize)) {
             Icon(
               imageVector = Icons.RoundedFilled.Info,
               contentDescription = stringResource(R.string.player_sheets_more_title),
@@ -1380,7 +1413,7 @@ fun AudioPlayerControls(
         val containerWidthPx = constraints.maxWidth.toFloat()
         val currentOffset = animatableOffsetX.value
 
-        if (showInPlaceLyrics && !isTabletLandscape) {
+        if (showInPlaceLyrics && !showLandscapeSidePanel) {
           app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
             viewModel = viewModel,
             modifier = Modifier.fillMaxSize(),
@@ -1425,9 +1458,11 @@ fun AudioPlayerControls(
               onClick = viewModel::toggleAudioVisualizer,
               onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
               modifier = Modifier.fillMaxSize(),
+              landscape = !isPortrait,
             )
           } else {
-            val coverShape = RoundedCornerShape(32.dp)
+            val coverShape = if (isPortrait) RoundedCornerShape(32.dp) else androidx.compose.ui.graphics.RectangleShape
+            val coverSize = if (isPortrait) Modifier.aspectRatio(1f) else Modifier.fillMaxSize()
             val density = LocalDensity.current
             val gap = with(density) { 24.dp.toPx() }
             val stride = containerWidthPx + gap
@@ -1499,7 +1534,7 @@ fun AudioPlayerControls(
               if (currentOffset > 0f) {
                 Surface(
                   modifier = Modifier
-                    .aspectRatio(1f)
+                    .then(coverSize)
                     .offset { IntOffset((-stride + currentOffset).roundToInt(), 0) }
                     .clip(coverShape),
                   shape = coverShape,
@@ -1517,7 +1552,7 @@ fun AudioPlayerControls(
               if (currentOffset < 0f) {
                 Surface(
                   modifier = Modifier
-                    .aspectRatio(1f)
+                    .then(coverSize)
                     .offset { IntOffset((stride + currentOffset).roundToInt(), 0) }
                     .clip(coverShape),
                   shape = coverShape,
@@ -1534,7 +1569,7 @@ fun AudioPlayerControls(
               // 3. Current Cover Art Card
               Surface(
                 modifier = Modifier
-                  .aspectRatio(1f)
+                  .then(coverSize)
                   .offset { IntOffset(currentOffset.roundToInt(), 0) }
                   .clip(coverShape),
                 shape = coverShape,
@@ -1575,10 +1610,14 @@ fun AudioPlayerControls(
         // 1. Song Title Only
         Text(
           text = displayTitle,
-          style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.ExtraBold),
+          style = (if (isCompactLandscape) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium)
+            .copy(fontWeight = FontWeight.ExtraBold,
+              fontSize = if (isShortLandscape) 18.sp else if (isCompactLandscape) 22.sp else MaterialTheme.typography.headlineMedium.fontSize,
+              lineHeight = if (isShortLandscape) 22.sp else if (isCompactLandscape) 26.sp else MaterialTheme.typography.headlineMedium.lineHeight),
           fontFamily = fontFamilyForText(displayTitle),
           color = MaterialTheme.colorScheme.onSurface,
           maxLines = 1,
+          minLines = 1,
           overflow = TextOverflow.Ellipsis,
           modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
         )
@@ -1587,10 +1626,12 @@ fun AudioPlayerControls(
         // 2. Singer / Artist Name
         Text(
           text = displayArtist,
-          style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+          style = (if (isCompactLandscape) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.titleMedium)
+            .copy(fontWeight = FontWeight.Medium),
           fontFamily = fontFamilyForText(displayArtist),
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           maxLines = 1,
+          minLines = 1,
           overflow = TextOverflow.Ellipsis,
           modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
         )
@@ -1618,7 +1659,7 @@ fun AudioPlayerControls(
           horizontalArrangement = Arrangement.SpaceBetween,
         ) {
           Row(
-            modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+            modifier = Modifier.weight(1f).then(if (isPortrait) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
           ) {
@@ -1816,7 +1857,7 @@ fun AudioPlayerControls(
                   }
                 }
               },
-              modifier = Modifier.size(40.dp),
+              modifier = Modifier.size(if (isCompactLandscape) 32.dp else 40.dp),
             ) {
               AnimatedIcon(
                 imageVector = if (isCurrentTrackFavorite) Icons.RoundedFilled.Favorite else Icons.RoundedFilled.FavoriteBorder,
@@ -1884,7 +1925,7 @@ fun AudioPlayerControls(
           .fillMaxWidth()
           .clip(RoundedCornerShape(8.dp))
           .clickable {
-            if (isTabletLandscape) {
+            if (showLandscapeSidePanel) {
               tabletDualPaneTab = 1
             } else {
               showInPlaceLyrics = true
@@ -2182,9 +2223,10 @@ fun AudioPlayerControls(
         waveSheetOpen = isSheetOpen,
         loopStart = abLoopA?.toFloat()?.plus(bookOffset),
         loopEnd = abLoopB?.toFloat()?.plus(bookOffset),
-        isPortrait = true,
+        isPortrait = !isCompactLandscape,
         applyHorizontalPadding = false,
         centerContent = {
+          Box(Modifier.height(28.dp).widthIn(max = 200.dp), contentAlignment = Alignment.Center) {
           audioFormatInfo?.let { format ->
             Surface(
               shape = RoundedCornerShape(8.dp),
@@ -2200,10 +2242,11 @@ fun AudioPlayerControls(
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 0.8.sp),
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
               )
             }
+          }
           }
         },
         modifier = Modifier.fillMaxWidth(),
@@ -2220,7 +2263,7 @@ fun AudioPlayerControls(
         modifier =
           Modifier
             .fillMaxWidth()
-            .then(if (isAudiobook) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
+            .then(if (isAudiobook && isPortrait) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
       ) {
@@ -2229,7 +2272,7 @@ fun AudioPlayerControls(
             if (isAudiobook) viewModel.stepPlaybackChapter(-1) else viewModel.playPrevious()
           },
           enabled = prevEnabled,
-          modifier = Modifier.size(if (isAudiobook) 48.dp else 56.dp),
+          modifier = Modifier.size(if (isCompactLandscape || isAudiobook) 40.dp else 56.dp),
         ) {
           Icon(
             imageVector = Icons.RoundedFilled.SkipPrevious,
@@ -2253,7 +2296,8 @@ fun AudioPlayerControls(
           onClick = { viewModel.pauseUnpause() },
           shape = CircleShape,
           color = MaterialTheme.colorScheme.primary,
-          modifier = Modifier.tvInitialFocus(tvPlayFocusRequester).size(if (isPortrait) 76.dp else 64.dp),
+          modifier = Modifier.tvInitialFocus(tvPlayFocusRequester)
+            .size(if (isShortLandscape) 44.dp else if (isCompactLandscape) 52.dp else if (isPortrait) 76.dp else 64.dp),
           shadowElevation = 8.dp,
         ) {
           Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -2277,7 +2321,7 @@ fun AudioPlayerControls(
             if (isAudiobook) viewModel.stepPlaybackChapter(1) else viewModel.playNext()
           },
           enabled = nextEnabled,
-          modifier = Modifier.size(if (isAudiobook) 48.dp else 56.dp),
+          modifier = Modifier.size(if (isCompactLandscape || isAudiobook) 40.dp else 56.dp),
         ) {
           Icon(
             imageVector = Icons.RoundedFilled.SkipNext,
@@ -2297,10 +2341,10 @@ fun AudioPlayerControls(
     val playbackModeButtons = @Composable {
       if (isAudiobook) {
         val timer by app.gyrolet.mpvrx.ui.player.AudiobookPlayback.timer.collectAsStateWithLifecycle()
-        ReactiveIconButton(onClick = { onOpenSheet(Sheets.AudiobookRewind) }, modifier = Modifier.size(40.dp)) {
+        ReactiveIconButton(onClick = { onOpenSheet(Sheets.AudiobookRewind) }, modifier = Modifier.size(audioActionSize)) {
           Icon(Icons.RoundedFilled.Replay, stringResource(R.string.audiobook_smart_rewind), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        ReactiveIconButton(onClick = { onOpenSheet(Sheets.AudiobookSleepTimer) }, modifier = Modifier.size(40.dp)) {
+        ReactiveIconButton(onClick = { onOpenSheet(Sheets.AudiobookSleepTimer) }, modifier = Modifier.size(audioActionSize)) {
           Icon(Icons.RoundedFilled.Timer, stringResource(R.string.audiobook_sleep_timer),
             tint = if (timer != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -2308,13 +2352,13 @@ fun AudioPlayerControls(
         ReactiveIconButton(
           onClick = { viewModel.toggleShuffle(); actionHaptics.selection(!shuffleEnabled) },
           enabled = playlistModeEnabled,
-          modifier = Modifier.size(40.dp),
+          modifier = Modifier.size(audioActionSize),
         ) {
           AnimatedIcon(if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle, null,
             tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             reduceMotion = AppMotion.playerReducedMotion())
         }
-        ReactiveIconButton(onClick = { viewModel.cycleRepeatMode(); actionHaptics.confirm() }, modifier = Modifier.size(40.dp)) {
+        ReactiveIconButton(onClick = { viewModel.cycleRepeatMode(); actionHaptics.confirm() }, modifier = Modifier.size(audioActionSize)) {
           AnimatedIcon(when (repeatMode) {
             RepeatMode.OFF -> Icons.RoundedFilled.Repeat
             RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
@@ -2338,7 +2382,7 @@ fun AudioPlayerControls(
               .clip(
                 CircleShape,
               ).background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f))
-              .size(48.dp),
+              .size(audioFooterSize),
         ) {
           Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Icon(
@@ -2349,7 +2393,7 @@ fun AudioPlayerControls(
             )
           }
         }
-        if (isTabletLandscape) {
+        if (showLandscapeSidePanel) {
           Box(
             modifier = Modifier.weight(1f),
             contentAlignment = Alignment.CenterEnd,
@@ -2361,7 +2405,6 @@ fun AudioPlayerControls(
                   .background(
                     MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f),
                   )
-                  .horizontalScroll(rememberScrollState())
                   .padding(horizontal = 8.dp, vertical = 4.dp),
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -2370,7 +2413,7 @@ fun AudioPlayerControls(
               ReactiveIconButton(
                 onClick = { viewModel.toggleAudioVisualizer() },
                 onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(audioActionSize),
               ) {
                 Icon(
                   imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
@@ -2387,7 +2430,7 @@ fun AudioPlayerControls(
                     audioPreferences.audioBackgroundPlayback.set(!backgroundPlaybackEnabled)
                   }
                 },
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(audioActionSize),
               ) {
                 Icon(
                   imageVector = Icons.RoundedFilled.Headset,
@@ -2398,7 +2441,7 @@ fun AudioPlayerControls(
             }
           }
         } else {
-          Spacer(modifier = Modifier.width(12.dp))
+          Spacer(modifier = Modifier.width(if (isCompactLandscape) 4.dp else 12.dp))
           Box(
             modifier = Modifier.weight(1f),
             contentAlignment = Alignment.Center,
@@ -2410,7 +2453,7 @@ fun AudioPlayerControls(
                   .background(
                     MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f),
                   )
-                  .horizontalScroll(rememberScrollState())
+                  .then(if (isPortrait) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
                   .padding(horizontal = 8.dp, vertical = 4.dp),
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -2419,7 +2462,7 @@ fun AudioPlayerControls(
               ReactiveIconButton(
                 onClick = { viewModel.toggleAudioVisualizer() },
                 onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(audioActionSize),
               ) {
                 Icon(
                   imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
@@ -2436,7 +2479,7 @@ fun AudioPlayerControls(
                     audioPreferences.audioBackgroundPlayback.set(!backgroundPlaybackEnabled)
                   }
                 },
-                modifier = Modifier.size(40.dp),
+                modifier = Modifier.size(audioActionSize),
               ) {
                 Icon(
                   imageVector = Icons.RoundedFilled.Headset,
@@ -2446,7 +2489,7 @@ fun AudioPlayerControls(
               }
             }
           }
-          Spacer(modifier = Modifier.width(12.dp))
+          Spacer(modifier = Modifier.width(if (isCompactLandscape) 4.dp else 12.dp))
           ReactiveIconButton(
             onClick = { onOpenSheet(Sheets.Playlist) },
             modifier =
@@ -2454,7 +2497,7 @@ fun AudioPlayerControls(
                 .clip(
                   CircleShape,
                 ).background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.65f))
-                .size(48.dp),
+                .size(audioFooterSize),
           ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
               Icon(
@@ -2487,7 +2530,7 @@ fun AudioPlayerControls(
               modifier =
                 Modifier
                   .fillMaxWidth()
-                  .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                  .windowInsetsPadding(stableInsets.only(WindowInsetsSides.Top))
                   .padding(horizontal = controlsSidePadding)
                   .padding(top = 6.dp),
               horizontalAlignment = Alignment.CenterHorizontally,
@@ -2543,129 +2586,61 @@ fun AudioPlayerControls(
           }
         }
       }
-    } else if (isTabletLandscape) {
-      Row(
-        modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Column(
-          modifier = Modifier
-            .weight(1f)
-            .fillMaxHeight(),
-          verticalArrangement = Arrangement.SpaceBetween,
-          horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-          if (edgeToEdgeVisualizer) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-              centerVisualizerView(Modifier.fillMaxSize())
-              Column(
-                modifier =
-                  Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
-                    .padding(horizontal = controlsSidePadding)
-                    .padding(top = 6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-              ) {
-                headerBar()
-              }
-            }
-          } else {
-            Column(
-              modifier = Modifier.fillMaxWidth().padding(horizontal = controlsSidePadding),
-              horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-              headerBar()
-              Spacer(modifier = Modifier.height(6.dp))
-            }
-            centerVisualizerView(
-              Modifier.weight(1f).fillMaxWidth().padding(vertical = 12.dp, horizontal = 24.dp),
-            )
-          }
-          Column(
-            modifier = Modifier.padding(horizontal = controlsSidePadding),
-            horizontalAlignment = Alignment.CenterHorizontally,
-          ) {
-            Spacer(modifier = Modifier.height(6.dp))
-            trackMetadataView()
-            if (tabletDualPaneTab != 1) {
-              Spacer(modifier = Modifier.height(4.dp))
-              currentLyricStripView()
-              Spacer(modifier = Modifier.height(4.dp))
-            } else {
-              Spacer(modifier = Modifier.height(4.dp))
-              lyricsSourceLineView()
-              Spacer(modifier = Modifier.height(4.dp))
-            }
-            seekbarView()
-            Spacer(modifier = Modifier.height(14.dp))
-            playbackControlsRow()
-            Spacer(modifier = Modifier.height(16.dp))
-            bottomActionRow()
-          }
-        }
-
-        Surface(
-          modifier = Modifier
-            .weight(1.1f)
-            .fillMaxHeight()
-            .then(
-              if (edgeToEdgeVisualizer) {
-                Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).padding(top = 6.dp)
-              } else {
-                Modifier
-              },
-            )
-            .padding(end = controlsSidePadding)
-            .clip(RoundedCornerShape(24.dp)),
-          color = Color.Transparent,
-          shape = RoundedCornerShape(24.dp),
-        ) {
-          DualPaneSidePanel(
-            viewModel = viewModel,
-            playlist = filteredPlaylist,
-            selectedTab = tabletDualPaneTab,
-            onTabSelected = { tabletDualPaneTab = it },
-            onOpenTranslateSheet = { onOpenSheet(Sheets.LyricsTranslate) },
-          )
-        }
-      }
     } else {
       Row(
         modifier = Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(if (isCompactLandscape) 12.dp else 24.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
         centerVisualizerView(
           Modifier
-            .weight(if (isCompactLandscape) 0.9f else 1f)
+            .weight(if (isTabletLandscape) 1f else 0.42f)
             .fillMaxHeight(),
         )
         Column(
           modifier =
             Modifier
-              .weight(if (isCompactLandscape) 1.35f else 1.2f)
+              .weight(if (isTabletLandscape) 1.2f else 0.58f)
               .fillMaxHeight()
-              .padding(end = controlsSidePadding)
-              .verticalScroll(rememberScrollState())
-              .then(
-              if (edgeToEdgeVisualizer) {
-                Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)).padding(top = 6.dp)
-              } else {
-                Modifier
-              },
-            ).padding(vertical = 4.dp),
-          verticalArrangement =
-            if (isCompactLandscape) Arrangement.spacedBy(4.dp) else Arrangement.SpaceEvenly,
+              // The art pane owns the start edge, so this pane only insets its own edges.
+              .windowInsetsPadding(stableInsets.only(WindowInsetsSides.Vertical + WindowInsetsSides.End))
+              .padding(horizontal = if (isCompactLandscape) 12.dp else 24.dp,
+                vertical = if (isCompactLandscape) 4.dp else 8.dp),
+          verticalArrangement = if (showLandscapeSidePanel) Arrangement.spacedBy(8.dp) else Arrangement.SpaceBetween,
           horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-          headerBar()
-          trackMetadataView()
-          if (!showInPlaceLyrics) currentLyricStripView()
-          seekbarView()
-          playbackControlsRow()
-          bottomActionRow()
+          if (showLandscapeSidePanel) {
+            Box(Modifier.fillMaxWidth().height(40.dp), contentAlignment = Alignment.Center) { headerBar() }
+            Box(Modifier.fillMaxWidth().height(128.dp), contentAlignment = Alignment.TopStart) { trackMetadataView() }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+              DualPaneSidePanel(
+                viewModel = viewModel,
+                playlist = filteredPlaylist,
+                selectedTab = tabletDualPaneTab,
+                onTabSelected = { tabletDualPaneTab = it },
+                onOpenTranslateSheet = { onOpenSheet(Sheets.LyricsTranslate) },
+              )
+            }
+            Box(Modifier.fillMaxWidth().height(if (audioWavySeekbar) 96.dp else 80.dp), contentAlignment = Alignment.Center) {
+              seekbarView()
+            }
+            Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.Center) { playbackControlsRow() }
+            Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) { bottomActionRow() }
+          } else {
+            // Rows keep their natural, content-independent heights and share the spare height evenly;
+            // only the text rows may shrink when the window is too short.
+            Box(Modifier.fillMaxWidth().height(audioHeaderSize), contentAlignment = Alignment.Center) { headerBar() }
+            Box(Modifier.weight(1f, fill = false).fillMaxWidth()) { trackMetadataView() }
+            if (!isShortLandscape) {
+              Box(
+                Modifier.weight(0.4f, fill = false).fillMaxWidth()
+                  .height(with(LocalDensity.current) { 36.sp.toDp() }),
+                contentAlignment = Alignment.CenterStart,
+              ) { currentLyricStripView() }
+            }
+            seekbarView()
+            playbackControlsRow()
+            bottomActionRow()
+          }
         }
       }
     }
