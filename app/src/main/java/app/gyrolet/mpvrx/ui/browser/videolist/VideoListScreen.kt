@@ -1136,6 +1136,7 @@ internal fun VideoListContent(
                       modifier = mediaItemMotion(),
                       progressPercentage = videoWithInfo.progressPercentage,
                       isRecentlyPlayed = isRecentlyPlayed,
+                      lastPlayedTimestamp = videoWithInfo.lastPlayedTimestamp,
                       isSelected = selectionManager.isSelected(videoWithInfo.video),
                       selectionNeighbors = mediaSelectionNeighbors(index, videosWithInfo.size, columns) { neighbor ->
                         selectionManager.isSelected(videosWithInfo[neighbor].video)
@@ -1206,6 +1207,7 @@ internal fun VideoListContent(
                       modifier = mediaItemMotion(),
                       progressPercentage = videoWithInfo.progressPercentage,
                       isRecentlyPlayed = isRecentlyPlayed,
+                      lastPlayedTimestamp = videoWithInfo.lastPlayedTimestamp,
                       isSelected = selectionManager.isSelected(videoWithInfo.video),
                       selectionNeighbors = mediaSelectionNeighbors(index, videosWithInfo.size, 1) { neighbor ->
                         selectionManager.isSelected(videosWithInfo[neighbor].video)

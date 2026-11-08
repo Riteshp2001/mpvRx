@@ -61,6 +61,7 @@ data class VideoWithPlaybackInfo(
   val progressPercentage: Float? = null, // 0.0 to 1.0
   val isOldAndUnplayed: Boolean = false, // true while the NEW badge is eligible
   val isWatched: Boolean = false, // true once the configured watched threshold is reached
+  val lastPlayedTimestamp: Long? = null, // Unix seconds from playback history; independent of file date
 )
 
 // Match PlayerActivity: MediaStore items with a real path use local identity; SAF documents
@@ -89,6 +90,7 @@ internal fun buildVideoWithPlaybackInfo(
   currentTimeMillis: Long,
   newLabelDays: Int,
   watchedThreshold: Int,
+  lastPlayedTimestamp: Long? = null,
 ): VideoWithPlaybackInfo {
   // ZIP entries have no scanned duration; scoped providers can also omit it. Reuse the player's
   // saved position + remaining seconds without opening or probing any media in the list.
@@ -129,6 +131,7 @@ internal fun buildVideoWithPlaybackInfo(
     progressPercentage = progressValue?.takeIf { it in 0.01f..0.99f },
     isOldAndUnplayed = !isWatched && (playbackState?.newLabelOverride ?: isWithinNewLabelWindow),
     isWatched = isWatched,
+    lastPlayedTimestamp = lastPlayedTimestamp,
   )
 }
 
@@ -436,6 +439,7 @@ class VideoListViewModel(
     val watchedThreshold = browserPreferences.watchedThreshold.get()
     val newLabelDays = appearancePreferences.unplayedOldVideoDays.get()
     val now = System.currentTimeMillis()
+    val recentHistory = RecentlyPlayedOps.getRecentlyPlayed(limit = 100)
     playbackIndexByIdentifier =
       buildMap(videos.size * 4) {
         videos.forEachIndexed { index, video ->
@@ -450,6 +454,10 @@ class VideoListViewModel(
           currentTimeMillis = now,
           newLabelDays = newLabelDays,
           watchedThreshold = watchedThreshold,
+          lastPlayedTimestamp =
+            recentHistory.firstOrNull { entry ->
+              RecentlyPlayedOps.matchesVideoPath(entry.filePath, video)
+            }?.timestamp,
         )
       }
     _videosWithPlaybackInfo.value = videosWithInfo
@@ -477,6 +485,7 @@ class VideoListViewModel(
         currentTimeMillis = System.currentTimeMillis(),
         newLabelDays = appearancePreferences.unplayedOldVideoDays.get(),
         watchedThreshold = browserPreferences.watchedThreshold.get(),
+        lastPlayedTimestamp = currentItems[index].lastPlayedTimestamp,
       )
     if (currentItems[index] == updatedItem) return
 

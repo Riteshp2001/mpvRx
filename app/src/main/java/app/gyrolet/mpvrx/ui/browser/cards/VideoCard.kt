@@ -215,6 +215,7 @@ fun VideoCard(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
   isRecentlyPlayed: Boolean = false,
+  lastPlayedTimestamp: Long? = null,
   onLongClick: (() -> Unit)? = null,
   isSelected: Boolean = false,
   progressPercentage: Float? = null,
@@ -686,6 +687,33 @@ fun VideoCard(
                 )
               }
 
+              if (lastPlayedTimestamp != null) {
+
+                Text(
+
+                  formatRelativeLastPlayed(lastPlayedTimestamp),
+
+                  style = MaterialTheme.typography.labelSmall,
+
+                  modifier =
+
+                    Modifier
+
+                      .background(
+
+                        MaterialTheme.colorScheme.secondaryContainer,
+
+                        AppShapeScale.small,
+
+                      ).padding(horizontal = 8.dp, vertical = 4.dp),
+
+                  color = MaterialTheme.colorScheme.onSecondaryContainer,
+
+                )
+
+              }
+
+
               if (hasDateMetadataChip) {
                 Text(
                   formatVideoCardDate(video.dateModified),
@@ -1016,6 +1044,33 @@ fun VideoCard(
                   )
                 }
 
+                if (lastPlayedTimestamp != null) {
+
+                  Text(
+
+                    formatRelativeLastPlayed(lastPlayedTimestamp),
+
+                    style = MaterialTheme.typography.labelSmall,
+
+                    modifier =
+
+                      Modifier
+
+                        .background(
+
+                          MaterialTheme.colorScheme.secondaryContainer,
+
+                          AppShapeScale.small,
+
+                        ).padding(horizontal = 8.dp, vertical = 4.dp),
+
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+
+                  )
+
+                }
+
+
                 if (hasDateMetadataChip) {
                   Text(
                     formatVideoCardDate(video.dateModified),
@@ -1099,3 +1154,28 @@ private val CARD_DATE_FORMATTER: java.time.format.DateTimeFormatter =
 
 internal fun formatVideoCardDate(timestampSeconds: Long): String =
   CARD_DATE_FORMATTER.format(java.time.Instant.ofEpochSecond(timestampSeconds))
+
+internal fun formatRelativeLastPlayed(timestampSeconds: Long): String {
+  val seconds = ((System.currentTimeMillis() / 1000L) - timestampSeconds).coerceAtLeast(0L)
+  return when {
+    seconds < 60L -> "الآن"
+    seconds < 3600L -> {
+      val minutes = seconds / 60L
+      if (minutes == 1L) "منذ دقيقة" else "منذ $minutes دقيقة"
+    }
+    seconds < 86400L -> {
+      val hours = seconds / 3600L
+      when (hours) {
+        1L -> "منذ ساعة"
+        2L -> "منذ ساعتين"
+        else -> "منذ $hours ساعة"
+      }
+    }
+    seconds < 172800L -> "أمس"
+    seconds < 604800L -> "منذ ${seconds / 86400L} يوم"
+    seconds < 2592000L -> "منذ ${seconds / 604800L} أسبوع"
+    else -> "آخر تشغيل: " + CARD_DATE_FORMATTER.format(
+      java.time.Instant.ofEpochSecond(timestampSeconds)
+    )
+  }
+}

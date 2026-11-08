@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.browser.cards
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -310,8 +312,20 @@ fun FolderCard(
         .then(if (isGridMode && gridRowMinHeight > 0.dp) Modifier.heightIn(min = gridRowMinHeight) else Modifier)
         .tvFocusMemory("folder:${folder.bucketId}:${folder.path}")
         .tvFocusHighlight(cardShape, focusedScale = 1.03f)
+        // A restrained glass edge gives the folder tile depth without expensive blur passes.
+        .border(
+          width = 1.dp,
+          brush = Brush.linearGradient(
+            listOf(
+              MaterialTheme.colorScheme.onSurface.copy(alpha = 0.24f),
+              MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+              MaterialTheme.colorScheme.surface.copy(alpha = 0.10f),
+            ),
+          ),
+          shape = cardShape,
+        )
         .clip(cardShape)
-                .semantics { selected = isSelected }
+        .semantics { selected = isSelected }
         .tvContextMenu(onLongClick)
         .mediaCardClickable(
           onClick = onClick,
@@ -323,12 +337,24 @@ fun FolderCard(
     // Size the actual Card content, not just the swipe wrapper's outer box; otherwise
     // the selected tonal background stops above a taller neighbor in the same row.
     Box(modifier = if (isGridMode) Modifier.fillMaxWidth().heightIn(min = gridRowMinHeight) else Modifier.fillMaxWidth()) {
+      // Translucent layered tint and a soft vertical highlight create a glass-like
+      // surface while avoiding per-card RenderEffect/blur work during scrolling.
       Box(
         modifier =
           Modifier
             .matchParentSize()
             .clip(cardShape)
-            .background(selectionContainerColor),
+            .background(
+              brush = Brush.verticalGradient(
+                colors = listOf(
+                  MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.78f),
+                  MaterialTheme.colorScheme.surface.copy(alpha = 0.62f),
+                  MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f),
+                ),
+              ),
+              shape = cardShape,
+            )
+            .background(selectionContainerColor, shape = cardShape),
       )
 
       if (isGridMode) {
