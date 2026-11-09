@@ -872,6 +872,7 @@ fun PlayerControls(
             hasChapters = chapters.isNotEmpty(),
             showQualityButton = showVideoQualitySelector,
             playbackSpeed = playbackSpeed ?: 1f,
+            decoder = decoder,
             skipSegmentLabel = currentSkippableSegment?.type?.labelRes?.let { stringResource(it) },
             showBuffering = showBufferingIndicator,
             autoHideMillis = playerTimeToDisappear.toLong(),

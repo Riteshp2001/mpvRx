@@ -83,6 +83,7 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.Decoder
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.Sheets
@@ -134,6 +135,7 @@ internal fun TvPlayerControls(
   hasChapters: Boolean,
   showQualityButton: Boolean,
   playbackSpeed: Float,
+  decoder: Decoder,
   skipSegmentLabel: String?,
   showBuffering: Boolean,
   autoHideMillis: Long,
@@ -325,6 +327,11 @@ internal fun TvPlayerControls(
               icon = Icons.RoundedFilled.AspectRatio,
               contentDescription = stringResource(R.string.tv_player_aspect_ratio),
               onClick = { onOpenSheet(Sheets.AspectRatios) },
+            )
+            TvDecoderButton(
+              decoder = decoder,
+              contentDescription = stringResource(R.string.btn_label_decoder),
+              onClick = { onOpenSheet(Sheets.Decoders) },
             )
             if (showQualityButton) {
               TvPlayerButton(
@@ -583,6 +590,27 @@ private fun TvSpeedButton(
         color = tint,
       )
     }
+  }
+}
+
+@Composable
+private fun TvDecoderButton(
+  decoder: Decoder,
+  contentDescription: String,
+  onClick: () -> Unit,
+) {
+  TvPlayerButton(
+    contentDescription = "$contentDescription: ${decoder.title}",
+    onClick = onClick,
+  ) { tint ->
+    Text(
+      text = decoder.title,
+      style = MaterialTheme.typography.labelSmall,
+      fontWeight = FontWeight.Bold,
+      color = tint,
+      maxLines = 1,
+      overflow = TextOverflow.Clip,
+    )
   }
 }
 
