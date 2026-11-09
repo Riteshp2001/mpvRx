@@ -209,7 +209,7 @@ internal fun PlayerControlEdgeHandle(
   Box(
     modifier =
       modifier
-        .width(EdgeTouchWidth)
+        .width(PlayerDrawerEdgeTouchWidth)
         .fillMaxHeight(EdgeTouchHeightFraction)
         .pointerInput(enabled, thresholdPx, maxPullPx) {
           if (!enabled) return@pointerInput
@@ -433,7 +433,7 @@ private fun PlayerControlTile(
   }
 }
 
-private val EdgeTouchWidth = 48.dp
+internal val PlayerDrawerEdgeTouchWidth = 48.dp
 private val EdgePullThreshold = 64.dp
 private val EdgePullMaximum = 92.dp
 private const val PanelIconScale = 1.24f

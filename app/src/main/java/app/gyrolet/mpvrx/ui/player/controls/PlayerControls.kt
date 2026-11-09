@@ -1419,6 +1419,12 @@ fun PlayerControls(
           // pills have twice the old 8dp clearance, independently of the tighter seekbar gaps.
           val customRowBottomOffset = bottomClusterTop + customButtonsGap - CustomButtonsRowInsetVertical
           val customRowEdgeMargin = spacing.large - CustomButtonsRowInsetHorizontal
+          val drawerEdgeClearance = if (showControlsDrawer) PlayerDrawerEdgeTouchWidth else 0.dp
+          val customRowLayoutDirection = LocalLayoutDirection.current
+          val leftCustomRowEdgeMargin = customRowEdgeMargin +
+            if (customRowLayoutDirection == LayoutDirection.Rtl) drawerEdgeClearance else 0.dp
+          val rightCustomRowEdgeMargin = customRowEdgeMargin +
+            if (customRowLayoutDirection == LayoutDirection.Ltr) drawerEdgeClearance else 0.dp
           val customRowAboveSkipChip =
             showLandscapeLeftCustomButtons || showLandscapeRightCustomButtons || showPortraitCustomButtons
           val customRowVisibleHeight =
@@ -1661,7 +1667,7 @@ fun PlayerControls(
             exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { -it },
             modifier =
               navigationStartPaddingModifier.constrainAs(customLeftButtonsRef) {
-                start.linkTo(parent.start, customRowEdgeMargin)
+                start.linkTo(parent.start, leftCustomRowEdgeMargin)
                 bottom.linkTo(parent.bottom, customRowBottomOffset)
                 width = Dimension.preferredWrapContent
                 height = Dimension.wrapContent
@@ -1701,7 +1707,7 @@ fun PlayerControls(
             modifier =
               navigationEndPaddingModifier
                 .constrainAs(customRightButtonsRef) {
-                  end.linkTo(parent.end, customRowEdgeMargin)
+                  end.linkTo(parent.end, rightCustomRowEdgeMargin)
                   bottom.linkTo(parent.bottom, customRowBottomOffset)
                   width = Dimension.preferredWrapContent
                   height = Dimension.wrapContent
