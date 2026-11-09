@@ -70,7 +70,8 @@ internal object PlayerOrientationPolicy {
 
   fun forAudioPreference(preference: AudioPlayerOrientation): Int =
     when (preference) {
-      AudioPlayerOrientation.Auto, AudioPlayerOrientation.Free -> ActivityInfo.SCREEN_ORIENTATION_SENSOR
+      AudioPlayerOrientation.Auto -> ActivityInfo.SCREEN_ORIENTATION_USER
+      AudioPlayerOrientation.Free -> ActivityInfo.SCREEN_ORIENTATION_FULL_USER
       AudioPlayerOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
       AudioPlayerOrientation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
     }

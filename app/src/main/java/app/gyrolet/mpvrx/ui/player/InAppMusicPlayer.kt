@@ -95,7 +95,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.ui.background.BackdropGate
-import app.gyrolet.mpvrx.preferences.AudioPlayerOrientation
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.player.controls.AudioPlayerScreen
@@ -647,7 +646,7 @@ private fun InAppMusicPlayerContent(
   val audioOrientation by preferences.audioOrientation.collectAsState()
   val browserOrientation = rememberSaveable { activity.requestedOrientation }
   LaunchedEffect(activity, state.isVisible, audioOrientation) {
-    val target = if (state.isVisible && audioOrientation != AudioPlayerOrientation.Auto) {
+    val target = if (state.isVisible) {
       PlayerOrientationPolicy.forAudioPreference(audioOrientation)
     } else browserOrientation
     if (activity.requestedOrientation != target) activity.requestedOrientation = target
