@@ -179,6 +179,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.SeekPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.controls.components.TextPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.VolumeSlider
+import app.gyrolet.mpvrx.ui.player.controls.components.fadingHorizontalScroll
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberBufferingState
 import app.gyrolet.mpvrx.ui.player.controls.components.BufferingPhase
@@ -2347,8 +2348,14 @@ fun PlayerControls(
                 },
           ) {
             PlayerButtonTheme {
+              // Unbounded scroll width keeps the group on one line; overflow scrolls instead of wrapping.
               LandscapeActionGroup(
                 buttons = topRightButtons,
+                modifier = Modifier.fadingHorizontalScroll(
+                  rememberScrollState(),
+                  reverseScrolling = true,
+                  shadowRoom = 0.dp,
+                ),
                 endAligned = true,
                 fillWidth = false,
                 renderButton = renderLandscapeButton,

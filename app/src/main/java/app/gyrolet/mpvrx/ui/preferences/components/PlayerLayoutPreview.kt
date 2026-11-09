@@ -223,7 +223,8 @@ private fun PreviewScene(
             modifier = Modifier.widthIn(
               max = (sceneWidth - spacing.large * 2 - LandscapeActionSize - spacing.extraSmall)
                 .coerceAtLeast(LandscapeActionSize),
-            ).then(highlightRegion(region == ControlRegion.TOP_RIGHT)),
+            ).then(highlightRegion(region == ControlRegion.TOP_RIGHT))
+              .fadingHorizontalScroll(rememberScrollState(), reverseScrolling = true, shadowRoom = 0.dp),
             endAligned = true,
             fillWidth = false,
             renderButton = previewLandscapeButton,
