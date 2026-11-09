@@ -2869,4 +2869,10 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="pref_layout_playback_center">Centro da tela</string>
   <string name="pref_layout_playback_above_seekbar">Acima da barra de progresso</string>
   <string name="pref_layout_playback_below_seekbar">Abaixo da barra de progresso</string>
+  <string name="player_skip_intro">Pular abertura</string>
+  <string name="player_skip_recap">Pular resumo</string>
+  <string name="player_skip_outro">Pular encerramento</string>
+  <string name="player_skip_credits">Pular créditos</string>
+  <string name="player_skip_preview">Pular prévia</string>
+  <string name="player_skip_automatic">%1$s (automático)</string>
 </resources>

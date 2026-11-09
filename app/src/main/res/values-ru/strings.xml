@@ -2903,4 +2903,10 @@
   <string name="pref_layout_playback_center">По центру экрана</string>
   <string name="pref_layout_playback_above_seekbar">Над шкалой воспроизведения</string>
   <string name="pref_layout_playback_below_seekbar">Под шкалой воспроизведения</string>
+  <string name="player_skip_intro">Пропустить заставку</string>
+  <string name="player_skip_recap">Пропустить краткое содержание</string>
+  <string name="player_skip_outro">Пропустить концовку</string>
+  <string name="player_skip_credits">Пропустить титры</string>
+  <string name="player_skip_preview">Пропустить анонс</string>
+  <string name="player_skip_automatic">%1$s (автоматически)</string>
 </resources>

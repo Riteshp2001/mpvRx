@@ -2935,4 +2935,10 @@
   <string name="pref_layout_playback_center">وسط الشاشة</string>
   <string name="pref_layout_playback_above_seekbar">فوق شريط التقدم</string>
   <string name="pref_layout_playback_below_seekbar">تحت شريط التقدم</string>
+  <string name="player_skip_intro">تخطي المقدمة</string>
+  <string name="player_skip_recap">تخطي الملخص</string>
+  <string name="player_skip_outro">تخطي النهاية</string>
+  <string name="player_skip_credits">تخطي شارة النهاية</string>
+  <string name="player_skip_preview">تخطي المعاينة</string>
+  <string name="player_skip_automatic">%1$s (تلقائي)</string>
 </resources>

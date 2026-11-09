@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.player
 
 import app.gyrolet.mpvrx.repository.IntroDbSegment
+import java.text.Normalizer
 import java.util.Locale
 
 internal data class ChapterSkipMarker(
@@ -26,6 +27,25 @@ internal data class ProviderSkipMarker(
 /** Shared, deterministic skip-marker rules kept independent from mpv and Android lifecycle state. */
 internal object SkipMarkerResolver {
   private const val EOF_SEEK_GUARD_SECONDS = 0.25
+  private val MARKER_SEPARATORS = Regex("""[\p{P}\p{Z}\s_]+""")
+  private val LATIN_DIACRITICS = Regex("""(?<=\p{IsLatin})\p{M}+""")
+  private val CAMEL_CASE_SEPARATOR = Regex("""(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])""")
+  private val OPENING_CREDITS_TITLE = Regex("""(?:^|\s)opening\s+credits?(?:\s|$)""")
+  private val POST_CREDITS_SCENE = Regex("""(?:^|\s)(?:(?:post|after|mid)\s+credits?|bonus\s+scene|easter\s+egg|stinger)(?:\s|$)""")
+  private val POST_CREDITS_LABELS = listOf(
+    "エンドロール後", "クレジット後", "片尾彩蛋", "片尾字幕后", "片尾字幕後",
+    "после титров", "після титрів", "مشهد بعد النهاية", "مشهد ما بعد النهاية",
+    "postcréditos", "scène post-générique", "nach dem abspann",
+    "क्रेडिट के बाद",
+  )
+
+  private fun normalizeMarkerText(value: String): String =
+    Normalizer.normalize(
+      Normalizer.normalize(value, Normalizer.Form.NFKD)
+        .replace(LATIN_DIACRITICS, "")
+        .replace(CAMEL_CASE_SEPARATOR, " "),
+      Normalizer.Form.NFKC,
+    ).lowercase(Locale.ROOT)
 
   fun parseCustomKeywords(value: String): List<String> =
     value
@@ -42,20 +62,20 @@ internal object SkipMarkerResolver {
     previewKeywords: List<String>,
   ): SkipSegmentType? {
     if (title.isNullOrBlank()) return null
-    val lowered = title.lowercase(Locale.ROOT)
+    val lowered = normalizeMarkerText(title)
     val normalizedLatin = lowered.replace(Regex("""[^a-z0-9]+"""), " ").trim()
-    val compactLatin = normalizedLatin.replace(" ", "")
-    val compactRaw = lowered.replace(Regex("""[\s\p{Punct}・_]+"""), "")
+    if (POST_CREDITS_SCENE.containsMatchIn(normalizedLatin)) return null
+    val compactRaw = lowered.replace(MARKER_SEPARATORS, "")
+    if (POST_CREDITS_LABELS.any { compactRaw.contains(normalizeMarkerText(it).replace(MARKER_SEPARATORS, "")) }) return null
 
     fun hasKeyword(keywords: List<String>): Boolean =
       keywords.any { rawKeyword ->
-        val keyword = rawKeyword.lowercase(Locale.ROOT).trim()
+        val keyword = normalizeMarkerText(rawKeyword).trim()
         when {
           keyword.isEmpty() -> false
           keyword.matches(Regex("""[a-z0-9]+""")) ->
-            normalizedLatin.contains(Regex("""(?:^|\s)${Regex.escape(keyword)}(?:\s|$)""")) ||
-              (keyword.length >= 4 && compactLatin.contains(keyword))
-          else -> compactRaw.contains(keyword.replace(" ", ""))
+            normalizedLatin.contains(Regex("""(?:^|\s)${Regex.escape(keyword)}(?:\s|$)"""))
+          else -> compactRaw.contains(keyword.replace(MARKER_SEPARATORS, ""))
         }
       }
 
@@ -66,8 +86,10 @@ internal object SkipMarkerResolver {
     val hasOutro = hasKeyword(outroKeywords)
     return when {
       hasRecap -> SkipSegmentType.RECAP
-      hasCredits -> SkipSegmentType.CREDITS
       hasPreview -> SkipSegmentType.PREVIEW
+      hasIntro && hasCredits -> SkipSegmentType.INTRO
+      hasCredits && (OPENING_CREDITS_TITLE.containsMatchIn(normalizedLatin) || lowered.contains("オープニング")) -> null
+      hasCredits -> SkipSegmentType.CREDITS
       hasOutro && !hasIntro -> SkipSegmentType.OUTRO
       hasIntro -> SkipSegmentType.INTRO
       else -> null

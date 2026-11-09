@@ -2773,4 +2773,10 @@
   <string name="pref_layout_playback_center">स्क्रीन के बीच में</string>
   <string name="pref_layout_playback_above_seekbar">सीकबार के ऊपर</string>
   <string name="pref_layout_playback_below_seekbar">सीकबार के नीचे</string>
+  <string name="player_skip_intro">परिचय छोड़ें</string>
+  <string name="player_skip_recap">पुनरावलोकन छोड़ें</string>
+  <string name="player_skip_outro">अंत छोड़ें</string>
+  <string name="player_skip_credits">क्रेडिट छोड़ें</string>
+  <string name="player_skip_preview">पूर्वावलोकन छोड़ें</string>
+  <string name="player_skip_automatic">%1$s (स्वचालित)</string>
 </resources>

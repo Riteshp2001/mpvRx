@@ -2869,4 +2869,10 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_layout_playback_center">Centre de l\'écran</string>
   <string name="pref_layout_playback_above_seekbar">Au-dessus de la barre de progression</string>
   <string name="pref_layout_playback_below_seekbar">Sous la barre de progression</string>
+  <string name="player_skip_intro">Passer l\'introduction</string>
+  <string name="player_skip_recap">Passer le résumé</string>
+  <string name="player_skip_outro">Passer la fin</string>
+  <string name="player_skip_credits">Passer le générique</string>
+  <string name="player_skip_preview">Passer l\'aperçu</string>
+  <string name="player_skip_automatic">%1$s (automatique)</string>
 </resources>

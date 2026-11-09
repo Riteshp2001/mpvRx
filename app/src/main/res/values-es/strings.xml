@@ -2869,4 +2869,10 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_layout_playback_center">Centro de la pantalla</string>
   <string name="pref_layout_playback_above_seekbar">Encima de la barra de progreso</string>
   <string name="pref_layout_playback_below_seekbar">Debajo de la barra de progreso</string>
+  <string name="player_skip_intro">Omitir introducción</string>
+  <string name="player_skip_recap">Omitir resumen</string>
+  <string name="player_skip_outro">Omitir final</string>
+  <string name="player_skip_credits">Omitir créditos</string>
+  <string name="player_skip_preview">Omitir avance</string>
+  <string name="player_skip_automatic">%1$s (automático)</string>
 </resources>

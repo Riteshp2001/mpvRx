@@ -2843,4 +2843,10 @@
   <string name="pref_layout_playback_center">У центрі екрана</string>
   <string name="pref_layout_playback_above_seekbar">Над шкалою відтворення</string>
   <string name="pref_layout_playback_below_seekbar">Під шкалою відтворення</string>
+  <string name="player_skip_intro">Пропустити заставку</string>
+  <string name="player_skip_recap">Пропустити стислий зміст</string>
+  <string name="player_skip_outro">Пропустити кінцівку</string>
+  <string name="player_skip_credits">Пропустити титри</string>
+  <string name="player_skip_preview">Пропустити анонс</string>
+  <string name="player_skip_automatic">%1$s (автоматично)</string>
 </resources>

@@ -2869,4 +2869,10 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_layout_playback_center">Bildschirmmitte</string>
   <string name="pref_layout_playback_above_seekbar">Über der Fortschrittsleiste</string>
   <string name="pref_layout_playback_below_seekbar">Unter der Fortschrittsleiste</string>
+  <string name="player_skip_intro">Vorspann überspringen</string>
+  <string name="player_skip_recap">Rückblick überspringen</string>
+  <string name="player_skip_outro">Ende überspringen</string>
+  <string name="player_skip_credits">Abspann überspringen</string>
+  <string name="player_skip_preview">Vorschau überspringen</string>
+  <string name="player_skip_automatic">%1$s (automatisch)</string>
 </resources>

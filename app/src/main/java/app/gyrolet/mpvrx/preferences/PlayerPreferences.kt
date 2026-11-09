@@ -31,7 +31,7 @@ enum class IntroSegmentProvider(
   THE_INTRO_DB("TIDB", "theintrodb"),
   ANI_SKIP("AniSkip (Anime)", "aniskip"),
   ANIME_SKIP("Anime Skip", "animeskip"),
-  HYBRID("Hybrid (Fastest)", "hybrid"),
+  HYBRID("Hybrid (All Providers)", "hybrid"),
   SKIP_DB("SkipDB", "skipdb"),
 }
 

@@ -871,7 +871,7 @@ fun PlayerControls(
             hasChapters = chapters.isNotEmpty(),
             showQualityButton = showVideoQualitySelector,
             playbackSpeed = playbackSpeed ?: 1f,
-            skipSegmentLabel = currentSkippableSegment?.label,
+            skipSegmentLabel = currentSkippableSegment?.type?.labelRes?.let { stringResource(it) },
             showBuffering = showBufferingIndicator,
             autoHideMillis = playerTimeToDisappear.toLong(),
             onOpenSheet = onOpenSheet,
@@ -1856,7 +1856,7 @@ fun PlayerControls(
                 height = 40.dp,
               ) {
                 Text(
-                  text = segment.label,
+                  text = stringResource(segment.type.labelRes),
                   style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                   color = segmentColor.copy(alpha = 1f),
                 )
@@ -1875,7 +1875,7 @@ fun PlayerControls(
                     },
               ) {
                 Text(
-                  text = segment.label,
+                  text = stringResource(segment.type.labelRes),
                   style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                   color = segmentColor.copy(alpha = 1f),
                   modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),

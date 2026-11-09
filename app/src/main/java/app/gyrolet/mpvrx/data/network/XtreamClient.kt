@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.data.network
 
 import app.gyrolet.mpvrx.network.awaitResponse
+import app.gyrolet.mpvrx.utils.media.M3ULimits
 import app.gyrolet.mpvrx.utils.media.M3UParseResult
 import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.media.M3UPlaylistItem
@@ -230,9 +231,9 @@ class XtreamClient(
   companion object {
     private const val USER_AGENT = "mpvRx/2.7"
     private const val MAX_AUTH_RESPONSE_BYTES = 512 * 1024
-    private const val MAX_CATALOG_RESPONSE_BYTES = 32 * 1024 * 1024
+    private const val MAX_CATALOG_RESPONSE_BYTES = 128 * 1024 * 1024
     private const val MAX_SERIES_RESPONSE_BYTES = 4 * 1024 * 1024
-    private const val MAX_ENTRIES = 100_000
-    private const val MAX_SERIES = 10_000
+    private val MAX_ENTRIES = M3ULimits().maxEntries
+    private const val MAX_SERIES = 50_000
   }
 }

@@ -2852,4 +2852,10 @@
   <string name="pref_layout_playback_center">画面中央</string>
   <string name="pref_layout_playback_above_seekbar">シークバーの上</string>
   <string name="pref_layout_playback_below_seekbar">シークバーの下</string>
+  <string name="player_skip_intro">オープニングをスキップ</string>
+  <string name="player_skip_recap">振り返りをスキップ</string>
+  <string name="player_skip_outro">エンディングをスキップ</string>
+  <string name="player_skip_credits">クレジットをスキップ</string>
+  <string name="player_skip_preview">予告をスキップ</string>
+  <string name="player_skip_automatic">%1$s（自動）</string>
 </resources>

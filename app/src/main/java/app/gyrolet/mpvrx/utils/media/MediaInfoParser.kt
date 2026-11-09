@@ -379,13 +379,16 @@ object MediaInfoParser {
   // Episode word: Episode 5, EPISODE 05, Ep: 1
   private val EPISODE_WORD_REGEX =
     Regex(
-      """(?<![\p{L}\p{N}])ep(?:isodes?)?[\s.:_-]*(\d{1,4})(?:v\d{1,2})?(?=$|[^\p{L}\p{N}])""",
+      """(?<![\p{L}\p{N}])(?:ep(?:isodes?)?|episoden?|episodios?|capítulos?|épisodes?|episódios?|folgen?|эпизод|епізод|серия|серія|серії|الحلقة|حلقة|एपिसोड|कड़ी|कड़ी|エピソード)[\s.:_-]*(\d{1,4})(?:v\d{1,2})?(?=$|[^\p{L}\p{N}])""",
       RegexOption.IGNORE_CASE,
     )
 
   // Season word: Season 3, SEASON 3, Season: 1
   private val SEASON_WORD_REGEX =
-    Regex("""(?<![\p{L}\p{N}])(?:season[\s.:_-]*|s)(\d{1,2})(?![\p{L}\p{N}])""", RegexOption.IGNORE_CASE)
+    Regex(
+      """(?<![\p{L}\p{N}])(?:season|staffel|saison|temporada|сезон|الموسم|موسم|सीज़न|सीजन|シーズン|s)[\s.:_-]*(\d{1,2})(?![\p{L}\p{N}])|(?:第)?(\d{1,2})[季期]""",
+      RegexOption.IGNORE_CASE,
+    )
 
   // Release-year candidates are validated against the current year.
   private val YEAR_REGEX = Regex("""(?<![\p{L}\p{N}])(?:18[789]\d|19\d{2}|20\d{2})(?![\p{L}\p{N}])""")
@@ -483,6 +486,11 @@ object MediaInfoParser {
       name = name.replace('\\', '/').substringAfterLast('/')
     }
     return Normalizer.normalize(name, Normalizer.Form.NFKC)
+      .map { character ->
+        if (character.isDigit()) {
+          ('0'.code + Character.digit(character, 10)).toChar()
+        } else character
+      }.joinToString("")
       .replace('\u2013', '-')
       .replace('\u2014', '-')
       .replace('\u2212', '-')
@@ -536,7 +544,7 @@ object MediaInfoParser {
 
     // Season from "Season X" format (e.g., "Attack on Titan Season 3 Episode 12")
     if (season == null && seasonWordMatch != null) {
-      season = seasonWordMatch.groupValues[1].toIntOrNull()
+      season = seasonWordMatch.groupValues.drop(1).firstNotNullOfOrNull(String::toIntOrNull)
     }
 
     // Step 2: Extract year (from original filename)

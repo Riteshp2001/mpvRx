@@ -2850,4 +2850,10 @@
   <string name="pref_layout_playback_center">屏幕中央</string>
   <string name="pref_layout_playback_above_seekbar">进度条上方</string>
   <string name="pref_layout_playback_below_seekbar">进度条下方</string>
+  <string name="player_skip_intro">跳过片头</string>
+  <string name="player_skip_recap">跳过回顾</string>
+  <string name="player_skip_outro">跳过片尾</string>
+  <string name="player_skip_credits">跳过字幕</string>
+  <string name="player_skip_preview">跳过预告</string>
+  <string name="player_skip_automatic">%1$s（自动）</string>
 </resources>

@@ -376,9 +376,27 @@ class PlayerViewModel(
       "title song",
       "creditless opening",
       "clean opening",
-      "cold open",
-      "prologue",
-      "prelude",
+      "opening credits",
+      "main titles",
+      "vorspann",
+      "titelmelodie",
+      "cabecera",
+      "créditos iniciales",
+      "générique de début",
+      "générique d'ouverture",
+      "abertura",
+      "créditos iniciais",
+      "начальные титры",
+      "початкові титри",
+      "заставка",
+      "شارة البداية",
+      "تتر البداية",
+      "ओपनिंग",
+      "आरंभिक क्रेडिट",
+      "片头",
+      "片頭",
+      "开场字幕",
+      "開場字幕",
       "op",
       "op1",
       "op2",
@@ -397,7 +415,6 @@ class PlayerViewModel(
       "ノンクレop",
       "前期op",
       "後期op",
-      "冒頭",
     )
 
   private val outroKeywordPatterns =
@@ -409,8 +426,20 @@ class PlayerViewModel(
       "end credits",
       "credits",
       "credit roll",
-      "epilogue",
-      "postlude",
+      "abspann",
+      "créditos finales",
+      "tema de cierre",
+      "générique de fin",
+      "thème de fin",
+      "encerramento",
+      "créditos finais",
+      "конечные титры",
+      "кінцеві титри",
+      "شارة النهاية",
+      "تتر النهاية",
+      "एंडिंग",
+      "अंतिम क्रेडिट",
+      "片尾",
       "ed",
       "ed1",
       "ed2",
@@ -444,6 +473,25 @@ class PlayerViewModel(
       "last time",
       "digest",
       "catch up",
+      "rückblick",
+      "bisher bei",
+      "anteriormente",
+      "resumen",
+      "précédemment",
+      "récapitulatif",
+      "anteriormente em",
+      "resumo",
+      "в предыдущих сериях",
+      "ранее в сериале",
+      "у попередніх серіях",
+      "раніше в серіалі",
+      "في الحلقة السابقة",
+      "في الحلقات السابقة",
+      "पिछले एपिसोड में",
+      "अब तक की कहानी",
+      "前情回顾",
+      "前情回顧",
+      "剧情回顾",
       "振り返り",
       "前回まで",
       "これまで",
@@ -458,6 +506,19 @@ class PlayerViewModel(
       "credit roll",
       "rolling credits",
       "staff roll",
+      "abspann",
+      "créditos finales",
+      "générique de fin",
+      "crédits",
+      "créditos finais",
+      "конечные титры",
+      "кінцеві титри",
+      "شارة النهاية",
+      "تتر النهاية",
+      "अंतिम क्रेडिट",
+      "片尾字幕",
+      "制作人员",
+      "製作人員",
       "エンドロール",
       "クレジット",
     )
@@ -469,6 +530,21 @@ class PlayerViewModel(
       "next week on",
       "up next",
       "teaser",
+      "vorschau",
+      "nächste folge",
+      "próximo episodio",
+      "avance",
+      "prochain épisode",
+      "à suivre",
+      "próximo episódio",
+      "в следующей серии",
+      "у наступній серії",
+      "في الحلقة القادمة",
+      "في الحلقة المقبلة",
+      "अगले एपिसोड में",
+      "अगली कड़ी",
+      "下集预告",
+      "下集預告",
       "次回予告",
       "予告",
       "次回",
@@ -3476,7 +3552,7 @@ fun restartFromBeginning() {
     const val PLAYLIST_NETWORK_METADATA_PREFETCH_RADIUS = 3
     const val PLAYLIST_NETWORK_METADATA_TIMEOUT_MS = 8_000L
     const val INTRO_MARKER_CACHE_PREFS = "intro_marker_cache"
-    const val INTRO_MARKER_CACHE_PREFIX = "intro_marker:v3:"
+    const val INTRO_MARKER_CACHE_PREFIX = "intro_marker:v5:"
     const val INTRO_MARKER_CACHE_MAX_ENTRIES = 200
     const val INTRO_MARKER_CACHE_TTL_MS = 7L * 24L * 60L * 60L * 1000L
     const val INTRO_MARKER_EMPTY_CACHE_TTL_MS = 60L * 60L * 1000L
@@ -4287,7 +4363,8 @@ fun restartFromBeginning() {
       PlaybackSession.getPropertyBoolean("pause") ?: false,
       doSeek = true,
     )
-    showToast(if (auto) "${segment.label} (auto)" else segment.label)
+    val label = appContext.getString(segment.type.labelRes)
+    showToast(if (auto) appContext.getString(R.string.player_skip_automatic, label) else label)
   }
 
   private fun mergeSkipSegments() {
@@ -4327,6 +4404,7 @@ fun restartFromBeginning() {
 
   private fun lookupIntroSegments(mediaTitle: String) {
     val generation = ++introLookupGeneration
+    val playbackGeneration = PlaybackSession.state.value.generation
     introLookupJob?.cancel()
     introLookupJob = null
     introDbSegments = emptyList()
@@ -4386,7 +4464,8 @@ fun restartFromBeginning() {
       viewModelScope.launch {
         val outcome = introDbRepository.lookupSegments(lookupRequest)
         if (
-          generation != introLookupGeneration || currentMediaTitle != lookupKey ||
+          generation != introLookupGeneration || PlaybackSession.state.value.generation != playbackGeneration ||
+          currentMediaTitle != lookupKey ||
           !playerPreferences.enableIntroDb.get() || playerPreferences.introSegmentProvider.get() != provider
         ) {
           return@launch

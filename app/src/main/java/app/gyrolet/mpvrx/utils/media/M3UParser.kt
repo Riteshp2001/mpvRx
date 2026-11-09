@@ -64,9 +64,9 @@ sealed class M3UParseResult {
 
 /** Resource limits shared by every M3U entry point. */
 data class M3ULimits(
-  val maxBytes: Long = 32L * 1024 * 1024,
-  val maxLines: Int = 300_000,
-  val maxEntries: Int = 100_000,
+  val maxBytes: Long = 256L * 1024 * 1024,
+  val maxLines: Int = 2_000_000,
+  val maxEntries: Int = 500_000,
 ) {
   init {
     require(maxBytes > 0) { "maxBytes must be positive" }
