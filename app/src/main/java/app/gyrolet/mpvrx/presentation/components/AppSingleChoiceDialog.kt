@@ -63,6 +63,7 @@ fun <T> AppSingleChoiceDialog(
           Surface(
             shape = shape,
             color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+            contentColor = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
           ) {
             Row(
               modifier = Modifier

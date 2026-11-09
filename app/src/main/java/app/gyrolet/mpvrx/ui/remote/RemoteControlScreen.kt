@@ -303,17 +303,13 @@ private fun TvPicker(
           placeholder = { Text("192.168.1.20:47821") },
           singleLine = true,
           isError = addressError,
+          supportingText = if (addressError) {
+            { Text(stringResource(R.string.remote_error_invalid_address)) }
+          } else null,
           keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
           keyboardActions = KeyboardActions(onGo = { connectToAddress() }),
           modifier = Modifier.fillMaxWidth(),
         )
-        if (addressError) {
-          Text(
-            stringResource(R.string.remote_error_invalid_address),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-          )
-        }
         Button(onClick = connectToAddress, enabled = address.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
           Text(stringResource(R.string.remote_phone_connect))
         }

@@ -19,7 +19,7 @@ import androidx.activity.compose.BackHandler
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,6 +27,7 @@ import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,7 +42,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.ui.player.MpvConfigCache
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
@@ -249,8 +255,12 @@ private fun ExternalTextEditorScreen(
   Scaffold(
     topBar = {
       TopAppBar(
-        title = { Text(fileName, maxLines = 1) },
-        navigationIcon = { TextButton(onClick = ::requestClose) { Text("Back") } },
+        title = { Text(fileName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        navigationIcon = {
+          IconButton(onClick = ::requestClose) {
+            Icon(Icons.RoundedFilled.ArrowBack, contentDescription = stringResource(R.string.back))
+          }
+        },
       )
     },
   ) { padding ->
@@ -263,20 +273,21 @@ private fun ExternalTextEditorScreen(
         )
         !loaded -> CircularProgressIndicator(Modifier.padding(20.dp))
         else -> {
-          Row(
+          FlowRow(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
             Button(
               enabled = dirty && canWriteOriginal && !busy,
               onClick = { writeDocument(uri, closeOnSuccess = false) },
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.ui_save)) }
             OutlinedButton(enabled = !busy, onClick = { createCopy.launch(fileName) }) {
               Text("Save as…")
             }
             if (isMpvConfig || isInputConfig) {
               OutlinedButton(enabled = !busy, onClick = { showImport = true }) {
-                Text("Import to mpvRx")
+                Text(stringResource(R.string.ui_import))
               }
             }
           }

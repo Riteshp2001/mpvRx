@@ -165,7 +165,7 @@ fun SwitchPreference(
 
       IconSwitch(
         checked = value,
-        onCheckedChange = updateValue,
+        onCheckedChange = null,
         enabled = canChange,
         modifier = switchModifier,
       )

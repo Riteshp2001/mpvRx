@@ -33,6 +33,7 @@ import androidx.compose.material3.ExposedDropdownMenuBoxScope
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -272,6 +273,7 @@ fun AppComboBoxChipAnchor(
     enabled = enabled,
     modifier =
       modifier
+        .minimumInteractiveComponentSize()
         .heightIn(min = AppComboBoxDefaults.ChipMinHeight)
         .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.04f, clipToShape = false)
         .then(
@@ -386,7 +388,7 @@ fun AppComboBoxOption(
           Text(
             text = supportingText,
             style = MaterialTheme.typography.bodySmall,
-            color = LocalContentColor.current.copy(alpha = 0.72f),
+            color = LocalContentColor.current,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
           )

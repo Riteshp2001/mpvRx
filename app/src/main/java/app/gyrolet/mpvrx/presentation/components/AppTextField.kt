@@ -37,7 +37,7 @@ object AppTextFieldDefaults {
       unfocusedContainerColor = colors.surfaceContainerHigh,
       disabledContainerColor = colors.onSurface.copy(alpha = 0.04f),
       errorContainerColor = colors.errorContainer.copy(alpha = 0.3f),
-      unfocusedBorderColor = colors.outlineVariant,
+      unfocusedBorderColor = colors.outline,
     )
   }
 }

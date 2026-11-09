@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -69,6 +70,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error as semanticsError
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -343,6 +347,7 @@ private fun EnterPinContent(
 ) {
   var pin by rememberSaveable { mutableStateOf("") }
   val shakeOffset = remember { Animatable(0f) }
+  val reduceMotion = AppMotion.shouldReduceMotion()
   val scope = rememberCoroutineScope()
   val focusRequester = remember { FocusRequester() }
   val keyboardController = LocalSoftwareKeyboardController.current
@@ -357,7 +362,9 @@ private fun EnterPinContent(
     } else {
       pin = ""
       scope.launch {
-        shakeOffset.animateTo(
+        if (reduceMotion) {
+          shakeOffset.snapTo(0f)
+        } else shakeOffset.animateTo(
           targetValue = 0f,
           animationSpec =
             keyframes {
@@ -439,11 +446,12 @@ private fun EnterPinContent(
       modifier =
         Modifier
           .fillMaxWidth()
-          .height(32.dp)
+          .height(48.dp)
           .offset { IntOffset(shakeOffset.value.toInt(), 0) },
     ) {
       PinDots(filledCount = pin.length, total = pinLength)
 
+      val pinEntryLabel = stringResource(R.string.secure_folder_enter_pin)
       BasicTextField(
         value = pin,
         onValueChange = { pin = it.filter(Char::isDigit).take(pinLength) },
@@ -451,8 +459,13 @@ private fun EnterPinContent(
           Modifier
             .matchParentSize()
             .focusRequester(focusRequester)
+            .semantics {
+              contentDescription = pinEntryLabel
+              error?.let { message -> semanticsError(message) }
+            }
             .alpha(0f),
         singleLine = true,
+        visualTransformation = PasswordVisualTransformation(),
         textStyle = LocalTextStyle.current.copy(color = Color.Transparent),
         cursorBrush = SolidColor(Color.Transparent),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = ImeAction.Done),
@@ -474,7 +487,7 @@ private fun EnterPinContent(
     if (isBiometricAvailable && isBiometricEnabled) {
       OutlinedButton(
         onClick = onBiometricClick,
-        modifier = Modifier.fillMaxWidth().height(54.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp),
         shape = AppShapeScale.large,
       ) {
         Icon(

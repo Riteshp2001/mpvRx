@@ -1492,7 +1492,7 @@ fun PlayerControls(
                 ).constrainAs(playerUpdates) {
                   linkTo(parent.start, parent.end)
                   if (isPortrait && controlsShown && !areControlsLocked) {
-                    top.linkTo(topLeftControls.bottom, spacing.medium)
+                    top.linkTo(topControls.bottom, spacing.medium)
                   } else {
                     top.linkTo(parent.top, if (isPortrait) 104.dp else 64.dp)
                   }

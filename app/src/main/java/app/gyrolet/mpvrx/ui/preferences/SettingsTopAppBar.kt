@@ -14,7 +14,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
@@ -50,7 +52,7 @@ internal fun SettingsTopAppBar(
         IconButton(onClick = onBack) {
           Icon(
             Icons.RoundedFilled.ArrowBack,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.back),
             tint = MaterialTheme.colorScheme.secondary,
           )
         }
@@ -61,7 +63,7 @@ internal fun SettingsTopAppBar(
         IconButton(onClick = onClose) {
           Icon(
             Icons.RoundedFilled.Close,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.ui_close),
             tint = MaterialTheme.colorScheme.secondary,
           )
         }

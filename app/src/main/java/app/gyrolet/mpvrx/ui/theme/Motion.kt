@@ -114,30 +114,30 @@ object AppMotion {
   /** IntSize-specific spring for expandVertically/shrinkVertically animations. */
   val IntSizeSpring: SpringSpec<IntSize> =
     spring(
-      dampingRatio = Spring.DampingRatioLowBouncy,
-      stiffness = Spring.StiffnessMediumLow,
+      dampingRatio = 0.8f,
+      stiffness = 380f,
     )
 
   /** Spatial animations — can overshoot for expressive feel. */
   object Spatial {
     val Press = tween<Float>(durationMillis = 90, easing = AppMotion.EnterEasing)
     val Release: SpringSpec<Float> = AppMotion.noBounce(stiffness = 700f)
-    val ExpressiveDefault: SpringSpec<Float> = spring(dampingRatio = 0.9f, stiffness = 700f)
-    val ExpressiveFast: SpringSpec<Float> = spring(dampingRatio = 0.9f, stiffness = 1400f)
-    val ExpressiveSlow: SpringSpec<Float> = spring(dampingRatio = 0.9f, stiffness = 300f)
-    val ExpressiveOffset: SpringSpec<IntOffset> = spring(dampingRatio = 0.9f, stiffness = 700f)
-    val ExpressiveSize: SpringSpec<IntSize> = spring(dampingRatio = 0.9f, stiffness = 700f)
-    val StandardDefault: SpringSpec<Float> = spring(dampingRatio = 1f, stiffness = 380f)
-    val StandardOffset: SpringSpec<IntOffset> = spring(dampingRatio = 1f, stiffness = 380f)
-    val StandardSize: SpringSpec<IntSize> = spring(dampingRatio = 1f, stiffness = 380f)
+    val ExpressiveDefault: SpringSpec<Float> = spring(dampingRatio = 0.8f, stiffness = 380f)
+    val ExpressiveFast: SpringSpec<Float> = spring(dampingRatio = 0.6f, stiffness = 800f)
+    val ExpressiveSlow: SpringSpec<Float> = spring(dampingRatio = 0.8f, stiffness = 200f)
+    val ExpressiveOffset: SpringSpec<IntOffset> = spring(dampingRatio = 0.8f, stiffness = 380f)
+    val ExpressiveSize: SpringSpec<IntSize> = spring(dampingRatio = 0.8f, stiffness = 380f)
+    val StandardDefault: SpringSpec<Float> = spring(dampingRatio = 0.9f, stiffness = 700f)
+    val StandardOffset: SpringSpec<IntOffset> = spring(dampingRatio = 0.9f, stiffness = 700f)
+    val StandardSize: SpringSpec<IntSize> = spring(dampingRatio = 0.9f, stiffness = 700f)
     val Expressive: SpringSpec<Float> = ExpressiveDefault
     val Standard: SpringSpec<Float> = StandardDefault
     val Snappy: SpringSpec<Float> = ExpressiveFast
-    val SnappyDp: SpringSpec<Dp> = spring(dampingRatio = 0.9f, stiffness = 1400f)
+    val SnappyDp: SpringSpec<Dp> = spring(dampingRatio = 0.6f, stiffness = 800f)
 
     /** Dp-specific variants for animateDpAsState. */
-    val ExpressiveDp: SpringSpec<Dp> = spring(dampingRatio = 0.9f, stiffness = 700f)
-    val StandardDp: SpringSpec<Dp> = spring(dampingRatio = 1f, stiffness = 380f)
+    val ExpressiveDp: SpringSpec<Dp> = spring(dampingRatio = 0.8f, stiffness = 380f)
+    val StandardDp: SpringSpec<Dp> = spring(dampingRatio = 0.9f, stiffness = 700f)
   }
 
   /** Effect animations — color and alpha transitions (no overshoot). */
@@ -145,12 +145,12 @@ object AppMotion {
     val Color: SpringSpec<Color> =
       spring(
         dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMediumLow,
+        stiffness = 1600f,
       )
     val Alpha: SpringSpec<Float> =
       spring(
         dampingRatio = Spring.DampingRatioNoBouncy,
-        stiffness = Spring.StiffnessMedium,
+        stiffness = 1600f,
       )
   }
 }

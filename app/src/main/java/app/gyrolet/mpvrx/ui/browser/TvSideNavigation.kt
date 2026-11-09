@@ -13,6 +13,8 @@
 package app.gyrolet.mpvrx.ui.browser
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -20,11 +22,13 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -39,6 +43,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -74,6 +79,9 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -83,6 +91,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.tv.TvSafeArea
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 
 internal object TvSideNavigationDefaults {
   val CollapsedWidth: Dp = 88.dp
@@ -120,12 +129,15 @@ internal fun TvSideNavigation(
   modifier: Modifier = Modifier,
 ) {
   var expanded by remember { mutableStateOf(false) }
+  val reduceMotion = AppMotion.shouldReduceMotion()
   val currentOnFocusContent by rememberUpdatedState(onFocusContent)
   val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
   val progress by animateFloatAsState(
     targetValue = if (expanded) 1f else 0f,
     animationSpec =
-      if (expanded) {
+      if (reduceMotion) {
+        snap()
+      } else if (expanded) {
         tween(TvSideNavigationDefaults.PanelInMillis, easing = FastOutSlowInEasing)
       } else {
         tween(TvSideNavigationDefaults.PanelOutMillis, easing = LinearOutSlowInEasing)
@@ -135,7 +147,7 @@ internal fun TvSideNavigation(
   val width by animateDpAsState(
     targetValue = if (expanded) TvSideNavigationDefaults.ExpandedWidth else TvSideNavigationDefaults.CollapsedWidth,
     animationSpec =
-      tween(
+      if (reduceMotion) snap() else tween(
         durationMillis = if (expanded) TvSideNavigationDefaults.PanelInMillis else TvSideNavigationDefaults.PanelOutMillis,
         easing = TvSideNavigationDefaults.EmphasizedEasing,
       ),
@@ -293,16 +305,18 @@ private fun TvSideNavigationItem(
 ) {
   val interactionSource = remember { MutableInteractionSource() }
   val focused by interactionSource.collectIsFocusedAsState()
-  val accent = MaterialTheme.colorScheme.primary
+  val reduceMotion = AppMotion.shouldReduceMotion()
+  val selectedContainer = MaterialTheme.colorScheme.secondaryContainer
+  val selectedContent = MaterialTheme.colorScheme.onSecondaryContainer
   val onSurface = MaterialTheme.colorScheme.onSurface
-  val colorSpec = tween<Color>(TvSideNavigationDefaults.ColorMillis)
+  val colorSpec = if (reduceMotion) snap<Color>() else AppMotion.Effect.Color
 
   val background by animateColorAsState(
     targetValue =
       when {
-        focused && selected -> accent.copy(alpha = 0.28f)
+        focused && selected -> selectedContainer
         focused -> onSurface.copy(alpha = 0.12f)
-        selected -> accent.copy(alpha = 0.15f)
+        selected -> selectedContainer
         else -> Color.Transparent
       },
     animationSpec = colorSpec,
@@ -311,16 +325,16 @@ private fun TvSideNavigationItem(
   val contentColor by animateColorAsState(
     targetValue =
       when {
-        selected -> accent
+        selected -> selectedContent
         focused -> onSurface
-        else -> onSurface.copy(alpha = 0.72f)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
       },
     animationSpec = colorSpec,
     label = "tv_rail_item_content",
   )
   val scale by animateFloatAsState(
-    targetValue = if (focused) TvSideNavigationDefaults.FocusedScale else 1f,
-    animationSpec = tween(TvSideNavigationDefaults.ColorMillis, easing = FastOutSlowInEasing),
+    targetValue = if (focused && !reduceMotion) TvSideNavigationDefaults.FocusedScale else 1f,
+    animationSpec = if (reduceMotion) snap() else AppMotion.Spatial.ExpressiveFast,
     label = "tv_rail_item_scale",
   )
 
@@ -328,12 +342,21 @@ private fun TvSideNavigationItem(
     modifier =
       modifier
         .fillMaxWidth()
-        .height(TvSideNavigationDefaults.ItemHeight)
+        .heightIn(min = TvSideNavigationDefaults.ItemHeight)
+        .semantics {
+          contentDescription = label
+          this.selected = selected
+        }
         .graphicsLayer {
           scaleX = scale
           scaleY = scale
         }.clip(CircleShape)
         .background(background)
+        .border(
+          width = 2.dp,
+          color = if (focused) contentColor else Color.Transparent,
+          shape = CircleShape,
+        )
         .clickable(
           interactionSource = interactionSource,
           indication = null,
@@ -350,8 +373,8 @@ private fun TvSideNavigationItem(
     }
     AnimatedVisibility(
       visible = expanded,
-      enter = fadeIn(tween(280)) + expandHorizontally(tween(TvSideNavigationDefaults.PanelInMillis)),
-      exit = fadeOut(tween(200)) + shrinkHorizontally(tween(TvSideNavigationDefaults.PanelOutMillis)),
+      enter = if (reduceMotion) EnterTransition.None else fadeIn(tween(280)) + expandHorizontally(tween(TvSideNavigationDefaults.PanelInMillis)),
+      exit = if (reduceMotion) ExitTransition.None else fadeOut(tween(200)) + shrinkHorizontally(tween(TvSideNavigationDefaults.PanelOutMillis)),
     ) {
       Text(
         text = label,

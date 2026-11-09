@@ -24,6 +24,4 @@ fun appUiScaleOverrideConfiguration(
   Configuration().apply {
     val systemDensityDpi = base.resources.configuration.densityDpi
     densityDpi = (systemDensityDpi * scale.coerceIn(MIN_APP_UI_SCALE, MAX_APP_UI_SCALE)).toInt()
-    // This preference is the only text-size input; the system font scale stays out of it.
-    fontScale = 1f
   }

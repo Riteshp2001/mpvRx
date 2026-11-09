@@ -197,8 +197,8 @@ private fun SaveDocumentDialog(
           label = { Text(stringResource(R.string.ui_name)) },
           singleLine = true,
           isError = error != null,
+          supportingText = error?.let { message -> { Text(message) } },
         )
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
       }
     },
     confirmButton = {

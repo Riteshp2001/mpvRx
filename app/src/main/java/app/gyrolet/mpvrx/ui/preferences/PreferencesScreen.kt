@@ -119,9 +119,10 @@ object PreferencesScreen : Screen {
     }
 
     val configuration = LocalConfiguration.current
-    val isTablet = configuration.smallestScreenWidthDp >= 600
+    val useTwoPane = television || configuration.screenWidthDp >= 600
+    val categoryPaneFraction = if (!television && configuration.screenWidthDp < 840) 0.5f else 0.4f
 
-    if (isTablet || television) {
+    if (useTwoPane) {
       @Suppress("UNCHECKED_CAST")
       val detailBackstack = rememberNavBackStack(AppearancePreferencesScreen) as NavBackStack<Screen>
       val selectedScreen = detailBackstack.first()
@@ -133,7 +134,7 @@ object PreferencesScreen : Screen {
         if (!TvFocusMemory.restore(PreferencesScreen)) categoryFocusRequester.tryRequestFocus()
       }
       Row(modifier = Modifier.fillMaxSize()) {
-        Box(modifier = Modifier.weight(0.4f).tvFocusGroup()) {
+        Box(modifier = Modifier.weight(categoryPaneFraction).tvFocusGroup()) {
           SettingsPane(
             sections = sections,
             selectedScreen = selectedScreen,
@@ -158,7 +159,7 @@ object PreferencesScreen : Screen {
           color = colorScheme.outlineVariant.copy(alpha = 0.5f),
           thickness = 1.dp,
         )
-        Box(modifier = Modifier.weight(0.6f).onFocusChanged { focus ->
+        Box(modifier = Modifier.weight(1f - categoryPaneFraction).onFocusChanged { focus ->
           detailPaneFocused = focus.hasFocus
           if (focus.hasFocus) detailPaneActivated = true
         }.tvFocusGroup()) {

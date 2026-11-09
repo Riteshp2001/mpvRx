@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -173,10 +174,10 @@ fun UpdateSheet(
       if (state.selecting) {
         Text(stringResource(R.string.update_checking_download), style = MaterialTheme.typography.bodySmall)
       }
-      Row(
+      FlowRow(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         if (state.isDownloading) {
           TextButton(onClick = onCancelDownload) { Text(stringResource(R.string.generic_cancel)) }
@@ -184,7 +185,6 @@ fun UpdateSheet(
         if (!busy && !state.readyToInstall && release != null) {
           TextButton(onClick = onIgnore, enabled = !state.selecting) { Text(stringResource(R.string.ui_ignore)) }
         }
-        Spacer(Modifier.weight(1f))
         if (!busy) {
           TextButton(onClick = onDismiss) { Text(stringResource(R.string.generic_cancel)) }
           if (release != null && asset != null) {

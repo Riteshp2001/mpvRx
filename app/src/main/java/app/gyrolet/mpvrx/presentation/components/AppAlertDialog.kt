@@ -69,19 +69,19 @@ fun AppAlertDialog(
     Surface(
       modifier = Modifier.appDialogEnter(),
       shape = shape,
-      color = colors.surface,
+      color = containerColor,
       border = BorderStroke(1.dp, colors.outlineVariant.copy(alpha = 0.45f)),
       tonalElevation = tonalElevation,
     ) {
       Column(
-        modifier = Modifier.widthIn(max = 560.dp).heightIn(max = maximumHeight).padding(8.dp),
+        modifier = Modifier.widthIn(min = 280.dp, max = 560.dp).heightIn(max = maximumHeight).padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
       ) {
         if (hasHeader) {
           Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = rememberConnectedShape(0, sections, ConnectedLayout.Vertical),
-            color = colors.primaryContainer.copy(alpha = 0.55f),
+            color = containerColor,
             contentColor = titleContentColor,
           ) {
             Row(
@@ -90,7 +90,7 @@ fun AppAlertDialog(
               verticalAlignment = Alignment.CenterVertically,
             ) {
               if (icon != null) {
-                Surface(shape = MaterialTheme.shapes.largeIncreased, color = colors.primaryContainer, contentColor = iconContentColor) {
+                Surface(shape = MaterialTheme.shapes.largeIncreased, color = Color.Transparent, contentColor = iconContentColor) {
                   Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { icon() }
                 }
               }
@@ -117,7 +117,7 @@ fun AppAlertDialog(
         Surface(
           modifier = Modifier.fillMaxWidth(),
           shape = rememberConnectedShape(sections - 1, sections, ConnectedLayout.Vertical),
-          color = colors.surfaceContainerHigh,
+          color = containerColor,
         ) {
           if (singleRowActions) {
             // Keep Cancel beside split confirmations while their status label changes width.
