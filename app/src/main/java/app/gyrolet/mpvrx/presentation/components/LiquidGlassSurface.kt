@@ -144,7 +144,6 @@ fun LiquidGlassSurface(
             liquidGlassEffects(
               glassSettings, blurRadius.toPx(), refractionHeight.toPx(), refractionAmount.toPx(),
               vibrant = true,
-              refractionEnabled = !reducedMotion,
             )
           },
           highlight = {

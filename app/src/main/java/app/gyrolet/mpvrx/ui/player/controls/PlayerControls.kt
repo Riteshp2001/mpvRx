@@ -1120,7 +1120,7 @@ fun PlayerControls(
               }.then(safeAreaInsetModifier)
               .then(navigationBarBottomInsetModifier),
           ) {
-          val (topLeftControls, topRightControls) = createRefs()
+          val topControls = createRef()
           val (volumeSlider, brightnessSlider) = createRefs()
           val unlockControlsButton = createRef()
           val bottomRightControls = createRef()
@@ -2253,10 +2253,7 @@ fun PlayerControls(
             )
           }
 
-          AnimatedVisibility(
-            visible = controlsShown && !areControlsLocked && !areSlidersShown,
-            enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { -it },
-            exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { -it },
+          Box(
             modifier =
               Modifier
                 .then(
@@ -2275,91 +2272,71 @@ fun PlayerControls(
                   } else {
                     Modifier
                   },
-                ).constrainAs(topLeftControls) {
+                ).constrainAs(topControls) {
                   top.linkTo(parent.top, if (isPortrait) spacing.extraLarge else spacing.small)
                   start.linkTo(parent.start, spacing.large)
-                  if (isPortrait) {
-                    width = Dimension.fillToConstraints
-                    end.linkTo(parent.end, spacing.large)
-                  } else {
-                    width = Dimension.fillToConstraints
-                    end.linkTo(topRightControls.start, spacing.extraSmall)
+                  end.linkTo(parent.end, spacing.large)
+                  width = Dimension.fillToConstraints
+                },
+          ) {
+            val titleControls: @Composable () -> Unit = {
+              AnimatedVisibility(
+                visible = controlsShown && !areControlsLocked && !areSlidersShown,
+                enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { -it },
+                exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { -it },
+              ) {
+                val showAiIndicators = aiEnabled
+                val showRealtimeSubs = aiEnabled && realtimeSubsEnabled
+                if (isPortrait) {
+                  TopPlayerControlsPortrait(
+                    mediaTitle = mediaTitle,
+                    onBackPress = onBackPress,
+                    onOpenSheet = onOpenSheet,
+                    viewModel = viewModel,
+                    isTranslatingSub = showAiIndicators && isTranslatingSub,
+                    isRealtimeSubsActive = showRealtimeSubs && isRealtimeSubsActive,
+                    realtimeSubsLanguage = realtimeSubsLanguage,
+                    realtimeSubsStatus = realtimeSubsStatus,
+                    translationStatus = translationStatus,
+                    translatingTrackName = translatingTrackName,
+                  )
+                } else {
+                  TopLeftPlayerControlsLandscape(
+                    mediaTitle = mediaTitle,
+                    onBackPress = onBackPress,
+                    onOpenSheet = onOpenSheet,
+                    viewModel = viewModel,
+                    isTranslatingSub = showAiIndicators && isTranslatingSub,
+                    isRealtimeSubsActive = showRealtimeSubs && isRealtimeSubsActive,
+                    realtimeSubsLanguage = realtimeSubsLanguage,
+                    realtimeSubsStatus = realtimeSubsStatus,
+                    translationStatus = translationStatus,
+                    translatingTrackName = translatingTrackName,
+                  )
+                }
+              }
+            }
+            if (isPortrait) {
+              titleControls()
+            } else {
+              LandscapePlayerHeader(
+                title = titleControls,
+                actions = {
+                  AnimatedVisibility(
+                    visible = controlsShown && !areControlsLocked && !areSlidersShown,
+                    enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { it },
+                    exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { it },
+                  ) {
+                    PlayerButtonTheme {
+                      LandscapeActionGroup(
+                        buttons = topRightButtons,
+                        endAligned = true,
+                        fillWidth = false,
+                        renderButton = renderLandscapeButton,
+                      )
+                    }
                   }
                 },
-          ) {
-            val showAiIndicators = aiEnabled
-            val showRealtimeSubs = aiEnabled && realtimeSubsEnabled
-            if (isPortrait) {
-              TopPlayerControlsPortrait(
-                mediaTitle = mediaTitle,
-                onBackPress = onBackPress,
-                onOpenSheet = onOpenSheet,
-                viewModel = viewModel,
-                isTranslatingSub = showAiIndicators && isTranslatingSub,
-                isRealtimeSubsActive = showRealtimeSubs && isRealtimeSubsActive,
-                realtimeSubsLanguage = realtimeSubsLanguage,
-                realtimeSubsStatus = realtimeSubsStatus,
-                translationStatus = translationStatus,
-                translatingTrackName = translatingTrackName,
-              )
-            } else {
-              TopLeftPlayerControlsLandscape(
-                mediaTitle = mediaTitle,
-                onBackPress = onBackPress,
-                onOpenSheet = onOpenSheet,
-                viewModel = viewModel,
-                isTranslatingSub = showAiIndicators && isTranslatingSub,
-                isRealtimeSubsActive = showRealtimeSubs && isRealtimeSubsActive,
-                realtimeSubsLanguage = realtimeSubsLanguage,
-                realtimeSubsStatus = realtimeSubsStatus,
-                translationStatus = translationStatus,
-                translatingTrackName = translatingTrackName,
-              )
-            }
-          }
-
-          AnimatedVisibility(
-            visible = controlsShown && !areControlsLocked && !isPortrait && !areSlidersShown,
-            enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { it },
-            exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { it },
-            modifier =
-              Modifier
-                .then(
-                  if (showSystemStatusBar) {
-                    Modifier.windowInsetsPadding(WindowInsets.statusBars)
-                  } else {
-                    Modifier
-                  },
-                ).then(
-                  if (showSystemNavigationBar && !safeAreaWindow) {
-                    val navBarPadding = WindowInsets.navigationBars.asPaddingValues()
-                    Modifier.padding(
-                      start = navBarPadding.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
-                      end = navBarPadding.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),
-                    )
-                  } else {
-                    Modifier
-                  },
-                ).constrainAs(topRightControls) {
-                  top.linkTo(parent.top, spacing.small)
-                  start.linkTo(parent.start, spacing.large + LandscapeActionSize + spacing.extraSmall)
-                  end.linkTo(parent.end, spacing.large)
-                  width = Dimension.preferredWrapContent
-                  horizontalBias = 1f
-                },
-          ) {
-            PlayerButtonTheme {
-              // Unbounded scroll width keeps the group on one line; overflow scrolls instead of wrapping.
-              LandscapeActionGroup(
-                buttons = topRightButtons,
-                modifier = Modifier.fadingHorizontalScroll(
-                  rememberScrollState(),
-                  reverseScrolling = true,
-                  shadowRoom = 0.dp,
-                ),
-                endAligned = true,
-                fillWidth = false,
-                renderButton = renderLandscapeButton,
               )
             }
           }

@@ -61,54 +61,55 @@ fun CurrentChapter(
   val chapterContentColor = if (borderless) controlColor else playerButtonContentColor()
 
   val chapterContent: @Composable () -> Unit = {
-    AnimatedContent(
-      targetState = chapter,
+    val startTimeSec = chapter.start.toInt()
+    val timeText = remember(startTimeSec) { Utils.prettyTime(startTimeSec) }
+    Row(
       modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
-      transitionSpec = {
-        if (targetState.start > initialState.start) {
-          (slideInVertically { height -> height } + fadeIn())
-            .togetherWith(slideOutVertically { height -> -height } + fadeOut())
-        } else {
-          (slideInVertically { height -> -height } + fadeIn())
-            .togetherWith(slideOutVertically { height -> height } + fadeOut())
-        }.using(
-          SizeTransform(clip = false),
-        )
-      },
-      label = "Chapter",
-    ) { currentChapter ->
-      val startTimeSec = currentChapter.start.toInt()
-      val timeText = remember(startTimeSec) { Utils.prettyTime(startTimeSec) }
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-      ) {
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+    ) {
+      Text(
+        text = timeText,
+        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.titleMedium,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Clip,
+        color = if (borderless) chapterContentColor else MaterialTheme.colorScheme.primary,
+      )
+      if (chapter.name.isNotBlank()) {
         Text(
-          text = timeText,
-          fontWeight = FontWeight.Bold,
+          text = Typography.bullet.toString(),
+          textAlign = TextAlign.Center,
           style = MaterialTheme.typography.titleMedium,
           maxLines = 1,
+          color = chapterContentColor,
           overflow = TextOverflow.Clip,
-          color = if (borderless) chapterContentColor else MaterialTheme.colorScheme.primary,
         )
-        currentChapter.name.let {
+        AnimatedContent(
+          targetState = chapter,
+          modifier = Modifier.weight(1f, fill = false),
+          transitionSpec = {
+            if (targetState.start > initialState.start) {
+              (slideInVertically { height -> height } + fadeIn())
+                .togetherWith(slideOutVertically { height -> -height } + fadeOut())
+            } else {
+              (slideInVertically { height -> -height } + fadeIn())
+                .togetherWith(slideOutVertically { height -> height } + fadeOut())
+            }.using(SizeTransform(clip = true))
+          },
+          label = "ChapterTitle",
+        ) { currentChapter ->
           Text(
-            text = Typography.bullet.toString(),
+            text = currentChapter.name,
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.titleMedium,
             maxLines = 1,
-            color = chapterContentColor,
+            softWrap = false,
             overflow = TextOverflow.Clip,
-          )
-          Text(
-            text = it,
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.titleMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
             fontWeight = FontWeight.ExtraBold,
             color = chapterContentColor,
-            modifier = Modifier.basicMarquee(),
+            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
           )
         }
       }

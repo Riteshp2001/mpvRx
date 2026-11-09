@@ -1453,7 +1453,7 @@ class IntroDbRepository(
     private val malIdRegex = Regex("""\d{3,8}""")
     private val seasonNumberRegex = Regex("""\bseason\s*(\d+)\b""")
     private val ordinalSeasonRegex = Regex("""\b(\d+)(?:st|nd|rd|th)\s+season\b""")
-    private val LATIN_TITLE_DIACRITICS = Regex("""(?<=\p{IsLatin})\p{M}+""")
+    private val LATIN_TITLE_DIACRITICS = Regex("""(?<=[A-Za-z])\p{M}+""")
     private val ANISKIP_PENALTY_MARKERS = Regex("""(?:^|\s)(?:recap|summary|digest|compilation)(?:\s|$)""")
 
     internal fun combineHybridSegments(outcomes: List<IntroDbLookupOutcome.Loaded>): IntroDbLookupOutcome.Loaded? {

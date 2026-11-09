@@ -22,6 +22,37 @@ internal val LandscapeActionSize = 48.dp
 internal val LandscapeActionGap = 8.dp
 
 @Composable
+internal fun LandscapePlayerHeader(
+  modifier: Modifier = Modifier,
+  title: @Composable () -> Unit,
+  actions: @Composable () -> Unit,
+) {
+  Layout(
+    modifier = modifier.fillMaxWidth(),
+    content = {
+      Box { title() }
+      Box { actions() }
+    },
+  ) { measurables, constraints ->
+    val width = constraints.maxWidth
+    val backButtonWidth = LandscapeActionSize.roundToPx().coerceAtMost(width)
+    val gap = LandscapeActionGap.roundToPx().coerceAtMost((width - backButtonWidth).coerceAtLeast(0))
+    val childConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+    val actions = measurables[1].measure(
+      childConstraints.copy(maxWidth = (width - backButtonWidth - gap).coerceAtLeast(0)),
+    )
+    val title = measurables[0].measure(
+      childConstraints.copy(maxWidth = (width - actions.width - if (actions.width > 0) gap else 0).coerceAtLeast(0)),
+    )
+    val height = maxOf(title.height, actions.height).coerceIn(constraints.minHeight, constraints.maxHeight)
+    layout(width, height) {
+      title.placeRelative(0, 0)
+      actions.placeRelative(width - actions.width, 0)
+    }
+  }
+}
+
+@Composable
 internal fun LandscapeActionGroup(
   buttons: List<PlayerButton>,
   modifier: Modifier = Modifier,

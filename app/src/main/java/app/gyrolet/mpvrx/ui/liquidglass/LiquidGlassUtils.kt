@@ -51,7 +51,6 @@ import com.kyant.backdrop.BackdropEffectScope
 import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.colorControls
 import com.kyant.backdrop.effects.lens
-import com.kyant.backdrop.effects.opacity
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -122,7 +121,7 @@ data class LiquidGlassSettings(
     val highlightBlur: Float,
     val allowRefraction: Boolean = true,
 ) {
-    fun surfaceColor(base: Color): Color = base
+    fun surfaceColor(base: Color): Color = base.copy(alpha = (base.alpha * opacity).coerceIn(0f, 1f))
 
     fun highlight(base: Highlight): Highlight = base.copy(
         style = when (highlightStyle) {
@@ -198,7 +197,6 @@ fun BackdropEffectScope.liquidGlassEffects(
             chromaticAberration = settings.chromaticAberration,
         )
     }
-    if (settings.opacity < 1f) opacity(settings.opacity)
 }
 
 /**

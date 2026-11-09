@@ -28,7 +28,7 @@ internal data class ProviderSkipMarker(
 internal object SkipMarkerResolver {
   private const val EOF_SEEK_GUARD_SECONDS = 0.25
   private val MARKER_SEPARATORS = Regex("""[\p{P}\p{Z}\s_]+""")
-  private val LATIN_DIACRITICS = Regex("""(?<=\p{IsLatin})\p{M}+""")
+  private val LATIN_DIACRITICS = Regex("""(?<=[A-Za-z])\p{M}+""")
   private val CAMEL_CASE_SEPARATOR = Regex("""(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])""")
   private val OPENING_CREDITS_TITLE = Regex("""(?:^|\s)opening\s+credits?(?:\s|$)""")
   private val POST_CREDITS_SCENE = Regex("""(?:^|\s)(?:(?:post|after|mid)\s+credits?|bonus\s+scene|easter\s+egg|stinger)(?:\s|$)""")
