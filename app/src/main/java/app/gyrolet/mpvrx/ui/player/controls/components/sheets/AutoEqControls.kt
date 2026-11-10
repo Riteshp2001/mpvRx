@@ -17,6 +17,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.SegmentedButton
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -70,21 +72,13 @@ import org.koin.compose.koinInject
 import kotlin.math.log10
 
 @Composable
-internal fun AutoEqControls(enabled: Boolean) {
-  val context = LocalContext.current
+internal fun AutoEqControls(enabled: Boolean, onChooseHeadphones: () -> Unit) {
   val preferences = koinInject<AudioPreferences>()
   val savedProfile by preferences.autoEqProfile.collectAsState()
   val correctionEnabled by preferences.autoEqEnabled.collectAsState()
   val profile = remember(savedProfile) { AutoEq.restore(savedProfile) }
   val unavailable by PlaybackSession.autoEqUnavailable.collectAsState()
   val title = stringResource(R.string.autoeq_title)
-  var showPicker by rememberSaveable { mutableStateOf(false) }
-  var showReference by rememberSaveable { mutableStateOf(false) }
-  var indexAttempt by remember { mutableIntStateOf(0) }
-  var loading by remember { mutableStateOf(false) }
-  var failed by remember { mutableStateOf(false) }
-  var downloadJob by remember { mutableStateOf<Job?>(null) }
-  val scope = rememberCoroutineScope()
 
   Row(
     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -112,8 +106,7 @@ internal fun AutoEqControls(enabled: Boolean) {
       enabled = enabled,
       onCheckedChange = { checked ->
         if (checked && profile == null) {
-          failed = false
-          showPicker = true
+          onChooseHeadphones()
         } else preferences.autoEqEnabled.set(checked)
       },
       modifier = Modifier.semantics { contentDescription = title },
@@ -122,7 +115,7 @@ internal fun AutoEqControls(enabled: Boolean) {
   HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
   Row(
     modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp)
-      .clickable { failed = false; showPicker = true }
+      .clickable(onClick = onChooseHeadphones)
       .padding(vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -160,20 +153,25 @@ internal fun AutoEqControls(enabled: Boolean) {
       modifier = Modifier.padding(top = 8.dp),
     )
   }
-  TextButton(onClick = { showReference = true }, modifier = Modifier.padding(top = 12.dp)) {
-    Text(stringResource(R.string.autoeq_reference_curves))
-    Icon(Icons.RoundedFilled.ChevronRight, null, modifier = Modifier.size(18.dp).padding(start = 4.dp))
-  }
+  HorizontalDivider(
+    color = MaterialTheme.colorScheme.outlineVariant,
+    modifier = Modifier.padding(top = 20.dp, bottom = 12.dp),
+  )
+  Text(stringResource(R.string.autoeq_reference_target), style = MaterialTheme.typography.titleMedium)
+  HarmanTargetReference()
+}
 
-  if (showReference) {
-    AppPickerSheet(
-      title = stringResource(R.string.autoeq_reference_target),
-      usePlayerSheet = true,
-      onDismissRequest = { showReference = false },
-    ) { HarmanTargetReference() }
-  }
-
-  if (showPicker) {
+@Composable
+internal fun AutoEqHeadphonePickerSheet(onDismissRequest: () -> Unit) {
+  val context = LocalContext.current
+  val preferences = koinInject<AudioPreferences>()
+  val savedProfile by preferences.autoEqProfile.collectAsState()
+  val profile = remember(savedProfile) { AutoEq.restore(savedProfile) }
+  var indexAttempt by remember { mutableIntStateOf(0) }
+  var loading by remember { mutableStateOf(false) }
+  var failed by remember { mutableStateOf(false) }
+  var downloadJob by remember { mutableStateOf<Job?>(null) }
+  val scope = rememberCoroutineScope()
     val entries by produceState<List<AutoEqEntry>?>(null, context, indexAttempt) {
       value = try {
         AutoEq.entries(context)
@@ -201,7 +199,7 @@ internal fun AutoEqControls(enabled: Boolean) {
       onDismissRequest = {
         downloadJob?.cancel()
         loading = false
-        showPicker = false
+        onDismissRequest()
       },
     ) {
       AppTextField(
@@ -241,6 +239,7 @@ internal fun AutoEqControls(enabled: Boolean) {
             headlineContent = { Text(entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
             supportingContent = { Text(entry.measurementSource) },
             trailingContent = { RadioButton(selected = profile?.entry?.url == entry.url, onClick = null, enabled = !loading) },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             modifier = Modifier.selectable(
               selected = profile?.entry?.url == entry.url,
               enabled = !loading,
@@ -254,7 +253,7 @@ internal fun AutoEqControls(enabled: Boolean) {
                     ensureActive()
                     preferences.autoEqProfile.set(downloaded.saved())
                     preferences.autoEqEnabled.set(true)
-                    showPicker = false
+                    onDismissRequest()
                   } catch (cancellation: CancellationException) {
                     throw cancellation
                   } catch (_: Exception) {
@@ -269,7 +268,6 @@ internal fun AutoEqControls(enabled: Boolean) {
         }
       }
     }
-  }
 }
 
 @Composable

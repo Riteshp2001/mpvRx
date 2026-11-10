@@ -38,8 +38,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -159,7 +157,13 @@ fun EqualizerSheet(
   val initialFocusRequester =
     rememberTvInitialFocusRequester(requestKey = state.isEnabled)
   var showAutoEq by rememberSaveable { mutableStateOf(false) }
+  var showHeadphonePicker by rememberSaveable { mutableStateOf(false) }
+  val scrollState = rememberScrollState()
   val selectedTab = if (showAutoEq) 2 else state.mode.ordinal
+  if (showHeadphonePicker) {
+    AutoEqHeadphonePickerSheet(onDismissRequest = { showHeadphonePicker = false })
+    return
+  }
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     modifier = modifier.tvFocusGroup(),
@@ -168,8 +172,7 @@ fun EqualizerSheet(
       modifier =
         Modifier
           .fillMaxWidth()
-          .verticalScroll(rememberScrollState())
-          .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp),
+          .padding(start = 20.dp, end = 20.dp, top = 8.dp),
     ) {
       Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -191,121 +194,132 @@ fun EqualizerSheet(
         )
       }
 
-      PrimaryTabRow(selectedTabIndex = selectedTab, modifier = Modifier.fillMaxWidth()) {
+      SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
         listOf(R.string.equalizer_tab_tone, R.string.equalizer_tab_bands, R.string.autoeq_title).forEachIndexed { index, title ->
-          Tab(
+          SegmentedButton(
             selected = selectedTab == index,
             onClick = {
               showAutoEq = index == 2
               if (index < 2) onModeChanged(EqualizerMode.entries[index])
             },
-            text = { Text(stringResource(title)) },
-          )
+            shape = SegmentedButtonDefaults.itemShape(index, 3),
+            colors = themedSegmentedButtonColors(),
+          ) {
+            Text(stringResource(title))
+          }
         }
       }
 
-      Spacer(modifier = Modifier.height(20.dp))
-
-      if (showAutoEq) {
-        AutoEqControls(enabled = state.isEnabled)
-      } else when (state.mode) {
-        EqualizerMode.DYNAMIC -> {
-          DynamicEqualizerContent(
-            state = state,
-            onToneChanged = onToneChanged,
-            onToneFocusChanged = onToneFocusChanged,
-          )
-        }
-        EqualizerMode.MANUAL -> {
-          ManualEqualizerContent(
-            state = state,
-            onPresetSelected = onPresetSelected,
-            onBandChanged = onBandChanged,
-          )
-        }
-      }
-
-      HorizontalDivider(
-        modifier = Modifier.padding(vertical = 24.dp),
-        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-      )
-
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+      Column(
+        modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
+          .verticalScroll(scrollState).padding(bottom = 16.dp),
       ) {
-        Text(
-          text = stringResource(R.string.equalizer_volume_boost).uppercase(),
-          style = MaterialTheme.typography.labelMedium,
-          color =
-            if (state.isEnabled) {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-            },
-          letterSpacing = 0.sp,
-          fontWeight = FontWeight.SemiBold,
+        Spacer(modifier = Modifier.height(20.dp))
+
+        if (showAutoEq) {
+          AutoEqControls(
+            enabled = state.isEnabled,
+            onChooseHeadphones = { showHeadphonePicker = true },
+          )
+        } else when (state.mode) {
+          EqualizerMode.DYNAMIC -> {
+            DynamicEqualizerContent(
+              state = state,
+              onToneChanged = onToneChanged,
+              onToneFocusChanged = onToneFocusChanged,
+            )
+          }
+          EqualizerMode.MANUAL -> {
+            ManualEqualizerContent(
+              state = state,
+              onPresetSelected = onPresetSelected,
+              onBandChanged = onBandChanged,
+            )
+          }
+        }
+
+        HorizontalDivider(
+          modifier = Modifier.padding(vertical = 24.dp),
+          color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
         )
-        Text(
-          text = if (state.volumeBoostDb > 0) "+${state.volumeBoostDb} dB" else stringResource(R.string.player_sheets_off),
-          style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-          color =
-            if (state.isEnabled) {
-              if (state.volumeBoostDb > 0) {
-                MaterialTheme.colorScheme.primary
-              } else {
+
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(
+            text = stringResource(R.string.equalizer_volume_boost).uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color =
+              if (state.isEnabled) {
                 MaterialTheme.colorScheme.onSurfaceVariant
-              }
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-            },
-        )
-      }
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+              },
+            letterSpacing = 0.sp,
+            fontWeight = FontWeight.SemiBold,
+          )
+          Text(
+            text = if (state.volumeBoostDb > 0) "+${state.volumeBoostDb} dB" else stringResource(R.string.player_sheets_off),
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+            color =
+              if (state.isEnabled) {
+                if (state.volumeBoostDb > 0) {
+                  MaterialTheme.colorScheme.primary
+                } else {
+                  MaterialTheme.colorScheme.onSurfaceVariant
+                }
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+              },
+          )
+        }
 
-      Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-      var volumeBoostValue by remember(state.volumeBoostDb) { mutableFloatStateOf(state.volumeBoostDb.toFloat()) }
-      val boostHaptics = app.gyrolet.mpvrx.ui.utils.rememberAdjustmentHaptics(0f, 10f)
-      Slider(
-        value = volumeBoostValue,
-        onValueChange = { newValue ->
-          boostHaptics.move(volumeBoostValue, newValue)
-          volumeBoostValue = newValue
-          onVolumeBoostChanged(newValue.roundToInt())
-        },
-        valueRange = 0f..10f,
-        enabled = state.isEnabled,
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .tvFocusHighlight(MaterialTheme.shapes.small, enabled = state.isEnabled),
-      )
+        var volumeBoostValue by remember(state.volumeBoostDb) { mutableFloatStateOf(state.volumeBoostDb.toFloat()) }
+        val boostHaptics = app.gyrolet.mpvrx.ui.utils.rememberAdjustmentHaptics(0f, 10f)
+        Slider(
+          value = volumeBoostValue,
+          onValueChange = { newValue ->
+            boostHaptics.move(volumeBoostValue, newValue)
+            volumeBoostValue = newValue
+            onVolumeBoostChanged(newValue.roundToInt())
+          },
+          valueRange = 0f..10f,
+          enabled = state.isEnabled,
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .tvFocusHighlight(MaterialTheme.shapes.small, enabled = state.isEnabled),
+        )
 
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-      ) {
-        Text(
-          text = "0 dB",
-          style = MaterialTheme.typography.labelSmall,
-          color =
-            if (state.isEnabled) {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-            },
-        )
-        Text(
-          text = "+10 dB",
-          style = MaterialTheme.typography.labelSmall,
-          color =
-            if (state.isEnabled) {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-            },
-        )
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+          Text(
+            text = "0 dB",
+            style = MaterialTheme.typography.labelSmall,
+            color =
+              if (state.isEnabled) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+              },
+          )
+          Text(
+            text = "+10 dB",
+            style = MaterialTheme.typography.labelSmall,
+            color =
+              if (state.isEnabled) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+              },
+          )
+        }
       }
     }
   }
