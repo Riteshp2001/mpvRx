@@ -1190,24 +1190,25 @@ fun PlayerControls(
 
           // Keep the seekbar close to its controls. Bands come from remembered heights, so a
           // layer leaving the layout (buffering, volume/brightness sliders, hidden controls) moves nothing.
-          fun shadowInset(slot: BottomSlot?): Dp =
-            when {
-              isPortrait -> portraitGlassShadowRoom(slot, enableLiquidGlass)
-              enableLiquidGlass && slot == BottomSlot.Playback -> PlaybackShadowRoom
-              else -> 0.dp
-            }
+          fun portraitInset(slot: BottomSlot?): Dp =
+            if (isPortrait) portraitGlassShadowRoom(slot, enableLiquidGlass) else 0.dp
 
-          val clusterEdge = PlayerSectionGap - shadowInset(bottomStack.firstOrNull { bandHeight(it) > 0.dp })
-          val clusterGap = PlayerSectionGap
-          val customButtonsGap = PlayerSectionGap
+          val clusterEdge =
+            if (isPortrait) {
+              PortraitSectionGap - portraitInset(bottomStack.firstOrNull { bandHeight(it) > 0.dp })
+            } else {
+              spacing.medium
+            }
+          val clusterGap = if (isPortrait) PortraitSectionGap else spacing.extraSmall
+          val customButtonsGap = spacing.smaller * 2
           val bandCenters = HashMap<BottomSlot, Dp>()
           var nextBandBottom = clusterEdge
           var bottomClusterTop = clusterEdge
           var previousVisibleSlot: BottomSlot? = null
           for (slot in bottomStack) {
             val height = bandHeight(slot)
-            if (height > 0.dp && previousVisibleSlot != null) {
-              nextBandBottom -= shadowInset(previousVisibleSlot) + shadowInset(slot)
+            if (height > 0.dp && isPortrait && previousVisibleSlot != null) {
+              nextBandBottom -= portraitInset(previousVisibleSlot) + portraitInset(slot)
             }
             bandCenters[slot] = nextBandBottom + height / 2
             if (height > 0.dp) {

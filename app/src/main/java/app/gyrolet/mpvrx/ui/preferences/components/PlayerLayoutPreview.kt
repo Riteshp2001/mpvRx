@@ -60,7 +60,7 @@ import app.gyrolet.mpvrx.ui.player.controls.LandscapeActionSize
 import app.gyrolet.mpvrx.ui.player.controls.LandscapeControlsRow
 import app.gyrolet.mpvrx.ui.player.controls.BottomSlot
 import app.gyrolet.mpvrx.ui.player.controls.PlaybackControlsGeometry
-import app.gyrolet.mpvrx.ui.player.controls.PlayerSectionGap
+import app.gyrolet.mpvrx.ui.player.controls.PortraitSectionGap
 import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonTheme
 import app.gyrolet.mpvrx.ui.player.controls.PlayerControlsContentTheme
 import app.gyrolet.mpvrx.ui.player.controls.VideoControlsLayoutPreset
@@ -241,8 +241,8 @@ private fun PreviewScene(
       Column(
         Modifier.align(Alignment.BottomCenter).fillMaxWidth()
           .padding(horizontal = if (region.isPortrait) spacing.large else 0.dp,
-            vertical = PlayerSectionGap),
-        verticalArrangement = Arrangement.spacedBy(PlayerSectionGap),
+            vertical = if (region.isPortrait) PortraitSectionGap else spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(if (region.isPortrait) PortraitSectionGap else spacing.extraSmall),
       ) {
         layout.bottomToTop.asReversed().forEach { slot ->
           when (slot) {
@@ -261,7 +261,7 @@ private fun PreviewScene(
                   rightButtons = bottomRightButtons,
                   playbackWidth = if (playlist) geometry.playPauseSize + geometry.skipButtonSize * 2 + geometry.buttonGap * 2
                     else geometry.playPauseSize,
-                  modifier = Modifier.padding(horizontal = spacing.medium),
+                  modifier = Modifier.padding(horizontal = spacing.medium, vertical = if (glassEnabled) 8.dp else 0.dp),
                   leftModifier = highlightRegion(region == ControlRegion.BOTTOM_LEFT),
                   rightModifier = highlightRegion(region == ControlRegion.BOTTOM_RIGHT),
                   renderButton = previewLandscapeButton,
