@@ -1,0 +1,14 @@
+ku100_51_96k.sofa
+
+Database: SADIE II
+SOFA convention: SimpleFreeFieldHRIR 1.0
+Sampling rate: 96000 Hz
+Impulse responses: 7 source positions, 2 ears, 512 samples
+
+Copyright 2018, University of York
+Licensed under the Apache License, Version 2.0.
+See LICENSE-ku100.txt and the License attribute embedded in the SOFA file.
+
+This dataset was extracted from the user-supplied Resonada 2.2.0.2 APK and
+bundled without modifying its contents. It is an HRTF dataset, not a Dolby
+Atmos decoder or a certification of the audio output path.

@@ -391,6 +391,7 @@ dependencies {
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.ui)
   implementation(libs.androidx.ui.graphics)
+  implementation(libs.androidsvg)
   implementation(libs.androidx.material3.android)
   implementation(libs.google.material)
   implementation(libs.androidx.ui.tooling.preview)

@@ -1,9 +1,11 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 package app.gyrolet.mpvrx.ui.player
 
+import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
+import app.gyrolet.mpvrx.domain.navidrome.NavidromeSong
 import java.util.Locale
 
-internal enum class AudioQuality {
+enum class AudioQuality {
   HiRes,
   Lossless,
   Lossy,
@@ -11,13 +13,43 @@ internal enum class AudioQuality {
   Unknown,
 }
 
-internal data class AudioFormatInfo(
+internal enum class AudioFormatLogo(
+  val asset: String,
+  val aspectRatio: Float,
+) {
+  HiRes("HiResAudiologo.svg", 1f),
+  Lossless("AppleLosslesslogo.svg", 15f / 9f),
+  Lossy("LossyAudiologo.svg", 1f),
+  Cd("CdAudiologo.svg", 1f),
+  Dsd("DSDlogo.svg", 384f / 195f),
+  DolbyAtmos("DolbyAtmoslogo.svg", 308.25f / 76.25f),
+  DolbyDigital("DolbyDigitallogo.svg", 384f / 95f),
+  Dts("DtsLogo.svg", 384f / 154f),
+  Mpegh("MpeghLogo.svg", 2f),
+  Mqa("MqaLogo.svg", 384f / 168f),
+}
+
+data class AudioFormatInfo(
   val codecLabel: String,
   val quality: AudioQuality,
   val sampleRate: Int?,
   val sourceBitDepth: Int?,
   val bitrate: Long?,
 ) {
+  internal val artworkLogo: AudioFormatLogo?
+    get() = when {
+      codecLabel == "DOLBY ATMOS" -> AudioFormatLogo.DolbyAtmos
+      codecLabel == "DOLBY DIGITAL" -> AudioFormatLogo.DolbyDigital
+      codecLabel.startsWith("DTS") -> AudioFormatLogo.Dts
+      codecLabel == "MPEG-H" -> AudioFormatLogo.Mpegh
+      quality == AudioQuality.Dsd -> AudioFormatLogo.Dsd
+      quality == AudioQuality.HiRes -> AudioFormatLogo.HiRes
+      quality == AudioQuality.Lossless && sampleRate == 44100 && sourceBitDepth == 16 -> AudioFormatLogo.Cd
+      quality == AudioQuality.Lossless -> AudioFormatLogo.Lossless
+      quality == AudioQuality.Lossy -> AudioFormatLogo.Lossy
+      else -> null
+    }
+
   fun details(qualityLabel: String): String =
     buildList {
       add(codecLabel)
@@ -81,6 +113,7 @@ internal fun resolveAudioFormatInfo(
     name == "eac3" || name == "e-ac-3" -> "DOLBY DIGITAL PLUS"
     name == "truehd" -> "DOLBY TRUEHD"
     name == "ac4" -> "DOLBY AC-4"
+    name == "mpegh_3d_audio" || name == "mpegh" -> "MPEG-H"
     dtsMasterAudio -> "DTS-HD MA"
     name == "dts" && profileName.contains("dts-hd hra") -> "DTS-HD HRA"
     name == "dts" -> "DTS"
@@ -96,3 +129,59 @@ internal fun resolveAudioFormatInfo(
 }
 
 private val PCM_BIT_DEPTH = Regex("^pcm_[suf](8|16|24|32|64)")
+
+internal fun indexedAudioFormatInfo(
+  mimeType: String?,
+  sampleRate: Int? = null,
+  bitsPerSample: Int? = null,
+  bitrate: Long? = null,
+): AudioFormatInfo? {
+  val mime = mimeType?.substringBefore(';')?.trim()?.lowercase(Locale.ROOT) ?: return null
+  val codec = when (mime) {
+    "audio/mpeg", "audio/mp3" -> "mp3"
+    "audio/aac", "audio/aac-adts" -> "aac"
+    "audio/flac", "audio/x-flac" -> "flac"
+    "audio/alac", "audio/x-alac" -> "alac"
+    "audio/opus" -> "opus"
+    "audio/vorbis" -> "vorbis"
+    "audio/ac3", "audio/ac-3" -> "ac3"
+    "audio/eac3", "audio/eac3-joc", "audio/e-ac-3" -> "eac3"
+    "audio/true-hd", "audio/truehd" -> "truehd"
+    "audio/dsd", "audio/dsf", "audio/dff", "audio/x-dsf", "audio/x-dff" -> "dsd"
+    "audio/mpegh", "audio/mha1", "audio/mhm1" -> "mpegh"
+    else -> return null
+  }
+  val format = resolveAudioFormatInfo(
+    codec = codec,
+    profile = if (mime == "audio/eac3-joc") "Dolby Atmos JOC" else null,
+    sampleRate = sampleRate,
+    bitsPerSample = bitsPerSample?.toString(),
+    bitrate = bitrate,
+  ) ?: return null
+  return if (mime == "audio/mpeg") format.copy(codecLabel = "MPEG AUDIO") else format
+}
+
+internal fun navidromeAudioFormatInfo(song: NavidromeSong): AudioFormatInfo? =
+  indexedAudioFormatInfo(
+    mimeType = song.contentType,
+    sampleRate = song.samplingRate,
+    bitsPerSample = song.bitDepth,
+    bitrate = song.bitRate?.toLong()?.times(1000),
+  )
+
+internal fun jellyfinAudioFormatInfo(item: JellyfinItem): AudioFormatInfo? {
+  if (!item.isAudio) return null
+  val codec = when (val name = item.audioCodec?.lowercase(Locale.ROOT)) {
+    "dolby digital" -> "ac3"
+    "e-ac-3" -> "eac3"
+    "dts-hd", "dtshd" -> "dts"
+    else -> name
+  }
+  return resolveAudioFormatInfo(
+    codec = codec,
+    profile = item.audioCodecProfile,
+    sampleRate = item.audioSampleRate,
+    bitsPerSample = item.audioBitDepth?.toString(),
+    bitrate = item.audioBitRate,
+  )
+}

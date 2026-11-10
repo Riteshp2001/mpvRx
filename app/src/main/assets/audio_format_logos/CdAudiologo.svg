@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Resonāda logical mark: CD / lossless audio (16-bit / 44.1–48 kHz).
+     Professional vector mark matching Hi-Res Audio logo design language.
+     AUDIO letterforms lifted from HiResAudiologo.svg (Illustrator paths).
+     Original artwork. viewBox matches HiResAudiologo. -->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     viewBox="0 0 48.425 48.426" width="48" height="48">
+<defs>
+  <!-- Green gradient for frame borders (replaces Hi-Res gold) -->
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#0D5C2E"/>
+    <stop offset="0.2" stop-color="#16A34A"/>
+    <stop offset="0.5" stop-color="#22C55E"/>
+    <stop offset="0.8" stop-color="#16A34A"/>
+    <stop offset="1" stop-color="#0D5C2E"/>
+  </linearGradient>
+  <linearGradient id="gv" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#0D5C2E"/>
+    <stop offset="0.2" stop-color="#16A34A"/>
+    <stop offset="0.5" stop-color="#22C55E"/>
+    <stop offset="0.8" stop-color="#16A34A"/>
+    <stop offset="1" stop-color="#0D5C2E"/>
+  </linearGradient>
+  <!-- Sweeping arc clip (same geometry as Hi-Res) -->
+  <path id="arcShape" d="M24.214,28.477c-8.077,0-15.708-1.972-22.404-5.482v0.6
+    c6.696,3.507,14.327,5.5,22.404,5.5c8.083,0,15.703-1.993,22.399-5.5v-0.6
+    C39.917,26.505,32.297,28.477,24.214,28.477"/>
+  <clipPath id="arcClip"><use xlink:href="#arcShape"/></clipPath>
+  <!-- Arc gradient (dark-green to emerald, like Hi-Res dark-brown to gold) -->
+  <linearGradient id="ag" x1="0" y1="0" x2="48.425" y2="0" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#0A3D1F"/>
+    <stop offset="0.04" stop-color="#115C30"/>
+    <stop offset="0.15" stop-color="#16A34A"/>
+    <stop offset="0.5" stop-color="#4ADE80"/>
+    <stop offset="0.6" stop-color="#22C55E"/>
+    <stop offset="0.85" stop-color="#16A34A"/>
+    <stop offset="1" stop-color="#0A3D1F"/>
+  </linearGradient>
+</defs>
+
+<!-- === Layer 1: Dark plaque (bottom half, sweeping curve top edge) === -->
+<path d="M24.215,29.095c-8.078,0-15.709-1.993-22.405-5.5v23.017l44.803-0.025V23.595
+  C39.917,27.102,32.298,29.095,24.215,29.095z" fill="#0A1A10"/>
+
+<!-- === Layer 2: Cream face (top half) === -->
+<rect x="1.81" y="0.277" width="44.805" height="27.0" fill="#F0EDE4"/>
+
+<!-- === Layer 3: "CD" letterforms (bold geometric, dark forest green) === -->
+<!-- C — open bowl, same weight/scale as Hi-Res "Hi·ReS" letters -->
+<path d="M20.4,7.6C19.4,7.2,18.3,7,17.1,7c-2,0-3.7,0.7-5,2c-1.3,1.3-2,3.1-2,5.3
+  c0,2.2,0.7,4,2,5.3c1.3,1.3,3,2,5,2c1.2,0,2.3-0.2,3.3-0.7l-0.4-1.9
+  c-0.8,0.4-1.7,0.6-2.8,0.6c-1.5,0-2.7-0.5-3.6-1.5c-0.9-1-1.4-2.3-1.4-3.8
+  c0-1.5,0.5-2.8,1.4-3.8c0.9-1,2.1-1.5,3.6-1.5c1.1,0,2,0.2,2.8,0.6L20.4,7.6z" fill="#14532D"/>
+<!-- D — vertical stem + bowl, matching C weight -->
+<path fill-rule="evenodd" d="M24.8,7.0h4.5c1.9,0,3.5,0.6,4.7,1.9c1.2,1.3,1.8,3,1.8,5.3
+  c0,2.3-0.6,4-1.8,5.3c-1.2,1.3-2.8,1.9-4.7,1.9h-4.5V7.0z
+  M26.7,9.0v10.4h2.4c1.4,0,2.5-0.5,3.3-1.4c0.8-0.9,1.2-2.2,1.2-3.8
+  c0-1.6-0.4-2.9-1.2-3.8c-0.8-0.9-1.9-1.4-3.3-1.4H26.7z" fill="#14532D"/>
+
+<!-- === Layer 4: Sweeping arc separator (green gradient) === -->
+<g clip-path="url(#arcClip)">
+  <rect x="0" y="22.5" width="48.425" height="7" fill="url(#ag)"/>
+</g>
+
+<!-- === Layer 5: "AUDIO" — exact paths from Hi-Res Audio logo (Illustrator) === -->
+<!-- A (compound: outer letterform + inner triangle counter) -->
+<path fill-rule="evenodd" fill="#BBF7D0"
+  d="M10.173,42.327l-0.716-2.205H6.327l-0.709,2.205H3.853l2.933-9.012h2.27l2.899,9.012H10.173z
+     M6.703,38.635H9.055L7.888,34.735z"/>
+<!-- U -->
+<path fill="#BBF7D0"
+  d="M20.266,39.662c0,1.838-1.386,2.826-3.258,2.826c-1.843,0-3.241-0.988-3.241-2.826v-6.347h1.666v6.122
+     c0,1.103,0.661,1.556,1.566,1.556c0.905,0,1.606-0.481,1.606-1.556v-6.122h1.661V39.662z"/>
+<!-- D (compound: outer + inner counter) -->
+<path fill-rule="evenodd" fill="#BBF7D0"
+  d="M25.816,42.327h-2.753v-9.012h2.753c2.66,0,4.101,1.698,4.101,4.468
+     C29.917,40.561,28.476,42.327,25.816,42.327z
+     M25.585,34.782h-0.87v6.051h0.87c1.847,0,2.671-1.188,2.671-3.025
+     C28.256,35.999,27.432,34.782,25.585,34.782z"/>
+<!-- I -->
+<rect x="32.514" y="33.315" width="1.647" height="9.012" fill="#BBF7D0"/>
+<!-- O (compound: outer + inner counter) -->
+<path fill-rule="evenodd" fill="#BBF7D0"
+  d="M40.559,42.463c-2.434,0-3.779-1.923-3.779-4.631s1.327-4.68,3.779-4.68
+     c2.507,0,3.82,1.972,3.82,4.68S43.038,42.463,40.559,42.463z
+     M40.559,34.643c-1.458,0-2.136,1.402-2.136,3.189c0,1.766,0.695,3.162,2.17,3.162
+     c1.491,0,2.146-1.396,2.146-3.162C42.739,36.045,42.05,34.643,40.559,34.643z"/>
+
+<!-- === Layer 6: Frame borders (green gradient, same structure as Hi-Res gold) === -->
+<!-- Top -->
+<rect x="0" y="0" width="48.425" height="0.277" fill="url(#gf)"/>
+<!-- Bottom -->
+<rect x="0" y="48.149" width="48.425" height="0.277" fill="url(#gf)"/>
+<!-- Left -->
+<rect x="0" y="0" width="0.277" height="48.426" fill="url(#gv)"/>
+<!-- Right -->
+<rect x="48.148" y="0" width="0.277" height="48.426" fill="url(#gv)"/>
+</svg>

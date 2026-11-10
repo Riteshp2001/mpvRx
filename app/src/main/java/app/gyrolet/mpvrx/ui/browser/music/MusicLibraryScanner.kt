@@ -70,7 +70,8 @@ object MusicLibraryScanner {
       MediaStore.Audio.Media.DATE_MODIFIED,
       MediaStore.Audio.Media.TRACK,
       MediaStore.Audio.Media.YEAR,
-      MediaStore.Audio.Media.SIZE
+      MediaStore.Audio.Media.SIZE,
+      MediaStore.Audio.Media.MIME_TYPE,
     ).let { columns ->
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) columns + MediaStore.MediaColumns.RELATIVE_PATH else columns
     }
@@ -101,6 +102,7 @@ object MusicLibraryScanner {
         val trackCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
         val yearCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
         val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+        val mimeTypeCol = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
 
         while (cursor.moveToNext()) {
           currentCoroutineContext().ensureActive()
@@ -167,6 +169,7 @@ object MusicLibraryScanner {
               size = size,
               hasAlbumTag = album != null,
               dateModified = dateModified,
+              mimeType = mimeTypeCol.takeIf { it >= 0 }?.let(cursor::getString),
             )
           )
         }

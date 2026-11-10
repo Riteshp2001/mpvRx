@@ -45,6 +45,9 @@ data class NavidromeSong(
   val coverArtId: String? = null,
   val suffix: String? = null,
   val isFavorite: Boolean = false,
+  val contentType: String? = null,
+  val samplingRate: Int? = null,
+  val bitDepth: Int? = null,
 )
 
 @Serializable

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Resonāda logical mark: lossy codecs (MP3 / AAC / Ogg / Opus …).
+     Original artwork — no official logo exists for “lossy”. viewBox 48×48. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" shape-rendering="crispEdges">
+  <!-- Outer frame -->
+  <rect x="0" y="0" width="48" height="48" fill="#1A0808"/>
+  <!-- Warm face -->
+  <rect x="2" y="2" width="44" height="44" fill="#F5E4E0"/>
+  <!-- Red corner ticks -->
+  <rect x="2" y="2" width="6" height="2" fill="#E94B4B"/>
+  <rect x="2" y="2" width="2" height="6" fill="#E94B4B"/>
+  <rect x="40" y="2" width="6" height="2" fill="#E94B4B"/>
+  <rect x="44" y="2" width="2" height="6" fill="#E94B4B"/>
+  <rect x="2" y="44" width="6" height="2" fill="#E94B4B"/>
+  <rect x="2" y="40" width="2" height="6" fill="#E94B4B"/>
+  <rect x="40" y="44" width="6" height="2" fill="#E94B4B"/>
+  <rect x="44" y="40" width="2" height="6" fill="#E94B4B"/>
+
+  <!-- Pixel "LOSSY" (top) — compressed letter spacing -->
+  <g fill="#7A1F1F">
+    <!-- L -->
+    <rect x="4" y="7" width="2" height="10"/><rect x="4" y="15" width="6" height="2"/>
+    <!-- O -->
+    <rect x="12" y="7" width="6" height="2"/>
+    <rect x="12" y="9" width="2" height="6"/><rect x="16" y="9" width="2" height="6"/>
+    <rect x="12" y="15" width="6" height="2"/>
+    <!-- S -->
+    <rect x="20" y="7" width="6" height="2"/>
+    <rect x="20" y="9" width="2" height="2"/>
+    <rect x="20" y="11" width="6" height="2"/>
+    <rect x="24" y="13" width="2" height="2"/>
+    <rect x="20" y="15" width="6" height="2"/>
+    <!-- S -->
+    <rect x="28" y="7" width="6" height="2"/>
+    <rect x="28" y="9" width="2" height="2"/>
+    <rect x="28" y="11" width="6" height="2"/>
+    <rect x="32" y="13" width="2" height="2"/>
+    <rect x="28" y="15" width="6" height="2"/>
+    <!-- Y -->
+    <rect x="36" y="7" width="2" height="4"/><rect x="42" y="7" width="2" height="4"/>
+    <rect x="38" y="11" width="4" height="2"/>
+    <rect x="39" y="13" width="2" height="4"/>
+  </g>
+
+  <!-- Pixel “broken” waveform (compressed signal metaphor) -->
+  <g fill="#E94B4B">
+    <rect x="6" y="22" width="2" height="6"/>
+    <rect x="10" y="20" width="2" height="8"/>
+    <rect x="14" y="24" width="2" height="4"/>
+    <rect x="18" y="18" width="2" height="10"/>
+    <rect x="22" y="23" width="2" height="5"/>
+    <!-- gap / dropout -->
+    <rect x="28" y="21" width="2" height="7"/>
+    <rect x="32" y="25" width="2" height="3"/>
+    <rect x="36" y="19" width="2" height="9"/>
+    <rect x="40" y="22" width="2" height="6"/>
+  </g>
+  <!-- Stepped red band -->
+  <rect x="2" y="30" width="44" height="2" fill="#E94B4B"/>
+
+  <!-- Bottom dark plaque -->
+  <rect x="2" y="32" width="44" height="14" fill="#1A0808"/>
+
+  <!-- Pixel "AUDIO" -->
+  <g fill="#FCA5A5">
+    <!-- A -->
+    <rect x="5" y="35" width="2" height="2"/><rect x="7" y="35" width="2" height="2"/>
+    <rect x="3" y="37" width="2" height="2"/><rect x="9" y="37" width="2" height="2"/>
+    <rect x="3" y="39" width="8" height="2"/>
+    <rect x="3" y="41" width="2" height="2"/><rect x="9" y="41" width="2" height="2"/>
+    <!-- U -->
+    <rect x="13" y="35" width="2" height="6"/>
+    <rect x="19" y="35" width="2" height="6"/>
+    <rect x="13" y="41" width="8" height="2"/>
+    <!-- D -->
+    <rect x="23" y="35" width="6" height="2"/>
+    <rect x="23" y="37" width="2" height="4"/>
+    <rect x="29" y="37" width="2" height="4"/>
+    <rect x="23" y="41" width="6" height="2"/>
+    <!-- I -->
+    <rect x="33" y="35" width="2" height="8"/>
+    <!-- O -->
+    <rect x="37" y="35" width="6" height="2"/>
+    <rect x="37" y="37" width="2" height="4"/>
+    <rect x="41" y="37" width="2" height="4"/>
+    <rect x="37" y="41" width="6" height="2"/>
+  </g>
+</svg>

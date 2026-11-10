@@ -2886,6 +2886,30 @@
     <string name="only_for_folder_list">Only for folder list</string>
 
   <!-- Audio format indicators -->
+  <string name="autoeq_title">AutoEq</string>
+  <string name="equalizer_tab_tone">Tone</string>
+  <string name="equalizer_tab_bands">Bands</string>
+  <string name="autoeq_headphone_correction">Headphone correction</string>
+  <string name="autoeq_correction_enabled">Enabled</string>
+  <string name="autoeq_correction_bypassed">Bypassed</string>
+  <string name="autoeq_no_headphones">No headphones selected</string>
+  <string name="autoeq_reference_curves">Reference curves</string>
+  <string name="autoeq_loading_preset">Loading preset</string>
+  <string name="autoeq_searching">Searching headphones</string>
+  <string name="autoeq_choose_headphones">Choose headphones</string>
+  <string name="autoeq_search">Headphone or measurement source</string>
+  <string name="autoeq_preset_details">Preamp %1$.1f dB, %2$d filters</string>
+  <string name="autoeq_unavailable">AutoEq could not be activated for this track.</string>
+  <string name="autoeq_download_failed">The preset could not be loaded or is unsupported. Try another profile or retry.</string>
+  <string name="autoeq_no_matches">No matching headphones</string>
+  <string name="autoeq_reference_target">Harman reference target</string>
+  <string name="autoeq_harman_in_ear">In-ear 2019</string>
+  <string name="autoeq_harman_over_ear">Over-ear 2018</string>
+  <string name="pref_audio_spatial_mode">Spatial audio mode</string>
+  <string name="pref_audio_spatial_stereo">Stereo widening</string>
+  <string name="pref_audio_hrtf_title">Headphones - KU100 SOFA</string>
+  <string name="pref_audio_hrtf_summary">Binaural HRTF processing for music using the bundled 96 kHz KU100 dataset. Requires an mpv build with sofalizer and libmysofa support.</string>
+  <string name="pref_audio_hrtf_unavailable">HRTF could not be activated for this track. Check that the mpv build includes sofalizer and libmysofa, or select stereo widening.</string>
   <string name="audio_quality_hi_res">Hi-Res lossless</string>
   <string name="audio_quality_lossless">Lossless</string>
   <string name="audio_quality_lossy">Lossy</string>

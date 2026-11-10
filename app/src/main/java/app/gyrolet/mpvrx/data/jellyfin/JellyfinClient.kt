@@ -1095,6 +1095,10 @@ class JellyfinClient(
     var videoHdrType: String? = null
     var audioCodec: String? = null
     var audioChannels: String? = null
+    var audioCodecProfile: String? = null
+    var audioSampleRate: Int? = null
+    var audioBitDepth: Int? = null
+    var audioBitRate: Long? = null
 
     val mediaStreams = obj["MediaStreams"]?.jsonArray
     if (mediaStreams != null) {
@@ -1124,6 +1128,10 @@ class JellyfinClient(
             }
         } else if (streamType.equals("Audio", ignoreCase = true) && audioCodec == null) {
           val rawAudioCodec = stream["Codec"]?.jsonPrimitive?.content?.uppercase()
+          audioCodecProfile = stream["Profile"]?.jsonPrimitive?.content
+          audioSampleRate = stream["SampleRate"]?.jsonPrimitive?.intOrNull
+          audioBitDepth = stream["BitDepth"]?.jsonPrimitive?.intOrNull
+          audioBitRate = stream["BitRate"]?.jsonPrimitive?.longOrNull
           audioCodec =
             when (rawAudioCodec) {
               "TRUEHD" -> "TrueHD"
@@ -1217,6 +1225,10 @@ class JellyfinClient(
       remoteTrailerUrl = remoteTrailerUrl,
       canDelete = obj["CanDelete"]?.jsonPrimitive?.booleanOrNull ?: true,
       people = peopleList,
+      audioCodecProfile = audioCodecProfile,
+      audioSampleRate = audioSampleRate,
+      audioBitDepth = audioBitDepth,
+      audioBitRate = audioBitRate,
     )
   }
 

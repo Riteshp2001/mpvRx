@@ -1,0 +1,7 @@
+Audio-format SVG artwork
+
+Original SVG files extracted unchanged from the supplied
+Resonada-2.2.0.2-arm64-v8a.apk.
+
+Source project: https://gitlab.com/resonada/resonada
+Logo artwork and trademarks retain their respective ownership.

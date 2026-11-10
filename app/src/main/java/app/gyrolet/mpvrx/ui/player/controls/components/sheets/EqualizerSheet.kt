@@ -38,6 +38,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Tab
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
@@ -48,7 +50,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -154,6 +158,8 @@ fun EqualizerSheet(
 ) {
   val initialFocusRequester =
     rememberTvInitialFocusRequester(requestKey = state.isEnabled)
+  var showAutoEq by rememberSaveable { mutableStateOf(false) }
+  val selectedTab = if (showAutoEq) 2 else state.mode.ordinal
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     modifier = modifier.tvFocusGroup(),
@@ -185,25 +191,24 @@ fun EqualizerSheet(
         )
       }
 
-      SingleChoiceSegmentedButtonRow(
-        modifier = Modifier.fillMaxWidth(),
-      ) {
-        EqualizerMode.entries.forEachIndexed { index, mode ->
-          SegmentedButton(
-            selected = state.mode == mode,
-            onClick = { onModeChanged(mode) },
-            enabled = state.isEnabled,
-            shape = SegmentedButtonDefaults.itemShape(index, EqualizerMode.entries.size),
-            colors = themedSegmentedButtonColors(),
-          ) {
-            Text(stringResource(mode.titleRes))
-          }
+      PrimaryTabRow(selectedTabIndex = selectedTab, modifier = Modifier.fillMaxWidth()) {
+        listOf(R.string.equalizer_tab_tone, R.string.equalizer_tab_bands, R.string.autoeq_title).forEachIndexed { index, title ->
+          Tab(
+            selected = selectedTab == index,
+            onClick = {
+              showAutoEq = index == 2
+              if (index < 2) onModeChanged(EqualizerMode.entries[index])
+            },
+            text = { Text(stringResource(title)) },
+          )
         }
       }
 
       Spacer(modifier = Modifier.height(20.dp))
 
-      when (state.mode) {
+      if (showAutoEq) {
+        AutoEqControls(enabled = state.isEnabled)
+      } else when (state.mode) {
         EqualizerMode.DYNAMIC -> {
           DynamicEqualizerContent(
             state = state,

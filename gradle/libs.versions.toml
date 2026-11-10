@@ -58,8 +58,10 @@ telephoto = "0.19.0"
 haze = "2.0.1"
 kyant = "2.0.1"
 kyant-shapes = "1.2.1"
+androidsvg = "1.4"
 
 [libraries]
+androidsvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg" }
 androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTestRunner" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestJunit" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }

@@ -114,6 +114,10 @@ data class JellyfinItem(
   val remoteTrailerUrl: String? = null,
   val canDelete: Boolean = true,
   val people: List<JellyfinPerson> = emptyList(),
+  val audioCodecProfile: String? = null,
+  val audioSampleRate: Int? = null,
+  val audioBitDepth: Int? = null,
+  val audioBitRate: Long? = null,
 ) {
   val directors: List<JellyfinPerson>
     get() = people.filter { it.type.equals("Director", ignoreCase = true) }.distinctBy { it.id }

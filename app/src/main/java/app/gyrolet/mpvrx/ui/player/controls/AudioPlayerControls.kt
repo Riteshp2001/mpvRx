@@ -189,6 +189,7 @@ import app.gyrolet.mpvrx.ui.player.EmbeddedMotionArtwork
 import app.gyrolet.mpvrx.ui.player.MotionArtworkImage
 import app.gyrolet.mpvrx.ui.player.rememberMotionArtworkDrawable
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.presentation.components.AudioFormatArtworkBadge
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.AudioVisualizerStyle
@@ -1587,6 +1588,13 @@ fun AudioPlayerControls(
                     },
                   )
 
+                  if (isAudioOnly && !isAudiobook && activeCoverOverride == null) {
+                    AudioFormatArtworkBadge(
+                      format = audioFormatInfo,
+                      size = if (isCompactLandscape) 18.dp else 22.dp,
+                      modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+                    )
+                  }
                 }
               }
             }

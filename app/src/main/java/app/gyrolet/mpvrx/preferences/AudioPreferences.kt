@@ -36,9 +36,13 @@ class AudioPreferences(
   val miniPlayerTrackSwitching = preferenceStore.getBoolean("audio_mini_player_track_switching", false)
   val volumeNormalization = preferenceStore.getBoolean("audio_volume_normalization", false)
   val spatialAudio = preferenceStore.getBoolean("audio_spatial_audio", false)
+  val spatialAudioMode = preferenceStore.getEnum("audio_spatial_audio_mode", SpatialAudioMode.StereoWidening)
   val drcEnabled = preferenceStore.getBoolean("audio_drc_enabled", false)
   val equalizerEnabled = preferenceStore.getBoolean("audio_equalizer_enabled", false)
   val equalizerMode = preferenceStore.getString("audio_equalizer_mode", "DYNAMIC")
+  val autoEqProfile = preferenceStore.getString("audio_autoeq_profile", "")
+  val autoEqEnabled = preferenceStore.getBoolean("audio_autoeq_enabled", true)
+  val eqTargetInEar = preferenceStore.getBoolean("audio_eq_target_in_ear", false)
   val equalizerBands =
     preferenceStore.getObject(
       key = "audio_equalizer_bands",
@@ -123,6 +127,14 @@ class AudioPreferences(
     if (legacyScreenLockPlayback.get()) backgroundPlayback.set(true)
     if (legacyScreenLockPlayback.isSet()) legacyScreenLockPlayback.delete()
   }
+}
+
+enum class SpatialAudioMode(
+  @StringRes val titleRes: Int,
+  @StringRes val summaryRes: Int,
+) {
+  StereoWidening(R.string.pref_audio_spatial_stereo, R.string.pref_audio_spatial_summary),
+  Hrtf(R.string.pref_audio_hrtf_title, R.string.pref_audio_hrtf_summary),
 }
 
 enum class BackgroundPlaybackBehavior(

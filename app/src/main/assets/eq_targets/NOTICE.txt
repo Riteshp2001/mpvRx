@@ -1,0 +1,19 @@
+AutoEq data sources
+
+autoeq_index.tsv links to the public jaakkopasanen/AutoEq results repository:
+https://github.com/jaakkopasanen/AutoEq
+
+harman_in_ear_2019v2.csv preserves the supplied header identifying
+AutoEq targets/Harman in-ear 2019.csv.
+harman_over_ear_2018.csv preserves the supplied header identifying
+AutoEq targets/Harman over-ear 2018.csv.
+
+These three files were extracted from the user-supplied Resonada 2.2.0.2
+APK and copied without alteration. The upstream AutoEq project's MIT
+license is included in LICENSE-AutoEq.txt. Individual measurements and
+brand names retain their respective attribution and rights.
+
+Harman curves are frequency-response references, not headphone correction
+gains. The app applies the selected headphone's downloaded AutoEq preset,
+including its preamp, without claiming that the reference-target selector
+retargets an already computed preset.

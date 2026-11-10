@@ -24,6 +24,7 @@ import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.preferences.SpatialAudioMode
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.utils.media.HttpUtils
@@ -49,6 +50,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicLong
@@ -134,6 +137,17 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val SPATIAL_AUDIO_FILTER =
     "@mpvrx-spatial:lavfi=[pan=stereo|c0=0.85*c0-0.15*c1|c1=0.85*c1-0.15*c0]"
   private var spatialAudioObserverStarted = false
+  private var hrtfSofaFile: File? = null
+  private var hrtfPreparationFailed = false
+  private var failedHrtfGeneration: Long? = null
+  private var appliedSpatialFilter: String? = null
+  private var selectedAutoEqProfile: AutoEqProfile? = null
+  private var appliedAutoEqFilter: String? = null
+  private var failedAutoEqGeneration: Long? = null
+  private val _autoEqUnavailable = MutableStateFlow(false)
+  internal val autoEqUnavailable: StateFlow<Boolean> = _autoEqUnavailable.asStateFlow()
+  private val _hrtfStatus = MutableStateFlow(HrtfStatus.Inactive)
+  internal val hrtfStatus: StateFlow<HrtfStatus> = _hrtfStatus.asStateFlow()
   private val nativeEvents = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
   private var nativeObserver: NativeEventObserver? = null
 
@@ -444,6 +458,11 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         }
 
         applicationContext = context.applicationContext
+        failedHrtfGeneration = null
+        appliedSpatialFilter = null
+        appliedAutoEqFilter = null
+        failedAutoEqGeneration = null
+        _autoEqUnavailable.value = false
         nativeCoreReady = false
         observedProperties.clear()
         suspendedVideoTrack = null
@@ -1801,8 +1820,39 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     if (spatialAudioObserverStarted) return
     spatialAudioObserverStarted = true
     nativeEvents.launch {
-      combine(audioPreferences.spatialAudio.changes(), audioPreferences.audioChannels.changes()) { _, _ -> }
-        .collect { nativeLock.withLock { applySpatialAudioLocked() } }
+      combine(
+        audioPreferences.spatialAudio.changes(),
+        audioPreferences.spatialAudioMode.changes(),
+        audioPreferences.audioChannels.changes(),
+        combine(audioPreferences.autoEqProfile.changes(), audioPreferences.autoEqEnabled.changes()) { saved, active ->
+          if (active) saved else ""
+        },
+        audioPreferences.equalizerEnabled.changes(),
+      ) { enabled, mode, _, savedAutoEq, _ -> Triple(enabled, mode, savedAutoEq) }
+        .collect { (enabled, mode, savedAutoEq) ->
+          val profile = AutoEq.restore(savedAutoEq)
+          val sofa = if (enabled && mode == SpatialAudioMode.Hrtf) {
+            _hrtfStatus.value = HrtfStatus.Preparing
+            try {
+              applicationContext?.let { context -> withContext(Dispatchers.IO) { HrtfSofa.prepare(context) } }
+            } catch (cancellation: CancellationException) {
+              throw cancellation
+            } catch (error: Exception) {
+              Log.w(TAG, "Unable to prepare HRTF dataset", error)
+              null
+            }
+          } else null
+          nativeLock.withLock {
+            hrtfSofaFile = sofa
+            hrtfPreparationFailed = enabled && mode == SpatialAudioMode.Hrtf && sofa == null
+            failedHrtfGeneration = null
+            selectedAutoEqProfile = profile
+            failedAutoEqGeneration = null
+            appliedAutoEqFilter = null
+            _autoEqUnavailable.value = savedAutoEq.isNotBlank() && profile == null
+            applySpatialAudioLocked()
+          }
+        }
     }
   }
 
@@ -1815,22 +1865,113 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     if (current.currentItem == null || loadedGeneration != current.generation ||
       current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
     ) return false
-    if (MPVLib.getPropertyInt("audio-params/channel-count") != 2) return false
+    val channels = MPVLib.getPropertyInt("audio-params/channel-count") ?: return false
+    when (audioPreferences.spatialAudioMode.get()) {
+      SpatialAudioMode.StereoWidening -> if (channels != 2) return false
+      SpatialAudioMode.Hrtf -> if (channels !in 2..8 || !current.currentItem.isDefinitelyAudioOnly() || current.currentItem.audiobook != null) return false
+    }
     if (MPVLib.getPropertyString("audio-channels") == "mono") return false
     // Encoded passthrough must reach the receiver unchanged.
     return MPVLib.getPropertyString("audio-params/format")?.startsWith("spdif") != true &&
       MPVLib.getPropertyString("audio-out-params/format")?.startsWith("spdif") != true
   }
 
+  private fun desiredSpatialFilterLocked(): String? {
+    if (!shouldApplySpatialAudioLocked()) return null
+    return when (audioPreferences.spatialAudioMode.get()) {
+      SpatialAudioMode.StereoWidening -> SPATIAL_AUDIO_FILTER
+      SpatialAudioMode.Hrtf -> if (hrtfPreparationFailed || failedHrtfGeneration == _state.value.generation) null else hrtfSofaFile?.let(HrtfSofa::filter)
+    }
+  }
+
   private fun applySpatialAudioLocked() {
     if (!nativeCoreReady || MpvConfigOverridePolicy.isOwnedByMpvConf("af")) return
+    var changed = false
     runCatching {
-      val enabled = shouldApplySpatialAudioLocked()
+      val desired = desiredSpatialFilterLocked()
+      val desiredLabel = desired?.substringBefore(':')?.removePrefix("@")
       val filters = MPVLib.getPropertyNode("af")?.toObject<List<JsonObject>>(Json).orEmpty()
-      val present = filters.any { (it["label"] as? JsonPrimitive)?.content == SPATIAL_AUDIO_LABEL }
-      if (enabled && !present) MPVLib.command("af", "add", SPATIAL_AUDIO_FILTER)
-      if (!enabled && present) MPVLib.command("af", "remove", "@$SPATIAL_AUDIO_LABEL")
-    }.onFailure { Log.w(TAG, "Unable to update spatial audio", it) }
+      for (label in listOf(SPATIAL_AUDIO_LABEL, HrtfSofa.FILTER_LABEL)) {
+        if (label != desiredLabel && filters.any { (it["label"] as? JsonPrimitive)?.content == label }) {
+          MPVLib.command("af", "remove", "@$label")
+        }
+      }
+      val present = filters.any { (it["label"] as? JsonPrimitive)?.content == desiredLabel }
+      if (desired != null && (!present || appliedSpatialFilter != desired)) {
+        MPVLib.command("af", "add", desired)
+        changed = true
+        val applied = MPVLib.getPropertyNode("af")?.toObject<List<JsonObject>>(Json).orEmpty()
+        check(applied.any { (it["label"] as? JsonPrimitive)?.content == desiredLabel })
+      }
+      appliedSpatialFilter = desired
+      _hrtfStatus.value = when {
+        !audioPreferences.spatialAudio.get() || audioPreferences.spatialAudioMode.get() != SpatialAudioMode.Hrtf -> HrtfStatus.Inactive
+        hrtfPreparationFailed || failedHrtfGeneration == _state.value.generation -> HrtfStatus.Unavailable
+        desired != null -> HrtfStatus.Applied
+        shouldApplySpatialAudioLocked() && hrtfSofaFile == null -> HrtfStatus.Preparing
+        else -> HrtfStatus.Inactive
+      }
+    }.onFailure { error ->
+      if (audioPreferences.spatialAudioMode.get() == SpatialAudioMode.Hrtf) {
+        failedHrtfGeneration = _state.value.generation
+        _hrtfStatus.value = HrtfStatus.Unavailable
+        appliedSpatialFilter = null
+        runCatching {
+          val filters = MPVLib.getPropertyNode("af")?.toObject<List<JsonObject>>(Json).orEmpty()
+          if (filters.any { (it["label"] as? JsonPrimitive)?.content == HrtfSofa.FILTER_LABEL }) {
+            MPVLib.command("af", "remove", "@${HrtfSofa.FILTER_LABEL}")
+          }
+        }
+      }
+      Log.w(TAG, "Unable to update spatial audio", error)
+    }
+    applyAutoEqLocked(moveToEnd = changed)
+  }
+
+  private fun desiredAutoEqFilterLocked(): String? {
+    if (!nativeCoreReady || !audioPreferences.equalizerEnabled.get() || !audioPreferences.autoEqEnabled.get() ||
+      MpvConfigOverridePolicy.isOwnedByMpvConf("af") || failedAutoEqGeneration == _state.value.generation
+    ) return null
+    val state = _state.value
+    val item = state.currentItem ?: return null
+    if (loadedGeneration != state.generation || state.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND) ||
+      !item.isDefinitelyAudioOnly() || item.audiobook != null ||
+      MPVLib.getPropertyString("audio-params/format")?.startsWith("spdif") == true ||
+      MPVLib.getPropertyString("audio-out-params/format")?.startsWith("spdif") == true
+    ) return null
+    return selectedAutoEqProfile?.mpvFilter()
+  }
+
+  private fun applyAutoEqLocked(moveToEnd: Boolean = false) {
+    if (!nativeCoreReady || MpvConfigOverridePolicy.isOwnedByMpvConf("af")) return
+    runCatching {
+      val desired = desiredAutoEqFilterLocked()
+      val filters = MPVLib.getPropertyNode("af")?.toObject<List<JsonObject>>(Json).orEmpty()
+      var present = filters.any { (it["label"] as? JsonPrimitive)?.content == AutoEq.FILTER_LABEL }
+      if (present && (desired == null || moveToEnd)) {
+        MPVLib.command("af", "remove", "@${AutoEq.FILTER_LABEL}")
+        present = false
+      }
+      if (desired != null && (!present || appliedAutoEqFilter != desired)) {
+        MPVLib.command("af", "add", desired)
+        val applied = MPVLib.getPropertyNode("af")?.toObject<List<JsonObject>>(Json).orEmpty()
+        check(applied.any { (it["label"] as? JsonPrimitive)?.content == AutoEq.FILTER_LABEL })
+      }
+      appliedAutoEqFilter = desired
+      _autoEqUnavailable.value = failedAutoEqGeneration == _state.value.generation ||
+        (audioPreferences.autoEqEnabled.get() && audioPreferences.autoEqProfile.get().isNotBlank() && selectedAutoEqProfile == null)
+    }.onFailure { error ->
+      failedAutoEqGeneration = _state.value.generation
+      _autoEqUnavailable.value = true
+      appliedAutoEqFilter = null
+      runCatching {
+        val filters = MPVLib.getPropertyNode("af")?.toObject<List<JsonObject>>(Json).orEmpty()
+        if (filters.any { (it["label"] as? JsonPrimitive)?.content == AutoEq.FILTER_LABEL }) {
+          MPVLib.command("af", "remove", "@${AutoEq.FILTER_LABEL}")
+        }
+      }
+      Log.w(TAG, "Unable to update AutoEq", error)
+    }
   }
 
   fun setPropertyString(
@@ -1869,13 +2010,24 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       }
       // A preference update can race with a shader install. Enforce the composition boundary
       // under the same native lock, rather than trusting a blend value calculated before it.
-      val effectiveValue = when {
+      val spatialFilter = if (property == "af") desiredSpatialFilterLocked() else null
+      val spatialLabel = spatialFilter?.substringBefore(':')
+      val valueWithSpatial = when {
         property == "blend-subtitles" && isAmbientShaderActive -> "no"
-        property == "af" && shouldApplySpatialAudioLocked() && !value.contains("@$SPATIAL_AUDIO_LABEL:") ->
-          listOf(value, SPATIAL_AUDIO_FILTER).filter { it.isNotBlank() }.joinToString(",")
+        spatialFilter != null && !value.contains("$spatialLabel:") ->
+          listOf(value, spatialFilter).filter { it.isNotBlank() }.joinToString(",")
         else -> value
       }
+      val autoEqFilter = if (property == "af") desiredAutoEqFilterLocked() else null
+      val effectiveValue = if (autoEqFilter != null && !valueWithSpatial.contains("@${AutoEq.FILTER_LABEL}:")) {
+        listOf(valueWithSpatial, autoEqFilter).filter { it.isNotBlank() }.joinToString(",")
+      } else valueWithSpatial
       MPVLib.setPropertyString(property, effectiveValue)
+      if (property == "af") {
+        appliedSpatialFilter = spatialFilter
+        appliedAutoEqFilter = autoEqFilter
+        applySpatialAudioLocked()
+      }
       when (property) {
         "user-agent" -> appliedUserAgent = value
         "http-header-fields" -> appliedHttpHeaderFields = value

@@ -375,6 +375,9 @@ class NavidromeClient(
       coverArtId = obj["coverArt"]?.jsonPrimitive?.content,
       suffix = obj["suffix"]?.jsonPrimitive?.content,
       isFavorite = !starred.isNullOrBlank(),
+      contentType = obj["contentType"]?.jsonPrimitive?.content,
+      samplingRate = obj["samplingRate"]?.jsonPrimitive?.intOrNull,
+      bitDepth = obj["bitDepth"]?.jsonPrimitive?.intOrNull,
     )
   }
 

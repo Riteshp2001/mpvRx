@@ -39,6 +39,7 @@ data class MusicSong(
   val size: Long = 0L,
   val hasAlbumTag: Boolean = true,
   val dateModified: Long = dateAdded,
+  val mimeType: String? = null,
 ) {
   val albumKey: Long?
     get() = if (hasAlbumTag) albumId.takeIf { it > 0 } ?: album.hashCode().toLong() else null
