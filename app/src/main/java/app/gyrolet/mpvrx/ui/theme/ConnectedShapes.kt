@@ -9,6 +9,14 @@
 
 package app.gyrolet.mpvrx.ui.theme
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -141,8 +149,8 @@ fun connectedShape(
 ): Shape = connectedCornerRadii(index, itemCount, layout, columns, tokens).asShape()
 
 /**
- * Remembers a connected shape and observes layout direction explicitly. The shape itself uses
- * logical corners, so Compose performs the correct physical mirroring for RTL layouts.
+ * Animates shared connected geometry without moving layout or hit bounds. Logical corners keep
+ * pressed and selected morphs correct in RTL; reduced motion applies their final shapes immediately.
  */
 @Composable
 fun rememberConnectedShape(
@@ -151,18 +159,63 @@ fun rememberConnectedShape(
   layout: ConnectedLayout,
   columns: Int = 1,
   tokens: ConnectedShapeTokens = AppConnectedShapeTokens,
+  pressed: Boolean = false,
+  selected: Boolean = false,
+  reduceMotion: Boolean = AppMotion.shouldReduceMotion(),
 ): Shape {
   val layoutDirection = LocalLayoutDirection.current
-  return remember(index, itemCount, layout, columns, tokens, layoutDirection) {
-    connectedShape(
-      index = index,
-      itemCount = itemCount,
-      layout = layout,
-      columns = columns,
-      tokens = tokens,
+  val target = remember(index, itemCount, layout, columns, tokens, pressed, selected) {
+    connectedCornerRadii(
+      index, itemCount, layout, columns,
+      tokens.copy(
+        outerCorner = if (pressed) tokens.outerCorner * 0.64f else tokens.outerCorner,
+        innerCorner = if (pressed || selected) tokens.innerCorner + 8.dp else tokens.innerCorner,
+      ),
+    )
+  }
+  val animationSpec = if (reduceMotion) AppMotion.ReducedDp else AppMotion.Spatial.SnappyDp
+  val topStart by animateDpAsState(target.topStart, animationSpec, label = "connectedTopStart")
+  val topEnd by animateDpAsState(target.topEnd, animationSpec, label = "connectedTopEnd")
+  val bottomEnd by animateDpAsState(target.bottomEnd, animationSpec, label = "connectedBottomEnd")
+  val bottomStart by animateDpAsState(target.bottomStart, animationSpec, label = "connectedBottomStart")
+  return remember(topStart, topEnd, bottomEnd, bottomStart, layoutDirection) {
+    RoundedCornerShape(
+      topStart = topStart,
+      topEnd = topEnd,
+      bottomEnd = bottomEnd,
+      bottomStart = bottomStart,
     )
   }
 }
+
+@Composable
+fun animatedConnectedContainerColorState(
+  selected: Boolean,
+  pressed: Boolean = false,
+  enabled: Boolean = true,
+  containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+  selectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+  reduceMotion: Boolean = AppMotion.shouldReduceMotion(),
+): State<Color> {
+  val base = if (selected) selectedContainerColor else containerColor
+  return animateColorAsState(
+    targetValue = if (pressed && enabled) lerp(base, MaterialTheme.colorScheme.primary, 0.10f) else base,
+    animationSpec = if (reduceMotion) snap() else AppMotion.Effect.Color,
+    label = "connectedContainerColor",
+  )
+}
+
+@Composable
+fun animatedConnectedContainerColor(
+  selected: Boolean,
+  pressed: Boolean = false,
+  enabled: Boolean = true,
+  containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+  selectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+  reduceMotion: Boolean = AppMotion.shouldReduceMotion(),
+): Color = animatedConnectedContainerColorState(
+  selected, pressed, enabled, containerColor, selectedContainerColor, reduceMotion,
+).value
 
 /** Visible for deterministic shape verification without requiring composition. */
 internal fun ConnectedCornerRadii.physical(layoutDirection: LayoutDirection): ConnectedCornerRadii =

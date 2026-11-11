@@ -11,6 +11,8 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +28,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +42,8 @@ import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 
 /**
  * Connected settings row that opens another screen or runs an action, in the style of the main
@@ -60,15 +66,27 @@ internal fun SettingsNavigationRow(
 ) {
   val colors = MaterialTheme.colorScheme
   val interactive = enabled && !busy
+  val interactionSource = remember { MutableInteractionSource() }
+  val pressed by interactionSource.collectIsPressedAsState()
+  val containerColor = animatedConnectedContainerColor(
+    selected = false, pressed = pressed, enabled = interactive, containerColor = colors.surfaceContainerLow,
+  )
   Row(
     modifier =
       Modifier
         .fillMaxWidth()
         .tvFocusHighlight(shape, enabled = interactive, focusedScale = 1.01f)
+        .appPressFeedback(interactionSource, enabled = interactive, pressedScale = 0.985f)
         .clip(shape)
-        .background(colors.surfaceContainerLow)
+        .background(containerColor)
         .then(modifier)
-        .clickable(enabled = interactive, role = Role.Button, onClick = onClick)
+        .clickable(
+          enabled = interactive,
+          role = Role.Button,
+          interactionSource = interactionSource,
+          indication = androidx.compose.material3.ripple(),
+          onClick = onClick,
+        )
         .heightIn(min = 64.dp)
         .padding(horizontal = 16.dp, vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,

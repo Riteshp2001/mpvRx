@@ -385,6 +385,8 @@
   <string name="pref_audio_effects">Audio processing</string>
   <string name="pref_music_tabs_title">Music Library Tabs</string>
   <string name="pref_audio_visualizer_style_title">Visualizer style</string>
+  <string name="audio_footer_show_artwork">Show album artwork</string>
+  <string name="audio_footer_show_visualizer">Show visualizer</string>
   <string name="pref_audio_visualizer_style_blob">Blob</string>
   <string name="pref_audio_visualizer_style_galaxy">Galaxy</string>
   <string name="pref_audio_visualizer_style_cuboid">Cuboid</string>
@@ -1441,6 +1443,26 @@
   <string name="media_info_stat_bit_depth">Bit depth</string>
   <string name="media_info_stat_channels">Channels</string>
   <string name="media_info_stat_sample_rate">Sample rate</string>
+  <string name="audio_information_title">Audio information</string>
+  <string name="audio_info_loading">Loading audio information…</string>
+  <string name="audio_info_unavailable">Audio information is not available until the current track has loaded.</string>
+  <string name="audio_info_track_title">Title</string>
+  <string name="audio_info_artist">Artist</string>
+  <string name="audio_info_album">Album</string>
+  <string name="audio_info_album_artist">Album artist</string>
+  <string name="audio_info_genre">Genre</string>
+  <string name="audio_info_composer">Composer</string>
+  <string name="audio_info_date">Date</string>
+  <string name="audio_info_track_number">Track number</string>
+  <string name="audio_info_disc_number">Disc number</string>
+  <string name="audio_info_isrc" translatable="false">ISRC</string>
+  <string name="audio_info_label">Label / publisher</string>
+  <string name="audio_info_copyright">Copyright</string>
+  <string name="audio_info_codec">Audio codec</string>
+  <plurals name="audio_info_channel_count">
+    <item quantity="one">%1$d channel</item>
+    <item quantity="other">%1$d channels</item>
+  </plurals>
   <string name="onboarding_skip">Skip</string>
   <string name="onboarding_get_started">Get started</string>
   <string name="onboarding_all_set_title">You\'re all set</string>
@@ -2184,6 +2206,7 @@
   <string name="lyrics_source_local">Local (.lrc)</string>
   <string name="lyrics_source_edited">Saved edits</string>
   <string name="lyrics_editor_title">Edit lyrics</string>
+  <string name="lyrics_sync_timing">Sync timing</string>
   <string name="lyrics_editor_instructions">Edit lines, select a line, and tap Set time as the song plays. Set time advances to the next line.</string>
   <string name="lyrics_editor_storage">Saved only in MpvRX. Your audio file is not modified.</string>
   <string name="lyrics_editor_line">Line %1$d</string>

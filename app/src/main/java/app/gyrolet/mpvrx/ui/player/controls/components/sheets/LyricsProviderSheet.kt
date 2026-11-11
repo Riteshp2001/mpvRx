@@ -11,6 +11,10 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.remember
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -189,8 +193,14 @@ private fun ProviderRow(
   val current = status == ProviderStatus.CURRENT
   // A finished empty answer cannot be improved by asking again; a failure can.
   val tappable = enabled && !current && status != ProviderStatus.MISSING
-  val container = animatedPlayerSheetSelectionColor(current, label = "lyricsProviderRow")
-  val shape = rememberConnectedShape(index = groupIndex, itemCount = groupSize, layout = ConnectedLayout.Vertical)
+  val interactionSource = remember { MutableInteractionSource() }
+  val pressed by interactionSource.collectIsPressedAsState()
+  val container = animatedPlayerSheetSelectionColor(
+    current, label = "lyricsProviderRow", pressed = pressed, enabled = tappable,
+  )
+  val shape = rememberConnectedShape(
+    groupIndex, groupSize, ConnectedLayout.Vertical, pressed = pressed && tappable, selected = current,
+  )
   val dim = status == ProviderStatus.MISSING
 
   Surface(
@@ -198,11 +208,13 @@ private fun ProviderRow(
       modifier
         .fillMaxWidth()
         .tvFocusHighlight(shape, enabled = tappable)
+        .appPressFeedback(interactionSource, enabled = tappable, pressedScale = 0.985f)
         .clip(shape)
-        .selectable(selected = current, enabled = tappable, role = Role.RadioButton) {
-          onClick()
-          haptics.selection(true)
-        },
+        .selectable(
+          selected = current, enabled = tappable, role = Role.RadioButton,
+          interactionSource = interactionSource, indication = androidx.compose.material3.ripple(),
+          onClick = { onClick(); haptics.selection(true) },
+        ),
     shape = shape,
     color = container,
   ) {

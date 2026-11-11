@@ -73,10 +73,17 @@ internal fun animatedPlayerSheetSelectionColorState(
   selected: Boolean,
   frosted: Boolean = LocalPlayerGlassSurfaceActive.current,
   label: String = "playerOptionSelection",
+  pressed: Boolean = false,
+  enabled: Boolean = true,
 ): State<Color> {
   val reduceMotion = AppMotion.playerReducedMotion()
+  val baseColor = playerSheetSelectionColor(selected, frosted)
   return animateColorAsState(
-    targetValue = playerSheetSelectionColor(selected, frosted),
+    targetValue = if (pressed && enabled) {
+      androidx.compose.ui.graphics.lerp(baseColor, MaterialTheme.colorScheme.primary, 0.10f)
+    } else {
+      baseColor
+    },
     animationSpec = if (reduceMotion) snap() else AppMotion.Effect.Color,
     label = label,
   )
@@ -87,7 +94,9 @@ internal fun animatedPlayerSheetSelectionColor(
   selected: Boolean,
   frosted: Boolean = LocalPlayerGlassSurfaceActive.current,
   label: String = "playerOptionSelection",
-): Color = animatedPlayerSheetSelectionColorState(selected, frosted, label).value
+  pressed: Boolean = false,
+  enabled: Boolean = true,
+): Color = animatedPlayerSheetSelectionColorState(selected, frosted, label, pressed, enabled).value
 
 /**
  * Draws the animated selection background directly in the draw phase,

@@ -9,6 +9,10 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -137,18 +141,20 @@ private fun ModelSearchItem(
   itemCount: Int,
   onClick: () -> Unit,
 ) {
+  val interactionSource = remember { MutableInteractionSource() }
+  val pressed by interactionSource.collectIsPressedAsState()
   Surface(
     onClick = onClick,
-    shape = rememberConnectedShape(index, itemCount, ConnectedLayout.Vertical, tokens = AppConnectedControlShapeTokens),
-    color =
-      if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer.copy(
-          alpha = 0.5f,
-        )
-      } else {
-        MaterialTheme.colorScheme.surface
-      },
-    modifier = Modifier.fillMaxWidth(),
+    shape = rememberConnectedShape(
+      index, itemCount, ConnectedLayout.Vertical, tokens = AppConnectedControlShapeTokens,
+      pressed = pressed, selected = isSelected,
+    ),
+    color = animatedConnectedContainerColor(
+      selected = isSelected, pressed = pressed, containerColor = MaterialTheme.colorScheme.surface,
+      selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+    ),
+    interactionSource = interactionSource,
+    modifier = Modifier.fillMaxWidth().appPressFeedback(interactionSource, pressedScale = 0.985f),
   ) {
     Row(
       verticalAlignment = Alignment.CenterVertically,

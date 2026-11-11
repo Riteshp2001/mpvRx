@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
@@ -43,6 +44,8 @@ import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AmbientSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PostProcessingSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AspectRatioSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioTracksSheet
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertiesSheet
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.ChaptersSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaybackBookmarkEditor
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.DecodersSheet
@@ -645,11 +648,30 @@ fun PlayerSheets(
     }
 
     Sheets.AudioProperties -> {
-      val properties = remember { viewModel.getAudioPropertiesData() }
-      app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertiesSheet(
-        properties = properties,
-        onDismissRequest = onDismissRequest,
-      )
+      val playback by app.gyrolet.mpvrx.ui.player.PlaybackSession.state.collectAsState()
+      val metadata by app.gyrolet.mpvrx.ui.player.PlaybackSession.propNode["metadata"].collectAsState()
+      val tracks by viewModel.audioTracks.collectAsState()
+      val sampleRate by app.gyrolet.mpvrx.ui.player.PlaybackSession.propInt["audio-params/samplerate"].collectAsState()
+      androidx.compose.runtime.key(playback.generation) {
+        val artwork = rememberAudioAlbumArt(
+          pathOrUri = playback.currentItem?.originalUri,
+          artworkUri = playback.currentItem?.artworkUri,
+        )
+        val properties by produceState<List<AudioPropertyItem>?>(
+          null,
+          playback.phase, metadata, tracks, sampleRate,
+        ) {
+          value = viewModel.getAudioPropertiesData()
+        }
+        AudioPropertiesSheet(
+          properties = properties.orEmpty(),
+          onDismissRequest = onDismissRequest,
+          isLoading = properties == null,
+          artwork = artwork,
+          mediaTitle = playback.currentItem?.title,
+          artistName = playback.currentItem?.artist,
+        )
+      }
     }
 
     Sheets.VisualizerStyle -> {

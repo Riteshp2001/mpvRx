@@ -5,6 +5,7 @@
 package app.gyrolet.mpvrx.domain.lyrics
 
 import java.util.Locale
+
 data class LyricsDraftLine(
   val id: Int,
   val text: String,

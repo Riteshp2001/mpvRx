@@ -21,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -92,6 +93,8 @@ import app.gyrolet.mpvrx.ui.components.ExpressiveColorPicker
 import app.gyrolet.mpvrx.ui.components.ColorPickerMode
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.appPressFeedback
+import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
@@ -191,10 +194,23 @@ object AppIconPreferencesScreen : Screen {
                 "sliders" to R.string.color_picker_sliders,
               ).forEachIndexed { index, choice ->
                 val selected = customMode == choice.first
-                val shape = connectedShape(index, 3, ConnectedLayout.Horizontal)
+                val interactionSource = remember { MutableInteractionSource() }
+                val pressed by interactionSource.collectIsPressedAsState()
+                val shape = rememberConnectedShape(
+                  index, 3, ConnectedLayout.Horizontal, pressed = pressed, selected = selected,
+                )
                 androidx.compose.material3.Surface(
-                  modifier = Modifier.weight(1f).clip(shape).selectable(selected = selected, role = Role.RadioButton) { customMode = choice.first },
-                  color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
+                  modifier = Modifier.weight(1f)
+                    .appPressFeedback(interactionSource, pressedScale = 0.985f)
+                    .clip(shape)
+                    .selectable(
+                      selected = selected, role = Role.RadioButton,
+                      interactionSource = interactionSource, indication = androidx.compose.material3.ripple(),
+                      onClick = { customMode = choice.first },
+                    ),
+                  color = animatedConnectedContainerColor(
+                    selected = selected, pressed = pressed, containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                  ),
                   shape = shape,
                 ) {
                   Text(

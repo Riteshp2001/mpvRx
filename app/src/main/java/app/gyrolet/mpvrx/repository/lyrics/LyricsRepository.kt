@@ -779,7 +779,7 @@ class LyricsRepository(
 
   suspend fun removeEditedLyrics(mediaPath: String) = withContext(Dispatchers.IO) {
     editedLyricsStore.remove(mediaPath)
-    cache.snapshot().keys.filter { it.mediaPath == mediaPath }.forEach(cache::remove)
+    cache.snapshot().keys.filter { it.mediaPath == mediaPath }.forEach { cache.remove(it) }
   }
 
   fun invalidate(

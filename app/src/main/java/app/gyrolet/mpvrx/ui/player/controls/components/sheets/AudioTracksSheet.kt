@@ -9,6 +9,9 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
 import androidx.compose.foundation.layout.Arrangement
@@ -292,6 +295,8 @@ fun AudioTrackRow(
 ) {
   val haptics = rememberAppHaptics()
   val reducedMotion = AppMotion.playerReducedMotion()
+  val interactionSource = remember { MutableInteractionSource() }
+  val pressed by interactionSource.collectIsPressedAsState()
   val isGrouped = groupIndex != null && groupSize != null && groupSize > 0
   val shape =
     if (isGrouped) {
@@ -299,6 +304,9 @@ fun AudioTrackRow(
         index = requireNotNull(groupIndex),
         itemCount = requireNotNull(groupSize),
         layout = ConnectedLayout.Vertical,
+        pressed = pressed && enabled,
+        selected = isSelected,
+        reduceMotion = reducedMotion,
       )
     } else {
       MaterialTheme.shapes.medium
@@ -306,6 +314,7 @@ fun AudioTrackRow(
   val isFrosted = LocalPlayerGlassSurfaceActive.current
   val containerColor = animatedPlayerSheetSelectionColor(
     isSelected, frosted = isFrosted, label = "audioTrackRowSelection",
+    pressed = pressed, enabled = enabled,
   )
   Surface(
     modifier =
@@ -313,11 +322,16 @@ fun AudioTrackRow(
         .fillMaxWidth()
         .then(if (isGrouped) Modifier else Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
         .tvFocusHighlight(shape, enabled = enabled)
+        .appPressFeedback(interactionSource, enabled = enabled, pressedScale = 0.985f, reduceMotion = reducedMotion)
         .clip(shape)
-        .selectable(selected = isSelected, enabled = enabled, role = Role.RadioButton) {
-          onClick()
-          if (!isSelected) haptics.selection(true)
-        },
+        .selectable(
+          selected = isSelected, enabled = enabled, role = Role.RadioButton,
+          interactionSource = interactionSource, indication = androidx.compose.material3.ripple(),
+          onClick = {
+            onClick()
+            if (!isSelected) haptics.selection(true)
+          },
+        ),
     shape = shape,
     color = containerColor,
   ) {

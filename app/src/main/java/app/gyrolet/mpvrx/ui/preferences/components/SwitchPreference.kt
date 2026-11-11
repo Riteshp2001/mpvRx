@@ -9,9 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.preferences.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,12 +35,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.preferences.LocalInsidePreferenceCard
-import app.gyrolet.mpvrx.ui.preferences.SelectedPreferenceTile
+import app.gyrolet.mpvrx.ui.preferences.PreferenceTileVisualState
 import app.gyrolet.mpvrx.ui.preferences.playerSettingSummary
 import app.gyrolet.mpvrx.ui.preferences.playerSettingAvailability
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.appPressFeedback
+import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.rememberLowEndDevice
@@ -78,44 +78,55 @@ fun SwitchPreference(
   val lowEnd = rememberLowEndDevice()
   val haptics = rememberAppHaptics()
   val interactionSource = remember { MutableInteractionSource() }
+  val pressed by interactionSource.collectIsPressedAsState()
   val updateValue: (Boolean) -> Unit = { checked ->
     if (canChange && checked != value) {
       onValueChange(checked)
       haptics.selection(checked)
     }
   }
-  val connectedShape =
-    rememberConnectedShape(
-      index = groupIndex ?: 0,
-      itemCount = groupSize ?: 1,
-      layout = ConnectedLayout.Vertical,
-    )
   val insideConnectedCard = LocalInsidePreferenceCard.current
   val shape = when {
     insideConnectedCard -> MaterialTheme.shapes.small
-    groupIndex != null && groupSize != null -> connectedShape
+    groupIndex != null && groupSize != null -> rememberConnectedShape(
+      index = groupIndex,
+      itemCount = groupSize,
+      layout = ConnectedLayout.Vertical,
+      pressed = pressed && canChange,
+      selected = value,
+      reduceMotion = lowEnd || AppMotion.shouldReduceMotion(),
+    )
     else -> MaterialTheme.shapes.large
   }
   // Inside a connected PreferenceCard the parent owns all tile fills, including selection.
   // Standalone switches still draw their own animated tonal surfaces.
-  val containerColor by animateColorAsState(
-    targetValue = when {
-      insideConnectedCard -> androidx.compose.ui.graphics.Color.Transparent
-      // Connected rows in draggable panels need visible fills even when switched off.
-      groupIndex != null && groupSize != null ->
-        if (value) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.90f)
-        else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f)
-      value -> MaterialTheme.colorScheme.secondaryContainer
+  val containerColor = animatedConnectedContainerColor(
+    selected = value,
+    pressed = pressed && !insideConnectedCard && groupIndex != null,
+    enabled = canChange,
+    containerColor = when {
+      insideConnectedCard -> Color.Transparent
+      groupIndex != null -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f)
       else -> MaterialTheme.colorScheme.surfaceContainerLow
     },
-    animationSpec = if (lowEnd) snap() else AppMotion.spatial(AppMotion.Effect.Color, snap()),
-    label = "settingsOptionSelectionColor",
+    selectedContainerColor = when {
+      insideConnectedCard -> Color.Transparent
+      groupIndex != null -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.90f)
+      else -> MaterialTheme.colorScheme.secondaryContainer
+    },
+    reduceMotion = lowEnd || AppMotion.shouldReduceMotion(),
   )
   Surface(
     modifier =
       modifier
         .fillMaxWidth()
-        .then(if (insideConnectedCard && value) Modifier.layoutId(SelectedPreferenceTile) else Modifier)
+        .then(
+          if (insideConnectedCard) {
+            Modifier.layoutId(PreferenceTileVisualState(selected = value, pressed = pressed && canChange))
+          } else {
+            Modifier
+          },
+        )
         .tvFocusHighlight(shape, enabled = canChange, focusedScale = 1.01f),
     shape = shape,
     color = containerColor,

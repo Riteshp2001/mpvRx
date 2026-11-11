@@ -179,17 +179,26 @@ internal fun ScreenNavDisplay(
           LocalNavigationBarHeight provides if (insetByHost) 0.dp else inheritedClearance,
           LocalFabHostInsetsApplied provides insetByHost,
         ) {
-          Surface(Modifier.fillMaxSize(), color = entryColor) {
-            Box(Modifier.fillMaxSize().padding(bottom = if (insetByHost) bottomOverlayClearance else 0.dp)) {
-              // TV: predictable initial focus, focus restored on Back, and overscan-safe content.
-              TvScreenFocusHost(
-                scope = route,
-                safeArea = tvSafeArea && route !is TvEdgeToEdgeScreen,
-                active = route == backStack.lastOrNull(),
-                autoFocus = tvAutoFocus,
-                focusRequestKey = tvFocusRequestKey,
-              ) {
-                content(route)
+          Surface(
+            Modifier.fillMaxSize(),
+            color = androidx.compose.ui.graphics.Color.Transparent,
+            contentColor = androidx.compose.material3.contentColorFor(entryColor),
+          ) {
+            Box(
+              Modifier.fillMaxSize()
+                .padding(bottom = if (insetByHost) bottomOverlayClearance else 0.dp),
+            ) {
+              Surface(Modifier.fillMaxSize(), color = entryColor) {
+                // TV: predictable initial focus, focus restored on Back, and overscan-safe content.
+                TvScreenFocusHost(
+                  scope = route,
+                  safeArea = tvSafeArea && route !is TvEdgeToEdgeScreen,
+                  active = route == backStack.lastOrNull(),
+                  autoFocus = tvAutoFocus,
+                  focusRequestKey = tvFocusRequestKey,
+                ) {
+                  content(route)
+                }
               }
             }
           }

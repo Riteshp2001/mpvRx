@@ -29,6 +29,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -105,6 +106,12 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.LyricsTranslateDialog
 import app.gyrolet.mpvrx.ui.theme.fontFamilyForText
+import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.isActive
 import org.koin.compose.koinInject
@@ -244,7 +251,7 @@ fun LyricsView(
         Spacer(modifier = Modifier.height(4.dp))
       }
 
-      if (hasEmbedded || (!isAudiobook && !isLyricsFullscreen)) {
+      if (hasEmbedded) {
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
@@ -288,9 +295,6 @@ fun LyricsView(
               strokeWidth = 2.dp,
               color = MaterialTheme.colorScheme.primary,
             )
-          }
-          if (!isAudiobook && !isLyricsFullscreen) {
-            app.gyrolet.mpvrx.ui.player.controls.components.sheets.LyricsEditAction(viewModel)
           }
         }
       }
@@ -697,47 +701,82 @@ fun LyricsView(
         )
       }
 
-      // Bottom Bar: Translate Button on Left & Sync Timing Button on Right (Expanding into remaining space)
-      AnimatedVisibility(visible = state.lyrics?.synced?.isNotEmpty() == true) {
+      val hasTimedLyricsForActions = state.lyrics?.synced?.isNotEmpty() == true
+      val showTranslateAction = hasTimedLyricsForActions && !app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD
+      val leftActionCount = (if (isAudiobook) 0 else 1) + (if (showTranslateAction) 1 else 0)
+      val reduceFooterMotion = AppMotion.playerReducedMotion()
+      AnimatedVisibility(
+        visible = hasTimedLyricsForActions || !isAudiobook,
+        enter = fadeIn(if (reduceFooterMotion) AppMotion.ReducedAlpha else AppMotion.Effect.Alpha),
+        exit = fadeOut(if (reduceFooterMotion) AppMotion.ReducedAlpha else AppMotion.Effect.Alpha),
+      ) {
         var isSyncExpanded by rememberSaveable { mutableStateOf(false) }
 
         Row(
           modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp),
-          verticalAlignment = Alignment.CenterVertically,
+          verticalAlignment = Alignment.Bottom,
         ) {
-          // Translate button on Left (40.dp square with rounded corners)
-          if (!app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD) {
-          Surface(
-            onClick = { openTranslateSheet() },
-            shape = RoundedCornerShape(12.dp),
-            color = if (state.isTranslationActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-            modifier = Modifier.size(40.dp),
-          ) {
-            Box(contentAlignment = Alignment.Center) {
-              if (state.isTranslating) {
-                CircularProgressIndicator(
-                  modifier = Modifier.size(20.dp),
-                  strokeWidth = 2.5.dp,
-                  color = MaterialTheme.colorScheme.primary,
-                )
-              } else {
-                Icon(
-                  imageVector = Icons.RoundedFilled.Translate,
-                  contentDescription = stringResource(R.string.lyrics_translate_title),
-                  tint = if (state.isTranslationActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                  modifier = Modifier.size(22.dp),
+          if (leftActionCount > 0) {
+            Column(verticalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing)) {
+              if (!isAudiobook) {
+                app.gyrolet.mpvrx.ui.player.controls.components.sheets.LyricsEditAction(
+                  viewModel = viewModel,
+                  modifier = Modifier.size(40.dp),
+                  connectedIndex = 0,
+                  connectedCount = leftActionCount,
                 )
               }
+              if (showTranslateAction) {
+                val translateInteraction = remember { MutableInteractionSource() }
+                val translatePressed by translateInteraction.collectIsPressedAsState()
+                val translateShape = rememberConnectedShape(
+                  leftActionCount - 1, leftActionCount, ConnectedLayout.Vertical,
+                  tokens = AppConnectedControlShapeTokens,
+                  pressed = translatePressed,
+                  selected = state.isTranslationActive,
+                )
+                Surface(
+                  onClick = { openTranslateSheet() },
+                  enabled = !state.isLoading,
+                  shape = translateShape,
+                  interactionSource = translateInteraction,
+                  color = animatedConnectedContainerColor(
+                    selected = state.isTranslationActive,
+                    pressed = translatePressed,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                  ),
+                  modifier = Modifier.size(40.dp).appPressFeedback(
+                    translateInteraction, enabled = !state.isLoading, pressedScale = 0.95f,
+                  ),
+                ) {
+                  Box(contentAlignment = Alignment.Center) {
+                    if (state.isTranslating) {
+                      CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.5.dp,
+                        color = MaterialTheme.colorScheme.primary,
+                      )
+                    } else {
+                      Icon(
+                        imageVector = Icons.RoundedFilled.Translate,
+                        contentDescription = stringResource(R.string.lyrics_translate_title),
+                        tint = if (state.isTranslationActive) MaterialTheme.colorScheme.primary
+                          else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp),
+                      )
+                    }
+                  }
+                }
+              }
             }
-          }
-
-          Spacer(modifier = Modifier.width(8.dp))
+            if (hasTimedLyricsForActions) Spacer(modifier = Modifier.width(8.dp))
           }
 
           // Sync Section on the Right (pinned to right when collapsed, expands leftwards across remaining space)
-          Box(
+          if (hasTimedLyricsForActions) Box(
             modifier = Modifier
               .weight(1f)
               .height(40.dp),
@@ -746,10 +785,10 @@ fun LyricsView(
             // When expanded, the sync control bar slides in from right to left, filling the remaining space
             androidx.compose.animation.AnimatedVisibility(
               visible = isSyncExpanded,
-              enter = fadeIn(animationSpec = tween(220)) +
+              enter = if (reduceFooterMotion) fadeIn(AppMotion.ReducedAlpha) else fadeIn(animationSpec = tween(220)) +
                 slideInHorizontally(initialOffsetX = { it }, animationSpec = spring(dampingRatio = 0.85f, stiffness = 350f)) +
                 expandHorizontally(expandFrom = Alignment.End, animationSpec = spring(dampingRatio = 0.85f, stiffness = 350f)),
-              exit = fadeOut(animationSpec = tween(180)) +
+              exit = if (reduceFooterMotion) fadeOut(AppMotion.ReducedAlpha) else fadeOut(animationSpec = tween(180)) +
                 slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(180)) +
                 shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(180)),
             ) {
@@ -814,9 +853,9 @@ fun LyricsView(
             // When collapsed, the sync icon button sits on the far right
             androidx.compose.animation.AnimatedVisibility(
               visible = !isSyncExpanded,
-              enter = fadeIn(animationSpec = tween(220)) +
+              enter = if (reduceFooterMotion) fadeIn(AppMotion.ReducedAlpha) else fadeIn(animationSpec = tween(220)) +
                 expandHorizontally(expandFrom = Alignment.End, animationSpec = spring(dampingRatio = 0.85f, stiffness = 350f)),
-              exit = fadeOut(animationSpec = tween(180)) +
+              exit = if (reduceFooterMotion) fadeOut(AppMotion.ReducedAlpha) else fadeOut(animationSpec = tween(180)) +
                 shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(180)),
             ) {
               Surface(
@@ -828,7 +867,7 @@ fun LyricsView(
                 Box(contentAlignment = Alignment.Center) {
                   Icon(
                     imageVector = Icons.RoundedFilled.Timer,
-                    contentDescription = "Sync timing",
+                    contentDescription = stringResource(R.string.lyrics_sync_timing),
                     tint = if (state.syncOffsetMs != 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(22.dp),
                   )

@@ -9,6 +9,9 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -582,12 +585,16 @@ fun SubtitleTrackRow(
 ) {
   val isTelevision = DeviceFormFactor.isTelevision(LocalContext.current)
   val haptics = rememberAppHaptics()
+  val interactionSource = remember { MutableInteractionSource() }
+  val pressed by interactionSource.collectIsPressedAsState()
   val shape =
     if (groupIndex != null && groupSize != null && groupSize > 0) {
       rememberConnectedShape(
         index = groupIndex,
         itemCount = groupSize,
         layout = ConnectedLayout.Vertical,
+        pressed = pressed,
+        selected = isSelected,
       )
     } else {
       MaterialTheme.shapes.medium
@@ -597,6 +604,7 @@ fun SubtitleTrackRow(
     selected = isSelected,
     frosted = isFrosted,
     label = "subtitleTrackSelection",
+    pressed = pressed,
   )
   val badges = subtitleTrackBadges(track, selectionIndicator, isExternal)
   Surface(
@@ -605,11 +613,16 @@ fun SubtitleTrackRow(
         .fillMaxWidth()
         .padding(horizontal = 8.dp, vertical = 2.dp)
         .tvFocusHighlight(shape)
+        .appPressFeedback(interactionSource, pressedScale = 0.985f)
         .clip(shape)
-        .toggleable(value = isSelected, role = Role.Checkbox) { selected ->
-          onToggle()
-          haptics.selection(selected)
-        },
+        .toggleable(
+          value = isSelected, role = Role.Checkbox,
+          interactionSource = interactionSource, indication = androidx.compose.material3.ripple(),
+          onValueChange = { selected ->
+            onToggle()
+            haptics.selection(selected)
+          },
+        ),
     shape = shape,
     color = containerColor,
   ) {

@@ -4,6 +4,9 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,21 +16,19 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,6 +36,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,13 +46,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.lyrics.LyricsDraft
@@ -71,21 +75,62 @@ import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberSmoothedPositionMs
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.fontFamilyForText
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import app.gyrolet.mpvrx.utils.media.LyricsUtils
+import kotlinx.coroutines.flow.update
 import kotlin.math.roundToLong
 
 @Composable
-fun LyricsEditAction(viewModel: PlayerViewModel, origin: Sheets = Sheets.None) {
+fun LyricsEditAction(
+  viewModel: PlayerViewModel,
+  origin: Sheets = Sheets.None,
+  modifier: Modifier = Modifier,
+  connectedIndex: Int? = null,
+  connectedCount: Int = 1,
+) {
   val state by viewModel.lyricsUiState.collectAsState()
   val editState by viewModel.lyricsEditUiState.collectAsState()
   val playback by PlaybackSession.state.collectAsStateWithLifecycle()
-  IconButton(
-    onClick = { viewModel.openLyricsEditor(origin) },
-    enabled = !state.isLoading && !editState.isSaving && playback.currentItem?.audiobook == null &&
-      playback.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND),
-  ) {
-    Icon(Icons.RoundedFilled.Edit, contentDescription = stringResource(R.string.lyrics_editor_title))
+  val enabled = !state.isLoading && !editState.isSaving && playback.currentItem?.audiobook == null &&
+    playback.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+  if (connectedIndex == null) {
+    IconButton(onClick = { viewModel.openLyricsEditor(origin) }, enabled = enabled, modifier = modifier) {
+      Icon(Icons.RoundedFilled.Edit, contentDescription = stringResource(R.string.lyrics_editor_title))
+    }
+  } else {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val shape = rememberConnectedShape(
+      connectedIndex, connectedCount, ConnectedLayout.Vertical,
+      tokens = AppConnectedControlShapeTokens, pressed = pressed,
+    )
+    Surface(
+      onClick = { viewModel.openLyricsEditor(origin) },
+      enabled = enabled,
+      shape = shape,
+      interactionSource = interactionSource,
+      color = animatedConnectedContainerColor(
+        selected = false, pressed = pressed, enabled = enabled,
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+      ),
+      contentColor = if (enabled) MaterialTheme.colorScheme.onSecondaryContainer
+        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+      modifier = modifier.appPressFeedback(interactionSource, enabled, pressedScale = 0.95f),
+    ) {
+      Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Icon(
+          Icons.RoundedFilled.Edit,
+          contentDescription = stringResource(R.string.lyrics_editor_title),
+          modifier = Modifier.size(22.dp),
+        )
+      }
+    }
   }
 }
 
@@ -127,7 +172,7 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
   val keyboardVisible = WindowInsets.ime.getBottom(density) > 0
   val reducedMotion = AppMotion.playerReducedMotion()
   val listState = rememberLazyListState()
-  val changed = !draft.hasSameContent(initialDraft)
+  val changed = remember(draft, initialDraft) { !draft.hasSameContent(initialDraft) }
   val sameTrack = viewModel.isLyricsEditTrackCurrent(target)
   val playbackReady = playback.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
   val canTime = sameTrack && playbackReady && rawPosition.isFinite() && !editState.isSaving
@@ -136,14 +181,29 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
     isPlaying = paused == false && playbackReady,
     speed = speed ?: 1f,
   )
+  val singingLine by remember(draft, sameTrack) {
+    derivedStateOf {
+      if (sameTrack) {
+        draft.lines.indexOfLast { line -> line.timeMs?.let { it <= positionMs } == true }
+      } else {
+        -1
+      }
+    }
+  }
   val successMessage = stringResource(
     if (editState.restoredOriginal) R.string.lyrics_editor_restored else R.string.lyrics_editor_saved,
   )
-  val requestClose: () -> Unit = {
-    if (!viewModel.lyricsEditUiState.value.isSaving) {
-      if (changed) discardPrompt = true else onDismiss()
+  val confirmClose: () -> Boolean = {
+    when {
+      viewModel.lyricsEditUiState.value.isSaving -> false
+      !viewModel.lyricsEditDraft.value.hasSameContent(initialDraft) -> {
+        discardPrompt = true
+        false
+      }
+      else -> true
     }
   }
+  val requestClose: () -> Unit = { if (confirmClose()) onDismiss() }
 
   LaunchedEffect(editState.completed) {
     if (editState.completed) {
@@ -155,274 +215,344 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
     if (reducedMotion) listState.scrollToItem(selected) else listState.animateScrollToItem(selected)
   }
 
-  Dialog(
-    onDismissRequest = requestClose,
-    properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+  PlayerSheet(
+    onDismissRequest = onDismiss,
+    dragToDismiss = false,
+    confirmDismiss = confirmClose,
+    useFrostedGlass = false,
   ) {
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-      Column(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding()
-          .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-          IconButton(onClick = requestClose, enabled = !editState.isSaving) {
-            Icon(Icons.RoundedFilled.Close, contentDescription = stringResource(R.string.generic_cancel))
+    Column(
+      modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = requestClose, enabled = !editState.isSaving) {
+          Icon(Icons.RoundedFilled.Close, contentDescription = stringResource(R.string.generic_cancel))
+        }
+        Column(Modifier.weight(1f)) {
+          Text(stringResource(R.string.lyrics_editor_title), style = MaterialTheme.typography.titleMedium)
+          Text(
+            target.title,
+            fontFamily = fontFamilyForText(target.title),
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
+        Box {
+          IconButton(onClick = { optionsExpanded = true }, enabled = !editState.isSaving) {
+            Icon(Icons.RoundedFilled.MoreVert, contentDescription = stringResource(R.string.lyrics_editor_options))
           }
-          Column(Modifier.weight(1f)) {
-            Text(stringResource(R.string.lyrics_editor_title), style = MaterialTheme.typography.titleMedium)
-            Text(
-              target.title,
-              fontFamily = fontFamilyForText(target.title),
-              style = MaterialTheme.typography.bodySmall,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
+          val optionCount = if (target.hasSavedEdits) 3 else 2
+          AppDropdownMenu(optionsExpanded, onDismissRequest = { optionsExpanded = false }) {
+            AppDropdownMenuItem(
+              text = { Text(stringResource(R.string.lyrics_editor_paste)) },
+              index = 0,
+              itemCount = optionCount,
+              onClick = { optionsExpanded = false; pasteDialog = true },
             )
-          }
-          Box {
-            IconButton(onClick = { optionsExpanded = true }, enabled = !editState.isSaving) {
-              Icon(Icons.RoundedFilled.MoreVert, contentDescription = stringResource(R.string.lyrics_editor_options))
+            AppDropdownMenuItem(
+              text = { Text(stringResource(R.string.lyrics_editor_clear_times)) },
+              index = 1,
+              itemCount = optionCount,
+              enabled = draft.lines.any { it.timeMs != null },
+              onClick = { optionsExpanded = false; clearTimesPrompt = true },
+            )
+            if (target.hasSavedEdits) {
+              AppDropdownMenuItem(
+                text = {
+                  Text(stringResource(R.string.lyrics_editor_restore_title), color = MaterialTheme.colorScheme.error)
+                },
+                index = 2,
+                itemCount = optionCount,
+                onClick = { optionsExpanded = false; restorePrompt = true },
+              )
             }
-            val optionCount = if (target.hasSavedEdits) 3 else 2
-            AppDropdownMenu(optionsExpanded, onDismissRequest = { optionsExpanded = false }) {
-              AppDropdownMenuItem(
-                text = { Text(stringResource(R.string.lyrics_editor_paste)) },
-                index = 0,
-                itemCount = optionCount,
-                onClick = { optionsExpanded = false; pasteDialog = true },
-              )
-              AppDropdownMenuItem(
-                text = { Text(stringResource(R.string.lyrics_editor_clear_times)) },
-                index = 1,
-                itemCount = optionCount,
-                enabled = draft.lines.any { it.timeMs != null },
-                onClick = { optionsExpanded = false; clearTimesPrompt = true },
-              )
-              if (target.hasSavedEdits) {
-                AppDropdownMenuItem(
-                  text = {
-                    Text(stringResource(R.string.lyrics_editor_restore_title), color = MaterialTheme.colorScheme.error)
-                  },
-                  index = 2,
-                  itemCount = optionCount,
-                  onClick = { optionsExpanded = false; restorePrompt = true },
+          }
+        }
+      }
+      if (!keyboardVisible) {
+        Text(
+          stringResource(R.string.lyrics_editor_instructions),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      if (!sameTrack) {
+        Text(
+          stringResource(R.string.lyrics_editor_track_changed),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.error,
+        )
+      }
+      validationError?.let {
+        Text(stringResource(it.messageRes()), color = MaterialTheme.colorScheme.error)
+      }
+      editState.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+
+      LazyColumn(
+        state = listState,
+        modifier = Modifier.weight(1f).fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
+      ) {
+        itemsIndexed(draft.lines, key = { _, line -> line.id }) { index, line ->
+          var lineMenu by remember { mutableStateOf(false) }
+          val lineInteraction = remember { MutableInteractionSource() }
+          val linePressed by lineInteraction.collectIsPressedAsState()
+          val lineLabel = stringResource(R.string.lyrics_editor_line, index + 1)
+          Surface(
+            onClick = { selected = index },
+            enabled = !editState.isSaving,
+            interactionSource = lineInteraction,
+            shape = rememberConnectedShape(
+              index, draft.lines.size, ConnectedLayout.Vertical,
+              pressed = linePressed && !editState.isSaving, selected = selected == index,
+            ),
+            color = animatedPlayerSheetSelectionColor(
+              selected == index, pressed = linePressed, enabled = !editState.isSaving,
+            ),
+            modifier = Modifier.appPressFeedback(
+              lineInteraction, enabled = !editState.isSaving, pressedScale = 0.99f,
+            ),
+          ) {
+            Row(
+              modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              TextButton(
+                enabled = !editState.isSaving,
+                modifier = Modifier.widthIn(min = 78.dp, max = 104.dp),
+                colors = ButtonDefaults.textButtonColors(
+                  containerColor = if (singingLine == index) MaterialTheme.colorScheme.primaryContainer
+                    else Color.Transparent,
+                  contentColor = if (singingLine == index) MaterialTheme.colorScheme.onPrimaryContainer
+                    else if (selected == index) MaterialTheme.colorScheme.onSecondaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                ),
+                onClick = {
+                  selected = index
+                  if (canTime && seekable == true && line.timeMs != null &&
+                    viewModel.isLyricsEditTrackCurrent(target)
+                  ) {
+                    viewModel.seekFromScrub(line.timeMs / 1000f)
+                  }
+                },
+              ) {
+                Text(
+                  line.timeMs?.let { LyricsDraft.formatTime(it) }
+                    ?: stringResource(R.string.lyrics_editor_untimed),
+                  style = MaterialTheme.typography.labelMedium,
+                  maxLines = 1,
                 )
+              }
+              BasicTextField(
+                value = line.text,
+                onValueChange = { text ->
+                  viewModel.lyricsEditDraft.update { it.editText(index, text) }
+                  validationError = null
+                },
+                enabled = !editState.isSaving,
+                maxLines = if (selected == index) 4 else 2,
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                  fontFamily = fontFamilyForText(line.text),
+                  color = if (selected == index) MaterialTheme.colorScheme.onSecondaryContainer
+                    else MaterialTheme.colorScheme.onSurface,
+                ),
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                  .padding(horizontal = 8.dp, vertical = 12.dp)
+                  .onFocusChanged { if (it.isFocused) selected = index }
+                  .semantics { contentDescription = lineLabel },
+                decorationBox = { field ->
+                  Box {
+                    if (line.text.isEmpty()) {
+                      Text(
+                        lineLabel,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (selected == index) MaterialTheme.colorScheme.onSecondaryContainer
+                          else MaterialTheme.colorScheme.onSurfaceVariant,
+                      )
+                    }
+                    field()
+                  }
+                },
+              )
+              Box {
+                IconButton(
+                  onClick = { selected = index; lineMenu = true },
+                  enabled = !editState.isSaving,
+                ) {
+                  Icon(
+                    Icons.RoundedFilled.MoreVert,
+                    contentDescription = stringResource(R.string.lyrics_editor_line_options, index + 1),
+                  )
+                }
+                AppDropdownMenu(lineMenu, onDismissRequest = { lineMenu = false }) {
+                  AppDropdownMenuItem(
+                    text = { Text(stringResource(R.string.lyrics_editor_edit_time)) },
+                    index = 0,
+                    itemCount = 4,
+                    onClick = {
+                      lineMenu = false
+                      timeIndex = index
+                      timeText = line.timeMs?.let { LyricsDraft.formatTime(it) }.orEmpty()
+                      timeError = false
+                    },
+                  )
+                  AppDropdownMenuItem(
+                    text = { Text(stringResource(R.string.lyrics_editor_remove_time)) },
+                    index = 1,
+                    itemCount = 4,
+                    enabled = line.timeMs != null,
+                    onClick = {
+                      lineMenu = false
+                      viewModel.lyricsEditDraft.update { it.setTime(index, null) }
+                      validationError = null
+                    },
+                  )
+                  AppDropdownMenuItem(
+                    text = { Text(stringResource(R.string.lyrics_editor_insert_line)) },
+                    index = 2,
+                    itemCount = 4,
+                    onClick = {
+                      lineMenu = false
+                      viewModel.lyricsEditDraft.update { it.insertAfter(index) }
+                      selected = index + 1
+                      validationError = null
+                    },
+                  )
+                  AppDropdownMenuItem(
+                    text = {
+                      Text(stringResource(R.string.lyrics_editor_delete_line), color = MaterialTheme.colorScheme.error)
+                    },
+                    index = 3,
+                    itemCount = 4,
+                    onClick = {
+                      lineMenu = false
+                      val updated = viewModel.lyricsEditDraft.value.delete(index)
+                      viewModel.lyricsEditDraft.value = updated
+                      selected = selected.coerceAtMost(updated.lines.lastIndex)
+                      validationError = null
+                    },
+                  )
+                }
               }
             }
           }
-          TextButton(
-            enabled = changed && !editState.isSaving,
+        }
+      }
+      if (!keyboardVisible) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+          IconButton(
+            enabled = canTime,
+            onClick = { if (viewModel.isLyricsEditTrackCurrent(target)) viewModel.pauseUnpause() },
+          ) {
+            Icon(
+              if (paused == false) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
+              contentDescription = stringResource(if (paused == false) R.string.audiobook_pause else R.string.ui_play),
+            )
+          }
+          Text(
+            LyricsDraft.formatTime(positionMs.coerceIn(0, Int.MAX_VALUE.toLong()).toInt()),
+            style = MaterialTheme.typography.titleMedium,
+          )
+          Spacer(Modifier.weight(1f))
+          IconButton(
+            enabled = !editState.isSaving,
             onClick = {
-              validationError = draft.validationError()
-              if (validationError == null) viewModel.saveEditedLyrics(draft)
+              viewModel.lyricsEditDraft.update { it.insertAfter(selected) }
+              selected++
+              validationError = null
             },
           ) {
-            if (editState.isSaving) {
-              CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-            } else {
-              Text(stringResource(R.string.ui_save))
-            }
+            Icon(Icons.RoundedFilled.Add, contentDescription = stringResource(R.string.lyrics_editor_insert_line))
           }
         }
-        if (!keyboardVisible) {
-          Text(
-            stringResource(R.string.lyrics_editor_instructions),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-        if (!sameTrack) {
-          Text(
-            stringResource(R.string.lyrics_editor_track_changed),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.error,
-          )
-        }
-        validationError?.let {
-          Text(stringResource(it.messageRes()), color = MaterialTheme.colorScheme.error)
-        }
-        editState.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-
-        LazyColumn(
-          state = listState,
-          modifier = Modifier.weight(1f).fillMaxWidth(),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing),
+          verticalAlignment = Alignment.CenterVertically,
         ) {
-          itemsIndexed(draft.lines, key = { _, line -> line.id }) { index, line ->
-            var lineMenu by remember { mutableStateOf(false) }
-            Surface(
-              shape = RoundedCornerShape(16.dp),
-              color = if (selected == index) MaterialTheme.colorScheme.secondaryContainer
-                else MaterialTheme.colorScheme.surfaceContainer,
-            ) {
-              Column(Modifier.fillMaxWidth().padding(8.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                  Text(
-                    stringResource(R.string.lyrics_editor_line, index + 1),
-                    style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(start = 4.dp),
-                  )
-                  TextButton(
-                    enabled = !editState.isSaving,
-                    onClick = {
-                      selected = index
-                      if (canTime && seekable == true && line.timeMs != null &&
-                        viewModel.isLyricsEditTrackCurrent(target)
-                      ) {
-                        viewModel.seekFromScrub(line.timeMs / 1000f)
-                      }
-                    },
-                  ) {
-                    Text(
-                      line.timeMs?.let { LyricsDraft.formatTime(it) }
-                        ?: stringResource(R.string.lyrics_editor_untimed),
-                    )
-                  }
-                  Spacer(Modifier.weight(1f))
-                  Box {
-                    IconButton(
-                      onClick = { selected = index; lineMenu = true },
-                      enabled = !editState.isSaving,
-                    ) {
-                      Icon(
-                        Icons.RoundedFilled.MoreVert,
-                        contentDescription = stringResource(R.string.lyrics_editor_line_options, index + 1),
-                      )
-                    }
-                    AppDropdownMenu(lineMenu, onDismissRequest = { lineMenu = false }) {
-                      AppDropdownMenuItem(
-                        text = { Text(stringResource(R.string.lyrics_editor_edit_time)) },
-                        index = 0,
-                        itemCount = 4,
-                        onClick = {
-                          lineMenu = false
-                          timeIndex = index
-                          timeText = line.timeMs?.let { LyricsDraft.formatTime(it) }.orEmpty()
-                          timeError = false
-                        },
-                      )
-                      AppDropdownMenuItem(
-                        text = { Text(stringResource(R.string.lyrics_editor_remove_time)) },
-                        index = 1,
-                        itemCount = 4,
-                        enabled = line.timeMs != null,
-                        onClick = {
-                          lineMenu = false
-                          viewModel.lyricsEditDraft.value = draft.setTime(index, null)
-                          validationError = null
-                        },
-                      )
-                      AppDropdownMenuItem(
-                        text = { Text(stringResource(R.string.lyrics_editor_insert_line)) },
-                        index = 2,
-                        itemCount = 4,
-                        onClick = {
-                          lineMenu = false
-                          viewModel.lyricsEditDraft.value = draft.insertAfter(index)
-                          selected = index + 1
-                          validationError = null
-                        },
-                      )
-                      AppDropdownMenuItem(
-                        text = {
-                          Text(stringResource(R.string.lyrics_editor_delete_line), color = MaterialTheme.colorScheme.error)
-                        },
-                        index = 3,
-                        itemCount = 4,
-                        onClick = {
-                          lineMenu = false
-                          val updated = draft.delete(index)
-                          viewModel.lyricsEditDraft.value = updated
-                          selected = selected.coerceAtMost(updated.lines.lastIndex)
-                          validationError = null
-                        },
-                      )
-                    }
-                  }
-                }
-                OutlinedTextField(
-                  value = line.text,
-                  onValueChange = {
-                    viewModel.lyricsEditDraft.value = draft.editText(index, it)
-                    validationError = null
-                  },
-                  enabled = !editState.isSaving,
-                  maxLines = 3,
-                  modifier = Modifier.fillMaxWidth().onFocusChanged { if (it.isFocused) selected = index },
-                  label = { Text(stringResource(R.string.lyrics_editor_line, index + 1)) },
-                  textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = fontFamilyForText(line.text)),
-                )
+          val selectedTime = draft.lines[selected].timeMs
+          FilledTonalButton(
+            modifier = Modifier.weight(1f),
+            shape = rememberConnectedShape(
+              0, 3, ConnectedLayout.Horizontal, tokens = AppConnectedControlShapeTokens,
+            ),
+            enabled = selectedTime != null && !editState.isSaving,
+            onClick = {
+              val current = viewModel.lyricsEditDraft.value.lines[selected].timeMs
+              if (current == null) {
+                validationError = LyricsDraftError.INCOMPLETE_TIMING
+              } else {
+                viewModel.lyricsEditDraft.update { it.setTime(selected, (current - 100).coerceAtLeast(0)) }
+                validationError = null
               }
-            }
-          }
+            },
+          ) { Text(stringResource(R.string.lyrics_editor_earlier)) }
+          Button(
+            modifier = Modifier.weight(1.6f),
+            shape = rememberConnectedShape(
+              1, 3, ConnectedLayout.Horizontal, tokens = AppConnectedControlShapeTokens,
+            ),
+            enabled = canTime,
+            onClick = {
+              if (viewModel.isLyricsEditTrackCurrent(target)) {
+                val time = ((positionMs + 5) / 10 * 10).coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
+                viewModel.lyricsEditDraft.update { it.setTime(selected, time) }
+                if (selected < viewModel.lyricsEditDraft.value.lines.lastIndex) selected++
+                validationError = null
+              }
+            },
+          ) { Text(stringResource(R.string.lyrics_editor_set_time)) }
+          FilledTonalButton(
+            modifier = Modifier.weight(1f),
+            shape = rememberConnectedShape(
+              2, 3, ConnectedLayout.Horizontal, tokens = AppConnectedControlShapeTokens,
+            ),
+            enabled = selectedTime != null && !editState.isSaving,
+            onClick = {
+              val current = viewModel.lyricsEditDraft.value.lines[selected].timeMs
+              if (current == null) {
+                validationError = LyricsDraftError.INCOMPLETE_TIMING
+              } else {
+                val time = (current.toLong() + 100).coerceAtMost(Int.MAX_VALUE.toLong())
+                viewModel.lyricsEditDraft.update { it.setTime(selected, time.toInt()) }
+                validationError = null
+              }
+            },
+          ) { Text(stringResource(R.string.lyrics_editor_later)) }
         }
-        if (!keyboardVisible) {
-          Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-              enabled = canTime,
-              onClick = { if (viewModel.isLyricsEditTrackCurrent(target)) viewModel.pauseUnpause() },
-            ) {
-              Icon(
-                if (paused == false) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
-                contentDescription = stringResource(if (paused == false) R.string.audiobook_pause else R.string.ui_play),
-              )
-            }
-            Text(
-              LyricsDraft.formatTime(positionMs.coerceIn(0, Int.MAX_VALUE.toLong()).toInt()),
-              style = MaterialTheme.typography.titleMedium,
+        Text(
+          stringResource(R.string.lyrics_editor_storage),
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        TextButton(onClick = requestClose, enabled = !editState.isSaving) {
+          Text(stringResource(R.string.generic_cancel))
+        }
+        Button(
+          enabled = changed && !editState.isSaving,
+          onClick = {
+            val snapshot = viewModel.lyricsEditDraft.value
+            validationError = snapshot.validationError()
+            if (validationError == null) viewModel.saveEditedLyrics(snapshot)
+          },
+        ) {
+          if (editState.isSaving) {
+            CircularProgressIndicator(
+              modifier = Modifier.size(20.dp), strokeWidth = 2.dp,
+              color = MaterialTheme.colorScheme.onPrimary,
             )
-            Spacer(Modifier.weight(1f))
-            IconButton(
-              enabled = !editState.isSaving,
-              onClick = {
-                viewModel.lyricsEditDraft.value = draft.insertAfter(selected)
-                selected++
-                validationError = null
-              },
-            ) {
-              Icon(Icons.RoundedFilled.Add, contentDescription = stringResource(R.string.lyrics_editor_insert_line))
-            }
+          } else {
+            Text(stringResource(R.string.ui_save))
           }
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            val selectedTime = draft.lines[selected].timeMs
-            OutlinedButton(
-              enabled = selectedTime != null && !editState.isSaving,
-              onClick = {
-                viewModel.lyricsEditDraft.value =
-                  draft.setTime(selected, (requireNotNull(selectedTime) - 100).coerceAtLeast(0))
-                validationError = null
-              },
-            ) { Text(stringResource(R.string.lyrics_editor_earlier)) }
-            Button(
-              modifier = Modifier.weight(1f),
-              enabled = canTime,
-              onClick = {
-                if (viewModel.isLyricsEditTrackCurrent(target)) {
-                  val time = ((positionMs + 5) / 10 * 10).coerceIn(0, Int.MAX_VALUE.toLong()).toInt()
-                  viewModel.lyricsEditDraft.value = draft.setTime(selected, time)
-                  if (selected < draft.lines.lastIndex) selected++
-                  validationError = null
-                }
-              },
-            ) { Text(stringResource(R.string.lyrics_editor_set_time)) }
-            OutlinedButton(
-              enabled = selectedTime != null && !editState.isSaving,
-              onClick = {
-                val time = (requireNotNull(selectedTime).toLong() + 100).coerceAtMost(Int.MAX_VALUE.toLong())
-                viewModel.lyricsEditDraft.value = draft.setTime(selected, time.toInt())
-                validationError = null
-              },
-            ) { Text(stringResource(R.string.lyrics_editor_later)) }
-          }
-          Text(
-            stringResource(R.string.lyrics_editor_storage),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
         }
       }
     }
@@ -451,7 +581,7 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
       subtitle = stringResource(R.string.lyrics_editor_clear_times_message),
       onConfirm = {
         clearTimesPrompt = false
-        viewModel.lyricsEditDraft.value = draft.clearTimes()
+        viewModel.lyricsEditDraft.update { it.clearTimes() }
         validationError = null
       },
       onCancel = { clearTimesPrompt = false },
@@ -525,7 +655,7 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
             if (time == null) {
               timeError = true
             } else {
-              viewModel.lyricsEditDraft.value = draft.setTime(index, time)
+              viewModel.lyricsEditDraft.update { it.setTime(index, time) }
               validationError = null
               timeIndex = null
             }

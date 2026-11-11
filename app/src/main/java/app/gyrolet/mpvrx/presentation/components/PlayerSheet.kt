@@ -125,6 +125,8 @@ fun PlayerSheet(
   useFrostedGlass: Boolean = true,
   scrimAlpha: Float = 0.5f,
   bottomBar: (@Composable () -> Unit)? = null,
+  dragToDismiss: Boolean = true,
+  confirmDismiss: () -> Boolean = { true },
   content: @Composable () -> Unit,
 ) {
   val scope = rememberCoroutineScope()
@@ -152,6 +154,14 @@ fun PlayerSheet(
   }
   val density = LocalDensity.current
   val latestOnDismissRequest by rememberUpdatedState(onDismissRequest)
+  val latestConfirmDismiss by rememberUpdatedState(confirmDismiss)
+  var dismissalDelivered by remember { mutableStateOf(false) }
+  val deliverDismissal: () -> Unit = {
+    if (!dismissalDelivered) {
+      dismissalDelivered = true
+      latestOnDismissRequest()
+    }
+  }
   val maxWidth = customMaxWidth ?: 640.dp
   val isImeVisible = WindowInsets.ime.getBottom(density) > 0
   val maxHeight =
@@ -205,12 +215,12 @@ fun PlayerSheet(
     label = "alpha",
   )
 
+  // Ask before moving the sheet so an unsaved-changes prompt does not hide the form.
   val internalOnDismissRequest: () -> Unit = {
-    scope.launch {
-      try {
+    if (!dismissalDelivered && latestConfirmDismiss()) {
+      scope.launch {
         anchoredDraggableState.animateTo(1)
-      } finally {
-        latestOnDismissRequest()
+        deliverDismissal()
       }
     }
   }
@@ -264,9 +274,15 @@ fun PlayerSheet(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
             onClick = {},
-          ).nestedScroll(
-            remember(anchoredDraggableState) {
-              anchoredDraggableState.preUpPostDownNestedScrollConnection()
+          ).then(
+            if (dragToDismiss) {
+              Modifier.nestedScroll(
+                remember(anchoredDraggableState) {
+                  anchoredDraggableState.preUpPostDownNestedScrollConnection()
+                },
+              )
+            } else {
+              Modifier
             },
           ).then(modifier)
           .tvFocusGroup()
@@ -282,7 +298,7 @@ fun PlayerSheet(
           }.anchoredDraggable(
             state = anchoredDraggableState,
             orientation = Orientation.Vertical,
-            enabled = !television,
+            enabled = !television && dragToDismiss,
           ).windowInsetsPadding(
             WindowInsets.systemBars
               .only(WindowInsetsSides.Horizontal),
@@ -362,9 +378,11 @@ fun PlayerSheet(
           val currentOffset = anchoredDraggableState.offset
           // Settle to open (0) if the user dragged up by more than 10% of the sheet height
           val target = if (currentOffset >= height * 0.9f) 1 else 0
-          anchoredDraggableState.animateTo(target)
-          if (target == 1) {
-            latestOnDismissRequest()
+          if (target == 1 && !latestConfirmDismiss()) {
+            anchoredDraggableState.animateTo(0)
+          } else {
+            anchoredDraggableState.animateTo(target)
+            if (target == 1) deliverDismissal()
           }
           wasSwipeActive = false
         } else {
@@ -384,8 +402,12 @@ fun PlayerSheet(
         .collectLatest { value ->
           if (value == 0) {
             wasOpened = true
-          } else if (value == 1 && wasOpened) {
-            latestOnDismissRequest()
+          } else if (value == 1 && wasOpened && !dismissalDelivered) {
+            if (latestConfirmDismiss()) {
+              deliverDismissal()
+            } else {
+              anchoredDraggableState.animateTo(0)
+            }
           }
         }
     }

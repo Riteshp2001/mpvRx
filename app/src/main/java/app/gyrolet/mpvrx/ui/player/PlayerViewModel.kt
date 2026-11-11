@@ -37,6 +37,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.lyrics.LyricsDraft
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem
 import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.data.network.client.NetworkMimeTypes
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
@@ -2018,119 +2019,114 @@ class PlayerViewModel(
     return true
   }
 
-  fun getAudioPropertiesData(): List<app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem> {
-    val title =
-      currentMediaTitle.takeIf { it.isNotBlank() }
-        ?: PlaybackSession.getPropertyString("metadata/by-key/Title")
-        ?: PlaybackSession.getPropertyString("media-title")
-        ?: "Unknown Title"
-
-    val artist =
-      PlaybackSession.getPropertyString("metadata/by-key/Artist")
-        ?: PlaybackSession.getPropertyString("metadata/by-key/ARTIST")
-        ?: PlaybackSession.getPropertyString("metadata/by-key/album_artist")
-        ?: "Unknown Artist"
-
-    val album =
-      PlaybackSession.getPropertyString("metadata/by-key/Album")
-        ?: PlaybackSession.getPropertyString("metadata/by-key/ALBUM")
-        ?: "Unknown Album"
-
-    val codec = PlaybackSession.getPropertyString("current-tracks/audio/codec")?.uppercase() ?: "Unknown"
-    val samplerateInt = PlaybackSession.getPropertyInt("audio-params/samplerate") ?: 0
-    val sampleRateStr =
-      if (samplerateInt >
-        0
+  suspend fun getAudioPropertiesData(): List<AudioPropertyItem> =
+    withContext(Dispatchers.IO) {
+      val session = PlaybackSession.state.value
+      val tracks = audioTracks.value
+      fun MutableList<AudioPropertyItem>.addProperty(
+        @androidx.annotation.StringRes label: Int,
+        value: String?,
       ) {
-        String.format(java.util.Locale.US, "%.1f kHz", samplerateInt / 1000f)
-      } else {
-        "Unknown"
+        value?.trim()?.takeIf(String::isNotEmpty)?.let {
+          add(AudioPropertyItem(appContext.getString(label), it))
+        }
       }
 
-    val channelsInt = PlaybackSession.getPropertyInt("audio-params/channel-count") ?: 0
-    val channelsStr =
-      when (channelsInt) {
-        1 -> "Mono (1.0)"
-        2 -> "Stereo (2.0)"
-        6 -> "5.1 Surround"
-        8 -> "7.1 Surround"
-        else -> if (channelsInt > 0) "$channelsInt Channels" else "Unknown"
-      }
+      val snapshot = PlaybackSession.readLoadedMedia(session.generation) { reader ->
+        fun tag(vararg names: String): String? {
+          for (name in names) {
+            val lower = name.lowercase(java.util.Locale.ROOT)
+            val variants = setOf(
+              name,
+              lower,
+              name.uppercase(java.util.Locale.ROOT),
+              lower.replaceFirstChar { it.uppercase() },
+            )
+            for (key in variants) {
+              reader.string("metadata/by-key/$key")?.trim()?.takeIf(String::isNotEmpty)?.let { return it }
+            }
+          }
+          return null
+        }
 
-    // Prefer the selected track's demux metadata. mpv's top-level audio-bitrate is optional
-    // and can be unavailable during seeks/reconfigures, which needlessly logged E/mpv entries.
-    val bitrateBitsPerSecond =
-      audioTracks.value
-        .firstOrNull(TrackNode::isSelected)
-        ?.demuxBitrate
-        ?.takeIf { it > 0L }
-        ?: 0L
-    val bitrateStr =
-      if (bitrateBitsPerSecond > 0L) "${bitrateBitsPerSecond / 1000} kbps" else "Variable / Unknown"
-
-    val path = PlaybackSession.getPropertyString("path") ?: PlaybackSession.getPropertyString("stream-open-filename") ?: ""
-    val fileSizeStr =
-      if (path.isNotBlank() && !path.startsWith("content://") && !path.startsWith("http")) {
-        runCatching {
-          val bytes = java.io.File(path.removePrefix("file://")).length()
-          if (bytes > 0) String.format(java.util.Locale.US, "%.2f MB", bytes / (1024f * 1024f)) else ""
-        }.getOrDefault("")
-      } else {
-        ""
-      }
-
-    val formatExt =
-      path
-        .substringBefore('?')
-        .substringBefore('#')
-        .substringAfterLast('.', "")
-        .uppercase()
-
-    return buildList {
-      add(
-        app.gyrolet.mpvrx.ui.player.controls.components.sheets
-          .AudioPropertyItem("Title", title),
-      )
-      add(
-        app.gyrolet.mpvrx.ui.player.controls.components.sheets
-          .AudioPropertyItem("Artist", artist),
-      )
-      add(
-        app.gyrolet.mpvrx.ui.player.controls.components.sheets
-          .AudioPropertyItem("Album", album),
-      )
-      add(
-        app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem(
-          "Format / Codec",
-          if (formatExt.isNotBlank()) "$formatExt ($codec)" else codec,
-        ),
-      )
-      add(
-        app.gyrolet.mpvrx.ui.player.controls.components.sheets
-          .AudioPropertyItem("Sample Rate", sampleRateStr),
-      )
-      add(
-        app.gyrolet.mpvrx.ui.player.controls.components.sheets
-          .AudioPropertyItem("Bitrate", bitrateStr),
-      )
-      add(
-        app.gyrolet.mpvrx.ui.player.controls.components.sheets
-          .AudioPropertyItem("Channels", channelsStr),
-      )
-      if (fileSizeStr.isNotBlank()) {
-        add(
-          app.gyrolet.mpvrx.ui.player.controls.components.sheets
-            .AudioPropertyItem("File Size", fileSizeStr),
+        val path = session.currentItem?.originalUri?.takeIf(String::isNotBlank)
+          ?: reader.string("path")?.takeIf(String::isNotBlank)
+          ?: reader.string("stream-open-filename").orEmpty()
+        val track = tracks.firstOrNull(TrackNode::isSelected)
+        val codec = reader.string("current-tracks/audio/codec")?.takeIf(String::isNotBlank) ?: track?.codec
+        val sampleRate = track?.demuxSampleRate?.toInt()?.takeIf { it > 0 }
+          ?: reader.int("audio-params/samplerate")?.takeIf { it > 0 }
+        val format = resolveAudioFormatInfo(
+          codec = codec,
+          profile = reader.string("current-tracks/audio/codec-profile") ?: track?.codecProfile,
+          sampleRate = sampleRate,
+          bitsPerSample = if (tracks.size <= 1) tag("bits_per_sample", "bits_per_raw_sample", "bit_depth") else null,
+          bitrate = track?.effectiveBitrate,
+          trackMetadata = track?.metadata,
         )
+        val channelCount = reader.int("audio-params/channel-count")?.takeIf { it > 0 }
+        val channelLayout = reader.string("audio-params/hr-channels")?.takeIf(String::isNotBlank)
+          ?: reader.string("audio-params/channels")?.takeIf(String::isNotBlank)
+          ?: channelCount?.let { appContext.resources.getQuantityString(R.plurals.audio_info_channel_count, it, it) }
+        val properties = buildList {
+          addProperty(
+            R.string.audio_info_track_title,
+            tag("title") ?: session.currentItem?.title?.takeIf(String::isNotBlank) ?: reader.string("media-title"),
+          )
+          addProperty(R.string.audio_info_artist, tag("artist") ?: session.currentItem?.artist)
+          addProperty(R.string.audio_info_album, tag("album"))
+          addProperty(R.string.audio_info_album_artist, tag("album_artist", "albumartist", "AlbumArtist", "album artist"))
+          addProperty(R.string.audio_info_genre, tag("genre"))
+          addProperty(R.string.audio_info_composer, tag("composer"))
+          addProperty(R.string.audio_info_date, tag("date", "year"))
+          addProperty(R.string.audio_info_track_number, tag("track", "tracknumber", "track_number"))
+          addProperty(R.string.audio_info_disc_number, tag("disc", "discnumber", "disc_number", "disk"))
+          addProperty(R.string.audio_info_isrc, tag("isrc"))
+          addProperty(R.string.audio_info_label, tag("label", "publisher", "organization", "record_label"))
+          addProperty(R.string.audio_info_copyright, tag("copyright"))
+          addProperty(
+            R.string.media_info_stat_format,
+            path.fileExtension().takeIf(String::isNotBlank)?.uppercase(java.util.Locale.ROOT)
+              ?: reader.string("file-format")?.uppercase(java.util.Locale.ROOT),
+          )
+          addProperty(R.string.audio_info_codec, format?.codecLabel ?: codec?.uppercase(java.util.Locale.ROOT))
+          addProperty(
+            R.string.media_info_stat_sample_rate,
+            sampleRate?.let { String.format(java.util.Locale.US, "%.1f kHz", it / 1000.0) },
+          )
+          addProperty(R.string.media_info_stat_bit_depth, format?.sourceBitDepth?.let { "$it-bit" })
+          addProperty(R.string.ui_bitrate, format?.bitrate?.let { "${it / 1000} kbps" })
+          addProperty(R.string.media_info_stat_channels, channelLayout)
+        }
+        path to properties
+      } ?: return@withContext emptyList()
+
+      val (path, properties) = snapshot
+      val fileSize = if (path.isNotBlank()) {
+        try {
+          val uri = Uri.parse(path)
+          when (uri.scheme?.lowercase(java.util.Locale.ROOT)) {
+            null, "" -> java.io.File(path).length()
+            "file" -> uri.path?.let { java.io.File(it).length() }
+            "content" -> appContext.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize }
+            else -> null
+          }?.takeIf { it > 0 }
+        } catch (error: java.io.IOException) {
+          Log.w(TAG, "Unable to read the audio source size.", error)
+          null
+        } catch (error: SecurityException) {
+          Log.w(TAG, "Audio source size permission is unavailable.", error)
+          null
+        }
+      } else {
+        null
       }
-      if (path.isNotBlank()) {
-        add(
-          app.gyrolet.mpvrx.ui.player.controls.components.sheets
-            .AudioPropertyItem("File Location", path),
-        )
+      buildList {
+        addAll(properties)
+        addProperty(R.string.ui_file_size, fileSize?.let { android.text.format.Formatter.formatFileSize(appContext, it) })
+        addProperty(R.string.media_info_file_path, path)
       }
     }
-  }
 
   // Audio state
   val maxVolume = (appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).getStreamMaxVolume(AudioManager.STREAM_MUSIC)
