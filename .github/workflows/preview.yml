@@ -238,13 +238,6 @@ jobs:
             cp "$out_dir/$base.apk" "downloads/mpvRx-preview-r${COMMIT_COUNT}-${ASSET_NAME:-$abi}.apk"
           done
 
-      - name: Upload R8 diagnostics
-        uses: actions/upload-artifact@v7
-        with:
-          name: r8-${{ matrix.distribution.id }}-${{ github.sha }}
-          path: app/build/outputs/mapping/
-          if-no-files-found: error
-          retention-days: 30
 
       - name: Upload preview APKs
         uses: actions/upload-artifact@v7

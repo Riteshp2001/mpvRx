@@ -277,35 +277,6 @@ jobs:
             cp "$out_dir/$base.apk" "release-assets/mpvRx-${ASSET_NAME:-$abi}-${VERSION_TAG}.apk"
           done
 
-      - name: Upload native debug symbols
-        uses: actions/upload-artifact@v7
-        with:
-          name: native-debug-symbols-${{ matrix.distribution.id }}-${{ github.sha }}
-          path: app/build/outputs/native-debug-symbols/
-          if-no-files-found: warn
-          retention-days: 30
-          compression-level: 0
-
-      - name: Upload R8 diagnostics
-        uses: actions/upload-artifact@v7
-        with:
-          name: r8-${{ matrix.distribution.id }}-${{ github.sha }}
-          path: app/build/outputs/mapping/
-          if-no-files-found: error
-          retention-days: 30
-
-      - name: Stage Play Store native debug symbols
-        if: ${{ matrix.distribution.package == 'aab' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          symbols="app/build/outputs/native-debug-symbols/${APK_DIR}Release/native-debug-symbols.zip"
-          if [[ -f "$symbols" ]]; then
-            cp "$symbols" "release-assets/mpvRx-${ASSET_NAME}-${VERSION_TAG}-native-debug-symbols.zip"
-          else
-            echo "::warning::Native dependencies contain no extractable symbols. Rebuild mpvlib with symbol-preserving packaging; an app setting cannot restore stripped symbols."
-          fi
-
       - name: Upload release assets
         uses: actions/upload-artifact@v7
         with:

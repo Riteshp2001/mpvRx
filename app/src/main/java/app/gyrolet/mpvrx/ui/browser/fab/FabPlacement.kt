@@ -17,11 +17,15 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+
+/** True when ScreenNavigation has already reserved the global bottom overlay outside this entry. */
+internal val LocalFabHostInsetsApplied = compositionLocalOf { false }
 
 /**
  * Single source of truth for where browser FABs float.
@@ -43,12 +47,17 @@ object FabPlacement {
   val RestingBottomClearance: Dp = 92.dp
 
   @Composable
-  private fun bottomClearance(): Dp = maxOf(RestingBottomClearance, LocalNavigationBarHeight.current)
+  private fun bottomClearance(): Dp =
+    if (LocalFabHostInsetsApplied.current) 0.dp
+    else maxOf(RestingBottomClearance, LocalNavigationBarHeight.current)
 
   /** Bottom padding for a FAB hosted in a Scaffold `floatingActionButton` slot. */
   @Composable
   fun scaffoldBottomPadding(): Dp =
-    animatedPadding(bottomClearance() - ScaffoldFabSpacing)
+    // Scaffold owns its built-in 16.dp FAB spacing. When the navigation host has already
+    // reserved the bottom overlay, bottomClearance() is zero; subtracting ScaffoldFabSpacing
+    // here used to produce -16.dp and crash Compose during layout on inset-by-host screens.
+    animatedPadding((bottomClearance() - ScaffoldFabSpacing).coerceAtLeast(0.dp))
 
   /**
    * Bottom padding for a FAB drawn as an overlay at the bottom of a full-height region rather than
@@ -56,7 +65,7 @@ object FabPlacement {
    */
   @Composable
   fun overlayBottomPadding(): Dp =
-    animatedPadding(bottomClearance())
+    animatedPadding(bottomClearance().coerceAtLeast(0.dp))
 
   /** The system bars Scaffold keeps its FAB clear of. */
   val overlayInsets: WindowInsets
@@ -65,10 +74,10 @@ object FabPlacement {
   @Composable
   private fun animatedPadding(target: Dp): Dp {
     val padding by animateDpAsState(
-      targetValue = target,
+      targetValue = target.coerceAtLeast(0.dp),
       animationSpec = AppMotion.spatial<Dp>(AppMotion.noBounce(Spring.StiffnessMedium), snap()),
       label = "fab_bottom_padding",
     )
-    return padding
+    return padding.coerceAtLeast(0.dp)
   }
 }

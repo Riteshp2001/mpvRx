@@ -264,23 +264,6 @@ jobs:
               ;;
           esac
 
-      - name: Upload native debug symbols
-        uses: actions/upload-artifact@v7
-        with:
-          name: native-debug-symbols-${{ matrix.distribution.id }}-${{ github.sha }}
-          path: app/build/outputs/native-debug-symbols/
-          if-no-files-found: warn
-          retention-days: 30
-          compression-level: 0
-
-      - name: Upload R8 diagnostics
-        uses: actions/upload-artifact@v7
-        with:
-          name: r8-${{ matrix.distribution.id }}-${{ github.sha }}
-          path: app/build/outputs/mapping/
-          if-no-files-found: error
-          retention-days: 30
-
       - name: Upload arm64-v8a APK
         if: ${{ matrix.distribution.id == 'standard' }}
         uses: actions/upload-artifact@v7
@@ -378,7 +361,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      contents: read
+      contents: write
       actions: read
       deployments: read
       pages: write
@@ -459,7 +442,7 @@ jobs:
           fi
 
           rm -rf site/experimental site/experimental.json
-          mkdir -p site/experimental
+          mkdir -p release-apks
           cp fastlane/metadata/android/preview-site/index.html site/index.html
           cp fastlane/metadata/android/en-US/images/icon.png site/icon.png
           cp fastlane/metadata/android/preview-site/site.webmanifest site/site.webmanifest
@@ -474,20 +457,31 @@ jobs:
             [fongmi]=app-fongmi-universal-release.apk
             [no-vulkan]=app-noVulkan-universal-release.apk
           )
+          release_tag="experimental-r${build}-${GITHUB_SHA:0:12}"
+          release_base="https://github.com/${GH_REPO}/releases/download/${release_tag}"
+          release_assets=()
           : > assets.jsonl
           for variant in "${!sources[@]}"; do
             src=$(find ci-apks -name "${sources[$variant]}")
             [[ $(wc -l <<<"$src") -eq 1 && -n "$src" ]] || { echo "Expected one APK for $variant"; exit 1; }
-            dest="site/experimental/mpvRx-experimental-r${build}-${variant}.apk"
+            dest="release-apks/mpvRx-experimental-r${build}-${variant}.apk"
             cp "$src" "$dest"
+            release_assets+=("$dest")
             size=$(stat -c %s "$dest")
             sha=$(sha256sum "$dest" | cut -d' ' -f1)
             name=$(basename "$dest")
-            jq -n --arg abi "$variant" --arg name "$name" --arg url "$base/experimental/$name" \
+            jq -n --arg abi "$variant" --arg name "$name" --arg url "$release_base/$name" \
               --argjson size "$size" --arg sha "$sha" \
               '{abi:$abi,name:$name,browser_download_url:$url,size:$size,content_type:"application/vnd.android.package-archive",sha256:$sha}' \
               >> assets.jsonl
           done
+
+          if ! gh release view "$release_tag" >/dev/null 2>&1; then
+            gh release create "$release_tag" --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "mpvRx Experimental r${build}" \
+              --notes "Experimental CI build r${build}. Source commit: ${GITHUB_SHA}."
+          fi
+          gh release upload "$release_tag" "${release_assets[@]}" --clobber
 
           jq -n --slurpfile assets assets.jsonl --argjson build "$build" \
             --arg sha "$GITHUB_SHA" --arg at "$published_at" --arg base "$base" \
@@ -499,6 +493,11 @@ jobs:
               commit_title:$title,commit_count:$build,run_url:$run,pages_url:($base+"/")}' \
             > site/experimental.json
           jq . site/experimental.json >/dev/null
+          site_bytes=$(du -sb site | cut -f1)
+          if (( site_bytes >= 950000000 )); then
+            echo "::error::Pages site is still too large (${site_bytes} bytes); APKs must use Release downloads."
+            exit 1
+          fi
           echo "skip=false" >> "$GITHUB_OUTPUT"
 
       - name: Configure GitHub Pages
