@@ -392,6 +392,21 @@ object AudioPreferencesScreen : Screen {
               )
 
               PreferenceDivider()
+              val immersiveArtwork by preferences.immersiveArtwork.collectAsState()
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_immersive_artwork_title),
+                value = immersiveArtwork,
+                onValueChange = { preferences.immersiveArtwork.set(it) },
+                title = { Text(stringResource(R.string.pref_audio_immersive_artwork_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_audio_immersive_artwork_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
               val animatedAlbumArtwork by preferences.animatedAlbumArtwork.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_animated_artwork_title),

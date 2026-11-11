@@ -37,6 +37,23 @@ The Music tab can use local storage, Jellyfin, or Navidrome as its source. Local
 
 The dedicated now-playing view combines artwork, metadata, transport controls, and the up-next queue.
 
+### Immersive artwork
+
+Enable **Audio settings → Appearance → Immersive artwork** for edge-to-edge
+album artwork that fades into the portrait player's background. It is off by
+default. Switch from the visualizer to the artwork to see it; landscape keeps
+the existing side-by-side layout, and opening lyrics keeps their readable
+background. Tracks without artwork keep the regular placeholder.
+
+This presentation is inspired by [Mornye](https://github.com/mornyeapp/Mornye).
+The existing **Animated album artwork** switch remains separate. Reduced motion
+keeps immersive artwork still, and unavailable motion artwork retains the
+ordinary cover.
+
+Album artwork does not seek or toggle play/pause on single or double taps.
+Horizontal swipes still switch tracks, and a long press opens the visualizer
+selector. Use the transport buttons and seekbar for playback control.
+
 ### Switch the source
 
 Choose the active source from Music settings. Local uses Android media and
@@ -66,6 +83,30 @@ Changing tracks cancels in-flight loading and source conversion so a slow result
 from the previous song cannot replace the current lyrics. Optional translation
 and Indic-script romanization remain best-effort transformations; keep the
 original source available for comparison.
+
+### Edit and synchronize lyrics
+
+Tap the **Edit lyrics** pencil in the lyrics view or provider picker. You can
+edit, insert, and delete lines, or choose **Paste lyrics** for plain text or LRC.
+Select a line and tap **Set time** as it is sung; selection advances to the next
+line. Timestamp buttons seek to their line, the `-0.1 s` / `+0.1 s` controls
+fine-tune timing, and each line's menu supports manual timestamp editing.
+
+For synced lyrics, time every line and keep timestamps in line order before
+saving. **Clear all timestamps** converts the draft to plain lyrics. Unchanged
+word timing, backing vocals, and source translations are preserved; changing
+a line's text clears its obsolete word timing and translations.
+
+Edits are saved privately inside MpvRX, not in audio tags or a neighboring
+file. They survive restarts and take priority over embedded/local lyrics and
+automatic online lookup for that track URI. Selecting an online source remains
+possible. **Restore original lyrics** removes only that track's saved edits.
+Moving a local file or changing its URI creates a different editing target.
+
+Closing a changed draft asks before discarding it. If playback changes tracks
+while editing, the draft continues to belong to the original track; live timing
+and seeking are disabled so edits cannot accidentally be applied to the new song.
+Audiobook text is not editable through this music-lyrics editor.
 
 ## Visualizers
 

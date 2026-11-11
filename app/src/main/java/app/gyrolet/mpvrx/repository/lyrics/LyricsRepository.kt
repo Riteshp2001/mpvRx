@@ -54,6 +54,7 @@ data class LyricsResult(
   val missingProviders: Set<LyricsProvider> = emptySet(),
   /** Providers that errored out or timed out for this track. */
   val failedProviders: Set<LyricsProvider> = emptySet(),
+  val hasSavedEdits: Boolean = false,
 ) {
   /** Folds what one lookup learned about each provider into this track's statuses. */
   fun withOutcomes(result: OnlineLyricsResult): LyricsResult {
@@ -171,6 +172,7 @@ class LyricsRepository(
 
   private val cache = LruCache<CacheKey, LyricsResult>(64)
   private val providerCache = LyricsProviderCache(File(context.cacheDir, "lyrics/providers-v4"))
+  private val editedLyricsStore = EditedLyricsStore(File(context.filesDir, "lyrics/edited-v1"))
 
   /**
    * The recording behind a track, once something has worked it out.
@@ -315,7 +317,8 @@ class LyricsRepository(
 
       Log.d(TAG, "Loading lyrics for: $title by $artist ($mediaPath)")
 
-      val embedded = EmbeddedLyricsExtractor.extractEmbeddedLyrics(context, mediaPath)
+      val edited = editedLyricsStore.read(mediaPath)
+      val embedded = edited ?: EmbeddedLyricsExtractor.extractEmbeddedLyrics(context, mediaPath)
 
       // Never delay usable embedded/local lyrics for an automatic provider search.
       // An explicit Search Online action can override this preference.
@@ -387,6 +390,7 @@ class LyricsRepository(
           onlineByProvider = previous?.onlineByProvider.orEmpty() + online.byProvider,
           missingProviders = previous?.missingProviders.orEmpty(),
           failedProviders = previous?.failedProviders.orEmpty(),
+          hasSavedEdits = edited != null,
         ).withOutcomes(online)
 
       currentCoroutineContext().ensureActive()
@@ -750,6 +754,32 @@ class LyricsRepository(
       ).withOutcomes(result)
     cache.put(cacheKey, updated)
     return updated
+  }
+
+  fun hasEditedLyrics(mediaPath: String): Boolean = editedLyricsStore.contains(mediaPath)
+
+  suspend fun saveEditedLyrics(mediaPath: String, lyrics: Lyrics) = withContext(Dispatchers.IO) {
+    val edited = lyrics.copy(areFromRemote = false, sourceType = LyricsSourceType.LOCAL)
+    editedLyricsStore.write(mediaPath, edited)
+    cache.snapshot().forEach { (key, existing) ->
+      if (key.mediaPath == mediaPath) {
+        cache.put(
+          key,
+          existing.copy(
+            embeddedLyrics = edited,
+            activeLyrics = edited,
+            selectedSource = LyricsSourceType.LOCAL,
+            availableSources = (existing.availableSources.filter { it == LyricsSourceType.ONLINE } + LyricsSourceType.LOCAL).distinct(),
+            hasSavedEdits = true,
+          ),
+        )
+      }
+    }
+  }
+
+  suspend fun removeEditedLyrics(mediaPath: String) = withContext(Dispatchers.IO) {
+    editedLyricsStore.remove(mediaPath)
+    cache.snapshot().keys.filter { it.mediaPath == mediaPath }.forEach(cache::remove)
   }
 
   fun invalidate(

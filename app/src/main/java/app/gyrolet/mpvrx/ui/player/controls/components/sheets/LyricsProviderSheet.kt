@@ -46,6 +46,7 @@ import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
+import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
@@ -72,7 +73,11 @@ fun LyricsProviderSheet(
 ) {
   val state by viewModel.lyricsUiState.collectAsState()
 
-  PlayerSheet(onDismissRequest, title = stringResource(R.string.lyrics_provider_sheet_title)) {
+  PlayerSheet(
+    onDismissRequest,
+    title = stringResource(R.string.lyrics_provider_sheet_title),
+    actions = { LyricsEditAction(viewModel, origin = Sheets.LyricsProvider) },
+  ) {
     LazyColumn(
       modifier = modifier.fillMaxWidth(),
       contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),

@@ -691,6 +691,13 @@ fun PlayerSheets(
       )
     }
 
+    Sheets.LyricsEditor -> {
+      app.gyrolet.mpvrx.ui.player.controls.components.sheets.LyricsEditorSheet(
+        viewModel = viewModel,
+        onDismiss = { onShowSheet(viewModel.finishLyricsEditing()) },
+      )
+    }
+
     Sheets.Scopes -> {
       ScopesSheet(
         viewModel = viewModel,

@@ -244,19 +244,22 @@ fun LyricsView(
         Spacer(modifier = Modifier.height(4.dp))
       }
 
-      // Source Switcher Row (Show ONLY IF embedded/local lyrics are present)
-      if (hasEmbedded) {
+      if (hasEmbedded || (!isAudiobook && !isLyricsFullscreen)) {
         Row(
           modifier = Modifier.fillMaxWidth(),
           horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          FilterChip(
+          if (hasEmbedded) FilterChip(
             selected = state.selectedSource == LyricsSourceType.EMBEDDED || state.selectedSource == LyricsSourceType.LOCAL,
             onClick = { viewModel.switchLyricsSource(LyricsSourceType.EMBEDDED) },
             label = {
               Text(
-                if (state.embeddedLyrics?.sourceType == LyricsSourceType.LOCAL) stringResource(R.string.lyrics_source_local) else stringResource(R.string.lyrics_source_embedded),
+                when {
+                  state.hasSavedEdits -> stringResource(R.string.lyrics_source_edited)
+                  state.embeddedLyrics?.sourceType == LyricsSourceType.LOCAL -> stringResource(R.string.lyrics_source_local)
+                  else -> stringResource(R.string.lyrics_source_embedded)
+                },
                 fontWeight = FontWeight.Bold,
               )
             },
@@ -266,7 +269,7 @@ fun LyricsView(
             ),
           )
 
-          if (!isAudiobook) FilterChip(
+          if (hasEmbedded && !isAudiobook) FilterChip(
             selected = state.selectedSource == LyricsSourceType.ONLINE,
             onClick = { viewModel.switchLyricsSource(LyricsSourceType.ONLINE) },
             label = {
@@ -285,6 +288,9 @@ fun LyricsView(
               strokeWidth = 2.dp,
               color = MaterialTheme.colorScheme.primary,
             )
+          }
+          if (!isAudiobook && !isLyricsFullscreen) {
+            app.gyrolet.mpvrx.ui.player.controls.components.sheets.LyricsEditAction(viewModel)
           }
         }
       }

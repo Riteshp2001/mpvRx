@@ -61,6 +61,7 @@ class AudioPreferences(
   val audioVisualizerStyle = preferenceStore.getEnum("audio_visualizer_style", AudioVisualizerStyle.Blob)
   val audioOrientation = preferenceStore.getEnum("audio_player_orientation", AudioPlayerOrientation.Auto)
   val audioAmbientMode = preferenceStore.getBoolean("audio_ambient_mode", true)
+  val immersiveArtwork = preferenceStore.getBoolean("audio_immersive_artwork", false)
   val animatedAlbumArtwork = preferenceStore.getBoolean("audio_animated_album_artwork", false)
   val audioWavySeekbar = preferenceStore.getBoolean("audio_wavy_seekbar", true)
   val enabledMusicTabs = preferenceStore.getStringSet(

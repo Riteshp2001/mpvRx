@@ -36,6 +36,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.lyrics.LyricsDraft
 import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.data.network.client.NetworkMimeTypes
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
@@ -1176,9 +1177,113 @@ class PlayerViewModel(
     val onlineEnabled: Boolean = false,
     val syncOffsetMs: Int = 0,
     val errorMessage: String? = null,
+    val hasSavedEdits: Boolean = false,
   )
 
   val lyricsUiState = MutableStateFlow(LyricsUiState())
+
+  data class LyricsEditTarget(
+    val mediaPath: String,
+    val title: String,
+    val lyrics: app.gyrolet.mpvrx.domain.lyrics.Lyrics?,
+    val hasSavedEdits: Boolean,
+  )
+
+  data class LyricsEditUiState(
+    val isSaving: Boolean = false,
+    val completed: Boolean = false,
+    val restoredOriginal: Boolean = false,
+    val errorMessage: String? = null,
+  )
+
+  val lyricsEditTarget = MutableStateFlow<LyricsEditTarget?>(null)
+  val lyricsEditDraft = MutableStateFlow(LyricsDraft.from(null))
+  val lyricsEditPasteText = MutableStateFlow("")
+  val lyricsEditUiState = MutableStateFlow(LyricsEditUiState())
+  private var lyricsEditorSheetOrigin = Sheets.None
+
+  fun openLyricsEditor(origin: Sheets = Sheets.None) {
+    val path = currentLyricsPath()
+    val session = PlaybackSession.state.value
+    val state = lyricsUiState.value
+    if (path.isNullOrBlank() || path != lyricsStatePath || state.isLoading ||
+      lyricsEditUiState.value.isSaving || session.currentItem?.audiobook != null ||
+      session.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+    ) {
+      Log.w(TAG, "Lyrics editing is unavailable until the current music track has loaded.")
+      Toast.makeText(appContext, appContext.getString(R.string.lyrics_editor_unavailable), Toast.LENGTH_SHORT).show()
+      return
+    }
+    lyricsEditTarget.value = LyricsEditTarget(path, currentLyricsTitle(), state.originalLyrics, state.hasSavedEdits)
+    lyricsEditDraft.value = LyricsDraft.from(state.originalLyrics)
+    lyricsEditPasteText.value = ""
+    lyricsEditUiState.value = LyricsEditUiState()
+    lyricsEditorSheetOrigin = origin
+    sheetShown.value = Sheets.LyricsEditor
+  }
+
+  fun isLyricsEditTrackCurrent(target: LyricsEditTarget): Boolean = currentLyricsPath() == target.mediaPath
+
+  fun saveEditedLyrics(draft: LyricsDraft) {
+    if (draft.validationError() != null) {
+      Log.w(TAG, "An invalid lyrics draft was rejected.")
+      lyricsEditUiState.value = LyricsEditUiState(errorMessage = appContext.getString(R.string.lyrics_editor_invalid_draft))
+      return
+    }
+    val lyrics = draft.toLyrics()
+    persistLyricsEdit(R.string.lyrics_editor_save_failed, restoredOriginal = false) { path ->
+      lyricsRepository.saveEditedLyrics(path, lyrics)
+    }
+  }
+
+  fun restoreOriginalLyrics() {
+    persistLyricsEdit(R.string.lyrics_editor_restore_failed, restoredOriginal = true, action = lyricsRepository::removeEditedLyrics)
+  }
+
+  private fun persistLyricsEdit(
+    @androidx.annotation.StringRes failureMessage: Int,
+    restoredOriginal: Boolean,
+    action: suspend (String) -> Unit,
+  ) {
+    if (lyricsEditUiState.value.isSaving) return
+    val target = lyricsEditTarget.value
+    if (target == null) {
+      Log.w(TAG, "A lyrics edit operation was requested without a track.")
+      lyricsEditUiState.value = LyricsEditUiState(errorMessage = appContext.getString(R.string.lyrics_editor_unavailable))
+      return
+    }
+    lyricsEditUiState.value = LyricsEditUiState(isSaving = true, restoredOriginal = restoredOriginal)
+    viewModelScope.launch {
+      if (isLyricsEditTrackCurrent(target)) {
+        lyricsLoadJob?.cancel()
+        lyricsTranslateJob?.cancel()
+        lastLyricsLoadRequest = null
+        lyricsUiState.value = lyricsUiState.value.copy(isLoading = false, isTranslating = false)
+      }
+      try {
+        action(target.mediaPath)
+      } catch (error: java.io.IOException) {
+        Log.e(TAG, "Unable to persist lyric edits.", error)
+        lyricsEditUiState.value = LyricsEditUiState(errorMessage = appContext.getString(failureMessage))
+        return@launch
+      }
+      if (isLyricsEditTrackCurrent(target)) {
+        lastLyricsLoadRequest = null
+        loadLyricsForCurrentTrack()
+      }
+      lyricsEditUiState.value = LyricsEditUiState(completed = true, restoredOriginal = restoredOriginal)
+    }
+  }
+
+  fun finishLyricsEditing(): Sheets {
+    val origin = lyricsEditorSheetOrigin
+    lyricsEditorSheetOrigin = Sheets.None
+    lyricsEditTarget.value = null
+    lyricsEditDraft.value = LyricsDraft.from(null)
+    lyricsEditPasteText.value = ""
+    lyricsEditUiState.value = LyricsEditUiState()
+    return origin
+  }
 
   private val _mediaScopesUiState =
     MutableStateFlow(
@@ -1395,7 +1500,8 @@ class PlayerViewModel(
     lyricsTranslateJob?.cancel()
 
     lyricsLoadJob = viewModelScope.launch(Dispatchers.IO) {
-      val result = lyricsRepository.loadLyricsForTrack(
+      val result = try {
+        lyricsRepository.loadLyricsForTrack(
         mediaPath = path,
         title = title,
         artist = artist,
@@ -1404,8 +1510,19 @@ class PlayerViewModel(
         allowOnline = allowOnline,
         forceOnline = forceOnline,
         album = album,
-        isrc = isrc,
-      )
+          isrc = isrc,
+        )
+      } catch (error: java.io.IOException) {
+        Log.e(TAG, "Unable to load lyrics; saved edits have been retained.", error)
+        if (PlaybackSession.isCurrentGeneration(generation) && currentLyricsPath() == path) {
+          lyricsUiState.value = lyricsUiState.value.copy(
+            isLoading = false,
+            errorMessage = appContext.getString(R.string.lyrics_editor_load_failed),
+            hasSavedEdits = lyricsRepository.hasEditedLyrics(path),
+          )
+        }
+        return@launch
+      }
 
       ensureActive()
       // The track may have changed again while this fetch was in-flight; only apply the
@@ -1439,6 +1556,7 @@ class PlayerViewModel(
         failedProviders = result.failedProviders,
         onlineEnabled = allowOnline,
         syncOffsetMs = 0,
+        hasSavedEdits = result.hasSavedEdits,
       )
 
       val hasSynced = result.activeLyrics?.synced?.isNotEmpty() == true

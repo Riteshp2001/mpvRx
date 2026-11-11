@@ -73,12 +73,14 @@ fun LyricsSourceLine(
   isLoading: Boolean,
   onOpenSheet: () -> Unit,
   modifier: Modifier = Modifier,
+  hasSavedEdits: Boolean = false,
 ) {
   val provider = preferredProvider ?: onlineProvider
   val loadingLine = rememberPlaceholderLine(LyricsPlaceholders.LOADING, PLACEHOLDER_ROTATE_MS)
   val label =
     when {
       isLoading -> loadingLine
+      hasSavedEdits -> stringResource(R.string.lyrics_source_edited)
       provider != null -> stringResource(R.string.lyrics_by, provider.label)
       else -> stringResource(R.string.lyrics_provider_auto)
     }

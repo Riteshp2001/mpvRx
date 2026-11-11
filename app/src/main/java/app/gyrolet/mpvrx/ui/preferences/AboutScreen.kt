@@ -237,6 +237,7 @@ object AboutScreen : Screen {
                     Modifier
                       .weight(1f)
                       .height(56.dp),
+                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                   shape = RoundedCornerShape(topStart = 24.dp, topEnd = 6.dp, bottomEnd = 6.dp, bottomStart = 6.dp),
                   colors =
                     ButtonDefaults.buttonColors(
@@ -254,6 +255,8 @@ object AboutScreen : Screen {
                     text = stringResource(id = R.string.pref_about_oss_libraries),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                   )
                 }
 
@@ -270,6 +273,7 @@ object AboutScreen : Screen {
                     Modifier
                       .weight(1f)
                       .height(56.dp),
+                  contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                   shape = RoundedCornerShape(topStart = 6.dp, topEnd = 24.dp, bottomEnd = 6.dp, bottomStart = 6.dp),
                   colors =
                     ButtonDefaults.buttonColors(
@@ -289,6 +293,8 @@ object AboutScreen : Screen {
                         .stringResource(app.gyrolet.mpvrx.R.string.ui_github),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                   )
                 }
               }
@@ -348,6 +354,7 @@ object AboutScreen : Screen {
                 }
                 Text(
                   text = collectDeviceInfo(),
+                  modifier = Modifier.padding(bottom = 8.dp),
                   style = MaterialTheme.typography.bodySmall,
                   color = cs.onPrimaryContainer.copy(alpha = 0.85f),
                 )
