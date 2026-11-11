@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.size
 import app.gyrolet.mpvrx.presentation.components.AppComboBoxChip
 import app.gyrolet.mpvrx.presentation.components.AppComboBoxOption
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -98,6 +98,8 @@ private fun musicSourceLabel(source: MusicSourceProvider): String =
 
 @Composable
 private fun MusicSourceIcon(source: MusicSourceProvider) {
+  // Match AppDropdownMenuItem / chip content color so every option icon shares one tint.
+  val tint = LocalContentColor.current
   when (source) {
     MusicSourceProvider.JELLYFIN, MusicSourceProvider.NAVIDROME -> {
       androidx.compose.material3.Icon(
@@ -106,7 +108,7 @@ private fun MusicSourceIcon(source: MusicSourceProvider) {
         ),
         contentDescription = null,
         modifier = Modifier.size(20.dp),
-        tint = MaterialTheme.colorScheme.primary,
+        tint = tint,
       )
     }
     else -> {
@@ -115,6 +117,7 @@ private fun MusicSourceIcon(source: MusicSourceProvider) {
         else Icons.RoundedFilled.Folder,
         contentDescription = null,
         modifier = Modifier.size(20.dp),
+        tint = tint,
       )
     }
   }

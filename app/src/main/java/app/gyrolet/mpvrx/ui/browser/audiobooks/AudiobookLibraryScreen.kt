@@ -59,6 +59,7 @@ import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
@@ -1556,14 +1557,16 @@ private fun AudiobookListRow(
 
 @Composable
 private fun AudiobookSourceIcon(source: AudiobookSourceProvider) {
+  val tint = LocalContentColor.current
   when (source) {
     AudiobookSourceProvider.AUDIOBOOKSHELF ->
       androidx.compose.material3.Icon(
         painter = painterResource(R.drawable.ic_audiobookshelf),
         contentDescription = null,
         modifier = Modifier.size(20.dp),
+        tint = tint,
       )
     AudiobookSourceProvider.LOCAL ->
-      Icon(Icons.RoundedFilled.Folder, contentDescription = null, modifier = Modifier.size(20.dp))
+      Icon(Icons.RoundedFilled.Folder, contentDescription = null, modifier = Modifier.size(20.dp), tint = tint)
   }
 }

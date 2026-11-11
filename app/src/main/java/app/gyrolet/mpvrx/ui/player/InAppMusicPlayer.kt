@@ -539,7 +539,9 @@ fun InAppMusicPlayerSheet(
   val density = LocalDensity.current
   val slidePx = with(density) { 24.dp.toPx() }
   val miniBackground = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f)
-  val fullBackground = MaterialTheme.colorScheme.surface
+  // Transparent so dismissing the sheet never leaves an opaque (often pure-black in AMOLED)
+  // rectangle over the settings/browser behind it.
+  val fullBackground = Color.Transparent
   val miniOverlayLayer = rememberGraphicsLayer()
   Box(
     modifier =
