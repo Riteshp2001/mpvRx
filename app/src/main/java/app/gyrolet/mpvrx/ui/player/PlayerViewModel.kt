@@ -232,7 +232,6 @@ class PlayerViewModel(
   private val anime4kManager: Anime4KManager by inject()
   private val hdrToysManager: HdrToysManager by inject()
   private val json: Json by inject()
-  private val playbackStateDao: app.gyrolet.mpvrx.database.dao.PlaybackStateDao by inject()
   private val playbackBookmarkDao: app.gyrolet.mpvrx.database.dao.PlaybackBookmarkDao by inject()
   private val aiService: app.gyrolet.mpvrx.repository.ai.AiService by inject()
   private val subtitleGenerationService: SubtitleGenerationService by inject()

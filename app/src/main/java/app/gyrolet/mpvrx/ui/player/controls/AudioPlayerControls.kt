@@ -737,7 +737,21 @@ private fun ImmersiveArtworkBackground(
   BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
     val artworkHeight = minOf(maxHeight * 0.64f, maxWidth * 1.7f)
     val viewportWidth = constraints.maxWidth.toFloat()
-    Box(Modifier.fillMaxWidth().height(artworkHeight)) {
+    Box(
+      Modifier.fillMaxWidth().height(artworkHeight)
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithCache {
+          val artworkMask = Brush.verticalGradient(
+            0f to Color.White,
+            0.48f to Color.White,
+            1f to Color.Transparent,
+          )
+          onDrawWithContent {
+            drawContent()
+            drawRect(artworkMask, blendMode = BlendMode.DstIn)
+          }
+        },
+    ) {
       if (direction > 0 && hasPrevious) {
         Box(
           Modifier.fillMaxSize().graphicsLayer {
@@ -774,11 +788,6 @@ private fun ImmersiveArtworkBackground(
       }
       Box(
         Modifier.fillMaxSize().drawWithCache {
-          val fade = Brush.verticalGradient(
-            0f to Color.Transparent,
-            0.48f to Color.Transparent,
-            1f to surfaceColor,
-          )
           val headerScrim = Brush.verticalGradient(
             0f to surfaceColor.copy(alpha = 0.82f),
             0.60f to surfaceColor.copy(alpha = 0.76f),
@@ -786,7 +795,6 @@ private fun ImmersiveArtworkBackground(
             endY = headerFadeHeight.toPx(),
           )
           onDrawBehind {
-            drawRect(fade)
             drawRect(headerScrim)
           }
         },
@@ -1293,13 +1301,13 @@ fun AudioPlayerControls(
 
   val animatedAmbientTop: Color by animateColorAsState(
     targetValue = targetTopColor,
-    animationSpec = tween(durationMillis = 800),
+    animationSpec = tween(durationMillis = if (AppMotion.playerReducedMotion()) 0 else 800),
     label = "ambient_top_color",
   )
 
   val animatedAmbientBottom: Color by animateColorAsState(
     targetValue = targetBottomColor,
-    animationSpec = tween(durationMillis = 800),
+    animationSpec = tween(durationMillis = if (AppMotion.playerReducedMotion()) 0 else 800),
     label = "ambient_bottom_color",
   )
   val visualizerPalette =
@@ -1357,7 +1365,36 @@ fun AudioPlayerControls(
   val prevCoverBitmap = rememberAudioAlbumArt(prevItem?.originalUri, prevItem?.artworkUri)
   val swipeNextCoverBitmap by rememberUpdatedState(nextCoverBitmap ?: albumArtBitmap)
   val swipePrevCoverBitmap by rememberUpdatedState(prevCoverBitmap ?: albumArtBitmap)
-  BoxWithConstraints(modifier.fillMaxSize().background(immersiveSurface)) {
+  BoxWithConstraints(
+    modifier.fillMaxSize().background(immersiveSurface).drawWithCache {
+      if (ambientModeEnabled &&
+        (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)
+      ) {
+        val topColor = animatedAmbientTop
+        val bottomColor = animatedAmbientBottom
+        val radialGradient = Brush.radialGradient(
+          colors = listOf(topColor, bottomColor, Color.Transparent),
+          center = Offset(size.width * 0.5f, size.height * if (showImmersiveArtwork) 0.55f else 0.25f),
+          radius = size.width * 1.3f,
+        )
+        val linearGradient = Brush.verticalGradient(
+          colors = listOf(
+            topColor.copy(alpha = topColor.alpha * 0.65f),
+            bottomColor.copy(alpha = bottomColor.alpha * 0.35f),
+            Color.Transparent,
+          ),
+          startY = if (showImmersiveArtwork) size.height * 0.35f else 0f,
+          endY = size.height * if (showImmersiveArtwork) 1f else 0.80f,
+        )
+        onDrawBehind {
+          drawRect(radialGradient)
+          drawRect(linearGradient)
+        }
+      } else {
+        onDrawBehind {}
+      }
+    },
+  ) {
     val immersiveViewportWidthPx = constraints.maxWidth.toFloat()
     if (showImmersiveArtwork) {
       ImmersiveArtworkBackground(
@@ -1407,39 +1444,6 @@ fun AudioPlayerControls(
             },
           )
           .fillMaxSize()
-          .then(if (showImmersiveArtwork) Modifier else Modifier.background(MaterialTheme.colorScheme.surface))
-          .drawWithCache {
-            if (!showImmersiveArtwork && ambientModeEnabled &&
-              (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)
-            ) {
-              val topColor = animatedAmbientTop
-              val bottomColor = animatedAmbientBottom
-              val radialGradient = Brush.radialGradient(
-                colors = listOf(
-                  topColor,
-                  bottomColor,
-                  Color.Transparent,
-                ),
-                center = Offset(size.width * 0.5f, size.height * 0.25f),
-                radius = size.width * 1.3f,
-              )
-              val linearGradient = Brush.verticalGradient(
-                colors = listOf(
-                  topColor.copy(alpha = topColor.alpha * 0.65f),
-                  bottomColor.copy(alpha = bottomColor.alpha * 0.35f),
-                  Color.Transparent,
-                ),
-                startY = 0f,
-                endY = size.height * 0.80f,
-              )
-              onDrawBehind {
-                drawRect(radialGradient)
-                drawRect(linearGradient)
-              }
-            } else {
-              onDrawBehind {}
-            }
-          }
           .windowInsetsPadding(
             if (!isPortrait) {
               WindowInsets(0, 0, 0, 0)
@@ -2511,19 +2515,15 @@ fun AudioPlayerControls(
         val isLyricsActive = if (showLandscapeSidePanel) tabletDualPaneTab == 1 else showInPlaceLyrics
         val isQueueActive = if (showLandscapeSidePanel) tabletDualPaneTab == 0 else sheetShown == Sheets.Playlist
         val barHeight = if (isShortLandscape) 38.dp else if (isCompactLandscape) 42.dp else 50.dp
-        val centerCount = if (isAudiobook) 5 else 6
+        val centerCount = if (isAudiobook) 4 else 5
         BoxWithConstraints(Modifier.fillMaxWidth()) {
           val endWidth = minOf(barHeight, maxWidth * 0.15f)
           val outerSpacing = if (maxWidth < 280.dp) 4.dp else 8.dp
           val centerSpacing = if (maxWidth < 320.dp) 2.dp else 4.dp
-          val availableCenter = (maxWidth - endWidth * 2f - outerSpacing * 2f).coerceAtLeast(0.dp)
-          val centerWidth = minOf(
-            availableCenter,
-            barHeight * (centerCount * 0.72f) + centerSpacing * (centerCount - 1).toFloat(),
-          )
+          val centerWidth = (maxWidth - endWidth * 2f - outerSpacing * 2f).coerceAtLeast(0.dp)
           val centerCellWidth =
             ((centerWidth - centerSpacing * (centerCount - 1).toFloat()) / centerCount.toFloat()).coerceAtLeast(0.dp)
-          val iconSize = minOf(if (isCompactLandscape) 16.dp else 18.dp, centerCellWidth * 0.72f)
+          val iconSize = minOf(if (isCompactLandscape) 20.dp else 22.dp, centerCellWidth * 0.72f)
           val endIconSize = minOf(if (isCompactLandscape) 20.dp else 22.dp, endWidth * 0.72f)
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -2641,6 +2641,7 @@ fun AudioPlayerControls(
                     if (viewModel.toggleAudioVisualizer()) actionHaptics.selection(!showVisualizer)
                   },
                   onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
+                  onLongClickLabel = stringResource(R.string.pref_audio_visualizer_style_title),
                 ) { tint ->
                   AnimatedIcon(
                     imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
@@ -2652,29 +2653,24 @@ fun AudioPlayerControls(
                     reduceMotion = AppMotion.playerReducedMotion(),
                   )
                 }
-                ExpressiveConnectedBarButton(
-                  index = 4, itemCount = centerCount, height = barHeight, selected = false,
-                  onClick = { onOpenSheet(Sheets.VisualizerStyle); actionHaptics.confirm() },
-                ) { tint ->
-                  Icon(
-                    Icons.RoundedFilled.Palette,
-                    contentDescription = stringResource(R.string.pref_audio_visualizer_style_title) +
-                      ": " + stringResource(audioVisualizerStyle.title),
-                    tint = tint,
-                    modifier = Modifier.size(iconSize),
-                  )
-                }
                 if (!isAudiobook) {
                   ExpressiveConnectedBarButton(
-                    index = 5, itemCount = centerCount, height = barHeight, selected = backgroundPlaybackEnabled,
+                    index = 4, itemCount = centerCount, height = barHeight, selected = backgroundPlaybackEnabled,
                     onClick = {
+                      val enabled = !audioPreferences.audioBackgroundPlayback.get()
                       val activity = context as? PlayerActivity
                       if (activity != null) {
                         activity.toggleAudioBackgroundPlayback()
                       } else {
-                        audioPreferences.audioBackgroundPlayback.set(!backgroundPlaybackEnabled)
+                        audioPreferences.audioBackgroundPlayback.set(enabled)
+                        viewModel.showToast(
+                          context.getString(
+                            if (enabled) R.string.toast_audio_background_playback_on
+                            else R.string.toast_audio_background_playback_off,
+                          ),
+                        )
                       }
-                      actionHaptics.selection(!backgroundPlaybackEnabled)
+                      actionHaptics.selection(enabled)
                     },
                   ) { tint ->
                     Icon(
@@ -3552,6 +3548,7 @@ private fun RowScope.ExpressiveConnectedBarButton(
   onClick: () -> Unit,
   enabled: Boolean = true,
   onLongClick: (() -> Unit)? = null,
+  onLongClickLabel: String? = null,
   content: @Composable (Color) -> Unit,
 ) {
   val interactionSource = remember { MutableInteractionSource() }
@@ -3634,6 +3631,7 @@ private fun RowScope.ExpressiveConnectedBarButton(
               enabled = enabled,
               onClick = onClick,
               onLongClick = onLongClick,
+              onLongClickLabel = onLongClickLabel,
             )
           } else {
             Modifier.clickable(

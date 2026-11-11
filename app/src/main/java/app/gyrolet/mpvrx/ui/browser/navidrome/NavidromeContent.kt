@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.rememberPagerState
@@ -231,38 +230,25 @@ fun NavidromeContent(
         PrimaryScrollableTabRow(
           selectedTabIndex = selectedTabIndex,
           containerColor = Color.Transparent,
-          contentColor = MaterialTheme.colorScheme.onSurface,
+          contentColor = MaterialTheme.colorScheme.primary,
           edgePadding = 8.dp,
           divider = {},
-          indicator = {},
         ) {
           musicTabs.forEachIndexed { index, tab ->
             val selected = selectedTabIndex == index
-            val tabShape = rememberConnectedShape(
-              index = index,
-              itemCount = musicTabs.size,
-              layout = ConnectedLayout.Horizontal,
-            )
             Tab(
               selected = selected,
               onClick = { navigateMusicTab(index) },
-              modifier = Modifier
-                .clip(tabShape)
-                .background(
-                  if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow,
-                ),
               text = {
                 Text(
                   text = tab.title,
-                  style = if (selected) MaterialTheme.typography.titleSmallEmphasized else MaterialTheme.typography.titleSmall,
-                  modifier = Modifier.padding(horizontal = 4.dp),
+                  style = MaterialTheme.typography.titleMedium,
+                  fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                   maxLines = 1,
                   softWrap = false,
                   overflow = TextOverflow.Ellipsis,
                 )
               },
-              selectedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-              unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             )
           }
         }

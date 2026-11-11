@@ -1444,13 +1444,6 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       true
     }
 
-  internal fun setPausedForGeneration(expectedGeneration: Long, paused: Boolean): Boolean =
-    withReadyCore(false) {
-      if (_state.value.generation != expectedGeneration || loadedGeneration != expectedGeneration) return@withReadyCore false
-      setPropertyBoolean("pause", paused)
-      true
-    }
-
   fun commandNode(vararg command: String): MPVNode? = withCore(null) { MPVLib.commandNode(*command) }
 
   internal fun removeVideoFilter(label: String) {
@@ -2800,23 +2793,10 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     return ResolvedPlayable(Uri.parse(item.playableUri).openContentFd(context) ?: item.playableUri)
   }
 
-  private fun releaseActiveNetworkStream() {
-    val registration = nativeLock.withLock { activeNetworkStream.also { activeNetworkStream = null } }
-    registration?.let(::releaseNetworkStream)
-  }
-
   private fun releaseActiveNetworkStreamLocked() {
     val registration = activeNetworkStream
     activeNetworkStream = null
     registration?.let(::releaseNetworkStream)
-  }
-
-  private fun releaseAuxiliaryNetworkStreams() {
-    val registrations =
-      nativeLock.withLock {
-        auxiliaryNetworkStreams.values.toList().also { auxiliaryNetworkStreams.clear() }
-      }
-    registrations.forEach(::releaseNetworkStream)
   }
 
   private fun releaseAuxiliaryNetworkStreamsLocked() {
@@ -2885,4 +2865,3 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 }
-

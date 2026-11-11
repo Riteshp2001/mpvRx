@@ -245,8 +245,6 @@
   <string name="pref_layout_portrait_bottom_controls">Portrait Bottom Controls</string>
   <string name="pref_layout_preview">Preview</string>
   <string name="player_layout_preset_title">Playback layout</string>
-  <string name="player_layout_preview_hint">Sample only. Edits save immediately.</string>
-  <string name="player_layout_shared_landscape_hint">Shared by all landscape regions.</string>
   <string name="pref_player">Player</string>
   <string name="pref_player_summary">Orientation, gestures and controls</string>
   <string name="pref_player_orientation">Orientation</string>
@@ -625,6 +623,8 @@
   <string name="pref_ignore_audio_focus_title">Ignore audio focus</string>
   <string name="pref_ignore_audio_focus_summary">Keep audio and video playing alongside other apps without pausing or lowering volume</string>
   <string name="pref_audio_background_playback_title">Audio Player Background Playback</string>
+  <string name="toast_audio_background_playback_on">Audio background playback on</string>
+  <string name="toast_audio_background_playback_off">Audio background playback off</string>
   <string name="pref_audio_background_playback_summary">Keep audio playing when leaving the audio player or turning off screen</string>
   <string name="pref_audio_mini_player_track_switching_title">Switch songs in mini player</string>
   <string name="pref_audio_mini_player_track_switching_summary">When mini player or background playback is active, selecting another song updates the mini player without opening the full player</string>
@@ -836,9 +836,6 @@
   <string name="player_settings_close">Close player settings</string>
   <string name="player_settings_search">Search player settings</string>
   <string name="player_settings_clear_search">Clear search</string>
-  <string name="player_settings_expand">Expand settings panel</string>
-  <string name="player_settings_compact">Compact settings panel</string>
-  <string name="player_settings_live_hint">Settings available during this video. Restart-only and next-video options are in the main Settings.</string>
   <string name="player_settings_favorites">Favorites</string>
   <string name="player_settings_categories">All player settings</string>
   <string name="player_settings_pin_hint">Use the heart beside a search result to keep it in Favorites.</string>
@@ -1149,7 +1146,6 @@
   <!-- Extracted UI strings -->
   <string name="generic_unknown_error">Unknown error</string>
   <string name="toast_error_loading_scripts">Error loading scripts: %1$s</string>
-  <string name="toast_copied_value">Copied: %1$s</string>
   <string name="toast_failed_to_delete_reason">Failed to delete: %1$s</string>
   <string name="toast_failed_to_rename_reason">Failed to rename: %1$s</string>
   <plurals name="toast_renamed_items">
@@ -1758,7 +1754,6 @@
   <string name="ui_container_metadata">Container Metadata</string>
   <string name="ui_video_chapters_timeline">Video Chapters &amp; Timeline</string>
   <string name="ui_copy_all">Copy all</string>
-  <string name="ui_copied_specifications_to_clipboard">Copied specifications to clipboard</string>
   <string name="ui_playback_speed">Playback Speed</string>
   <string name="ui_previous_frame">Previous Frame</string>
   <string name="ui_take_screenshot">Take Screenshot</string>
@@ -1841,7 +1836,6 @@
   <string name="ui_core_open_source_dependencies_used_by_mpvrx">Core open source dependencies used by mpvRx.</string>
   <string name="ui_copy_upi_id">Copy UPI ID</string>
   <string name="ui_already_using_latest_version">Already using latest version</string>
-  <string name="ui_upi_id_copied">UPI ID copied!</string>
   <string name="ui_no_upi_app_found">No UPI app found</string>
   <string name="ui_install_and_update_yt_dlp_for_streaming_support">Install and update yt-dlp for streaming support</string>
   <string name="ui_instructions_for_ai_file_renaming">Instructions for AI file renaming...</string>
@@ -2190,7 +2184,6 @@
   <string name="pref_codecs_max_instances">Max Concurrent Instances: %d</string>
   <string name="pref_codecs_supported_profiles">Supported Profiles:</string>
   <string name="pref_codecs_hdr_tag">10-Bit HDR</string>
-  <string name="pref_codecs_report_copied">Codec report copied to clipboard</string>
   <string name="pref_codecs_bitrate_range">Bitrate Range: %s</string>
   <string name="pref_codecs_sample_rates">Supported Sample Rates:</string>
   <string name="pref_codecs_max_channels">Max Channels: %d</string>
@@ -2303,7 +2296,6 @@
   <string name="seerr_server_url_hint">http://192.168.1.100:5055</string>
   <string name="seerr_api_key">API Key</string>
   <string name="seerr_api_key_hint">Overseerr / Jellyseerr API key</string>
-  <string name="seerr_username">Username or Email</string>
   <string name="seerr_password">Password</string>
   <string name="seerr_login">Connect</string>
   <string name="seerr_disconnect">Disconnect</string>
@@ -2415,7 +2407,6 @@
   <string name="pref_appearance_custom_theme_new">New custom theme</string>
   <string name="pref_appearance_custom_theme_edit_title">Edit custom theme</string>
   <string name="pref_appearance_custom_theme_preview">Preview</string>
-  <string name="pref_appearance_custom_theme_live_preview">Live preview</string>
   <string name="pref_appearance_custom_theme_name_required">Enter a theme name</string>
   <string name="pref_appearance_custom_theme_name_duplicate">A theme with this name already exists</string>
   <string name="pref_appearance_custom_theme_hex_invalid">Use a hex color such as #6750A4</string>
@@ -2735,7 +2726,7 @@
   <string name="snapshot_delete_folder_empty_message">This removes the folder from the app.</string>
 
   <string name="snapshot_folder_empty_title">This folder is empty</string>
-  <string name="snapshot_folder_empty_message">Long-press a snapshot in the Snapshots list and choose "Move to folder" to file it here.</string>
+  <string name="snapshot_folder_empty_message">Long-press a snapshot in the Snapshots list and choose \"Move to folder\" to file it here.</string>
 
   <string name="snapshot_sort_folder_name">Folder name</string>
   <string name="snapshot_sort_created_at">Date created</string>
@@ -2956,7 +2947,6 @@
   <string name="autoeq_correction_enabled">Enabled</string>
   <string name="autoeq_correction_bypassed">Bypassed</string>
   <string name="autoeq_no_headphones">No headphones selected</string>
-  <string name="autoeq_reference_curves">Reference curves</string>
   <string name="autoeq_loading_preset">Loading preset</string>
   <string name="autoeq_searching">Searching headphones</string>
   <string name="autoeq_choose_headphones">Choose headphones</string>
