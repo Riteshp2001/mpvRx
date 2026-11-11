@@ -62,7 +62,7 @@
   <string name="pref_appearance_category_thumbnails">Miniatures</string>
   <string name="pref_appearance_category_navigation">Navigation</string>
   <string name="pref_appearance_show_unplayed_old_video_label_title">Afficher une étiquette pour les nouvelles vidéos non lues</string>
-  <string name="pref_appearance_show_unplayed_old_video_label_summary">Afficher une étiquette "Nouveau" sur les vidéos ajoutées au cours du nombre de jours indiqué et jamais lues</string>
+  <string name="pref_appearance_show_unplayed_old_video_label_summary">Afficher une étiquette \"Nouveau\" sur les vidéos ajoutées au cours du nombre de jours indiqué et jamais lues</string>
   <string name="pref_appearance_unplayed_old_video_days_title">Seuil de jours pour l’étiquette de nouvelle vidéo</string>
   <string name="pref_appearance_unplayed_old_video_days_summary">Les vidéos ajoutées au cours des %d derniers jours sans historique de lecture seront marquées comme nouvelles</string>
   <string name="pref_appearance_show_video_thumbnails_title">Afficher les miniatures vidéo</string>
@@ -860,7 +860,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <!-- Extracted UI strings -->
   <string name="generic_unknown_error">Erreur inconnue</string>
   <string name="toast_error_loading_scripts">Erreur lors du chargement des scripts : %1$s</string>
-  <string name="toast_copied_value">Copié : %1$s</string>
   <string name="toast_failed_to_delete_reason">Échec de la suppression : %1$s</string>
   <string name="toast_failed_to_rename_reason">Échec du renommage : %1$s</string>
   <plurals name="toast_renamed_items">
@@ -955,8 +954,8 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="hall_of_fame_view_profile">Voir %1$s sur GitHub</string>
   <string name="hall_of_fame_view_github">Voir sur GitHub</string>
   <plurals name="hall_of_fame_commit_count">
-    <item quantity="one">%1$d commit</item>
-    <item quantity="other">%1$d commits</item>
+    <item quantity="one">%1$d révision</item>
+    <item quantity="other">%1$d révisions</item>
   </plurals>
   <plurals name="hall_of_fame_issue_count">
     <item quantity="one">%1$d problème signalé</item>
@@ -1005,7 +1004,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="lua_no_mpv_folder">Aucun dossier MPV sélectionné</string>
   <string name="lua_no_scripts_found">Aucun script trouvé</string>
   <string name="lua_delete_script_title">Supprimer le script ?</string>
-  <string name="lua_delete_script_message">Voulez-vous vraiment supprimer "%1$s" ? Cette action est irréversible.</string>
+  <string name="lua_delete_script_message">Voulez-vous vraiment supprimer \"%1$s\" ? Cette action est irréversible.</string>
   <string name="search_category_advanced">Avancé</string>
   <string name="search_category_ai">IA</string>
   <string name="search_category_appearance">Apparence</string>
@@ -1325,7 +1324,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_container_metadata">Métadonnées du conteneur</string>
   <string name="ui_video_chapters_timeline">Chapitres et chronologie de la vidéo</string>
   <string name="ui_copy_all">Tout copier</string>
-  <string name="ui_copied_specifications_to_clipboard">Spécifications copiées dans le presse-papiers</string>
   <string name="ui_playback_speed">Vitesse de lecture</string>
   <string name="ui_previous_frame">Image précédente</string>
   <string name="ui_take_screenshot">Prendre une capture d’écran</string>
@@ -1390,7 +1388,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_core_open_source_dependencies_used_by_mpvrx">Principales dépendances open source utilisées par mpvRx.</string>
   <string name="ui_copy_upi_id">Copier l’identifiant UPI</string>
   <string name="ui_already_using_latest_version">Vous utilisez déjà la dernière version</string>
-  <string name="ui_upi_id_copied">Identifiant UPI copié !</string>
   <string name="ui_no_upi_app_found">Aucune application UPI trouvée</string>
   <string name="ui_install_and_update_yt_dlp_for_streaming_support">Installez et mettez à jour yt-dlp pour la prise en charge du streaming</string>
   <string name="ui_instructions_for_ai_file_renaming">Instructions pour le renommage de fichiers par IA...</string>
@@ -1413,9 +1410,9 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_help">Aide</string>
   <string name="ui_no_storage_location_set">Aucun emplacement de stockage défini</string>
   <string name="ui_failed_to_create_file">Échec de la création du fichier</string>
-  <string name="ui_long_press_to_reorder_items_tap_the_icon_to_remove_them">Appuyez longuement pour réorganiser les éléments. Touchez l’icône "-" pour les supprimer.</string>
+  <string name="ui_long_press_to_reorder_items_tap_the_icon_to_remove_them">Appuyez longuement pour réorganiser les éléments. Touchez l’icône \"-\" pour les supprimer.</string>
   <string name="ui_drop_zone_is_empty">La zone de dépôt est vide</string>
-  <string name="ui_tap_buttons_from_the_available_palette_below">Touchez les boutons de la "Palette disponible" ci-dessous</string>
+  <string name="ui_tap_buttons_from_the_available_palette_below">Touchez les boutons de la \"Palette disponible\" ci-dessous</string>
   <string name="ui_all_available_buttons_are_in_use">Tous les boutons disponibles sont utilisés.</string>
   <string name="ui_icons_legend">Légende des icônes</string>
   <string name="ui_what_is_each_icon_for">À quoi sert chaque icône ?</string>
@@ -1446,7 +1443,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_player_buttons_opacity">Opacité du fond des boutons du lecteur</string>
   <string name="ui_time_network_clock">Horloge heure + réseau</string>
   <string name="ui_show_media_info_in_chooser">Afficher les informations du média dans le sélecteur</string>
-  <string name="ui_show_media_info_in_system">Afficher Informations du média dans les menus système "Ouvrir avec" / partage afin d’analyser les fichiers d’autres applications.</string>
+  <string name="ui_show_media_info_in_system">Afficher Informations du média dans les menus système \"Ouvrir avec\" / partage afin d’analyser les fichiers d’autres applications.</string>
   <string name="ui_e_g_intro_opening_op">p. ex. intro, opening, op</string>
   <string name="ui_e_g_outro_ending_ed">p. ex. outro, ending, ed</string>
   <string name="ui_image_format">Format d’image</string>
@@ -1691,7 +1688,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_codecs_max_instances">Instances simultanées max : %d</string>
   <string name="pref_codecs_supported_profiles">Profils pris en charge :</string>
   <string name="pref_codecs_hdr_tag">HDR 10 bits</string>
-  <string name="pref_codecs_report_copied">Rapport sur les codecs copié dans le presse-papiers</string>
   <string name="pref_codecs_bitrate_range">Plage de débit : %s</string>
   <string name="pref_codecs_sample_rates">"Taux d'échantillonnage pris en charge :"</string>
   <string name="pref_codecs_max_channels">Canaux max : %d</string>
@@ -1822,7 +1818,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="seerr_server_url_hint">http://192.168.1.100:5055</string>
   <string name="seerr_api_key">Clé API</string>
   <string name="seerr_api_key_hint">Clé API Overseerr / Jellyseerr</string>
-  <string name="seerr_username">Nom d\'utilisateur ou e-mail</string>
   <string name="seerr_password">Mot de passe</string>
   <string name="seerr_login">Connexion</string>
   <string name="seerr_disconnect">Déconnexion</string>
@@ -1855,15 +1850,15 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_checking_yt_dlp">Vérification de yt-dlp</string>
   <string name="ui_yt_dlp_not_installed">yt-dlp n’est pas installé</string>
   <string name="ui_yt_dlp_stable_release">Version stable</string>
-  <string name="ui_yt_dlp_nightly_build">Build Nightly</string>
-  <string name="ui_yt_dlp_master_build">Build Master</string>
-  <string name="ui_yt_dlp_custom_build">Build personnalisé</string>
-  <string name="ui_yt_dlp_installed_build">Build installé</string>
+  <string name="ui_yt_dlp_nightly_build">Compilation Nightly</string>
+  <string name="ui_yt_dlp_master_build">Compilation Master</string>
+  <string name="ui_yt_dlp_custom_build">Compilation personnalisée</string>
+  <string name="ui_yt_dlp_installed_build">Compilation installée</string>
   <string name="ui_reading_installed_version">Lecture de la version installée…</string>
   <string name="ui_install_stable_to_play_web_links">Installez la version stable pour lire les liens web pris en charge.</string>
-  <string name="ui_yt_dlp_build_and_commit">Build %1$s • Commit %2$s</string>
+  <string name="ui_yt_dlp_build_and_commit">Compilation %1$s • Révision %2$s</string>
   <string name="ui_yt_dlp_version">Version %1$s</string>
-  <string name="ui_yt_dlp_commit">Commit %1$s</string>
+  <string name="ui_yt_dlp_commit">Révision %1$s</string>
   <string name="ui_version_unavailable">Version indisponible</string>
   <string name="ui_update_channel">Canal de mise à jour</string>
   <string name="update_whats_new">Nouveautés</string>
@@ -1898,24 +1893,24 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_player_web_stream_links_title">Ouvrir les liens de sites de streaming</string>
   <string name="pref_player_web_stream_links_summary">Proposer mpvRx pour les liens de sites de streaming pris en charge et les liens partagés sous forme de texte. Les fichiers multimédias et leurs URL directes restent disponibles lorsque cette option est désactivée.</string>
 
-  <string name="btn_label_scopes">Scopes</string>
-  <string name="scopes_title">Scopes</string>
-  <string name="scopes_expand">Agrandir les scopes</string>
-  <string name="scopes_resize">Redimensionner les scopes</string>
+  <string name="btn_label_scopes">Instruments d’analyse</string>
+  <string name="scopes_title">Instruments d’analyse</string>
+  <string name="scopes_expand">Agrandir les instruments</string>
+  <string name="scopes_resize">Redimensionner les instruments</string>
   <string name="scopes_show_overlay">Afficher la superposition</string>
   <string name="scopes_no_audio_track">Aucune piste audio sélectionnée</string>
   <string name="scopes_channel_count">Canaux : %1$d</string>
   <string name="scopes_luma">Luma</string>
   <string name="scopes_rgby">RGBY</string>
-  <string name="scopes_vectorscope">Vectorscope</string>
+  <string name="scopes_vectorscope">Vecteurscope</string>
   <string name="scopes_resolution">Résolution</string>
   <string name="scopes_frame_rate">Fréquence d’images</string>
   <string name="scopes_credit">Inspiré par Aagedal Media Player</string>
   <string name="scopes_audio_waveform">Forme d’onde audio</string>
-  <string name="scopes_video">Scopes vidéo</string>
+  <string name="scopes_video">Instruments vidéo</string>
   <string name="scopes_generating_waveform">Génération de la forme d’onde…</string>
   <string name="scopes_audio_unavailable">La piste audio sélectionnée ne peut pas être décodée pour l’aperçu de la forme d’onde.</string>
-  <string name="scopes_video_unavailable">Impossible de capturer une image vidéo pour les scopes.</string>
+  <string name="scopes_video_unavailable">Impossible de capturer une image vidéo pour les instruments d’analyse.</string>
 
   <!-- Downloads -->
   <string name="downloads_title">Téléchargements</string>
@@ -2001,7 +1996,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_appearance_custom_wallpaper_preview_locked">Aperçu verrouillé</string>
   <string name="pref_appearance_custom_wallpaper_preview_unlocked">Aperçu déverrouillé</string>
   <string name="pref_appearance_custom_wallpaper_crop_title">Ajuster le fond</string><string name="pref_appearance_custom_wallpaper_zoom">Zoom</string><string name="pref_appearance_custom_wallpaper_horizontal">Position horizontale</string><string name="pref_appearance_custom_wallpaper_vertical">Position verticale</string><string name="pref_appearance_custom_wallpaper_save">Enregistrer le fond</string>
-  <string name="pref_appearance_custom_theme_new">Nouveau thème personnalisé</string><string name="pref_appearance_custom_theme_edit_title">Modifier le thème personnalisé</string><string name="pref_appearance_custom_theme_preview">Aperçu</string><string name="pref_appearance_custom_theme_live_preview">Aperçu en direct</string><string name="pref_appearance_custom_theme_name_required">Saisissez un nom de thème</string><string name="pref_appearance_custom_theme_name_duplicate">Un thème porte déjà ce nom</string><string name="pref_appearance_custom_theme_hex_invalid">Utilisez une couleur hexadécimale comme #6750A4</string><string name="pref_appearance_custom_wallpaper_gesture_hint">Faites glisser pour déplacer. Pincez pour zoomer.</string><string name="pref_appearance_custom_wallpaper_reset">Réinitialiser</string>
+  <string name="pref_appearance_custom_theme_new">Nouveau thème personnalisé</string><string name="pref_appearance_custom_theme_edit_title">Modifier le thème personnalisé</string><string name="pref_appearance_custom_theme_preview">Aperçu</string><string name="pref_appearance_custom_theme_name_required">Saisissez un nom de thème</string><string name="pref_appearance_custom_theme_name_duplicate">Un thème porte déjà ce nom</string><string name="pref_appearance_custom_theme_hex_invalid">Utilisez une couleur hexadécimale comme #6750A4</string><string name="pref_appearance_custom_wallpaper_gesture_hint">Faites glisser pour déplacer. Pincez pour zoomer.</string><string name="pref_appearance_custom_wallpaper_reset">Réinitialiser</string>
   <string name="pref_appearance_custom_theme_light_secondary">Couleur secondaire claire</string><string name="pref_appearance_custom_theme_dark_secondary">Couleur secondaire sombre</string><string name="pref_appearance_custom_theme_light_tertiary">Couleur tertiaire claire</string><string name="pref_appearance_custom_theme_dark_tertiary">Couleur tertiaire sombre</string>
   <string name="pref_appearance_custom_wallpaper_fit">Ajuster</string><string name="pref_appearance_custom_wallpaper_fill">Remplir</string><string name="pref_appearance_custom_wallpaper_replace_action">Remplacer</string>  <string name="pref_appearance_custom_wallpaper_use_colors">Utiliser les couleurs du fond d’écran</string>
   <string name="pref_appearance_custom_wallpaper_use_colors_summary">Générer le thème de l’application à partir des couleurs de ce fond d’écran</string>
@@ -2855,8 +2850,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_layout_seekbar_above">Barre de progression au-dessus</string>
   <string name="pref_layout_seekbar_below">Barre de progression en dessous</string>
   <string name="player_layout_preset_title">Disposition de lecture</string>
-  <string name="player_layout_preview_hint">Aperçu simulé. Modifications enregistrées.</string>
-  <string name="player_layout_shared_landscape_hint">Commun à toutes les zones en paysage.</string>
   <string name="pref_ignore_audio_focus_title">Ignorer le focus audio</string>
   <string name="pref_ignore_audio_focus_summary">Continuer à lire les contenus audio et vidéo avec les autres applications sans pause ni baisse du volume</string>
   <string name="pref_audio_spatial_title">Audio spatial</string>
@@ -2875,4 +2868,313 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="player_skip_credits">Passer le générique</string>
   <string name="player_skip_preview">Passer l\'aperçu</string>
   <string name="player_skip_automatic">%1$s (automatique)</string>
+
+  <!-- Miniatures et gestes -->
+  <string name="grayscale_watched_thumbnails">Miniatures des vidéos vues en niveaux de gris</string>
+  <string name="pref_gesture_require_double_tap_title">Exiger un double appui pour chaque saut</string>
+  <string name="pref_gesture_require_double_tap_summary">Exiger un nouveau double appui pour chaque saut dans les zones à double appui. Désactivez cette option pour enchaîner les sauts par appuis simples tant que l’indicateur est visible. Les zones à appui simple ne changent pas.</string>
+  <string name="audio_footer_show_artwork">Afficher la pochette de l’album</string>
+  <string name="audio_footer_show_visualizer">Afficher le visualiseur</string>
+  <string name="toast_updating_thumbnail_generator">Mise à jour des miniatures</string>
+
+  <!-- Paramètres du lecteur -->
+  <string name="player_settings_title">Paramètres du lecteur</string>
+  <string name="player_settings_open">Ouvrir les paramètres du lecteur</string>
+  <string name="player_settings_close">Fermer les paramètres du lecteur</string>
+  <string name="player_settings_search">Rechercher dans les paramètres du lecteur</string>
+  <string name="player_settings_clear_search">Effacer la recherche</string>
+  <string name="player_settings_favorites">Favoris</string>
+  <string name="player_settings_categories">Tous les paramètres du lecteur</string>
+  <string name="player_settings_pin_hint">Utilisez le cœur à côté d’un résultat de recherche pour l’ajouter aux favoris.</string>
+  <string name="player_settings_pin">Ajouter aux favoris</string>
+  <string name="player_settings_unpin">Retirer des favoris</string>
+  <string name="player_settings_dependency">Indisponible avec les paramètres ou le média actuels.</string>
+  <string name="player_settings_config_owned">Géré par mpv.conf</string>
+  <string name="player_move_resize_subtitles_hint">Faites glisser pour déplacer · Pincez avec deux doigts pour redimensionner</string>
+
+  <!-- Fournisseur d’IA personnalisé -->
+  <string name="pref_custom_openai_base_url_title">URL de base personnalisée compatible avec OpenAI</string>
+  <string name="pref_custom_openai_base_url_summary">Saisissez l’URL de base HTTP(S) de l’API, par exemple https://example.com/v1. L’API Chat Completions et la découverte facultative des modèles sont prises en charge. N’incluez pas d’identifiants dans l’URL.</string>
+  <string name="pref_custom_openai_key_title">Clé API du fournisseur personnalisé</string>
+  <string name="pref_custom_openai_key_summary">Facultative pour les serveurs ne nécessitant pas d’authentification. Privilégiez HTTPS si vous utilisez une clé API.</string>
+  <string name="pref_custom_openai_model_title">Identifiant du modèle personnalisé</string>
+  <string name="pref_custom_openai_model_summary">Saisissez un identifiant de modèle ou récupérez la liste des modèles. Si la découverte des modèles n’est pas disponible, saisissez l’identifiant et utilisez Vérifier l’accès au modèle.</string>
+  <string name="pref_custom_openai_check_endpoint">Vérifier le point d’accès</string>
+  <string name="pref_ai_cached_models_invalid">Impossible de lire la liste des modèles enregistrée. Récupérez à nouveau les modèles.</string>
+
+  <!-- Interpolation de mouvement et HDR -->
+  <string name="motion_title">Interpolation de mouvement</string>
+  <string name="motion_configure">Paramètres d’interpolation</string>
+  <string name="motion_summary">Mouvements plus fluides grâce à l’interpolation d’images par le GPU. Nécessite GPU Next + Vulkan.</string>
+  <string name="motion_hdr_required">La génération d’images FongMi maintient le HDR activé pour préserver sa chaîne de sortie des couleurs. Désactivez la génération d’images avant de désactiver le HDR.</string>
+  <string name="motion_status_hdr_config_owned">La génération d’images nécessite que l’application gère le HDR. Dans les réglages de contrôle de mpv.conf, rendez le contrôle des options HDR à l’application.</string>
+  <string name="motion_toast_on">Interpolation de mouvement : %1$s</string>
+  <string name="motion_toast_off">Interpolation de mouvement désactivée</string>
+  <string name="motion_renderer_enabled">GPU Next + Vulkan activés. Rouvrez la vidéo.</string>
+  <string name="motion_use_gpu_next_vulkan">Utiliser GPU Next + Vulkan</string>
+  <string name="motion_target_title">Fréquence d’images cible</string>
+  <string name="motion_target_auto">Auto</string>
+  <string name="motion_target_auto_summary">Jusqu’à la fréquence de rafraîchissement maximale de l’écran</string>
+  <string name="motion_target_auto_value">Auto (%1$d images/s)</string>
+  <string name="motion_target_fixed">Personnalisée</string>
+  <string name="motion_target_fixed_summary">Jusqu’à la fréquence choisie</string>
+  <string name="motion_target_fps_title">Fréquence d’images personnalisée</string>
+  <string name="motion_fps_value">%1$d images/s</string>
+  <string name="motion_switch_display_title">Adapter la fréquence de rafraîchissement de l’écran</string>
+  <string name="motion_switch_display_summary">Régler l’écran sur la fréquence cible</string>
+  <string name="motion_requirements_note">SDR uniquement. Les vidéos HDR, Dolby Vision et entrelacées sont lues sans modification.</string>
+  <string name="motion_status_off">Désactivée</string>
+  <string name="motion_status_waiting">En attente des conditions requises</string>
+  <string name="motion_rate_unknown">–</string>
+  <string name="motion_rates">%1$s → %2$s images/s · %3$s Hz</string>
+  <string name="motion_status_unsupported_build">Version FongMi uniquement</string>
+  <string name="motion_status_unsupported_device">Nécessite Vulkan 1.3 (Android 13+)</string>
+  <string name="motion_status_needs_renderer">Nécessite GPU Next + Vulkan</string>
+  <string name="motion_status_unsupported_libmpv">Indisponible dans cette version de mpv. Mettez mpvRx à jour.</string>
+  <string name="motion_status_config_owned">Défini par votre mpv.conf</string>
+  <string name="motion_status_renderer_restart">Rouvrez la vidéo pour appliquer les changements</string>
+  <string name="motion_status_needs_display_sync">Dans mpv.conf, video-sync doit être réglé sur display-*</string>
+  <string name="motion_status_unsupported_gpu">Non pris en charge par ce GPU</string>
+  <string name="motion_live_title">En direct</string>
+  <string name="motion_state_unknown">Démarrage…</string>
+  <string name="motion_state_disabled">Désactivée</string>
+  <string name="motion_state_ready">Prête</string>
+  <string name="motion_state_active">Interpolation en cours</string>
+  <string name="motion_state_source">Sans interpolation</string>
+  <string name="motion_state_idle">En attente</string>
+  <string name="motion_state_paused">En pause</string>
+  <string name="motion_state_unsupported">Non prise en charge</string>
+  <string name="motion_state_error">Erreur</string>
+  <string name="motion_stat_synthesized">Générées</string>
+  <string name="motion_stat_presented">Affichées</string>
+  <string name="motion_stat_per_second">%1$s/s</string>
+  <string name="motion_stat_gpu">Temps GPU</string>
+  <string name="motion_stat_resolution">Résolution</string>
+  <string name="btn_label_motion_interpolation">Interpolation de mouvement</string>
+  <string name="hdr_linear_inverse_ownership">L’application impose la valeur yes pour le HDR linéaire. Confiez ce réglage à mpv.conf pour le gérer vous-même.</string>
+  <string name="hdr_linear_tone_ownership">L’application impose la valeur clip pour le HDR linéaire. Confiez ce réglage à mpv.conf pour le gérer vous-même.</string>
+
+  <!-- Informations audio -->
+  <string name="audio_information_title">Informations audio</string>
+  <string name="audio_info_loading">Chargement des informations audio…</string>
+  <string name="audio_info_unavailable">Les informations audio ne sont disponibles qu’une fois la piste en cours chargée.</string>
+  <string name="audio_info_track_title">Titre</string>
+  <string name="audio_info_artist">Artiste</string>
+  <string name="audio_info_album">Album</string>
+  <string name="audio_info_album_artist">Artiste de l’album</string>
+  <string name="audio_info_genre">Genre</string>
+  <string name="audio_info_composer">Compositeur</string>
+  <string name="audio_info_date">Date</string>
+  <string name="audio_info_track_number">Numéro de piste</string>
+  <string name="audio_info_disc_number">Numéro de disque</string>
+  <string name="audio_info_label">Label / éditeur</string>
+  <string name="audio_info_copyright">Droits d’auteur</string>
+  <string name="audio_info_codec">Codec audio</string>
+  <plurals name="audio_info_channel_count">
+    <item quantity="one">%1$d canal</item>
+    <item quantity="other">%1$d canaux</item>
+  </plurals>
+
+  <!-- Stockage sécurisé -->
+  <string name="secure_folder_move_failed_details">Échec du déplacement des fichiers vers le dossier sécurisé :\n%1$s</string>
+  <string name="secure_folder_source_unreadable">Impossible d’ouvrir %1$s. Vérifiez l’accès aux médias et réessayez.</string>
+  <string name="storage_source_delete_not_approved">La suppression n’a pas été autorisée. Le fichier d’origine a été conservé.</string>
+  <string name="storage_source_delete_failed">Impossible de supprimer le fichier d’origine.</string>
+
+  <!-- Modification et synchronisation des paroles -->
+  <string name="lyrics_source_edited">Modifications enregistrées</string>
+  <string name="lyrics_editor_title">Modifier les paroles</string>
+  <string name="lyrics_sync_timing">Synchroniser le minutage</string>
+  <string name="lyrics_editor_instructions">Modifiez les lignes, sélectionnez-en une, puis appuyez sur Définir l’horodatage pendant la lecture du morceau. Cette action sélectionne ensuite la ligne suivante.</string>
+  <string name="lyrics_editor_storage">Enregistrées uniquement dans MpvRX. Votre fichier audio n’est pas modifié.</string>
+  <string name="lyrics_editor_line">Ligne %1$d</string>
+  <string name="lyrics_editor_line_options">Options de la ligne de paroles %1$d</string>
+  <string name="lyrics_editor_untimed">--:--.---</string>
+  <string name="lyrics_editor_options">Options de modification des paroles</string>
+  <string name="lyrics_editor_set_time">Définir l’horodatage</string>
+  <string name="lyrics_editor_earlier">-0.1 s</string>
+  <string name="lyrics_editor_later">+0.1 s</string>
+  <string name="lyrics_editor_insert_line">Insérer une ligne en dessous</string>
+  <string name="lyrics_editor_delete_line">Supprimer la ligne</string>
+  <string name="lyrics_editor_edit_time">Modifier l’horodatage</string>
+  <string name="lyrics_editor_remove_time">Supprimer l’horodatage</string>
+  <string name="lyrics_editor_clear_times">Effacer tous les horodatages</string>
+  <string name="lyrics_editor_clear_times_message">Retirez le minutage de toutes les lignes. Enregistrez pour conserver les paroles sans synchronisation, ou annulez la modification pour garder le minutage d’origine.</string>
+  <string name="lyrics_editor_paste">Coller les paroles</string>
+  <string name="lyrics_editor_paste_hint">Paroles en texte brut ou au format LRC, par exemple [00:12.345] Paroles</string>
+  <string name="lyrics_editor_paste_empty">Saisissez des paroles en texte brut ou au format LRC valide.</string>
+  <string name="lyrics_editor_time_hint">mm:ss.SSS</string>
+  <string name="lyrics_editor_time_invalid">Utilisez le format minutes:secondes (00-59), avec trois décimales au maximum.</string>
+  <string name="lyrics_editor_empty">Saisissez des paroles avant d’enregistrer.</string>
+  <string name="lyrics_editor_incomplete_timing">Attribuez un horodatage à chaque ligne, ou effacez tous les horodatages pour enregistrer les paroles sans synchronisation.</string>
+  <string name="lyrics_editor_out_of_order">Les horodatages doivent suivre l’ordre des lignes. Corrigez l’horodatage précédent avant d’enregistrer.</string>
+  <string name="lyrics_editor_invalid_draft">Corrigez le texte des paroles et les horodatages avant d’enregistrer.</string>
+  <string name="lyrics_editor_unavailable">Attendez la fin du chargement du morceau en cours et de ses paroles avant de les modifier.</string>
+  <string name="lyrics_editor_track_changed">La lecture est passée à un autre morceau. Ce brouillon reste associé au morceau indiqué ci-dessus ; le minutage en direct et les sauts dans la lecture sont désactivés.</string>
+  <string name="lyrics_editor_discard_title">Abandonner les modifications des paroles ?</string>
+  <string name="lyrics_editor_discard_message">Les modifications de ce brouillon n’ont pas été enregistrées.</string>
+  <string name="lyrics_editor_discard">Abandonner</string>
+  <string name="lyrics_editor_restore_title">Restaurer les paroles d’origine ?</string>
+  <string name="lyrics_editor_restore_message">Cette opération supprime les modifications enregistrées pour ce morceau et recharge ses paroles intégrées, locales ou en ligne. Le brouillon en cours est également abandonné. Votre fichier audio n’est pas modifié.</string>
+  <string name="lyrics_editor_save_failed">Impossible d’enregistrer les modifications des paroles. Votre brouillon est toujours disponible ; réessayez.</string>
+  <string name="lyrics_editor_restore_failed">Impossible de supprimer les modifications des paroles enregistrées. Réessayez.</string>
+  <string name="lyrics_editor_load_failed">Impossible de charger les paroles. Les modifications enregistrées n’ont pas été supprimées ; vous pouvez les remplacer ou restaurer les paroles d’origine dans l’éditeur.</string>
+  <string name="lyrics_editor_saved">Modifications des paroles enregistrées</string>
+  <string name="lyrics_editor_restored">Paroles d’origine restaurées</string>
+  <string name="pref_audio_immersive_artwork_title">Pochette immersive</string>
+  <string name="pref_audio_immersive_artwork_summary">Afficher la pochette bord à bord, avec un fondu dans l’arrière-plan du lecteur de musique en mode portrait. Option désactivée par défaut. Passez du visualiseur à la pochette pour la voir.</string>
+
+  <!-- Fond d’écran depuis un lien -->
+  <string name="wallpaper_preset_link">Depuis un lien</string>
+  <string name="wallpaper_link_title">Télécharger un fond d’écran</string>
+  <string name="wallpaper_link_label">Lien de l’image</string>
+  <string name="wallpaper_link_download">Télécharger</string>
+  <string name="wallpaper_link_invalid">Saisissez un lien d’image http ou https.</string>
+  <string name="wallpaper_link_failed">Impossible de télécharger une image depuis ce lien.</string>
+
+  <!-- Télécommande entre téléphone et téléviseur -->
+  <string name="remote_settings_title_tv">Télécommande sur téléphone</string>
+  <string name="remote_settings_summary_tv">Contrôler MPVRX et saisir des liens depuis un téléphone sur le même réseau</string>
+  <string name="remote_settings_title_phone">Télécommande TV</string>
+  <string name="remote_settings_summary_phone">Contrôler MPVRX sur votre téléviseur et saisir des liens depuis ce téléphone</string>
+  <string name="remote_tv_enable">Autoriser la télécommande par téléphone</string>
+  <string name="remote_tv_enable_summary">Les téléphones du même réseau peuvent demander une association lorsque MPVRX est ouvert. Vous autorisez chaque téléphone ici, sur le téléviseur.</string>
+  <string name="remote_tv_address">Ce téléviseur : %1$s</string>
+  <string name="remote_tv_address_unavailable">Connectez ce téléviseur à un réseau pour afficher son adresse.</string>
+  <string name="remote_tv_how_to">Sur votre téléphone, ouvrez MPVRX, allez dans Paramètres &gt; Télécommande TV, puis choisissez ce téléviseur. S’il n’apparaît pas, saisissez l’adresse ci-dessus.</string>
+  <string name="remote_tv_paired_phones">Téléphones associés</string>
+  <string name="remote_tv_no_paired_phones">Aucun téléphone associé pour le moment.</string>
+  <string name="remote_tv_remove">Retirer</string>
+  <string name="remote_pair_title">Associer ce téléphone ?</string>
+  <string name="remote_pair_message">%1$s souhaite contrôler MPVRX. N’autorisez la connexion que si le téléphone affiche ce code.</string>
+  <string name="remote_pair_allow">Autoriser</string>
+  <string name="remote_pair_deny">Refuser</string>
+  <string name="remote_phone_searching">Recherche de téléviseurs sur ce réseau…</string>
+  <string name="remote_phone_no_tvs">Aucun téléviseur trouvé pour le moment. Ouvrez MPVRX sur le téléviseur ou saisissez l’adresse indiquée dans ses paramètres Télécommande sur téléphone.</string>
+  <string name="remote_phone_address_label">Adresse du téléviseur</string>
+  <string name="remote_phone_connect">Se connecter</string>
+  <string name="remote_phone_forget">Oublier</string>
+  <string name="remote_phone_connecting">Connexion à %1$s…</string>
+  <string name="remote_phone_confirm_code">Choisissez Autoriser sur %1$s si ce code s’y affiche :</string>
+  <string name="remote_phone_connected">Connecté à %1$s</string>
+  <string name="remote_phone_disconnect">Se déconnecter</string>
+  <string name="remote_phone_text_label">Texte ou lien à saisir sur le téléviseur</string>
+  <string name="remote_phone_send">Envoyer au téléviseur</string>
+  <string name="remote_phone_backspace">Effacer</string>
+  <string name="remote_phone_clear_field">Vider le champ</string>
+  <string name="remote_phone_enter">Entrée</string>
+  <string name="remote_phone_ok">OK</string>
+  <string name="remote_phone_up">Haut</string>
+  <string name="remote_phone_down">Bas</string>
+  <string name="remote_phone_left">Gauche</string>
+  <string name="remote_phone_right">Droite</string>
+  <string name="remote_phone_back">Retour</string>
+  <string name="remote_phone_menu">Menu</string>
+  <string name="remote_phone_play_pause">Lecture ou pause</string>
+  <string name="remote_phone_rewind">Retour rapide</string>
+  <string name="remote_phone_fast_forward">Avance rapide</string>
+  <string name="remote_phone_volume_down">Baisser le volume</string>
+  <string name="remote_phone_volume_up">Augmenter le volume</string>
+  <string name="remote_error_unreachable">Impossible de joindre le téléviseur. Vérifiez que les deux appareils sont sur le même réseau et que MPVRX est ouvert sur le téléviseur.</string>
+  <string name="remote_error_denied">Le téléviseur a refusé l’association.</string>
+  <string name="remote_error_busy">Le téléviseur affiche déjà une autre demande d’association.</string>
+  <string name="remote_error_verification">Impossible de vérifier le téléviseur. Réessayez, ou choisissez Oublier et associez-le à nouveau.</string>
+  <string name="remote_error_disconnected">Déconnecté du téléviseur.</string>
+  <string name="remote_error_background">Ouvrez MPVRX sur le téléviseur pour le contrôler.</string>
+  <string name="remote_error_invalid_address">Saisissez l’adresse affichée sur le téléviseur, par exemple 192.168.1.20:47821.</string>
+
+  <!-- Réseau et interface -->
+  <string name="network_dlna_description_path">Chemin de description de l’appareil</string>
+  <string name="network_dlna_description_hint">Recherchez un serveur DLNA à proximité, ou saisissez l’URL et le chemin de description de l’appareil.</string>
+  <string name="app_icon_confirm_custom_message">L’icône du tiroir d’applications sera remplacée par %1$s, l’icône intégrée la plus proche. L’icône avec votre couleur exacte sera ajoutée à l’écran d’accueil.</string>
+  <string name="connected_mini_player_navigation_title">Mini-lecteur et navigation solidaires</string>
+  <string name="connected_mini_player_navigation_summary">Regrouper les éléments dans un dock empilé aux coins communs plutôt que dans des panneaux séparés</string>
+
+  <!-- Égalisation et audio spatial -->
+  <string name="autoeq_title">AutoEq</string>
+  <string name="equalizer_tab_tone">Tonalité</string>
+  <string name="equalizer_tab_bands">Bandes</string>
+  <string name="autoeq_headphone_correction">Correction du casque</string>
+  <string name="autoeq_correction_enabled">Activée</string>
+  <string name="autoeq_correction_bypassed">Ignorée</string>
+  <string name="autoeq_no_headphones">Aucun casque sélectionné</string>
+  <string name="autoeq_loading_preset">Chargement du préréglage</string>
+  <string name="autoeq_searching">Recherche de casques</string>
+  <string name="autoeq_choose_headphones">Choisir un casque</string>
+  <string name="autoeq_search">Casque ou source de mesure</string>
+  <string name="autoeq_preset_details">Préampli %1$.1f dB, %2$d filtres</string>
+  <string name="autoeq_unavailable">Impossible d’activer AutoEq pour ce morceau.</string>
+  <string name="autoeq_download_failed">Le préréglage n’a pas pu être chargé ou n’est pas pris en charge. Essayez un autre profil ou réessayez.</string>
+  <string name="autoeq_no_matches">Aucun casque correspondant</string>
+  <string name="autoeq_reference_target">Courbe cible de référence Harman</string>
+  <string name="autoeq_harman_in_ear">Intra-auriculaire 2019</string>
+  <string name="autoeq_harman_over_ear">Circum-auriculaire 2018</string>
+  <string name="pref_audio_spatial_mode">Mode audio spatial</string>
+  <string name="pref_audio_spatial_stereo">Élargissement stéréo</string>
+  <string name="pref_audio_hrtf_title">Casque - KU100 SOFA</string>
+  <string name="pref_audio_hrtf_summary">Traitement HRTF binaural pour la musique à l’aide des données KU100 à 96 kHz intégrées. Nécessite une version de mpv prenant en charge sofalizer et libmysofa.</string>
+  <string name="pref_audio_hrtf_unavailable">Impossible d’activer le traitement HRTF pour ce morceau. Vérifiez que la version de mpv inclut sofalizer et libmysofa, ou choisissez l’élargissement stéréo.</string>
+
+  <!-- Actions et disposition -->
+  <string name="pref_layout_playback_with_buttons">Avec la rangée de boutons</string>
+  <string name="pref_action_open_page">Ouvrir la page</string>
+  <string name="pref_action_open_dialog">Ouvrir la boîte de dialogue</string>
+  <string name="pref_persistent_status_progress_line">Fine ligne de progression de la lecture</string>
+
+  <!-- Palette du thème personnalisé -->
+  <string name="pref_appearance_custom_theme_base">Partir d’un thème</string>
+  <string name="pref_appearance_custom_theme_light_palette">Palette claire</string>
+  <string name="pref_appearance_custom_theme_dark_palette">Palette sombre</string>
+  <string name="pref_appearance_custom_theme_background">Arrière-plan</string>
+  <string name="pref_appearance_custom_theme_advanced">Couleurs avancées</string>
+  <string name="pref_appearance_custom_theme_reset_color">Réinitialiser la couleur</string>
+  <string name="pref_appearance_custom_theme_reset_all">Réinitialiser les couleurs individuelles</string>
+  <string name="pref_appearance_custom_theme_amoled_preview">AMOLED</string>
+  <string name="theme_color_on_primary">Texte sur l’accent principal</string>
+  <string name="theme_color_primary_container">Fond des boutons principaux</string>
+  <string name="theme_color_on_primary_container">Texte sur les boutons principaux</string>
+  <string name="theme_color_on_secondary">Texte sur l’accent secondaire</string>
+  <string name="theme_color_secondary_container">Fond des boutons secondaires</string>
+  <string name="theme_color_on_secondary_container">Texte sur les boutons secondaires</string>
+  <string name="theme_color_on_tertiary">Texte sur l’accent de surbrillance</string>
+  <string name="theme_color_tertiary_container">Fond des boutons de surbrillance</string>
+  <string name="theme_color_on_tertiary_container">Texte sur les boutons de surbrillance</string>
+  <string name="theme_color_surface">Arrière-plan de page</string>
+  <string name="theme_color_on_surface">Texte et icônes</string>
+  <string name="theme_color_on_background">Texte sur l’arrière-plan</string>
+  <string name="theme_color_surface_variant">Fond des panneaux secondaires</string>
+  <string name="theme_color_on_surface_variant">Texte sur les panneaux secondaires</string>
+  <string name="theme_color_surface_dim">Arrière-plans atténués</string>
+  <string name="theme_color_surface_bright">Arrière-plans lumineux</string>
+  <string name="theme_color_surface_container_lowest">Fond des panneaux plats</string>
+  <string name="theme_color_surface_container_low">Fond des panneaux discrets</string>
+  <string name="theme_color_surface_container">Fond des panneaux</string>
+  <string name="theme_color_surface_container_high">Fond des panneaux en relief</string>
+  <string name="theme_color_surface_container_highest">Fond des panneaux flottants</string>
+  <string name="theme_color_outline">Bordures</string>
+  <string name="theme_color_outline_variant">Bordures discrètes</string>
+  <string name="theme_color_surface_tint">Teinte des panneaux</string>
+  <string name="theme_color_inverse_surface">Fond des panneaux contrastés</string>
+  <string name="theme_color_inverse_on_surface">Texte sur les panneaux contrastés</string>
+  <string name="theme_color_inverse_primary">Accent contrasté</string>
+  <string name="theme_color_scrim">Voile de superposition</string>
+  <string name="theme_color_error">Accent d’erreur</string>
+  <string name="theme_color_on_error">Texte sur l’accent d’erreur</string>
+  <string name="theme_color_error_container">Fond des panneaux d’erreur</string>
+  <string name="theme_color_on_error_container">Texte sur les panneaux d’erreur</string>
+  <string name="theme_color_primary_fixed">Accent principal doux</string>
+  <string name="theme_color_primary_fixed_dim">Accent principal doux atténué</string>
+  <string name="theme_color_on_primary_fixed">Texte sur l’accent principal doux</string>
+  <string name="theme_color_on_primary_fixed_variant">Texte atténué sur l’accent principal doux</string>
+  <string name="theme_color_secondary_fixed">Accent secondaire doux</string>
+  <string name="theme_color_secondary_fixed_dim">Accent secondaire doux atténué</string>
+  <string name="theme_color_on_secondary_fixed">Texte sur l’accent secondaire doux</string>
+  <string name="theme_color_on_secondary_fixed_variant">Texte atténué sur l’accent secondaire doux</string>
+  <string name="theme_color_tertiary_fixed">Accent de surbrillance doux</string>
+  <string name="theme_color_tertiary_fixed_dim">Accent de surbrillance doux atténué</string>
+  <string name="theme_color_on_tertiary_fixed">Texte sur l’accent de surbrillance doux</string>
+  <string name="theme_color_on_tertiary_fixed_variant">Texte atténué sur l’accent de surbrillance doux</string>
+  <string name="theme_color_primary">Accent principal</string>
+  <string name="theme_color_secondary">Accent secondaire</string>
+  <string name="theme_color_tertiary">Accent de surbrillance</string>
 </resources>

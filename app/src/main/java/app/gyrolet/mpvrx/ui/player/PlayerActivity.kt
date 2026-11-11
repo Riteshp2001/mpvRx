@@ -142,7 +142,6 @@ import app.gyrolet.mpvrx.utils.media.SubtitleOps
 import app.gyrolet.mpvrx.utils.media.listTreeFilesSafely
 import app.gyrolet.mpvrx.utils.media.openPersistedTreeDocument
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
-import com.github.k1rakishou.fsaf.FileManager
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 import `is`.xyz.mpv.Utils
@@ -298,11 +297,6 @@ class PlayerActivity :
   private val appearancePreferences: AppearancePreferences by inject()
 
   private val googleFontsRepository: GoogleFontsRepository by inject()
-
-  /**
-   * Manager for file operations.
-   */
-  private val fileManager: FileManager by inject()
 
   /**
    * Track selector for automatic audio/subtitle selection
@@ -9256,4 +9250,3 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
 
 /** Progress of the player shrinking itself into the mini player before it finishes. */
 private enum class SheetCollapse { NONE, RUNNING, ARRIVED }
-

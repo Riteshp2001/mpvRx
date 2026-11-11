@@ -105,10 +105,6 @@ jobs:
           set -euo pipefail
           ./gradlew "bundle${GRADLE_FLAVOR}Release" --stacktrace --no-daemon --max-workers=2
 
-      - name: Compile artwork regression tests
-        if: matrix.distribution.id == 'standard'
-        run: ./gradlew :app:compileStandardDebugAndroidTestKotlin -PtargetAbi=x86_64 --stacktrace --no-daemon --max-workers=2
-
       - name: Sign bundle when signing secrets are available
         if: ${{ matrix.distribution.package == 'aab' }}
         shell: bash

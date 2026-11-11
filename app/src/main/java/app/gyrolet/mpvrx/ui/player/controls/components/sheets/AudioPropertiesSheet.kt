@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -67,10 +68,13 @@ fun AudioPropertiesSheet(
   val showHeader = image != null || !mediaTitle.isNullOrBlank() || !artistName.isNullOrBlank()
   val headerRows = if (showHeader) 1 else 0
   val rowCount = headerRows + if (isLoading || properties.isEmpty()) 1 else properties.size
+  val cardColor = MaterialTheme.colorScheme.surfaceContainerHighest
+  val cardBorder = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     modifier = modifier,
     title = stringResource(R.string.audio_information_title),
+    surfaceColor = MaterialTheme.colorScheme.surfaceContainerLow,
   ) {
     SelectionContainer {
         Column(
@@ -85,7 +89,9 @@ fun AudioPropertiesSheet(
             Surface(
               modifier = Modifier.fillMaxWidth(),
               shape = rememberConnectedShape(0, rowCount, ConnectedLayout.Vertical),
-              color = playerSheetSelectionColor(false),
+              color = cardColor,
+              contentColor = MaterialTheme.colorScheme.onSurface,
+              border = cardBorder,
             ) {
               Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -142,7 +148,9 @@ fun AudioPropertiesSheet(
             Surface(
               modifier = Modifier.fillMaxWidth(),
               shape = rememberConnectedShape(headerRows, rowCount, ConnectedLayout.Vertical),
-              color = playerSheetSelectionColor(false),
+              color = cardColor,
+              contentColor = MaterialTheme.colorScheme.onSurface,
+              border = cardBorder,
             ) {
               Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -161,7 +169,9 @@ fun AudioPropertiesSheet(
               Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = rememberConnectedShape(index + headerRows, rowCount, ConnectedLayout.Vertical),
-                color = playerSheetSelectionColor(false),
+                color = cardColor,
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                border = cardBorder,
               ) {
                 Column(
                   modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),

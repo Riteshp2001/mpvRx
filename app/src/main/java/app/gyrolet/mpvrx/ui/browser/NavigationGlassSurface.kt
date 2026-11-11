@@ -11,11 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -69,14 +65,6 @@ internal fun Modifier.navigationGlassRim(
   shape: Shape = CircleShape,
   connectionProgress: Float = 0f,
 ): Modifier = connectedGlassRim(shape, joinedAtTop = true, strength = strength, connectionProgress = connectionProgress)
-
-internal fun Modifier.navigationAccentMask(brush: Brush): Modifier =
-  graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }.drawWithCache {
-    onDrawWithContent {
-      drawContent()
-      drawRect(brush = brush, blendMode = BlendMode.SrcIn)
-    }
-  }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
