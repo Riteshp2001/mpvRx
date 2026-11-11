@@ -45,6 +45,7 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
+import app.gyrolet.mpvrx.ui.browser.fab.LocalFabHostInsetsApplied
 import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
 import app.gyrolet.mpvrx.ui.player.LocalInAppMusicSheet
 import app.gyrolet.mpvrx.ui.theme.AppMotion
@@ -176,6 +177,7 @@ internal fun ScreenNavDisplay(
         CompositionLocalProvider(
           LocalCurrentScreen provides route,
           LocalNavigationBarHeight provides if (insetByHost) 0.dp else inheritedClearance,
+          LocalFabHostInsetsApplied provides insetByHost,
         ) {
           Surface(Modifier.fillMaxSize(), color = entryColor) {
             Box(Modifier.fillMaxSize().padding(bottom = if (insetByHost) bottomOverlayClearance else 0.dp)) {

@@ -17,11 +17,15 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+
+/** True when ScreenNavigation has already reserved the global bottom overlay outside this entry. */
+internal val LocalFabHostInsetsApplied = compositionLocalOf { false }
 
 /**
  * Single source of truth for where browser FABs float.
@@ -43,7 +47,9 @@ object FabPlacement {
   val RestingBottomClearance: Dp = 92.dp
 
   @Composable
-  private fun bottomClearance(): Dp = maxOf(RestingBottomClearance, LocalNavigationBarHeight.current)
+  private fun bottomClearance(): Dp =
+    if (LocalFabHostInsetsApplied.current) 0.dp
+    else maxOf(RestingBottomClearance, LocalNavigationBarHeight.current)
 
   /** Bottom padding for a FAB hosted in a Scaffold `floatingActionButton` slot. */
   @Composable
