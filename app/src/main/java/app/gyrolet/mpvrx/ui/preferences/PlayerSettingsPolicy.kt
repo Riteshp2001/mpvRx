@@ -90,6 +90,8 @@ private val liveAudioSettings = setOf(
   R.string.pref_audio_spatial_title,
   R.string.pref_audio_channels,
   R.string.pref_audio_volume_boost_cap,
+  R.string.pref_audio_output_title,
+  R.string.pref_audio_passthrough_title,
 )
 
 private val liveSubtitleSettings = setOf(
@@ -123,6 +125,7 @@ private val liveDecoderSettings = setOf(
   R.string.motion_target_title,
   R.string.motion_target_fps_title,
   R.string.motion_switch_display_title,
+  R.string.pref_decoder_dolby_vision_direct_title,
 )
 
 private val settingNativeOptions = mapOf(
@@ -132,6 +135,8 @@ private val settingNativeOptions = mapOf(
   R.string.pref_audio_spatial_title to setOf("af"),
   R.string.pref_audio_channels to setOf("af", "audio-channels"),
   R.string.pref_audio_volume_boost_cap to setOf("volume-max"),
+  R.string.pref_audio_output_title to setOf("ao"),
+  R.string.pref_audio_passthrough_title to setOf("audio-spdif"),
   R.string.pref_player_use_precise_seeking to setOf("hr-seek", "hr-seek-framedrop"),
   R.string.player_sheets_sub_override_ass to setOf(
     "sub-ass-override", "secondary-sub-ass-override", "sub-pos", "secondary-sub-pos",
@@ -139,6 +144,7 @@ private val settingNativeOptions = mapOf(
   R.string.player_sheets_sub_scale_by_window to setOf("sub-scale-by-window", "sub-use-margins"),
   R.string.pref_subtitles_secondary_pinch_zoom to setOf("sub-scale", "secondary-sub-scale"),
   R.string.pref_decoder_try_hw_dec_title to setOf("hwdec", "hwdec-codecs"),
+  R.string.pref_decoder_dolby_vision_direct_title to setOf("android-dolby-vision-output"),
   R.string.pref_decoder_debanding_title to setOf(
     "vf", "deband", "deband-iterations", "deband-threshold", "deband-range", "deband-grain",
   ),

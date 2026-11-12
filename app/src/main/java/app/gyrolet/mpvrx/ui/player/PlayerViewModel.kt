@@ -2846,6 +2846,20 @@ fun restartFromBeginning() {
       }
     }
     viewModelScope.launch(playbackStateDispatcher) {
+      audioPreferences.audioPassthrough.changes().distinctUntilChanged().drop(1).collect { passthrough ->
+        // mpv reopens the audio decoder and falls back to PCM if the output rejects the format.
+        if (_isMpvCoreReady.value) PlaybackSession.setPropertyString("audio-spdif", passthrough.codecs)
+      }
+    }
+    viewModelScope.launch(playbackStateDispatcher) {
+      audioPreferences.audioOutput.changes().distinctUntilChanged().drop(1).collect { output ->
+        if (_isMpvCoreReady.value && !MpvConfigOverridePolicy.isOwnedByMpvConf("ao")) {
+          PlaybackSession.setPropertyString("ao", output.mpvValue)
+          PlaybackSession.command("ao-reload")
+        }
+      }
+    }
+    viewModelScope.launch(playbackStateDispatcher) {
       subtitlesPreferences.overrideAssSubs.changes().distinctUntilChanged().drop(1).collect { force ->
         if (_isMpvCoreReady.value) {
           applySubtitleLayout(subtitlesPreferences.subPos.get(), force, subtitlesPreferences.secondarySubPos.get())

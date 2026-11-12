@@ -139,6 +139,8 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
       // FongMi's mpv ships the GPU motion interpolation core.
       buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "false")
+      // FongMi's mpv can send Dolby Vision straight to MediaCodec with a separate subtitle Surface.
+      buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "false")
     }
 
     create("playstore") {
@@ -151,6 +153,8 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
       // FongMi's mpv ships the GPU motion interpolation core.
       buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "false")
+      // FongMi's mpv can send Dolby Vision straight to MediaCodec with a separate subtitle Surface.
+      buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "false")
     }
 
     create("noVulkan") {
@@ -163,6 +167,8 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
       // FongMi's mpv ships the GPU motion interpolation core.
       buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "false")
+      // FongMi's mpv can send Dolby Vision straight to MediaCodec with a separate subtitle Surface.
+      buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "false")
     }
 
     create("fongmi") {
@@ -175,6 +181,8 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "true")
       // FongMi's mpv ships the GPU motion interpolation core.
       buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "true")
+      // FongMi's mpv can send Dolby Vision straight to MediaCodec with a separate subtitle Surface.
+      buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "true")
     }
 
     configureEach {

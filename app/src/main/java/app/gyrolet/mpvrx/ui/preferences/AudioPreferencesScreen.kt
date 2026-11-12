@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioChannels
+import app.gyrolet.mpvrx.preferences.AudioOutput
+import app.gyrolet.mpvrx.preferences.AudioPassthrough
 import app.gyrolet.mpvrx.preferences.AudioPlayerOrientation
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.SpatialAudioMode
@@ -675,6 +677,53 @@ object AudioPreferencesScreen : Screen {
                 },
                 onSliderValueChange = { preferences.volumeBoostCap.set(it.toInt()) },
                 sliderValue = volumeBoostCap.toFloat(),
+              )
+              }
+
+              PreferenceDivider()
+              val audioOutput by preferences.audioOutput.collectAsState()
+              ExpressivePreferenceItem {
+              ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_output_title),
+                value = audioOutput,
+                onValueChange = { preferences.audioOutput.set(it) },
+                values = AudioOutput.entries,
+                enabled = "ao" !in configOwnedOptions,
+                valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                title = { Text(stringResource(R.string.pref_audio_output_title)) },
+                summary = {
+                  Text(
+                    text = stringResource(audioOutput.titleRes),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+              }
+
+              PreferenceDivider()
+              val audioPassthrough by preferences.audioPassthrough.collectAsState()
+              ExpressivePreferenceItem {
+              ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_passthrough_title),
+                value = audioPassthrough,
+                onValueChange = { preferences.audioPassthrough.set(it) },
+                values = AudioPassthrough.entries,
+                enabled = "audio-spdif" !in configOwnedOptions,
+                valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                title = { Text(stringResource(R.string.pref_audio_passthrough_title)) },
+                summary = {
+                  Column {
+                    Text(
+                      text = stringResource(audioPassthrough.titleRes),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                    Text(
+                      text = stringResource(R.string.pref_audio_passthrough_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                      style = MaterialTheme.typography.bodySmall,
+                    )
+                  }
+                },
               )
               }
 

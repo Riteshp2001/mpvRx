@@ -61,7 +61,13 @@ enum class MpvConfigOverride(
         "opengl-early-flush",
         "video-scale-x",
         "video-scale-y",
-      ),
+      ) +
+        // Only FongMi's mpv can send Dolby Vision straight to MediaCodec.
+        if (app.gyrolet.mpvrx.BuildConfig.MPV_SUPPORTS_DOLBY_VISION_DIRECT) {
+          setOf("android-dolby-vision-output", "demuxer-dovi-profile7")
+        } else {
+          emptySet()
+        },
   ),
   VIDEO_FILTERS(
     preferenceKey = "video_filters",
@@ -101,6 +107,8 @@ enum class MpvConfigOverride(
         "audio-delay",
         "audio-normalize-downmix",
         "volume-max",
+        "ao",
+        "audio-spdif",
       ),
   ),
   AUDIO_FILTERS(
