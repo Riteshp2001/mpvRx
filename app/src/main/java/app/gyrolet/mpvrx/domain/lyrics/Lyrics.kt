@@ -21,9 +21,50 @@ data class Lyrics(
 ) {
   fun isValid(): Boolean = synced.orEmpty().any { it.line.isNotBlank() } || plain.orEmpty().any { it.isNotBlank() }
 
-  fun hasWordTiming(): Boolean = synced.orEmpty().any { line ->
-    line.words.orEmpty().any { !it.estimated } || line.background?.words.orEmpty().any { !it.estimated }
+  /** How closely the provider's timestamps follow the singing. */
+  fun timing(): LyricsTiming {
+    val lines = synced.orEmpty().filter { it.line.isNotBlank() }
+    if (lines.isEmpty()) return LyricsTiming.PLAIN
+    // A whole song stamped at a few moments (often all at 00:00) cannot follow anything.
+    // Exactly half still passes: some LRC files give each translation its original's stamp.
+    if (lines.mapTo(HashSet()) { it.time }.size * 2 < lines.size) return LyricsTiming.PLAIN
+    val moving = lines.count { it.hasMovingWords() || it.background?.hasMovingWords() == true }
+    return when {
+      moving * 100 >= lines.size * FULL_WORD_TIMING_PERCENT -> LyricsTiming.WORD
+      moving * 100 >= lines.size * PARTIAL_WORD_TIMING_PERCENT -> LyricsTiming.PARTIAL_WORD
+      else -> LyricsTiming.LINE
+    }
   }
+}
+
+private const val FULL_WORD_TIMING_PERCENT = 80
+private const val PARTIAL_WORD_TIMING_PERCENT = 25
+
+/** How closely lyrics follow the singing, worst to best. */
+enum class LyricsTiming {
+  /** Untimed text, or timestamps that do not move. */
+  PLAIN,
+
+  /** Each line lights up as a whole. */
+  LINE,
+
+  /** Some lines move word by word. */
+  PARTIAL_WORD,
+
+  /** Nearly every line moves word by word. */
+  WORD,
+}
+
+/**
+ * Whether the provider timed this line's words so the highlight travels through them. Words that
+ * all share one stamp are a line split into words, and estimated stamps are the app's own guess.
+ */
+private fun SyncedLine.hasMovingWords(): Boolean {
+  val timed = words.orEmpty().filter { !it.estimated && it.word.isNotBlank() }
+  if (timed.size <= 1) return timed.isNotEmpty()
+  if (timed.all { it.time == timed.first().time }) return false
+  // Tolerate the odd overlap from rounding; words running mostly backwards are broken stamps.
+  return timed.zipWithNext().count { (previous, next) -> next.time < previous.time } * 10 <= timed.size
 }
 
 @Serializable

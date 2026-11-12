@@ -61,6 +61,7 @@ import `is`.xyz.mpv.MPVLib
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import kotlin.math.abs
+import kotlin.math.ceil
 import kotlin.reflect.KProperty
 
 private fun String.toMpvLanguageList(): String =
@@ -105,7 +106,12 @@ class MPVView(
   var surfaceBindingEnabled = true
     set(value) {
       field = value
-      if (!value) isSurfaceReady = false
+      if (!value) {
+        isSurfaceReady = false
+        // mpv draws subtitles only on an attached overlay, which another owner (an external
+        // display) cannot show. rebindCurrentSurface() attaches it again.
+        PlaybackSession.unbindOsdSurface(this)
+      }
     }
 
   init {
@@ -116,6 +122,7 @@ class MPVView(
         liquidGlassInHdr = appearancePreferences.liquidGlassInHdr.get(),
       ),
     )
+    setOsdOverlay(DolbyVisionDirect.isEnabled(decoderPreferences))
   }
 
   /** A slow Surface must not prevent the media load and its watchdog from starting. */
@@ -143,6 +150,7 @@ class MPVView(
    * rebuilt core and another owner (mini player/PiP) holding the session. Main thread only.
    */
   internal fun ensureSurfaceAttached(): Boolean {
+    ensureOsdSurfaceAttached()
     val surface = renderSurface ?: return false
     if (isExiting || !surfaceBindingEnabled || !renderCallbacksEnabled || !surface.isValid) return false
     // A Surface can be JNI-attached while mpv is still processing its nonzero wid.
@@ -189,9 +197,11 @@ class MPVView(
     // invalidate the very key it is retrying under.
     val requestedBackend = selectRenderBackend(inputs.anime4kEnabled, inputs.gpuNextEnabled, inputs.vulkanCapable)
     val scriptsKey = advancedPreferences.userScriptsConfigurationKey()
+    // The audio output and passthrough are init options too; a reused core would keep the old ones.
+    val audioKey = "${audioPreferences.audioOutput.get().name},${audioPreferences.audioPassthrough.get().name}"
     val coreConfigurationKey =
       "${requestedBackend.configurationKey}|conf=${MpvConfigOverridePolicy.configurationKey()}" +
-        "|mpv=${mpvConfigCache.configurationKey()}|scripts=$scriptsKey"
+        "|mpv=${mpvConfigCache.configurationKey()}|scripts=$scriptsKey|audio=$audioKey"
     return PlaybackSession.initialize(
       context = context.applicationContext,
       configDir = configDir,
@@ -222,6 +232,7 @@ class MPVView(
   }
 
   fun releaseSurface() {
+    PlaybackSession.unbindOsdSurface(this)
     renderCallbacksEnabled = false
     cancelSurfaceRecovery()
     cancelPausedFrameRedraw()
@@ -627,23 +638,35 @@ class MPVView(
 
   }
 
+  /**
+   * The stats pages and the console are mpv OSD text placed by osd-margin-x/y. The sides always
+   * clear the camera cutout and the navigation bar (even while hidden, so the text holds still);
+   * the top clears the cutout with Safe area window, matching the player controls.
+   */
   fun applyOsdSafeAreaMargins(insets: WindowInsetsCompat? = null) {
     val resolvedInsets =
       insets ?: androidx.core.view.ViewCompat
         .getRootWindowInsets(this)
-    val cutoutInsets =
-      if (playerPreferences.safeAreaWindow.get()) {
-        resolvedInsets?.getInsets(WindowInsetsCompat.Type.displayCutout())
-      } else null
-    val horizontalMargin =
-      maxOf(cutoutInsets?.left ?: 0, cutoutInsets?.right ?: 0).coerceAtLeast(DEFAULT_OSD_SAFE_MARGIN)
-    val verticalMargin = (cutoutInsets?.top ?: 0).coerceAtLeast(DEFAULT_OSD_SAFE_MARGIN)
-    PlaybackSession.setOptionString("osd-margin-x", horizontalMargin.toString())
-    PlaybackSession.setOptionString("osd-margin-y", verticalMargin.toString())
+    val cutout = resolvedInsets?.getInsets(WindowInsetsCompat.Type.displayCutout())
+    val navigationBars = resolvedInsets?.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.navigationBars())
+    val sideInset =
+      maxOf(cutout?.left ?: 0, cutout?.right ?: 0, navigationBars?.left ?: 0, navigationBars?.right ?: 0)
+    val topInset = if (playerPreferences.safeAreaWindow.get()) cutout?.top ?: 0 else 0
+    PlaybackSession.setOptionString("osd-margin-x", (DEFAULT_OSD_SAFE_MARGIN + toOsdUnits(sideInset)).toString())
+    PlaybackSession.setOptionString("osd-margin-y", (DEFAULT_OSD_SAFE_MARGIN + toOsdUnits(topInset)).toString())
+  }
+
+  /** osd-margin-x/y are in pixels of a 720-line OSD while it scales with the window (mpv's default). */
+  private fun toOsdUnits(pixels: Int): Int {
+    if (pixels <= 0) return 0
+    val scaledByWindow = PlaybackSession.getPropertyBoolean("osd-scale-by-window") ?: true
+    if (!scaledByWindow || height <= 0) return pixels
+    return ceil(pixels * OSD_REFERENCE_HEIGHT / height).toInt()
   }
 
   private companion object {
     const val DEFAULT_OSD_SAFE_MARGIN = 16
+    const val OSD_REFERENCE_HEIGHT = 720.0
     const val SURFACE_RETRY_MS = 250L
     const val SURFACE_READY_TIMEOUT_MS = 5_000L
   }
@@ -690,6 +713,8 @@ class MPVView(
     height: Int,
   ) {
     if (!renderCallbacksEnabled || isExiting) return
+    // The OSD margins are relative to the player height, which rotation and resizing change.
+    applyOsdSafeAreaMargins()
     if (!PlaybackSession.resizeSurface(width, height, owner = this)) ensureSurfaceAttached()
     applyFrameRate()
     redrawPausedFrame()
@@ -743,6 +768,27 @@ class MPVView(
         }
       },
     )
+  }
+
+  private fun ensureOsdSurfaceAttached() {
+    val surface = osdSurface ?: return
+    if (isExiting || !surfaceBindingEnabled || !renderCallbacksEnabled || !surface.isValid ||
+      PlaybackSession.isOsdSurfaceAttachedTo(this)
+    ) return
+    PlaybackSession.bindOsdSurface(surface, osdSurfaceWidth, osdSurfaceHeight, owner = this)
+  }
+
+  override fun onOsdSurfaceAvailable(surface: Surface, width: Int, height: Int) {
+    ensureOsdSurfaceAttached()
+  }
+
+  override fun onOsdSurfaceSizeChanged(width: Int, height: Int) {
+    if (!renderCallbacksEnabled || isExiting) return
+    if (!PlaybackSession.resizeOsdSurface(width, height, owner = this)) ensureOsdSurfaceAttached()
+  }
+
+  override fun onOsdSurfaceDestroyed() {
+    if (renderCallbacksEnabled) PlaybackSession.unbindOsdSurface(this)
   }
 
   override fun onRenderSurfaceDestroyed() {
@@ -964,6 +1010,8 @@ class MPVView(
       add("volume-max" to (audioPreferences.volumeBoostCap.get() + 100).toString())
       // Prevent automatic volume normalization when downmixing multi-channel audio
       add("audio-normalize-downmix" to "no")
+      audioPreferences.audioOutput.get().mpvValue.takeIf { it.isNotEmpty() }?.let { add("ao" to it) }
+      audioPreferences.audioPassthrough.get().codecs.takeIf { it.isNotEmpty() }?.let { add("audio-spdif" to it) }
     }
 
   private fun setupSubtitlesOptions() {

@@ -1169,6 +1169,9 @@ class PlayerViewModel(
     val preferredProvider: app.gyrolet.mpvrx.domain.lyrics.LyricsProvider? = null,
     /** Every provider that has answered for this track, for the source sheet. */
     val fetchedProviders: Set<app.gyrolet.mpvrx.domain.lyrics.LyricsProvider> = emptySet(),
+    /** How well each answering provider's lyrics are timed, for the source sheet. */
+    val providerTimings: Map<app.gyrolet.mpvrx.domain.lyrics.LyricsProvider, app.gyrolet.mpvrx.domain.lyrics.LyricsTiming> =
+      emptyMap(),
     /** Providers asked for this track that came back empty. */
     val missingProviders: Set<app.gyrolet.mpvrx.domain.lyrics.LyricsProvider> = emptySet(),
     /** Providers asked for this track that errored out or timed out. */
@@ -1552,6 +1555,7 @@ class PlayerViewModel(
         onlineProvider = result.onlineProvider,
         preferredProvider = result.preferredOnlineProvider,
         fetchedProviders = result.onlineByProvider.keys,
+        providerTimings = result.onlineByProvider.mapValues { it.value.timing() },
         missingProviders = result.missingProviders,
         failedProviders = result.failedProviders,
         onlineEnabled = allowOnline,
@@ -1655,6 +1659,7 @@ class PlayerViewModel(
           onlineProvider = updated?.onlineProvider ?: fetched.provider,
           preferredProvider = updated?.preferredOnlineProvider ?: if (fetched.raced) null else fetched.provider,
           fetchedProviders = (updated?.onlineByProvider ?: fetched.byProvider).keys,
+          providerTimings = (updated?.onlineByProvider ?: fetched.byProvider).mapValues { it.value.timing() },
           missingProviders = updated?.missingProviders ?: fetched.missing,
           failedProviders = updated?.failedProviders ?: fetched.failed,
           activeLineIndex = activeIndex,
@@ -1684,6 +1689,7 @@ class PlayerViewModel(
         selectedSource = updatedResult.selectedSource,
         activeLineIndex = activeIndex,
         fetchedProviders = updatedResult.onlineByProvider.keys,
+        providerTimings = updatedResult.onlineByProvider.mapValues { it.value.timing() },
         missingProviders = updatedResult.missingProviders,
         failedProviders = updatedResult.failedProviders,
       )
@@ -1728,6 +1734,7 @@ class PlayerViewModel(
         onlineProvider = cached.onlineProvider,
         preferredProvider = cached.preferredOnlineProvider,
         fetchedProviders = cached.onlineByProvider.keys,
+        providerTimings = cached.onlineByProvider.mapValues { it.value.timing() },
         missingProviders = cached.missingProviders,
         failedProviders = cached.failedProviders,
         activeLineIndex = currentActiveLineIndex(activeLyrics, current.syncOffsetMs),
@@ -1764,7 +1771,8 @@ class PlayerViewModel(
       val online = updated?.onlineLyrics ?: fetched.lyrics
       val activeLyrics = online ?: current.embeddedLyrics
       val hasSynced = activeLyrics?.synced?.isNotEmpty() == true
-      val answered = (updated?.onlineByProvider ?: fetched.byProvider).keys
+      val answeredLyrics = updated?.onlineByProvider ?: fetched.byProvider
+      val answered = answeredLyrics.keys
       val failed = updated?.failedProviders ?: ((current.failedProviders - answered - fetched.missing) + fetched.failed)
       val missing = updated?.missingProviders ?: ((current.missingProviders - answered - fetched.failed) + fetched.missing)
 
@@ -1787,6 +1795,7 @@ class PlayerViewModel(
         onlineProvider = updated?.onlineProvider ?: fetched.provider,
         preferredProvider = updated?.preferredOnlineProvider ?: if (fetched.raced) null else fetched.provider,
         fetchedProviders = answered,
+        providerTimings = answeredLyrics.mapValues { it.value.timing() },
         missingProviders = missing,
         failedProviders = failed,
         activeLineIndex = currentActiveLineIndex(activeLyrics, current.syncOffsetMs),
@@ -2843,6 +2852,20 @@ fun restartFromBeginning() {
     viewModelScope.launch(playbackStateDispatcher) {
       audioPreferences.audioPitchCorrection.changes().distinctUntilChanged().drop(1).collect { enabled ->
         if (_isMpvCoreReady.value) PlaybackSession.setPropertyBoolean("audio-pitch-correction", enabled)
+      }
+    }
+    viewModelScope.launch(playbackStateDispatcher) {
+      audioPreferences.audioPassthrough.changes().distinctUntilChanged().drop(1).collect { passthrough ->
+        // mpv reopens the audio decoder and falls back to PCM if the output rejects the format.
+        if (_isMpvCoreReady.value) PlaybackSession.setPropertyString("audio-spdif", passthrough.codecs)
+      }
+    }
+    viewModelScope.launch(playbackStateDispatcher) {
+      audioPreferences.audioOutput.changes().distinctUntilChanged().drop(1).collect { output ->
+        if (_isMpvCoreReady.value && !MpvConfigOverridePolicy.isOwnedByMpvConf("ao")) {
+          PlaybackSession.setPropertyString("ao", output.mpvValue)
+          PlaybackSession.command("ao-reload")
+        }
       }
     }
     viewModelScope.launch(playbackStateDispatcher) {

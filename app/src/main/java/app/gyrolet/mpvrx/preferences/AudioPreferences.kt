@@ -38,6 +38,8 @@ class AudioPreferences(
   val spatialAudio = preferenceStore.getBoolean("audio_spatial_audio", false)
   val spatialAudioMode = preferenceStore.getEnum("audio_spatial_audio_mode", SpatialAudioMode.StereoWidening)
   val drcEnabled = preferenceStore.getBoolean("audio_drc_enabled", false)
+  val audioOutput = preferenceStore.getEnum("audio_output", AudioOutput.Auto)
+  val audioPassthrough = preferenceStore.getEnum("audio_passthrough", AudioPassthrough.Off)
   val equalizerEnabled = preferenceStore.getBoolean("audio_equalizer_enabled", false)
   val equalizerMode = preferenceStore.getString("audio_equalizer_mode", "DYNAMIC")
   val autoEqProfile = preferenceStore.getString("audio_autoeq_profile", "")
@@ -171,6 +173,31 @@ enum class AudioVisualizerStyle(
   Particle(R.string.pref_audio_visualizer_style_particle),
 }
 
+
+enum class AudioOutput(
+  @StringRes val titleRes: Int,
+  private val driver: String?,
+) {
+  Auto(R.string.pref_audio_output_auto, null),
+  AudioTrack(R.string.pref_audio_output_audiotrack, "audiotrack"),
+  AAudio(R.string.pref_audio_output_aaudio, "aaudio"),
+  OpenSles(R.string.pref_audio_output_opensles, "opensles"),
+  ;
+
+  /** mpv's ao list. The trailing comma keeps the other drivers as fallbacks, e.g. AAudio before Android 8. */
+  val mpvValue: String get() = driver?.let { "$it," }.orEmpty()
+}
+
+enum class AudioPassthrough(
+  @StringRes val titleRes: Int,
+  /** mpv's audio-spdif codec list. */
+  val codecs: String,
+) {
+  Off(R.string.pref_audio_passthrough_off, ""),
+  DolbyDigital(R.string.pref_audio_passthrough_dolby, "ac3,eac3"),
+  DolbyDigitalAndDts(R.string.pref_audio_passthrough_dolby_dts, "ac3,eac3,dts"),
+  All(R.string.pref_audio_passthrough_all, "ac3,eac3,dts,dts-hd,truehd"),
+}
 
 enum class AudioChannels(
   @StringRes val title: Int,

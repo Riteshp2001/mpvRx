@@ -54,6 +54,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -490,6 +493,15 @@ fun PlayerControls(
     } else {
       Modifier
     }
+  // Stats text starts at the screen edge, so it always clears the camera cutout and navigation
+  // bar at the sides. The bar counts while hidden too, so the text holds still when it appears.
+  val statisticsInsetModifier =
+    Modifier
+      .windowInsetsPadding(
+        WindowInsets.displayCutout
+          .union(WindowInsets.navigationBarsIgnoringVisibility)
+          .only(WindowInsetsSides.Horizontal),
+      ).then(safeAreaInsetModifier)
   val navigationBarBottomInsetModifier =
     if (showSystemNavigationBar) {
       Modifier.windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
@@ -1068,7 +1080,7 @@ fun PlayerControls(
           modifier =
             Modifier
               .align(Alignment.TopStart)
-              .then(safeAreaInsetModifier)
+              .then(statisticsInsetModifier)
               .padding(top = 16.dp, start = 14.dp),
         )
       }

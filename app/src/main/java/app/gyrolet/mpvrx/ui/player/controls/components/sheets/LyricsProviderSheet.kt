@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.lyrics.LyricsProvider
+import app.gyrolet.mpvrx.domain.lyrics.LyricsTiming
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -92,8 +93,13 @@ fun LyricsProviderSheet(
         ProviderRow(
           title = stringResource(R.string.lyrics_provider_auto),
           subtitle =
-            state.onlineProvider?.takeIf { status == ProviderStatus.CURRENT }?.let {
-              stringResource(R.string.lyrics_provider_auto_best, it.label)
+            state.onlineProvider?.takeIf { status == ProviderStatus.CURRENT }?.let { provider ->
+              val timing = state.providerTimings[provider]
+              if (timing != null) {
+                stringResource(R.string.lyrics_provider_auto_best_timing, provider.label, stringResource(timing.labelRes()))
+              } else {
+                stringResource(R.string.lyrics_provider_auto_best, provider.label)
+              }
             } ?: statusText(status),
           status = status,
           autoRow = true,
@@ -108,7 +114,7 @@ fun LyricsProviderSheet(
         val status = providerStatus(provider, state)
         ProviderRow(
           title = provider.label,
-          subtitle = statusText(status),
+          subtitle = statusText(status, state.providerTimings[provider]),
           status = status,
           enabled = state.onlineEnabled,
           onClick = { viewModel.switchLyricsProvider(provider) },
@@ -159,6 +165,30 @@ private fun providerStatus(
     provider in state.failedProviders -> ProviderStatus.FAILED
     provider in state.missingProviders -> ProviderStatus.MISSING
     else -> ProviderStatus.UNFETCHED
+  }
+}
+
+private fun LyricsTiming.labelRes(): Int =
+  when (this) {
+    LyricsTiming.WORD -> R.string.lyrics_timing_word
+    LyricsTiming.PARTIAL_WORD -> R.string.lyrics_timing_partial_word
+    LyricsTiming.LINE -> R.string.lyrics_timing_line
+    LyricsTiming.PLAIN -> R.string.lyrics_timing_plain
+  }
+
+/** A fetched provider also says how well its lyrics are timed, which is what Auto ranks by. */
+@Composable
+private fun statusText(
+  status: ProviderStatus,
+  timing: LyricsTiming?,
+): String {
+  val timingLabel = timing?.let { stringResource(it.labelRes()) }
+  return when {
+    timingLabel != null && status == ProviderStatus.CURRENT ->
+      stringResource(R.string.lyrics_provider_row_current_timing, timingLabel)
+    timingLabel != null && status == ProviderStatus.FOUND ->
+      stringResource(R.string.lyrics_provider_row_found_timing, timingLabel)
+    else -> statusText(status)
   }
 }
 

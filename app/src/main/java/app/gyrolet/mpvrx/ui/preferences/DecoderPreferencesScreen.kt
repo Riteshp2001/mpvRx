@@ -48,6 +48,7 @@ import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigOverride
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
@@ -56,11 +57,13 @@ import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.Debanding
+import app.gyrolet.mpvrx.ui.player.DolbyVisionDirect
 import app.gyrolet.mpvrx.ui.player.HwPlusGuard
 import app.gyrolet.mpvrx.ui.player.MPVProfile
 import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.RendererBackendPolicy
+import app.gyrolet.mpvrx.ui.player.shouldUseTextureRendering
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -88,6 +91,7 @@ object DecoderPreferencesScreen : Screen {
       setOf("vf", "deband", "deband-iterations", "deband-threshold", "deband-range", "deband-grain")
         .any(configOwnedOptions::contains)
     val yuv420ConfigOwned = "vf" in configOwnedOptions
+    val dolbyVisionConfigOwned = "android-dolby-vision-output" in configOwnedOptions
     val backstack = LocalBackStack.current
     val context = LocalContext.current
     val isDeviceVulkanSupported = remember { VulkanCapabilities.isDeviceSupported(context) }
@@ -328,6 +332,39 @@ object DecoderPreferencesScreen : Screen {
                   )
                 },
               )
+
+              if (DolbyVisionDirect.isBuildSupported) {
+                PreferenceDivider()
+                val dolbyVisionDirect by preferences.dolbyVisionDirect.collectAsState()
+                val appearancePreferences = koinInject<AppearancePreferences>()
+                val liquidGlass by appearancePreferences.liquidGlassEnabled.collectAsState()
+                val liquidGlassInHdr by appearancePreferences.liquidGlassInHdr.collectAsState()
+                val hdrOutput by preferences.hdrScreenOutput.collectAsState()
+                // The subtitle overlay needs the native SurfaceView renderer.
+                val textureRendering = shouldUseTextureRendering(liquidGlass, hdrOutput, liquidGlassInHdr)
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_dolby_vision_direct_title),
+                  value = dolbyVisionDirect,
+                  enabled = !dolbyVisionConfigOwned,
+                  onValueChange = { preferences.dolbyVisionDirect.set(it) },
+                  title = { Text(stringResource(R.string.pref_decoder_dolby_vision_direct_title)) },
+                  summary = {
+                    Column {
+                      Text(
+                        stringResource(R.string.pref_decoder_dolby_vision_direct_summary),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                      if (dolbyVisionDirect && textureRendering) {
+                        Text(
+                          stringResource(R.string.pref_decoder_dolby_vision_direct_needs_surface),
+                          color = MaterialTheme.colorScheme.error,
+                          style = MaterialTheme.typography.bodySmall,
+                        )
+                      }
+                    }
+                  },
+                )
+              }
 
               PreferenceDivider()
 

@@ -1332,6 +1332,11 @@ class PlayerActivity :
           player.setTextureRendering(useTexture)
         }
       }
+      lifecycleScope.launch {
+        decoderPreferences.dolbyVisionDirect.changes().distinctUntilChanged().collect { enabled ->
+          player.setOsdOverlay(enabled && DolbyVisionDirect.isBuildSupported)
+        }
+      }
     }
     if (playerControlsComposed) return
     playerControlsComposed = true

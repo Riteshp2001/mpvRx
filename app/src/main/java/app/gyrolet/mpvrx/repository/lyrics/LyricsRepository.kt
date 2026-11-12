@@ -18,6 +18,7 @@ import app.gyrolet.mpvrx.data.lyrics.providers.withBackgroundVocals
 import app.gyrolet.mpvrx.domain.lyrics.Lyrics
 import app.gyrolet.mpvrx.domain.lyrics.LyricsProvider
 import app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType
+import app.gyrolet.mpvrx.domain.lyrics.LyricsTiming
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.utils.media.EmbeddedLyricsExtractor
 import java.io.File
@@ -466,11 +467,12 @@ class LyricsRepository(
       return OnlineLyricsResult(provider, lyrics, false, answers)
     }
     val candidates = LyricsProvider.available.mapNotNull { source -> answers[source]?.let { source to it } }
-    val fitting = candidates.filter { (_, lyrics) -> lyrics.fitsLength(durationMs) }
-    val winner = fitting.firstOrNull { (_, lyrics) -> lyrics.hasWordTiming() }
-      ?: fitting.firstOrNull { (_, lyrics) -> !lyrics.synced.isNullOrEmpty() }
-      ?: fitting.firstOrNull()
-      ?: return null
+    // Best timing grade wins; maxWith keeps the first of equals, so priority order breaks ties.
+    val winner =
+      candidates
+        .filter { (_, lyrics) -> lyrics.fitsLength(durationMs) }
+        .maxWithOrNull(compareBy<Pair<LyricsProvider, Lyrics>> { it.second.timing() })
+        ?: return null
     return OnlineLyricsResult(winner.first, winner.second, true, answers)
   }
 
@@ -576,7 +578,12 @@ class LyricsRepository(
     return last.toLong() <= durationMs.toLong() + LENGTH_OVERRUN_MS
   }
 
-  /** Every provider is asked together; actual timing quality wins, then provider priority. */
+  /**
+   * Every provider is asked together; the best timing grade wins, then provider priority.
+   *
+   * Answers are read in priority order, so the first full word-timed one ends the race: nothing
+   * after it can beat it. A weaker answer is held while the rest still have time to do better.
+   */
   private suspend fun raceProviders(
     query: LyricsFetchQuery,
     mediaPath: String?,
@@ -593,15 +600,14 @@ class LyricsRepository(
         }
 
       try {
-        var wordTimed: Pair<LyricsProvider, Lyrics>? = null
-        var lineTimed: Pair<LyricsProvider, Lyrics>? = null
-        var plainFallback: Pair<LyricsProvider, Lyrics>? = null
+        var winner: Pair<LyricsProvider, Lyrics>? = null
+        var winnerTiming = LyricsTiming.PLAIN
         val seen = mutableMapOf<LyricsProvider, Lyrics>()
         val missing = mutableSetOf<LyricsProvider>()
         val failed = mutableSetOf<LyricsProvider>()
 
         for ((provider, job) in jobs) {
-          if ((wordTimed != null || lineTimed != null) && provider in LyricsProvider.LAZY_PROVIDERS) continue
+          if (winner != null && winnerTiming > LyricsTiming.PLAIN && provider in LyricsProvider.LAZY_PROVIDERS) continue
           val outcome =
             runCatching { job.await() }
               .getOrElse { error -> if (error is CancellationException) throw error else ProviderOutcome.Failed }
@@ -626,15 +632,15 @@ class LyricsRepository(
             continue
           }
           seen[provider] = found
-          if (found.hasWordTiming()) {
-            wordTimed = provider to found
-            break
+          val timing = found.timing()
+          Log.d(TAG, "${provider.label}: $timing")
+          if (winner == null || timing > winnerTiming) {
+            winner = provider to found
+            winnerTiming = timing
           }
-          if (lineTimed == null && !found.synced.isNullOrEmpty()) lineTimed = provider to found
-          if (plainFallback == null) plainFallback = provider to found
+          if (timing == LyricsTiming.WORD) break
         }
 
-        val winner = wordTimed ?: lineTimed ?: plainFallback
         if (winner != null) {
           seen[winner.first] = winner.second
           OnlineLyricsResult(

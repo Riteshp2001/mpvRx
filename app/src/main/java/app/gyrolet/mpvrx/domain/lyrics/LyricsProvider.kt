@@ -7,10 +7,12 @@ package app.gyrolet.mpvrx.domain.lyrics
 /**
  * Online lyrics databases the repository can ask, in default priority order.
  *
- * Declaration order is the priority inside one quality tier. Every provider is
- * contacted together; actual word-timed lyrics beat line-timed lyrics, which
- * beat plain text. When two providers return the same timing quality, the one
- * declared first wins. The picker uses this order too.
+ * Declaration order is the priority inside one timing grade. Every provider is
+ * contacted together and graded on what it actually returned ([Lyrics.timing]):
+ * lyrics that move word by word on nearly every line beat partly word-timed
+ * lyrics, which beat line-timed lyrics, which beat plain text. When two
+ * providers earn the same grade, the one declared first wins. The picker uses
+ * this order too.
  *
  * [wordSynced] describes provider capability for UI and diagnostics. Automatic
  * selection inspects the returned lyrics because a capable provider can still

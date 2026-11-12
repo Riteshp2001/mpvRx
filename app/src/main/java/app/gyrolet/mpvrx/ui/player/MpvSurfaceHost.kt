@@ -5,6 +5,7 @@
 package app.gyrolet.mpvrx.ui.player
 
 import android.content.Context
+import android.graphics.PixelFormat
 import android.graphics.SurfaceTexture
 import android.util.AttributeSet
 import android.view.Surface
@@ -57,6 +58,14 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
   private var ownsSurface = false
   private var rendererEpoch = 0
   private var textureRendering: Boolean? = null
+  private var osdOverlayEnabled = false
+  private var osdOverlayView: SurfaceView? = null
+  internal var osdSurface: Surface? = null
+    private set
+  internal var osdSurfaceWidth = 0
+    private set
+  internal var osdSurfaceHeight = 0
+    private set
 
   // The new TextureView can be attached to mpv before it receives a drawable video frame.
   // Expose its first real buffer update so the controls never sample a blank HDR/SDR layer.
@@ -79,6 +88,76 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
   protected abstract fun onRenderSurfaceSizeChanged(width: Int, height: Int)
   protected abstract fun onRenderSurfaceDestroyed()
 
+  protected open fun onOsdSurfaceAvailable(surface: Surface, width: Int, height: Int) {}
+  protected open fun onOsdSurfaceSizeChanged(width: Int, height: Int) {}
+  protected open fun onOsdSurfaceDestroyed() {}
+
+  /**
+   * A transparent SurfaceView above the video for subtitles and OSD, which direct Dolby Vision
+   * output needs. It exists only with the native SurfaceView renderer.
+   */
+  internal fun setOsdOverlay(enabled: Boolean) {
+    if (osdOverlayEnabled == enabled) return
+    osdOverlayEnabled = enabled
+    syncOsdOverlay()
+  }
+
+  private fun syncOsdOverlay() {
+    val wanted = osdOverlayEnabled && textureRendering == false
+    if (wanted == (osdOverlayView != null)) return
+    if (!wanted) {
+      removeOsdOverlay()
+      return
+    }
+    val overlay = SurfaceView(context)
+    overlay.apply {
+      // Above the video SurfaceView but still behind the window, so the player controls stay on top.
+      setZOrderMediaOverlay(true)
+      holder.setFormat(PixelFormat.TRANSLUCENT)
+      isClickable = false
+      isFocusable = false
+      importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+      holder.addCallback(object : SurfaceHolder.Callback {
+        override fun surfaceCreated(holder: SurfaceHolder) {
+          if (overlay !== osdOverlayView) return
+          osdSurface = holder.surface
+          osdSurfaceWidth = overlay.width
+          osdSurfaceHeight = overlay.height
+          onOsdSurfaceAvailable(holder.surface, overlay.width, overlay.height)
+        }
+
+        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+          if (overlay !== osdOverlayView) return
+          osdSurfaceWidth = width
+          osdSurfaceHeight = height
+          onOsdSurfaceSizeChanged(width, height)
+        }
+
+        override fun surfaceDestroyed(holder: SurfaceHolder) {
+          if (overlay !== osdOverlayView) return
+          releaseOsdSurface()
+        }
+      })
+    }
+    osdOverlayView = overlay
+    addView(overlay, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+  }
+
+  private fun removeOsdOverlay() {
+    val overlay = osdOverlayView ?: return
+    releaseOsdSurface()
+    osdOverlayView = null
+    removeView(overlay)
+  }
+
+  private fun releaseOsdSurface() {
+    if (osdSurface == null) return
+    onOsdSurfaceDestroyed()
+    osdSurface = null
+    osdSurfaceWidth = 0
+    osdSurfaceHeight = 0
+  }
+
   /** Only changes for an appearance/HDR preference, never when controls appear or disappear. */
   internal fun setTextureRendering(enabled: Boolean) {
     if (textureRendering == enabled) return
@@ -90,6 +169,7 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
     // Explicitly detach the old native VO on every real mode change, even when renderSurface
     // is already null, so the replacement SurfaceView can bind without inheriting a stale wid.
     if (wasConfigured) onRenderSurfaceDestroyed()
+    removeOsdOverlay()
     if (ownsSurface) renderSurface?.release()
     renderSurface = null
     ownsSurface = false
@@ -182,5 +262,6 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
       }
     }
     addView(child, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    syncOsdOverlay()
   }
 }
