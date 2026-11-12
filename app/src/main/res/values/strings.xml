@@ -1084,8 +1084,6 @@
   <string name="motion_title">Motion interpolation</string>
   <string name="motion_configure">Motion settings</string>
   <string name="motion_summary">Smoother motion with GPU frame interpolation. Needs GPU Next + Vulkan.</string>
-  <string name="motion_hdr_required">FongMi frame generation keeps HDR on to preserve its color-output pipeline. Turn frame generation off before disabling HDR.</string>
-  <string name="motion_status_hdr_config_owned">Frame generation requires app-controlled HDR. Return HDR options to app control in mpv.conf ownership.</string>
   <string name="motion_toast_on">Motion interpolation: %1$s</string>
   <string name="motion_toast_off">Motion interpolation off</string>
   <string name="motion_renderer_enabled">GPU Next + Vulkan on. Reopen the video.</string>
@@ -1094,13 +1092,8 @@
   <string name="motion_target_auto">Auto</string>
   <string name="motion_target_auto_summary">Up to the display\'s max refresh rate</string>
   <string name="motion_target_auto_value">Auto (%1$d fps)</string>
-  <string name="motion_target_fixed">Custom</string>
   <string name="motion_target_fixed_summary">Up to the rate you pick</string>
-  <string name="motion_target_fps_title">Custom FPS</string>
   <string name="motion_fps_value">%1$d fps</string>
-  <string name="motion_switch_display_title">Match display refresh rate</string>
-  <string name="motion_switch_display_summary">Switch the display to the target rate</string>
-  <string name="motion_requirements_note">SDR only. HDR, Dolby Vision and interlaced video play unchanged.</string>
   <string name="motion_status_off">Off</string>
   <string name="motion_status_waiting">Waiting for requirements</string>
   <string name="motion_rate_unknown">–</string>
@@ -1113,8 +1106,6 @@
   <string name="motion_status_renderer_restart">Reopen the video to apply</string>
   <string name="motion_status_needs_display_sync">mpv.conf video-sync must be display-*</string>
   <string name="motion_status_unsupported_gpu">Not supported on this GPU</string>
-  <string name="motion_live_title">Live</string>
-  <string name="motion_state_unknown">Starting…</string>
   <string name="motion_state_disabled">Off</string>
   <string name="motion_state_ready">Ready</string>
   <string name="motion_state_active">Interpolating</string>
@@ -1123,11 +1114,6 @@
   <string name="motion_state_paused">Paused</string>
   <string name="motion_state_unsupported">Unsupported</string>
   <string name="motion_state_error">Error</string>
-  <string name="motion_stat_synthesized">Generated</string>
-  <string name="motion_stat_presented">Shown</string>
-  <string name="motion_stat_per_second">%1$s/s</string>
-  <string name="motion_stat_gpu">GPU time</string>
-  <string name="motion_stat_resolution">Resolution</string>
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- Dialogs & Common                                           -->
   <!-- ═══════════════════════════════════════════════════════════ -->

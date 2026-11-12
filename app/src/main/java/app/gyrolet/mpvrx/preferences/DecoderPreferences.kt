@@ -71,7 +71,4 @@ class DecoderPreferences(
   val motionInterpolationMode = preferenceStore.getEnum("motion_interpolation_mode", MotionTargetMode.AUTO)
   val motionInterpolationTargetFps =
     preferenceStore.getInt("motion_interpolation_target_fps", MotionInterpolation.DEFAULT_TARGET_FPS)
-
-  /** Ask Android to run the display at the interpolation target while it runs. */
-  val motionInterpolationSwitchDisplayRate = preferenceStore.getBoolean("motion_interpolation_switch_display_rate", true)
 }

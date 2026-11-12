@@ -39,23 +39,16 @@ data class MotionUiState(
   val running: Boolean,
 )
 
-/** One reading of mpv's live motion statistics, for the sheet's readout. */
+/** What mpv's motion core is doing, for the sheet's status line. */
 data class MotionLive(
   val state: MotionState?,
-  val targetFps: Int,
   val videoFps: Double?,
-  val displayFps: Double?,
   /** The rate frames actually reach the screen: the target capped to the display refresh. */
   val outputFps: Double?,
-  val synthesizedPerSecond: Double?,
-  val presentedPerSecond: Double?,
-  /** Mean GPU time of one capture + estimation + synthesis pass, in milliseconds. */
-  val gpuMillis: Double?,
-  val analysisSize: String?,
-  val synthesisSize: String?,
+  val displayFps: Double?,
 ) {
   companion object {
-    val EMPTY = MotionLive(null, 0, null, null, null, null, null, null, null, null)
+    val EMPTY = MotionLive(null, null, null, null)
   }
 }
 
@@ -69,7 +62,6 @@ class MotionInterpolationController(
   private val preferences: DecoderPreferences,
   private val scope: CoroutineScope,
   private val showText: (String) -> Unit,
-  private val requireHdrOutput: () -> Boolean = { true },
 ) {
   private val _state =
     MutableStateFlow(
@@ -93,28 +85,15 @@ class MotionInterpolationController(
   // A preference change re-runs apply() and cancels the previous run, so keep its toast pending.
   private var announcePending = false
 
-  // The previous statistics sample, so the readout can show rates.
-  private var lastSample: Sample? = null
-
-  private data class Sample(
-    val epochNs: Long,
-    val timestampNs: Long,
-    val synthesized: Long,
-    val presented: Long,
-  )
-
   init {
     val watched: List<Flow<Any>> =
       listOf(
         preferences.motionInterpolationEnabled.changes(),
         preferences.motionInterpolationMode.changes(),
         preferences.motionInterpolationTargetFps.changes(),
-        preferences.motionInterpolationSwitchDisplayRate.changes(),
         // Leaving GPU Next + Vulkan switches motion interpolation off.
         preferences.gpuNext.changes(),
         preferences.useVulkan.changes(),
-        preferences.hdrScreenOutput.changes(),
-        preferences.hdrScreenMode.changes(),
       )
     scope.launch {
       // The first combination is the stored state, which MPVView applied before the core started.
@@ -145,8 +124,9 @@ class MotionInterpolationController(
     mode: MotionTargetMode,
     fps: Int? = null,
   ) {
-    preferences.motionInterpolationMode.set(mode)
+    // The rate first, so switching to a fixed target never applies the previous one.
     fps?.let { preferences.motionInterpolationTargetFps.set(it) }
+    preferences.motionInterpolationMode.set(mode)
     if (!preferences.motionInterpolationEnabled.get()) setEnabled(true)
   }
 
@@ -162,11 +142,10 @@ class MotionInterpolationController(
     }
     announcePending = true
     if (preferences.motionInterpolationEnabled.get() == enabled) {
-      if (enabled) MotionInterpolation.ensureHdrEnabled(preferences)
       apply()
     } else {
       // The preference observer runs apply() and shows the pending toast.
-      MotionInterpolation.setEnabled(preferences, enabled)
+      preferences.motionInterpolationEnabled.set(enabled)
     }
   }
 
@@ -182,7 +161,6 @@ class MotionInterpolationController(
           barrier.messageRes?.let { showText(context.getString(it)) }
         }
 
-        MotionInterpolation.ensureHdrEnabled(preferences)
         val config = MotionInterpolation.config(preferences)
         val coreReady = PlaybackSession.getPropertyString("mpv-version") != null
         val optionKnown =
@@ -204,7 +182,7 @@ class MotionInterpolationController(
             else -> MotionAvailability.READY
           }
 
-        val shouldRun = config.enabled && coreReady && availability == MotionAvailability.READY && requireHdrOutput()
+        val shouldRun = config.enabled && coreReady && availability == MotionAvailability.READY
         if (optionKnown && !configOwned) {
           if (shouldRun) {
             if (!running) savedVideoSync = PlaybackSession.getPropertyString("video-sync")
@@ -244,7 +222,6 @@ class MotionInterpolationController(
     setOption("display-fps-override", "0")
     MotionInterpolation.appApplied = false
     savedVideoSync = null
-    lastSample = null
   }
 
   private fun setOption(
@@ -288,62 +265,21 @@ class MotionInterpolationController(
       MotionTargetMode.FIXED -> context.getString(R.string.motion_fps_value, config.targetFps)
     }
 
-  /** Reads mpv's motion statistics. Blocking native reads; call off the main thread. */
+  /** Reads mpv's motion state and rates. Blocking native reads; call off the main thread. */
   fun live(): MotionLive {
     val info = MotionInterpolation.INFO_PROPERTY
-    val state = MotionState.fromKey(PlaybackSession.getPropertyString("$info/state"))
     val target = PlaybackSession.getPropertyInt("$info/target-fps") ?: currentTargetFps()
-    val video =
-      PlaybackSession.getPropertyDouble("estimated-vf-fps")?.takeIf { it > 0.0 }
-        ?: PlaybackSession.getPropertyDouble("container-fps")?.takeIf { it > 0.0 }
     val display =
       PlaybackSession.getPropertyDouble("display-fps")?.takeIf { it > 0.0 }
         ?: MotionInterpolation.currentDisplayRefreshRate(context)?.toDouble()
-
-    val sample =
-      Sample(
-        epochNs = PlaybackSession.getPropertyLong("$info/epoch-ns") ?: 0L,
-        timestampNs = PlaybackSession.getPropertyLong("$info/timestamp-ns") ?: 0L,
-        synthesized = PlaybackSession.getPropertyLong("$info/synthesis-submissions") ?: 0L,
-        presented = PlaybackSession.getPropertyLong("$info/swapchain-submissions") ?: 0L,
-      )
-    val previous = lastSample?.takeIf { it.epochNs == sample.epochNs && sample.timestampNs > it.timestampNs }
-    lastSample = sample
-    var synthesizedRate: Double? = null
-    var presentedRate: Double? = null
-    if (previous != null) {
-      val seconds = (sample.timestampNs - previous.timestampNs) / 1e9
-      synthesizedRate = (sample.synthesized - previous.synthesized).takeIf { it >= 0 }?.let { it / seconds }
-      presentedRate = (sample.presented - previous.presented).takeIf { it >= 0 }?.let { it / seconds }
-    }
-
-    val gpuNs =
-      listOf("capture", "coarse-pass", "refinement-pass", "warp-pass", "synthesis")
-        .mapNotNull { PlaybackSession.getPropertyLong("$info/gpu-$it-ns") }
-        .takeIf { it.isNotEmpty() }
-        ?.sum()
-
     return MotionLive(
-      state = state,
-      targetFps = target,
-      videoFps = video,
-      displayFps = display,
+      state = MotionState.fromKey(PlaybackSession.getPropertyString("$info/state")),
+      videoFps =
+        PlaybackSession.getPropertyDouble("estimated-vf-fps")?.takeIf { it > 0.0 }
+          ?: PlaybackSession.getPropertyDouble("container-fps")?.takeIf { it > 0.0 },
       outputFps = target.takeIf { it > 0 }?.let { MotionInterpolation.effectiveOutputFps(it, display) },
-      synthesizedPerSecond = synthesizedRate,
-      presentedPerSecond = presentedRate,
-      gpuMillis = gpuNs?.let { it / 1e6 },
-      analysisSize = size("$info/last-analysis-width", "$info/last-analysis-height"),
-      synthesisSize = size("$info/last-synthesis-width", "$info/last-synthesis-height"),
+      displayFps = display,
     )
-  }
-
-  private fun size(
-    width: String,
-    height: String,
-  ): String? {
-    val w = PlaybackSession.getPropertyInt(width)?.takeIf { it > 0 } ?: return null
-    val h = PlaybackSession.getPropertyInt(height)?.takeIf { it > 0 } ?: return null
-    return "${w}×$h"
   }
 }
 

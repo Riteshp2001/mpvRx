@@ -2878,8 +2878,6 @@
   <string name="motion_title">フレーム補間</string>
   <string name="motion_configure">フレーム補間の設定</string>
   <string name="motion_summary">GPU によるフレーム補間で動きをなめらかにします。GPU Next + Vulkan が必要です。</string>
-  <string name="motion_hdr_required">FongMi のフレーム生成では、色の出力処理を維持するため HDR をオンに保ちます。HDR をオフにする前に、フレーム生成をオフにしてください。</string>
-  <string name="motion_status_hdr_config_owned">フレーム生成には、アプリ側での HDR 設定の管理が必要です。mpv.conf の管理対象から HDR 設定を外してください。</string>
   <string name="motion_toast_on">フレーム補間: %1$s</string>
   <string name="motion_toast_off">フレーム補間はオフです</string>
   <string name="motion_renderer_enabled">GPU Next + Vulkan をオンにしました。動画を開き直してください。</string>
@@ -2888,13 +2886,8 @@
   <string name="motion_target_auto">自動</string>
   <string name="motion_target_auto_summary">ディスプレイの最大リフレッシュレートまで</string>
   <string name="motion_target_auto_value">自動（%1$d fps）</string>
-  <string name="motion_target_fixed">カスタム</string>
   <string name="motion_target_fixed_summary">指定したフレームレートまで</string>
-  <string name="motion_target_fps_title">カスタム FPS</string>
   <string name="motion_fps_value">%1$d fps</string>
-  <string name="motion_switch_display_title">ディスプレイのリフレッシュレートを合わせる</string>
-  <string name="motion_switch_display_summary">ディスプレイを目標のリフレッシュレートに切り替えます</string>
-  <string name="motion_requirements_note">SDR のみ対応しています。HDR、Dolby Vision、インターレース映像は補間せずに再生します。</string>
   <string name="motion_status_off">オフ</string>
   <string name="motion_status_waiting">動作条件が整うのを待っています</string>
   <string name="motion_rate_unknown">–</string>
@@ -2907,8 +2900,6 @@
   <string name="motion_status_renderer_restart">反映するには動画を開き直してください</string>
   <string name="motion_status_needs_display_sync">mpv.conf の video-sync を display-* に設定してください</string>
   <string name="motion_status_unsupported_gpu">この GPU は非対応です</string>
-  <string name="motion_live_title">リアルタイム情報</string>
-  <string name="motion_state_unknown">起動中…</string>
   <string name="motion_state_disabled">オフ</string>
   <string name="motion_state_ready">準備完了</string>
   <string name="motion_state_active">補間中</string>
@@ -2917,11 +2908,6 @@
   <string name="motion_state_paused">一時停止中</string>
   <string name="motion_state_unsupported">非対応</string>
   <string name="motion_state_error">エラー</string>
-  <string name="motion_stat_synthesized">生成フレーム数</string>
-  <string name="motion_stat_presented">表示フレーム数</string>
-  <string name="motion_stat_per_second">%1$s/s</string>
-  <string name="motion_stat_gpu">GPU 処理時間</string>
-  <string name="motion_stat_resolution">解像度</string>
   <string name="player_move_resize_subtitles_hint">ドラッグで移動 · 2 本指のピンチでサイズ変更</string>
   <string name="hdr_linear_inverse_ownership">Linear HDR 使用時は、アプリがこの値を yes に固定します。自分で変更するには、mpv.conf で管理するように設定してください。</string>
   <string name="hdr_linear_tone_ownership">Linear HDR 使用時は、アプリがこの値を clip に固定します。自分で変更するには、mpv.conf で管理するように設定してください。</string>

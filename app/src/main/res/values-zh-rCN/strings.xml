@@ -2879,8 +2879,6 @@
   <string name="motion_title">运动插帧</string>
   <string name="motion_configure">插帧设置</string>
   <string name="motion_summary">通过 GPU 插帧让动态画面更流畅。需要 GPU Next + Vulkan。</string>
-  <string name="motion_hdr_required">FongMi 插帧会保持 HDR 开启，以保留其色彩输出流程。请先关闭插帧，再禁用 HDR。</string>
-  <string name="motion_status_hdr_config_owned">插帧需要由应用控制 HDR。请在 mpv.conf 控制权设置中，将 HDR 选项交还给应用管理。</string>
   <string name="motion_toast_on">运动插帧：%1$s</string>
   <string name="motion_toast_off">运动插帧已关闭</string>
   <string name="motion_renderer_enabled">已启用 GPU Next + Vulkan。请重新打开视频。</string>
@@ -2889,13 +2887,8 @@
   <string name="motion_target_auto">自动</string>
   <string name="motion_target_auto_summary">最高可达屏幕的最大刷新率</string>
   <string name="motion_target_auto_value">自动（%1$d fps）</string>
-  <string name="motion_target_fixed">自定义</string>
   <string name="motion_target_fixed_summary">最高可达所选帧率</string>
-  <string name="motion_target_fps_title">自定义帧率</string>
   <string name="motion_fps_value">%1$d fps</string>
-  <string name="motion_switch_display_title">匹配屏幕刷新率</string>
-  <string name="motion_switch_display_summary">将屏幕刷新率切换为目标帧率</string>
-  <string name="motion_requirements_note">仅支持 SDR。HDR、Dolby Vision 和隔行扫描视频将原样播放。</string>
   <string name="motion_status_off">已关闭</string>
   <string name="motion_status_waiting">等待满足启用条件</string>
   <string name="motion_rate_unknown">–</string>
@@ -2908,8 +2901,6 @@
   <string name="motion_status_renderer_restart">重新打开视频以应用</string>
   <string name="motion_status_needs_display_sync">mpv.conf 中的 video-sync 必须为 display-*</string>
   <string name="motion_status_unsupported_gpu">此 GPU 不支持</string>
-  <string name="motion_live_title">实时状态</string>
-  <string name="motion_state_unknown">正在启动…</string>
   <string name="motion_state_disabled">已关闭</string>
   <string name="motion_state_ready">就绪</string>
   <string name="motion_state_active">正在插帧</string>
@@ -2918,11 +2909,6 @@
   <string name="motion_state_paused">已暂停</string>
   <string name="motion_state_unsupported">不支持</string>
   <string name="motion_state_error">错误</string>
-  <string name="motion_stat_synthesized">生成帧数</string>
-  <string name="motion_stat_presented">显示帧数</string>
-  <string name="motion_stat_per_second">%1$s/s</string>
-  <string name="motion_stat_gpu">GPU 耗时</string>
-  <string name="motion_stat_resolution">分辨率</string>
   <string name="player_move_resize_subtitles_hint">拖动以移动 · 双指捏合以调整大小</string>
   <string name="hdr_linear_inverse_ownership">使用线性 HDR 时，应用会将此选项锁定为 yes。将其交由 mpv.conf 管理即可自行控制。</string>
   <string name="hdr_linear_tone_ownership">使用线性 HDR 时，应用会将此选项锁定为 clip。将其交由 mpv.conf 管理即可自行控制。</string>

@@ -2999,8 +2999,6 @@
   <string name="motion_title">استيفاء الحركة</string>
   <string name="motion_configure">إعدادات الحركة</string>
   <string name="motion_summary">حركة أكثر سلاسة باستيفاء الإطارات عبر GPU. يتطلب GPU Next + Vulkan.</string>
-  <string name="motion_hdr_required">يُبقي توليد الإطارات في FongMi وضع HDR مفعّلًا للحفاظ على مسار إخراج الألوان. أوقف توليد الإطارات قبل تعطيل HDR.</string>
-  <string name="motion_status_hdr_config_owned">يتطلب توليد الإطارات أن يتحكم التطبيق في HDR. أعد التحكم بخيارات HDR إلى التطبيق ضمن إعدادات التحكم بخيارات mpv.conf.</string>
   <string name="motion_toast_on">استيفاء الحركة: %1$s</string>
   <string name="motion_toast_off">استيفاء الحركة متوقف</string>
   <string name="motion_renderer_enabled">تم تفعيل GPU Next + Vulkan. أعد فتح الفيديو.</string>
@@ -3009,13 +3007,8 @@
   <string name="motion_target_auto">تلقائي</string>
   <string name="motion_target_auto_summary">حتى أقصى معدل تحديث للشاشة</string>
   <string name="motion_target_auto_value">تلقائي (%1$d fps)</string>
-  <string name="motion_target_fixed">مخصص</string>
   <string name="motion_target_fixed_summary">حتى المعدل الذي تختاره</string>
-  <string name="motion_target_fps_title">معدل إطارات مخصص</string>
   <string name="motion_fps_value">%1$d fps</string>
-  <string name="motion_switch_display_title">مطابقة معدل تحديث الشاشة</string>
-  <string name="motion_switch_display_summary">تغيير معدل تحديث الشاشة إلى المعدل المستهدف</string>
-  <string name="motion_requirements_note">لـ SDR فقط. يُشغّل فيديو HDR وDolby Vision والفيديو المتداخل دون تغيير.</string>
   <string name="motion_status_off">متوقف</string>
   <string name="motion_status_waiting">بانتظار استيفاء المتطلبات</string>
   <string name="motion_rate_unknown">–</string>
@@ -3028,8 +3021,6 @@
   <string name="motion_status_renderer_restart">أعد فتح الفيديو لتطبيق التغيير</string>
   <string name="motion_status_needs_display_sync">يجب أن تكون قيمة video-sync في mpv.conf من النمط display-*</string>
   <string name="motion_status_unsupported_gpu">غير مدعوم على وحدة GPU هذه</string>
-  <string name="motion_live_title">مباشر</string>
-  <string name="motion_state_unknown">جارٍ البدء…</string>
   <string name="motion_state_disabled">متوقف</string>
   <string name="motion_state_ready">جاهز</string>
   <string name="motion_state_active">جارٍ الاستيفاء</string>
@@ -3038,11 +3029,6 @@
   <string name="motion_state_paused">متوقف مؤقتًا</string>
   <string name="motion_state_unsupported">غير مدعوم</string>
   <string name="motion_state_error">خطأ</string>
-  <string name="motion_stat_synthesized">الإطارات المولّدة</string>
-  <string name="motion_stat_presented">الإطارات المعروضة</string>
-  <string name="motion_stat_per_second">%1$s/s</string>
-  <string name="motion_stat_gpu">زمن GPU</string>
-  <string name="motion_stat_resolution">الدقة</string>
   <string name="player_move_resize_subtitles_hint">اسحب للتحريك · قرّب أو باعد بإصبعين لتغيير الحجم</string>
   <string name="hdr_linear_inverse_ownership">يثبّت التطبيق هذا الخيار على yes لوضع HDR الخطي. أسند التحكم به إلى mpv.conf للتحكم فيه بنفسك.</string>
   <string name="hdr_linear_tone_ownership">يثبّت التطبيق هذا الخيار على clip لوضع HDR الخطي. أسند التحكم به إلى mpv.conf للتحكم فيه بنفسك.</string>

@@ -2901,8 +2901,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="motion_title">Bewegungsinterpolation</string>
   <string name="motion_configure">Bewegungseinstellungen</string>
   <string name="motion_summary">Flüssigere Bewegungen durch GPU-Zwischenbildberechnung. Erfordert GPU Next + Vulkan.</string>
-  <string name="motion_hdr_required">Die FongMi-Zwischenbildberechnung lässt HDR aktiviert, um ihre Farbausgabe beizubehalten. Vor dem Deaktivieren von HDR die Zwischenbildberechnung ausschalten.</string>
-  <string name="motion_status_hdr_config_owned">Die Zwischenbildberechnung erfordert eine HDR-Steuerung durch die App. Die HDR-Optionen in der Zuständigkeitsverwaltung von mpv.conf wieder der App zuweisen.</string>
   <string name="motion_toast_on">Bewegungsinterpolation: %1$s</string>
   <string name="motion_toast_off">Bewegungsinterpolation aus</string>
   <string name="motion_renderer_enabled">GPU Next + Vulkan aktiviert. Video erneut öffnen.</string>
@@ -2911,13 +2909,8 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="motion_target_auto">Automatisch</string>
   <string name="motion_target_auto_summary">Bis zur maximalen Bildwiederholrate des Displays</string>
   <string name="motion_target_auto_value">Automatisch (%1$d fps)</string>
-  <string name="motion_target_fixed">Benutzerdefiniert</string>
   <string name="motion_target_fixed_summary">Bis zur gewählten Bildrate</string>
-  <string name="motion_target_fps_title">Eigene Bildrate</string>
   <string name="motion_fps_value">%1$d fps</string>
-  <string name="motion_switch_display_title">Bildwiederholrate des Displays anpassen</string>
-  <string name="motion_switch_display_summary">Display auf die Zielbildrate umschalten</string>
-  <string name="motion_requirements_note">Nur SDR. HDR, Dolby Vision und Videos mit Zeilensprungverfahren werden unverändert wiedergegeben.</string>
   <string name="motion_status_off">Aus</string>
   <string name="motion_status_waiting">Warten auf erfüllte Voraussetzungen</string>
   <string name="motion_rate_unknown">–</string>
@@ -2930,8 +2923,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="motion_status_renderer_restart">Video zum Anwenden erneut öffnen</string>
   <string name="motion_status_needs_display_sync">video-sync in mpv.conf muss dem Muster display-* entsprechen</string>
   <string name="motion_status_unsupported_gpu">Auf dieser GPU nicht unterstützt</string>
-  <string name="motion_live_title">Echtzeit</string>
-  <string name="motion_state_unknown">Wird gestartet…</string>
   <string name="motion_state_disabled">Aus</string>
   <string name="motion_state_ready">Bereit</string>
   <string name="motion_state_active">Zwischenbilder werden berechnet</string>
@@ -2940,11 +2931,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="motion_state_paused">Pausiert</string>
   <string name="motion_state_unsupported">Nicht unterstützt</string>
   <string name="motion_state_error">Fehler</string>
-  <string name="motion_stat_synthesized">Erzeugt</string>
-  <string name="motion_stat_presented">Angezeigt</string>
-  <string name="motion_stat_per_second">%1$s/s</string>
-  <string name="motion_stat_gpu">GPU-Zeit</string>
-  <string name="motion_stat_resolution">Auflösung</string>
   <string name="player_move_resize_subtitles_hint">Zum Verschieben ziehen · Größe mit zwei Fingern ändern</string>
   <string name="hdr_linear_inverse_ownership">Die App setzt diesen Wert für lineares HDR fest auf yes. Weise die Option mpv.conf zu, um sie selbst zu steuern.</string>
   <string name="hdr_linear_tone_ownership">Die App setzt diesen Wert für lineares HDR fest auf clip. Weise die Option mpv.conf zu, um sie selbst zu steuern.</string>

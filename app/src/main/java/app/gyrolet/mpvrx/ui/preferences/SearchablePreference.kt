@@ -1790,9 +1790,7 @@ object SearchablePreferences {
           screen = DecoderPreferencesScreen,
           anchorItemIndex = 3,
           SearchEntrySpec(R.string.motion_title, listOf("motion", "interpolation", "memc", "smooth", "fps", "60fps", "frame")),
-          SearchEntrySpec(R.string.motion_target_title, listOf("target", "fps", "auto", "refresh rate", "motion"), R.string.motion_title),
-          SearchEntrySpec(R.string.motion_target_fps_title, listOf("target", "fps", "custom", "motion"), R.string.motion_title),
-          SearchEntrySpec(R.string.motion_switch_display_title, listOf("refresh rate", "display", "hz", "motion"), R.string.motion_title),
+          SearchEntrySpec(R.string.motion_target_title, listOf("target", "fps", "auto", "60", "30", "24", "refresh rate", "motion"), R.string.motion_title),
         )
       }
 

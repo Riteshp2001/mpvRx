@@ -2947,8 +2947,6 @@
   <string name="motion_title">Интерполяция движения</string>
   <string name="motion_configure">Настройки интерполяции</string>
   <string name="motion_summary">Более плавное движение благодаря интерполяции кадров на GPU. Требуется GPU Next + Vulkan.</string>
-  <string name="motion_hdr_required">Генерация кадров FongMi сохраняет HDR включённым для корректного вывода цвета. Прежде чем отключать HDR, отключите генерацию кадров.</string>
-  <string name="motion_status_hdr_config_owned">Для генерации кадров HDR должен управляться приложением. В настройках управления параметрами mpv.conf верните параметры HDR под управление приложения.</string>
   <string name="motion_toast_on">Интерполяция движения: %1$s</string>
   <string name="motion_toast_off">Интерполяция движения отключена</string>
   <string name="motion_renderer_enabled">GPU Next + Vulkan включены. Откройте видео заново.</string>
@@ -2957,13 +2955,8 @@
   <string name="motion_target_auto">Автоматически</string>
   <string name="motion_target_auto_summary">До максимальной частоты обновления экрана</string>
   <string name="motion_target_auto_value">Автоматически (%1$d fps)</string>
-  <string name="motion_target_fixed">Своя частота</string>
   <string name="motion_target_fixed_summary">До выбранной частоты</string>
-  <string name="motion_target_fps_title">Своя частота кадров</string>
   <string name="motion_fps_value">%1$d fps</string>
-  <string name="motion_switch_display_title">Согласовывать частоту обновления экрана</string>
-  <string name="motion_switch_display_summary">Переключать экран на целевую частоту</string>
-  <string name="motion_requirements_note">Только SDR. HDR, Dolby Vision и видео с чересстрочной развёрткой воспроизводятся без изменений.</string>
   <string name="motion_status_off">Отключено</string>
   <string name="motion_status_waiting">Ожидание выполнения требований</string>
   <string name="motion_rate_unknown">–</string>
@@ -2976,8 +2969,6 @@
   <string name="motion_status_renderer_restart">Откройте видео заново для применения</string>
   <string name="motion_status_needs_display_sync">В mpv.conf параметр video-sync должен иметь значение display-*</string>
   <string name="motion_status_unsupported_gpu">Не поддерживается этим GPU</string>
-  <string name="motion_live_title">В реальном времени</string>
-  <string name="motion_state_unknown">Запуск…</string>
   <string name="motion_state_disabled">Отключено</string>
   <string name="motion_state_ready">Готово</string>
   <string name="motion_state_active">Интерполяция</string>
@@ -2986,11 +2977,6 @@
   <string name="motion_state_paused">Приостановлено</string>
   <string name="motion_state_unsupported">Не поддерживается</string>
   <string name="motion_state_error">Ошибка</string>
-  <string name="motion_stat_synthesized">Сгенерировано</string>
-  <string name="motion_stat_presented">Показано</string>
-  <string name="motion_stat_per_second">%1$s/s</string>
-  <string name="motion_stat_gpu">Время GPU</string>
-  <string name="motion_stat_resolution">Разрешение</string>
   <string name="player_move_resize_subtitles_hint">Перетащите для перемещения · Сведите или разведите два пальца для изменения размера</string>
   <string name="hdr_linear_inverse_ownership">Для Linear HDR приложение принудительно задаёт yes. Передайте этот параметр под управление mpv.conf, чтобы менять его самостоятельно.</string>
   <string name="hdr_linear_tone_ownership">Для Linear HDR приложение принудительно задаёт clip. Передайте этот параметр под управление mpv.conf, чтобы менять его самостоятельно.</string>

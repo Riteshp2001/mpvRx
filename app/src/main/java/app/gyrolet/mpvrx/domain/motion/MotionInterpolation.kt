@@ -16,30 +16,25 @@ import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
-import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
-import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
-import app.gyrolet.mpvrx.ui.player.HdrScreenMode
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import java.util.Locale
 import kotlin.math.roundToInt
 
 /** How the motion interpolation target rate is chosen. */
 enum class MotionTargetMode(
-  @StringRes val titleRes: Int,
   @StringRes val summaryRes: Int,
 ) {
   /** Interpolate up to the display's highest refresh rate. */
-  AUTO(R.string.motion_target_auto, R.string.motion_target_auto_summary),
+  AUTO(R.string.motion_target_auto_summary),
 
-  /** Interpolate up to a rate the user picks. */
-  FIXED(R.string.motion_target_fixed, R.string.motion_target_fixed_summary),
+  /** Interpolate up to one of [MotionInterpolation.FIXED_TARGET_FPS]. */
+  FIXED(R.string.motion_target_fixed_summary),
 }
 
 data class MotionConfig(
   val enabled: Boolean,
   val mode: MotionTargetMode,
   val targetFps: Int,
-  val switchDisplayRate: Boolean,
 )
 
 /**
@@ -60,8 +55,6 @@ enum class MotionAvailability(
 
   /** GPU Next and Vulkan must both be selected in the Decoder settings. */
   NEEDS_RENDERER(R.string.motion_status_needs_renderer, true),
-
-  HDR_CONFIG_OWNED(R.string.motion_status_hdr_config_owned, true),
 
   /** The bundled mpvlib predates the motion core. */
   UNSUPPORTED_LIBMPV(R.string.motion_status_unsupported_libmpv, false),
@@ -95,6 +88,9 @@ enum class MotionState(
   ;
 
   companion object {
+    /** States in which the core generates nothing, worth naming instead of showing rates. */
+    val NOT_GENERATING = setOf(SOURCE, IDLE, PAUSED, UNSUPPORTED, ERROR)
+
     fun fromKey(key: String?): MotionState? = entries.firstOrNull { it.key == key }
   }
 }
@@ -104,8 +100,9 @@ enum class MotionState(
  *
  * The motion core estimates motion between two real frames and synthesizes the frames in
  * between, up to the target rate. It replaces mpv's `interpolation` frame mixing, works with HW+
- * decoding, needs display-synced playback, and passes HDR, Dolby Vision and interlaced frames
- * through unchanged.
+ * decoding and needs display-synced playback. It checks every source frame itself: SDR, HDR10 and
+ * Dolby Vision video is interpolated whatever the HDR output setting, while formats it cannot
+ * capture, such as HLG, play through unchanged.
  */
 object MotionInterpolation {
   const val OPTION = "motion-interpolation"
@@ -114,37 +111,12 @@ object MotionInterpolation {
   const val MAX_TARGET_FPS = 240
   const val DEFAULT_TARGET_FPS = 60
 
-  /** One-tap targets with their own Material symbol, in the order the player sheet shows them. */
-  val ICON_TARGET_FPS = listOf(60, 30, 24)
-
-  /** Further one-tap targets, offered up to the display's highest refresh rate. */
-  val EXTRA_TARGET_FPS = listOf(48, 90, 120, 144, 165, 240)
+  /** The rates a fixed target can use; each has its own Material symbol in the player sheet. */
+  val FIXED_TARGET_FPS = listOf(60, 30, 24)
 
   /** Only the FongMi APK ships the motion core. */
   val isBuildSupported: Boolean
     get() = BuildConfig.MPV_SUPPORTS_MOTION_INTERPOLATION
-
-  fun requiresHdr(preferences: DecoderPreferences): Boolean =
-    isBuildSupported && preferences.motionInterpolationEnabled.get()
-
-  fun setEnabled(preferences: DecoderPreferences, enabled: Boolean) {
-    if (enabled && isBuildSupported) enableHdr(preferences)
-    preferences.motionInterpolationEnabled.set(enabled)
-  }
-
-  fun ensureHdrEnabled(preferences: DecoderPreferences) {
-    if (requiresHdr(preferences)) enableHdr(preferences)
-  }
-
-  private fun enableHdr(preferences: DecoderPreferences) {
-    if (preferences.hdrScreenMode.get() == HdrScreenMode.OFF) {
-      val savedMode = preferences.lastHdrMode.get()
-      preferences.hdrScreenMode.set(
-        if (savedMode == HdrScreenMode.OFF) HdrScreenMode.defaultEnabledMode else savedMode,
-      )
-    }
-    if (!preferences.hdrScreenOutput.get()) preferences.hdrScreenOutput.set(true)
-  }
 
   /** Whether mpvRx switched the motion core on in the current mpv core, as opposed to mpv.conf. */
   @Volatile var appApplied: Boolean = false
@@ -168,17 +140,27 @@ object MotionInterpolation {
       !isBuildSupported -> MotionAvailability.UNSUPPORTED_BUILD
       !isDeviceSupported(context) -> MotionAvailability.UNSUPPORTED_DEVICE
       !isRendererSelected(preferences) -> MotionAvailability.NEEDS_RENDERER
-      MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT) -> MotionAvailability.HDR_CONFIG_OWNED
       else -> MotionAvailability.READY
     }
 
   fun config(preferences: DecoderPreferences): MotionConfig =
-    MotionConfig(
+    config(
       enabled = preferences.motionInterpolationEnabled.get(),
       mode = preferences.motionInterpolationMode.get(),
-      targetFps = preferences.motionInterpolationTargetFps.get().coerceIn(MIN_TARGET_FPS, MAX_TARGET_FPS),
-      switchDisplayRate = preferences.motionInterpolationSwitchDisplayRate.get(),
+      targetFps = preferences.motionInterpolationTargetFps.get(),
     )
+
+  /** Earlier versions stored any rate; one that [FIXED_TARGET_FPS] no longer offers reads as Auto. */
+  fun config(
+    enabled: Boolean,
+    mode: MotionTargetMode,
+    targetFps: Int,
+  ): MotionConfig =
+    if (targetFps in FIXED_TARGET_FPS) {
+      MotionConfig(enabled, mode, targetFps)
+    } else {
+      MotionConfig(enabled, MotionTargetMode.AUTO, DEFAULT_TARGET_FPS)
+    }
 
   private fun display(context: Context): Display? =
     context.getSystemService(DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY)
@@ -221,19 +203,17 @@ object MotionInterpolation {
   }
 
   /**
-   * The rate to request for the playback Surface while motion interpolation runs, or null to
-   * leave the display rate to the system rather than lock it to the video's rate.
+   * The rate to request for the playback Surface while motion interpolation runs, so the display
+   * can show every synthesized frame. Null when the display's rates are unknown.
    */
   fun surfaceFrameRate(
     config: MotionConfig,
     context: Context,
-  ): Float? {
-    if (!config.switchDisplayRate) return null
-    return when (config.mode) {
+  ): Float? =
+    when (config.mode) {
       MotionTargetMode.AUTO -> maxDisplayRefreshRate(context)
       MotionTargetMode.FIXED -> config.targetFps.toFloat()
     }
-  }
 
   /** Android's mpv contexts cannot report the refresh rate, which display sync needs. */
   fun displayFpsOverride(context: Context): String? =

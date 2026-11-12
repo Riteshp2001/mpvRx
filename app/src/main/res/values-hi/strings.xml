@@ -2812,8 +2812,6 @@
   <string name="motion_title">गति इंटरपोलेशन</string>
   <string name="motion_configure">गति सेटिंग्स</string>
   <string name="motion_summary">GPU फ़्रेम इंटरपोलेशन से अधिक सहज गति। GPU Next + Vulkan ज़रूरी है।</string>
-  <string name="motion_hdr_required">FongMi फ़्रेम जनरेशन अपनी रंग आउटपुट प्रक्रिया बनाए रखने के लिए HDR चालू रखता है। HDR बंद करने से पहले फ़्रेम जनरेशन बंद करें।</string>
-  <string name="motion_status_hdr_config_owned">फ़्रेम जनरेशन के लिए ऐप द्वारा नियंत्रित HDR ज़रूरी है। mpv.conf नियंत्रण सेटिंग्स में HDR विकल्पों का नियंत्रण वापस ऐप को दें।</string>
   <string name="motion_toast_on">गति इंटरपोलेशन: %1$s</string>
   <string name="motion_toast_off">गति इंटरपोलेशन बंद</string>
   <string name="motion_renderer_enabled">GPU Next + Vulkan चालू है। वीडियो फिर से खोलें।</string>
@@ -2822,13 +2820,8 @@
   <string name="motion_target_auto">स्वचालित</string>
   <string name="motion_target_auto_summary">डिस्प्ले की अधिकतम रिफ़्रेश दर तक</string>
   <string name="motion_target_auto_value">स्वचालित (%1$d fps)</string>
-  <string name="motion_target_fixed">कस्टम</string>
   <string name="motion_target_fixed_summary">आपकी चुनी हुई दर तक</string>
-  <string name="motion_target_fps_title">कस्टम FPS</string>
   <string name="motion_fps_value">%1$d fps</string>
-  <string name="motion_switch_display_title">डिस्प्ले की रिफ़्रेश दर मिलाएँ</string>
-  <string name="motion_switch_display_summary">डिस्प्ले को लक्षित दर पर बदलें</string>
-  <string name="motion_requirements_note">केवल SDR। HDR, Dolby Vision और इंटरलेस्ड वीडियो बिना बदलाव के चलते हैं।</string>
   <string name="motion_status_off">बंद</string>
   <string name="motion_status_waiting">ज़रूरी शर्तें पूरी होने की प्रतीक्षा में</string>
   <string name="motion_rate_unknown">–</string>
@@ -2841,8 +2834,6 @@
   <string name="motion_status_renderer_restart">लागू करने के लिए वीडियो फिर से खोलें</string>
   <string name="motion_status_needs_display_sync">mpv.conf में video-sync का मान display-* होना चाहिए</string>
   <string name="motion_status_unsupported_gpu">इस GPU पर समर्थित नहीं है</string>
-  <string name="motion_live_title">वर्तमान स्थिति</string>
-  <string name="motion_state_unknown">शुरू हो रहा है…</string>
   <string name="motion_state_disabled">बंद</string>
   <string name="motion_state_ready">तैयार</string>
   <string name="motion_state_active">इंटरपोलेशन जारी है</string>
@@ -2851,11 +2842,6 @@
   <string name="motion_state_paused">रुका हुआ</string>
   <string name="motion_state_unsupported">असमर्थित</string>
   <string name="motion_state_error">त्रुटि</string>
-  <string name="motion_stat_synthesized">बनाए गए</string>
-  <string name="motion_stat_presented">दिखाए गए</string>
-  <string name="motion_stat_per_second">%1$s/s</string>
-  <string name="motion_stat_gpu">GPU समय</string>
-  <string name="motion_stat_resolution">रिज़ॉल्यूशन</string>
   <string name="player_move_resize_subtitles_hint">खिसकाने के लिए खींचें · आकार बदलने के लिए दो उँगलियों से पिंच करें</string>
   <string name="hdr_linear_inverse_ownership">लीनियर HDR के लिए ऐप इसे yes पर स्थिर रखता है। स्वयं नियंत्रित करने के लिए इसका नियंत्रण mpv.conf को दें।</string>
   <string name="hdr_linear_tone_ownership">लीनियर HDR के लिए ऐप इसे clip पर स्थिर रखता है। स्वयं नियंत्रित करने के लिए इसका नियंत्रण mpv.conf को दें।</string>

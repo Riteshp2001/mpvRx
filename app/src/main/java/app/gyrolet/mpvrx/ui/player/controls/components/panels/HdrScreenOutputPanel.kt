@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.HdrScreenMode
-import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
@@ -55,7 +54,6 @@ fun HdrScreenOutputPanel(
   val mode by viewModel.hdrScreenMode.collectAsState()
   val pipelineReady by viewModel.isHdrScreenOutputPipelineReady.collectAsState()
   val isLinearHdrAvailable by viewModel.isLinearHdrAvailable.collectAsState()
-  val motion by viewModel.motionInterpolation.state.collectAsState()
 
   DraggablePanel(
     modifier = modifier,
@@ -72,13 +70,6 @@ fun HdrScreenOutputPanel(
     ) {
       if (!pipelineReady) {
         HdrPipelineUnavailableStatus()
-      }
-      if (MotionInterpolation.isBuildSupported && motion.config.enabled) {
-        Text(
-          text = stringResource(app.gyrolet.mpvrx.R.string.motion_hdr_required),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
       }
       // OFF is the default state controlled by the HDR toggle button, not shown here.
       // Only the four selectable HDR modes are presented in the panel.

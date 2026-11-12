@@ -12,8 +12,6 @@ package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -23,8 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -39,19 +35,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.motion.MotionAvailability
-import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.domain.motion.MotionState
 import app.gyrolet.mpvrx.domain.motion.MotionTargetMode
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
-import app.gyrolet.mpvrx.presentation.components.SliderItem
 import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -66,10 +59,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
-import java.util.Locale
-import kotlin.math.roundToInt
 
-private const val LIVE_REFRESH_MS = 1_000L
+private const val STATUS_REFRESH_MS = 1_000L
 
 /** A one-tap target with its Material symbol; a null rate is Auto. */
 private data class FpsTile(
@@ -77,39 +68,31 @@ private data class FpsTile(
   val icon: AppIcon,
 )
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MotionInterpolationSheet(
   controller: MotionInterpolationController,
   onDismissRequest: () -> Unit,
 ) {
-  val context = LocalContext.current
   val preferences = koinInject<DecoderPreferences>()
   val state by controller.state.collectAsState()
   val config = state.config
   val availability = state.availability
+  val running = state.running
   val optionsEnabled =
     availability != MotionAvailability.UNSUPPORTED_BUILD &&
       availability != MotionAvailability.UNSUPPORTED_DEVICE
 
+  LaunchedEffect(Unit) { controller.refresh() }
+
+  // The video and display rates settle a moment after a change, so follow them while open.
   var live by remember { mutableStateOf(MotionLive.EMPTY) }
-  LaunchedEffect(Unit) {
-    controller.refresh()
+  LaunchedEffect(running) {
+    if (!running) return@LaunchedEffect
     while (isActive) {
       live = withContext(Dispatchers.IO) { controller.live() }
-      delay(LIVE_REFRESH_MS)
+      delay(STATUS_REFRESH_MS)
     }
   }
-
-  val maxDisplayRate = remember { MotionInterpolation.maxDisplayRefreshRate(context)?.roundToInt() }
-  val sliderMax = maxDisplayRate?.coerceIn(60, MotionInterpolation.MAX_TARGET_FPS) ?: MotionInterpolation.MAX_TARGET_FPS
-  val extraRates =
-    remember(maxDisplayRate) {
-      (MotionInterpolation.EXTRA_TARGET_FPS + listOfNotNull(maxDisplayRate))
-        .filter { it !in MotionInterpolation.ICON_TARGET_FPS && it <= sliderMax }
-        .distinct()
-        .sorted()
-    }
 
   PlayerSheet(
     onDismissRequest = onDismissRequest,
@@ -123,7 +106,6 @@ fun MotionInterpolationSheet(
           onClick = {
             preferences.motionInterpolationMode.delete()
             preferences.motionInterpolationTargetFps.delete()
-            preferences.motionInterpolationSwitchDisplayRate.delete()
           },
           enabled = optionsEnabled,
         ) {
@@ -142,20 +124,11 @@ fun MotionInterpolationSheet(
     ) {
       MasterSwitch(
         checked = config.enabled,
-        running = state.running,
+        running = running,
         availability = availability,
         live = live,
         onCheckedChange = controller::setEnabled,
       )
-
-      if (MotionInterpolation.isBuildSupported && config.enabled) {
-        Text(
-          text = stringResource(R.string.motion_hdr_required),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-        )
-      }
 
       if (availability != MotionAvailability.READY) {
         BarrierCard(
@@ -205,56 +178,8 @@ fun MotionInterpolationSheet(
           }
         }
 
-        if (extraRates.isNotEmpty()) {
-          FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-          ) {
-            extraRates.forEach { fps ->
-              SheetChip(
-                label = stringResource(R.string.motion_fps_value, fps),
-                selected = config.mode == MotionTargetMode.FIXED && config.targetFps == fps,
-                onClick = { controller.selectTarget(MotionTargetMode.FIXED, fps) },
-              )
-            }
-          }
-        }
-
         Text(
           text = stringResource(config.mode.summaryRes),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-        )
-
-        if (config.mode == MotionTargetMode.FIXED) {
-          SliderItem(
-            label = stringResource(R.string.motion_target_fps_title),
-            value = config.targetFps.coerceAtMost(sliderMax),
-            valueText = stringResource(R.string.motion_fps_value, config.targetFps),
-            onChange = { preferences.motionInterpolationTargetFps.set(it) },
-            min = MotionInterpolation.MIN_TARGET_FPS,
-            max = sliderMax,
-            hapticLandmarks = listOf(24, 30, 48, 60, 90, 120),
-          )
-        }
-
-        SwitchRow(
-          title = stringResource(R.string.motion_switch_display_title),
-          summary = stringResource(R.string.motion_switch_display_summary),
-          checked = config.switchDisplayRate,
-          onCheckedChange = { preferences.motionInterpolationSwitchDisplayRate.set(it) },
-        )
-
-        if (state.running) {
-          Divider()
-          SectionLabel(stringResource(R.string.motion_live_title))
-          LiveStats(live)
-        }
-
-        Text(
-          text = stringResource(R.string.motion_requirements_note),
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
@@ -276,18 +201,19 @@ private fun MasterSwitch(
   // Switching off is always allowed; switching on waits for the hard requirements.
   val toggleEnabled = checked || !availability.blocksEnabling
   val unknown = stringResource(R.string.motion_rate_unknown)
-  val active = running && live.state == MotionState.ACTIVE
+  val liveState = live.state
   val status =
     when {
-      running ->
+      !running -> stringResource(if (checked) R.string.motion_status_waiting else R.string.motion_status_off)
+      // Why nothing is being generated right now: passthrough, paused, no frames, or a GPU error.
+      liveState != null && liveState in MotionState.NOT_GENERATING -> stringResource(liveState.labelRes)
+      else ->
         stringResource(
           R.string.motion_rates,
           live.videoFps?.let(::formatFps) ?: unknown,
           live.outputFps?.let(::formatFps) ?: unknown,
           live.displayFps?.let(::formatFps) ?: unknown,
         )
-      checked -> stringResource(R.string.motion_status_waiting)
-      else -> stringResource(R.string.motion_status_off)
     }
   Row(
     modifier =
@@ -305,7 +231,12 @@ private fun MasterSwitch(
     Icon(
       imageVector = Icons.RoundedFilled.MotionInterpolation,
       contentDescription = null,
-      tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+      tint =
+        if (running && liveState == MotionState.ACTIVE) {
+          MaterialTheme.colorScheme.primary
+        } else {
+          MaterialTheme.colorScheme.onSurfaceVariant
+        },
       modifier = Modifier.size(28.dp),
     )
     Column(Modifier.weight(1f)) {
@@ -317,7 +248,13 @@ private fun MasterSwitch(
       Text(
         status,
         style = MaterialTheme.typography.bodySmall,
-        color = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        color =
+          when {
+            running && (liveState == MotionState.ERROR || liveState == MotionState.UNSUPPORTED) ->
+              MaterialTheme.colorScheme.error
+            running -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+          },
       )
     }
     IconSwitch(checked = checked, onCheckedChange = null, enabled = toggleEnabled)
@@ -353,62 +290,6 @@ private fun BarrierCard(
   }
 }
 
-/** mpv's own motion statistics: what the core is doing, how often, and what it costs the GPU. */
-@Composable
-private fun LiveStats(live: MotionLive) {
-  val shape = MaterialTheme.shapes.large
-  Surface(
-    modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium),
-    shape = shape,
-    color = playerSheetSelectionColor(false),
-  ) {
-    Column(
-      modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-      verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-      val state = live.state
-      Text(
-        stringResource(state?.labelRes ?: R.string.motion_state_unknown),
-        style = MaterialTheme.typography.titleSmall,
-        color =
-          when (state) {
-            MotionState.ACTIVE -> MaterialTheme.colorScheme.primary
-            MotionState.ERROR, MotionState.UNSUPPORTED -> MaterialTheme.colorScheme.error
-            else -> MaterialTheme.colorScheme.onSurface
-          },
-      )
-      live.synthesizedPerSecond?.let {
-        StatLine(stringResource(R.string.motion_stat_synthesized), stringResource(R.string.motion_stat_per_second, formatFps(it)))
-      }
-      live.presentedPerSecond?.let {
-        StatLine(stringResource(R.string.motion_stat_presented), stringResource(R.string.motion_stat_per_second, formatFps(it)))
-      }
-      live.gpuMillis?.let {
-        StatLine(stringResource(R.string.motion_stat_gpu), String.format(Locale.US, "%.2f ms", it))
-      }
-      if (live.analysisSize != null && live.synthesisSize != null) {
-        StatLine(stringResource(R.string.motion_stat_resolution), "${live.analysisSize} ➜ ${live.synthesisSize}")
-      }
-    }
-  }
-}
-
-@Composable
-private fun StatLine(
-  label: String,
-  value: String,
-) {
-  Row(verticalAlignment = Alignment.CenterVertically) {
-    Text(
-      label,
-      style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-      modifier = Modifier.weight(1f),
-    )
-    Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium)
-  }
-}
-
 @Composable
 private fun FpsTileButton(
   icon: AppIcon,
@@ -441,54 +322,6 @@ private fun FpsTileButton(
       color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
       maxLines = 1,
     )
-  }
-}
-
-@Composable
-private fun SheetChip(
-  label: String,
-  selected: Boolean,
-  onClick: () -> Unit,
-) {
-  FilterChip(
-    selected = selected,
-    onClick = onClick,
-    label = { Text(label) },
-    modifier = Modifier.tvFocusHighlight(MaterialTheme.shapes.small),
-    colors =
-      FilterChipDefaults.filterChipColors(
-        containerColor = playerSheetSelectionColor(false),
-        selectedContainerColor = playerSheetSelectionColor(true),
-        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-      ),
-  )
-}
-
-@Composable
-private fun SwitchRow(
-  title: String,
-  summary: String,
-  checked: Boolean,
-  onCheckedChange: (Boolean) -> Unit,
-) {
-  val shape = MaterialTheme.shapes.medium
-  Row(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .padding(horizontal = MaterialTheme.spacing.medium)
-        .heightIn(min = 48.dp)
-        .tvFocusHighlight(shape, focusedScale = 1.01f)
-        .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
-        .padding(horizontal = 12.dp, vertical = 8.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(12.dp),
-  ) {
-    Column(Modifier.weight(1f)) {
-      Text(title, style = MaterialTheme.typography.bodyMedium)
-      Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    IconSwitch(checked = checked, onCheckedChange = null)
   }
 }
 

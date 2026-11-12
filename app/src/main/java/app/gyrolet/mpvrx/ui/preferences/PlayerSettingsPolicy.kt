@@ -123,8 +123,6 @@ private val liveDecoderSettings = setOf(
   // MotionInterpolationController applies these to the running player immediately.
   R.string.motion_title,
   R.string.motion_target_title,
-  R.string.motion_target_fps_title,
-  R.string.motion_switch_display_title,
   R.string.pref_decoder_dolby_vision_direct_title,
 )
 

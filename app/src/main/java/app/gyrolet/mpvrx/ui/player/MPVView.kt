@@ -358,7 +358,6 @@ class MPVView(
   }
 
   private fun computeInitInputs(): InitInputs {
-    MotionInterpolation.ensureHdrEnabled(decoderPreferences)
     val screenshotDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
     screenshotDirectory.mkdirs()
     return InitInputs(
@@ -820,7 +819,8 @@ class MPVView(
           // A target at or below the video's rate generates nothing; keep the video's own rate.
           content != null && MotionInterpolation.mpvTargetFps(config, context) <= content * 1.01 ->
             content.toFloat()
-          // 0 withdraws the content-rate vote, so the display is not locked to the video's rate.
+          // The target rate, so the display can show every synthesized frame; 0 withdraws the
+          // content-rate vote when the display's rates are unknown.
           else -> MotionInterpolation.surfaceFrameRate(config, context) ?: 0f
         }
       } else {
