@@ -185,7 +185,7 @@ fun BrowserTopBar(
   onRestoreClick: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
   forceHeadlineSmall: Boolean = false,
-  showBetaBadge: Boolean = false,
+  titleBadge: String? = null,
   customTitle: (@Composable () -> Unit)? = null,
 ) {
   val reducedMotion = AppMotion.shouldReduceMotion()
@@ -259,7 +259,7 @@ fun BrowserTopBar(
         onTitleDoubleTap = onTitleDoubleTap,
         colors = colors,
         forceHeadlineSmall = forceHeadlineSmall,
-        showBetaBadge = showBetaBadge,
+        titleBadge = titleBadge,
         customTitle = customTitle,
       )
     }
@@ -287,7 +287,7 @@ private fun NormalTopBar(
   onTitleDoubleTap: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
   forceHeadlineSmall: Boolean = false,
-  showBetaBadge: Boolean = false,
+  titleBadge: String? = null,
   customTitle: (@Composable () -> Unit)? = null,
 ) {
   val preferences = koinInject<AppearancePreferences>()
@@ -363,12 +363,6 @@ private fun NormalTopBar(
       if (customTitle != null) {
         customTitle()
       } else {
-        val betaBadgeSuffix =
-          if (showBetaBadge) {
-            stringResource(R.string.ui_beta_badge_suffix)
-          } else {
-            ""
-          }
         val titleModifier =
           Modifier
             .onGloballyPositioned { coordinates ->
@@ -412,7 +406,7 @@ private fun NormalTopBar(
             Text(
               buildAnnotatedString {
                 append(title)
-                if (showBetaBadge) {
+                if (!titleBadge.isNullOrEmpty()) {
                   withStyle(
                     SpanStyle(
                       fontSize = MaterialTheme.typography.labelSmall.fontSize,
@@ -420,7 +414,7 @@ private fun NormalTopBar(
                       baselineShift = BaselineShift.Superscript,
                     ),
                   ) {
-                    append(betaBadgeSuffix)
+                    append(titleBadge)
                   }
                 }
               },

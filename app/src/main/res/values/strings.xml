@@ -1836,6 +1836,7 @@
   <string name="update_unknown_size">Unknown size</string>
   <string name="update_beta_build_format">Beta r%1$d</string>
   <string name="ui_beta_badge_suffix">\u0020(Beta)</string>
+  <string name="ui_tester_badge_suffix">\u0020(Tester)</string>
   <string name="ui_core_open_source_dependencies_used_by_mpvrx">Core open source dependencies used by mpvRx.</string>
   <string name="ui_copy_upi_id">Copy UPI ID</string>
   <string name="ui_already_using_latest_version">Already using latest version</string>

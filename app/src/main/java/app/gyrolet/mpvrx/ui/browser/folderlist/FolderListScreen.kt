@@ -736,7 +736,12 @@ object FolderListScreen : Screen {
               },
               onTitleDoubleTap = { backstack.navigateTo(SecureFolderGateScreen) },
               onTitleLongPress = { backstack.navigateTo(SecureFolderGateScreen) },
-              showBetaBadge = BuildConfig.IS_PREVIEW_BUILD,
+              titleBadge =
+                when {
+                  BuildConfig.IS_PREVIEW_BUILD -> stringResource(R.string.ui_beta_badge_suffix)
+                  BuildConfig.IS_PLAY_STORE_BUILD -> stringResource(R.string.ui_tester_badge_suffix)
+                  else -> null
+                },
               onRenameClick = null,
               isSingleSelection = selectionManager.isSingleSelection,
               onInfoClick = showSelectionInfo,
