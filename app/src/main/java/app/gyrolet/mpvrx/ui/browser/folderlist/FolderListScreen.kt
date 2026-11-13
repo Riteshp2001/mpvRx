@@ -122,6 +122,7 @@ import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FileOperationProgressDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FolderPickerDialog
+import app.gyrolet.mpvrx.ui.browser.dialogs.FolderTransfer
 import app.gyrolet.mpvrx.ui.browser.dialogs.FolderSortDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.BrowserSortDialogScope
 import app.gyrolet.mpvrx.ui.browser.dialogs.rememberBrowserSortDialogOpen
@@ -1203,6 +1204,16 @@ object FolderListScreen : Screen {
       isOpen = folderPickerOpen.value,
       currentPath = "",
       onDismiss = { folderPickerOpen.value = false },
+      transfer =
+        operationType.value?.let { type ->
+          FolderTransfer(type) {
+            app.gyrolet.mpvrx.repository.MediaFileRepository.getVideosForBuckets(
+              context,
+              selectionManager.getSelectedItems().map { it.bucketId }.toSet(),
+              includeAudioOverride = if (audioOnly) true else null,
+            )
+          }
+        },
       onFolderSelected = { destinationPath ->
         folderPickerOpen.value = false
         val op = operationType.value

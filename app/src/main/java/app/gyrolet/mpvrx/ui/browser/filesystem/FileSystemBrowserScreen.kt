@@ -112,6 +112,7 @@ import app.gyrolet.mpvrx.ui.browser.dialogs.FileOperationProgressDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FileSystemSortDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.rememberBrowserSortDialogOpen
 import app.gyrolet.mpvrx.ui.browser.dialogs.FolderPickerDialog
+import app.gyrolet.mpvrx.ui.browser.dialogs.FolderTransfer
 import app.gyrolet.mpvrx.ui.browser.dialogs.RenameDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.VideoCompressorOverlay
 import app.gyrolet.mpvrx.ui.browser.dialogs.rememberSelectionInfoAction
@@ -1099,6 +1100,12 @@ fun FileSystemBrowserScreen(path: String? = null) {
       isOpen = folderPickerOpen.value,
       currentPath = currentPath,
       onDismiss = { folderPickerOpen.value = false },
+      transfer =
+        operationType.value?.let { type ->
+          FolderTransfer(type) {
+            selectedVideos + selectedFolders.flatMap { collectVideosRecursively(context, it.path) }
+          }
+        },
       onFolderSelected = { destinationPath ->
         folderPickerOpen.value = false
         val op = operationType.value

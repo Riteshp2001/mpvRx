@@ -98,6 +98,7 @@ import app.gyrolet.mpvrx.ui.browser.components.rememberVideoSwipeActions
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FileOperationProgressDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FolderPickerDialog
+import app.gyrolet.mpvrx.ui.browser.dialogs.FolderTransfer
 import app.gyrolet.mpvrx.ui.browser.dialogs.LoadingDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.RenameDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.rememberSelectionInfoAction
@@ -669,6 +670,7 @@ data class VideoListScreen(
         onDismiss = {
           folderPickerOpen.value = false
         },
+        transfer = operationType.value?.let { type -> FolderTransfer(type) { selectionManager.getSelectedItems() } },
         onFolderSelected = { destinationPath ->
           folderPickerOpen.value = false
           val selectedVideos = selectionManager.getSelectedItems()

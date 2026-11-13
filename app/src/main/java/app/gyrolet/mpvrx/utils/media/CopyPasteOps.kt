@@ -68,6 +68,15 @@ object CopyPasteOps {
     object Move : OperationType()
   }
 
+  /** Bytes a copy or move writes at its destination, and what that volume has free. */
+  data class SpaceRequirement(
+    val requiredBytes: Long,
+    /** Null when the destination volume cannot report its free space. */
+    val availableBytes: Long?,
+  ) {
+    val fits: Boolean get() = availableBytes == null || availableBytes >= requiredBytes
+  }
+
   // ============================================================================
   // State Management
   // ============================================================================
@@ -136,6 +145,8 @@ object CopyPasteOps {
         if (videos.isEmpty()) {
           return@withContext Result.failure(IllegalArgumentException("No files to copy"))
         }
+        val space = spaceRequirement(videos, destinationPath, OperationType.Copy)
+        if (!space.fits) return@withContext notEnoughSpace(context, space)
 
         val copiedFilePaths =
           if (canUseDirectFileOperations()) {
@@ -169,14 +180,7 @@ object CopyPasteOps {
               )
             }
 
-            // Check available disk space
             val totalBytes = validVideos.sumOf { it.size }
-            if (!hasEnoughDiskSpace(destDir, totalBytes)) {
-              return@withContext Result.failure(
-                IOException("Not enough disk space. Required: ${formatBytes(totalBytes)}"),
-              )
-            }
-
             performCopyOperation(validVideos, destDir, totalBytes)
           } else {
             performScopedCopyOperation(context, videos, destinationPath)
@@ -216,6 +220,8 @@ object CopyPasteOps {
         if (videos.isEmpty()) {
           return@withContext Result.failure(IllegalArgumentException("No files to move"))
         }
+        val space = spaceRequirement(videos, destinationPath, OperationType.Move)
+        if (!space.fits) return@withContext notEnoughSpace(context, space)
 
         val movedFilePaths =
           if (canUseDirectFileOperations()) {
@@ -249,7 +255,6 @@ object CopyPasteOps {
               )
             }
 
-            // Check available disk space (only needed if move crosses filesystems)
             val totalBytes = validVideos.sumOf { it.size }
 
             // Perform move operation
@@ -296,6 +301,8 @@ object CopyPasteOps {
         if (videos.isEmpty()) {
           return@withContext Result.failure(IllegalArgumentException("No files to copy"))
         }
+        val space = spaceRequirement(context, videos, destinationTreeUri)
+        if (!space.fits) return@withContext notEnoughSpace(context, space)
 
         resetOperation()
         val copiedUris = performTreeCopyOperation(context, videos, destinationTreeUri)
@@ -326,6 +333,8 @@ object CopyPasteOps {
         if (videos.isEmpty()) {
           return@withContext Result.failure(IllegalArgumentException("No files to move"))
         }
+        val space = spaceRequirement(context, videos, destinationTreeUri)
+        if (!space.fits) return@withContext notEnoughSpace(context, space)
 
         resetOperation()
         val copiedUris = performTreeCopyOperation(
@@ -749,27 +758,99 @@ object CopyPasteOps {
     }
   }
 
-  private fun hasEnoughDiskSpace(
-    directory: File,
-    requiredBytes: Long,
-  ): Boolean =
-    try {
-      val statFs = StatFs(directory.absolutePath)
-      val availableBytes = statFs.availableBlocksLong * statFs.blockSizeLong
-      val hasSpace = availableBytes >= requiredBytes
+  // ============================================================================
+  // Space Check
+  // ============================================================================
 
-      if (!hasSpace) {
-        Log.w(
-          TAG,
-          "Insufficient disk space. Required: ${formatBytes(requiredBytes)}, Available: ${formatBytes(availableBytes)}",
-        )
+  /**
+   * A direct move within one storage volume is a rename and writes nothing. Every other copy or
+   * move writes full copies first; scoped and system-picker moves delete their sources afterwards.
+   */
+  fun spaceRequirement(
+    videos: List<Video>,
+    destinationPath: String,
+    operationType: OperationType,
+  ): SpaceRequirement {
+    val destination = nearestExistingDirectory(File(destinationPath))
+    val renameDevice =
+      if (operationType is OperationType.Move && canUseDirectFileOperations()) destination?.let(::deviceId) else null
+    val requiredBytes =
+      videos.sumOf { video ->
+        val source = File(video.path)
+        when {
+          source.parent == destinationPath -> 0L
+          renameDevice != null && deviceId(source) == renameDevice -> 0L
+          else -> video.size.coerceAtLeast(0L)
+        }
       }
+    return SpaceRequirement(requiredBytes, destination?.let(::availableBytes))
+  }
 
-      hasSpace
-    } catch (e: Exception) {
-      Log.w(TAG, "Could not check disk space: ${e.message}")
-      true // Assume space is available if we can't check
-    }
+  /** Space needed to write [videos] into a folder chosen with the system folder picker. */
+  fun spaceRequirement(
+    context: Context,
+    videos: List<Video>,
+    destinationTreeUri: Uri,
+  ): SpaceRequirement =
+    SpaceRequirement(videos.sumOf { it.size.coerceAtLeast(0L) }, availableBytes(context, destinationTreeUri))
+
+  private fun nearestExistingDirectory(file: File): File? {
+    var current: File? = file.absoluteFile
+    while (current != null && !current.isDirectory) current = current.parentFile
+    return current
+  }
+
+  private fun deviceId(file: File): Long? = runCatching { android.system.Os.stat(file.absolutePath).st_dev }.getOrNull()
+
+  private fun availableBytes(directory: File): Long? =
+    runCatching { StatFs(directory.absolutePath).availableBytes }.getOrNull()
+
+  private fun availableBytes(
+    context: Context,
+    treeUri: Uri,
+  ): Long? {
+    val authority = treeUri.authority ?: return null
+    val rootId =
+      runCatching { DocumentsContract.getTreeDocumentId(treeUri).substringBefore(':') }.getOrNull() ?: return null
+    val reported =
+      runCatching {
+        context.contentResolver
+          .query(
+            DocumentsContract.buildRootsUri(authority),
+            arrayOf(DocumentsContract.Root.COLUMN_ROOT_ID, DocumentsContract.Root.COLUMN_AVAILABLE_BYTES),
+            null,
+            null,
+            null,
+          )?.use { cursor ->
+            var bytes: Long? = null
+            while (bytes == null && cursor.moveToNext()) {
+              if (cursor.getString(0) == rootId && !cursor.isNull(1)) bytes = cursor.getLong(1)
+            }
+            bytes
+          }
+      }.getOrNull()
+    if (reported != null && reported >= 0L) return reported
+    // Providers that omit the column still expose a real volume for path-based storage.
+    if (!isPathBasedDocumentAuthority(authority)) return null
+    val volumeRoot = if (rootId == "primary") Environment.getExternalStorageDirectory() else File("/storage", rootId)
+    return availableBytes(volumeRoot)
+  }
+
+  private fun notEnoughSpace(
+    context: Context,
+    space: SpaceRequirement,
+  ): Result<Unit> {
+    val message =
+      context.getString(
+        app.gyrolet.mpvrx.R.string.file_op_not_enough_space,
+        formatBytes(space.requiredBytes),
+        formatBytes(space.availableBytes ?: 0L),
+      )
+    Log.w(TAG, message)
+    isCancelled.set(false)
+    _operationProgress.value = FileOperationProgress(error = message)
+    return Result.failure(IOException(message))
+  }
 
   // ============================================================================
   // Private Helper - Copy Operation

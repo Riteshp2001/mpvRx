@@ -1557,6 +1557,11 @@
   <string name="ui_no_matching_files">No matching files or folders</string>
   <string name="ui_system_picker">System file picker</string>
   <string name="ui_cannot_select_the_same_folder">Cannot select the same folder</string>
+  <string name="ui_space_needed_free">Needs %1$s · %2$s free</string>
+  <string name="ui_space_needed">Needs %1$s</string>
+  <string name="ui_space_free">%1$s free</string>
+  <string name="ui_not_enough_space_here">Not enough free space here</string>
+  <string name="file_op_not_enough_space">Not enough space: needs %1$s, only %2$s free</string>
   <string name="ui_no_subfolders">No subfolders</string>
   <string name="ui_select">Select</string>
   <string name="ui_create_new_folder">Create New Folder</string>
