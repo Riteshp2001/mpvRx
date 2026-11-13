@@ -14,9 +14,12 @@ import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
+import android.widget.Toast
 import android.app.Activity
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -70,6 +73,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
@@ -146,6 +150,7 @@ private const val NON_VULKAN_NOTICE_SHOWN = "non_vulkan_notice_shown"
  */
 open class MainActivity : AppCompatActivity() {
   private val appearancePreferences by inject<AppearancePreferences>()
+  private val gesturePreferences by inject<GesturePreferences>()
   private val playerPreferences by inject<PlayerPreferences>()
   private var appliedEdgeToEdgeDarkMode: Boolean? = null
   private lateinit var pipHelper: MPVPipHelper
@@ -155,6 +160,29 @@ open class MainActivity : AppCompatActivity() {
   private var isExpandingFromPip by mutableStateOf(false)
   private var openUpdateSheet by mutableStateOf(false)
   private var mediaDiscoveryJob: Job? = null
+  private var lastExitBackPressAt = 0L
+
+  /**
+   * Registered before setContent, so it only receives Back once no screen, rail, sheet or
+   * navigation entry wants it, which is exactly when Android would leave the app.
+   */
+  private val tvExitBackCallback =
+    object : OnBackPressedCallback(true) {
+      override fun handleOnBackPressed() {
+        val now = SystemClock.elapsedRealtime()
+        val confirmed = lastExitBackPressAt != 0L && now - lastExitBackPressAt <= TV_EXIT_BACK_WINDOW_MS
+        if (gesturePreferences.confirmBackToExit.get() && !confirmed) {
+          lastExitBackPressAt = now
+          Toast.makeText(this@MainActivity, R.string.toast_press_back_again_to_exit, Toast.LENGTH_SHORT).show()
+          return
+        }
+        lastExitBackPressAt = 0L
+        // Hand the press back to Android so the usual exit (or move to background) still happens.
+        isEnabled = false
+        onBackPressedDispatcher.onBackPressed()
+        isEnabled = true
+      }
+    }
 
   // Register the ActivityResultLauncher at class level
   private val mediaAccessLauncher =
@@ -182,6 +210,7 @@ open class MainActivity : AppCompatActivity() {
 
     if (DeviceFormFactor.isTelevision(this)) {
       requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+      onBackPressedDispatcher.addCallback(this, tvExitBackCallback)
     }
 
     pipHelper = MPVPipHelper(
@@ -615,6 +644,7 @@ open class MainActivity : AppCompatActivity() {
 
   private companion object {
     const val SYSTEM_BAR_THEME_SWITCH_PROGRESS = 0.55f
+    const val TV_EXIT_BACK_WINDOW_MS = 2_000L
 
     // Per process: alias states only change through LauncherIconManager or the repair receiver.
     val launcherIconsReconciled = java.util.concurrent.atomic.AtomicBoolean(false)

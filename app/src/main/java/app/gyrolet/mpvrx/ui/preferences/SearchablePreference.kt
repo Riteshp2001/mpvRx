@@ -1645,6 +1645,10 @@ object SearchablePreferences {
           R.string.connected_mini_player_navigation_title,
           listOf("mini player", "navigation", "connected", "dock", "separate", "classic"),
         ),
+        SearchEntrySpec(
+          R.string.pref_tv_double_back_exit_title,
+          listOf("back", "exit", "close", "quit", "twice", "double", "remote", "tv"),
+        ),
       )
       addSearchEntries(
         category = "Appearance",
@@ -2372,7 +2376,7 @@ object SearchablePreferences {
     fun available(preference: SearchablePreference): Boolean =
       (screens == null || preference.screen in screens) &&
         preference.isAvailable() && (includeSecureFolder || preference.screen != SecureFolderSettingsScreen) &&
-        (!television || TvSettingsPolicy.supportsSearch(preference))
+        (if (television) TvSettingsPolicy.supportsSearch(preference) else TvSettingsPolicy.supportsMobileSearch(preference))
 
     val directResults =
       staticPreferences

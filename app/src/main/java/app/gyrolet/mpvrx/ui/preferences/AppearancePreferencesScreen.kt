@@ -1075,6 +1075,29 @@ object AppearancePreferencesScreen : Screen {
                 )
               }
             }
+          } else {
+            // Same item count as the phone block above, so later search anchors still line up.
+            item {
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Middle,
+                title = stringResource(R.string.pref_nav_actions_section),
+              )
+            }
+
+            item {
+              ExpressivePreferenceGroup {
+                val confirmBackToExit by gesturePreferences.confirmBackToExit.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_tv_double_back_exit_title),
+                  value = confirmBackToExit,
+                  onValueChange = gesturePreferences.confirmBackToExit::set,
+                  title = { Text(stringResource(R.string.pref_tv_double_back_exit_title)) },
+                  summary = { Text(stringResource(R.string.pref_tv_double_back_exit_summary), color = MaterialTheme.colorScheme.outline) },
+                  groupIndex = 0,
+                  groupSize = 1,
+                )
+              }
+            }
           }
 
           // ── Animations ────────────────────────────────────────

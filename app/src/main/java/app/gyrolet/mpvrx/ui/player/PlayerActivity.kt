@@ -1206,7 +1206,7 @@ class PlayerActivity :
       return
     }
 
-    if (!isTelevision && isReady && gesturePreferences.confirmBackToExit.get()) {
+    if (isReady && gesturePreferences.confirmBackToExit.get()) {
       val now = android.os.SystemClock.elapsedRealtime()
       val previousPress = lastExitBackPressAtMs
       if (previousPress == null || now - previousPress !in 0L..2_000L) {

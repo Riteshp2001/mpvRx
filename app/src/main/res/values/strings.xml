@@ -138,6 +138,7 @@
   <string name="player_video_quality">Video Quality</string>
   <string name="player_video_quality_button">Video quality</string>
   <string name="toast_playback_load_failed">Could not load this link</string>
+  <string name="toast_press_back_again_to_exit">Press Back again to exit</string>
   <string name="video_label_new">NEW</string>
   <string name="video_label_watched">Watched</string>
   <string name="grayscale_watched_thumbnails">Grayscale watched thumbnails</string>
@@ -2928,6 +2929,8 @@
   <string name="pref_nav_home_title">Home / Files</string>
   <string name="pref_nav_home_summary">Browse local folders and files (always available)</string>
   <string name="pref_nav_actions_section">Navigation actions</string>
+  <string name="pref_tv_double_back_exit_title">Press Back twice to exit</string>
+  <string name="pref_tv_double_back_exit_summary">Ask again before leaving the player or closing the app</string>
   <string name="connected_mini_player_navigation_title">Connected mini-player and navigation</string>
   <string name="connected_mini_player_navigation_summary">Use a stacked dock with shared corners instead of separate panels</string>
     <string name="color_picker_field">Picker</string>
