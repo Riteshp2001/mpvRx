@@ -44,6 +44,13 @@ import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.autocrop.AutoCropAnalyzer
 import app.gyrolet.mpvrx.domain.autocrop.AutoCropEdges
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
+import app.gyrolet.mpvrx.domain.wicket.WicketGrain
+import app.gyrolet.mpvrx.domain.wicket.WicketPlan
+import app.gyrolet.mpvrx.domain.wicket.WicketRuntime
+import app.gyrolet.mpvrx.domain.wicket.WicketSelection
+import app.gyrolet.mpvrx.domain.wicket.WicketShaderManager
+import app.gyrolet.mpvrx.domain.wicket.isSdrSource
+import app.gyrolet.mpvrx.domain.wicket.resolveWicketPlan
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.domain.network.XtreamPlaybackUri
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingState
@@ -230,6 +237,7 @@ class PlayerViewModel(
   private val decoderPreferences: DecoderPreferences by inject()
   private val anime4kManager: Anime4KManager by inject()
   private val hdrToysManager: HdrToysManager by inject()
+  private val wicketShaderManager: WicketShaderManager by inject()
   private val json: Json by inject()
   private val playbackBookmarkDao: app.gyrolet.mpvrx.database.dao.PlaybackBookmarkDao by inject()
   private val aiService: app.gyrolet.mpvrx.repository.ai.AiService by inject()
@@ -2396,6 +2404,22 @@ fun restartFromBeginning() {
     MutableStateFlow(_isHdrScreenOutputPipelineReady.value && _hdrScreenMode.value != HdrScreenMode.OFF)
   val isHdrScreenOutputEnabled: StateFlow<Boolean> = _isHdrScreenOutputEnabled.asStateFlow()
 
+  // ==================== Wicket Shaders ======================================
+  private val _wicketSelection =
+    MutableStateFlow(
+      WicketSelection(
+        textureClarity = decoderPreferences.wicketTextureClarity.get(),
+        debandit = decoderPreferences.wicketDebandit.get(),
+        celFlare = decoderPreferences.wicketCelFlare.get(),
+        grain = decoderPreferences.wicketGrain.get(),
+      ),
+    )
+  val wicketSelection: StateFlow<WicketSelection> = _wicketSelection.asStateFlow()
+
+  /** What mpv last received, so source and decoder changes reload only when the result differs. */
+  @Volatile
+  private var appliedWicketPlan = WicketPlan.EMPTY
+
   // ==================== Ambience Mode ======================================
   private val _isAmbientEnabled = MutableStateFlow(playerPreferences.isAmbientEnabled.get())
   val isAmbientEnabled: StateFlow<Boolean> = _isAmbientEnabled.asStateFlow()
@@ -2603,6 +2627,26 @@ fun restartFromBeginning() {
       decoderPreferences.useVulkan.changes().collect { enabled ->
         _isVulkanEnabled.value = enabled
         reconcileHdrModeWithRenderer()
+      }
+    }
+    // CelFlare depends on the decoded source and HW+ skips LUMA hooks, so both re-pick the shaders.
+    if (!hostedInBrowser) {
+      viewModelScope.launch {
+        combine(
+          _wicketSelection,
+          PlaybackSession.propString["video-dec-params/gamma"],
+          PlaybackSession.propString["video-dec-params/primaries"],
+          PlaybackSession.propString["video-target-params/gamma"],
+          PlaybackSession.propString["hwdec-current"],
+        ) { selection, _, _, _, _ -> selection }
+          .collectLatest { selection ->
+            if (!selection.isActive && appliedWicketPlan == WicketPlan.EMPTY) return@collectLatest
+            delay(WICKET_REFRESH_DELAY_MS)
+            // Main thread, like PlayerActivity's file-start refresh, so the two never interleave.
+            if (currentWicketPlan(_hdrScreenMode.value) != appliedWicketPlan) {
+              restartHdrScreenOutputAndAmbientIfActive()
+            }
+          }
       }
     }
     // Syncplay keeps one set of player bindings; the in-app sheet must not steal the player's.
@@ -3661,6 +3705,7 @@ fun restartFromBeginning() {
 
   private companion object {
     const val TAG = "PlayerViewModel"
+    const val WICKET_REFRESH_DELAY_MS = 150L
     const val AUTO_CROP_SAMPLE_COUNT = 7
     const val AUTO_CROP_MIN_VALID_SAMPLES = 3
     const val AUTO_CROP_THUMBNAIL_SIZE = 640
@@ -7490,9 +7535,12 @@ fun restartFromBeginning() {
     val pipelineReady = refreshHdrScreenOutputPipelineState()
     runCatching {
       val boostSdr = decoderPreferences.boostSdrToHdr.get()
+      val wicketPlan = currentWicketPlan(mode, pipelineReady)
       // Init-time options are already applied by MPVView. Runtime transitions only need properties.
-      applyHdrScreenOutputProperties(mode, pipelineReady, boostSdr)
+      applyHdrScreenOutputProperties(mode, pipelineReady, boostSdr, wicketPlan.options)
       applyHdrToysMode(mode, pipelineReady)
+      // After hdr-toys, so Wicket's OUTPUT grain lands on the final SDR or PQ signal.
+      applyWicketPlan(wicketPlan)
     }.onFailure { e ->
       Log.e(TAG, "Error applying HDR screen output: mode=$mode, pipelineReady=$pipelineReady", e)
     }
@@ -7576,6 +7624,75 @@ fun restartFromBeginning() {
     if (!hdrToysManager.apply(profile)) {
       playerUpdate.value = PlayerUpdates.ShowText(appContext.getString(R.string.player_hdr_shaders_unavailable))
     }
+  }
+
+  // ==================== Wicket Shaders ====================
+
+  fun setWicketTextureClarity(enabled: Boolean) {
+    // TextureClarity hooks LUMA, which HW+ frames don't have.
+    if (enabled && HwPlusGuard.blocks(appContext, R.string.wicket_texture_clarity) { setWicketTextureClarity(true) }) {
+      return
+    }
+    decoderPreferences.wicketTextureClarity.set(enabled)
+    _wicketSelection.update { it.copy(textureClarity = enabled) }
+  }
+
+  fun setWicketDebandit(enabled: Boolean) {
+    decoderPreferences.wicketDebandit.set(enabled)
+    _wicketSelection.update { it.copy(debandit = enabled) }
+  }
+
+  fun setWicketCelFlare(enabled: Boolean) {
+    // CelFlare needs a video filter to retag the frame; HW+ skips video filters.
+    if (enabled && HwPlusGuard.blocks(appContext, R.string.wicket_celflare) { setWicketCelFlare(true) }) return
+    decoderPreferences.wicketCelFlare.set(enabled)
+    _wicketSelection.update { it.copy(celFlare = enabled) }
+    if (enabled) {
+      val runtime = currentWicketRuntime(hdrToysActive = false)
+      if (runtime.sourceGamma != null && !runtime.isSdrSource()) {
+        playerUpdate.value = PlayerUpdates.ShowText(appContext.getString(R.string.wicket_celflare_sdr_only))
+      }
+    }
+  }
+
+  fun setWicketGrain(grain: WicketGrain) {
+    // Both grain shaders track source frames on LUMA, which HW+ frames don't have.
+    if (grain != WicketGrain.OFF &&
+      HwPlusGuard.blocks(appContext, R.string.wicket_film_grain) { setWicketGrain(grain) }
+    ) {
+      return
+    }
+    decoderPreferences.wicketGrain.set(grain)
+    _wicketSelection.update { it.copy(grain = grain) }
+  }
+
+  private fun currentWicketRuntime(hdrToysActive: Boolean): WicketRuntime =
+    WicketRuntime(
+      supported = PlaybackSession.videoOutput == "gpu-next" && PlaybackSession.getPropertyString("gpu-api") == "vulkan",
+      hwPlus = PlaybackSession.getPropertyString("hwdec-current") == Decoder.HWPlus.value,
+      sourceGamma = PlaybackSession.getPropertyString("video-dec-params/gamma"),
+      sourcePrimaries = PlaybackSession.getPropertyString("video-dec-params/primaries"),
+      sourceMatrix = PlaybackSession.getPropertyString("video-dec-params/colormatrix"),
+      hdrToysActive = hdrToysActive,
+      targetGamma = PlaybackSession.getPropertyString("video-target-params/gamma"),
+      videoFiltersOwned = MpvConfigOverridePolicy.isOwnedByMpvConf("vf"),
+    )
+
+  private fun currentWicketPlan(
+    mode: HdrScreenMode,
+    pipelineReady: Boolean = isHdrScreenOutputAvailable(mode),
+  ): WicketPlan {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.WICKET)) return WicketPlan.EMPTY
+    val hdrToysActive = pipelineReady && mode.hdrToysProfile != null
+    return resolveWicketPlan(_wicketSelection.value, currentWicketRuntime(hdrToysActive))
+  }
+
+  private fun applyWicketPlan(plan: WicketPlan) {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.WICKET)) return
+    if (!wicketShaderManager.apply(plan)) {
+      Log.w(TAG, "Wicket shaders partly unavailable: ${plan.shaders}")
+    }
+    appliedWicketPlan = plan
   }
 
   // ==================== Ambient Mode Integration ====================

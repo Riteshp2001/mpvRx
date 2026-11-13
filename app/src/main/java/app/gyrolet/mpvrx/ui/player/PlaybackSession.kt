@@ -1562,6 +1562,12 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
+  internal fun hasVideoFilter(label: String): Boolean =
+    withCore(false) {
+      MPVLib.getPropertyNode("vf")?.toObject<List<JsonObject>>(Json).orEmpty()
+        .any { (it["label"] as? JsonPrimitive)?.content == label }
+    }
+
   /** Shared runtime path for the real Decoder preferences page and the existing debanding controls. */
   internal fun applyDebanding(mode: Debanding) = withReadyCore(Unit) {
     setOptionString("deband", if (mode == Debanding.GPU) "yes" else "no")

@@ -1113,6 +1113,13 @@ internal val OPEN_SOURCE_LIBRARIES =
       license = "MIT",
       url = "https://github.com/natural-harmonia-gropius/hdr-toys",
     ),
+    OpenSourceLibrary(
+      name = "Wicket Shaders",
+      artifact = "Wicket GLSL shaders",
+      descriptionRes = R.string.oss_wicket_shaders_description,
+      license = "GPL-3.0",
+      url = "https://github.com/sup3rflyer/Wicket-shaders",
+    ),
   ).filter { library ->
     when (library.name) {
       "libtorrent4j" -> BuildConfig.ENABLE_TORRENT

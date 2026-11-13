@@ -12,6 +12,7 @@ package app.gyrolet.mpvrx.preferences
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.domain.motion.MotionTargetMode
+import app.gyrolet.mpvrx.domain.wicket.WicketGrain
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
 import app.gyrolet.mpvrx.ui.player.Debanding
@@ -65,6 +66,12 @@ class DecoderPreferences(
   val anime4kDarken = preferenceStore.getBoolean("anime4k_darken", false)
   val anime4kThin = preferenceStore.getBoolean("anime4k_thin", false)
   val anime4kDeblur = preferenceStore.getBoolean("anime4k_deblur", false)
+
+  // Wicket shaders (gpu-next on Vulkan)
+  val wicketTextureClarity = preferenceStore.getBoolean("wicket_texture_clarity", false)
+  val wicketDebandit = preferenceStore.getBoolean("wicket_debandit", false)
+  val wicketCelFlare = preferenceStore.getBoolean("wicket_celflare", false)
+  val wicketGrain = preferenceStore.getEnum("wicket_grain", WicketGrain.OFF)
 
   // GPU motion interpolation (FongMi's mpv motion core, FongMi build only)
   val motionInterpolationEnabled = preferenceStore.getBoolean("motion_interpolation_enabled", false)

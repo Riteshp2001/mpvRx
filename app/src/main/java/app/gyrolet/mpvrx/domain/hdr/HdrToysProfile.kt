@@ -9,6 +9,9 @@
 
 package app.gyrolet.mpvrx.domain.hdr
 
+/** mpv's hdr-reference-white in nits. Shaders that bridge SDR and PQ must use the same value. */
+const val HDR_REFERENCE_WHITE_NITS = "203"
+
 enum class HdrToysProfile(
   val configSection: String,
   val targetPrim: String,

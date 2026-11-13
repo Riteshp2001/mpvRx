@@ -259,6 +259,9 @@ object MpvConfigControlledFeatures {
       "vd-lavc-dr",
     )
 
+  /** Wicket rides on the HDR controller, which writes the shared glsl-shader-opts. */
+  val WICKET = HDR_OUTPUT
+
   val AMBIENT =
     setOf(
       "glsl-shaders",

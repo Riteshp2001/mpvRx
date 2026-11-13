@@ -19,6 +19,8 @@ object PlaybackSessionShaderRuntime : MpvShaderRuntime {
 
   override fun getPropertyString(property: String): String? = PlaybackSession.getPropertyString(property)
 
+  override fun hasVideoFilter(label: String): Boolean = PlaybackSession.hasVideoFilter(label)
+
   override fun setPropertyString(
     property: String,
     value: String,

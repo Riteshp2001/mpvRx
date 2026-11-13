@@ -27,7 +27,7 @@
 //!WIDTH 513
 //!HEIGHT 256
 //!COMPUTE 16 8
-//!DESC gamut mapping (toru, boundary generation)
+//!DESC gamut mapping (BT.2407 annex 2, boundary generation)
 
 const uint BOUNDARY_HUE_SIZE = 512u;
 const uint BOUNDARY_LIGHTNESS_SIZE = 256u;
@@ -151,7 +151,7 @@ void hook() {
 //!HEIGHT 1
 //!COMPUTE 64 1
 //!BIND TORU_BOUNDARY
-//!DESC gamut mapping (toru, focal generation)
+//!DESC gamut mapping (BT.2407 annex 2, focal generation)
 
 const uint BOUNDARY_HUE_SIZE = 512u;
 const uint BOUNDARY_LIGHTNESS_SIZE = 256u;
@@ -306,7 +306,7 @@ void hook() {
 //!HEIGHT 1
 //!COMPUTE 64 1
 //!BIND TORU_FOCAL_RAW
-//!DESC gamut mapping (toru, focal profile)
+//!DESC gamut mapping (BT.2407 annex 2, focal profile)
 
 const uint FOCAL_HUE_SIZE = 1024u;
 const float DIPS_150_START = 115.0 / 360.0;
@@ -419,13 +419,14 @@ void hook() {
 //!BIND HOOKED
 //!BIND TORU_FOCAL
 //!BIND TORU_BOUNDARY
-//!DESC gamut mapping (toru)
+//!DESC gamut mapping (BT.2407 annex 2)
 
 const uint BOUNDARY_HUE_SIZE = 512u;
 const uint BOUNDARY_LIGHTNESS_SIZE = 256u;
 const uint FOCAL_HUE_SIZE = 1024u;
 const int RAY_ITERATIONS = 12;
 const int HUE_PATH_SCAN_STEPS = 32;
+const int HUE_PATH_FINE_STEPS = 16;
 const int HUE_PATH_ITERATIONS = 12;
 const float CHROMA_EPSILON = 1e-6;
 const float YELLOW_LIGHTNESS = 92.74;
@@ -643,6 +644,7 @@ vec4 hook() {
 
     if (hue_mapped) {
         float maximum = chroma + 160.0;
+        float first_step = maximum / float(HUE_PATH_SCAN_STEPS);
         float lower = 0.0;
         float upper = 0.0;
         float previous = 0.0;
@@ -653,9 +655,13 @@ vec4 hook() {
         // the line is nearly vertical. The boundary table is indexed by hue,
         // which changes along this path, so the crossing is bracketed with
         // the exact BT.709 test instead.
-        for (int i = 1; i <= HUE_PATH_SCAN_STEPS; i++) {
-            float distance = maximum * float(i) /
-                             float(HUE_PATH_SCAN_STEPS);
+        // The first coarse step is subdivided. A near-neutral input can have
+        // its whole in-gamut interval inside that step, which made the old
+        // scan miss it and fall back to the radial path instead of executing
+        // the reported hue mapping.
+        for (int i = 1; i <= HUE_PATH_FINE_STEPS; i++) {
+            float distance = first_step * float(i) /
+                             float(HUE_PATH_FINE_STEPS);
             vec2 ab = lab.yz - distance * path_direction;
             float mapped_chroma = length(ab);
             float test_lightness = map_lightness(
@@ -675,6 +681,35 @@ vec4 hook() {
             }
 
             previous = distance;
+        }
+
+        // Continue with the original coarse scan from its second step. This
+        // leaves the far part of the path unchanged; only the first coarse
+        // step is refined.
+        if (!found) {
+            for (int i = 2; i <= HUE_PATH_SCAN_STEPS; i++) {
+                float distance = maximum * float(i) /
+                                 float(HUE_PATH_SCAN_STEPS);
+                vec2 ab = lab.yz - distance * path_direction;
+                float mapped_chroma = length(ab);
+                float test_lightness = map_lightness(
+                    lab.x,
+                    chroma,
+                    mapped_chroma,
+                    l_focal,
+                    c_focal,
+                    above
+                );
+
+                if (lab_in_unit_gamut(vec3(test_lightness, ab))) {
+                    lower = previous;
+                    upper = distance;
+                    found = true;
+                    break;
+                }
+
+                previous = distance;
+            }
         }
 
         if (found) {

@@ -448,6 +448,8 @@ fun PlayerSheets(
       // Read here: an active sleep timer ticks every second, and collecting it in PlayerControls
       // re-ran the entire controls tree on each tick even while this sheet was closed.
       val sleepTimerTimeRemaining by viewModel.remainingTime.composeCollectAsState()
+      val wicketSelection by viewModel.wicketSelection.composeCollectAsState()
+      val wicketRendererReady by viewModel.isLinearHdrAvailable.composeCollectAsState()
       MoreSheet(
         remainingTime = sleepTimerTimeRemaining,
         onStartTimer = onStartSleepTimer,
@@ -462,6 +464,14 @@ fun PlayerSheets(
         filtersEnabled = MpvConfigOverride.VIDEO_FILTERS.optionNames.any { it !in configOwnedOptions },
         equalizerEnabled = "af" !in configOwnedOptions,
         anime4KEnabled = MpvConfigControlledFeatures.ANIME4K.none(configOwnedOptions::contains),
+        wicketSelection = wicketSelection,
+        wicketVisible = app.gyrolet.mpvrx.BuildConfig.MPV_SUPPORTS_VULKAN && !isAudioOnly,
+        wicketRendererReady = wicketRendererReady,
+        wicketEnabled = MpvConfigControlledFeatures.WICKET.none(configOwnedOptions::contains),
+        onWicketTextureClarityChange = viewModel::setWicketTextureClarity,
+        onWicketDebanditChange = viewModel::setWicketDebandit,
+        onWicketCelFlareChange = viewModel::setWicketCelFlare,
+        onWicketGrainSelected = viewModel::setWicketGrain,
       )
     }
 

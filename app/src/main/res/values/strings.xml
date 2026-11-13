@@ -511,6 +511,19 @@
   <string name="pref_anime4k_thin_summary">Adds line thinning after the main upscaler.</string>
   <string name="pref_anime4k_deblur_title">Anime4K deblur</string>
   <string name="pref_anime4k_deblur_summary">Adds the DoG deblur pass before darken/thin, costs more GPU time.</string>
+  <!-- Wicket shaders (More sheet) -->
+  <string name="wicket_title">Wicket Shaders</string>
+  <string name="wicket_needs_vulkan">Needs gpu-next with Vulkan</string>
+  <string name="wicket_texture_clarity">Texture clarity</string>
+  <string name="wicket_debandit">Debandit</string>
+  <string name="wicket_celflare">SDR to HDR</string>
+  <string name="wicket_celflare_sdr_only">SDR to HDR works on SDR video only</string>
+  <string name="wicket_film_grain">Film grain</string>
+  <string name="wicket_grain_off">Off</string>
+  <string name="wicket_grain_light">Light</string>
+  <string name="wicket_grain_medium">Medium</string>
+  <string name="wicket_grain_heavy">Heavy</string>
+  <string name="wicket_grain_match">Match</string>
   <string name="pref_about_title">About</string>
   <string name="pref_about_summary">Acknowledgments, licenses</string>
   <string name="pref_about_oss_libraries">Libraries</string>
@@ -2756,6 +2769,7 @@
   <string name="oss_ytdlp_description">Online media extractor used for supported streaming links.</string>
   <string name="oss_anime4k_description">Real-time upscaling and restoration shaders for animated video.</string>
   <string name="oss_hdr_toys_description">HDR tone-mapping, gamut-mapping, and transfer-function shaders.</string>
+  <string name="oss_wicket_shaders_description">SDR to HDR, texture clarity, deband, and film grain shaders.</string>
   <string name="pref_auto_backup_title">Automatic settings backup</string>
   <string name="pref_auto_backup_summary">Save changed settings in Configuration/Backup when mpvRx moves to the background. The latest seven backups are kept.</string>
   <string name="pref_auto_backup_select_folder">Select a Configuration folder first</string>

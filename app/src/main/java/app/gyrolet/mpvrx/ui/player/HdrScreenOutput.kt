@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.ui.player
 
 import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.hdr.HDR_REFERENCE_WHITE_NITS
 import app.gyrolet.mpvrx.domain.hdr.HdrToysProfile
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 
@@ -95,6 +96,7 @@ internal fun hdrScreenOutputSettings(
   mode: HdrScreenMode,
   pipelineReady: Boolean,
   boostSdrToHdr: Boolean = false,
+  extraShaderOptions: List<Pair<String, String>> = emptyList(),
 ): List<Pair<String, String>> {
   val activeMode = if (pipelineReady) mode else HdrScreenMode.OFF
   val settings =
@@ -102,6 +104,9 @@ internal fun hdrScreenOutputSettings(
       HdrScreenMode.OFF -> offSettings()
       HdrScreenMode.LINEAR -> linearHdrSettings()
       else -> hdrToysSettings(activeMode.hdrToysProfile ?: HdrToysProfile.BT_2100_PQ)
+    }.map { (property, value) ->
+      // glsl-shader-opts is a single mpv option, so other shader stacks (Wicket) share this write.
+      if (property == "glsl-shader-opts") property to mergeShaderOptions(value, extraShaderOptions) else property to value
     }
 
   // Defensive invariant for future modes: never allow a partial color-state profile to ship.
@@ -110,6 +115,13 @@ internal fun hdrScreenOutputSettings(
   }
   return settings
 }
+
+private fun mergeShaderOptions(
+  base: String,
+  extra: List<Pair<String, String>>,
+): String =
+  (listOf(base).filter { it.isNotEmpty() } + extra.map { (name, value) -> "$name=$value" })
+    .joinToString(",")
 
 private fun commonSettings(
   targetColorspaceHint: String,
@@ -131,7 +143,7 @@ private fun commonSettings(
     "inverse-tone-mapping" to inverseToneMapping,
     "tone-mapping" to toneMapping,
     "hdr-compute-peak" to hdrComputePeak,
-    "hdr-reference-white" to "203",
+    "hdr-reference-white" to HDR_REFERENCE_WHITE_NITS,
     "tone-mapping-visualize" to "no",
     "glsl-shader-opts" to shaderOptions,
   )
@@ -200,9 +212,10 @@ fun applyHdrScreenOutputProperties(
   mode: HdrScreenMode,
   pipelineReady: Boolean,
   boostSdrToHdr: Boolean = false,
+  extraShaderOptions: List<Pair<String, String>> = emptyList(),
 ) {
   val changedOptions =
-    hdrScreenOutputSettings(mode, pipelineReady, boostSdrToHdr)
+    hdrScreenOutputSettings(mode, pipelineReady, boostSdrToHdr, extraShaderOptions)
       .filter { (property, value) ->
         !MpvConfigOverridePolicy.isOwnedByMpvConf(property) &&
           PlaybackSession.getPropertyString(property) != value

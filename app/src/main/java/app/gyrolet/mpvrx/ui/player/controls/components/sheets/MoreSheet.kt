@@ -13,6 +13,7 @@ import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
 import android.content.res.Configuration
 import android.text.format.DateUtils
+import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +55,8 @@ import app.gyrolet.mpvrx.presentation.components.AppAlertDialog
 import androidx.compose.ui.window.DialogProperties
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
+import app.gyrolet.mpvrx.domain.wicket.WicketGrain
+import app.gyrolet.mpvrx.domain.wicket.WicketSelection
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
@@ -78,6 +81,14 @@ fun MoreSheet(
   filtersEnabled: Boolean = true,
   equalizerEnabled: Boolean = true,
   anime4KEnabled: Boolean = true,
+  wicketSelection: WicketSelection = WicketSelection(),
+  wicketVisible: Boolean = false,
+  wicketRendererReady: Boolean = false,
+  wicketEnabled: Boolean = true,
+  onWicketTextureClarityChange: (Boolean) -> Unit = {},
+  onWicketDebanditChange: (Boolean) -> Unit = {},
+  onWicketCelFlareChange: (Boolean) -> Unit = {},
+  onWicketGrainSelected: (WicketGrain) -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   val advancedPreferences = koinInject<AdvancedPreferences>()
@@ -337,8 +348,80 @@ fun MoreSheet(
           }
         }
       }
+
+      // Wicket uses libplacebo compute shaders, so it needs gpu-next on Vulkan.
+      if (wicketVisible) {
+        val chipsEnabled = wicketRendererReady && wicketEnabled
+        Text(
+          text = stringResource(R.string.wicket_title),
+          style = MaterialTheme.typography.titleMedium,
+          color = MaterialTheme.colorScheme.primary,
+        )
+        if (!wicketRendererReady) {
+          Text(
+            text = stringResource(R.string.wicket_needs_vulkan),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+        LazyRow(
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+        ) {
+          item(key = "texture") {
+            WicketChip(R.string.wicket_texture_clarity, wicketSelection.textureClarity, chipsEnabled) {
+              onWicketTextureClarityChange(!wicketSelection.textureClarity)
+            }
+          }
+          item(key = "debandit") {
+            WicketChip(R.string.wicket_debandit, wicketSelection.debandit, chipsEnabled) {
+              onWicketDebanditChange(!wicketSelection.debandit)
+            }
+          }
+          item(key = "celflare") {
+            WicketChip(R.string.wicket_celflare, wicketSelection.celFlare, chipsEnabled) {
+              onWicketCelFlareChange(!wicketSelection.celFlare)
+            }
+          }
+        }
+        Text(
+          text = stringResource(R.string.wicket_film_grain),
+          style = MaterialTheme.typography.labelLarge,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        LazyRow(
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+        ) {
+          items(WicketGrain.entries, key = { it.name }) { grain ->
+            WicketChip(grain.titleRes, wicketSelection.grain == grain, chipsEnabled) {
+              onWicketGrainSelected(grain)
+            }
+          }
+        }
+      }
     }
   }
+}
+
+@Composable
+private fun WicketChip(
+  @StringRes label: Int,
+  selected: Boolean,
+  enabled: Boolean,
+  onClick: () -> Unit,
+) {
+  FilterChip(
+    label = { Text(stringResource(label)) },
+    selected = selected,
+    enabled = enabled,
+    leadingIcon = null,
+    colors =
+      androidx.compose.material3.FilterChipDefaults.filterChipColors(
+        containerColor = playerSheetSelectionColor(false),
+        selectedContainerColor = playerSheetSelectionColor(true),
+        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+      ),
+    onClick = onClick,
+  )
 }
 
 private val sleepTimerPresets = listOf(15, 30, 45, 60)

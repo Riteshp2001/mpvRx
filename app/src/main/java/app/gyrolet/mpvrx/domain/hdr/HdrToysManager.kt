@@ -20,6 +20,9 @@ interface MpvShaderRuntime {
 
   fun getPropertyString(property: String): String?
 
+  /** True when the video filter chain has an entry with this `@label`. */
+  fun hasVideoFilter(label: String): Boolean
+
   fun setPropertyString(
     property: String,
     value: String,
@@ -119,8 +122,9 @@ class HdrToysManager(
       val childAssetPath = "$assetPath/$child"
       val childDestination = File(destination, child)
       val nestedChildren = context.assets.list(childAssetPath).orEmpty()
-      if (nestedChildren.isEmpty() && child.endsWith(".glsl")) {
-        copyAssetFile(childAssetPath, childDestination)
+      if (nestedChildren.isEmpty()) {
+        // The LICENSE ships in the APK; mpv only needs the shaders.
+        if (child.endsWith(".glsl")) copyAssetFile(childAssetPath, childDestination)
       } else {
         copyAssetDirectory(childAssetPath, childDestination)
       }
