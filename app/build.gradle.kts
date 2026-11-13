@@ -147,6 +147,8 @@ android {
 
     create("playstore") {
       dimension = "distribution"
+      // Google Play listing package; sideload builds keep app.gyrolet.mpvrx.
+      applicationId = "com.gyrolet.mpvrx"
       buildConfigField("boolean", "IS_PLAY_STORE_BUILD", "true")
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
       buildConfigField("String", "UPDATE_APK_VARIANT", "\"standard\"")
