@@ -101,27 +101,29 @@ internal object EmbeddedArtworkResolver {
     videoPath: String?,
     retriever: MediaMetadataRetriever,
     pictureBytes: ByteArray? = runCatching { retriever.embeddedPicture }.getOrNull(),
+    maxSize: Int = MAX_THUMBNAIL_SIZE,
   ): Bitmap? =
-    decodeRetrieverArtwork(retriever, pictureBytes)
-      ?: decodeContainerOrSidecar(videoPath)
+    decodeRetrieverArtwork(retriever, pictureBytes, maxSize)
+      ?: decodeContainerOrSidecar(videoPath, maxSize = maxSize)
 
   fun decodeContainerOrSidecar(
     videoPath: String?,
     context: Context? = null,
     videoUri: Uri? = null,
     displayName: String? = null,
+    maxSize: Int = MAX_THUMBNAIL_SIZE,
   ): Bitmap? =
-    MatroskaEmbeddedArtworkExtractor.decode(videoPath)
+    MatroskaEmbeddedArtworkExtractor.decode(videoPath, maxSize)
       ?: (if (context != null) {
         videoUri?.takeIf { it.scheme == "content" }?.let { uri ->
-          MatroskaEmbeddedArtworkExtractor.decode(context, uri, displayName ?: videoPath)
+          MatroskaEmbeddedArtworkExtractor.decode(context, uri, displayName ?: videoPath, maxSize)
         }
       } else {
         null
       })
-      ?: decodeSidecar(videoPath)
+      ?: decodeSidecar(videoPath, maxSize)
 
-  fun decodeSidecar(videoPath: String?): Bitmap? =
+  fun decodeSidecar(videoPath: String?, maxSize: Int = MAX_THUMBNAIL_SIZE): Bitmap? =
     videoPath
       ?.let(EmbeddedArtworkCandidates::forVideoPath)
       ?.asSequence()
@@ -129,12 +131,23 @@ internal object EmbeddedArtworkResolver {
       ?.firstNotNullOfOrNull { candidate ->
         candidate
           .takeIf { it.isFile && it.canRead() }
-          ?.let { BitmapFactory.decodeFile(it.path) }
+          ?.let { file ->
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(file.path, bounds)
+            BitmapFactory.decodeFile(
+              file.path,
+              BitmapFactory.Options().apply {
+                inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight, maxSize)
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+              },
+            )
+          }
       }
 
   fun decodeRetrieverArtwork(
     retriever: MediaMetadataRetriever,
     pictureBytes: ByteArray? = runCatching { retriever.embeddedPicture }.getOrNull(),
+    maxSize: Int = MAX_THUMBNAIL_SIZE,
   ): Bitmap? {
     pictureBytes
       ?.takeIf { it.isNotEmpty() }
@@ -145,8 +158,9 @@ internal object EmbeddedArtworkResolver {
           BitmapFactory.decodeByteArray(
             bytes, 0, bytes.size,
             BitmapFactory.Options().apply {
-              inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight)
-              inPreferredConfig = Bitmap.Config.RGB_565
+              inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight, maxSize)
+              // Album art is photographic and often contains smooth gradients; preserve full color.
+              inPreferredConfig = Bitmap.Config.ARGB_8888
             },
           )
         }.getOrNull()

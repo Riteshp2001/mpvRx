@@ -580,7 +580,7 @@ class ThumbnailRepository(
     generator: ThumbnailGenerator = browserPreferences.thumbnailGenerator.get(),
     artworkTier: Int = 0,
   ): String =
-    "${if (artworkTier > 0) "audio-art-v3|$artworkTier" else "video-thumb-v2"}|${diskVideoBaseKey(video)}|" +
+    "${if (artworkTier > 0) "audio-art-v4|$artworkTier" else "video-thumb-v2"}|${diskVideoBaseKey(video)}|" +
       "${thumbnailModeKey()}|${thumbnailQualityKey()}" +
       thumbnailGeneratorCacheKey(video, generator)
 
@@ -774,19 +774,25 @@ class ThumbnailRepository(
     fun fitRequest(bitmap: Bitmap): Bitmap =
       if (artworkTier > 0) bitmap.scaleToThumbnailMax(artworkTier) else scaleBitmap(bitmap, widthPx, heightPx)
 
+    var embeddedArtwork: Bitmap? = null
     if (generator != ThumbnailGenerator.Native) {
-      // Auto asks MediaStore first for every local source, including hidden/.nomedia folders
-      // and granted document URIs. An unindexed file follows the same native fallback below.
+      // MediaStore's generated audio thumbnail can be smaller than the artwork embedded in the
+      // source file. Auto therefore prefers the original embedded image and uses MediaStore only
+      // when native extraction is unavailable. Explicit MediaStore mode remains Android-only.
+      if (generator == ThumbnailGenerator.Auto && isAudio) {
+        embeddedArtwork = generateEmbeddedArtwork(video, artworkTier.takeIf { it > 0 } ?: thumbnailMaxSize())
+        embeddedArtwork?.let { return fitRequest(it) }
+      }
       MediaStoreThumbnailLoader.load(context, video, canonicalPath, dimension, isAudio)?.let {
         return fitRequest(it)
       }
-      // Explicit MediaStore mode stays Android-only; only Auto falls back to native extraction.
       if (generator == ThumbnailGenerator.MediaStore) return null
       currentCoroutineContext().ensureActive()
     }
 
     if (isAudio || mode == ThumbnailMode.Smart || mode == ThumbnailMode.EmbeddedThumbnail) {
-      generateEmbeddedArtwork(video)?.let { return fitRequest(it) }
+      (embeddedArtwork ?: generateEmbeddedArtwork(video, artworkTier.takeIf { it > 0 } ?: thumbnailMaxSize()))
+        ?.let { return fitRequest(it) }
       if (isAudio) {
         return null
       }
@@ -799,7 +805,7 @@ class ThumbnailRepository(
     return extractLocalVideoFrame(video, widthPx, heightPx)
   }
 
-  private fun generateEmbeddedArtwork(video: Video): Bitmap? {
+  private fun generateEmbeddedArtwork(video: Video, maxSize: Int = thumbnailMaxSize()): Bitmap? {
     val canonicalPath = canonicalLocalPath(video)
     // Some Android retrievers reject Matroska attachments or SAF providers. Their failure must
     // not prevent the independent container/sidecar artwork paths from being tried.
@@ -808,7 +814,7 @@ class ThumbnailRepository(
         val retriever = MediaMetadataRetriever()
         try {
           setLocalDataSource(retriever, video)
-          EmbeddedArtworkResolver.decodeRetrieverArtwork(retriever)
+          EmbeddedArtworkResolver.decodeRetrieverArtwork(retriever, maxSize = maxSize)
         } finally {
           runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) retriever.close() else retriever.release()
@@ -822,8 +828,9 @@ class ThumbnailRepository(
           context = context,
           videoUri = video.uri,
           displayName = video.displayName,
+          maxSize = maxSize,
         )
-      )?.scaleToThumbnailMax(thumbnailMaxSize())
+      )?.scaleToThumbnailMax(maxSize)
   }
 
   private suspend fun generateWithFastThumbnails(
@@ -953,7 +960,7 @@ class ThumbnailRepository(
         try {
           retriever.setDataSource(entry.fileDescriptor, entry.offset, entry.length)
           if (artworkTier > 0) {
-            EmbeddedArtworkResolver.decodeRetrieverArtwork(retriever)?.scaleToThumbnailMax(artworkTier)
+            EmbeddedArtworkResolver.decodeRetrieverArtwork(retriever, maxSize = artworkTier)?.scaleToThumbnailMax(artworkTier)
           } else {
             // The disk copy serves every card size, so decode at the same size as native frames.
             val dimension = maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE).coerceAtMost(thumbnailMaxSize())

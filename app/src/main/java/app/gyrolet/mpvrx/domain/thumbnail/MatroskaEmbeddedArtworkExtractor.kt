@@ -29,24 +29,24 @@ internal object MatroskaEmbeddedArtworkExtractor {
   private const val MAX_ATTACHMENT_BYTES = 20L * 1024L * 1024L
   private const val MAX_DEPTH = 4
 
-  fun decode(path: String?): Bitmap? {
+  fun decode(path: String?, maxSize: Int = MAX_THUMBNAIL_SIZE): Bitmap? {
     val localPath = path?.toLocalFilePath()?.takeIf { it.hasMatroskaExtension() } ?: return null
     return runCatching {
       RandomAccessFile(localPath, "r").use { file ->
         val reader = SeekableMedia(file.channel)
-        findArtwork(reader, start = 0L, end = reader.length(), depth = 0)?.decode(reader)
+        findArtwork(reader, start = 0L, end = reader.length(), depth = 0)?.decode(reader, maxSize)
       }
     }.getOrNull()
   }
 
   /** Read attachments from an Android document-tree grant without copying a whole video to disk. */
-  fun decode(context: Context, uri: Uri, displayName: String?): Bitmap? {
+  fun decode(context: Context, uri: Uri, displayName: String?, maxSize: Int = MAX_THUMBNAIL_SIZE): Bitmap? {
     if (displayName?.hasMatroskaExtension() != true) return null
     return runCatching {
       context.contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
         FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
           val reader = SeekableMedia(channel)
-          findArtwork(reader, start = 0L, end = reader.length(), depth = 0)?.decode(reader)
+          findArtwork(reader, start = 0L, end = reader.length(), depth = 0)?.decode(reader, maxSize)
         }
       }
     }.getOrNull()
@@ -137,21 +137,21 @@ internal object MatroskaEmbeddedArtworkExtractor {
     ).takeIf { it.isImage && it.dataSize in 1..MAX_ATTACHMENT_BYTES }
   }
 
-  private fun Attachment.decode(file: SeekableMedia): Bitmap? {
+  private fun Attachment.decode(file: SeekableMedia, maxSize: Int): Bitmap? {
     if (dataOffset < 0 || dataSize <= 0 || dataSize > MAX_ATTACHMENT_BYTES) return null
     val bytes = ByteArray(dataSize.toInt())
     file.seek(dataOffset)
     file.readFully(bytes)
     val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
-    val sampleSize = calculateThumbnailSampleSize(options.outWidth, options.outHeight)
+    val sampleSize = calculateThumbnailSampleSize(options.outWidth, options.outHeight, maxSize)
     return BitmapFactory.decodeByteArray(
       bytes,
       0,
       bytes.size,
       BitmapFactory.Options().apply {
         inSampleSize = sampleSize
-        inPreferredConfig = Bitmap.Config.RGB_565
+        inPreferredConfig = Bitmap.Config.ARGB_8888
       },
     )
   }
