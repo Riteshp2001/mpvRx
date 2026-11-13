@@ -141,6 +141,8 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "false")
       // FongMi's mpv can send Dolby Vision straight to MediaCodec with a separate subtitle Surface.
       buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "false")
+      // FongMi's mpv swaps the Android Surface inside the running video output.
+      buildConfigField("boolean", "MPV_SUPPORTS_IN_PLACE_SURFACE", "false")
     }
 
     create("playstore") {
@@ -155,6 +157,8 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "false")
       // FongMi's mpv can send Dolby Vision straight to MediaCodec with a separate subtitle Surface.
       buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "false")
+      // FongMi's mpv swaps the Android Surface inside the running video output.
+      buildConfigField("boolean", "MPV_SUPPORTS_IN_PLACE_SURFACE", "false")
     }
 
     create("noVulkan") {
@@ -169,6 +173,8 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "false")
       // FongMi's mpv can send Dolby Vision straight to MediaCodec with a separate subtitle Surface.
       buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "false")
+      // FongMi's mpv swaps the Android Surface inside the running video output.
+      buildConfigField("boolean", "MPV_SUPPORTS_IN_PLACE_SURFACE", "false")
     }
 
     create("fongmi") {
@@ -183,6 +189,8 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "true")
       // FongMi's mpv can send Dolby Vision straight to MediaCodec with a separate subtitle Surface.
       buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "true")
+      // FongMi's mpv swaps the Android Surface inside the running video output.
+      buildConfigField("boolean", "MPV_SUPPORTS_IN_PLACE_SURFACE", "true")
     }
 
     configureEach {

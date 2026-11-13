@@ -13,8 +13,9 @@ import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
  *
  * Primary and secondary subtitles share one family: official mpv has no
  * `secondary-sub-font`, secondary inherits `sub-font`. Blank, mpv's generic
- * `sans-serif`, and the old bundled Google Sans value all resolve to mpv's
- * internal default font.
+ * `sans-serif`, and the old bundled Google Sans value all resolve to
+ * `sans-serif`, which mpvlib's fonts.conf maps to the system Roboto, with Noto
+ * Sans covering other scripts.
  */
 fun resolveSubtitleFontFamily(explicitFont: String): String =
   explicitFont.takeUnless {

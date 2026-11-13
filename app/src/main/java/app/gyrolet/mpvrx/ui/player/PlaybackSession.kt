@@ -16,6 +16,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.Surface
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.data.network.proxy.XtreamStreamingProxy
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
@@ -768,20 +769,34 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   fun unbindSurface(owner: Any): Boolean =
     withCore(default = false) {
       if (attachedSurfaceOwner !== owner || !_state.value.surfaceAttached) return@withCore false
-      detachRendererSurfaceLocked()
+      detachRendererSurfaceLocked(overlayOwner = owner)
       true
     }
 
   /**
    * Stops video before changing vo/wid. These operations must stay under the same native lock;
    * restoring vid before the replacement output is ready would reintroduce a whole-file seek.
+   * [overlayOwner]'s subtitle overlay leaves with the video Surface.
    */
-  private fun detachRendererSurfaceLocked() {
+  private fun detachRendererSurfaceLocked(overlayOwner: Any? = null) {
     ++surfaceAttachmentToken
     suspendVideoTrackLocked()
     rendererOutputReady = false
-    MPVLib.setPropertyString("vo", "null")
-    MPVLib.setPropertyString("force-window", "no")
+    // Release a GPU output's overlay while mpv is idle: once wid=0 lets mpv retire that output,
+    // every synchronous call, including the overlay's own surfaceDestroyed, waits for the GPU
+    // teardown. The direct Dolby Vision output (mediacodec_embed) keeps the old order: mpv drops
+    // it within wid=0, while detaching its overlay first would rebuild the output right here.
+    if (overlayOwner != null && attachedOsdOwner === overlayOwner &&
+      MPVLib.getPropertyString("current-vo") != "mediacodec_embed"
+    ) detachOsdSurfaceLocked()
+    // FongMi's mpv only drops the swapchain for wid=0, and detachSurface() returns once the
+    // Surface is unused; its core thread then retires the idle output. vo=null or
+    // force-window=no would instead destroy the whole Vulkan device on this (UI) thread, which
+    // Mali drivers can stall on while the window is being hidden (ANR).
+    if (!BuildConfig.MPV_SUPPORTS_IN_PLACE_SURFACE) {
+      MPVLib.setPropertyString("vo", "null")
+      MPVLib.setPropertyString("force-window", "no")
+    }
     MPVLib.detachSurface()
     attachedSurfaceOwner = null
     attachedSurfaceWidth = 0
