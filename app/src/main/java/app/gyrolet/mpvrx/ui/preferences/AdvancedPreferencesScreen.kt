@@ -13,6 +13,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import app.gyrolet.mpvrx.BuildConfig
+import app.gyrolet.mpvrx.domain.fonts.MpvFontConfig
 import app.gyrolet.mpvrx.utils.telemetry.MeasureTelemetry
 import android.os.Build
 import android.os.Environment
@@ -878,19 +879,16 @@ object AdvancedPreferencesScreen : Screen {
                       size
                     }
 
-                  // Fonts cache size
-                  val fontsDir = File(context.filesDir, "fonts")
-                  if (fontsDir.exists()) {
-                    val fontFiles =
-                      fontsDir.listFiles()?.filter {
-                        it.isFile && it.name.lowercase().matches(".*\\.[ot]tf$".toRegex())
-                      } ?: emptyList()
-                    fontsFileCount = fontFiles.size
-                    fontsCacheSize = fontFiles.sumOf { it.length() }
-                  } else {
-                    fontsFileCount = 0
-                    fontsCacheSize = 0
-                  }
+                  // Fonts cache size, including the downloaded subtitle fallback fonts
+                  val fontFiles =
+                    listOf(File(context.filesDir, "fonts"), MpvFontConfig.fallbackFontsDirectory(context))
+                      .flatMap { directory ->
+                        directory.listFiles()?.filter {
+                          it.isFile && it.name.lowercase().matches(".*\\.[ot]tf$".toRegex())
+                        }.orEmpty()
+                      }
+                  fontsFileCount = fontFiles.size
+                  fontsCacheSize = fontFiles.sumOf { it.length() }
                 }
               }
 
@@ -1038,6 +1036,7 @@ object AdvancedPreferencesScreen : Screen {
                       check(!fontsDir.exists() || fontsDir.deleteRecursively()) {
                         "Unable to clear fonts cache directory: ${fontsDir.absolutePath}"
                       }
+                      MpvFontConfig.fallbackFontsDirectory(context).listFiles()?.forEach(File::delete)
                     }.onSuccess {
                       withContext(Dispatchers.Main) {
                         fontsCacheSize = 0L

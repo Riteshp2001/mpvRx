@@ -3130,6 +3130,7 @@ class PlayerActivity :
         val startedAt = android.os.SystemClock.elapsedRealtime()
         runCatching {
           syncBundledAssetsIfNeeded()
+          app.gyrolet.mpvrx.domain.fonts.MpvFontConfig.ensure(this@PlayerActivity)
           prepareUserMpvAssetsForStartup()
         }.onFailure { e -> Log.e(TAG, "Error copying MPV config and assets", e) }
         Log.d(TAG, "MPV startup assets prepared in ${android.os.SystemClock.elapsedRealtime() - startedAt} ms")

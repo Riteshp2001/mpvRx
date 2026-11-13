@@ -363,6 +363,9 @@
   <string name="pref_subtitles_font_directory_selected">Source: %1$s</string>
   <string name="pref_subtitles_font_no_custom">No custom fonts loaded</string>
   <string name="pref_subtitles_font_copy_failed">Could not load fonts: %1$s</string>
+  <string name="pref_subtitles_auto_download_fonts">Download missing fonts</string>
+  <string name="pref_subtitles_auto_download_fonts_summary">Adds a Google font when subtitles use a script or emoji this device can\'t show</string>
+  <string name="subtitle_font_added">Font added: %1$s</string>
   <string name="pref_subtitles_autoload_title">Automatically load subtitles</string>
   <string name="pref_subtitles_autoload_summary">Automatically find matching subtitles beside the video and up to two subfolders deep.</string>
   <string name="pref_subtitles_search_online">Online Subtitle Search…</string>

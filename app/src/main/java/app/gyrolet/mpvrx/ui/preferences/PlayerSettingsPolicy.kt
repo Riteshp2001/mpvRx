@@ -98,6 +98,8 @@ private val liveSubtitleSettings = setOf(
   R.string.player_sheets_sub_override_ass,
   R.string.player_sheets_sub_scale_by_window,
   R.string.pref_subtitles_secondary_pinch_zoom,
+  // The player starts or stops downloading fonts as soon as this changes.
+  R.string.pref_subtitles_auto_download_fonts,
   // These configure the next manual search, which can be performed in the current video.
   R.string.pref_subtitle_search_title,
   R.string.pref_subtitles_search_mode_title,

@@ -804,6 +804,25 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     updateState { it.copy(surfaceAttached = false) }
   }
 
+  /**
+   * Makes libass rebuild its font list, e.g. after a fallback font was downloaded. A new
+   * sub-fonts-dir value recreates the subtitle renderers and redecodes their cached lines, so the
+   * shown line stays. Each value names the same folder: a trailing slash is dropped or added, and
+   * an unset one (mpv's config fonts folder) becomes "~~/fonts".
+   */
+  fun reloadSubtitleFonts(): Boolean =
+    withCore(false) {
+      val directory = MPVLib.getPropertyString("sub-fonts-dir").orEmpty()
+      val replacement =
+        when {
+          directory.isEmpty() -> "~~/fonts"
+          directory.endsWith('/') && directory.length > 1 -> directory.dropLast(1)
+          else -> "$directory/"
+        }
+      MPVLib.setPropertyString("sub-fonts-dir", replacement)
+      true
+    }
+
   /** A retained VO can redraw its current frame without seeking or touching audio buffers. */
   fun redrawVideoFrame() {
     withCore(Unit) {

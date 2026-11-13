@@ -36,6 +36,12 @@ private data class GoogleFontsCatalog(
   val familyMetadataList: List<GoogleFontFamily> = emptyList(),
 )
 
+/** A downloaded font does not draw any of the characters it was fetched for; it maps [codePoints]. */
+class FontCoverageMismatchException(
+  family: String,
+  val codePoints: Set<Int>,
+) : IOException("$family does not cover the requested characters")
+
 data class InstalledGoogleFont(
   val family: String,
   val appFamily: String,
@@ -51,6 +57,7 @@ class GoogleFontsRepository(
   private val catalogFile = File(directory, CATALOG_FILE_NAME)
   private val legacyActiveFontFile = File(directory, LEGACY_ACTIVE_FONT_FILE_NAME)
   private val mpvFontsDirectory = File(appContext.filesDir, MPV_FONTS_DIRECTORY_NAME)
+  private val fallbackFontsDirectory = MpvFontConfig.fallbackFontsDirectory(appContext)
   private val installedFontsLock = Any()
   private val json = Json { ignoreUnknownKeys = true }
 
@@ -86,27 +93,7 @@ class GoogleFontsRepository(
   suspend fun install(family: String): Result<Unit> =
     withContext(Dispatchers.IO) {
       try {
-        val fontUrl = resolveTtfUrl(family)
-        val request = Request.Builder().url(fontUrl).header("User-Agent", LEGACY_ANDROID_USER_AGENT).get().build()
-        val fontBytes =
-          httpClient.newCall(request).awaitResponse().use { response ->
-            if (!response.isSuccessful) throw IOException("Font download returned HTTP ${response.code}")
-            val contentLength = response.body.contentLength()
-            if (contentLength > MAX_FONT_BYTES) throw IOException("Font file is too large")
-            response.body.bytes().also { bytes ->
-              if (bytes.isEmpty() || bytes.size > MAX_FONT_BYTES) throw IOException("Invalid font file size")
-            }
-          }
-
-        directory.mkdirs()
-        val validationFile = File.createTempFile("font-", ".ttf", directory)
-        try {
-          validationFile.writeBytes(fontBytes)
-          runCatching { Typeface.createFromFile(validationFile) }
-            .getOrElse { throw IOException("Downloaded font for $family could not be loaded", it) }
-        } finally {
-          validationFile.delete()
-        }
+        val fontBytes = downloadFont(family, resolveTtfUrl(CSS_URL, "$family:400"))
         synchronized(installedFontsLock) {
           writeAtomically(fontFileForFamily(family), fontBytes)
         }
@@ -116,6 +103,45 @@ class GoogleFontsRepository(
       } catch (error: Exception) {
         Result.failure(error)
       }
+    }
+
+  /**
+   * Downloads [family] for libass to fall back on, keeping it only when it draws some of [needed].
+   * Returns every code point the font maps.
+   */
+  suspend fun installFallbackFont(
+    family: String,
+    needed: Set<Int>,
+  ): Result<Set<Int>> =
+    withContext(Dispatchers.IO) {
+      try {
+        // The legacy stylesheet API may serve old clients only part of a font; css2 serves all of it.
+        val fontBytes = downloadFont(family, resolveTtfUrl(CSS2_URL, family))
+        val codePoints = FontCmap.codePoints(fontBytes) ?: throw IOException("$family has no Unicode character map")
+        if (needed.none(codePoints::contains)) throw FontCoverageMismatchException(family, codePoints)
+        synchronized(installedFontsLock) {
+          writeAtomically(fallbackFontFileForFamily(family), fontBytes)
+        }
+        Result.success(codePoints)
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (error: Exception) {
+        Result.failure(error)
+      }
+    }
+
+  /** The downloaded fallback fonts, by family, with the code points each one maps. */
+  fun fallbackFonts(): Map<String, Set<Int>> =
+    synchronized(installedFontsLock) {
+      fallbackFontsDirectory
+        .listFiles()
+        ?.mapNotNull { file ->
+          val family = familyFromFileName(file.name, FALLBACK_FONT_PREFIX) ?: return@mapNotNull null
+          val codePoints = runCatching { FontCmap.codePoints(file.readBytes()) }.getOrNull() ?: return@mapNotNull null
+          family to codePoints
+        }
+        ?.toMap()
+        .orEmpty()
     }
 
   fun fontFile(family: String): File? =
@@ -169,12 +195,42 @@ class GoogleFontsRepository(
       file.isFile &&
       file.name.startsWith(MPV_GOOGLE_FONT_PREFIX)
 
-  private suspend fun resolveTtfUrl(family: String): String {
+  private suspend fun downloadFont(
+    family: String,
+    fontUrl: String,
+  ): ByteArray {
+    val request = Request.Builder().url(fontUrl).header("User-Agent", LEGACY_ANDROID_USER_AGENT).get().build()
+    val fontBytes =
+      httpClient.newCall(request).awaitResponse().use { response ->
+        if (!response.isSuccessful) throw IOException("Font download returned HTTP ${response.code}")
+        val contentLength = response.body.contentLength()
+        if (contentLength > MAX_FONT_BYTES) throw IOException("Font file is too large")
+        response.body.bytes().also { bytes ->
+          if (bytes.isEmpty() || bytes.size > MAX_FONT_BYTES) throw IOException("Invalid font file size")
+        }
+      }
+
+    directory.mkdirs()
+    val validationFile = File.createTempFile("font-", ".ttf", directory)
+    try {
+      validationFile.writeBytes(fontBytes)
+      runCatching { Typeface.createFromFile(validationFile) }
+        .getOrElse { throw IOException("Downloaded font for $family could not be loaded", it) }
+    } finally {
+      validationFile.delete()
+    }
+    return fontBytes
+  }
+
+  private suspend fun resolveTtfUrl(
+    stylesheetUrl: String,
+    familyQuery: String,
+  ): String {
     val cssUrl =
-      CSS_URL
+      stylesheetUrl
         .toHttpUrl()
         .newBuilder()
-        .addQueryParameter("family", "$family:400")
+        .addQueryParameter("family", familyQuery)
         .build()
     val request = Request.Builder().url(cssUrl).header("User-Agent", LEGACY_ANDROID_USER_AGENT).get().build()
     val css =
@@ -211,14 +267,25 @@ class GoogleFontsRepository(
 
   private fun fontFileForFamily(family: String): File = File(mpvFontsDirectory, fileNameForFamily(family))
 
-  private fun fileNameForFamily(family: String): String {
+  private fun fallbackFontFileForFamily(family: String): File =
+    File(fallbackFontsDirectory, fileNameForFamily(family, FALLBACK_FONT_PREFIX))
+
+  private fun fileNameForFamily(
+    family: String,
+    prefix: String = MPV_GOOGLE_FONT_PREFIX,
+  ): String {
     val encoded = Base64.encodeToString(family.toByteArray(Charsets.UTF_8), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
-    return "$MPV_GOOGLE_FONT_PREFIX$encoded.ttf"
+    return "$prefix$encoded.ttf"
   }
 
-  private fun appFamilyFromFileName(fileName: String): String? {
-    if (!fileName.startsWith(MPV_GOOGLE_FONT_PREFIX) || !fileName.endsWith(".ttf", true)) return null
-    val encoded = fileName.removePrefix(MPV_GOOGLE_FONT_PREFIX).dropLast(4)
+  private fun appFamilyFromFileName(fileName: String): String? = familyFromFileName(fileName, MPV_GOOGLE_FONT_PREFIX)
+
+  private fun familyFromFileName(
+    fileName: String,
+    prefix: String,
+  ): String? {
+    if (!fileName.startsWith(prefix) || !fileName.endsWith(".ttf", true)) return null
+    val encoded = fileName.removePrefix(prefix).dropLast(4)
     return runCatching {
       Base64.decode(encoded, Base64.URL_SAFE or Base64.NO_WRAP).toString(Charsets.UTF_8)
     }.getOrNull()?.takeIf(String::isNotBlank)
@@ -257,6 +324,7 @@ class GoogleFontsRepository(
   private companion object {
     const val CATALOG_URL = "https://fonts.google.com/metadata/fonts"
     const val CSS_URL = "https://fonts.googleapis.com/css"
+    const val CSS2_URL = "https://fonts.googleapis.com/css2"
     const val USER_AGENT = "mpvRx Google Fonts"
     const val LEGACY_ANDROID_USER_AGENT =
       "Mozilla/5.0 (Linux; U; Android 4.4; en-us) AppleWebKit/534.30 Version/4.0 Mobile Safari/534.30"
@@ -265,6 +333,7 @@ class GoogleFontsRepository(
     const val LEGACY_ACTIVE_FONT_FILE_NAME = "active.ttf"
     const val MPV_FONTS_DIRECTORY_NAME = "fonts"
     const val MPV_GOOGLE_FONT_PREFIX = "mpvrx-google-font-"
+    const val FALLBACK_FONT_PREFIX = "mpvrx-fallback-font-"
     const val LEGACY_BUNDLED_MPV_FONT_FILE_NAME = "mpvrx-google-sans-flex.ttf"
     const val LEGACY_ACTIVE_MPV_FONT_FILE_NAME = "mpvrx-app-font.ttf"
     const val CATALOG_MAX_AGE_DAYS = 7L

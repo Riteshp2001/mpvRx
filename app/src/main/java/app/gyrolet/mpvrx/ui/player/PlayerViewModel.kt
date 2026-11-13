@@ -240,6 +240,7 @@ class PlayerViewModel(
   private val introDbRepository: IntroDbRepository by inject()
   val syncplayManager: app.gyrolet.mpvrx.domain.syncplay.SyncplayManager by inject()
   private val lyricsRepository: app.gyrolet.mpvrx.repository.lyrics.LyricsRepository by inject()
+  private val googleFontsRepository: app.gyrolet.mpvrx.domain.fonts.GoogleFontsRepository by inject()
   private val lyricsTranslationService: app.gyrolet.mpvrx.data.lyrics.LyricsTranslationService by inject()
   private val introMarkerCachePrefs by lazy {
     appContext.getSharedPreferences(INTRO_MARKER_CACHE_PREFS, Context.MODE_PRIVATE)
@@ -2512,6 +2513,16 @@ fun restartFromBeginning() {
       scope = viewModelScope,
       showText = { text -> playerUpdate.value = PlayerUpdates.ShowText(text) },
     )
+
+  init {
+    SubtitleFontFallbackController(
+      context = appContext,
+      fonts = googleFontsRepository,
+      preferences = subtitlesPreferences,
+      subtitleTracks = subtitleTracks,
+      showText = { text -> playerUpdate.value = PlayerUpdates.ShowText(text) },
+    ).start(viewModelScope)
+  }
 
   // ==================== Custom Buttons ====================
 

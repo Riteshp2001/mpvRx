@@ -30,6 +30,9 @@ class SubtitlesPreferences(
   val autoEnableSubtitles = preferenceStore.getBoolean("sub_auto_enable", true)
 
   val fontsFolder = preferenceStore.getString("sub_fonts_folder")
+
+  /** Download a Google font when subtitles use a script or emoji the device cannot draw. */
+  val autoDownloadFonts = preferenceStore.getBoolean("sub_auto_download_fonts", true)
   val font = preferenceStore.getString("sub_font", "")
   val fontSize = preferenceStore.getInt("sub_font_size", 55)
   val subScale = preferenceStore.getFloat("sub_scale", 1f)

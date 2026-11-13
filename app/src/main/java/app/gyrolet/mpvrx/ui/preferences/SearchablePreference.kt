@@ -1826,6 +1826,10 @@ object SearchablePreferences {
         category = "Subtitles",
         screen = SubtitlesPreferencesScreen,
         anchorItemIndex = 3,
+        SearchEntrySpec(
+          R.string.pref_subtitles_auto_download_fonts,
+          listOf("subtitle", "font", "download", "missing", "emoji", "script", "language", "google"),
+        ),
         SearchEntrySpec(R.string.reload_fonts, listOf("subtitle", "font", "reload", "rescan")),
         SearchEntrySpec(R.string.clear_font_directory, listOf("subtitle", "font", "clear", "folder"), R.string.pref_subtitles_fonts_dir),
       )
