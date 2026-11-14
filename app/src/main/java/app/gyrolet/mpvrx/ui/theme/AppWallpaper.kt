@@ -14,6 +14,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -157,23 +158,31 @@ fun AppWallpaperHost(content: @Composable () -> Unit) {
           .then(if (backgroundBackdrop != null) Modifier.layerBackdrop(backgroundBackdrop) else Modifier)
           .background(MaterialTheme.colorScheme.background),
     ) {
-      wallpaper?.let { bitmap ->
-        // Fade the wallpaper in together with the content so the launch hands off from the splash
-        // as one crossfade instead of the wallpaper hard-cutting in before the content.
-        Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = contentAlpha }) {
-          WallpaperImage(
-            bitmap = bitmap,
-            zoom = wallpaperZoom,
-            offsetX = wallpaperOffsetX,
-            offsetY = wallpaperOffsetY,
-            scaleMode = wallpaperScaleMode,
-            blurRadius = wallpaperBlur,
-            imageAlpha = wallpaperAlpha,
-            modifier = Modifier.fillMaxSize(),
-          )
-          Box(
-            modifier = Modifier.fillMaxSize().background(rememberWallpaperScrimColor(bitmap)),
-          )
+      // Fade the wallpaper in together with the content so the launch hands off from the splash
+      // as one crossfade instead of the wallpaper hard-cutting in before the content. Saving a new
+      // wallpaper crossfades old -> new instead of popping when the new bitmap finishes decoding.
+      Crossfade(
+        targetState = wallpaper,
+        modifier = Modifier.fillMaxSize(),
+        animationSpec = tween(durationMillis = WALLPAPER_CROSSFADE_MS, easing = FastOutSlowInEasing),
+        label = "wallpaperCrossfade",
+      ) { bitmap ->
+        if (bitmap != null) {
+          Box(modifier = Modifier.fillMaxSize().graphicsLayer { alpha = contentAlpha }) {
+            WallpaperImage(
+              bitmap = bitmap,
+              zoom = wallpaperZoom,
+              offsetX = wallpaperOffsetX,
+              offsetY = wallpaperOffsetY,
+              scaleMode = wallpaperScaleMode,
+              blurRadius = wallpaperBlur,
+              imageAlpha = wallpaperAlpha,
+              modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+              modifier = Modifier.fillMaxSize().background(rememberWallpaperScrimColor(bitmap)),
+            )
+          }
         }
       }
       if (animationShown) {
@@ -411,7 +420,9 @@ fun loadWallpaperBitmap(
 private const val WALLPAPER_DATA_PREFIX = "data:image/png;base64,"
 private const val MAX_WALLPAPER_ENCODED_LENGTH = 40 * 1024 * 1024
 private const val MAX_WALLPAPER_DIMENSION_PX = 2560
-private const val WALLPAPER_RECYCLE_DELAY_MS = 120L
+// Must outlast the crossfade, or the outgoing bitmap is recycled while it is still being drawn.
+private const val WALLPAPER_CROSSFADE_MS = 260
+private const val WALLPAPER_RECYCLE_DELAY_MS = 800L
 private const val MAX_WALLPAPER_DOWNLOAD_BYTES = 25L * 1024 * 1024
 private const val WALLPAPER_DOWNLOAD_DIR = "wallpaper_downloads"
 

@@ -247,6 +247,8 @@ data class WallpaperEditorScreen(
                       return@launch
                     }
                     val savedUri = saveWallpaperCopy(context, selectedSource)
+                    // Decode the Appearance card's thumbnail now so it is already there when we go Back.
+                    withContext(Dispatchers.IO) { WallpaperThumbnailCache.load(context, savedUri) }
                     preferences.customWallpaperZoom.set(zoom)
                     preferences.customWallpaperOffsetX.set(offsetX)
                     preferences.customWallpaperOffsetY.set(offsetY)
