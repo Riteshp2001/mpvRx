@@ -16,6 +16,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
@@ -72,6 +74,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -179,6 +182,13 @@ data class WallpaperEditorScreen(
       }.value
     // Ignore a bitmap that belongs to the previously selected source while the new one is loading.
     val bitmap = loadedWallpaper?.takeIf { it.first == selectedSource }?.second
+    // Cached thumbnail (owned by WallpaperThumbnailCache, never recycled here) shown while the full bitmap loads.
+    val placeholderBitmap = remember(selectedSource) { WallpaperThumbnailCache.peekBitmap(selectedSource) }
+    val fullPreviewAlpha by animateFloatAsState(
+      targetValue = if (bitmap != null) 1f else 0f,
+      animationSpec = tween(durationMillis = 180),
+      label = "wallpaperPreviewFull",
+    )
     val isNoneSelected = selectedSource.isBlank()
     val isCustomSelected = selectedSource.isNotBlank() && !WallpaperPreset.isPresetUri(selectedSource)
     val customPicker =
@@ -409,6 +419,20 @@ data class WallpaperEditorScreen(
                     }
                   },
             ) {
+              // The full wallpaper takes a moment to decode on every entry, so paint the cached
+              // thumbnail straight away and fade the full-resolution image in over it.
+              placeholderBitmap?.let { thumb ->
+                WallpaperImage(
+                  bitmap = thumb,
+                  zoom = zoom,
+                  offsetX = offsetX,
+                  offsetY = offsetY,
+                  scaleMode = scaleMode,
+                  blurRadius = blur,
+                  imageAlpha = alpha,
+                  modifier = Modifier.fillMaxSize(),
+                )
+              }
               bitmap?.let { loaded ->
                 WallpaperImage(
                   bitmap = loaded,
@@ -418,7 +442,7 @@ data class WallpaperEditorScreen(
                   scaleMode = scaleMode,
                   blurRadius = blur,
                   imageAlpha = alpha,
-                  modifier = Modifier.fillMaxSize(),
+                  modifier = Modifier.fillMaxSize().graphicsLayer { this.alpha = fullPreviewAlpha },
                 )
               }
               if (isNoneSelected) {

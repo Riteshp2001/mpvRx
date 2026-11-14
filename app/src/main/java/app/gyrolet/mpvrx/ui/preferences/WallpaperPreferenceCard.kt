@@ -153,12 +153,16 @@ internal fun WallpaperPreferenceCard(
  * showed an empty frame until it finished (visible as the thumbnail popping in).
  */
 internal object WallpaperThumbnailCache {
-  private val cache = LruCache<String, ImageBitmap>(MAX_ENTRIES)
+  private val cache = LruCache<String, Bitmap>(MAX_ENTRIES)
 
   // A saved custom wallpaper is a multi-megabyte data: URI; key on its hash instead of holding the string.
   private fun keyOf(wallpaperUri: String) = "${wallpaperUri.length}:${wallpaperUri.hashCode()}"
 
-  fun peek(wallpaperUri: String): ImageBitmap? = if (wallpaperUri.isBlank()) null else cache.get(keyOf(wallpaperUri))
+  /** Raw cached bitmap. Owned by the cache: callers must never recycle it. */
+  fun peekBitmap(wallpaperUri: String): Bitmap? =
+    if (wallpaperUri.isBlank()) null else cache.get(keyOf(wallpaperUri))?.takeUnless { it.isRecycled }
+
+  fun peek(wallpaperUri: String): ImageBitmap? = peekBitmap(wallpaperUri)?.asImageBitmap()
 
   /** Returns the cached thumbnail or decodes (and caches) it. Call off the main thread. */
   fun load(
@@ -167,8 +171,10 @@ internal object WallpaperThumbnailCache {
   ): ImageBitmap? {
     if (wallpaperUri.isBlank()) return null
     val key = keyOf(wallpaperUri)
-    cache.get(key)?.let { return it }
-    return loadWallpaperThumbnail(context, wallpaperUri)?.also { cache.put(key, it) }
+    peekBitmap(wallpaperUri)?.let { return it.asImageBitmap() }
+    val thumbnail = loadWallpaperThumbnail(context, wallpaperUri) ?: return null
+    cache.put(key, thumbnail)
+    return thumbnail.asImageBitmap()
   }
 
   private const val MAX_ENTRIES = 6
@@ -178,12 +184,12 @@ internal object WallpaperThumbnailCache {
 private fun loadWallpaperThumbnail(
   context: Context,
   wallpaperUri: String,
-): ImageBitmap? {
+): Bitmap? {
   val full = loadWallpaperBitmap(context, wallpaperUri) ?: return null
   val targetWidth = 240
-  if (full.width <= targetWidth) return full.asImageBitmap()
+  if (full.width <= targetWidth) return full
   val targetHeight = (full.height * (targetWidth / full.width.toFloat())).toInt().coerceAtLeast(1)
   val scaled = Bitmap.createScaledBitmap(full, targetWidth, targetHeight, true)
   if (scaled !== full) full.recycle()
-  return scaled.asImageBitmap()
+  return scaled
 }
