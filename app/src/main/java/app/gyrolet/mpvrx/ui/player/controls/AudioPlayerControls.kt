@@ -90,12 +90,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.ripple
 import androidx.compose.material3.Text
@@ -127,9 +129,15 @@ import app.gyrolet.mpvrx.repository.NavidromeRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.toPlaylistCandidates
+import app.gyrolet.mpvrx.ui.liquidglass.LiquidControlColors
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
+import app.gyrolet.mpvrx.ui.liquidglass.PlayerLiquidTokens
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassControlSurface
 import app.gyrolet.mpvrx.ui.liquidglass.outsideShadow
 import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import app.gyrolet.mpvrx.ui.player.resolveUri
 import app.gyrolet.mpvrx.ui.player.controls.components.MiniAudioVisualizer
 import app.gyrolet.mpvrx.ui.player.controls.components.stableNumericWidth
@@ -155,7 +163,6 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
@@ -195,8 +202,6 @@ import app.gyrolet.mpvrx.ui.player.MotionArtworkImage
 import app.gyrolet.mpvrx.ui.player.rememberMotionArtworkDrawable
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.presentation.components.AudioFormatArtworkBadge
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.AudioVisualizerStyle
@@ -1237,8 +1242,8 @@ fun AudioPlayerControls(
   val isTabletLandscape = !isPortrait && isTablet
   val isTabletPortrait = isPortrait && isTablet
 
-  LaunchedEffect(isTabletLandscape) {
-    if (isTabletLandscape) {
+  LaunchedEffect(isTablet) {
+    if (isTablet) {
       if (showInPlaceLyrics || wasLyricsActiveBeforeLandscape) {
         tabletDualPaneTab = 1
         wasLyricsActiveBeforeLandscape = true
@@ -1252,8 +1257,8 @@ fun AudioPlayerControls(
     }
   }
 
-  LaunchedEffect(showInPlaceLyrics, isPlaying, isTabletLandscape, lastUserInteractionTime) {
-    if (showInPlaceLyrics && !isTabletLandscape && isPlaying) {
+  LaunchedEffect(showInPlaceLyrics, isPlaying, isTablet, lastUserInteractionTime) {
+    if (showInPlaceLyrics && !isTablet && isPlaying) {
       kotlinx.coroutines.delay(5000L)
       isLyricsFullscreen = true
     } else {
@@ -1327,17 +1332,17 @@ fun AudioPlayerControls(
         listOf(surface, topBackdrop, bottomBackdrop, ColorUtils.blendARGB(topBackdrop, bottomBackdrop, 0.5f)),
       )
     }
-  val edgeToEdgeVisualizer = showVisualizer && (!showInPlaceLyrics || isTabletLandscape)
+  val edgeToEdgeVisualizer = showVisualizer && (!showInPlaceLyrics || isTablet)
   // In-place lyrics run flush against the screen edges, so the root padding moves onto
   // the header and the footer instead of boxing the lyrics in.
-  val flushInPlaceLyrics = showInPlaceLyrics && isPortrait
+  val flushInPlaceLyrics = showInPlaceLyrics && isPortrait && !isTablet
   val controlsSidePadding = if (edgeToEdgeVisualizer || flushInPlaceLyrics) 16.dp else 0.dp
   // The header keeps the side and top padding the root gives up while the lyrics are flush.
   val headerContentPadding =
     if (flushInPlaceLyrics) Modifier.padding(start = 16.dp, top = 6.dp, end = 16.dp) else Modifier
   // Visibility-independent insets keep the layout still while bars re-dispatch on resume.
   val stableInsets = WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout)
-  val showImmersiveArtwork = immersiveArtworkEnabled && isPortrait && !showVisualizer && !showInPlaceLyrics &&
+  val showImmersiveArtwork = !isTablet && immersiveArtworkEnabled && isPortrait && !showVisualizer && !showInPlaceLyrics &&
     (albumArtBitmap != null || !currentArtworkUri.isNullOrBlank() ||
       currentAudioPresentation?.motionArtwork != null || motionQuery != null)
   val immersiveSurface by animateColorAsState(
@@ -1365,58 +1370,68 @@ fun AudioPlayerControls(
   val prevCoverBitmap = rememberAudioAlbumArt(prevItem?.originalUri, prevItem?.artworkUri)
   val swipeNextCoverBitmap by rememberUpdatedState(nextCoverBitmap ?: albumArtBitmap)
   val swipePrevCoverBitmap by rememberUpdatedState(prevCoverBitmap ?: albumArtBitmap)
-  BoxWithConstraints(
-    modifier.fillMaxSize().background(immersiveSurface).drawWithCache {
-      if (ambientModeEnabled &&
-        (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)
-      ) {
-        val topColor = animatedAmbientTop
-        val bottomColor = animatedAmbientBottom
-        val radialGradient = Brush.radialGradient(
-          colors = listOf(topColor, bottomColor, Color.Transparent),
-          center = Offset(size.width * 0.5f, size.height * if (showImmersiveArtwork) 0.55f else 0.25f),
-          radius = size.width * 1.3f,
-        )
-        val linearGradient = Brush.verticalGradient(
-          colors = listOf(
-            topColor.copy(alpha = topColor.alpha * 0.65f),
-            bottomColor.copy(alpha = bottomColor.alpha * 0.35f),
-            Color.Transparent,
-          ),
-          startY = if (showImmersiveArtwork) size.height * 0.35f else 0f,
-          endY = size.height * if (showImmersiveArtwork) 1f else 0.80f,
-        )
-        onDrawBehind {
-          drawRect(radialGradient)
-          drawRect(linearGradient)
-        }
-      } else {
-        onDrawBehind {}
-      }
-    },
-  ) {
+  BoxWithConstraints(modifier.fillMaxSize()) {
     val immersiveViewportWidthPx = constraints.maxWidth.toFloat()
-    if (showImmersiveArtwork) {
-      ImmersiveArtworkBackground(
-        bitmap = activeCoverOverride ?: albumArtBitmap,
-        artworkUrl = currentArtworkUri?.takeUnless { isLocalArtworkSource(currentMediaSource) },
-        motionArtwork = currentAudioPresentation?.motionArtwork?.takeIf { activeCoverOverride == null },
-        remoteMotionQuery = motionQuery?.takeIf { activeCoverOverride == null },
-        isPlaying = isPlaying,
-        surfaceColor = immersiveSurface,
-        headerFadeHeight = with(LocalDensity.current) { stableInsets.getTop(this).toDp() } + 96.dp,
-        swipeOffset = animatableOffsetX.asState(),
-        previousBitmap = swipePrevCoverBitmap,
-        previousArtworkUrl = prevItem?.artworkUri?.takeIf {
-          it.isNotBlank() && !isLocalArtworkSource(prevItem.originalUri)
-        },
-        nextBitmap = swipeNextCoverBitmap,
-        nextArtworkUrl = nextItem?.artworkUri?.takeIf {
-          it.isNotBlank() && !isLocalArtworkSource(nextItem.originalUri)
-        },
-        hasPrevious = prevItem != null,
-        hasNext = nextItem != null,
-      )
+    // The music controls sample their backdrop from the background only, so glass never samples itself.
+    val backdropLayer = rememberLayerBackdrop()
+    val musicBackdrop = backdropLayer.takeIf { liquidGlassActive() }
+    Box(
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .then(if (musicBackdrop != null) Modifier.layerBackdrop(backdropLayer) else Modifier)
+          .background(immersiveSurface)
+          .drawWithCache {
+            if (ambientModeEnabled &&
+              (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)
+            ) {
+              val topColor = animatedAmbientTop
+              val bottomColor = animatedAmbientBottom
+              val radialGradient = Brush.radialGradient(
+                colors = listOf(topColor, bottomColor, Color.Transparent),
+                center = Offset(size.width * 0.5f, size.height * if (showImmersiveArtwork) 0.55f else 0.25f),
+                radius = size.width * 1.3f,
+              )
+              val linearGradient = Brush.verticalGradient(
+                colors = listOf(
+                  topColor.copy(alpha = topColor.alpha * 0.65f),
+                  bottomColor.copy(alpha = bottomColor.alpha * 0.35f),
+                  Color.Transparent,
+                ),
+                startY = if (showImmersiveArtwork) size.height * 0.35f else 0f,
+                endY = size.height * if (showImmersiveArtwork) 1f else 0.80f,
+              )
+              onDrawBehind {
+                drawRect(radialGradient)
+                drawRect(linearGradient)
+              }
+            } else {
+              onDrawBehind {}
+            }
+          },
+    ) {
+      if (showImmersiveArtwork) {
+        ImmersiveArtworkBackground(
+          bitmap = activeCoverOverride ?: albumArtBitmap,
+          artworkUrl = currentArtworkUri?.takeUnless { isLocalArtworkSource(currentMediaSource) },
+          motionArtwork = currentAudioPresentation?.motionArtwork?.takeIf { activeCoverOverride == null },
+          remoteMotionQuery = motionQuery?.takeIf { activeCoverOverride == null },
+          isPlaying = isPlaying,
+          surfaceColor = immersiveSurface,
+          headerFadeHeight = with(LocalDensity.current) { stableInsets.getTop(this).toDp() } + 96.dp,
+          swipeOffset = animatableOffsetX.asState(),
+          previousBitmap = swipePrevCoverBitmap,
+          previousArtworkUrl = prevItem?.artworkUri?.takeIf {
+            it.isNotBlank() && !isLocalArtworkSource(prevItem.originalUri)
+          },
+          nextBitmap = swipeNextCoverBitmap,
+          nextArtworkUrl = nextItem?.artworkUri?.takeIf {
+            it.isNotBlank() && !isLocalArtworkSource(nextItem.originalUri)
+          },
+          hasPrevious = prevItem != null,
+          hasNext = nextItem != null,
+        )
+      }
     }
     BoxWithConstraints(
       modifier =
@@ -1445,7 +1460,7 @@ fun AudioPlayerControls(
           )
           .fillMaxSize()
           .windowInsetsPadding(
-            if (!isPortrait) {
+            if (!isPortrait && !isTablet) {
               WindowInsets(0, 0, 0, 0)
             } else if (edgeToEdgeVisualizer) {
               stableInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
@@ -1453,16 +1468,26 @@ fun AudioPlayerControls(
               stableInsets
             },
           )
-          .padding(horizontal = if (!isPortrait || edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 16.dp)
-          .padding(top = if (!isPortrait || edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 6.dp,
-            bottom = if (isPortrait) 12.dp else 0.dp),
+          .padding(
+            horizontal =
+              if ((!isPortrait && !isTablet) || edgeToEdgeVisualizer || flushInPlaceLyrics) {
+                0.dp
+              } else if (isTablet) {
+                if (isTabletLandscape) 24.dp else 16.dp
+              } else {
+                16.dp
+              },
+          )
+          .padding(
+            top = if ((!isPortrait && !isTablet) || edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 6.dp,
+            bottom = if (isPortrait || isTablet) 12.dp else 0.dp,
+          ),
     ) {
       val availableHeight = maxHeight - with(LocalDensity.current) {
         (stableInsets.getTop(this) + stableInsets.getBottom(this)).toDp()
       }
       val isCompactLandscape = !isPortrait && availableHeight < 480.dp
       val isShortLandscape = !isPortrait && availableHeight < 320.dp
-      val showLandscapeSidePanel = isTabletLandscape && availableHeight >= 560.dp
       val audioHeaderSize = if (isShortLandscape) 28.dp else if (isCompactLandscape) 36.dp else 48.dp
       val headerBar = @Composable {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -1477,12 +1502,20 @@ fun AudioPlayerControls(
               }
             },
             modifier = Modifier.align(Alignment.CenterStart).size(audioHeaderSize),
+            backdrop = musicBackdrop,
           ) {
             Icon(
               imageVector = if (showInPlaceLyrics || isLyricsFullscreen) Icons.RoundedFilled.ArrowBack else Icons.RoundedFilled.ExpandMore,
               contentDescription = stringResource(if (showInPlaceLyrics || isLyricsFullscreen) R.string.back else R.string.ui_close),
               tint = MaterialTheme.colorScheme.onSurface,
-              modifier = Modifier.size(if (showInPlaceLyrics || isLyricsFullscreen) 28.dp else 32.dp),
+              modifier =
+                Modifier.size(
+                  if (showInPlaceLyrics || isLyricsFullscreen) {
+                    28.dp
+                  } else {
+                    32.dp
+                  },
+                ),
             )
           }
 
@@ -1503,7 +1536,11 @@ fun AudioPlayerControls(
             modifier = Modifier.align(Alignment.CenterEnd),
             verticalAlignment = Alignment.CenterVertically,
           ) {
-            ReactiveIconButton(onClick = { onOpenSheet(Sheets.AudioProperties) }, modifier = Modifier.size(audioHeaderSize)) {
+            ReactiveIconButton(
+              onClick = { onOpenSheet(Sheets.AudioProperties) },
+              modifier = Modifier.size(audioHeaderSize),
+              backdrop = musicBackdrop,
+            ) {
               Icon(
                 imageVector = Icons.RoundedFilled.Info,
                 contentDescription = stringResource(R.string.player_sheets_more_title),
@@ -1539,7 +1576,7 @@ fun AudioPlayerControls(
           val containerWidthPx = constraints.maxWidth.toFloat()
           val currentOffset = animatableOffsetX.value
 
-          if (showInPlaceLyrics && !showLandscapeSidePanel) {
+          if (showInPlaceLyrics && !isTablet) {
             app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
               viewModel = viewModel,
               modifier = Modifier.fillMaxSize(),
@@ -1584,11 +1621,15 @@ fun AudioPlayerControls(
                 onClick = viewModel::toggleAudioVisualizer,
                 onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
                 modifier = Modifier.fillMaxSize(),
-                landscape = !isPortrait,
+                landscape = !isPortrait && !isTablet,
               )
             } else {
-              val coverShape = if (isPortrait) RoundedCornerShape(32.dp) else androidx.compose.ui.graphics.RectangleShape
-              val coverSize = if (isPortrait) Modifier.aspectRatio(1f) else Modifier.fillMaxSize()
+              val coverShape = if (isPortrait || isTablet) RoundedCornerShape(32.dp) else androidx.compose.ui.graphics.RectangleShape
+              val coverSize = if (isPortrait || isTablet) {
+                Modifier.aspectRatio(1f, matchHeightConstraintsFirst = isTabletLandscape)
+              } else {
+                Modifier.fillMaxSize()
+              }
               val density = LocalDensity.current
               val gap = with(density) { 24.dp.toPx() }
               val swipeWidth = if (showImmersiveArtwork) immersiveViewportWidthPx else containerWidthPx
@@ -1606,7 +1647,7 @@ fun AudioPlayerControls(
               Box(
                 modifier = Modifier
                   .fillMaxHeight()
-                  .fillMaxWidth(if (isTabletPortrait) 0.52f else if (isPortrait) 0.88f else 1f)
+                  .fillMaxWidth(if (isTablet) (if (isTabletPortrait) 0.92f else 0.88f) else if (isPortrait) 0.88f else 1f)
                   .pointerInput(viewModel, queueState, showVisualizer, stride, showImmersiveArtwork, isAudiobook) {
                     if (showVisualizer || isAudiobook || swipeWidth <= 0f) return@pointerInput
                     detectHorizontalDragGestures(
@@ -1837,12 +1878,24 @@ fun AudioPlayerControls(
               )
 
               // 4. Playback Speed (left of A-B Loop)
+              val speedChipGlass = liquidGlassActive()
               Surface(
                 shape = CircleShape,
                 color = Color.Transparent,
                 modifier =
                   Modifier
                     .height(30.dp)
+                    .then(
+                      if (speedChipGlass) {
+                        Modifier.liquidGlassControlSurface(
+                          backdrop = musicBackdrop,
+                          shape = CircleShape,
+                          surfaceColor = PlayerLiquidTokens.surfaceColor,
+                        )
+                      } else {
+                        Modifier
+                      },
+                    )
                     .clip(CircleShape)
                     .clickable(enabled = !speedConfigOwned, onClick = { onOpenSheet(Sheets.PlaybackSpeed) }),
               ) {
@@ -1880,99 +1933,37 @@ fun AudioPlayerControls(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                   ) {
-                    Surface(
-                      shape = CircleShape,
-                      color =
-                        if (abLoopA !=
-                          null
-                        ) {
-                          MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                          MaterialTheme.colorScheme.surfaceVariant
-                        },
-                      modifier = Modifier.height(30.dp).clip(CircleShape).clickable(onClick = { viewModel.setLoopA() }),
-                    ) {
-                      Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
-                        Text(
-                          text = if (abLoopA != null) formatSec(abLoopA.toLong()) else "A",
-                          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                          color =
-                            if (abLoopA !=
-                              null
-                            ) {
-                              MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                              MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                      }
-                    }
-                    Surface(
-                      shape = CircleShape,
-                      color = MaterialTheme.colorScheme.surfaceVariant,
-                      modifier =
-                        Modifier.size(30.dp).clip(CircleShape).clickable(onClick = {
-                          viewModel.clearABLoop()
-                          viewModel.toggleABLoopExpanded()
-                        }),
-                    ) {
-                      Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                          imageVector = Icons.RoundedFilled.Close,
-                          contentDescription = "Clear A-B Loop",
-                          tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                          modifier = Modifier.size(16.dp),
-                        )
-                      }
-                    }
-                    Surface(
-                      shape = CircleShape,
-                      color =
-                        if (abLoopB !=
-                          null
-                        ) {
-                          MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                          MaterialTheme.colorScheme.surfaceVariant
-                        },
-                      modifier = Modifier.height(30.dp).clip(CircleShape).clickable(onClick = { viewModel.setLoopB() }),
-                    ) {
-                      Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
-                        Text(
-                          text = if (abLoopB != null) formatSec(abLoopB.toLong()) else "B",
-                          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                          color =
-                            if (abLoopB !=
-                              null
-                            ) {
-                              MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                              MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                      }
-                    }
-                  }
-                } else {
-                  Surface(
-                    shape = CircleShape,
-                    color = Color.Transparent,
-                    modifier = Modifier.clip(CircleShape).clickable(onClick = viewModel::toggleABLoopExpanded),
-                  ) {
-                    AbLoopIcon(
-                      modifier = Modifier.size(30.dp),
-                      tint =
-                        if (abLoopA != null ||
-                          abLoopB != null
-                        ) {
-                          MaterialTheme.colorScheme.primary
-                        } else {
-                          MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                      isASet = abLoopA != null,
-                      isBSet = abLoopB != null,
+                    AbLoopMarkerChip(
+                      label = if (abLoopA != null) formatSec(abLoopA.toLong()) else "A",
+                      isSet = abLoopA != null,
+                      glass = false,
+                      backdrop = null,
+                      onClick = { viewModel.setLoopA() },
+                    )
+                    AbLoopClearChip(
+                      glass = false,
+                      backdrop = null,
+                      onClick = {
+                        viewModel.clearABLoop()
+                        viewModel.toggleABLoopExpanded()
+                      },
+                    )
+                    AbLoopMarkerChip(
+                      label = if (abLoopB != null) formatSec(abLoopB.toLong()) else "B",
+                      isSet = abLoopB != null,
+                      glass = false,
+                      backdrop = null,
+                      onClick = { viewModel.setLoopB() },
                     )
                   }
+                } else {
+                  AbLoopToggleChip(
+                    glass = false,
+                    backdrop = null,
+                    isASet = abLoopA != null,
+                    isBSet = abLoopB != null,
+                    onClick = viewModel::toggleABLoopExpanded,
+                  )
                 }
               }
             }
@@ -2012,13 +2003,20 @@ fun AudioPlayerControls(
                   }
                 },
                 modifier = Modifier.size(if (isCompactLandscape) 32.dp else 40.dp),
+                glass = false,
+                backdrop = null,
               ) {
                 AnimatedIcon(
                   imageVector = if (isCurrentTrackFavorite) Icons.RoundedFilled.Favorite else Icons.RoundedFilled.FavoriteBorder,
                   contentDescription = stringResource(
                     if (isCurrentTrackFavorite) R.string.generic_remove_from_favorites else R.string.notification_add_to_favorites,
                   ),
-                  tint = if (isCurrentTrackFavorite) Color.White else MaterialTheme.colorScheme.onSurface,
+                  tint =
+                    if (isCurrentTrackFavorite) {
+                      Color.White
+                    } else {
+                      MaterialTheme.colorScheme.onSurface
+                    },
                   modifier = Modifier.size(28.dp),
                   reduceMotion = AppMotion.playerReducedMotion(),
                 )
@@ -2027,6 +2025,8 @@ fun AudioPlayerControls(
               ReactiveIconButton(
                 onClick = { addToPlaylistDialogOpen = true },
                 modifier = Modifier.size(40.dp),
+                glass = false,
+                backdrop = null,
               ) {
                 Icon(
                   imageVector = Icons.RoundedFilled.PlaylistAdd,
@@ -2080,7 +2080,7 @@ fun AudioPlayerControls(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable {
-              if (showLandscapeSidePanel) {
+              if (isTablet) {
                 tabletDualPaneTab = 1
               } else {
                 showInPlaceLyrics = true
@@ -2424,19 +2424,19 @@ fun AudioPlayerControls(
             isShortLandscape -> 42.dp
             isCompactLandscape -> 48.dp
             isAudiobook -> 48.dp
-            isPortrait -> 64.dp
+            isPortrait || isTablet -> 64.dp
             else -> 56.dp
           }
         val playHeight =
           when {
             isShortLandscape -> 44.dp
             isCompactLandscape -> 52.dp
-            isPortrait -> 72.dp
+            isPortrait || isTablet -> 72.dp
             else -> 60.dp
           }
         val sideIconSize = if (isCompactLandscape || isAudiobook) 24.dp else 28.dp
         Row(
-          modifier = Modifier.fillMaxWidth().padding(horizontal = if (isPortrait) 8.dp else 0.dp),
+          modifier = Modifier.fillMaxWidth().padding(horizontal = if (isPortrait || isTablet) 8.dp else 0.dp),
           horizontalArrangement = Arrangement.spacedBy(if (isCompactLandscape || isAudiobook) 10.dp else 18.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -2447,19 +2447,30 @@ fun AudioPlayerControls(
             },
             enabled = prevEnabled,
             size = sideSize,
+            backdrop = musicBackdrop,
           ) {
             Icon(
               imageVector = Icons.RoundedFilled.SkipPrevious,
               contentDescription = if (isAudiobook) stringResource(R.string.audiobook_previous_chapter) else null,
               tint =
-                MaterialTheme.colorScheme.onSecondaryContainer.copy(
-                  alpha = if (prevEnabled) 1f else 0.38f,
-                ),
+                if (liquidGlassActive()) {
+                  LocalContentColor.current
+                } else {
+                  MaterialTheme.colorScheme.onSecondaryContainer.copy(
+                    alpha = if (prevEnabled) 1f else 0.38f,
+                  )
+                },
               modifier = Modifier.size(sideIconSize),
             )
           }
           if (isAudiobook) {
-            AudioSeekButton(forward = false, seconds = 30, enabled = canSeek, modifier = Modifier.size(sideSize)) {
+            AudioSeekButton(
+              forward = false,
+              seconds = 30,
+              enabled = canSeek,
+              modifier = Modifier.size(sideSize),
+              backdrop = musicBackdrop,
+            ) {
               viewModel.seekBy(-30)
               actionHaptics.confirm()
             }
@@ -2473,17 +2484,24 @@ fun AudioPlayerControls(
               actionHaptics.confirm()
             },
             modifier = Modifier.weight(1f).tvInitialFocus(tvPlayFocusRequester),
+            backdrop = musicBackdrop,
           ) {
             AnimatedIcon(
               imageVector = if (isPlaying) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
               contentDescription = stringResource(if (isPlaying) R.string.audiobook_pause else R.string.ui_play),
-              tint = MaterialTheme.colorScheme.onPrimary,
-              modifier = Modifier.size(if (isPortrait) 34.dp else 28.dp),
+              tint = LocalContentColor.current,
+              modifier = Modifier.size(if (isPortrait || isTablet) 34.dp else 28.dp),
               reduceMotion = AppMotion.playerReducedMotion(),
             )
           }
           if (isAudiobook) {
-            AudioSeekButton(forward = true, seconds = 30, enabled = canSeek, modifier = Modifier.size(sideSize)) {
+            AudioSeekButton(
+              forward = true,
+              seconds = 30,
+              enabled = canSeek,
+              modifier = Modifier.size(sideSize),
+              backdrop = musicBackdrop,
+            ) {
               viewModel.seekBy(30)
               actionHaptics.confirm()
             }
@@ -2495,14 +2513,19 @@ fun AudioPlayerControls(
             },
             enabled = nextEnabled,
             size = sideSize,
+            backdrop = musicBackdrop,
           ) {
             Icon(
               imageVector = Icons.RoundedFilled.SkipNext,
               contentDescription = if (isAudiobook) stringResource(R.string.audiobook_next_chapter) else null,
               tint =
-                MaterialTheme.colorScheme.onSecondaryContainer.copy(
-                  alpha = if (nextEnabled) 1f else 0.38f,
-                ),
+                if (liquidGlassActive()) {
+                  LocalContentColor.current
+                } else {
+                  MaterialTheme.colorScheme.onSecondaryContainer.copy(
+                    alpha = if (nextEnabled) 1f else 0.38f,
+                  )
+                },
               modifier = Modifier.size(sideIconSize),
             )
           }
@@ -2512,15 +2535,20 @@ fun AudioPlayerControls(
       val bottomActionRow = @Composable {
         val timer by app.gyrolet.mpvrx.ui.player.AudiobookPlayback.timer.collectAsStateWithLifecycle()
         val equalizerEnabled by audioPreferences.equalizerEnabled.collectAsState()
-        val isLyricsActive = if (showLandscapeSidePanel) tabletDualPaneTab == 1 else showInPlaceLyrics
-        val isQueueActive = if (showLandscapeSidePanel) tabletDualPaneTab == 0 else sheetShown == Sheets.Playlist
+        val isQueueActive = !isTablet && sheetShown == Sheets.Playlist
         val barHeight = if (isShortLandscape) 38.dp else if (isCompactLandscape) 42.dp else 50.dp
-        val centerCount = if (isAudiobook) 4 else 5
+        val centerCount = if (isAudiobook) 3 else 4
         BoxWithConstraints(Modifier.fillMaxWidth()) {
+          val showPlaylistButton = !isTablet
           val endWidth = minOf(barHeight, maxWidth * 0.15f)
           val outerSpacing = if (maxWidth < 280.dp) 4.dp else 8.dp
           val centerSpacing = if (maxWidth < 320.dp) 2.dp else 4.dp
-          val centerWidth = (maxWidth - endWidth * 2f - outerSpacing * 2f).coerceAtLeast(0.dp)
+          val centerWidth =
+            if (showPlaylistButton) {
+              (maxWidth - endWidth * 2f - outerSpacing * 2f).coerceAtLeast(0.dp)
+            } else {
+              (maxWidth - endWidth - outerSpacing).coerceAtLeast(0.dp)
+            }
           val centerCellWidth =
             ((centerWidth - centerSpacing * (centerCount - 1).toFloat()) / centerCount.toFloat()).coerceAtLeast(0.dp)
           val iconSize = minOf(if (isCompactLandscape) 20.dp else 22.dp, centerCellWidth * 0.72f)
@@ -2536,180 +2564,272 @@ fun AudioPlayerControls(
               modifier = Modifier.width(endWidth),
               enabled = !audioFiltersConfigOwned,
               active = equalizerEnabled && !audioFiltersConfigOwned,
+              backdrop = musicBackdrop,
             ) {
               Icon(
                 imageVector = Icons.RoundedFilled.Equalizer,
                 contentDescription = stringResource(R.string.btn_label_equalizer),
-                tint = when {
-                  audioFiltersConfigOwned -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                  equalizerEnabled -> MaterialTheme.colorScheme.onPrimaryContainer
-                  else -> MaterialTheme.colorScheme.onSecondaryContainer
-                },
+                tint =
+                  when {
+                    liquidGlassActive() -> LocalContentColor.current
+                    audioFiltersConfigOwned -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                    equalizerEnabled -> MaterialTheme.colorScheme.onPrimaryContainer
+                    else -> MaterialTheme.colorScheme.onSecondaryContainer
+                  },
                 modifier = Modifier.size(endIconSize),
               )
             }
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-              Row(
-                modifier = Modifier.width(centerWidth).height(barHeight),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(centerSpacing),
-              ) {
+            Row(
+              modifier = Modifier.weight(1f).height(barHeight),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(centerSpacing),
+            ) {
+              if (isAudiobook) {
                 ExpressiveConnectedBarButton(
-                  index = 0,
-                  itemCount = centerCount,
-                  height = barHeight,
-                  selected = isLyricsActive,
-                  onClick = {
-                    val nextState = !isLyricsActive
-                    if (showLandscapeSidePanel) {
-                      tabletDualPaneTab = if (tabletDualPaneTab == 1) 0 else 1
-                    } else {
-                      showInPlaceLyrics = !showInPlaceLyrics
-                    }
-                    resetInactivityTimer()
-                    actionHaptics.selection(nextState)
-                  },
-                  onLongClick = {
-                    onOpenSheet(Sheets.LyricsProvider)
-                    resetInactivityTimer()
-                  },
+                  index = 0, itemCount = centerCount, height = barHeight, selected = false,
+                  onClick = { onOpenSheet(Sheets.AudiobookRewind); actionHaptics.confirm() },
+                  backdrop = musicBackdrop,
                 ) { tint ->
                   Icon(
-                    Icons.RoundedFilled.Lyrics,
-                    contentDescription = stringResource(R.string.player_lyrics_title),
+                    Icons.RoundedFilled.Replay,
+                    contentDescription = stringResource(R.string.audiobook_smart_rewind),
                     tint = tint,
                     modifier = Modifier.size(iconSize),
                   )
                 }
-                if (isAudiobook) {
-                  ExpressiveConnectedBarButton(
-                    index = 1, itemCount = centerCount, height = barHeight, selected = false,
-                    onClick = { onOpenSheet(Sheets.AudiobookRewind); actionHaptics.confirm() },
-                  ) { tint ->
-                    Icon(
-                      Icons.RoundedFilled.Replay,
-                      contentDescription = stringResource(R.string.audiobook_smart_rewind),
-                      tint = tint,
-                      modifier = Modifier.size(iconSize),
-                    )
-                  }
-                  ExpressiveConnectedBarButton(
-                    index = 2, itemCount = centerCount, height = barHeight, selected = timer != null,
-                    onClick = { onOpenSheet(Sheets.AudiobookSleepTimer); actionHaptics.confirm() },
-                  ) { tint ->
-                    Icon(
-                      Icons.RoundedFilled.Timer,
-                      contentDescription = stringResource(R.string.audiobook_sleep_timer),
-                      tint = tint,
-                      modifier = Modifier.size(iconSize),
-                    )
-                  }
-                } else {
-                  ExpressiveConnectedBarButton(
-                    index = 1, itemCount = centerCount, height = barHeight, selected = shuffleEnabled,
-                    enabled = playlistModeEnabled,
-                    onClick = { viewModel.toggleShuffle(); actionHaptics.selection(!shuffleEnabled) },
-                  ) { tint ->
-                    AnimatedIcon(
-                      imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
-                      contentDescription = stringResource(R.string.btn_label_shuffle),
-                      tint = tint,
-                      modifier = Modifier.size(iconSize),
-                      reduceMotion = AppMotion.playerReducedMotion(),
-                    )
-                  }
-                  ExpressiveConnectedBarButton(
-                    index = 2, itemCount = centerCount, height = barHeight, selected = repeatMode != RepeatMode.OFF,
-                    onClick = { viewModel.cycleRepeatMode(); actionHaptics.confirm() },
-                  ) { tint ->
-                    AnimatedIcon(
-                      imageVector = when (repeatMode) {
-                        RepeatMode.OFF -> Icons.RoundedFilled.Repeat
-                        RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
-                        RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
-                      },
-                      contentDescription = stringResource(R.string.btn_label_repeat_mode),
-                      tint = tint,
-                      modifier = Modifier.size(iconSize),
-                      reduceMotion = AppMotion.playerReducedMotion(),
-                    )
-                  }
-                }
                 ExpressiveConnectedBarButton(
-                  index = 3, itemCount = centerCount, height = barHeight, selected = showVisualizer,
-                  onClick = {
-                    if (viewModel.toggleAudioVisualizer()) actionHaptics.selection(!showVisualizer)
-                  },
-                  onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
-                  onLongClickLabel = stringResource(R.string.pref_audio_visualizer_style_title),
+                  index = 1, itemCount = centerCount, height = barHeight, selected = timer != null,
+                  onClick = { onOpenSheet(Sheets.AudiobookSleepTimer); actionHaptics.confirm() },
+                  backdrop = musicBackdrop,
+                ) { tint ->
+                  Icon(
+                    Icons.RoundedFilled.Timer,
+                    contentDescription = stringResource(R.string.audiobook_sleep_timer),
+                    tint = tint,
+                    modifier = Modifier.size(iconSize),
+                  )
+                }
+              } else {
+                ExpressiveConnectedBarButton(
+                  index = 0, itemCount = centerCount, height = barHeight, selected = shuffleEnabled,
+                  enabled = playlistModeEnabled,
+                  onClick = { viewModel.toggleShuffle(); actionHaptics.selection(!shuffleEnabled) },
+                  backdrop = musicBackdrop,
                 ) { tint ->
                   AnimatedIcon(
-                    imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
-                    contentDescription = stringResource(
-                      if (showVisualizer) R.string.audio_footer_show_artwork else R.string.audio_footer_show_visualizer,
-                    ),
+                    imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
+                    contentDescription = stringResource(R.string.btn_label_shuffle),
                     tint = tint,
                     modifier = Modifier.size(iconSize),
                     reduceMotion = AppMotion.playerReducedMotion(),
                   )
                 }
-                if (!isAudiobook) {
-                  ExpressiveConnectedBarButton(
-                    index = 4, itemCount = centerCount, height = barHeight, selected = backgroundPlaybackEnabled,
-                    onClick = {
-                      val enabled = !audioPreferences.audioBackgroundPlayback.get()
-                      val activity = context as? PlayerActivity
-                      if (activity != null) {
-                        activity.toggleAudioBackgroundPlayback()
-                      } else {
-                        audioPreferences.audioBackgroundPlayback.set(enabled)
-                        viewModel.showToast(
-                          context.getString(
-                            if (enabled) R.string.toast_audio_background_playback_on
-                            else R.string.toast_audio_background_playback_off,
-                          ),
-                        )
-                      }
-                      actionHaptics.selection(enabled)
+                ExpressiveConnectedBarButton(
+                  index = 1, itemCount = centerCount, height = barHeight, selected = repeatMode != RepeatMode.OFF,
+                  onClick = { viewModel.cycleRepeatMode(); actionHaptics.confirm() },
+                  backdrop = musicBackdrop,
+                ) { tint ->
+                  AnimatedIcon(
+                    imageVector = when (repeatMode) {
+                      RepeatMode.OFF -> Icons.RoundedFilled.Repeat
+                      RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
+                      RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
                     },
-                  ) { tint ->
-                    Icon(
-                      Icons.RoundedFilled.Headset,
-                      contentDescription = stringResource(R.string.btn_label_background_playback),
-                      tint = tint,
-                      modifier = Modifier.size(iconSize),
-                    )
-                  }
+                    contentDescription = stringResource(R.string.btn_label_repeat_mode),
+                    tint = tint,
+                    modifier = Modifier.size(iconSize),
+                    reduceMotion = AppMotion.playerReducedMotion(),
+                  )
+                }
+              }
+              ExpressiveConnectedBarButton(
+                index = 2, itemCount = centerCount, height = barHeight, selected = showVisualizer,
+                onClick = {
+                  if (viewModel.toggleAudioVisualizer()) actionHaptics.selection(!showVisualizer)
+                },
+                onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
+                onLongClickLabel = stringResource(R.string.pref_audio_visualizer_style_title),
+                backdrop = musicBackdrop,
+              ) { tint ->
+                AnimatedIcon(
+                  imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
+                  contentDescription = stringResource(
+                    if (showVisualizer) R.string.audio_footer_show_artwork else R.string.audio_footer_show_visualizer,
+                  ),
+                  tint = tint,
+                  modifier = Modifier.size(iconSize),
+                  reduceMotion = AppMotion.playerReducedMotion(),
+                )
+              }
+              if (!isAudiobook) {
+                ExpressiveConnectedBarButton(
+                  index = 3, itemCount = centerCount, height = barHeight, selected = backgroundPlaybackEnabled,
+                  onClick = {
+                    val enabled = !audioPreferences.audioBackgroundPlayback.get()
+                    val activity = context as? PlayerActivity
+                    if (activity != null) {
+                      activity.toggleAudioBackgroundPlayback()
+                    } else {
+                      audioPreferences.audioBackgroundPlayback.set(enabled)
+                      viewModel.showToast(
+                        context.getString(
+                          if (enabled) R.string.toast_audio_background_playback_on
+                          else R.string.toast_audio_background_playback_off,
+                        ),
+                      )
+                    }
+                    actionHaptics.selection(enabled)
+                  },
+                  backdrop = musicBackdrop,
+                ) { tint ->
+                  Icon(
+                    Icons.RoundedFilled.Headset,
+                    contentDescription = stringResource(R.string.btn_label_background_playback),
+                    tint = tint,
+                    modifier = Modifier.size(iconSize),
+                  )
                 }
               }
             }
-            ExpressiveTransportSideButton(
-              size = barHeight,
-              modifier = Modifier.width(endWidth),
-              active = isQueueActive,
-              onClick = {
-                if (showLandscapeSidePanel) tabletDualPaneTab = 0 else onOpenSheet(Sheets.Playlist)
-                actionHaptics.confirm()
-              },
-            ) {
-              Icon(
-                Icons.RoundedFilled.QueueMusic,
-                contentDescription = stringResource(
-                  if (isAudiobook) R.string.audiobook_chapters else R.string.player_up_next_title,
-                ),
-                tint = if (isQueueActive) {
-                  MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                  MaterialTheme.colorScheme.onSecondaryContainer
+            if (showPlaylistButton) {
+              ExpressiveTransportSideButton(
+                size = barHeight,
+                modifier = Modifier.width(endWidth),
+                active = isQueueActive,
+                backdrop = musicBackdrop,
+                onClick = {
+                  onOpenSheet(Sheets.Playlist)
+                  actionHaptics.confirm()
                 },
-                modifier = Modifier.size(endIconSize),
-              )
+              ) {
+                Icon(
+                  Icons.RoundedFilled.QueueMusic,
+                  contentDescription = stringResource(
+                    if (isAudiobook) R.string.audiobook_chapters else R.string.player_up_next_title,
+                  ),
+                  tint = if (liquidGlassActive()) {
+                    LocalContentColor.current
+                  } else if (isQueueActive) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                  } else {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                  },
+                  modifier = Modifier.size(endIconSize),
+                )
+              }
             }
           }
         }
       }
 
-      if (isPortrait) {
+      if (isTablet) {
+        Row(
+          modifier = Modifier.fillMaxSize(),
+          horizontalArrangement = Arrangement.spacedBy(if (isTabletLandscape) 24.dp else 16.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Column(
+            modifier = Modifier
+              .weight(1f)
+              .fillMaxHeight(),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally,
+          ) {
+            if (edgeToEdgeVisualizer) {
+              Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                centerVisualizerView(Modifier.fillMaxSize())
+                Column(
+                  modifier =
+                    Modifier
+                      .fillMaxWidth()
+                      .windowInsetsPadding(stableInsets.only(WindowInsetsSides.Top))
+                      .padding(horizontal = controlsSidePadding)
+                      .padding(top = 6.dp),
+                  horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                  headerBar()
+                }
+              }
+            } else {
+              Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = controlsSidePadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+              ) {
+                headerBar()
+                Spacer(modifier = Modifier.height(6.dp))
+              }
+              centerVisualizerView(
+                Modifier
+                  .weight(1f)
+                  .fillMaxWidth()
+                  .padding(
+                    vertical = if (isTabletPortrait) 16.dp else 8.dp,
+                    horizontal = if (isTabletPortrait) 8.dp else 16.dp,
+                  ),
+              )
+            }
+            Column(
+              modifier = Modifier.padding(horizontal = controlsSidePadding),
+              horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+              Spacer(modifier = Modifier.height(4.dp))
+              trackMetadataView()
+              if (tabletDualPaneTab != 1) {
+                Spacer(modifier = Modifier.height(4.dp))
+                currentLyricStripView()
+                Spacer(modifier = Modifier.height(4.dp))
+              } else {
+                Spacer(modifier = Modifier.height(4.dp))
+                lyricsSourceLineView()
+                Spacer(modifier = Modifier.height(4.dp))
+              }
+              seekbarView()
+              Spacer(modifier = Modifier.height(if (isTabletPortrait) 18.dp else 12.dp))
+              playbackControlsRow()
+              Spacer(modifier = Modifier.height(if (isTabletPortrait) 18.dp else 14.dp))
+              bottomActionRow()
+            }
+          }
+
+          val sidePanelGlass = liquidGlassActive()
+          val sidePanelShape = RoundedCornerShape(24.dp)
+          Surface(
+            modifier = Modifier
+              .weight(if (isTabletLandscape) 1.1f else 1f)
+              .fillMaxHeight()
+              .padding(end = if (isTabletLandscape) 16.dp else 12.dp)
+              .then(
+                if (edgeToEdgeVisualizer) {
+                  Modifier.windowInsetsPadding(stableInsets.only(WindowInsetsSides.Top)).padding(top = 6.dp)
+                } else {
+                  Modifier
+                }
+              )
+              .then(
+                if (sidePanelGlass && musicBackdrop != null) {
+                  Modifier.liquidGlassControlSurface(
+                    backdrop = musicBackdrop,
+                    shape = sidePanelShape,
+                    surfaceColor = PlayerLiquidTokens.surfaceColor,
+                  )
+                } else {
+                  Modifier
+                }
+              )
+              .clip(sidePanelShape),
+            color = if (sidePanelGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.45f),
+            shape = sidePanelShape,
+          ) {
+            DualPaneSidePanel(
+              viewModel = viewModel,
+              playlist = filteredPlaylist,
+              selectedTab = tabletDualPaneTab,
+              onTabSelected = { tabletDualPaneTab = it },
+              onOpenTranslateSheet = { onOpenSheet(Sheets.LyricsTranslate) },
+            )
+          }
+        }
+      } else if (isPortrait) {
         Column(
           modifier = Modifier
             .fillMaxSize()
@@ -2790,54 +2910,37 @@ fun AudioPlayerControls(
         ) {
           centerVisualizerView(
             Modifier
-              .weight(if (isTabletLandscape) 1f else 0.42f)
+              .weight(0.42f)
               .fillMaxHeight(),
           )
           Column(
             modifier =
               Modifier
-                .weight(if (isTabletLandscape) 1.2f else 0.58f)
+                .weight(0.58f)
                 .fillMaxHeight()
                 // The art pane owns the start edge, so this pane only insets its own edges.
                 .windowInsetsPadding(stableInsets.only(WindowInsetsSides.Vertical + WindowInsetsSides.End))
-                .padding(horizontal = if (isCompactLandscape) 12.dp else 24.dp,
-                  vertical = if (isCompactLandscape) 4.dp else 8.dp),
-            verticalArrangement = if (showLandscapeSidePanel) Arrangement.spacedBy(8.dp) else Arrangement.SpaceBetween,
+                .padding(
+                  horizontal = if (isCompactLandscape) 12.dp else 24.dp,
+                  vertical = if (isCompactLandscape) 4.dp else 8.dp,
+                ),
+            verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally,
           ) {
-            if (showLandscapeSidePanel) {
-              Box(Modifier.fillMaxWidth().height(40.dp), contentAlignment = Alignment.Center) { headerBar() }
-              Box(Modifier.fillMaxWidth().height(128.dp), contentAlignment = Alignment.TopStart) { trackMetadataView() }
-              Box(Modifier.weight(1f).fillMaxWidth()) {
-                DualPaneSidePanel(
-                  viewModel = viewModel,
-                  playlist = filteredPlaylist,
-                  selectedTab = tabletDualPaneTab,
-                  onTabSelected = { tabletDualPaneTab = it },
-                  onOpenTranslateSheet = { onOpenSheet(Sheets.LyricsTranslate) },
-                )
-              }
-              Box(Modifier.fillMaxWidth().height(if (audioWavySeekbar) 96.dp else 80.dp), contentAlignment = Alignment.Center) {
-                seekbarView()
-              }
-              Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.Center) { playbackControlsRow() }
-              Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) { bottomActionRow() }
-            } else {
-              // Rows keep their natural, content-independent heights and share the spare height evenly;
-              // only the text rows may shrink when the window is too short.
-              Box(Modifier.fillMaxWidth().height(audioHeaderSize), contentAlignment = Alignment.Center) { headerBar() }
-              Box(Modifier.weight(1f, fill = false).fillMaxWidth()) { trackMetadataView() }
-              if (!isShortLandscape) {
-                Box(
-                  Modifier.weight(0.4f, fill = false).fillMaxWidth()
-                    .height(with(LocalDensity.current) { 36.sp.toDp() }),
-                  contentAlignment = Alignment.CenterStart,
-                ) { currentLyricStripView() }
-              }
-              seekbarView()
-              playbackControlsRow()
-              bottomActionRow()
+            // Rows keep their natural, content-independent heights and share the spare height evenly;
+            // only the text rows may shrink when the window is too short.
+            Box(Modifier.fillMaxWidth().height(audioHeaderSize), contentAlignment = Alignment.Center) { headerBar() }
+            Box(Modifier.weight(1f, fill = false).fillMaxWidth()) { trackMetadataView() }
+            if (!isShortLandscape) {
+              Box(
+                Modifier.weight(0.4f, fill = false).fillMaxWidth()
+                  .height(with(LocalDensity.current) { 36.sp.toDp() }),
+                contentAlignment = Alignment.CenterStart,
+              ) { currentLyricStripView() }
             }
+            seekbarView()
+            playbackControlsRow()
+            bottomActionRow()
           }
         }
       }
@@ -2929,20 +3032,26 @@ private fun DualPaneSidePanel(
             fontWeight = FontWeight.Bold,
           )
         },
+        border = null,
+        shape = RoundedCornerShape(12.dp),
         colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-          containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f),
+          containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
           selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
           selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+          labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
       )
       androidx.compose.material3.FilterChip(
         selected = selectedTab == 1,
         onClick = { onTabSelected(1) },
         label = { Text(stringResource(R.string.player_lyrics_title), fontWeight = FontWeight.Bold) },
+        border = null,
+        shape = RoundedCornerShape(12.dp),
         colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-          containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f),
+          containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
           selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
           selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+          labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
       )
     }
@@ -3366,6 +3475,146 @@ private fun formatSec(totalSeconds: Long): String {
   }
 }
 
+/**
+ * A-B loop marker chip. Keeps the expressive 30dp circle in both modes; Liquid Glass only replaces
+ * the fill, so sizes, spacing and touch targets stay identical.
+ */
+@Composable
+private fun AbLoopMarkerChip(
+  label: String,
+  isSet: Boolean,
+  glass: Boolean,
+  backdrop: Backdrop?,
+  onClick: () -> Unit,
+) {
+  Surface(
+    shape = CircleShape,
+    color =
+      when {
+        glass -> Color.Transparent
+        isSet -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+      },
+    contentColor =
+      when {
+        glass && isSet -> LiquidControlColors.accent
+        glass -> PlayerLiquidTokens.contentColor
+        isSet -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+      },
+    modifier =
+      Modifier
+        .height(30.dp)
+        .then(
+          if (glass) {
+            Modifier.liquidGlassControlSurface(
+              backdrop = backdrop,
+              shape = CircleShape,
+              surfaceColor =
+                if (isSet) PlayerLiquidTokens.selectedSurfaceColor else PlayerLiquidTokens.surfaceColor,
+            )
+          } else {
+            Modifier
+          },
+        )
+        .clip(CircleShape)
+        .clickable(onClick = onClick),
+  ) {
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
+      Text(
+        text = label,
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+        color = LocalContentColor.current,
+      )
+    }
+  }
+}
+
+/** Clears and collapses the A-B loop; same circle and icon size in both modes. */
+@Composable
+private fun AbLoopClearChip(
+  glass: Boolean,
+  backdrop: Backdrop?,
+  onClick: () -> Unit,
+) {
+  Surface(
+    shape = CircleShape,
+    color = if (glass) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant,
+    contentColor = if (glass) PlayerLiquidTokens.contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+    modifier =
+      Modifier
+        .size(30.dp)
+        .then(
+          if (glass) {
+            Modifier.liquidGlassControlSurface(
+              backdrop = backdrop,
+              shape = CircleShape,
+              surfaceColor = PlayerLiquidTokens.surfaceColor,
+            )
+          } else {
+            Modifier
+          },
+        )
+        .clip(CircleShape)
+        .clickable(onClick = onClick),
+  ) {
+    Box(contentAlignment = Alignment.Center) {
+      Icon(
+        imageVector = Icons.RoundedFilled.Close,
+        contentDescription = "Clear A-B Loop",
+        tint = LocalContentColor.current,
+        modifier = Modifier.size(16.dp),
+      )
+    }
+  }
+}
+
+/** Collapsed A-B loop toggle: a borderless glyph normally, a 30dp glass circle under Liquid Glass. */
+@Composable
+private fun AbLoopToggleChip(
+  glass: Boolean,
+  backdrop: Backdrop?,
+  isASet: Boolean,
+  isBSet: Boolean,
+  onClick: () -> Unit,
+) {
+  val active = isASet || isBSet
+  Surface(
+    shape = CircleShape,
+    color = Color.Transparent,
+    contentColor =
+      when {
+        glass && active -> LiquidControlColors.accent
+        glass -> PlayerLiquidTokens.contentColor
+        active -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+      },
+    modifier =
+      Modifier
+        .size(30.dp)
+        .then(
+          if (glass) {
+            Modifier.liquidGlassControlSurface(
+              backdrop = backdrop,
+              shape = CircleShape,
+              surfaceColor = PlayerLiquidTokens.surfaceColor,
+            )
+          } else {
+            Modifier
+          },
+        )
+        .clip(CircleShape)
+        .clickable(onClick = onClick),
+  ) {
+    AbLoopIcon(
+      modifier = Modifier.size(30.dp),
+      tint = LocalContentColor.current,
+      isASet = isASet,
+      isBSet = isBSet,
+    )
+  }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AudioSeekButton(
@@ -3373,6 +3622,7 @@ private fun AudioSeekButton(
   seconds: Int,
   enabled: Boolean,
   modifier: Modifier = Modifier.size(48.dp),
+  backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   onClick: () -> Unit,
 ) {
   val duration = pluralStringResource(R.plurals.seconds, seconds, seconds)
@@ -3388,7 +3638,7 @@ private fun AudioSeekButton(
     tooltip = { PlainTooltip { Text(label) } },
     state = rememberTooltipState(),
   ) {
-    ReactiveIconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
+    ReactiveIconButton(onClick = onClick, enabled = enabled, modifier = modifier, backdrop = backdrop) {
       Icon(
         imageVector = if (forward) Icons.RoundedFilled.FastForward else Icons.RoundedFilled.FastRewind,
         contentDescription = label,
@@ -3407,8 +3657,17 @@ private fun ReactiveIconButton(
   onLongClick: (() -> Unit)? = null,
   enabled: Boolean = true,
   onLongClickLabel: String? = null,
+  glass: Boolean = true,
+  backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   content: @Composable () -> Unit,
 ) {
+  val glassActive = glass && liquidGlassActive()
+  val glassSurface =
+    if (glassActive) {
+      Modifier.liquidGlassControlSurface(backdrop, CircleShape, PlayerLiquidTokens.surfaceColor)
+    } else {
+      Modifier
+    }
   val interactionSource = remember { MutableInteractionSource() }
   val reducedMotion = app.gyrolet.mpvrx.ui.theme.AppMotion.playerReducedMotion()
 
@@ -3416,8 +3675,9 @@ private fun ReactiveIconButton(
     Box(
       modifier =
         modifier
-          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f)
+          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f, clipToShape = false)
           .appPressFeedback(interactionSource, enabled, pressedScale = 0.96f, reduceMotion = reducedMotion)
+          .then(glassSurface)
           .clip(CircleShape)
           .combinedClickable(
             interactionSource = interactionSource,
@@ -3439,8 +3699,9 @@ private fun ReactiveIconButton(
       interactionSource = interactionSource,
       modifier =
         modifier
-          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f)
-          .appPressFeedback(interactionSource, enabled, pressedScale = 0.96f, reduceMotion = reducedMotion),
+          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f, clipToShape = false)
+          .appPressFeedback(interactionSource, enabled, pressedScale = 0.96f, reduceMotion = reducedMotion)
+          .then(glassSurface),
     ) {
       content()
     }
@@ -3454,8 +3715,10 @@ private fun ExpressiveTransportSideButton(
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
   active: Boolean = false,
+  backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   content: @Composable () -> Unit,
 ) {
+  val glass = liquidGlassActive()
   val interactionSource = remember { MutableInteractionSource() }
   val pressed by interactionSource.collectIsPressedAsState()
   val reducedMotion = AppMotion.playerReducedMotion()
@@ -3476,18 +3739,38 @@ private fun ExpressiveTransportSideButton(
     label = "transportSideColor",
   )
   val shape = RoundedCornerShape(cornerRadius)
+  // Glass keeps the same animated corner radius and touch area; only the fill is replaced.
+  val glassContentColor =
+    when {
+      !enabled -> PlayerLiquidTokens.disabledContentColor
+      active -> LiquidControlColors.accent
+      else -> PlayerLiquidTokens.contentColor
+    }
 
   Surface(
     onClick = onClick,
     shape = shape,
-    color = containerColor,
+    color = if (glass) Color.Transparent else containerColor,
+    contentColor = if (glass) glassContentColor else contentColorFor(containerColor),
     enabled = enabled,
     interactionSource = interactionSource,
     modifier =
       modifier
         .size(size)
-        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.08f)
-        .appPressFeedback(interactionSource, enabled, pressedScale = 0.90f, reduceMotion = reducedMotion),
+        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.08f, clipToShape = false)
+        .appPressFeedback(interactionSource, enabled, pressedScale = 0.90f, reduceMotion = reducedMotion)
+        .then(
+          if (glass) {
+            Modifier.liquidGlassControlSurface(
+              backdrop = backdrop,
+              shape = shape,
+              surfaceColor =
+                if (active) PlayerLiquidTokens.selectedSurfaceColor else PlayerLiquidTokens.surfaceColor,
+            )
+          } else {
+            Modifier
+          },
+        ),
   ) {
     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
       content()
@@ -3502,8 +3785,10 @@ private fun ExpressivePlayPauseButton(
   compact: Boolean,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   content: @Composable () -> Unit,
 ) {
+  val glass = liquidGlassActive()
   val interactionSource = remember { MutableInteractionSource() }
   val pressed by interactionSource.collectIsPressedAsState()
   val reducedMotion = AppMotion.playerReducedMotion()
@@ -3519,21 +3804,36 @@ private fun ExpressivePlayPauseButton(
     label = "playPauseCorner",
   )
   val shape = RoundedCornerShape(cornerRadius)
+  val contentColor = if (glass) PlayerLiquidTokens.contentColor else MaterialTheme.colorScheme.onPrimary
 
-  Surface(
-    onClick = onClick,
-    shape = shape,
-    color = MaterialTheme.colorScheme.primary,
-    shadowElevation = 6.dp,
-    interactionSource = interactionSource,
-    modifier =
-      modifier
-        .height(height)
-        .tvFocusHighlight(shape, enabled = true, focusedScale = 1.05f)
-        .appPressFeedback(interactionSource, enabled = true, pressedScale = 0.94f, reduceMotion = reducedMotion),
-  ) {
-    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-      content()
+  CompositionLocalProvider(LocalContentColor provides contentColor) {
+    Surface(
+      onClick = onClick,
+      shape = shape,
+      color = if (glass) Color.Transparent else MaterialTheme.colorScheme.primary,
+      contentColor = contentColor,
+      shadowElevation = if (glass) 0.dp else 6.dp,
+      interactionSource = interactionSource,
+      modifier =
+        modifier
+          .height(height)
+          .tvFocusHighlight(shape, enabled = true, focusedScale = 1.05f, clipToShape = false)
+          .appPressFeedback(interactionSource, enabled = true, pressedScale = 0.94f, reduceMotion = reducedMotion)
+          .then(
+            if (glass) {
+              Modifier.liquidGlassControlSurface(
+                backdrop = backdrop,
+                shape = shape,
+                surfaceColor = PlayerLiquidTokens.selectedSurfaceColor,
+              )
+            } else {
+              Modifier
+            },
+          ),
+    ) {
+      Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+        content()
+      }
     }
   }
 }
@@ -3549,8 +3849,10 @@ private fun RowScope.ExpressiveConnectedBarButton(
   enabled: Boolean = true,
   onLongClick: (() -> Unit)? = null,
   onLongClickLabel: String? = null,
+  backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   content: @Composable (Color) -> Unit,
 ) {
+  val glass = liquidGlassActive()
   val interactionSource = remember { MutableInteractionSource() }
   val pressed by interactionSource.collectIsPressedAsState()
   val reducedMotion = AppMotion.playerReducedMotion()
@@ -3606,6 +3908,13 @@ private fun RowScope.ExpressiveConnectedBarButton(
     animationSpec = if (reducedMotion) androidx.compose.animation.core.snap() else AppMotion.Effect.Color,
     label = "connectedContentColor",
   )
+  // Glass replaces only the fill: the connected corners, weights and touch targets stay the same.
+  val glassContentColor =
+    when {
+      !enabled -> PlayerLiquidTokens.disabledContentColor
+      selected -> LiquidControlColors.accent
+      else -> PlayerLiquidTokens.contentColor
+    }
   val shape =
     RoundedCornerShape(
       topStart = startCorner,
@@ -3619,10 +3928,20 @@ private fun RowScope.ExpressiveConnectedBarButton(
       Modifier
         .weight(weight)
         .height(height)
-        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.06f)
+        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.06f, clipToShape = false)
         .appPressFeedback(interactionSource, enabled, pressedScale = 0.92f, reduceMotion = reducedMotion)
-        .clip(shape)
-        .background(containerColor)
+        .then(
+          if (glass) {
+            Modifier.liquidGlassControlSurface(
+              backdrop = backdrop,
+              shape = shape,
+              surfaceColor =
+                if (selected) PlayerLiquidTokens.selectedSurfaceColor else PlayerLiquidTokens.surfaceColor,
+            )
+          } else {
+            Modifier.clip(shape).background(containerColor)
+          },
+        )
         .then(
           if (onLongClick != null) {
             Modifier.combinedClickable(
@@ -3644,7 +3963,7 @@ private fun RowScope.ExpressiveConnectedBarButton(
         ),
     contentAlignment = Alignment.Center,
   ) {
-    content(contentColor)
+    content(if (glass) glassContentColor else contentColor)
   }
 }
 

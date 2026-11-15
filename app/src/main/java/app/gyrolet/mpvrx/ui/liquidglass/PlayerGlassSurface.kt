@@ -91,3 +91,40 @@ internal fun Modifier.playerGlassSurface(
     onDrawSurface = { drawShapeTint(shape, tint) },
   )
 }
+
+/**
+ * Glass fill for controls that keep their own expressive layout and shape (animated corners,
+ * connected bars, pills). The glass is drawn behind the caller's content, so clickables, ripples,
+ * focus highlights and press feedback stay exactly as they are without Liquid Glass.
+ */
+@Composable
+internal fun Modifier.liquidGlassControlSurface(
+  backdrop: Backdrop?,
+  shape: Shape,
+  surfaceColor: Color,
+): Modifier {
+  if (backdrop == null) return background(surfaceColor, shape)
+  val settings = rememberLiquidGlassSettings()
+  val reducedMotion = AppMotion.shouldReduceMotion()
+  val rememberedHighlight = remember(settings) { settings.highlight(Highlight.Default) }
+  val rememberedShadow = remember { Shadow(radius = 6.dp) }
+  val rememberedInnerShadow = remember { InnerShadow(radius = 2.dp, color = Color.White.copy(alpha = 0.18f)) }
+  return drawBackdrop(
+    backdrop = backdrop,
+    shape = { shape },
+    effects = {
+      liquidGlassEffects(
+        settings,
+        blurRadius = 8.dp.toPx(),
+        refractionHeight = 14.dp.toPx(),
+        refractionAmount = 24.dp.toPx(),
+        vibrant = true,
+        refractionEnabled = !reducedMotion,
+      )
+    },
+    highlight = { rememberedHighlight },
+    shadow = { rememberedShadow },
+    innerShadow = { rememberedInnerShadow },
+    onDrawSurface = { drawShapeTint(shape, settings.surfaceColor(surfaceColor)) },
+  )
+}
