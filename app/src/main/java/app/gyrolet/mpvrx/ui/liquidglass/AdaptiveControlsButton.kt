@@ -121,6 +121,7 @@ fun AdaptiveControlsContainer(
   backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   enabled: Boolean = true,
   onLongClickLabel: String? = null,
+  enforceMinimumTouchTarget: Boolean = true,
   content: @Composable RowScope.() -> Unit,
 ) {
   val liquidGlassEnabled = liquidGlassActive()
@@ -159,7 +160,7 @@ fun AdaptiveControlsContainer(
       // LiquidButton already clips its glass to the capsule. Clipping again here, over the larger
       // minimum touch target, would cut its drop shadow into a hard-edged halo.
       .tvFocusHighlight(buttonShape, isInteractive && enabled, clipToShape = !renderLiquidGlass)
-      .then(if (isInteractive) Modifier.minimumInteractiveComponentSize() else Modifier)
+      .then(if (isInteractive && enforceMinimumTouchTarget) Modifier.minimumInteractiveComponentSize() else Modifier)
 
   if (renderLiquidGlass) {
     CompositionLocalProvider(LocalContentColor provides contentTint) {

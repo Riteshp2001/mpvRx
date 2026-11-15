@@ -4,6 +4,7 @@ These notes are written in plain English and focus on what changed for real use.
 
 ## Unreleased
 
+- **Liquid Glass music player controls:** With Liquid Glass enabled, the music player's close/more buttons, transport controls, play/pause, favourite, queue and the lyrics/equalizer/visualizer bar, plus the speed and A-B loop chips, now use the same glass buttons as the video player. They sample the player background and album artwork behind them instead of their own surfaces, and turn back into the usual solid buttons when Liquid Glass is off.
 - **Recent-playback markers in Tree mode:** The latest played video now receives the same italic, highlighted title as in other browser views, including Tree list, grid, and search results.
 - **Clearer Liquid Glass player controls:** Removed the extra dark overlay and reduced the edge vignette so subtitles remain easier to read. Text labels match their icons, and hidden regular and custom button backgrounds retain readable content.
 - **Custom OpenAI-compatible AI provider:** Added an API base URL, a separate optional key, manual model IDs, and optional model discovery for Chat Completions. Endpoint errors remain visible without exposing the configured key.
