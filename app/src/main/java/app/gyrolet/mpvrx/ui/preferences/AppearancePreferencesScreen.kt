@@ -498,7 +498,7 @@ object AppearancePreferencesScreen : Screen {
 
           item {
             ExpressivePreferenceGroup {
-              val itemCount = 7
+              val itemCount = 8
               val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_unlimited_name_lines_title),
@@ -644,6 +644,22 @@ object AppearancePreferencesScreen : Screen {
                 groupSize = itemCount,
               )
 
+              val showContinueWatching by browserPreferences.showContinueWatching.collectAsState()
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_continue_watching_title),
+                value = showContinueWatching,
+                onValueChange = { browserPreferences.showContinueWatching.set(it) },
+                title = { Text(stringResource(R.string.pref_continue_watching_title)) },
+                summary = {
+                  Text(
+                    text = stringResource(R.string.pref_continue_watching_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+                groupIndex = 6,
+                groupSize = itemCount,
+              )
+
               val deleteFolderAllContents by browserPreferences.deleteFolderAllContents.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.ui_delete_folder_all_contents),
@@ -667,7 +683,7 @@ object AppearancePreferencesScreen : Screen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
-                groupIndex = 6,
+                groupIndex = 7,
                 groupSize = itemCount,
               )
             }

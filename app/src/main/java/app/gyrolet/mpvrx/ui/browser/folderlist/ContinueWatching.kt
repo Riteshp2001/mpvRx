@@ -63,6 +63,9 @@ import app.gyrolet.mpvrx.ui.browser.components.rememberSwipePlaybackInfo
 import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedItem
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.koin.compose.koinInject
 
 /** How many videos the Home carousel shows. */
@@ -73,6 +76,10 @@ internal const val ContinueWatchingMaxItems = 10
  * audio and streams are filtered out of this row.
  */
 internal const val ContinueWatchingHistoryWindow = 20
+
+/** Stand-in source used while the Continue Watching toggle is off, so no view model is created. */
+internal val NoContinueWatchingItems: StateFlow<List<RecentlyPlayedItem>> =
+  MutableStateFlow<List<RecentlyPlayedItem>>(emptyList()).asStateFlow()
 
 private val CardWidth = 148.dp
 private val CardShape = RoundedCornerShape(12.dp)

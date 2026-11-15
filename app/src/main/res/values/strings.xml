@@ -2682,6 +2682,8 @@
   <string name="continue_watching_title">Continue Watching</string>
   <string name="continue_watching_subtitle">Pick up where you left off</string>
   <string name="continue_watching_see_all">See all</string>
+  <string name="pref_continue_watching_title">Continue Watching</string>
+  <string name="pref_continue_watching_summary">Show recently played videos at the top of Home</string>
   <string name="profile_edit">Edit profile</string>
   <string name="profile_display_name">Display name</string>
   <string name="profile_choose_photo">Choose photo</string>

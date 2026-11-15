@@ -236,21 +236,29 @@ object FolderListScreen : Screen {
     val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
 
-    // "Continue Watching" reuses the Recently Played history through a short-window instance of the
-    // existing view model, so only a handful of rows are resolved when Home opens.
-    val continueWatchingViewModel: RecentlyPlayedViewModel =
-      viewModel(
-        key = "ContinueWatchingViewModel",
-        factory =
-          RecentlyPlayedViewModel.factory(
-            context.applicationContext as android.app.Application,
-            ContinueWatchingHistoryWindow,
-          ),
-      )
-    val continueWatchingItems by continueWatchingViewModel.recentItems.collectAsStateWithLifecycle()
+    // "Continue Watching" is opt-in (Appearance settings, off by default). It reuses the Recently
+    // Played history through a short-window instance of the existing view model, which is only
+    // created while the toggle is on, so nothing is loaded for users who leave it off.
+    val showContinueWatching by browserPreferences.showContinueWatching.collectAsState()
+    val continueWatchingEnabled = showContinueWatching && enableRecentlyPlayed && !audioOnly
+    val continueWatchingViewModel: RecentlyPlayedViewModel? =
+      if (continueWatchingEnabled) {
+        viewModel<RecentlyPlayedViewModel>(
+          key = "ContinueWatchingViewModel",
+          factory =
+            RecentlyPlayedViewModel.factory(
+              context.applicationContext as android.app.Application,
+              ContinueWatchingHistoryWindow,
+            ),
+        )
+      } else {
+        null
+      }
+    val continueWatchingItems by (continueWatchingViewModel?.recentItems ?: NoContinueWatchingItems)
+      .collectAsStateWithLifecycle()
     val continueVideos =
-      remember(continueWatchingItems, enableRecentlyPlayed, audioOnly) {
-        if (enableRecentlyPlayed && !audioOnly) continueWatchingVideos(continueWatchingItems) else emptyList()
+      remember(continueWatchingItems, continueWatchingEnabled) {
+        if (continueWatchingEnabled) continueWatchingVideos(continueWatchingItems) else emptyList()
       }
     val missingRecentMessage = stringResource(R.string.ui_recent_file_no_longer_exists)
     val pinnedFolderPaths by foldersPreferences.pinnedFolders.collectAsState()
@@ -1010,7 +1018,7 @@ object FolderListScreen : Screen {
                   continueWatchingVideos = continueVideos,
                   onContinueWatchingClick = { video ->
                     coroutineScope.launch {
-                      val playable = continueWatchingViewModel.resolvePlayableRecentVideo(video)
+                      val playable = continueWatchingViewModel?.resolvePlayableRecentVideo(video)
                       if (playable != null) {
                         MediaUtils.playFile(playable, context, "recently_played")
                       } else {
