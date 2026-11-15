@@ -43,6 +43,9 @@ import kotlin.math.pow
 
 class RecentlyPlayedViewModel(
   application: Application,
+  // Number of history rows observed and resolved to media. Full history screens keep the default;
+  // the Home "Continue Watching" row only needs a short window.
+  private val historyLimit: Int = DEFAULT_HISTORY_LIMIT,
 ) : AndroidViewModel(application) {
   private val recentlyPlayedRepository by inject<RecentlyPlayedRepository>(RecentlyPlayedRepository::class.java)
   private val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
@@ -62,7 +65,7 @@ class RecentlyPlayedViewModel(
     viewModelScope.launch {
       kotlinx.coroutines.flow
         .combine(
-          recentlyPlayedRepository.observeRecentlyPlayed(limit = 50),
+          recentlyPlayedRepository.observeRecentlyPlayed(limit = historyLimit),
           refreshRevision,
         ) { entities, revision ->
           entities to revision
@@ -564,10 +567,15 @@ class RecentlyPlayedViewModel(
     fun isGenericStreamName(name: String?): Boolean =
       name.isNullOrBlank() || name.trim().lowercase() in GENERIC_STREAM_NAMES
 
-    fun factory(application: Application): ViewModelProvider.Factory =
+    const val DEFAULT_HISTORY_LIMIT = 50
+
+    fun factory(
+      application: Application,
+      historyLimit: Int = DEFAULT_HISTORY_LIMIT,
+    ): ViewModelProvider.Factory =
       viewModelFactory {
         initializer {
-          RecentlyPlayedViewModel(application)
+          RecentlyPlayedViewModel(application, historyLimit)
         }
       }
   }

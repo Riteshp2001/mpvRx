@@ -2679,6 +2679,9 @@
   <string name="pref_nav_profile_title">Show Profile tab</string>
   <string name="pref_nav_profile_summary">Combine Recents, Playlists and Snapshots into a single tab</string>
   <string name="profile_view_all">View all</string>
+  <string name="continue_watching_title">Continue Watching</string>
+  <string name="continue_watching_subtitle">Pick up where you left off</string>
+  <string name="continue_watching_see_all">See all</string>
   <string name="profile_edit">Edit profile</string>
   <string name="profile_display_name">Display name</string>
   <string name="profile_choose_photo">Choose photo</string>
