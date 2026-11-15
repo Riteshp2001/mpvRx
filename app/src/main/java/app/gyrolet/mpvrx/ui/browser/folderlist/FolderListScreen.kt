@@ -89,6 +89,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedScreen
+import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedViewModel
 import app.gyrolet.mpvrx.preferences.VideoSwipeAction
 import app.gyrolet.mpvrx.ui.browser.components.rememberVideoSwipeActions
 import app.gyrolet.mpvrx.ui.browser.components.rememberSwipePlaybackInfo
@@ -233,6 +235,32 @@ object FolderListScreen : Screen {
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
     val tapThumbnailToSelect by gesturePreferences.tapThumbnailToSelect.collectAsState()
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
+
+    // "Continue Watching" is opt-in (Appearance settings, off by default). It reuses the Recently
+    // Played history through a short-window instance of the existing view model, which is only
+    // created while the toggle is on, so nothing is loaded for users who leave it off.
+    val showContinueWatching by browserPreferences.showContinueWatching.collectAsState()
+    val continueWatchingEnabled = showContinueWatching && enableRecentlyPlayed && !audioOnly
+    val continueWatchingViewModel: RecentlyPlayedViewModel? =
+      if (continueWatchingEnabled) {
+        viewModel<RecentlyPlayedViewModel>(
+          key = "ContinueWatchingViewModel",
+          factory =
+            RecentlyPlayedViewModel.factory(
+              context.applicationContext as android.app.Application,
+              ContinueWatchingHistoryWindow,
+            ),
+        )
+      } else {
+        null
+      }
+    val continueWatchingItems by (continueWatchingViewModel?.recentItems ?: NoContinueWatchingItems)
+      .collectAsStateWithLifecycle()
+    val continueVideos =
+      remember(continueWatchingItems, continueWatchingEnabled) {
+        if (continueWatchingEnabled) continueWatchingVideos(continueWatchingItems) else emptyList()
+      }
+    val missingRecentMessage = stringResource(R.string.ui_recent_file_no_longer_exists)
     val pinnedFolderPaths by foldersPreferences.pinnedFolders.collectAsState()
     val dualPaneForTablet by browserPreferences.dualPaneForTablet.collectAsState()
 
@@ -987,6 +1015,18 @@ object FolderListScreen : Screen {
                 }
               } else {
                 FolderListContent(
+                  continueWatchingVideos = continueVideos,
+                  onContinueWatchingClick = { video ->
+                    coroutineScope.launch {
+                      val playable = continueWatchingViewModel?.resolvePlayableRecentVideo(video)
+                      if (playable != null) {
+                        MediaUtils.playFile(playable, context, "recently_played")
+                      } else {
+                        Toast.makeText(context, missingRecentMessage, Toast.LENGTH_SHORT).show()
+                      }
+                    }
+                  },
+                  onContinueWatchingSeeAll = { backstack.navigateTo(RecentlyPlayedScreen) },
                   folders = filteredFolders,
                   foldersWithNewCount = foldersWithNewCount,
                   pinnedFolderPaths = pinnedFolderPaths,
@@ -1406,6 +1446,9 @@ object FolderListScreen : Screen {
 
 @Composable
 private fun FolderListContent(
+  continueWatchingVideos: List<Video> = emptyList(),
+  onContinueWatchingClick: (Video) -> Unit = {},
+  onContinueWatchingSeeAll: () -> Unit = {},
   folders: List<VideoFolder>,
   foldersWithNewCount: List<app.gyrolet.mpvrx.ui.browser.folderlist.FolderWithNewCount>,
   pinnedFolderPaths: Set<String>,
@@ -1475,6 +1518,9 @@ private fun FolderListContent(
     } else {
       if (isGridMode) {
         GridContent(
+          continueWatchingVideos = continueWatchingVideos,
+          onContinueWatchingClick = onContinueWatchingClick,
+          onContinueWatchingSeeAll = onContinueWatchingSeeAll,
           folders = folders,
           foldersWithNewCount = foldersWithNewCount,
           pinnedFolderPaths = pinnedFolderPaths,
@@ -1493,6 +1539,9 @@ private fun FolderListContent(
         )
       } else {
         ListContent(
+          continueWatchingVideos = continueWatchingVideos,
+          onContinueWatchingClick = onContinueWatchingClick,
+          onContinueWatchingSeeAll = onContinueWatchingSeeAll,
           onFolderSwipe = swipeActions.folder.takeUnless { selectionManager.isInSelectionMode },
           folders = folders,
           foldersWithNewCount = foldersWithNewCount,
@@ -1517,6 +1566,9 @@ private fun FolderListContent(
 
 @Composable
 private fun GridContent(
+  continueWatchingVideos: List<Video>,
+  onContinueWatchingClick: (Video) -> Unit,
+  onContinueWatchingSeeAll: () -> Unit,
   folders: List<VideoFolder>,
   foldersWithNewCount: List<app.gyrolet.mpvrx.ui.browser.folderlist.FolderWithNewCount>,
   pinnedFolderPaths: Set<String>,
@@ -1579,6 +1631,19 @@ private fun GridContent(
       horizontalArrangement = Arrangement.spacedBy(MediaSelectionGridGap),
       verticalArrangement = Arrangement.spacedBy(MediaSelectionGridGap),
     ) {
+      if (continueWatchingVideos.isNotEmpty()) {
+        item(
+          key = "continue_watching",
+          span = { GridItemSpan(maxLineSpan) },
+          contentType = "continue_watching",
+        ) {
+          ContinueWatchingRow(
+            videos = continueWatchingVideos,
+            onVideoClick = onContinueWatchingClick,
+            onSeeAll = onContinueWatchingSeeAll,
+          )
+        }
+      }
       items(
         count = folders.size,
         key = { index -> folders[index].bucketId },
@@ -1643,7 +1708,8 @@ private fun GridContent(
       ExpressiveScrollBar(
         gridState = gridState,
         dragLabelProvider = { index ->
-          fastScrollGlyph(folders.getOrNull(index)?.name)
+          // The Continue Watching row, when shown, is lazy item 0 ahead of the folders.
+          fastScrollGlyph(folders.getOrNull(index - if (continueWatchingVideos.isNotEmpty()) 1 else 0)?.name)
         },
         modifier =
           Modifier
@@ -1657,6 +1723,9 @@ private fun GridContent(
 
 @Composable
 private fun ListContent(
+  continueWatchingVideos: List<Video>,
+  onContinueWatchingClick: (Video) -> Unit,
+  onContinueWatchingSeeAll: () -> Unit,
   folders: List<VideoFolder>,
   foldersWithNewCount: List<FolderWithNewCount>,
   pinnedFolderPaths: Set<String>,
@@ -1707,6 +1776,15 @@ private fun ListContent(
           bottom = navigationBarHeight,
         ),
     ) {
+      if (continueWatchingVideos.isNotEmpty()) {
+        item(key = "continue_watching", contentType = "continue_watching") {
+          ContinueWatchingRow(
+            videos = continueWatchingVideos,
+            onVideoClick = onContinueWatchingClick,
+            onSeeAll = onContinueWatchingSeeAll,
+          )
+        }
+      }
       items(
         count = folders.size,
         key = { index -> folders[index].bucketId },
@@ -1782,7 +1860,8 @@ private fun ListContent(
       ExpressiveScrollBar(
         listState = listState,
         dragLabelProvider = { index ->
-          fastScrollGlyph(folders.getOrNull(index)?.name)
+          // The Continue Watching row, when shown, is lazy item 0 ahead of the folders.
+          fastScrollGlyph(folders.getOrNull(index - if (continueWatchingVideos.isNotEmpty()) 1 else 0)?.name)
         },
         modifier =
           Modifier

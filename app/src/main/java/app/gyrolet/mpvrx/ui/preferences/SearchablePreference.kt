@@ -1601,6 +1601,7 @@ object SearchablePreferences {
         anchorItemIndex = 3,
         SearchEntrySpec(R.string.pref_tree_flatten_depth_title, listOf("tree", "folder", "path", "flatten", "compression")),
         SearchEntrySpec(R.string.ui_dual_pane_view, listOf("tablet", "two pane", "split", "folder")),
+        SearchEntrySpec(R.string.pref_continue_watching_title, listOf("recent", "recently played", "resume", "home", "carousel")),
         SearchEntrySpec(R.string.ui_delete_folder_all_contents, listOf("delete", "folder", "all files", "media only")),
       )
       addSearchEntries(
