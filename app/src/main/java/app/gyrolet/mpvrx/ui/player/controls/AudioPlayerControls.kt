@@ -1242,8 +1242,8 @@ fun AudioPlayerControls(
   val isTabletLandscape = !isPortrait && isTablet
   val isTabletPortrait = isPortrait && isTablet
 
-  LaunchedEffect(isTabletLandscape) {
-    if (isTabletLandscape) {
+  LaunchedEffect(isTablet) {
+    if (isTablet) {
       if (showInPlaceLyrics || wasLyricsActiveBeforeLandscape) {
         tabletDualPaneTab = 1
         wasLyricsActiveBeforeLandscape = true
@@ -1257,8 +1257,8 @@ fun AudioPlayerControls(
     }
   }
 
-  LaunchedEffect(showInPlaceLyrics, isPlaying, isTabletLandscape, lastUserInteractionTime) {
-    if (showInPlaceLyrics && !isTabletLandscape && isPlaying) {
+  LaunchedEffect(showInPlaceLyrics, isPlaying, isTablet, lastUserInteractionTime) {
+    if (showInPlaceLyrics && !isTablet && isPlaying) {
       kotlinx.coroutines.delay(5000L)
       isLyricsFullscreen = true
     } else {
@@ -1332,17 +1332,17 @@ fun AudioPlayerControls(
         listOf(surface, topBackdrop, bottomBackdrop, ColorUtils.blendARGB(topBackdrop, bottomBackdrop, 0.5f)),
       )
     }
-  val edgeToEdgeVisualizer = showVisualizer && (!showInPlaceLyrics || isTabletLandscape)
+  val edgeToEdgeVisualizer = showVisualizer && (!showInPlaceLyrics || isTablet)
   // In-place lyrics run flush against the screen edges, so the root padding moves onto
   // the header and the footer instead of boxing the lyrics in.
-  val flushInPlaceLyrics = showInPlaceLyrics && isPortrait
+  val flushInPlaceLyrics = showInPlaceLyrics && isPortrait && !isTablet
   val controlsSidePadding = if (edgeToEdgeVisualizer || flushInPlaceLyrics) 16.dp else 0.dp
   // The header keeps the side and top padding the root gives up while the lyrics are flush.
   val headerContentPadding =
     if (flushInPlaceLyrics) Modifier.padding(start = 16.dp, top = 6.dp, end = 16.dp) else Modifier
   // Visibility-independent insets keep the layout still while bars re-dispatch on resume.
   val stableInsets = WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout)
-  val showImmersiveArtwork = immersiveArtworkEnabled && isPortrait && !showVisualizer && !showInPlaceLyrics &&
+  val showImmersiveArtwork = !isTablet && immersiveArtworkEnabled && isPortrait && !showVisualizer && !showInPlaceLyrics &&
     (albumArtBitmap != null || !currentArtworkUri.isNullOrBlank() ||
       currentAudioPresentation?.motionArtwork != null || motionQuery != null)
   val immersiveSurface by animateColorAsState(
@@ -1460,7 +1460,7 @@ fun AudioPlayerControls(
           )
           .fillMaxSize()
           .windowInsetsPadding(
-            if (!isPortrait) {
+            if (!isPortrait && !isTablet) {
               WindowInsets(0, 0, 0, 0)
             } else if (edgeToEdgeVisualizer) {
               stableInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
@@ -1468,16 +1468,26 @@ fun AudioPlayerControls(
               stableInsets
             },
           )
-          .padding(horizontal = if (!isPortrait || edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 16.dp)
-          .padding(top = if (!isPortrait || edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 6.dp,
-            bottom = if (isPortrait) 12.dp else 0.dp),
+          .padding(
+            horizontal =
+              if ((!isPortrait && !isTablet) || edgeToEdgeVisualizer || flushInPlaceLyrics) {
+                0.dp
+              } else if (isTablet) {
+                if (isTabletLandscape) 24.dp else 16.dp
+              } else {
+                16.dp
+              },
+          )
+          .padding(
+            top = if ((!isPortrait && !isTablet) || edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 6.dp,
+            bottom = if (isPortrait || isTablet) 12.dp else 0.dp,
+          ),
     ) {
       val availableHeight = maxHeight - with(LocalDensity.current) {
         (stableInsets.getTop(this) + stableInsets.getBottom(this)).toDp()
       }
       val isCompactLandscape = !isPortrait && availableHeight < 480.dp
       val isShortLandscape = !isPortrait && availableHeight < 320.dp
-      val showLandscapeSidePanel = isTabletLandscape && availableHeight >= 560.dp
       val audioHeaderSize = if (isShortLandscape) 28.dp else if (isCompactLandscape) 36.dp else 48.dp
       val headerBar = @Composable {
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -1566,7 +1576,7 @@ fun AudioPlayerControls(
           val containerWidthPx = constraints.maxWidth.toFloat()
           val currentOffset = animatableOffsetX.value
 
-          if (showInPlaceLyrics && !showLandscapeSidePanel) {
+          if (showInPlaceLyrics && !isTablet) {
             app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
               viewModel = viewModel,
               modifier = Modifier.fillMaxSize(),
@@ -1611,11 +1621,15 @@ fun AudioPlayerControls(
                 onClick = viewModel::toggleAudioVisualizer,
                 onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
                 modifier = Modifier.fillMaxSize(),
-                landscape = !isPortrait,
+                landscape = !isPortrait && !isTablet,
               )
             } else {
-              val coverShape = if (isPortrait) RoundedCornerShape(32.dp) else androidx.compose.ui.graphics.RectangleShape
-              val coverSize = if (isPortrait) Modifier.aspectRatio(1f) else Modifier.fillMaxSize()
+              val coverShape = if (isPortrait || isTablet) RoundedCornerShape(32.dp) else androidx.compose.ui.graphics.RectangleShape
+              val coverSize = if (isPortrait || isTablet) {
+                Modifier.aspectRatio(1f, matchHeightConstraintsFirst = isTabletLandscape)
+              } else {
+                Modifier.fillMaxSize()
+              }
               val density = LocalDensity.current
               val gap = with(density) { 24.dp.toPx() }
               val swipeWidth = if (showImmersiveArtwork) immersiveViewportWidthPx else containerWidthPx
@@ -1633,7 +1647,7 @@ fun AudioPlayerControls(
               Box(
                 modifier = Modifier
                   .fillMaxHeight()
-                  .fillMaxWidth(if (isTabletPortrait) 0.52f else if (isPortrait) 0.88f else 1f)
+                  .fillMaxWidth(if (isTablet) (if (isTabletPortrait) 0.92f else 0.88f) else if (isPortrait) 0.88f else 1f)
                   .pointerInput(viewModel, queueState, showVisualizer, stride, showImmersiveArtwork, isAudiobook) {
                     if (showVisualizer || isAudiobook || swipeWidth <= 0f) return@pointerInput
                     detectHorizontalDragGestures(
@@ -2065,7 +2079,7 @@ fun AudioPlayerControls(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable {
-              if (showLandscapeSidePanel) {
+              if (isTablet) {
                 tabletDualPaneTab = 1
               } else {
                 showInPlaceLyrics = true
@@ -2409,19 +2423,19 @@ fun AudioPlayerControls(
             isShortLandscape -> 42.dp
             isCompactLandscape -> 48.dp
             isAudiobook -> 48.dp
-            isPortrait -> 64.dp
+            isPortrait || isTablet -> 64.dp
             else -> 56.dp
           }
         val playHeight =
           when {
             isShortLandscape -> 44.dp
             isCompactLandscape -> 52.dp
-            isPortrait -> 72.dp
+            isPortrait || isTablet -> 72.dp
             else -> 60.dp
           }
         val sideIconSize = if (isCompactLandscape || isAudiobook) 24.dp else 28.dp
         Row(
-          modifier = Modifier.fillMaxWidth().padding(horizontal = if (isPortrait) 8.dp else 0.dp),
+          modifier = Modifier.fillMaxWidth().padding(horizontal = if (isPortrait || isTablet) 8.dp else 0.dp),
           horizontalArrangement = Arrangement.spacedBy(if (isCompactLandscape || isAudiobook) 10.dp else 18.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -2475,7 +2489,7 @@ fun AudioPlayerControls(
               imageVector = if (isPlaying) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
               contentDescription = stringResource(if (isPlaying) R.string.audiobook_pause else R.string.ui_play),
               tint = LocalContentColor.current,
-              modifier = Modifier.size(if (isPortrait) 34.dp else 28.dp),
+              modifier = Modifier.size(if (isPortrait || isTablet) 34.dp else 28.dp),
               reduceMotion = AppMotion.playerReducedMotion(),
             )
           }
@@ -2520,10 +2534,9 @@ fun AudioPlayerControls(
       val bottomActionRow = @Composable {
         val timer by app.gyrolet.mpvrx.ui.player.AudiobookPlayback.timer.collectAsStateWithLifecycle()
         val equalizerEnabled by audioPreferences.equalizerEnabled.collectAsState()
-        val isLyricsActive = if (showLandscapeSidePanel) tabletDualPaneTab == 1 else showInPlaceLyrics
-        val isQueueActive = if (showLandscapeSidePanel) tabletDualPaneTab == 0 else sheetShown == Sheets.Playlist
+        val isQueueActive = !isTablet && sheetShown == Sheets.Playlist
         val barHeight = if (isShortLandscape) 38.dp else if (isCompactLandscape) 42.dp else 50.dp
-        val centerCount = if (isAudiobook) 4 else 5
+        val centerCount = if (isAudiobook) 3 else 4
         BoxWithConstraints(Modifier.fillMaxWidth()) {
           val endWidth = minOf(barHeight, maxWidth * 0.15f)
           val outerSpacing = if (maxWidth < 280.dp) 4.dp else 8.dp
@@ -2565,37 +2578,9 @@ fun AudioPlayerControls(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(centerSpacing),
               ) {
-                ExpressiveConnectedBarButton(
-                  index = 0,
-                  itemCount = centerCount,
-                  height = barHeight,
-                  selected = isLyricsActive,
-                  onClick = {
-                    val nextState = !isLyricsActive
-                    if (showLandscapeSidePanel) {
-                      tabletDualPaneTab = if (tabletDualPaneTab == 1) 0 else 1
-                    } else {
-                      showInPlaceLyrics = !showInPlaceLyrics
-                    }
-                    resetInactivityTimer()
-                    actionHaptics.selection(nextState)
-                  },
-                  onLongClick = {
-                    onOpenSheet(Sheets.LyricsProvider)
-                    resetInactivityTimer()
-                  },
-                  backdrop = musicBackdrop,
-                ) { tint ->
-                  Icon(
-                    Icons.RoundedFilled.Lyrics,
-                    contentDescription = stringResource(R.string.player_lyrics_title),
-                    tint = tint,
-                    modifier = Modifier.size(iconSize),
-                  )
-                }
                 if (isAudiobook) {
                   ExpressiveConnectedBarButton(
-                    index = 1, itemCount = centerCount, height = barHeight, selected = false,
+                    index = 0, itemCount = centerCount, height = barHeight, selected = false,
                     onClick = { onOpenSheet(Sheets.AudiobookRewind); actionHaptics.confirm() },
                     backdrop = musicBackdrop,
                   ) { tint ->
@@ -2607,7 +2592,7 @@ fun AudioPlayerControls(
                     )
                   }
                   ExpressiveConnectedBarButton(
-                    index = 2, itemCount = centerCount, height = barHeight, selected = timer != null,
+                    index = 1, itemCount = centerCount, height = barHeight, selected = timer != null,
                     onClick = { onOpenSheet(Sheets.AudiobookSleepTimer); actionHaptics.confirm() },
                     backdrop = musicBackdrop,
                   ) { tint ->
@@ -2620,7 +2605,7 @@ fun AudioPlayerControls(
                   }
                 } else {
                   ExpressiveConnectedBarButton(
-                    index = 1, itemCount = centerCount, height = barHeight, selected = shuffleEnabled,
+                    index = 0, itemCount = centerCount, height = barHeight, selected = shuffleEnabled,
                     enabled = playlistModeEnabled,
                     onClick = { viewModel.toggleShuffle(); actionHaptics.selection(!shuffleEnabled) },
                     backdrop = musicBackdrop,
@@ -2634,7 +2619,7 @@ fun AudioPlayerControls(
                     )
                   }
                   ExpressiveConnectedBarButton(
-                    index = 2, itemCount = centerCount, height = barHeight, selected = repeatMode != RepeatMode.OFF,
+                    index = 1, itemCount = centerCount, height = barHeight, selected = repeatMode != RepeatMode.OFF,
                     onClick = { viewModel.cycleRepeatMode(); actionHaptics.confirm() },
                     backdrop = musicBackdrop,
                   ) { tint ->
@@ -2652,7 +2637,7 @@ fun AudioPlayerControls(
                   }
                 }
                 ExpressiveConnectedBarButton(
-                  index = 3, itemCount = centerCount, height = barHeight, selected = showVisualizer,
+                  index = 2, itemCount = centerCount, height = barHeight, selected = showVisualizer,
                   onClick = {
                     if (viewModel.toggleAudioVisualizer()) actionHaptics.selection(!showVisualizer)
                   },
@@ -2672,7 +2657,7 @@ fun AudioPlayerControls(
                 }
                 if (!isAudiobook) {
                   ExpressiveConnectedBarButton(
-                    index = 4, itemCount = centerCount, height = barHeight, selected = backgroundPlaybackEnabled,
+                    index = 3, itemCount = centerCount, height = barHeight, selected = backgroundPlaybackEnabled,
                     onClick = {
                       val enabled = !audioPreferences.audioBackgroundPlayback.get()
                       val activity = context as? PlayerActivity
@@ -2701,36 +2686,146 @@ fun AudioPlayerControls(
                 }
               }
             }
-            ExpressiveTransportSideButton(
-              size = barHeight,
-              modifier = Modifier.width(endWidth),
-              active = isQueueActive,
-              backdrop = musicBackdrop,
-              onClick = {
-                if (showLandscapeSidePanel) tabletDualPaneTab = 0 else onOpenSheet(Sheets.Playlist)
-                actionHaptics.confirm()
-              },
-            ) {
-              Icon(
-                Icons.RoundedFilled.QueueMusic,
-                contentDescription = stringResource(
-                  if (isAudiobook) R.string.audiobook_chapters else R.string.player_up_next_title,
-                ),
-                tint = if (liquidGlassActive()) {
-                  LocalContentColor.current
-                } else if (isQueueActive) {
-                  MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                  MaterialTheme.colorScheme.onSecondaryContainer
+            if (!isTablet) {
+              ExpressiveTransportSideButton(
+                size = barHeight,
+                modifier = Modifier.width(endWidth),
+                active = isQueueActive,
+                backdrop = musicBackdrop,
+                onClick = {
+                  onOpenSheet(Sheets.Playlist)
+                  actionHaptics.confirm()
                 },
-                modifier = Modifier.size(endIconSize),
-              )
+              ) {
+                Icon(
+                  Icons.RoundedFilled.QueueMusic,
+                  contentDescription = stringResource(
+                    if (isAudiobook) R.string.audiobook_chapters else R.string.player_up_next_title,
+                  ),
+                  tint = if (liquidGlassActive()) {
+                    LocalContentColor.current
+                  } else if (isQueueActive) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                  } else {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                  },
+                  modifier = Modifier.size(endIconSize),
+                )
+              }
+            } else {
+              Spacer(Modifier.width(endWidth))
             }
           }
         }
       }
 
-      if (isPortrait) {
+      if (isTablet) {
+        Row(
+          modifier = Modifier.fillMaxSize(),
+          horizontalArrangement = Arrangement.spacedBy(if (isTabletLandscape) 24.dp else 16.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Column(
+            modifier = Modifier
+              .weight(1f)
+              .fillMaxHeight(),
+            verticalArrangement = Arrangement.SpaceBetween,
+            horizontalAlignment = Alignment.CenterHorizontally,
+          ) {
+            if (edgeToEdgeVisualizer) {
+              Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                centerVisualizerView(Modifier.fillMaxSize())
+                Column(
+                  modifier =
+                    Modifier
+                      .fillMaxWidth()
+                      .windowInsetsPadding(stableInsets.only(WindowInsetsSides.Top))
+                      .padding(horizontal = controlsSidePadding)
+                      .padding(top = 6.dp),
+                  horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                  headerBar()
+                }
+              }
+            } else {
+              Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = controlsSidePadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+              ) {
+                headerBar()
+                Spacer(modifier = Modifier.height(6.dp))
+              }
+              centerVisualizerView(
+                Modifier
+                  .weight(1f)
+                  .fillMaxWidth()
+                  .padding(
+                    vertical = if (isTabletPortrait) 16.dp else 8.dp,
+                    horizontal = if (isTabletPortrait) 8.dp else 16.dp,
+                  ),
+              )
+            }
+            Column(
+              modifier = Modifier.padding(horizontal = controlsSidePadding),
+              horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+              Spacer(modifier = Modifier.height(4.dp))
+              trackMetadataView()
+              if (tabletDualPaneTab != 1) {
+                Spacer(modifier = Modifier.height(4.dp))
+                currentLyricStripView()
+                Spacer(modifier = Modifier.height(4.dp))
+              } else {
+                Spacer(modifier = Modifier.height(4.dp))
+                lyricsSourceLineView()
+                Spacer(modifier = Modifier.height(4.dp))
+              }
+              seekbarView()
+              Spacer(modifier = Modifier.height(if (isTabletPortrait) 18.dp else 12.dp))
+              playbackControlsRow()
+              Spacer(modifier = Modifier.height(if (isTabletPortrait) 18.dp else 14.dp))
+              bottomActionRow()
+            }
+          }
+
+          val sidePanelGlass = liquidGlassActive()
+          val sidePanelShape = RoundedCornerShape(24.dp)
+          Surface(
+            modifier = Modifier
+              .weight(if (isTabletLandscape) 1.1f else 1f)
+              .fillMaxHeight()
+              .then(
+                if (edgeToEdgeVisualizer) {
+                  Modifier.windowInsetsPadding(stableInsets.only(WindowInsetsSides.Top)).padding(top = 6.dp)
+                } else {
+                  Modifier
+                }
+              )
+              .then(
+                if (sidePanelGlass && musicBackdrop != null) {
+                  Modifier.liquidGlassControlSurface(
+                    backdrop = musicBackdrop,
+                    shape = sidePanelShape,
+                    surfaceColor = PlayerLiquidTokens.surfaceColor,
+                  )
+                } else {
+                  Modifier
+                }
+              )
+              .clip(sidePanelShape),
+            color = if (sidePanelGlass) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.45f),
+            shape = sidePanelShape,
+          ) {
+            DualPaneSidePanel(
+              viewModel = viewModel,
+              playlist = filteredPlaylist,
+              selectedTab = tabletDualPaneTab,
+              onTabSelected = { tabletDualPaneTab = it },
+              onOpenTranslateSheet = { onOpenSheet(Sheets.LyricsTranslate) },
+            )
+          }
+        }
+      } else if (isPortrait) {
         Column(
           modifier = Modifier
             .fillMaxSize()
@@ -2811,54 +2906,37 @@ fun AudioPlayerControls(
         ) {
           centerVisualizerView(
             Modifier
-              .weight(if (isTabletLandscape) 1f else 0.42f)
+              .weight(0.42f)
               .fillMaxHeight(),
           )
           Column(
             modifier =
               Modifier
-                .weight(if (isTabletLandscape) 1.2f else 0.58f)
+                .weight(0.58f)
                 .fillMaxHeight()
                 // The art pane owns the start edge, so this pane only insets its own edges.
                 .windowInsetsPadding(stableInsets.only(WindowInsetsSides.Vertical + WindowInsetsSides.End))
-                .padding(horizontal = if (isCompactLandscape) 12.dp else 24.dp,
-                  vertical = if (isCompactLandscape) 4.dp else 8.dp),
-            verticalArrangement = if (showLandscapeSidePanel) Arrangement.spacedBy(8.dp) else Arrangement.SpaceBetween,
+                .padding(
+                  horizontal = if (isCompactLandscape) 12.dp else 24.dp,
+                  vertical = if (isCompactLandscape) 4.dp else 8.dp,
+                ),
+            verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally,
           ) {
-            if (showLandscapeSidePanel) {
-              Box(Modifier.fillMaxWidth().height(40.dp), contentAlignment = Alignment.Center) { headerBar() }
-              Box(Modifier.fillMaxWidth().height(128.dp), contentAlignment = Alignment.TopStart) { trackMetadataView() }
-              Box(Modifier.weight(1f).fillMaxWidth()) {
-                DualPaneSidePanel(
-                  viewModel = viewModel,
-                  playlist = filteredPlaylist,
-                  selectedTab = tabletDualPaneTab,
-                  onTabSelected = { tabletDualPaneTab = it },
-                  onOpenTranslateSheet = { onOpenSheet(Sheets.LyricsTranslate) },
-                )
-              }
-              Box(Modifier.fillMaxWidth().height(if (audioWavySeekbar) 96.dp else 80.dp), contentAlignment = Alignment.Center) {
-                seekbarView()
-              }
-              Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.Center) { playbackControlsRow() }
-              Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) { bottomActionRow() }
-            } else {
-              // Rows keep their natural, content-independent heights and share the spare height evenly;
-              // only the text rows may shrink when the window is too short.
-              Box(Modifier.fillMaxWidth().height(audioHeaderSize), contentAlignment = Alignment.Center) { headerBar() }
-              Box(Modifier.weight(1f, fill = false).fillMaxWidth()) { trackMetadataView() }
-              if (!isShortLandscape) {
-                Box(
-                  Modifier.weight(0.4f, fill = false).fillMaxWidth()
-                    .height(with(LocalDensity.current) { 36.sp.toDp() }),
-                  contentAlignment = Alignment.CenterStart,
-                ) { currentLyricStripView() }
-              }
-              seekbarView()
-              playbackControlsRow()
-              bottomActionRow()
+            // Rows keep their natural, content-independent heights and share the spare height evenly;
+            // only the text rows may shrink when the window is too short.
+            Box(Modifier.fillMaxWidth().height(audioHeaderSize), contentAlignment = Alignment.Center) { headerBar() }
+            Box(Modifier.weight(1f, fill = false).fillMaxWidth()) { trackMetadataView() }
+            if (!isShortLandscape) {
+              Box(
+                Modifier.weight(0.4f, fill = false).fillMaxWidth()
+                  .height(with(LocalDensity.current) { 36.sp.toDp() }),
+                contentAlignment = Alignment.CenterStart,
+              ) { currentLyricStripView() }
             }
+            seekbarView()
+            playbackControlsRow()
+            bottomActionRow()
           }
         }
       }
@@ -2950,20 +3028,26 @@ private fun DualPaneSidePanel(
             fontWeight = FontWeight.Bold,
           )
         },
+        border = null,
+        shape = RoundedCornerShape(12.dp),
         colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-          containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f),
+          containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
           selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
           selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+          labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
       )
       androidx.compose.material3.FilterChip(
         selected = selectedTab == 1,
         onClick = { onTabSelected(1) },
         label = { Text(stringResource(R.string.player_lyrics_title), fontWeight = FontWeight.Bold) },
+        border = null,
+        shape = RoundedCornerShape(12.dp),
         colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-          containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.4f),
+          containerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f),
           selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
           selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+          labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ),
       )
     }
