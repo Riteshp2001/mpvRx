@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.LruCache
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -61,11 +62,16 @@ internal fun WallpaperPreferenceCard(
   val preset = remember(wallpaperUri) { WallpaperPreset.fromUri(wallpaperUri) }
   val isNone = wallpaperUri.isBlank()
   val isCustom = !isNone && preset == null
+  // Seeded from the cache so a returning screen paints the thumbnail on its first frame.
   val customThumbnail =
-    produceState<ImageBitmap?>(initialValue = null, wallpaperUri) {
+    produceState<ImageBitmap?>(
+      initialValue = if (isCustom) WallpaperThumbnailCache.peek(wallpaperUri) else null,
+      wallpaperUri,
+    ) {
       value =
         if (isCustom) {
-          withContext(Dispatchers.IO) { loadWallpaperThumbnail(context, wallpaperUri) }
+          WallpaperThumbnailCache.peek(wallpaperUri)
+            ?: withContext(Dispatchers.IO) { WallpaperThumbnailCache.load(context, wallpaperUri) }
         } else {
           null
         }
@@ -141,16 +147,49 @@ internal fun WallpaperPreferenceCard(
   }
 }
 
+/**
+ * Decoded thumbnails kept by wallpaper URI. The Appearance screen leaves composition whenever the
+ * wallpaper editor is opened, so without this every Back re-decoded the wallpaper and the card
+ * showed an empty frame until it finished (visible as the thumbnail popping in).
+ */
+internal object WallpaperThumbnailCache {
+  private val cache = LruCache<String, Bitmap>(MAX_ENTRIES)
+
+  // A saved custom wallpaper is a multi-megabyte data: URI; key on its hash instead of holding the string.
+  private fun keyOf(wallpaperUri: String) = "${wallpaperUri.length}:${wallpaperUri.hashCode()}"
+
+  /** Raw cached bitmap. Owned by the cache: callers must never recycle it. */
+  fun peekBitmap(wallpaperUri: String): Bitmap? =
+    if (wallpaperUri.isBlank()) null else cache.get(keyOf(wallpaperUri))?.takeUnless { it.isRecycled }
+
+  fun peek(wallpaperUri: String): ImageBitmap? = peekBitmap(wallpaperUri)?.asImageBitmap()
+
+  /** Returns the cached thumbnail or decodes (and caches) it. Call off the main thread. */
+  fun load(
+    context: Context,
+    wallpaperUri: String,
+  ): ImageBitmap? {
+    if (wallpaperUri.isBlank()) return null
+    val key = keyOf(wallpaperUri)
+    peekBitmap(wallpaperUri)?.let { return it.asImageBitmap() }
+    val thumbnail = loadWallpaperThumbnail(context, wallpaperUri) ?: return null
+    cache.put(key, thumbnail)
+    return thumbnail.asImageBitmap()
+  }
+
+  private const val MAX_ENTRIES = 6
+}
+
 /** Small copy of the saved wallpaper, so the settings screen doesn't hold a full-size bitmap. */
 private fun loadWallpaperThumbnail(
   context: Context,
   wallpaperUri: String,
-): ImageBitmap? {
+): Bitmap? {
   val full = loadWallpaperBitmap(context, wallpaperUri) ?: return null
   val targetWidth = 240
-  if (full.width <= targetWidth) return full.asImageBitmap()
+  if (full.width <= targetWidth) return full
   val targetHeight = (full.height * (targetWidth / full.width.toFloat())).toInt().coerceAtLeast(1)
   val scaled = Bitmap.createScaledBitmap(full, targetWidth, targetHeight, true)
   if (scaled !== full) full.recycle()
-  return scaled.asImageBitmap()
+  return scaled
 }
