@@ -97,6 +97,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.ripple
 import androidx.compose.material3.Text
@@ -128,12 +129,11 @@ import app.gyrolet.mpvrx.repository.NavidromeRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.toPlaylistCandidates
-import app.gyrolet.mpvrx.ui.liquidglass.AdaptiveControlsContainer
-import app.gyrolet.mpvrx.ui.liquidglass.LiquidButton
 import app.gyrolet.mpvrx.ui.liquidglass.LiquidControlColors
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
 import app.gyrolet.mpvrx.ui.liquidglass.PlayerLiquidTokens
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassControlSurface
 import app.gyrolet.mpvrx.ui.liquidglass.outsideShadow
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -1492,7 +1492,6 @@ fun AudioPlayerControls(
               }
             },
             modifier = Modifier.align(Alignment.CenterStart).size(audioHeaderSize),
-            size = audioHeaderSize,
             backdrop = musicBackdrop,
           ) {
             Icon(
@@ -1501,9 +1500,7 @@ fun AudioPlayerControls(
               tint = MaterialTheme.colorScheme.onSurface,
               modifier =
                 Modifier.size(
-                  if (liquidGlassActive()) {
-                    24.dp
-                  } else if (showInPlaceLyrics || isLyricsFullscreen) {
+                  if (showInPlaceLyrics || isLyricsFullscreen) {
                     28.dp
                   } else {
                     32.dp
@@ -1532,14 +1529,13 @@ fun AudioPlayerControls(
             ReactiveIconButton(
               onClick = { onOpenSheet(Sheets.AudioProperties) },
               modifier = Modifier.size(audioHeaderSize),
-              size = audioHeaderSize,
               backdrop = musicBackdrop,
             ) {
               Icon(
                 imageVector = Icons.RoundedFilled.Info,
                 contentDescription = stringResource(R.string.player_sheets_more_title),
                 tint = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(if (liquidGlassActive()) 24.dp else 28.dp),
+                modifier = Modifier.size(28.dp),
               )
             }
           }
@@ -1868,15 +1864,31 @@ fun AudioPlayerControls(
               )
 
               // 4. Playback Speed (left of A-B Loop)
-              if (liquidGlassActive()) {
-                LiquidButton(
-                  onClick = { onOpenSheet(Sheets.PlaybackSpeed) },
-                  backdrop = musicBackdrop,
-                  enabled = !speedConfigOwned,
-                  height = 30.dp,
-                  horizontalPadding = 10.dp,
-                  spacing = 4.dp,
-                  surfaceColor = PlayerLiquidTokens.surfaceColor,
+              val speedChipGlass = liquidGlassActive()
+              Surface(
+                shape = CircleShape,
+                color = Color.Transparent,
+                modifier =
+                  Modifier
+                    .height(30.dp)
+                    .then(
+                      if (speedChipGlass) {
+                        Modifier.liquidGlassControlSurface(
+                          backdrop = musicBackdrop,
+                          shape = CircleShape,
+                          surfaceColor = PlayerLiquidTokens.surfaceColor,
+                        )
+                      } else {
+                        Modifier
+                      },
+                    )
+                    .clip(CircleShape)
+                    .clickable(enabled = !speedConfigOwned, onClick = { onOpenSheet(Sheets.PlaybackSpeed) }),
+              ) {
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  horizontalArrangement = Arrangement.spacedBy(4.dp),
+                  modifier = Modifier.padding(horizontal = 10.dp),
                 ) {
                   Icon(
                     imageVector = Icons.RoundedFilled.Speed,
@@ -1892,36 +1904,6 @@ fun AudioPlayerControls(
                     modifier = Modifier.stableNumericWidth(speedText),
                   )
                 }
-              } else {
-                Surface(
-                  shape = CircleShape,
-                  color = Color.Transparent,
-                  modifier =
-                    Modifier
-                      .height(30.dp)
-                      .clip(CircleShape)
-                      .clickable(enabled = !speedConfigOwned, onClick = { onOpenSheet(Sheets.PlaybackSpeed) }),
-                ) {
-                  Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.padding(horizontal = 10.dp),
-                  ) {
-                    Icon(
-                      imageVector = Icons.RoundedFilled.Speed,
-                      contentDescription = stringResource(R.string.ui_playback_speed),
-                      tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (speedConfigOwned) 0.38f else 1f),
-                      modifier = Modifier.size(16.dp),
-                    )
-                    val speedText = String.format("%.2fx", playbackSpeed ?: 1f)
-                    Text(
-                      text = speedText,
-                      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold).withTabularDigits(),
-                      color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = if (speedConfigOwned) 0.38f else 1f),
-                      modifier = Modifier.stableNumericWidth(speedText),
-                    )
-                  }
-                }
               }
 
               AnimatedContent(
@@ -1932,206 +1914,43 @@ fun AudioPlayerControls(
                 },
                 label = "AudioABLoopExpand",
               ) { expanded ->
-                if (liquidGlassActive()) {
-                  if (expanded) {
-                    LiquidButton(
-                      onClick = {},
-                      backdrop = musicBackdrop,
-                      enabled = false,
-                      height = 30.dp,
-                      horizontalPadding = 4.dp,
-                      spacing = 6.dp,
-                      surfaceColor = PlayerLiquidTokens.surfaceColor,
-                    ) {
-                      LiquidButton(
-                        onClick = { viewModel.setLoopA() },
-                        backdrop = musicBackdrop,
-                        modifier = if (abLoopA == null) Modifier.size(26.dp) else Modifier.height(26.dp),
-                        height = 26.dp,
-                        horizontalPadding = if (abLoopA != null) 10.dp else 0.dp,
-                        spacing = 0.dp,
-                        surfaceColor =
-                          if (abLoopA != null) {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-                          } else {
-                            Color.Transparent
-                          },
-                      ) {
-                        Text(
-                          text = if (abLoopA != null) formatSec(abLoopA.toLong()) else "A",
-                          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                          color =
-                            if (abLoopA != null) {
-                              MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                              MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                      }
-                      LiquidButton(
-                        onClick = {
-                          viewModel.clearABLoop()
-                          viewModel.toggleABLoopExpanded()
-                        },
-                        backdrop = musicBackdrop,
-                        modifier = Modifier.size(26.dp),
-                        height = 26.dp,
-                        horizontalPadding = 0.dp,
-                        spacing = 0.dp,
-                      ) {
-                        Icon(
-                          imageVector = Icons.RoundedFilled.Close,
-                          contentDescription = "Clear A-B Loop",
-                          tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                          modifier = Modifier.size(16.dp),
-                        )
-                      }
-                      LiquidButton(
-                        onClick = { viewModel.setLoopB() },
-                        backdrop = musicBackdrop,
-                        modifier = if (abLoopB == null) Modifier.size(26.dp) else Modifier.height(26.dp),
-                        height = 26.dp,
-                        horizontalPadding = if (abLoopB != null) 10.dp else 0.dp,
-                        spacing = 0.dp,
-                        surfaceColor =
-                          if (abLoopB != null) {
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
-                          } else {
-                            Color.Transparent
-                          },
-                      ) {
-                        Text(
-                          text = if (abLoopB != null) formatSec(abLoopB.toLong()) else "B",
-                          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                          color =
-                            if (abLoopB != null) {
-                              MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                              MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                      }
-                    }
-                  } else {
-                    LiquidButton(
-                      onClick = viewModel::toggleABLoopExpanded,
-                      backdrop = musicBackdrop,
-                      modifier = Modifier.size(30.dp),
-                      height = 30.dp,
-                      horizontalPadding = 0.dp,
-                      spacing = 0.dp,
-                      surfaceColor = PlayerLiquidTokens.surfaceColor,
-                    ) {
-                      AbLoopIcon(
-                        modifier = Modifier.size(22.dp),
-                        tint = if (abLoopA != null || abLoopB != null) {
-                          LiquidControlColors.accent
-                        } else {
-                          MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        isASet = abLoopA != null,
-                        isBSet = abLoopB != null,
-                      )
-                    }
-                  }
-                } else if (expanded) {
+                val glassChips = liquidGlassActive()
+                if (expanded) {
                   Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                   ) {
-                    Surface(
-                      shape = CircleShape,
-                      color =
-                        if (abLoopA !=
-                          null
-                        ) {
-                          MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                          MaterialTheme.colorScheme.surfaceVariant
-                        },
-                      modifier = Modifier.height(30.dp).clip(CircleShape).clickable(onClick = { viewModel.setLoopA() }),
-                    ) {
-                      Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
-                        Text(
-                          text = if (abLoopA != null) formatSec(abLoopA.toLong()) else "A",
-                          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                          color =
-                            if (abLoopA !=
-                              null
-                            ) {
-                              MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                              MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                      }
-                    }
-                    Surface(
-                      shape = CircleShape,
-                      color = MaterialTheme.colorScheme.surfaceVariant,
-                      modifier =
-                        Modifier.size(30.dp).clip(CircleShape).clickable(onClick = {
-                          viewModel.clearABLoop()
-                          viewModel.toggleABLoopExpanded()
-                        }),
-                    ) {
-                      Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                          imageVector = Icons.RoundedFilled.Close,
-                          contentDescription = "Clear A-B Loop",
-                          tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                          modifier = Modifier.size(16.dp),
-                        )
-                      }
-                    }
-                    Surface(
-                      shape = CircleShape,
-                      color =
-                        if (abLoopB !=
-                          null
-                        ) {
-                          MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                          MaterialTheme.colorScheme.surfaceVariant
-                        },
-                      modifier = Modifier.height(30.dp).clip(CircleShape).clickable(onClick = { viewModel.setLoopB() }),
-                    ) {
-                      Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
-                        Text(
-                          text = if (abLoopB != null) formatSec(abLoopB.toLong()) else "B",
-                          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                          color =
-                            if (abLoopB !=
-                              null
-                            ) {
-                              MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                              MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        )
-                      }
-                    }
-                  }
-                } else {
-                  Surface(
-                    shape = CircleShape,
-                    color = Color.Transparent,
-                    modifier = Modifier.clip(CircleShape).clickable(onClick = viewModel::toggleABLoopExpanded),
-                  ) {
-                    AbLoopIcon(
-                      modifier = Modifier.size(30.dp),
-                      tint =
-                        if (abLoopA != null ||
-                          abLoopB != null
-                        ) {
-                          MaterialTheme.colorScheme.primary
-                        } else {
-                          MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                      isASet = abLoopA != null,
-                      isBSet = abLoopB != null,
+                    AbLoopMarkerChip(
+                      label = if (abLoopA != null) formatSec(abLoopA.toLong()) else "A",
+                      isSet = abLoopA != null,
+                      glass = glassChips,
+                      backdrop = musicBackdrop,
+                      onClick = { viewModel.setLoopA() },
+                    )
+                    AbLoopClearChip(
+                      glass = glassChips,
+                      backdrop = musicBackdrop,
+                      onClick = {
+                        viewModel.clearABLoop()
+                        viewModel.toggleABLoopExpanded()
+                      },
+                    )
+                    AbLoopMarkerChip(
+                      label = if (abLoopB != null) formatSec(abLoopB.toLong()) else "B",
+                      isSet = abLoopB != null,
+                      glass = glassChips,
+                      backdrop = musicBackdrop,
+                      onClick = { viewModel.setLoopB() },
                     )
                   }
+                } else {
+                  AbLoopToggleChip(
+                    glass = glassChips,
+                    backdrop = musicBackdrop,
+                    isASet = abLoopA != null,
+                    isBSet = abLoopB != null,
+                    onClick = viewModel::toggleABLoopExpanded,
+                  )
                 }
               }
             }
@@ -2171,7 +1990,6 @@ fun AudioPlayerControls(
                   }
                 },
                 modifier = Modifier.size(if (isCompactLandscape) 32.dp else 40.dp),
-                size = if (isCompactLandscape) 32.dp else 40.dp,
                 backdrop = musicBackdrop,
               ) {
                 AnimatedIcon(
@@ -2193,7 +2011,6 @@ fun AudioPlayerControls(
               ReactiveIconButton(
                 onClick = { addToPlaylistDialogOpen = true },
                 modifier = Modifier.size(40.dp),
-                size = 40.dp,
                 backdrop = musicBackdrop,
               ) {
                 Icon(
@@ -2637,7 +2454,6 @@ fun AudioPlayerControls(
               seconds = 30,
               enabled = canSeek,
               modifier = Modifier.size(sideSize),
-              size = sideSize,
               backdrop = musicBackdrop,
             ) {
               viewModel.seekBy(-30)
@@ -2669,7 +2485,6 @@ fun AudioPlayerControls(
               seconds = 30,
               enabled = canSeek,
               modifier = Modifier.size(sideSize),
-              size = sideSize,
               backdrop = musicBackdrop,
             ) {
               viewModel.seekBy(30)
@@ -3572,6 +3387,146 @@ private fun formatSec(totalSeconds: Long): String {
   }
 }
 
+/**
+ * A-B loop marker chip. Keeps the expressive 30dp circle in both modes; Liquid Glass only replaces
+ * the fill, so sizes, spacing and touch targets stay identical.
+ */
+@Composable
+private fun AbLoopMarkerChip(
+  label: String,
+  isSet: Boolean,
+  glass: Boolean,
+  backdrop: Backdrop?,
+  onClick: () -> Unit,
+) {
+  Surface(
+    shape = CircleShape,
+    color =
+      when {
+        glass -> Color.Transparent
+        isSet -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+      },
+    contentColor =
+      when {
+        glass && isSet -> LiquidControlColors.accent
+        glass -> PlayerLiquidTokens.contentColor
+        isSet -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+      },
+    modifier =
+      Modifier
+        .height(30.dp)
+        .then(
+          if (glass) {
+            Modifier.liquidGlassControlSurface(
+              backdrop = backdrop,
+              shape = CircleShape,
+              surfaceColor =
+                if (isSet) PlayerLiquidTokens.selectedSurfaceColor else PlayerLiquidTokens.surfaceColor,
+            )
+          } else {
+            Modifier
+          },
+        )
+        .clip(CircleShape)
+        .clickable(onClick = onClick),
+  ) {
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
+      Text(
+        text = label,
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+        color = LocalContentColor.current,
+      )
+    }
+  }
+}
+
+/** Clears and collapses the A-B loop; same circle and icon size in both modes. */
+@Composable
+private fun AbLoopClearChip(
+  glass: Boolean,
+  backdrop: Backdrop?,
+  onClick: () -> Unit,
+) {
+  Surface(
+    shape = CircleShape,
+    color = if (glass) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant,
+    contentColor = if (glass) PlayerLiquidTokens.contentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+    modifier =
+      Modifier
+        .size(30.dp)
+        .then(
+          if (glass) {
+            Modifier.liquidGlassControlSurface(
+              backdrop = backdrop,
+              shape = CircleShape,
+              surfaceColor = PlayerLiquidTokens.surfaceColor,
+            )
+          } else {
+            Modifier
+          },
+        )
+        .clip(CircleShape)
+        .clickable(onClick = onClick),
+  ) {
+    Box(contentAlignment = Alignment.Center) {
+      Icon(
+        imageVector = Icons.RoundedFilled.Close,
+        contentDescription = "Clear A-B Loop",
+        tint = LocalContentColor.current,
+        modifier = Modifier.size(16.dp),
+      )
+    }
+  }
+}
+
+/** Collapsed A-B loop toggle: a borderless glyph normally, a 30dp glass circle under Liquid Glass. */
+@Composable
+private fun AbLoopToggleChip(
+  glass: Boolean,
+  backdrop: Backdrop?,
+  isASet: Boolean,
+  isBSet: Boolean,
+  onClick: () -> Unit,
+) {
+  val active = isASet || isBSet
+  Surface(
+    shape = CircleShape,
+    color = Color.Transparent,
+    contentColor =
+      when {
+        glass && active -> LiquidControlColors.accent
+        glass -> PlayerLiquidTokens.contentColor
+        active -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+      },
+    modifier =
+      Modifier
+        .size(30.dp)
+        .then(
+          if (glass) {
+            Modifier.liquidGlassControlSurface(
+              backdrop = backdrop,
+              shape = CircleShape,
+              surfaceColor = PlayerLiquidTokens.surfaceColor,
+            )
+          } else {
+            Modifier
+          },
+        )
+        .clip(CircleShape)
+        .clickable(onClick = onClick),
+  ) {
+    AbLoopIcon(
+      modifier = Modifier.size(30.dp),
+      tint = LocalContentColor.current,
+      isASet = isASet,
+      isBSet = isBSet,
+    )
+  }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AudioSeekButton(
@@ -3579,7 +3534,6 @@ private fun AudioSeekButton(
   seconds: Int,
   enabled: Boolean,
   modifier: Modifier = Modifier.size(48.dp),
-  size: Dp = 48.dp,
   backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   onClick: () -> Unit,
 ) {
@@ -3596,7 +3550,7 @@ private fun AudioSeekButton(
     tooltip = { PlainTooltip { Text(label) } },
     state = rememberTooltipState(),
   ) {
-    ReactiveIconButton(onClick = onClick, enabled = enabled, modifier = modifier, size = size, backdrop = backdrop) {
+    ReactiveIconButton(onClick = onClick, enabled = enabled, modifier = modifier, backdrop = backdrop) {
       Icon(
         imageVector = if (forward) Icons.RoundedFilled.FastForward else Icons.RoundedFilled.FastRewind,
         contentDescription = label,
@@ -3615,34 +3569,26 @@ private fun ReactiveIconButton(
   onLongClick: (() -> Unit)? = null,
   enabled: Boolean = true,
   onLongClickLabel: String? = null,
-  size: Dp = PlayerLiquidTokens.ButtonSize,
   backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   content: @Composable () -> Unit,
 ) {
+  val glass = liquidGlassActive()
+  val glassSurface =
+    if (glass) {
+      Modifier.liquidGlassControlSurface(backdrop, CircleShape, PlayerLiquidTokens.surfaceColor)
+    } else {
+      Modifier
+    }
   val interactionSource = remember { MutableInteractionSource() }
   val reducedMotion = app.gyrolet.mpvrx.ui.theme.AppMotion.playerReducedMotion()
 
-  if (liquidGlassActive()) {
-    AdaptiveControlsContainer(
-      onClick = onClick,
-      modifier = modifier,
-      onLongClick = onLongClick ?: {},
-      enabled = enabled,
-      onLongClickLabel = onLongClickLabel,
-      buttonSize = size,
-      horizontalPadding = 0.dp,
-      spacing = 0.dp,
-      backdrop = backdrop,
-      enforceMinimumTouchTarget = false,
-    ) {
-      content()
-    }
-  } else if (onLongClick != null) {
+  if (onLongClick != null) {
     Box(
       modifier =
         modifier
-          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f)
+          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f, clipToShape = !glass)
           .appPressFeedback(interactionSource, enabled, pressedScale = 0.96f, reduceMotion = reducedMotion)
+          .then(glassSurface)
           .clip(CircleShape)
           .combinedClickable(
             interactionSource = interactionSource,
@@ -3664,8 +3610,9 @@ private fun ReactiveIconButton(
       interactionSource = interactionSource,
       modifier =
         modifier
-          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f)
-          .appPressFeedback(interactionSource, enabled, pressedScale = 0.96f, reduceMotion = reducedMotion),
+          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f, clipToShape = !glass)
+          .appPressFeedback(interactionSource, enabled, pressedScale = 0.96f, reduceMotion = reducedMotion)
+          .then(glassSurface),
     ) {
       content()
     }
@@ -3682,23 +3629,7 @@ private fun ExpressiveTransportSideButton(
   backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   content: @Composable () -> Unit,
 ) {
-  if (liquidGlassActive()) {
-    AdaptiveControlsContainer(
-      onClick = onClick,
-      modifier = modifier.size(size),
-      enabled = enabled,
-      color = if (active) LiquidControlColors.accent else Color.Unspecified,
-      surfaceColor = if (active) PlayerLiquidTokens.selectedSurfaceColor else Color.Unspecified,
-      buttonSize = size,
-      horizontalPadding = 0.dp,
-      spacing = 0.dp,
-      backdrop = backdrop,
-      enforceMinimumTouchTarget = false,
-    ) {
-      content()
-    }
-    return
-  }
+  val glass = liquidGlassActive()
   val interactionSource = remember { MutableInteractionSource() }
   val pressed by interactionSource.collectIsPressedAsState()
   val reducedMotion = AppMotion.playerReducedMotion()
@@ -3719,18 +3650,38 @@ private fun ExpressiveTransportSideButton(
     label = "transportSideColor",
   )
   val shape = RoundedCornerShape(cornerRadius)
+  // Glass keeps the same animated corner radius and touch area; only the fill is replaced.
+  val glassContentColor =
+    when {
+      !enabled -> PlayerLiquidTokens.disabledContentColor
+      active -> LiquidControlColors.accent
+      else -> PlayerLiquidTokens.contentColor
+    }
 
   Surface(
     onClick = onClick,
     shape = shape,
-    color = containerColor,
+    color = if (glass) Color.Transparent else containerColor,
+    contentColor = if (glass) glassContentColor else contentColorFor(containerColor),
     enabled = enabled,
     interactionSource = interactionSource,
     modifier =
       modifier
         .size(size)
-        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.08f)
-        .appPressFeedback(interactionSource, enabled, pressedScale = 0.90f, reduceMotion = reducedMotion),
+        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.08f, clipToShape = !glass)
+        .appPressFeedback(interactionSource, enabled, pressedScale = 0.90f, reduceMotion = reducedMotion)
+        .then(
+          if (glass) {
+            Modifier.liquidGlassControlSurface(
+              backdrop = backdrop,
+              shape = shape,
+              surfaceColor =
+                if (active) PlayerLiquidTokens.selectedSurfaceColor else PlayerLiquidTokens.surfaceColor,
+            )
+          } else {
+            Modifier
+          },
+        ),
   ) {
     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
       content()
@@ -3748,25 +3699,7 @@ private fun ExpressivePlayPauseButton(
   backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   content: @Composable () -> Unit,
 ) {
-  val glassEnabled = liquidGlassActive()
-  val contentColor = if (glassEnabled) PlayerLiquidTokens.contentColor else MaterialTheme.colorScheme.onPrimary
-  if (glassEnabled) {
-    CompositionLocalProvider(LocalContentColor provides contentColor) {
-      AdaptiveControlsContainer(
-        onClick = onClick,
-        modifier = modifier,
-        surfaceColor = PlayerLiquidTokens.selectedSurfaceColor,
-        buttonSize = height,
-        horizontalPadding = 0.dp,
-        spacing = 0.dp,
-        backdrop = backdrop,
-        enforceMinimumTouchTarget = false,
-      ) {
-        content()
-      }
-    }
-    return
-  }
+  val glass = liquidGlassActive()
   val interactionSource = remember { MutableInteractionSource() }
   val pressed by interactionSource.collectIsPressedAsState()
   val reducedMotion = AppMotion.playerReducedMotion()
@@ -3782,19 +3715,32 @@ private fun ExpressivePlayPauseButton(
     label = "playPauseCorner",
   )
   val shape = RoundedCornerShape(cornerRadius)
+  val contentColor = if (glass) PlayerLiquidTokens.contentColor else MaterialTheme.colorScheme.onPrimary
 
   CompositionLocalProvider(LocalContentColor provides contentColor) {
     Surface(
       onClick = onClick,
       shape = shape,
-      color = MaterialTheme.colorScheme.primary,
-      shadowElevation = 6.dp,
+      color = if (glass) Color.Transparent else MaterialTheme.colorScheme.primary,
+      contentColor = contentColor,
+      shadowElevation = if (glass) 0.dp else 6.dp,
       interactionSource = interactionSource,
       modifier =
         modifier
           .height(height)
-          .tvFocusHighlight(shape, enabled = true, focusedScale = 1.05f)
-          .appPressFeedback(interactionSource, enabled = true, pressedScale = 0.94f, reduceMotion = reducedMotion),
+          .tvFocusHighlight(shape, enabled = true, focusedScale = 1.05f, clipToShape = !glass)
+          .appPressFeedback(interactionSource, enabled = true, pressedScale = 0.94f, reduceMotion = reducedMotion)
+          .then(
+            if (glass) {
+              Modifier.liquidGlassControlSurface(
+                backdrop = backdrop,
+                shape = shape,
+                surfaceColor = PlayerLiquidTokens.selectedSurfaceColor,
+              )
+            } else {
+              Modifier
+            },
+          ),
     ) {
       Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
         content()
@@ -3817,31 +3763,7 @@ private fun RowScope.ExpressiveConnectedBarButton(
   backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   content: @Composable (Color) -> Unit,
 ) {
-  if (liquidGlassActive()) {
-    val glassContent =
-      when {
-        !enabled -> PlayerLiquidTokens.disabledContentColor
-        selected -> LiquidControlColors.accent
-        else -> PlayerLiquidTokens.contentColor
-      }
-    AdaptiveControlsContainer(
-      onClick = onClick,
-      modifier = Modifier.weight(if (selected) 1.06f else 1f),
-      onLongClick = onLongClick ?: {},
-      enabled = enabled,
-      onLongClickLabel = onLongClickLabel,
-      color = glassContent,
-      surfaceColor = if (selected) PlayerLiquidTokens.selectedSurfaceColor else Color.Unspecified,
-      buttonSize = height,
-      horizontalPadding = 0.dp,
-      spacing = 0.dp,
-      backdrop = backdrop,
-      enforceMinimumTouchTarget = false,
-    ) {
-      content(LocalContentColor.current)
-    }
-    return
-  }
+  val glass = liquidGlassActive()
   val interactionSource = remember { MutableInteractionSource() }
   val pressed by interactionSource.collectIsPressedAsState()
   val reducedMotion = AppMotion.playerReducedMotion()
@@ -3897,6 +3819,13 @@ private fun RowScope.ExpressiveConnectedBarButton(
     animationSpec = if (reducedMotion) androidx.compose.animation.core.snap() else AppMotion.Effect.Color,
     label = "connectedContentColor",
   )
+  // Glass replaces only the fill: the connected corners, weights and touch targets stay the same.
+  val glassContentColor =
+    when {
+      !enabled -> PlayerLiquidTokens.disabledContentColor
+      selected -> LiquidControlColors.accent
+      else -> PlayerLiquidTokens.contentColor
+    }
   val shape =
     RoundedCornerShape(
       topStart = startCorner,
@@ -3910,10 +3839,20 @@ private fun RowScope.ExpressiveConnectedBarButton(
       Modifier
         .weight(weight)
         .height(height)
-        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.06f)
+        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.06f, clipToShape = !glass)
         .appPressFeedback(interactionSource, enabled, pressedScale = 0.92f, reduceMotion = reducedMotion)
-        .clip(shape)
-        .background(containerColor)
+        .then(
+          if (glass) {
+            Modifier.liquidGlassControlSurface(
+              backdrop = backdrop,
+              shape = shape,
+              surfaceColor =
+                if (selected) PlayerLiquidTokens.selectedSurfaceColor else PlayerLiquidTokens.surfaceColor,
+            )
+          } else {
+            Modifier.clip(shape).background(containerColor)
+          },
+        )
         .then(
           if (onLongClick != null) {
             Modifier.combinedClickable(
@@ -3935,7 +3874,7 @@ private fun RowScope.ExpressiveConnectedBarButton(
         ),
     contentAlignment = Alignment.Center,
   ) {
-    content(contentColor)
+    content(if (glass) glassContentColor else contentColor)
   }
 }
 
