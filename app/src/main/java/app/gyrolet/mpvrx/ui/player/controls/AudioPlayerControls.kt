@@ -1928,7 +1928,6 @@ fun AudioPlayerControls(
                 },
                 label = "AudioABLoopExpand",
               ) { expanded ->
-                val glassChips = liquidGlassActive()
                 if (expanded) {
                   Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1937,13 +1936,13 @@ fun AudioPlayerControls(
                     AbLoopMarkerChip(
                       label = if (abLoopA != null) formatSec(abLoopA.toLong()) else "A",
                       isSet = abLoopA != null,
-                      glass = glassChips,
-                      backdrop = musicBackdrop,
+                      glass = false,
+                      backdrop = null,
                       onClick = { viewModel.setLoopA() },
                     )
                     AbLoopClearChip(
-                      glass = glassChips,
-                      backdrop = musicBackdrop,
+                      glass = false,
+                      backdrop = null,
                       onClick = {
                         viewModel.clearABLoop()
                         viewModel.toggleABLoopExpanded()
@@ -1952,15 +1951,15 @@ fun AudioPlayerControls(
                     AbLoopMarkerChip(
                       label = if (abLoopB != null) formatSec(abLoopB.toLong()) else "B",
                       isSet = abLoopB != null,
-                      glass = glassChips,
-                      backdrop = musicBackdrop,
+                      glass = false,
+                      backdrop = null,
                       onClick = { viewModel.setLoopB() },
                     )
                   }
                 } else {
                   AbLoopToggleChip(
-                    glass = glassChips,
-                    backdrop = musicBackdrop,
+                    glass = false,
+                    backdrop = null,
                     isASet = abLoopA != null,
                     isBSet = abLoopB != null,
                     onClick = viewModel::toggleABLoopExpanded,
@@ -2004,7 +2003,8 @@ fun AudioPlayerControls(
                   }
                 },
                 modifier = Modifier.size(if (isCompactLandscape) 32.dp else 40.dp),
-                backdrop = musicBackdrop,
+                glass = false,
+                backdrop = null,
               ) {
                 AnimatedIcon(
                   imageVector = if (isCurrentTrackFavorite) Icons.RoundedFilled.Favorite else Icons.RoundedFilled.FavoriteBorder,
@@ -2013,7 +2013,7 @@ fun AudioPlayerControls(
                   ),
                   tint =
                     if (isCurrentTrackFavorite) {
-                      if (liquidGlassActive()) LiquidControlColors.accent else Color.White
+                      Color.White
                     } else {
                       MaterialTheme.colorScheme.onSurface
                     },
@@ -2025,7 +2025,8 @@ fun AudioPlayerControls(
               ReactiveIconButton(
                 onClick = { addToPlaylistDialogOpen = true },
                 modifier = Modifier.size(40.dp),
-                backdrop = musicBackdrop,
+                glass = false,
+                backdrop = null,
               ) {
                 Icon(
                   imageVector = Icons.RoundedFilled.PlaylistAdd,
@@ -2538,10 +2539,16 @@ fun AudioPlayerControls(
         val barHeight = if (isShortLandscape) 38.dp else if (isCompactLandscape) 42.dp else 50.dp
         val centerCount = if (isAudiobook) 3 else 4
         BoxWithConstraints(Modifier.fillMaxWidth()) {
+          val showPlaylistButton = !isTablet
           val endWidth = minOf(barHeight, maxWidth * 0.15f)
           val outerSpacing = if (maxWidth < 280.dp) 4.dp else 8.dp
           val centerSpacing = if (maxWidth < 320.dp) 2.dp else 4.dp
-          val centerWidth = (maxWidth - endWidth * 2f - outerSpacing * 2f).coerceAtLeast(0.dp)
+          val centerWidth =
+            if (showPlaylistButton) {
+              (maxWidth - endWidth * 2f - outerSpacing * 2f).coerceAtLeast(0.dp)
+            } else {
+              (maxWidth - endWidth - outerSpacing).coerceAtLeast(0.dp)
+            }
           val centerCellWidth =
             ((centerWidth - centerSpacing * (centerCount - 1).toFloat()) / centerCount.toFloat()).coerceAtLeast(0.dp)
           val iconSize = minOf(if (isCompactLandscape) 20.dp else 22.dp, centerCellWidth * 0.72f)
@@ -2572,121 +2579,119 @@ fun AudioPlayerControls(
                 modifier = Modifier.size(endIconSize),
               )
             }
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-              Row(
-                modifier = Modifier.width(centerWidth).height(barHeight),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(centerSpacing),
-              ) {
-                if (isAudiobook) {
-                  ExpressiveConnectedBarButton(
-                    index = 0, itemCount = centerCount, height = barHeight, selected = false,
-                    onClick = { onOpenSheet(Sheets.AudiobookRewind); actionHaptics.confirm() },
-                    backdrop = musicBackdrop,
-                  ) { tint ->
-                    Icon(
-                      Icons.RoundedFilled.Replay,
-                      contentDescription = stringResource(R.string.audiobook_smart_rewind),
-                      tint = tint,
-                      modifier = Modifier.size(iconSize),
-                    )
-                  }
-                  ExpressiveConnectedBarButton(
-                    index = 1, itemCount = centerCount, height = barHeight, selected = timer != null,
-                    onClick = { onOpenSheet(Sheets.AudiobookSleepTimer); actionHaptics.confirm() },
-                    backdrop = musicBackdrop,
-                  ) { tint ->
-                    Icon(
-                      Icons.RoundedFilled.Timer,
-                      contentDescription = stringResource(R.string.audiobook_sleep_timer),
-                      tint = tint,
-                      modifier = Modifier.size(iconSize),
-                    )
-                  }
-                } else {
-                  ExpressiveConnectedBarButton(
-                    index = 0, itemCount = centerCount, height = barHeight, selected = shuffleEnabled,
-                    enabled = playlistModeEnabled,
-                    onClick = { viewModel.toggleShuffle(); actionHaptics.selection(!shuffleEnabled) },
-                    backdrop = musicBackdrop,
-                  ) { tint ->
-                    AnimatedIcon(
-                      imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
-                      contentDescription = stringResource(R.string.btn_label_shuffle),
-                      tint = tint,
-                      modifier = Modifier.size(iconSize),
-                      reduceMotion = AppMotion.playerReducedMotion(),
-                    )
-                  }
-                  ExpressiveConnectedBarButton(
-                    index = 1, itemCount = centerCount, height = barHeight, selected = repeatMode != RepeatMode.OFF,
-                    onClick = { viewModel.cycleRepeatMode(); actionHaptics.confirm() },
-                    backdrop = musicBackdrop,
-                  ) { tint ->
-                    AnimatedIcon(
-                      imageVector = when (repeatMode) {
-                        RepeatMode.OFF -> Icons.RoundedFilled.Repeat
-                        RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
-                        RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
-                      },
-                      contentDescription = stringResource(R.string.btn_label_repeat_mode),
-                      tint = tint,
-                      modifier = Modifier.size(iconSize),
-                      reduceMotion = AppMotion.playerReducedMotion(),
-                    )
-                  }
+            Row(
+              modifier = Modifier.weight(1f).height(barHeight),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(centerSpacing),
+            ) {
+              if (isAudiobook) {
+                ExpressiveConnectedBarButton(
+                  index = 0, itemCount = centerCount, height = barHeight, selected = false,
+                  onClick = { onOpenSheet(Sheets.AudiobookRewind); actionHaptics.confirm() },
+                  backdrop = musicBackdrop,
+                ) { tint ->
+                  Icon(
+                    Icons.RoundedFilled.Replay,
+                    contentDescription = stringResource(R.string.audiobook_smart_rewind),
+                    tint = tint,
+                    modifier = Modifier.size(iconSize),
+                  )
                 }
                 ExpressiveConnectedBarButton(
-                  index = 2, itemCount = centerCount, height = barHeight, selected = showVisualizer,
-                  onClick = {
-                    if (viewModel.toggleAudioVisualizer()) actionHaptics.selection(!showVisualizer)
-                  },
-                  onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
-                  onLongClickLabel = stringResource(R.string.pref_audio_visualizer_style_title),
+                  index = 1, itemCount = centerCount, height = barHeight, selected = timer != null,
+                  onClick = { onOpenSheet(Sheets.AudiobookSleepTimer); actionHaptics.confirm() },
+                  backdrop = musicBackdrop,
+                ) { tint ->
+                  Icon(
+                    Icons.RoundedFilled.Timer,
+                    contentDescription = stringResource(R.string.audiobook_sleep_timer),
+                    tint = tint,
+                    modifier = Modifier.size(iconSize),
+                  )
+                }
+              } else {
+                ExpressiveConnectedBarButton(
+                  index = 0, itemCount = centerCount, height = barHeight, selected = shuffleEnabled,
+                  enabled = playlistModeEnabled,
+                  onClick = { viewModel.toggleShuffle(); actionHaptics.selection(!shuffleEnabled) },
                   backdrop = musicBackdrop,
                 ) { tint ->
                   AnimatedIcon(
-                    imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
-                    contentDescription = stringResource(
-                      if (showVisualizer) R.string.audio_footer_show_artwork else R.string.audio_footer_show_visualizer,
-                    ),
+                    imageVector = if (shuffleEnabled) Icons.RoundedFilled.ShuffleOn else Icons.RoundedFilled.Shuffle,
+                    contentDescription = stringResource(R.string.btn_label_shuffle),
                     tint = tint,
                     modifier = Modifier.size(iconSize),
                     reduceMotion = AppMotion.playerReducedMotion(),
                   )
                 }
-                if (!isAudiobook) {
-                  ExpressiveConnectedBarButton(
-                    index = 3, itemCount = centerCount, height = barHeight, selected = backgroundPlaybackEnabled,
-                    onClick = {
-                      val enabled = !audioPreferences.audioBackgroundPlayback.get()
-                      val activity = context as? PlayerActivity
-                      if (activity != null) {
-                        activity.toggleAudioBackgroundPlayback()
-                      } else {
-                        audioPreferences.audioBackgroundPlayback.set(enabled)
-                        viewModel.showToast(
-                          context.getString(
-                            if (enabled) R.string.toast_audio_background_playback_on
-                            else R.string.toast_audio_background_playback_off,
-                          ),
-                        )
-                      }
-                      actionHaptics.selection(enabled)
+                ExpressiveConnectedBarButton(
+                  index = 1, itemCount = centerCount, height = barHeight, selected = repeatMode != RepeatMode.OFF,
+                  onClick = { viewModel.cycleRepeatMode(); actionHaptics.confirm() },
+                  backdrop = musicBackdrop,
+                ) { tint ->
+                  AnimatedIcon(
+                    imageVector = when (repeatMode) {
+                      RepeatMode.OFF -> Icons.RoundedFilled.Repeat
+                      RepeatMode.ONE -> Icons.RoundedFilled.RepeatOne
+                      RepeatMode.ALL -> Icons.RoundedFilled.RepeatOn
                     },
-                    backdrop = musicBackdrop,
-                  ) { tint ->
-                    Icon(
-                      Icons.RoundedFilled.Headset,
-                      contentDescription = stringResource(R.string.btn_label_background_playback),
-                      tint = tint,
-                      modifier = Modifier.size(iconSize),
-                    )
-                  }
+                    contentDescription = stringResource(R.string.btn_label_repeat_mode),
+                    tint = tint,
+                    modifier = Modifier.size(iconSize),
+                    reduceMotion = AppMotion.playerReducedMotion(),
+                  )
+                }
+              }
+              ExpressiveConnectedBarButton(
+                index = 2, itemCount = centerCount, height = barHeight, selected = showVisualizer,
+                onClick = {
+                  if (viewModel.toggleAudioVisualizer()) actionHaptics.selection(!showVisualizer)
+                },
+                onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
+                onLongClickLabel = stringResource(R.string.pref_audio_visualizer_style_title),
+                backdrop = musicBackdrop,
+              ) { tint ->
+                AnimatedIcon(
+                  imageVector = if (showVisualizer) Icons.RoundedFilled.AutoAwesome else Icons.RoundedFilled.Audiotrack,
+                  contentDescription = stringResource(
+                    if (showVisualizer) R.string.audio_footer_show_artwork else R.string.audio_footer_show_visualizer,
+                  ),
+                  tint = tint,
+                  modifier = Modifier.size(iconSize),
+                  reduceMotion = AppMotion.playerReducedMotion(),
+                )
+              }
+              if (!isAudiobook) {
+                ExpressiveConnectedBarButton(
+                  index = 3, itemCount = centerCount, height = barHeight, selected = backgroundPlaybackEnabled,
+                  onClick = {
+                    val enabled = !audioPreferences.audioBackgroundPlayback.get()
+                    val activity = context as? PlayerActivity
+                    if (activity != null) {
+                      activity.toggleAudioBackgroundPlayback()
+                    } else {
+                      audioPreferences.audioBackgroundPlayback.set(enabled)
+                      viewModel.showToast(
+                        context.getString(
+                          if (enabled) R.string.toast_audio_background_playback_on
+                          else R.string.toast_audio_background_playback_off,
+                        ),
+                      )
+                    }
+                    actionHaptics.selection(enabled)
+                  },
+                  backdrop = musicBackdrop,
+                ) { tint ->
+                  Icon(
+                    Icons.RoundedFilled.Headset,
+                    contentDescription = stringResource(R.string.btn_label_background_playback),
+                    tint = tint,
+                    modifier = Modifier.size(iconSize),
+                  )
                 }
               }
             }
-            if (!isTablet) {
+            if (showPlaylistButton) {
               ExpressiveTransportSideButton(
                 size = barHeight,
                 modifier = Modifier.width(endWidth),
@@ -2712,8 +2717,6 @@ fun AudioPlayerControls(
                   modifier = Modifier.size(endIconSize),
                 )
               }
-            } else {
-              Spacer(Modifier.width(endWidth))
             }
           }
         }
@@ -2794,6 +2797,7 @@ fun AudioPlayerControls(
             modifier = Modifier
               .weight(if (isTabletLandscape) 1.1f else 1f)
               .fillMaxHeight()
+              .padding(end = if (isTabletLandscape) 16.dp else 12.dp)
               .then(
                 if (edgeToEdgeVisualizer) {
                   Modifier.windowInsetsPadding(stableInsets.only(WindowInsetsSides.Top)).padding(top = 6.dp)
@@ -3653,12 +3657,13 @@ private fun ReactiveIconButton(
   onLongClick: (() -> Unit)? = null,
   enabled: Boolean = true,
   onLongClickLabel: String? = null,
+  glass: Boolean = true,
   backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   content: @Composable () -> Unit,
 ) {
-  val glass = liquidGlassActive()
+  val glassActive = glass && liquidGlassActive()
   val glassSurface =
-    if (glass) {
+    if (glassActive) {
       Modifier.liquidGlassControlSurface(backdrop, CircleShape, PlayerLiquidTokens.surfaceColor)
     } else {
       Modifier
@@ -3670,7 +3675,7 @@ private fun ReactiveIconButton(
     Box(
       modifier =
         modifier
-          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f, clipToShape = !glass)
+          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f, clipToShape = false)
           .appPressFeedback(interactionSource, enabled, pressedScale = 0.96f, reduceMotion = reducedMotion)
           .then(glassSurface)
           .clip(CircleShape)
@@ -3694,7 +3699,7 @@ private fun ReactiveIconButton(
       interactionSource = interactionSource,
       modifier =
         modifier
-          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f, clipToShape = !glass)
+          .tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.08f, clipToShape = false)
           .appPressFeedback(interactionSource, enabled, pressedScale = 0.96f, reduceMotion = reducedMotion)
           .then(glassSurface),
     ) {
@@ -3752,7 +3757,7 @@ private fun ExpressiveTransportSideButton(
     modifier =
       modifier
         .size(size)
-        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.08f, clipToShape = !glass)
+        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.08f, clipToShape = false)
         .appPressFeedback(interactionSource, enabled, pressedScale = 0.90f, reduceMotion = reducedMotion)
         .then(
           if (glass) {
@@ -3812,7 +3817,7 @@ private fun ExpressivePlayPauseButton(
       modifier =
         modifier
           .height(height)
-          .tvFocusHighlight(shape, enabled = true, focusedScale = 1.05f, clipToShape = !glass)
+          .tvFocusHighlight(shape, enabled = true, focusedScale = 1.05f, clipToShape = false)
           .appPressFeedback(interactionSource, enabled = true, pressedScale = 0.94f, reduceMotion = reducedMotion)
           .then(
             if (glass) {
@@ -3923,7 +3928,7 @@ private fun RowScope.ExpressiveConnectedBarButton(
       Modifier
         .weight(weight)
         .height(height)
-        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.06f, clipToShape = !glass)
+        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.06f, clipToShape = false)
         .appPressFeedback(interactionSource, enabled, pressedScale = 0.92f, reduceMotion = reducedMotion)
         .then(
           if (glass) {
