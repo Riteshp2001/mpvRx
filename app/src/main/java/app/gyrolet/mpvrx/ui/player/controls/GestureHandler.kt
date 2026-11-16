@@ -56,6 +56,8 @@ import app.gyrolet.mpvrx.ui.player.findSubtitleGestureTarget
 import app.gyrolet.mpvrx.ui.player.draggedSubtitlePosition
 import app.gyrolet.mpvrx.ui.player.getTrackSelectionId
 import app.gyrolet.mpvrx.ui.player.isSecondarySubtitleActive
+import app.gyrolet.mpvrx.ui.player.VideoZoomStop
+import app.gyrolet.mpvrx.ui.player.VideoZoomStops
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -237,6 +239,7 @@ fun GestureHandler(
   )
   val brightnessHaptics = app.gyrolet.mpvrx.ui.utils.rememberAdjustmentHaptics(0f, 1f)
   val coroutineScope = rememberCoroutineScope()
+  val zoomIndicatorHide = remember { java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>(null) }
   val density = LocalDensity.current
   val topStatusBarInsetPx = WindowInsets.statusBars.getTop(density).toFloat()
   val bottomNavigationInsetPx = WindowInsets.navigationBars.getBottom(density).toFloat()
@@ -1274,6 +1277,8 @@ fun GestureHandler(
 
           awaitEachGesture {
             var zoom = 0f
+            var zoomStops = emptyList<VideoZoomStop>()
+            var snappedStop: VideoZoomStop? = null
             var gestureStarted = false
             var prevDist = 0f
             var prevMidX = 0f
@@ -1358,6 +1363,7 @@ fun GestureHandler(
                     } else if (pinchToZoomGesture || panAndZoomEnabled) {
                       isSubZoomMode = false
                       zoom = viewModel.videoZoom.value
+                      if (pinchToZoomGesture) zoomStops = viewModel.refreshVideoZoomStops()
                     } else {
                       isSubZoomMode = false
                     }
@@ -1399,6 +1405,7 @@ fun GestureHandler(
                       if (!gestureStarted && (distDelta > 5f || (panAndZoomEnabled && (midDeltaX > 3f || midDeltaY > 3f)))) {
                         gestureStarted = true
                         if (pinchToZoomGesture && distDelta > 5f) {
+                          zoomIndicatorHide.getAndSet(null)?.cancel()
                           viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
                         }
                       }
@@ -1409,8 +1416,12 @@ fun GestureHandler(
                           // Per-frame zoom: ratio of current distance to previous distance
                           val zoomRatio = dist / prevDist
                           val zoomDelta = ln(zoomRatio.toDouble()).toFloat() * 1.2f
-                          zoom = (zoom + zoomDelta).coerceIn(-1f, 3f)
-                          viewModel.setVideoZoom(zoom)
+                          zoom = (zoom + zoomDelta).coerceIn(VideoZoomStops.MIN_ZOOM, VideoZoomStops.MAX_ZOOM)
+                          // Magnetic stops: the zoom rests on Fit, a ratio or Fill while the pinch is near one.
+                          val stop = VideoZoomStops.snap(zoom, zoomStops)
+                          if (stop != null && stop != snappedStop) actionHaptics.tick()
+                          snappedStop = stop
+                          viewModel.setVideoZoom(stop?.zoom ?: zoom)
                         }
 
                         // Simultaneous pan while pinching or moving two fingers
@@ -1465,7 +1476,17 @@ fun GestureHandler(
               if (linkedScaleChanged && stillSameTrack) subtitlesPreferences.secondarySubScale.set(lastCalculatedSecondarySubScale)
               if (pinchHighlightShown) viewModel.setSubtitleGestureHighlight(false)
               releaseGesture(GestureOwner.PINCH)
-              viewModel.playerUpdate.update { PlayerUpdates.None }
+              if (viewModel.playerUpdate.value == PlayerUpdates.VideoZoom) {
+                // Leave the zoom indicator up briefly so the level the pinch settled on can be read.
+                zoomIndicatorHide.getAndSet(
+                  coroutineScope.launch {
+                    delay(ZOOM_INDICATOR_LINGER_MS)
+                    viewModel.playerUpdate.update { if (it == PlayerUpdates.VideoZoom) PlayerUpdates.None else it }
+                  },
+                )?.cancel()
+              } else {
+                viewModel.playerUpdate.update { PlayerUpdates.None }
+              }
             }
           }
         }.pointerInput(
@@ -1670,3 +1691,5 @@ private fun formatSeekTime(seconds: Int): String {
     String.format("%02d:%02d", minutes, secs)
   }
 }
+
+private const val ZOOM_INDICATOR_LINGER_MS = 700L

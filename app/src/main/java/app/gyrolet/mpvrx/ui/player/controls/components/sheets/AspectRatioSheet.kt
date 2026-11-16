@@ -41,6 +41,7 @@ import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSectionHeader
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.player.AutoCropState
+import app.gyrolet.mpvrx.ui.player.VideoAspect
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.spacing
@@ -54,12 +55,14 @@ data class AspectRatio(
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun AspectRatioSheet(
+  currentMode: VideoAspect,
   currentRatio: Double?,
   customRatios: List<AspectRatio>,
   autoCropEnabled: Boolean,
   autoCropState: AutoCropState,
   autoCropControlEnabled: Boolean,
   onAutoCropChanged: (Boolean) -> Unit,
+  onSelectMode: (VideoAspect) -> Unit,
   onSelectRatio: (Double) -> Unit,
   onAddCustomRatio: (String, Double) -> Unit,
   onDeleteCustomRatio: (AspectRatio) -> Unit,
@@ -68,10 +71,11 @@ fun AspectRatioSheet(
 ) {
   val presetRatios =
     listOf(
-      AspectRatio("Default", -1.0),
       AspectRatio("4:3", 4.0 / 3.0),
       AspectRatio("16:9", 16.0 / 9.0),
       AspectRatio("16:10", 16.0 / 10.0),
+      AspectRatio("18:9", 18.0 / 9.0),
+      AspectRatio("20:9", 20.0 / 9.0),
       AspectRatio("21:9", 21.0 / 9.0),
       AspectRatio("32:9", 32.0 / 9.0),
       AspectRatio("1:1", 1.0),
@@ -109,6 +113,29 @@ fun AspectRatioSheet(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
       )
 
+      // Modes: the picture's own aspect, fitted, cropped, stretched or at original size
+      val forcedRatio = currentRatio?.takeIf { it > 0.0 }
+      PlayerSheetSectionHeader(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_aspect_mode))
+
+      androidx.compose.foundation.layout.FlowRow(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        listOf(VideoAspect.Fit, VideoAspect.Crop, VideoAspect.Stretch, VideoAspect.Original).forEach { mode ->
+          InputChip(
+            selected = forcedRatio == null && currentMode == mode,
+            onClick = { onSelectMode(mode) },
+            label = { Text(androidx.compose.ui.res.stringResource(mode.titleRes)) },
+            leadingIcon = null,
+            colors = androidx.compose.material3.InputChipDefaults.inputChipColors(
+              containerColor = playerSheetSelectionColor(false),
+              selectedContainerColor = playerSheetSelectionColor(true),
+              selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
+          )
+        }
+      }
+
       // Preset ratios
       PlayerSheetSectionHeader(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_presets))
 
@@ -118,7 +145,7 @@ fun AspectRatioSheet(
       ) {
         presetRatios.forEach { ratio ->
           InputChip(
-            selected = currentRatio?.let { abs(it - ratio.ratio) < 0.01 } ?: (ratio.ratio == -1.0),
+            selected = forcedRatio?.let { abs(it - ratio.ratio) < 0.01 } ?: false,
             onClick = { onSelectRatio(ratio.ratio) },
             label = { Text(ratio.label) },
             leadingIcon = null,

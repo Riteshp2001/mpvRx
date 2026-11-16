@@ -498,6 +498,7 @@ fun PlayerSheets(
       val customRatiosSet by playerPreferences.customAspectRatios.collectAsState()
       val autoCropEnabled by playerPreferences.autoCropBlackBars.collectAsState()
       val currentRatio by viewModel.currentAspectRatio.composeCollectAsState()
+      val currentMode by viewModel.videoAspect.composeCollectAsState()
       val autoCropState by viewModel.autoCropState.composeCollectAsState()
       val customRatios =
         customRatiosSet.mapNotNull { str ->
@@ -514,12 +515,14 @@ fun PlayerSheets(
         }
 
       AspectRatioSheet(
+        currentMode = currentMode,
         currentRatio = currentRatio,
         customRatios = customRatios,
         autoCropEnabled = autoCropEnabled,
         autoCropState = autoCropState,
         autoCropControlEnabled = MpvConfigControlledFeatures.AUTO_CROP.none(configOwnedOptions::contains),
         onAutoCropChanged = viewModel::setAutoCropBlackBars,
+        onSelectMode = { mode -> viewModel.changeVideoAspect(mode) },
         onSelectRatio = { ratio ->
           if (ratio < 0) {
             // Default selected - apply Fit mode

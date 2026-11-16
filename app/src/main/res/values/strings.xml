@@ -623,6 +623,10 @@
   <string name="player_aspect_fit">Fit Screen</string>
   <string name="player_aspect_crop">Crop</string>
   <string name="player_aspect_stretch">Stretch</string>
+  <string name="player_aspect_original">Original size</string>
+  <string name="ui_aspect_mode">Mode</string>
+  <string name="player_zoom_fit">Fit</string>
+  <string name="player_zoom_fill">Fill</string>
   <string name="crash_screen_title">Unexpected error</string>
   <string name="crash_screen_subtitle">Looks like %s experienced an unexpected error. Consider sharing the crash logs in a GitHub issue.</string>
   <string name="crash_screen_logs_title">Crash logs:</string>

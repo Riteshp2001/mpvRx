@@ -346,6 +346,11 @@ object PlaybackSession : MPVLib.EventObserver {
   private var loadedAudiobookEnded = false
   private var speedBeforeAudiobook: Float? = null
   private var attachedOsdOwner: Any? = null
+  // The player screen's aspect mode (PlayerVideoLayout) for its own Surface only; other Surfaces
+  // fit the picture. Weak: this object outlives the screen whose view registered.
+  private var pictureLayoutOwner: java.lang.ref.WeakReference<Any>? = null
+  private var pictureLayout = SurfacePictureLayout()
+  private var appliedPictureLayout: SurfacePictureLayout? = null
   private var appliedDolbyVisionOutput: String? = null
   private var defaultUserAgent: String? = null
   private var pendingPositionRestoreGeneration = 0L
@@ -672,6 +677,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       attachedSurfaceWidth = targetWidth
       attachedSurfaceHeight = targetHeight
       attachedSurfaceOwner = owner
+      applyPictureLayoutLocked()
       updateState { it.copy(surfaceAttached = true) }
 
       // The initial JNI attachSurface() queues wid through mpv_set_option. The
@@ -781,6 +787,42 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       }
       true
     }
+
+  /** How mpv lays out the picture on [owner]'s Surface while that Surface is the attached one. */
+  internal fun setSurfacePictureLayout(
+    owner: Any,
+    layout: SurfacePictureLayout,
+  ) {
+    nativeLock.withLock {
+      pictureLayoutOwner = java.lang.ref.WeakReference(owner)
+      pictureLayout = layout
+      if (nativeCoreReady) applyPictureLayoutLocked()
+    }
+  }
+
+  private fun applyPictureLayoutLocked() {
+    val owner = pictureLayoutOwner?.get()
+    val layout = if (owner != null && owner === attachedSurfaceOwner) pictureLayout else SurfacePictureLayout()
+    val applied = appliedPictureLayout
+    if (applied == layout) return
+    if (applied?.panscan != layout.panscan && !MpvConfigOverridePolicy.isOwnedByMpvConf("panscan")) {
+      MPVLib.setPropertyDouble("panscan", layout.panscan)
+    }
+    if (applied?.aspectOverride != layout.aspectOverride &&
+      !MpvConfigOverridePolicy.isOwnedByMpvConf("video-aspect-override")
+    ) {
+      val override = layout.aspectOverride
+      if (override != null) {
+        MPVLib.setPropertyDouble("video-aspect-override", override)
+      } else {
+        MPVLib.setPropertyString("video-aspect-override", "no")
+      }
+    }
+    if (applied?.unscaled != layout.unscaled && !MpvConfigOverridePolicy.isOwnedByMpvConf("video-unscaled")) {
+      MPVLib.setPropertyString("video-unscaled", if (layout.unscaled) "yes" else "no")
+    }
+    appliedPictureLayout = layout
+  }
 
   fun isSurfaceAttachedTo(owner: Any): Boolean =
     nativeLock.withLock { _state.value.surfaceAttached && attachedSurfaceOwner === owner }
@@ -909,6 +951,8 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
     MPVLib.detachSurface()
     attachedSurfaceOwner = null
+    // The next Surface (mini player, external display) fits the picture.
+    applyPictureLayoutLocked()
     attachedSurfaceWidth = 0
     attachedSurfaceHeight = 0
     updateState { it.copy(surfaceAttached = false) }
@@ -1220,6 +1264,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     attachedSurfaceOwner = null
     attachedOsdOwner = null
     appliedDolbyVisionOutput = null
+    appliedPictureLayout = null
     managesUserScripts = false
     loadedUserScripts.clear()
     loadedUserScriptsLocation = null
@@ -2748,6 +2793,8 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
 
   /** Read one coherent geometry snapshot; never guess a 16:9 frame during a file transition. */
   internal fun ambientGeometry(): AmbientGeometry? = withReadyCore(null) {
+    // An unscaled picture is not where AmbientGeometry would place it.
+    if (appliedPictureLayout?.unscaled == true) return@withReadyCore null
     if ((MPVLib.getPropertyInt("video-params/w") ?: 0) <= 0) return@withReadyCore null
     val aspect = VideoAspectGeometry.currentEffectiveDisplayAspect() ?: return@withReadyCore null
     AmbientGeometry.calculate(

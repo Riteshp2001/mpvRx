@@ -24,7 +24,6 @@ import android.os.SystemClock
 import `is`.xyz.mpv.MPVNode
 import android.provider.OpenableColumns
 import android.provider.Settings
-import android.util.DisplayMetrics
 import android.view.WindowManager
 import android.util.Log
 import android.util.LruCache
@@ -2775,7 +2774,6 @@ fun restartFromBeginning() {
             disableAmbientShader()
             return@collect
           }
-          refreshStretchAspectAfterCropChange()
           restartAmbientIfActive()
         }
     }
@@ -5841,48 +5839,7 @@ fun restartFromBeginning() {
     resetZoom: Boolean = true,
   ) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ASPECT)) return
-    when (aspect) {
-      VideoAspect.Fit -> {
-        // To FIT: Reset both properties to their defaults.
-        PlaybackSession.setPropertyDouble("panscan", 0.0)
-        PlaybackSession.setPropertyString("video-aspect-override", "no")
-      }
-      VideoAspect.Crop -> {
-        // To CROP: Reset aspect override first, then set panscan
-        PlaybackSession.setPropertyString("video-aspect-override", "no")
-        PlaybackSession.setPropertyDouble("panscan", 1.0)
-      }
-      VideoAspect.Stretch -> {
-        // To STRETCH: Calculate screen ratio accounting for video rotation
-        val currentHost = host ?: return
-        @Suppress("DEPRECATION")
-        val dm = DisplayMetrics()
-        @Suppress("DEPRECATION")
-        currentHost.hostWindowManager.defaultDisplay.getRealMetrics(dm)
-
-        // Get video rotation from metadata
-        val rotate = PlaybackSession.getPropertyInt("video-params/rotate") ?: 0
-        val isVideoRotated = (rotate % 180 == 90) // 90° or 270° rotation
-
-        // Calculate screen ratio, inverting if video is rotated
-        val screenRatio =
-          if (isVideoRotated) {
-            // Video is rotated, so invert the screen ratio
-            dm.heightPixels.toDouble() / dm.widthPixels.toDouble()
-          } else {
-            // Video is not rotated, use normal screen ratio
-            dm.widthPixels.toDouble() / dm.heightPixels.toDouble()
-          }
-
-        // Set aspect override first, then reset panscan
-        // This prevents the brief flash of Fit mode
-        PlaybackSession.setPropertyDouble(
-          "video-aspect-override",
-          VideoAspectGeometry.stretchAspectOverride(screenRatio),
-        )
-        PlaybackSession.setPropertyDouble("panscan", 0.0)
-      }
-    }
+    // PlayerActivity lays the mode out on the real player area (PlayerVideoLayout).
 
     // A selected preset replaces manual zoom and pan; internal reapplication preserves them.
     if (resetZoom) resetVideoZoom()
@@ -5906,8 +5863,6 @@ fun restartFromBeginning() {
     resetZoom: Boolean = true,
   ) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ASPECT)) return
-    PlaybackSession.setPropertyDouble("panscan", 0.0)
-    PlaybackSession.setPropertyDouble("video-aspect-override", ratio)
     if (resetZoom) resetVideoZoom()
     playerPreferences.lastCustomAspectRatio.set(ratio.toFloat())
     _currentAspectRatio.value = ratio
@@ -6359,12 +6314,6 @@ fun restartFromBeginning() {
     PlaybackSession.removeVideoFilter(AUTO_CROP_FILTER_LABEL)
   }
 
-  private fun refreshStretchAspectAfterCropChange() {
-    if (playerPreferences.lastCustomAspectRatio.get() > 0f) return
-    if (playerPreferences.lastVideoAspect.get() != VideoAspect.Stretch) return
-    changeVideoAspect(VideoAspect.Stretch, showUpdate = false, resetZoom = false)
-  }
-
   // ==================== Screen Rotation ====================
 
   fun cycleScreenRotations() {
@@ -6562,6 +6511,23 @@ fun restartFromBeginning() {
   }
 
   // ==================== Video Zoom ====================
+
+  private val _videoZoomStops = MutableStateFlow<List<VideoZoomStop>>(emptyList())
+
+  /** The stops of the latest pinch, which its zoom indicator draws. */
+  val videoZoomStops: StateFlow<List<VideoZoomStop>> = _videoZoomStops.asStateFlow()
+
+  /** Measures the stops a pinch starting now snaps to (Fit, cropped ratios, Fill). */
+  fun refreshVideoZoomStops(): List<VideoZoomStop> {
+    val stops =
+      if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ZOOM)) {
+        emptyList()
+      } else {
+        host?.videoZoomStops().orEmpty()
+      }
+    _videoZoomStops.value = stops
+    return stops
+  }
 
   fun setVideoZoom(zoom: Float) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ZOOM)) {

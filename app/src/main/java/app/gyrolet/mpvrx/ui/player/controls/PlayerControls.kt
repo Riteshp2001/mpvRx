@@ -180,6 +180,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.ResumedFromPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.controls.components.TextPlayerUpdate
+import app.gyrolet.mpvrx.ui.player.controls.components.VideoZoomPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.VolumeSlider
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberBufferingState
@@ -1551,6 +1552,8 @@ fun PlayerControls(
                             kotlin.math.abs(ratio - 16.0 / 9.0) < 0.01 -> "16:9"
                             kotlin.math.abs(ratio - 4.0 / 3.0) < 0.01 -> "4:3"
                             kotlin.math.abs(ratio - 16.0 / 10.0) < 0.01 -> "16:10"
+                            kotlin.math.abs(ratio - 18.0 / 9.0) < 0.01 -> "18:9"
+                            kotlin.math.abs(ratio - 20.0 / 9.0) < 0.01 -> "20:9"
                             kotlin.math.abs(ratio - 21.0 / 9.0) < 0.01 -> "21:9"
                             kotlin.math.abs(ratio - 32.0 / 9.0) < 0.01 -> "32:9"
                             kotlin.math.abs(ratio - 1.0) < 0.01 -> "1:1"
@@ -1560,7 +1563,7 @@ fun PlayerControls(
                           }
                         }
                       } else {
-                        // Standard mode (Fit/Crop/Stretch)
+                        // Standard mode (Fit/Crop/Stretch/Original)
                         stringResource(aspectRatio.titleRes)
                       }
                     TextPlayerUpdate(displayText)
@@ -1572,8 +1575,8 @@ fun PlayerControls(
                     TextPlayerUpdate((currentPlayerUpdate as PlayerUpdates.ProviderStatusText).value)
 
                   is PlayerUpdates.VideoZoom -> {
-                    val zoomPercentage = (videoZoom * 100).toInt()
-                    TextPlayerUpdate(String.format("Zoom: %d%%", zoomPercentage))
+                    val zoomStops by viewModel.videoZoomStops.collectAsState()
+                    VideoZoomPlayerUpdate(zoom = videoZoom, stops = zoomStops)
                   }
 
                   is PlayerUpdates.SubtitleZoom -> {

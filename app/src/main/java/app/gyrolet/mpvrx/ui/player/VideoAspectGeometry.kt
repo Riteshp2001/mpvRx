@@ -71,6 +71,24 @@ internal object VideoAspectGeometry {
     return viewportRatio * heightFraction / widthFraction
   }
 
+  /**
+   * The displayed picture in pixels, after crop, pixel aspect and rotation: Original size shows it
+   * one video pixel per screen pixel. Null while no video is decoded.
+   */
+  fun currentDisplaySize(): VideoDimensions? {
+    val source = currentSourceDimensions() ?: return null
+    val visible = currentCropDimensions() ?: source
+    val par = (PlaybackSession.getPropertyDouble("video-out-params/par")
+      ?: PlaybackSession.getPropertyDouble("video-params/par") ?: 1.0)
+      .takeIf { it.isFinite() && it > 0.0 } ?: 1.0
+    // mpv widens or heightens anamorphic video to its display shape, never narrowing it.
+    val width = if (par >= 1.0) visible.width * par else visible.width
+    val height = if (par >= 1.0) visible.height else visible.height / par
+    val rotation = ((PlaybackSession.getPropertyInt("video-out-params/rotate")
+      ?: PlaybackSession.getPropertyInt("video-params/rotate") ?: 0) % 360 + 360) % 360
+    return if (rotation == 90 || rotation == 270) VideoDimensions(height, width) else VideoDimensions(width, height)
+  }
+
   private fun currentSourceDimensions(): VideoDimensions? {
     val width = (PlaybackSession.getPropertyInt("video-out-params/w")
       ?: PlaybackSession.getPropertyInt("video-params/w") ?: 0).toDouble()

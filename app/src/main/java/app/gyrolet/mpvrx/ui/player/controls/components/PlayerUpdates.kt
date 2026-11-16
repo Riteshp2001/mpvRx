@@ -13,6 +13,15 @@ import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import app.gyrolet.mpvrx.ui.player.VideoZoomStop
+import app.gyrolet.mpvrx.ui.player.videoZoomMultiplier
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -241,6 +250,99 @@ fun TextPlayerUpdate(
       color = MaterialTheme.colorScheme.onSurface,
       style = MaterialTheme.typography.bodyMedium.withTabularDigits(),
     )
+  }
+}
+
+/**
+ * Pinch-zoom level: the zoom in percent, the name of the stop it rests on (Fit, a cropped ratio,
+ * Fill) and a rail of every stop with the current level on it.
+ */
+@Composable
+fun VideoZoomPlayerUpdate(
+  zoom: Float,
+  stops: List<VideoZoomStop>,
+  modifier: Modifier = Modifier,
+) {
+  val percent = (videoZoomMultiplier(zoom) * 100f).roundToInt()
+  val snapped = stops.firstOrNull { kotlin.math.abs(it.zoom - zoom) < 0.001f }
+  PlayerUpdate(modifier, stableWidthText = "888%") {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        Text(
+          text = "$percent%",
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onSurface,
+          style = MaterialTheme.typography.bodyMedium.withTabularDigits(),
+        )
+        AnimatedContent(
+          targetState = snapped?.label,
+          transitionSpec = {
+            (fadeIn(tween(120)) + scaleIn(initialScale = 0.85f)) togetherWith
+              (fadeOut(tween(90)) + scaleOut(targetScale = 0.85f)) using SizeTransform(clip = false)
+          },
+          label = "zoomStopLabel",
+        ) { label ->
+          if (label != null) {
+            Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(50)) {
+              Text(
+                text = label,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+              )
+            }
+          }
+        }
+      }
+      if (stops.isNotEmpty()) {
+        ZoomStopRail(
+          zoom = zoom,
+          stops = stops,
+          snapped = snapped,
+          modifier = Modifier.padding(top = 6.dp, bottom = 2.dp).width(136.dp).height(12.dp),
+        )
+      }
+    }
+  }
+}
+
+/** Tick marks for each stop (taller for Fit and Fill) and a thumb at the current zoom. */
+@Composable
+private fun ZoomStopRail(
+  zoom: Float,
+  stops: List<VideoZoomStop>,
+  snapped: VideoZoomStop?,
+  modifier: Modifier = Modifier,
+) {
+  // The rail spans the stops and the current zoom, rescaling smoothly as either moves out.
+  val low by animateFloatAsState(minOf(stops.minOf { it.zoom }, zoom) - 0.2f, label = "zoomRailLow")
+  val high by animateFloatAsState(maxOf(stops.maxOf { it.zoom }, zoom) + 0.2f, label = "zoomRailHigh")
+  val thumbRadius by animateFloatAsState(if (snapped != null) 5.5f else 4f, label = "zoomRailThumb")
+  val railColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+  val tickColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+  val accent = MaterialTheme.colorScheme.primary
+  Canvas(modifier) {
+    val span = (high - low).coerceAtLeast(0.1f)
+    fun x(value: Float) = ((value - low) / span).coerceIn(0f, 1f) * size.width
+    val centerY = size.height / 2f
+    drawLine(railColor, Offset(0f, centerY), Offset(size.width, centerY), 2.dp.toPx(), StrokeCap.Round)
+    drawLine(accent.copy(alpha = 0.55f), Offset(x(0f), centerY), Offset(x(zoom), centerY), 2.dp.toPx(), StrokeCap.Round)
+    stops.forEach { stop ->
+      val active = stop == snapped
+      val half = (if (stop.major) 5.dp else 3.dp).toPx()
+      drawLine(
+        color = if (active) accent else tickColor,
+        start = Offset(x(stop.zoom), centerY - half),
+        end = Offset(x(stop.zoom), centerY + half),
+        strokeWidth = (if (active) 2.5.dp else 1.5.dp).toPx(),
+        cap = StrokeCap.Round,
+      )
+    }
+    drawCircle(accent, radius = thumbRadius.dp.toPx(), center = Offset(x(zoom), centerY))
   }
 }
 

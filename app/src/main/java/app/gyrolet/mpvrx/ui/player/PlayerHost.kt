@@ -53,6 +53,9 @@ interface PlayerHost {
 
   fun minimizeToMiniPlayer(): Boolean = false
 
+  /** Zoom levels pinch-zoom snaps to, measured on the player's current layout. */
+  fun videoZoomStops(): List<VideoZoomStop> = emptyList()
+
   fun reloadCurrentYtdlFormat(format: String): Boolean = false
 
   fun playQueueItem(index: Int)

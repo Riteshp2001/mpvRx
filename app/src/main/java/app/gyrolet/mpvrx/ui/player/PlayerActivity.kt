@@ -159,6 +159,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
@@ -448,6 +449,7 @@ class PlayerActivity :
   private var wasInPipMode = false
   private var isAmbientPipMode by mutableStateOf(false)
   private var isVideoAmbientPresentationActive = false
+  private var playerVideoLayout = PlayerVideoLayout()
   private var videoAmbientBounds by mutableStateOf(Rect.Zero)
   private var handledPipDismissal = false
   private var pendingPipExitResolution = false
@@ -1476,19 +1478,126 @@ class PlayerActivity :
   private fun setVideoAmbientPresentationActive(active: Boolean) {
     isVideoAmbientPresentationActive = active
     binding.ambientBackground.visibility = if (active) View.VISIBLE else View.GONE
-    if (active) {
-      updateVideoAmbientPlayerBounds()
+    updatePlayerBounds()
+  }
+
+  /**
+   * Lays the aspect mode out on the real player area (PlayerVideoLayout) and tells mpv the result
+   * for this screen's Surface. The Surface keeps the player's size, so zoom can grow the picture
+   * into the black bars and subtitles stay on screen; YouTube Ambient alone shrinks the view to the
+   * picture to draw around it.
+   */
+  private fun updatePlayerBounds() {
+    if (binding.player.visibility != View.VISIBLE) return
+    val containerWidth = binding.root.width
+    val containerHeight = binding.root.height
+    if (containerWidth <= 0 || containerHeight <= 0) return
+    val layout =
+      if (playerLaysOutPicture()) {
+        PlayerVideoLayout.calculate(
+          mode = viewModel.videoAspect.value,
+          forcedRatio = viewModel.currentAspectRatio.value,
+          containerWidth = containerWidth,
+          containerHeight = containerHeight,
+        )
+      } else {
+        PlayerVideoLayout()
+      }
+    playerVideoLayout = layout
+    PlaybackSession.setSurfacePictureLayout(
+      player,
+      SurfacePictureLayout(
+        panscan = layout.panscan,
+        aspectOverride = layout.stretchRatio?.let(::mpvAspectOverride),
+        unscaled = layout.originalSize,
+      ),
+    )
+    if (isVideoAmbientPresentationActive) {
+      updateVideoAmbientPlayerBounds(containerWidth, containerHeight)
     } else {
       restoreFullSizePlayerBounds()
     }
   }
 
-  private fun updateVideoAmbientPlayerBounds() {
-    if (!isVideoAmbientPresentationActive || binding.player.visibility != View.VISIBLE) return
-    val containerWidth = binding.root.width
-    val containerHeight = binding.root.height
+  /** PiP windows already take the video's shape, and mpv.conf may own the aspect itself. */
+  private fun playerLaysOutPicture(): Boolean =
+    !isInPictureInPictureMode && canIssueMpvCommands() &&
+      !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ASPECT) &&
+      (viewModel.currentAspectRatio.value > 0.0 || viewModel.videoAspect.value != VideoAspect.Fit)
+
+  /** mpv's override describes the uncropped, unrotated source. */
+  private fun mpvAspectOverride(displayRatio: Double): Double {
+    val rotation = ((PlaybackSession.getPropertyInt("video-params/rotate") ?: 0) % 360 + 360) % 360
+    val unrotated = if (rotation == 90 || rotation == 270) 1.0 / displayRatio else displayRatio
+    return VideoAspectGeometry.stretchAspectOverride(unrotated)
+  }
+
+  override fun videoZoomStops(): List<VideoZoomStop> {
+    val containerWidth = binding.root.width.toDouble()
+    val containerHeight = binding.root.height.toDouble()
+    val viewWidth = binding.player.width.toDouble()
+    val viewHeight = binding.player.height.toDouble()
+    if (containerWidth <= 0.0 || containerHeight <= 0.0 || viewWidth <= 0.0 || viewHeight <= 0.0) return emptyList()
+    val picture = VideoAspectGeometry.currentDisplaySize() ?: return emptyList()
+    val layout = playerVideoLayout
+    val aspect = picture.width / picture.height
+    val stretchRatio = layout.stretchRatio
+    val (fullWidth, fullHeight) =
+      when {
+        layout.originalSize -> picture.width to picture.height
+        stretchRatio != null -> PlayerVideoLayout.fittedSize(stretchRatio, viewWidth, viewHeight)
+        layout.panscan >= 1.0 -> PlayerVideoLayout.coveredSize(aspect, viewWidth, viewHeight)
+        else -> PlayerVideoLayout.fittedSize(aspect, viewWidth, viewHeight)
+      }
+    // mpv zooms inside the player view; with overlays following zoom, the view itself grows, and
+    // it can only enlarge what the view already shows.
+    val followVideo = playerPreferences.overlaysFollowVideoZoom.get()
+    val pictureWidth = if (followVideo) minOf(fullWidth, viewWidth) else fullWidth
+    val pictureHeight = if (followVideo) minOf(fullHeight, viewHeight) else fullHeight
+    val ratio = viewModel.currentAspectRatio.value
+    return VideoZoomStops.calculate(
+      pictureWidth = pictureWidth,
+      pictureHeight = pictureHeight,
+      boundsWidth = if (followVideo) containerWidth else minOf(viewWidth, containerWidth),
+      boundsHeight = if (followVideo) containerHeight else minOf(viewHeight, containerHeight),
+      baseLabel = if (ratio > 0.0) VideoZoomStops.ratioLabel(ratio) else getString(viewModel.videoAspect.value.titleRes),
+      fitLabel = getString(R.string.player_zoom_fit),
+      fillLabel = getString(R.string.player_zoom_fill),
+    )
+  }
+
+  private fun setPlayerBounds(
+    width: Int,
+    height: Int,
+  ) {
+    val params = binding.player.layoutParams as ConstraintLayout.LayoutParams
+    if (params.width == width && params.height == height) return
+    params.width = width
+    params.height = height
+    params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
+    params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
+    params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID
+    params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
+    binding.player.layoutParams = params
+  }
+
+  private fun updateVideoAmbientPlayerBounds(
+    containerWidth: Int,
+    containerHeight: Int,
+  ) {
+    if (playerVideoLayout.originalSize) {
+      // An unscaled picture keeps its own size, not the fitted one.
+      val picture = VideoAspectGeometry.currentDisplaySize() ?: return
+      val size = PlayerVideoLayout.originalViewSize(picture.width, picture.height, containerWidth, containerHeight)
+      if (size.width >= containerWidth && size.height >= containerHeight) {
+        restoreFullSizePlayerBounds()
+      } else {
+        setPlayerBounds(size.width, size.height)
+      }
+      return
+    }
     val videoAspect = VideoAspectGeometry.currentEffectiveDisplayAspect()
-    if (containerWidth <= 0 || containerHeight <= 0 || videoAspect == null || videoAspect <= 0.0) return
+    if (videoAspect == null || videoAspect <= 0.0) return
 
     val geometry = AmbientGeometry.calculate(
       containerWidth, containerHeight, videoAspect,
@@ -1508,16 +1617,7 @@ class PlayerActivity :
       videoWidth = containerWidth
       videoHeight = centeredFittedDimension((videoWidth / videoAspect).roundToInt(), containerHeight)
     }
-
-    val params = binding.player.layoutParams as ConstraintLayout.LayoutParams
-    if (params.width == videoWidth && params.height == videoHeight) return
-    params.width = videoWidth
-    params.height = videoHeight
-    params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-    params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-    params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID
-    params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-    binding.player.layoutParams = params
+    setPlayerBounds(videoWidth, videoHeight)
   }
 
   private fun centeredFittedDimension(
@@ -1554,6 +1654,25 @@ class PlayerActivity :
         ) { _, _, _, _ -> Unit }.collect { applyVideoTransform() }
       }
     }
+    // Rotation, split screen and PiP resize the player area.
+    binding.root.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+      if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
+        binding.root.post(::updatePlayerBounds)
+      }
+    }
+    lifecycleScope.launch {
+      repeatOnLifecycle(Lifecycle.State.STARTED) {
+        merge(
+          viewModel.videoAspect.map { },
+          viewModel.currentAspectRatio.map { },
+          PlaybackSession.propDouble["video-params/aspect"].map { },
+          PlaybackSession.propInt["video-params/rotate"].map { },
+          PlaybackSession.propInt["video-out-params/w"].map { },
+          PlaybackSession.propInt["video-out-params/h"].map { },
+          PlaybackSession.propString["video-crop"].map { },
+        ).collect { updatePlayerBounds() }
+      }
+    }
   }
 
   private fun applyVideoTransform() {
@@ -1572,9 +1691,22 @@ class PlayerActivity :
     val (mpvPanX, mpvPanY) = if (followVideo) {
       0f to 0f
     } else {
-      val aspect = (PlaybackSession.getPropertyDouble("video-out-params/aspect")
-        ?: PlaybackSession.getPropertyDouble("video-params/aspect") ?: 0.0).toFloat()
-      videoPanFractions(player.width.toFloat(), player.height.toFloat(), aspect, zoom, panX, panY)
+      val layout = playerVideoLayout
+      val picture = if (layout.originalSize) VideoAspectGeometry.currentDisplaySize() else null
+      if (picture != null) {
+        // mpv pans an unscaled picture by fractions of its native size.
+        val scale = videoZoomMultiplier(zoom)
+        (panX / (picture.width * scale)).toFloat() to (panY / (picture.height * scale)).toFloat()
+      } else {
+        val aspect =
+          if (layout.stretchRatio != null) {
+            layout.stretchRatio.toFloat()
+          } else {
+            (PlaybackSession.getPropertyDouble("video-out-params/aspect")
+              ?: PlaybackSession.getPropertyDouble("video-params/aspect") ?: 0.0).toFloat()
+          }
+        videoPanFractions(player.width.toFloat(), player.height.toFloat(), aspect, zoom, panX, panY)
+      }
     }
     PlaybackSession.setPropertyFloat("video-zoom", if (followVideo) 0f else zoom)
     PlaybackSession.setPropertyFloat("video-pan-x", mpvPanX)
@@ -1648,11 +1780,7 @@ class PlayerActivity :
           } else {
             binding.player.clipToOutline = false
             binding.player.visibility = View.VISIBLE
-            if (isVideoAmbientPresentationActive) {
-              binding.root.post(::updateVideoAmbientPlayerBounds)
-            } else {
-              restoreFullSizePlayerBounds()
-            }
+            binding.root.post(::updatePlayerBounds)
           }
           updateStatusBarProtection()
         }
@@ -3063,7 +3191,7 @@ class PlayerActivity :
       }
       viewModel.restartPostProcessingIfActive()
       viewModel.restartAmbientIfActive()
-      binding.root.post(::updateVideoAmbientPlayerBounds)
+      binding.root.post(::updatePlayerBounds)
     }
 
     // SurfaceHolder and View callbacks stay on the main thread even though the native core was
@@ -4647,7 +4775,7 @@ class PlayerActivity :
     updateOrientationForWindow()
     viewModel.onOrientationChanged()
     applySubtitleWindowing(newConfig.orientation == Configuration.ORIENTATION_PORTRAIT)
-    binding.root.post(::updateVideoAmbientPlayerBounds)
+    binding.root.post(::updatePlayerBounds)
     if (isReady) {
       handleConfigurationChange()
     }
@@ -5199,7 +5327,7 @@ class PlayerActivity :
     applySubtitlePreferences()
     applyVideoFilterPreferences()
     viewModel.restoreSavedVideoAspect(showUpdate = false)
-    binding.root.post(::updateVideoAmbientPlayerBounds)
+    binding.root.post(::updatePlayerBounds)
 
     if (shouldForceCurrentMediaTitle()) {
       val preferredTitle = getPreferredCurrentTitle()

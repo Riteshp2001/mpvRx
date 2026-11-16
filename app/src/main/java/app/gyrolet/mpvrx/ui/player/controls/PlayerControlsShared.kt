@@ -924,12 +924,14 @@ fun RenderPlayerButton(
             VideoAspect.Fit -> Icons.RoundedFilled.AspectRatio
             VideoAspect.Stretch -> Icons.RoundedFilled.ZoomOutMap
             VideoAspect.Crop -> Icons.RoundedFilled.FitScreen
+            VideoAspect.Original -> Icons.RoundedFilled.CropFree
           },
         onClick = {
           when (aspect) {
             VideoAspect.Fit -> viewModel.changeVideoAspect(VideoAspect.Stretch)
             VideoAspect.Stretch -> viewModel.changeVideoAspect(VideoAspect.Crop)
-            VideoAspect.Crop -> viewModel.changeVideoAspect(VideoAspect.Fit)
+            VideoAspect.Crop -> viewModel.changeVideoAspect(VideoAspect.Original)
+            VideoAspect.Original -> viewModel.changeVideoAspect(VideoAspect.Fit)
           }
         },
         onLongClick = { onOpenSheet(Sheets.AspectRatios) },
