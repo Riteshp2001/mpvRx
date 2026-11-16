@@ -40,13 +40,15 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * HDR stays on a native SurfaceView: Android tone-maps TextureView content into the app window's
  * SDR buffer. [liquidGlassInHdr] is the user's explicit opt-in to that trade for live glass.
+ * [mediaCodecEmbed] always does too: FongMi's subtitle overlay exists only beside a SurfaceView.
  */
 internal fun shouldUseTextureRendering(
   liquidGlass: Boolean,
   hdrOutput: Boolean,
   liquidGlassInHdr: Boolean,
+  mediaCodecEmbed: Boolean,
 ): Boolean {
-  if (!liquidGlass) return false
+  if (!liquidGlass || mediaCodecEmbed) return false
   if (liquidGlassInHdr) return true
   return !hdrOutput && !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)
 }

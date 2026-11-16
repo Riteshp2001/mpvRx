@@ -929,6 +929,15 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_decoder_mediacodec_embed_title,
+          summaryRes = R.string.pref_decoder_mediacodec_embed_summary,
+          keywords = listOf("mediacodec", "embed", "direct", "output", "battery", "vo"),
+          category = "Decoder",
+          screen = DecoderPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_decoder_gpu_next_title,
           summaryRes = R.string.pref_decoder_gpu_next_summary,
           keywords = listOf("gpu", "next", "rendering", "backend", "vulkan", "opengl"),

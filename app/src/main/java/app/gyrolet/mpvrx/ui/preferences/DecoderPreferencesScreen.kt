@@ -97,6 +97,8 @@ object DecoderPreferencesScreen : Screen {
     val dolbyVisionConfigOwned = "android-dolby-vision-output" in configOwnedOptions
     val doviProfile7ConfigOwned = "demuxer-dovi-profile7" in configOwnedOptions
     val vulkanFrameImportConfigOwned = "android-vulkan-aimagereader-backend" in configOwnedOptions
+    // Its decoder and output are fixed, so mpv.conf owning either keeps it off.
+    val mediaCodecEmbedConfigOwned = "vo" in configOwnedOptions || decoderConfigOwned
     val backstack = LocalBackStack.current
     val context = LocalContext.current
     val isDeviceVulkanSupported = remember { VulkanCapabilities.isDeviceSupported(context) }
@@ -154,10 +156,14 @@ object DecoderPreferencesScreen : Screen {
               PreferenceDivider()
 
               val tryHWDecoding by preferences.tryHWDecoding.collectAsState()
+              val mediaCodecEmbed by preferences.mediaCodecEmbed.collectAsState()
+              val forcedOnByMediaCodecEmbed: @Composable () -> Unit = {
+                MediaCodecEmbedNote(R.string.pref_decoder_mediacodec_embed_forced_on)
+              }
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_try_hw_dec_title),
-                value = tryHWDecoding,
-                enabled = !decoderConfigOwned,
+                value = tryHWDecoding || mediaCodecEmbed,
+                enabled = !decoderConfigOwned && !mediaCodecEmbed,
                 onValueChange = {
                   preferences.tryHWDecoding.set(it)
                   if (embeddedInPlayer) {
@@ -174,6 +180,33 @@ object DecoderPreferencesScreen : Screen {
                   }
                 },
                 title = { Text(stringResource(R.string.pref_decoder_try_hw_dec_title)) },
+                summary = forcedOnByMediaCodecEmbed.takeIf { mediaCodecEmbed },
+              )
+
+              PreferenceDivider()
+
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_mediacodec_embed_title),
+                value = mediaCodecEmbed,
+                enabled = !mediaCodecEmbedConfigOwned,
+                onValueChange = { preferences.mediaCodecEmbed.set(it) },
+                title = { Text(stringResource(R.string.pref_decoder_mediacodec_embed_title)) },
+                summary = {
+                  Column {
+                    Text(
+                      stringResource(R.string.pref_decoder_mediacodec_embed_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                    // Only FongMi's mpv draws subtitles and OSD beside this output.
+                    if (!DolbyVisionDirect.isBuildSupported) {
+                      Text(
+                        stringResource(R.string.pref_decoder_mediacodec_embed_no_subtitles),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                      )
+                    }
+                  }
+                },
               )
 
               PreferenceDivider()
@@ -182,7 +215,8 @@ object DecoderPreferencesScreen : Screen {
               val useVulkan by preferences.useVulkan.collectAsState() // Added to check Vulkan state
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_gpu_next_title),
-                value = gpuNext,
+                value = gpuNext && !mediaCodecEmbed,
+                enabled = !mediaCodecEmbed,
                 onValueChange = { enabled ->
                   if (enabled && !gpuNext && !useVulkan) { // Only show warning if Vulkan is disabled
                     showGpuNextWarning = true
@@ -195,10 +229,14 @@ object DecoderPreferencesScreen : Screen {
                 },
                 title = { Text(stringResource(R.string.pref_decoder_gpu_next_title)) },
                 summary = {
-                  Text(
-                    stringResource(R.string.pref_decoder_gpu_next_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
+                  if (mediaCodecEmbed) {
+                    MediaCodecEmbedNote(R.string.pref_decoder_mediacodec_embed_blocks)
+                  } else {
+                    Text(
+                      stringResource(R.string.pref_decoder_gpu_next_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  }
                 },
               )
 
@@ -251,7 +289,7 @@ object DecoderPreferencesScreen : Screen {
 
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_vulkan_experimental_title),
-                value = useVulkan && isVulkanSupported,
+                value = useVulkan && isVulkanSupported && !mediaCodecEmbed,
                 onValueChange = { enabled ->
                   if (isVulkanSupported) {
                     preferences.useVulkan.set(enabled)
@@ -266,11 +304,13 @@ object DecoderPreferencesScreen : Screen {
                     }
                   }
                 },
-                enabled = isVulkanSupported && !rendererBackendConfigOwned,
+                enabled = isVulkanSupported && !rendererBackendConfigOwned && !mediaCodecEmbed,
                 title = { Text(stringResource(R.string.pref_decoder_vulkan_experimental_title)) },
                 summary = {
                   Text(
                     when {
+                      mediaCodecEmbed && isVulkanSupported ->
+                        stringResource(R.string.pref_decoder_mediacodec_embed_blocks)
                       !BuildConfig.MPV_SUPPORTS_VULKAN && isDeviceVulkanSupported ->
                         stringResource(R.string.pref_decoder_vulkan_excluded_supported_device)
                       !BuildConfig.MPV_SUPPORTS_VULKAN ->
@@ -310,7 +350,7 @@ object DecoderPreferencesScreen : Screen {
                   },
                   values = VulkanFrameImport.entries,
                   valueToText = { AnnotatedString(stringResource(it.titleRes)) },
-                  enabled = useVulkan && !vulkanFrameImportConfigOwned,
+                  enabled = useVulkan && !vulkanFrameImportConfigOwned && !mediaCodecEmbed,
                   title = { Text(stringResource(R.string.pref_decoder_vulkan_import_title)) },
                   summary = {
                     Text(
@@ -340,13 +380,17 @@ object DecoderPreferencesScreen : Screen {
                   if (!blocked) select()
                 },
                 values = Debanding.entries,
-                enabled = !debandingConfigOwned,
+                enabled = !debandingConfigOwned && !mediaCodecEmbed,
                 title = { Text(stringResource(R.string.pref_decoder_debanding_title)) },
                 summary = {
-                  Text(
-                    debanding.name,
-                    color = MaterialTheme.colorScheme.outline,
-                  )
+                  if (mediaCodecEmbed) {
+                    MediaCodecEmbedNote(R.string.pref_decoder_mediacodec_embed_blocks)
+                  } else {
+                    Text(
+                      debanding.name,
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  }
                 },
               )
               }
@@ -356,17 +400,21 @@ object DecoderPreferencesScreen : Screen {
               val useYUV420p by preferences.useYUV420P.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_yuv420p_title),
-                value = useYUV420p,
-                enabled = !yuv420ConfigOwned,
+                value = useYUV420p && !mediaCodecEmbed,
+                enabled = !yuv420ConfigOwned && !mediaCodecEmbed,
                 onValueChange = {
                   preferences.useYUV420P.set(it)
                 },
                 title = { Text(stringResource(R.string.pref_decoder_yuv420p_title)) },
                 summary = {
-                  Text(
-                    stringResource(R.string.pref_decoder_yuv420p_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
+                  if (mediaCodecEmbed) {
+                    MediaCodecEmbedNote(R.string.pref_decoder_mediacodec_embed_blocks)
+                  } else {
+                    Text(
+                      stringResource(R.string.pref_decoder_yuv420p_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  }
                 },
               )
 
@@ -378,19 +426,25 @@ object DecoderPreferencesScreen : Screen {
                 val liquidGlassInHdr by appearancePreferences.liquidGlassInHdr.collectAsState()
                 val hdrOutput by preferences.hdrScreenOutput.collectAsState()
                 // The subtitle overlay needs the native SurfaceView renderer.
-                val textureRendering = shouldUseTextureRendering(liquidGlass, hdrOutput, liquidGlassInHdr)
+                val textureRendering =
+                  shouldUseTextureRendering(liquidGlass, hdrOutput, liquidGlassInHdr, mediaCodecEmbed)
                 SwitchPreference(
                   modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_dolby_vision_direct_title),
-                  value = dolbyVisionDirect,
-                  enabled = !dolbyVisionConfigOwned,
+                  // MediaCodec embed already sends every video, Dolby Vision included, straight to the screen.
+                  value = dolbyVisionDirect || mediaCodecEmbed,
+                  enabled = !dolbyVisionConfigOwned && !mediaCodecEmbed,
                   onValueChange = { preferences.dolbyVisionDirect.set(it) },
                   title = { Text(stringResource(R.string.pref_decoder_dolby_vision_direct_title)) },
                   summary = {
                     Column {
-                      Text(
-                        stringResource(R.string.pref_decoder_dolby_vision_direct_summary),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
+                      if (mediaCodecEmbed) {
+                        MediaCodecEmbedNote(R.string.pref_decoder_mediacodec_embed_forced_on)
+                      } else {
+                        Text(
+                          stringResource(R.string.pref_decoder_dolby_vision_direct_summary),
+                          color = MaterialTheme.colorScheme.outline,
+                        )
+                      }
                       if (dolbyVisionDirect && textureRendering) {
                         Text(
                           stringResource(R.string.pref_decoder_dolby_vision_direct_needs_surface),
@@ -432,8 +486,8 @@ object DecoderPreferencesScreen : Screen {
               val enableAnime4K by preferences.enableAnime4K.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_anime4k_title),
-                value = enableAnime4K,
-                enabled = !shadersConfigOwned,
+                value = enableAnime4K && !mediaCodecEmbed,
+                enabled = !shadersConfigOwned && !mediaCodecEmbed,
                 onValueChange = { enabled ->
                   preferences.enableAnime4K.set(enabled)
                   if (enabled && !useVulkan) {
@@ -446,10 +500,14 @@ object DecoderPreferencesScreen : Screen {
                 title = { Text(stringResource(R.string.pref_anime4k_title)) },
                 summary = {
                   Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                      stringResource(R.string.pref_anime4k_summary),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
+                    if (mediaCodecEmbed) {
+                      MediaCodecEmbedNote(R.string.pref_decoder_mediacodec_embed_blocks)
+                    } else {
+                      Text(
+                        stringResource(R.string.pref_anime4k_summary),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    }
                     Text(
                       text =
                         androidx.compose.ui.res
@@ -467,7 +525,7 @@ object DecoderPreferencesScreen : Screen {
                 },
               )
 
-              if (!embeddedInPlayer && enableAnime4K && !shadersConfigOwned) {
+              if (!embeddedInPlayer && enableAnime4K && !shadersConfigOwned && !mediaCodecEmbed) {
                 val rotationState by animateFloatAsState(
                   targetValue = if (anime4kExpanded) 180f else 0f,
                   label = "anime4k_chevron_rotation",
@@ -619,4 +677,13 @@ object DecoderPreferencesScreen : Screen {
       }
     }
   }
+}
+
+/** Why a decoder setting is fixed while MediaCodec embed is on. */
+@Composable
+private fun MediaCodecEmbedNote(textRes: Int) {
+  Text(
+    stringResource(textRes),
+    color = MaterialTheme.colorScheme.outline,
+  )
 }

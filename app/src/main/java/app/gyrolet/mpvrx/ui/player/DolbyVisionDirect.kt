@@ -11,7 +11,6 @@ package app.gyrolet.mpvrx.ui.player
 
 import android.view.Surface
 import app.gyrolet.mpvrx.BuildConfig
-import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import `is`.xyz.mpv.MPVLib
 import java.lang.reflect.Method
 
@@ -28,7 +27,11 @@ internal object DolbyVisionDirect {
   val isBuildSupported: Boolean
     get() = BuildConfig.MPV_SUPPORTS_DOLBY_VISION_DIRECT && attachMethod != null && detachMethod != null
 
-  fun isEnabled(preferences: DecoderPreferences): Boolean = isBuildSupported && preferences.dolbyVisionDirect.get()
+  /** The overlay carries subtitles for direct Dolby Vision tracks and for MediaCodec embed. */
+  fun wantsOsdOverlay(
+    dolbyVisionDirect: Boolean,
+    mediaCodecEmbed: Boolean,
+  ): Boolean = isBuildSupported && (dolbyVisionDirect || mediaCodecEmbed)
 
   fun attachOsdSurface(surface: Surface) {
     attachMethod?.invoke(MPVLib, surface)

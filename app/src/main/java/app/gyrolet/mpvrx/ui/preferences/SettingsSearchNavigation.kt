@@ -182,6 +182,7 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
       listOf(
         SettingsSearchListAnchor(titleRes = R.string.pref_decoder, itemIndex = 0),
         SettingsSearchListAnchor(titleRes = R.string.pref_decoder_try_hw_dec_title, itemIndex = 1),
+        SettingsSearchListAnchor(titleRes = R.string.pref_decoder_mediacodec_embed_title, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_decoder_gpu_next_title, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_decoder_vulkan_experimental_title, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_decoder_debanding_title, itemIndex = 1),

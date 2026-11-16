@@ -115,14 +115,16 @@ class MPVView(
     }
 
   init {
+    val mediaCodecEmbed = decoderPreferences.mediaCodecEmbed.get()
     setTextureRendering(
       shouldUseTextureRendering(
         liquidGlass = appearancePreferences.liquidGlassEnabled.get(),
         hdrOutput = decoderPreferences.hdrScreenOutput.get(),
         liquidGlassInHdr = appearancePreferences.liquidGlassInHdr.get(),
+        mediaCodecEmbed = mediaCodecEmbed,
       ),
     )
-    setOsdOverlay(DolbyVisionDirect.isEnabled(decoderPreferences))
+    setOsdOverlay(DolbyVisionDirect.wantsOsdOverlay(decoderPreferences.dolbyVisionDirect.get(), mediaCodecEmbed))
   }
 
   /** A slow Surface must not prevent the media load and its watchdog from starting. */
@@ -182,7 +184,8 @@ class MPVView(
     MpvConfigOverridePolicy.configure(advancedPreferences.mpvConfOverrides.get())
     // The core key deliberately ignores forceOpenGlFallback so a failed Vulkan attempt does not
     // invalidate the very key it is retrying under.
-    val requestedBackend = selectRenderBackend(inputs.anime4kEnabled, inputs.gpuNextEnabled, inputs.vulkanCapable)
+    val requestedBackend =
+      selectRenderBackend(inputs.mediaCodecEmbed, inputs.anime4kEnabled, inputs.gpuNextEnabled, inputs.vulkanCapable)
     val scriptsKey = advancedPreferences.userScriptsConfigurationKey()
     // The audio output and passthrough are init options too; a reused core would keep the old ones.
     val audioKey = "${audioPreferences.audioOutput.get().name},${audioPreferences.audioPassthrough.get().name}"
@@ -306,6 +309,7 @@ class MPVView(
    */
   private class InitInputs(
     val profile: String,
+    val mediaCodecEmbed: Boolean,
     val anime4kEnabled: Boolean,
     val gpuNextEnabled: Boolean,
     val vulkanCapable: Boolean,
@@ -349,6 +353,7 @@ class MPVView(
     screenshotDirectory.mkdirs()
     return InitInputs(
       profile = decoderPreferences.profile.get(),
+      mediaCodecEmbed = decoderPreferences.mediaCodecEmbed.get(),
       // These three are the inputs to the renderer choice. The choice itself is not precomputed
       // because it also depends on forceOpenGlFallback, which differs on the Vulkan retry attempt.
       anime4kEnabled = decoderPreferences.enableAnime4K.get() && decoderPreferences.anime4kMode.get() != "OFF",
@@ -457,17 +462,20 @@ class MPVView(
     val inputs = awaitInitInputs()
     PlaybackSession.setOptionString("profile", inputs.profile)
     val backend = selectRenderBackend(
-      inputs.anime4kEnabled, inputs.gpuNextEnabled, inputs.vulkanCapable && !forceOpenGlFallback,
+      inputs.mediaCodecEmbed, inputs.anime4kEnabled, inputs.gpuNextEnabled,
+      inputs.vulkanCapable && !forceOpenGlFallback,
     )
+    val mediaCodecEmbed = backend.vo == MediaCodecEmbed.VO
     val useVulkan = backend.gpuApi == "vulkan"
-    val hwdecMode = preferredHwdecMode(useVulkan)
+    // MediaCodec embed accepts only MediaCodec's own buffers: no copy-back, no software decoding.
+    val hwdecMode = if (mediaCodecEmbed) Decoder.HWPlus.value else preferredHwdecMode(useVulkan)
     PlaybackSession.setVideoOutput(backend.vo)
     PlaybackSession.setOptionString("gpu-api", backend.gpuApi)
     PlaybackSession.setOptionString("gpu-context", backend.gpuContext)
 
     val isLinearAvailable = useVulkan && backend.vo == "gpu-next"
     val hdrScreenMode =
-      if (!inputs.hdrScreenOutputEnabled) {
+      if (!inputs.hdrScreenOutputEnabled || mediaCodecEmbed) {
         HdrScreenMode.OFF
       } else {
         if (inputs.hdrScreenModePreference == HdrScreenMode.LINEAR && !isLinearAvailable) {
@@ -490,7 +498,7 @@ class MPVView(
       val hardwareDecoderCodecs = inputs.hardwareDecoderCodecs
       PlaybackSession.setOptionString(
         "hwdec",
-        if (hardwareDecoderCodecs.isEmpty()) "no" else hwdecMode,
+        if (hardwareDecoderCodecs.isEmpty() && !mediaCodecEmbed) "no" else hwdecMode,
       )
       if (hardwareDecoderCodecs.isNotEmpty()) {
         PlaybackSession.setOptionString("hwdec-codecs", hardwareDecoderCodecs.joinToString(","))
@@ -516,7 +524,8 @@ class MPVView(
       PlaybackSession.setOptionString("load-scripts", "no")
     }
 
-    if (inputs.useYuv420p) {
+    // Video filters cannot touch MediaCodec embed's buffers and would stop the video.
+    if (inputs.useYuv420p && !mediaCodecEmbed) {
       PlaybackSession.setOptionString("vf", "format=yuv420p")
     }
     inputs.filterValues.forEach { (property, value) ->
@@ -619,7 +628,8 @@ class MPVView(
 
     // libmpv is initialized here, but no file has been loaded yet. Unlike initOptions(),
     // it is safe to run change-list and shader property commands here.
-    pendingStartupShaders?.let { selection ->
+    // MediaCodec embed bypasses mpv's renderer, so it gets no shaders.
+    pendingStartupShaders?.takeIf { it.backend.vo != MediaCodecEmbed.VO }?.let { selection ->
       if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.ANIME4K)) {
         applyAnime4KShaders(selection.backend.vo, selection.backend.gpuApi)
       }
@@ -637,8 +647,8 @@ class MPVView(
       )
     }
 
-    when (decoderPreferences.debanding.get()) {
-      Debanding.None -> {}
+    when (decoderPreferences.debanding.get().takeUnless { MediaCodecEmbed.isActive() }) {
+      null, Debanding.None -> {}
       Debanding.CPU -> PlaybackSession.command("vf", "add", "@deband:gradfun=radius=12")
       Debanding.GPU -> PlaybackSession.setOptionString("deband", "yes")
     }
@@ -756,6 +766,8 @@ class MPVView(
     PlaybackSession.bindSurface(
       surface, width, height, this,
       ownerIsActive = ::isCurrentSurface,
+      // This view lays out android-video-rect and carries FongMi's subtitle overlay.
+      hostsDirectOutput = true,
       onRendererReady = {
         if (isCurrentSurface() && PlaybackSession.isRendererReadyFor(this)) notifyRendererReady()
       },
@@ -1078,6 +1090,8 @@ class MPVView(
     activeGpuApi: String,
   ) {
     runCatching {
+      // MediaCodec embed bypasses mpv's renderer; shaders would never reach the picture.
+      if (activeVo == MediaCodecEmbed.VO) return
       val isGpuNext = activeVo == "gpu-next"
       val useVulkan = activeGpuApi == "vulkan"
 
@@ -1163,6 +1177,7 @@ class MPVView(
     }
     val target =
       selectRenderBackend(
+        mediaCodecEmbed = decoderPreferences.mediaCodecEmbed.get(),
         anime4kEnabled = decoderPreferences.enableAnime4K.get() && decoderPreferences.anime4kMode.get() != "OFF",
         gpuNextEnabled = decoderPreferences.gpuNext.get(),
         vulkanEnabled =
@@ -1181,6 +1196,8 @@ class MPVView(
         reason = "running",
       )
     if (target.configurationKey == current.configurationKey) return null
+    // android-set-gpu-output moves only between GPU renderers; MediaCodec embed needs a new core.
+    if (target.vo == MediaCodecEmbed.VO || current.vo == MediaCodecEmbed.VO) return false
     val switched =
       PlaybackSession.switchGpuOutput(
         gpuNext = target.vo == "gpu-next",
@@ -1199,10 +1216,20 @@ class MPVView(
    * must ignore [forceOpenGlFallback] there.
    */
   private fun selectRenderBackend(
+    mediaCodecEmbed: Boolean,
     anime4kEnabled: Boolean,
     gpuNextEnabled: Boolean,
     vulkanEnabled: Boolean,
   ): RenderBackendSelection {
+
+    if (mediaCodecEmbed) {
+      return RenderBackendSelection(
+        vo = MediaCodecEmbed.VO,
+        gpuApi = "opengl",
+        gpuContext = "android",
+        reason = "MediaCodec embed enabled: the decoder draws straight to the Surface",
+      )
+    }
 
     if (anime4kEnabled && gpuNextEnabled && !vulkanEnabled) {
       return RenderBackendSelection(

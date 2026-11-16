@@ -399,6 +399,7 @@ fun PlayerControls(
   val liquidGlassPreference by appearancePreferences.liquidGlassEnabled.collectAsState()
   val liquidGlassInHdr by appearancePreferences.liquidGlassInHdr.collectAsState()
   val hdrOutputPreference by koinInject<DecoderPreferences>().hdrScreenOutput.collectAsState()
+  val mediaCodecEmbedPreference by koinInject<DecoderPreferences>().mediaCodecEmbed.collectAsState()
   // Glass needs the video on the Compose-recordable renderer, so this mirrors the renderer choice.
   // When HDR output keeps the video on a native surface ("Liquid glass in HDR" off, or HDR owned by
   // mpv.conf), every player control uses its regular form, exactly as with Liquid Glass off.
@@ -407,6 +408,7 @@ fun PlayerControls(
       liquidGlass = liquidGlassPreference,
       hdrOutput = hdrOutputPreference,
       liquidGlassInHdr = liquidGlassInHdr,
+      mediaCodecEmbed = mediaCodecEmbedPreference,
     )
   val forceDarkButtonBackground by appearancePreferences.forceDarkPlayerButtonsBackground.collectAsState()
   val portraitSeekbarPlacement by appearancePreferences.portraitSeekbarPlacement.collectAsState()

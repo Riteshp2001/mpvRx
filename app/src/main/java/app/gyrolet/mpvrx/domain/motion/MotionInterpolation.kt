@@ -129,7 +129,7 @@ object MotionInterpolation {
 
   /** Like FongMi's own player, motion interpolation runs on gpu-next with Vulkan. */
   fun isRendererSelected(preferences: DecoderPreferences): Boolean =
-    preferences.gpuNext.get() && preferences.useVulkan.get()
+    !preferences.mediaCodecEmbed.get() && preferences.gpuNext.get() && preferences.useVulkan.get()
 
   /** The first unmet hard requirement, or [MotionAvailability.READY]. */
   fun barrier(

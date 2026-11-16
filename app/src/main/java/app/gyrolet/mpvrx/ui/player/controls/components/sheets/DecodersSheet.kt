@@ -22,6 +22,7 @@ import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.ui.player.Decoder
+import app.gyrolet.mpvrx.ui.player.MediaCodecEmbed
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.RendererBackendPolicy
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
@@ -39,6 +40,8 @@ fun DecodersSheet(
       usesVulkan = isVulkanActive,
       buildSupportsMediaCodecVulkan = BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN,
     )
+  // MediaCodec embed shows only MediaCodec's own buffers.
+  val mediaCodecEmbed = MediaCodecEmbed.isActive()
 
   PlayerSheet(onDismissRequest, title = stringResource(R.string.btn_label_decoder)) {
     val decoders = Decoder.entries.minusElement(Decoder.Auto)
@@ -50,7 +53,8 @@ fun DecodersSheet(
         AudioTrackRow(
           title = stringResource(R.string.player_sheets_decoder_formatted, decoder.title, decoder.value),
           isSelected = selectedDecoder == decoder,
-          enabled = decoder != Decoder.HWPlus || directMediaCodecAllowed,
+          enabled =
+            if (mediaCodecEmbed) decoder == Decoder.HWPlus else decoder != Decoder.HWPlus || directMediaCodecAllowed,
           onClick = { onSelect(decoder) },
           groupIndex = index,
           groupSize = decoders.size,

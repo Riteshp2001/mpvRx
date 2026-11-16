@@ -158,6 +158,7 @@ private val settingNativeOptions = mapOf(
   R.string.player_sheets_sub_scale_by_window to setOf("sub-scale-by-window", "sub-use-margins"),
   R.string.pref_subtitles_secondary_pinch_zoom to setOf("sub-scale", "secondary-sub-scale"),
   R.string.pref_decoder_try_hw_dec_title to setOf("hwdec", "hwdec-codecs"),
+  R.string.pref_decoder_mediacodec_embed_title to setOf("vo", "hwdec"),
   R.string.pref_decoder_dolby_vision_direct_title to setOf("android-dolby-vision-output"),
   R.string.pref_decoder_gpu_next_title to setOf("gpu-api", "gpu-context"),
   R.string.pref_decoder_vulkan_experimental_title to setOf("gpu-api", "gpu-context"),

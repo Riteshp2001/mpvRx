@@ -6110,6 +6110,8 @@ fun restartFromBeginning() {
     sourceHeight: Int,
   ): AutoCropAnalysisResult {
     if (MpvConfigOverridePolicy.isOwnedByMpvConf("vf")) return detectAutoCropFromCurrentFrames(generation)
+    // Software decoding for cropdetect would leave MediaCodec embed without any frames to show.
+    if (MediaCodecEmbed.isActive()) return detectAutoCropFromCurrentFrames(generation)
     if (PlaybackSession.getPropertyBoolean("current-tracks/video/image") == true) {
       return AutoCropAnalysisResult.Unavailable
     }
@@ -7482,6 +7484,7 @@ fun restartFromBeginning() {
 
   fun setHdrScreenMode(mode: HdrScreenMode) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) return
+    if (mode != HdrScreenMode.OFF && MediaCodecEmbed.blocks(appContext, R.string.btn_label_hdr)) return
     val resolvedMode =
       if (mode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
         HdrScreenMode.defaultEnabledMode
@@ -7509,7 +7512,8 @@ fun restartFromBeginning() {
     mode != HdrScreenMode.LINEAR || isLinearHdrAvailable.value
 
   private fun initialHdrScreenMode(): HdrScreenMode {
-    if (!decoderPreferences.hdrScreenOutput.get()) {
+    // MediaCodec embed bypasses the renderer that HDR modes configure.
+    if (!decoderPreferences.hdrScreenOutput.get() || decoderPreferences.mediaCodecEmbed.get()) {
       return HdrScreenMode.OFF
     }
     val savedMode = decoderPreferences.hdrScreenMode.get()
@@ -7560,6 +7564,7 @@ fun restartFromBeginning() {
 
   fun selectAnime4KMode(mode: Anime4KManager.Mode) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.ANIME4K)) return
+    if (mode != Anime4KManager.Mode.OFF && MediaCodecEmbed.blocks(appContext, R.string.pref_anime4k_title)) return
     // ArtCNN only hooks the LUMA plane, which HW+ frames don't have.
     if (mode == Anime4KManager.Mode.ARTCNN &&
       HwPlusGuard.blocks(appContext, R.string.anime4k_mode_artcnn) { selectAnime4KMode(mode) }
@@ -7670,6 +7675,10 @@ fun restartFromBeginning() {
 
   fun toggleAmbientMode() {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
+    // Every style but YouTube is a shader, which MediaCodec embed never draws.
+    if (!_isAmbientEnabled.value && _ambientStyle.value != AmbientStyle.YouTube &&
+      MediaCodecEmbed.blocks(appContext, R.string.btn_label_ambient)
+    ) return
     _isAmbientEnabled.value = !_isAmbientEnabled.value
     playerPreferences.isAmbientEnabled.set(_isAmbientEnabled.value)
     if (_isAmbientEnabled.value) {
@@ -7744,6 +7753,9 @@ fun restartFromBeginning() {
   fun setAmbientStyle(style: AmbientStyle) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
     if (_ambientStyle.value == style) return
+    if (_isAmbientEnabled.value && style != AmbientStyle.YouTube &&
+      MediaCodecEmbed.blocks(appContext, R.string.btn_label_ambient)
+    ) return
     _ambientStyle.value = style
     playerPreferences.ambientStyle.set(style)
     syncAmbientParamsForStyle(style)
@@ -8357,6 +8369,9 @@ fun restartFromBeginning() {
   // ==================== Post-Processing Implementation ====================
 
   fun togglePostProcessing() {
+    if (!_isPostProcessingEnabled.value &&
+      MediaCodecEmbed.blocks(appContext, R.string.btn_label_post_processing)
+    ) return
     _isPostProcessingEnabled.value = !_isPostProcessingEnabled.value
     playerPreferences.isPostProcessingEnabled.set(_isPostProcessingEnabled.value)
     if (_isPostProcessingEnabled.value) {

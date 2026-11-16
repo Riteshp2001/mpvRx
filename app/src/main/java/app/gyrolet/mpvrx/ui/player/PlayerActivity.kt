@@ -1320,9 +1320,15 @@ class PlayerActivity :
           decoderPreferences.hdrScreenOutput.changes(),
           decoderPreferences.hdrScreenMode.changes(),
           appearancePreferences.liquidGlassInHdr.changes(),
-        ) { glass, hdr, hdrMode, glassInHdr ->
+          decoderPreferences.mediaCodecEmbed.changes(),
+        ) { glass, hdr, hdrMode, glassInHdr, mediaCodecEmbed ->
           Triple(
-            shouldUseTextureRendering(liquidGlass = glass, hdrOutput = hdr, liquidGlassInHdr = glassInHdr),
+            shouldUseTextureRendering(
+              liquidGlass = glass,
+              hdrOutput = hdr,
+              liquidGlassInHdr = glassInHdr,
+              mediaCodecEmbed = mediaCodecEmbed,
+            ),
             hdr,
             hdrMode,
           )
@@ -1336,9 +1342,12 @@ class PlayerActivity :
         }
       }
       lifecycleScope.launch {
-        decoderPreferences.dolbyVisionDirect.changes().distinctUntilChanged().collect { enabled ->
-          player.setOsdOverlay(enabled && DolbyVisionDirect.isBuildSupported)
-        }
+        combine(
+          decoderPreferences.dolbyVisionDirect.changes(),
+          decoderPreferences.mediaCodecEmbed.changes(),
+        ) { dolbyVisionDirect, mediaCodecEmbed ->
+          DolbyVisionDirect.wantsOsdOverlay(dolbyVisionDirect, mediaCodecEmbed)
+        }.distinctUntilChanged().collect { player.setOsdOverlay(it) }
       }
       lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -1596,11 +1605,12 @@ class PlayerActivity :
     if (!FongMiMpv.isBuildSupported) return
     lifecycleScope.launch {
       combine(
+        decoderPreferences.mediaCodecEmbed.changes(),
         decoderPreferences.gpuNext.changes(),
         decoderPreferences.useVulkan.changes(),
         decoderPreferences.enableAnime4K.changes(),
         decoderPreferences.anime4kMode.changes(),
-      ) { _, _, _, _ -> }
+      ) { _, _, _, _, _ -> }
         .drop(1)
         .collect {
           if (!canIssueMpvCommands()) return@collect

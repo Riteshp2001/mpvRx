@@ -653,6 +653,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     ownerIsActive: () -> Boolean = { true },
     onRendererReady: (() -> Unit)? = null,
     onRendererFailed: (() -> Unit)? = null,
+    hostsDirectOutput: Boolean = false,
   ): Boolean =
     withCore(default = false) {
       if (!ownerIsActive() || !surface.isValid) {
@@ -662,6 +663,10 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
 
       val targetWidth = width?.takeIf { it > 0 } ?: return@withCore false
       val targetHeight = height?.takeIf { it > 0 } ?: return@withCore false
+      // Only the full player lays out MediaCodec embed's Surface and, on FongMi, gives it the
+      // subtitle overlay it waits for. Other Surfaces (mini player, external display) use gpu.
+      val videoOutput =
+        if (desiredVideoOutput == MediaCodecEmbed.VO && !hostsDirectOutput) "gpu" else desiredVideoOutput
       // Both vo and wid changes seek the whole file when a video track is selected. Finish
       // deselecting video before either changes, including direct fullscreen/mini-player handoffs.
       // AudioTrack and its clock stay running while the video decoder/output are replaced.
@@ -699,11 +704,11 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
               if (windowId == 0L || windowId == -1L) return@withLock false
 
               val activated = runCatching {
-                MPVLib.setPropertyString("vo", desiredVideoOutput)
+                MPVLib.setPropertyString("vo", videoOutput)
                 MPVLib.setPropertyString("force-window", "yes")
                 // Read back the actual output, not just the requested option. Video selection
                 // must be the final step, after JNI's window and the new output are usable.
-                if (MPVLib.getPropertyString("current-vo") != desiredVideoOutput) return@withLock false
+                if (MPVLib.getPropertyString("current-vo") != videoOutput) return@withLock false
                 rendererOutputReady = true
                 restoreSuspendedVideoTrackLocked()
                 applyDeferredVideoSelectionLocked()

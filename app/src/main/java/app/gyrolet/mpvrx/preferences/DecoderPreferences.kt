@@ -22,6 +22,9 @@ class DecoderPreferences(
 ) {
   val profile = preferenceStore.getString("mpv_profile", "fast")
   val tryHWDecoding = preferenceStore.getBoolean("try_hw_dec", true)
+
+  /** vo=mediacodec_embed: MediaCodec draws every video straight to the screen, without mpv's renderer. */
+  val mediaCodecEmbed = preferenceStore.getBoolean("mediacodec_embed", false)
   val gpuNext = preferenceStore.getBoolean("gpu_next")
   val useVulkan = preferenceStore.getBoolean("use_vulkan", false)
   val hdrScreenOutput = preferenceStore.getBoolean("hdr_screen_output", false)

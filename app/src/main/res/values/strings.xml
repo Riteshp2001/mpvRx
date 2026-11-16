@@ -335,6 +335,11 @@
   <string name="pref_decoder_summary">Hardware decoding, pixel format, debanding</string>
   <string name="pref_decoder_profile_title">MPV Profile</string>
   <string name="pref_decoder_try_hw_dec_title">Try hardware decoding</string>
+  <string name="pref_decoder_mediacodec_embed_title">Use MediaCodec embed</string>
+  <string name="pref_decoder_mediacodec_embed_summary">The decoder draws straight to the screen.</string>
+  <string name="pref_decoder_mediacodec_embed_no_subtitles">No subtitles or OSD on this build</string>
+  <string name="pref_decoder_mediacodec_embed_forced_on">Always on with MediaCodec embed</string>
+  <string name="pref_decoder_mediacodec_embed_blocks">Off while MediaCodec embed is on</string>
   <string name="pref_decoder_gpu_next_title">Use gpu-next</string>
   <string name="pref_decoder_gpu_next_summary">A new rendering backend</string>
   <string name="pref_decoder_gpu_next_enable_title">Enable gpu-next?</string>
@@ -1378,6 +1383,7 @@
   <string name="player_hwplus_unsupported">%1$s isn\'t supported in HW+ mode. Switch to HW or SW decoding to use it.</string>
   <string name="player_hwplus_use_hw">Use HW</string>
   <string name="player_hwplus_cpu_deband">CPU Debanding</string>
+  <string name="player_mediacodec_embed_unsupported">%1$s isn\'t available with MediaCodec embed</string>
   <string name="btn_label_back">Back Arrow</string>
   <string name="btn_label_title">Video Title</string>
   <string name="btn_label_bookmarks">Chapters / Bookmarks</string>
