@@ -266,7 +266,7 @@
   <string name="pref_decoder_gpu_next_enable_anyway">仍然启用</string>
   <string name="pref_decoder_debanding_title">去色带</string>
   <string name="pref_decoder_vulkan_summary">在受支持的设备上启用 Vulkan 渲染（可能提高性能）</string>
-  <string name="pref_decoder_vulkan_not_supported">不支持（需要 Android 13+ 和 Vulkan 1.3）</string>
+  <string name="pref_decoder_vulkan_not_supported">不支持（需要 Android %1$d+ 和 Vulkan %2$s）</string>
   <string name="pref_decoder_vulkan_excluded_supported_device">仅支持 OpenGL；如需 Vulkan，请安装标准版。</string>
   <string name="pref_decoder_vulkan_excluded_unsupported_device">仅支持 OpenGL；此设备不支持 Vulkan 1.3。</string>
   <string name="renderer_build_notice_title">无 Vulkan 版本</string>
@@ -2894,7 +2894,7 @@
   <string name="motion_rate_unknown">–</string>
   <string name="motion_rates">%1$s → %2$s fps · %3$s Hz</string>
   <string name="motion_status_unsupported_build">仅支持 FongMi 版本</string>
-  <string name="motion_status_unsupported_device">需要 Vulkan 1.3（Android 13+）</string>
+  <string name="motion_status_unsupported_device">需要 Vulkan 1.2（Android 10+）</string>
   <string name="motion_status_needs_renderer">需要 GPU Next + Vulkan</string>
   <string name="motion_status_unsupported_libmpv">此 mpv 版本不支持。请更新 mpvRx。</string>
   <string name="motion_status_config_owned">由 mpv.conf 设置</string>

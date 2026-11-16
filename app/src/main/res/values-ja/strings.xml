@@ -266,7 +266,7 @@
   <string name="pref_decoder_gpu_next_enable_anyway">それでも有効にする</string>
   <string name="pref_decoder_debanding_title">バンディング除去</string>
   <string name="pref_decoder_vulkan_summary">対応端末でVulkanレンダリングを有効にします（性能が向上する場合があります）</string>
-  <string name="pref_decoder_vulkan_not_supported">非対応（Vulkan 1.3搭載のAndroid 13以降が必要）</string>
+  <string name="pref_decoder_vulkan_not_supported">非対応（Vulkan %2$s搭載のAndroid %1$d以降が必要）</string>
   <string name="pref_decoder_vulkan_excluded_supported_device">OpenGLのみ（Vulkanには標準ビルドが必要）</string>
   <string name="pref_decoder_vulkan_excluded_unsupported_device">OpenGLのみ（この端末はVulkan 1.3非対応）</string>
   <string name="renderer_build_notice_title">Vulkanなしビルド</string>
@@ -2893,7 +2893,7 @@
   <string name="motion_rate_unknown">–</string>
   <string name="motion_rates">%1$s → %2$s fps · %3$s Hz</string>
   <string name="motion_status_unsupported_build">FongMi ビルドのみ対応</string>
-  <string name="motion_status_unsupported_device">Vulkan 1.3（Android 13 以降）が必要です</string>
+  <string name="motion_status_unsupported_device">Vulkan 1.2（Android 10 以降）が必要です</string>
   <string name="motion_status_needs_renderer">GPU Next + Vulkan が必要です</string>
   <string name="motion_status_unsupported_libmpv">この mpv ビルドには含まれていません。mpvRx を更新してください。</string>
   <string name="motion_status_config_owned">mpv.conf で設定されています</string>

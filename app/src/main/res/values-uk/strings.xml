@@ -307,7 +307,7 @@
   <string name="pref_decoder_gpu_next_enable_anyway">Все одно увімкнути</string>
   <string name="pref_decoder_debanding_title">Дебандинг</string>
   <string name="pref_decoder_vulkan_summary">Увімкнути рендеринг через Vulkan на підтримуваних пристроях (може покращити продуктивність)</string>
-  <string name="pref_decoder_vulkan_not_supported">Не підтримується (потрібен Android 13+ з підтримкою Vulkan 1.3)</string>
+  <string name="pref_decoder_vulkan_not_supported">Не підтримується (потрібен Android %1$d+ з підтримкою Vulkan %2$s)</string>
   <string name="pref_decoder_vulkan_excluded_supported_device">Лише OpenGL; встановіть стандартну збірку для підтримки Vulkan.</string>
   <string name="pref_decoder_vulkan_excluded_unsupported_device">Лише OpenGL; цей пристрій не підтримує Vulkan 1.3.</string>
   <string name="renderer_build_notice_title">Збірка без підтримки Vulkan</string>
@@ -2891,7 +2891,7 @@
   <string name="motion_rate_unknown">–</string>
   <string name="motion_rates">%1$s → %2$s кадр/с · %3$s Гц</string>
   <string name="motion_status_unsupported_build">Лише для збірки FongMi</string>
-  <string name="motion_status_unsupported_device">Потрібен Vulkan 1.3 (Android 13+)</string>
+  <string name="motion_status_unsupported_device">Потрібен Vulkan 1.2 (Android 10+)</string>
   <string name="motion_status_needs_renderer">Потрібні GPU Next + Vulkan</string>
   <string name="motion_status_unsupported_libmpv">Не підтримується цією збіркою mpv. Оновіть mpvRx.</string>
   <string name="motion_status_config_owned">Задано у вашому mpv.conf</string>

@@ -30,7 +30,7 @@ enum class PlayerButton(
   DECODER(Icons.RoundedFilled.DeveloperBoard),
   HDR_MODE(Icons.RoundedFilled.HdrOff),
   SCREEN_ROTATION(Icons.RoundedFilled.ScreenRotation),
-  FRAME_NAVIGATION(Icons.RoundedFilled.Screenshot),
+  FRAME_NAVIGATION(Icons.RoundedFilled.CameraAlt),
   VIDEO_ZOOM(Icons.RoundedFilled.ZoomIn),
   PICTURE_IN_PICTURE(Icons.RoundedFilled.PictureInPictureAlt),
   CAST(Icons.RoundedFilled.Cast),

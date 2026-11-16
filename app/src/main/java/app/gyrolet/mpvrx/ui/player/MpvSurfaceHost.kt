@@ -6,12 +6,14 @@ package app.gyrolet.mpvrx.ui.player
 
 import android.content.Context
 import android.graphics.PixelFormat
+import android.graphics.Rect
 import android.graphics.SurfaceTexture
 import android.util.AttributeSet
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.TextureView
+import android.view.View
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -49,6 +51,41 @@ internal fun shouldUseTextureRendering(
   return !hdrOutput && !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)
 }
 
+/** mpvlib 1.1.8.4+: where direct MediaCodec output (vo=mediacodec_embed) needs the video view. */
+internal const val ANDROID_VIDEO_RECT = "android-video-rect"
+
+/** `android-video-rect` ("w:h:left:top:right:bottom"): the video bounds within a w*h viewport. */
+internal data class MpvVideoRect(
+  val viewportWidth: Int,
+  val viewportHeight: Int,
+  val left: Int,
+  val top: Int,
+  val right: Int,
+  val bottom: Int,
+) {
+  fun scaledTo(width: Int, height: Int): Rect {
+    val sx = width.toDouble() / viewportWidth
+    val sy = height.toDouble() / viewportHeight
+    fun coord(value: Int, scale: Double) =
+      Math.round(value * scale).coerceIn(-MAX_COORD, MAX_COORD).toInt()
+    return Rect(coord(left, sx), coord(top, sy), coord(right, sx), coord(bottom, sy))
+  }
+
+  companion object {
+    // Far beyond any usable zoom, but inside View's measurable size.
+    private const val MAX_COORD = 1L shl 22
+
+    fun parse(value: String?): MpvVideoRect? {
+      val parts = value?.split(':')?.map { it.toIntOrNull() ?: return null } ?: return null
+      if (parts.size != 6) return null
+      val rect = MpvVideoRect(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5])
+      return rect.takeIf {
+        it.viewportWidth > 0 && it.viewportHeight > 0 && it.right > it.left && it.bottom > it.top
+      }
+    }
+  }
+}
+
 /** Keeps one MPV surface owner while choosing a native or Compose-recordable renderer. */
 abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : FrameLayout(context, attributes) {
   internal var renderSurface: Surface? = null
@@ -66,6 +103,8 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
     private set
   internal var osdSurfaceHeight = 0
     private set
+  private var videoView: View? = null
+  private var videoRect: MpvVideoRect? = null
 
   // The new TextureView can be attached to mpv before it receives a drawable video frame.
   // Expose its first real buffer update so the controls never sample a blank HDR/SDR layer.
@@ -91,6 +130,49 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
   protected open fun onOsdSurfaceAvailable(surface: Surface, width: Int, height: Int) {}
   protected open fun onOsdSurfaceSizeChanged(width: Int, height: Int) {}
   protected open fun onOsdSurfaceDestroyed() {}
+
+  /**
+   * MediaCodec stretches every frame over its whole Surface, so direct output (mediacodec_embed)
+   * only shows mpv's aspect, crop, zoom and pan once the video view covers [ANDROID_VIDEO_RECT].
+   * The subtitle overlay stays full size. null, as with every GPU output, restores the full view.
+   */
+  internal fun setVideoRect(value: String?) {
+    val rect = MpvVideoRect.parse(value)
+    if (rect == videoRect) return
+    videoRect = rect
+    requestLayout()
+  }
+
+  // mpv's viewport stays the whole player while the video view itself is moved and resized.
+  private fun reportedSize(surfaceWidth: Int, surfaceHeight: Int): Pair<Int, Int> =
+    if (videoRect != null && width > 0 && height > 0) width to height else surfaceWidth to surfaceHeight
+
+  private fun videoBounds(): Rect? {
+    val rect = videoRect ?: return null
+    if (measuredWidth <= 0 || measuredHeight <= 0) return null
+    return rect.scaledTo(measuredWidth, measuredHeight).takeIf { it.width() > 0 && it.height() > 0 }
+  }
+
+  override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+    super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+    val bounds = videoBounds() ?: return
+    videoView?.measure(
+      MeasureSpec.makeMeasureSpec(bounds.width(), MeasureSpec.EXACTLY),
+      MeasureSpec.makeMeasureSpec(bounds.height(), MeasureSpec.EXACTLY),
+    )
+  }
+
+  override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+    super.onLayout(changed, left, top, right, bottom)
+    val bounds = videoBounds() ?: return
+    videoView?.layout(bounds.left, bounds.top, bounds.right, bounds.bottom)
+  }
+
+  override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+    super.onSizeChanged(w, h, oldw, oldh)
+    // A moved video view may keep its size, so report the new player size from here.
+    if (videoRect != null && renderSurface != null && w > 0 && h > 0) onRenderSurfaceSizeChanged(w, h)
+  }
 
   /**
    * A transparent SurfaceView above the video for subtitles and OSD, which direct Dolby Vision
@@ -176,6 +258,7 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
     videoBackdrop = null
     (getChildAt(0) as? ComposeView)?.disposeComposition()
     removeAllViews()
+    videoView = null
     descendantFocusability = FOCUS_BLOCK_DESCENDANTS
 
     fun available(surface: Surface, width: Int, height: Int, owned: Boolean) {
@@ -185,7 +268,14 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
       }
       renderSurface = surface
       ownsSurface = owned
-      onRenderSurfaceAvailable(surface, width, height)
+      val (reportedWidth, reportedHeight) = reportedSize(width, height)
+      onRenderSurfaceAvailable(surface, reportedWidth, reportedHeight)
+    }
+
+    fun sizeChanged(width: Int, height: Int) {
+      if (epoch != rendererEpoch) return
+      val (reportedWidth, reportedHeight) = reportedSize(width, height)
+      onRenderSurfaceSizeChanged(reportedWidth, reportedHeight)
     }
 
     fun destroyed() {
@@ -226,7 +316,7 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
                     }
 
                     override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int) {
-                      if (epoch == rendererEpoch) onRenderSurfaceSizeChanged(width, height)
+                      sizeChanged(width, height)
                     }
 
                     override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
@@ -254,7 +344,7 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
           }
 
           override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-            if (epoch == rendererEpoch) onRenderSurfaceSizeChanged(width, height)
+            sizeChanged(width, height)
           }
 
           override fun surfaceDestroyed(holder: SurfaceHolder) = destroyed()
@@ -262,6 +352,7 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
       }
     }
     addView(child, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    videoView = child
     syncOsdOverlay()
   }
 }

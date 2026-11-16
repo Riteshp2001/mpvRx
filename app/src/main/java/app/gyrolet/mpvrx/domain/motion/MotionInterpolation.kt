@@ -50,7 +50,7 @@ enum class MotionAvailability(
   /** Only FongMi's mpv carries the GPU motion core. */
   UNSUPPORTED_BUILD(R.string.motion_status_unsupported_build, true),
 
-  /** The motion core runs on mpvRx's Vulkan renderer, which needs Vulkan 1.3 (Android 13+). */
+  /** The motion core runs on mpvRx's Vulkan renderer, which needs Vulkan 1.2 (Android 10+). */
   UNSUPPORTED_DEVICE(R.string.motion_status_unsupported_device, true),
 
   /** GPU Next and Vulkan must both be selected in the Decoder settings. */

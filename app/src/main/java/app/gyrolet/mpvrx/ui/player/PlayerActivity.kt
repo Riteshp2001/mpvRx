@@ -1340,6 +1340,11 @@ class PlayerActivity :
           player.setOsdOverlay(enabled && DolbyVisionDirect.isBuildSupported)
         }
       }
+      lifecycleScope.launch {
+        repeatOnLifecycle(Lifecycle.State.STARTED) {
+          PlaybackSession.propString[ANDROID_VIDEO_RECT].collect { player.setVideoRect(it) }
+        }
+      }
     }
     if (playerControlsComposed) return
     playerControlsComposed = true

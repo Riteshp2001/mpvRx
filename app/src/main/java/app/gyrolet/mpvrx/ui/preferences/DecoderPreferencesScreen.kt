@@ -270,16 +270,19 @@ object DecoderPreferencesScreen : Screen {
                 title = { Text(stringResource(R.string.pref_decoder_vulkan_experimental_title)) },
                 summary = {
                   Text(
-                    stringResource(
-                      when {
-                        !BuildConfig.MPV_SUPPORTS_VULKAN && isDeviceVulkanSupported ->
-                          R.string.pref_decoder_vulkan_excluded_supported_device
-                        !BuildConfig.MPV_SUPPORTS_VULKAN ->
-                          R.string.pref_decoder_vulkan_excluded_unsupported_device
-                        isDeviceVulkanSupported -> R.string.pref_decoder_vulkan_summary
-                        else -> R.string.pref_decoder_vulkan_not_supported
-                      },
-                    ),
+                    when {
+                      !BuildConfig.MPV_SUPPORTS_VULKAN && isDeviceVulkanSupported ->
+                        stringResource(R.string.pref_decoder_vulkan_excluded_supported_device)
+                      !BuildConfig.MPV_SUPPORTS_VULKAN ->
+                        stringResource(R.string.pref_decoder_vulkan_excluded_unsupported_device)
+                      isDeviceVulkanSupported -> stringResource(R.string.pref_decoder_vulkan_summary)
+                      else ->
+                        stringResource(
+                          R.string.pref_decoder_vulkan_not_supported,
+                          VulkanCapabilities.requiredAndroidRelease,
+                          VulkanCapabilities.requiredVulkanVersion,
+                        )
+                    },
                     color =
                       if (isVulkanSupported) {
                         MaterialTheme.colorScheme.outline

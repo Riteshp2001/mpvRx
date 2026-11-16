@@ -252,7 +252,7 @@
   <string name="pref_decoder_gpu_next_enable_anyway">फिर भी सक्षम करें</string>
   <string name="pref_decoder_debanding_title">डीबैंडिंग</string>
   <string name="pref_decoder_vulkan_summary">समर्थित डिवाइसों पर Vulkan रेंडरिंग सक्षम करें (परफॉर्मेंस बेहतर हो सकती है)</string>
-  <string name="pref_decoder_vulkan_not_supported">समर्थित नहीं (Android 13+ और Vulkan 1.3 चाहिए)</string>
+  <string name="pref_decoder_vulkan_not_supported">समर्थित नहीं (Android %1$d+ और Vulkan %2$s चाहिए)</string>
   <string name="pref_decoder_vulkan_excluded_supported_device">केवल OpenGL; Vulkan के लिए स्टैंडर्ड बिल्ड इंस्टॉल करें।</string>
   <string name="pref_decoder_vulkan_excluded_unsupported_device">केवल OpenGL; यह डिवाइस Vulkan 1.3 समर्थित नहीं करता।</string>
   <string name="renderer_build_notice_title">नॉन-Vulkan बिल्ड</string>
@@ -2827,7 +2827,7 @@
   <string name="motion_rate_unknown">–</string>
   <string name="motion_rates">%1$s → %2$s fps · %3$s Hz</string>
   <string name="motion_status_unsupported_build">केवल FongMi बिल्ड</string>
-  <string name="motion_status_unsupported_device">Vulkan 1.3 (Android 13+) ज़रूरी है</string>
+  <string name="motion_status_unsupported_device">Vulkan 1.2 (Android 10+) ज़रूरी है</string>
   <string name="motion_status_needs_renderer">GPU Next + Vulkan ज़रूरी है</string>
   <string name="motion_status_unsupported_libmpv">इस mpv बिल्ड में उपलब्ध नहीं है। mpvRx अपडेट करें।</string>
   <string name="motion_status_config_owned">आपके mpv.conf द्वारा निर्धारित</string>

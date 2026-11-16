@@ -266,7 +266,7 @@ Próximo: NEXT</string>
   <string name="pref_decoder_gpu_next_enable_anyway">Ativar mesmo assim</string>
   <string name="pref_decoder_debanding_title">Remoção de faixas</string>
   <string name="pref_decoder_vulkan_summary">Ativar renderização Vulkan em dispositivos compatíveis (pode melhorar o desempenho)</string>
-  <string name="pref_decoder_vulkan_not_supported">Não compatível (requer Android 13+ com Vulkan 1.3)</string>
+  <string name="pref_decoder_vulkan_not_supported">Não compatível (requer Android %1$d+ com Vulkan %2$s)</string>
   <string name="pref_decoder_vulkan_excluded_supported_device">Somente OpenGL; instale a versão padrão para usar Vulkan.</string>
   <string name="pref_decoder_vulkan_excluded_unsupported_device">Somente OpenGL; este dispositivo não suporta Vulkan 1.3.</string>
   <string name="renderer_build_notice_title">Versão sem Vulkan</string>
@@ -2921,7 +2921,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="motion_rate_unknown">–</string>
   <string name="motion_rates">%1$s → %2$s fps · %3$s Hz</string>
   <string name="motion_status_unsupported_build">Apenas na versão FongMi</string>
-  <string name="motion_status_unsupported_device">Requer Vulkan 1.3 (Android 13 ou superior)</string>
+  <string name="motion_status_unsupported_device">Requer Vulkan 1.2 (Android 10 ou superior)</string>
   <string name="motion_status_needs_renderer">Requer GPU Next + Vulkan</string>
   <string name="motion_status_unsupported_libmpv">Indisponível nesta compilação do mpv. Atualize o mpvRx.</string>
   <string name="motion_status_config_owned">Definido pelo mpv.conf</string>
