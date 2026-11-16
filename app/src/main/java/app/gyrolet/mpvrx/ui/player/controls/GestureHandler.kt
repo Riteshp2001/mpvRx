@@ -156,6 +156,8 @@ fun GestureHandler(
   val duration by PlaybackSession.propInt["duration"].collectAsState()
   val position by PlaybackSession.propInt["time-pos"].collectAsState()
   val playbackSpeed by PlaybackSession.propFloat["speed"].collectAsState()
+  val statisticsPage by PlaybackSession.visibleStatisticsPage.collectAsState()
+  val statisticsScrolling = statisticsPage in PlaybackSession.scrollableStatisticsPages
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
   val seekState by viewModel.seekState.collectAsState()
   val seekAmount = seekState.amount
@@ -351,9 +353,10 @@ fun GestureHandler(
   val playlistSwipeModifier = Modifier.pointerInput(
     areControlsLocked,
     enableCenterSwipeUpGesture,
+    statisticsScrolling,
     mediaGeneration,
   ) {
-    if (areControlsLocked || !enableCenterSwipeUpGesture) return@pointerInput
+    if (areControlsLocked || !enableCenterSwipeUpGesture || statisticsScrolling) return@pointerInput
 
     awaitEachGesture {
       val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
@@ -604,6 +607,7 @@ fun GestureHandler(
         }.pointerInput(
           mediaGeneration,
           areControlsLocked,
+          statisticsScrolling,
           multipleSpeedGesture,
           brightnessGesture,
           volumeGesture,
@@ -620,6 +624,7 @@ fun GestureHandler(
             (
               !brightnessGesture &&
                 !volumeGesture &&
+                !statisticsScrolling &&
                 !centerVerticalSubtitlePositionGesture &&
                 !enableCenterSwipeUpGesture &&
                 !enableVideoMiniPlayer &&
@@ -632,12 +637,13 @@ fun GestureHandler(
 
           awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
+            if (statisticsScrolling && down.isConsumed) return@awaitEachGesture
             beginGesture(down.id.value, down.uptimeMillis)
             val startPosition = down.position
             val isVerticalGestureDeadZone =
               startPosition.y <= topGestureDeadZonePx ||
                 startPosition.y >= size.height - bottomGestureDeadZonePx
-            val subtitleHit = if (centerVerticalSubtitlePositionGesture) {
+            val subtitleHit = if (!statisticsScrolling && centerVerticalSubtitlePositionGesture) {
               findSubtitleGestureTarget(
                 subtitleRegions(size.width.toFloat(), size.height.toFloat()),
                 startPosition.x, startPosition.y, 12.dp.toPx(),
@@ -648,7 +654,7 @@ fun GestureHandler(
             }
             // Direct subtitle hits select that track; a center hold elsewhere selects primary.
             // This is independent of the center swipe-up toggle, so ordinary swipes keep working.
-            val centerSubtitle = if (subtitleHit == null && centerVerticalSubtitlePositionGesture &&
+            val centerSubtitle = if (!statisticsScrolling && subtitleHit == null && centerVerticalSubtitlePositionGesture &&
               !isVerticalGestureDeadZone &&
               startPosition.x in (size.width * 0.35f)..(size.width * 0.65f)
             ) {
@@ -657,7 +663,7 @@ fun GestureHandler(
             val selectedSubtitle = touchedSubtitle ?: centerSubtitle
             val subtitleGestureGeneration = PlaybackSession.state.value.generation
             val isStartOnSubtitleText = subtitleHit != null
-            speedHoldPending = paused == false && multipleSpeedGesture > 0f && selectedSubtitle == null
+            speedHoldPending = !statisticsScrolling && paused == false && multipleSpeedGesture > 0f && selectedSubtitle == null
 
             // Reset long press tracking at the start of each gesture
             longPressTriggeredDuringTouch = false
@@ -671,6 +677,9 @@ fun GestureHandler(
             var lastVolumePercentValue = currentVolumePercent
             var lastMPVVolumeValue = currentMPVVolume ?: 100
             var lastBrightnessValue = currentBrightness
+            var statisticsLastY = startPosition.y
+            var statisticsRemainder = 0f
+            val statisticsLineHeight = 24.dp.toPx()
             val brightnessGestureSens = 0.001f
             // Match the anime4k gesture feel, but snap to whole-number volume steps.
             val volumeGestureSens = 0.1f
@@ -711,7 +720,7 @@ fun GestureHandler(
             var longPressJob =
               coroutineScope.launch {
                 delay(longPressDelay)
-                if (!longPressTriggered && PlaybackSession.isCurrentGeneration(subtitleGestureGeneration)) {
+                if (!statisticsScrolling && !longPressTriggered && PlaybackSession.isCurrentGeneration(subtitleGestureGeneration)) {
                   // Gesture movement cancels the subtitle hold before this callback runs.
                   if (subtitleHoldEligible || !isStartOnSubtitleText) {
                     if (subtitleHoldEligible && claimGesture(GestureOwner.SUBTITLE_VERTICAL)) {
@@ -883,7 +892,12 @@ fun GestureHandler(
                             enableCenterSwipeUpGesture && startPosition.x in (size.width / 3f)..(size.width * 2f / 3f)
                           val isMinimizeTouch = enableVideoMiniPlayer && !externalPanelShown &&
                             !isVerticalGestureDeadZone && startPosition.x in (size.width / 3f)..(size.width * 2f / 3f)
-                          if (
+                          if (statisticsScrolling && isVerticalDrag && !isVerticalGestureDeadZone &&
+                            claimGesture(GestureOwner.VERTICAL)
+                          ) {
+                            longPressJob.cancel()
+                            gestureType = "stats_scroll"
+                          } else if (
                             isLongPressing &&
                               isDynamicSpeedControlActive &&
                               gestureOwner == GestureOwner.SPEED &&
@@ -929,6 +943,10 @@ fun GestureHandler(
 
                         // Initialize gesture-specific state
                         when (gestureType) {
+                          "stats_scroll" -> {
+                            isVerticalGestureActive = true
+                            statisticsLastY = currentPosition.y
+                          }
                           "speed_control" -> {
                             dynamicSpeedStartX = currentPosition.x
                             dynamicSpeedStartValue = PlaybackSession.getPropertyFloat("speed") ?: multipleSpeedGesture
@@ -961,6 +979,16 @@ fun GestureHandler(
 
                       // Handle the appropriate gesture
                       when (gestureType) {
+                        "stats_scroll" -> {
+                          statisticsRemainder += statisticsLastY - currentPosition.y
+                          statisticsLastY = currentPosition.y
+                          val lines = (statisticsRemainder / statisticsLineHeight).toInt().coerceIn(-4, 4)
+                          if (lines != 0) {
+                            PlaybackSession.scrollStatisticsPage(lines)
+                            statisticsRemainder -= lines * statisticsLineHeight
+                          }
+                          change.consume()
+                        }
                         "minimize" -> {
                           minimizeDistance = deltaY.coerceAtLeast(0f)
                           change.consume()
@@ -1147,10 +1175,11 @@ fun GestureHandler(
                   longPressJob.cancel()
                   if (gestureType != null) {
                     when (gestureType) {
+                      "stats_scroll",
                       "vertical",
                       "subtitle_vertical",
                       -> {
-                        if (brightnessGesture || volumeGesture || isSubtitleHoldActive) {
+                        if (brightnessGesture || volumeGesture || isSubtitleHoldActive || isVerticalGestureActive) {
                           isVerticalGestureActive = false
                           startingY = 0f
                           lastVolumePercentValue = currentVolumePercent
@@ -1196,6 +1225,7 @@ fun GestureHandler(
               }
 
               when (gestureType) {
+                "stats_scroll",
                 "vertical",
                 "subtitle_vertical",
                 -> {

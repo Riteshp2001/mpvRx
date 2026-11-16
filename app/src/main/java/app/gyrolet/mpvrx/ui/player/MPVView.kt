@@ -326,6 +326,7 @@ class MPVView(
     val subtitleOptionValues: List<Pair<String, String>>,
     val audioOptionValues: List<Pair<String, String>>,
     val motionInterpolation: MotionConfig,
+    val statisticsScriptPath: String,
   )
 
   @Volatile
@@ -352,6 +353,7 @@ class MPVView(
     val screenshotDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
     screenshotDirectory.mkdirs()
     return InitInputs(
+      statisticsScriptPath = MpvScriptAssets.installStatisticsScript(context).absolutePath,
       profile = decoderPreferences.profile.get(),
       mediaCodecEmbed = decoderPreferences.mediaCodecEmbed.get(),
       // These three are the inputs to the renderer choice. The choice itself is not precomputed
@@ -460,6 +462,7 @@ class MPVView(
 
   private fun initOptions() {
     val inputs = awaitInitInputs()
+    PlaybackSession.setIntegrationOptionString("load-stats-overlay", "no")
     PlaybackSession.setOptionString("profile", inputs.profile)
     val backend = selectRenderBackend(
       inputs.mediaCodecEmbed, inputs.anime4kEnabled, inputs.gpuNextEnabled,
@@ -604,16 +607,7 @@ class MPVView(
   }
 
   fun applyStartupStatistics() {
-    // The native core survives Activity recreation and playlist loads. A toggle on every
-    // load would turn an already enabled statistics overlay off on the next file.
-    if (PlaybackSession.getPropertyString("user-data/mpvrx/startup-stats-applied") == "yes") return
-    PlaybackSession.setPropertyString("user-data/mpvrx/startup-stats-applied", "yes")
-    advancedPreferences.enabledStatisticsPage.get().let {
-      if (it in 1..5) {
-        PlaybackSession.command("script-binding", "stats/display-stats-toggle")
-        PlaybackSession.command("script-binding", "stats/display-page-$it")
-      }
-    }
+    PlaybackSession.restoreStatisticsPage()
   }
 
   private fun observeProperties() {
@@ -621,6 +615,9 @@ class MPVView(
   }
 
   private fun postInitOptions() {
+    // Also disable a stock copy enabled by mpv.conf. Only the managed renderer owns stats.
+    PlaybackSession.setIntegrationOptionString("load-stats-overlay", "no")
+    PlaybackSession.command("load-script", awaitInitInputs().statisticsScriptPath)
     // Native initialization can run off the main thread. Start with a safe baseline and let the
     // Activity's WindowInsets listener apply the real cutout margins when the view is attached.
     PlaybackSession.setOptionString("osd-margin-x", DEFAULT_OSD_SAFE_MARGIN.toString())
@@ -929,8 +926,6 @@ class MPVView(
       "user-data/mpvrx/curl_request" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
       // curl_response is written by the bridge; scripts observe this property for results
       "user-data/mpvrx/curl_response" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
-      // Track console visibility state
-      "user-data/mpv/console/open" to MPVLib.MpvFormat.MPV_FORMAT_FLAG,
       "sub-text" to MPVLib.MpvFormat.MPV_FORMAT_STRING,
     )
 

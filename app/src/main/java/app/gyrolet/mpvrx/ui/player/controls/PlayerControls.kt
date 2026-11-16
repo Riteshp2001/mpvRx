@@ -16,15 +16,12 @@ import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.declaredMediaKind
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingState
-import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
-import app.gyrolet.mpvrx.domain.torrent.formatTorrentSpeed
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import android.database.ContentObserver
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.os.Debug
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
@@ -53,9 +50,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.displayCutout
-import androidx.compose.foundation.layout.navigationBarsIgnoringVisibility
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -69,7 +63,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -77,7 +70,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalRippleConfiguration
@@ -98,7 +90,6 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -112,25 +103,18 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstrainScope
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -193,10 +177,8 @@ import app.gyrolet.mpvrx.ui.theme.playerRippleConfiguration
 import app.gyrolet.mpvrx.ui.theme.spacing
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import app.gyrolet.mpvrx.ui.liquidglass.AdaptiveControlsContainer
 import app.gyrolet.mpvrx.ui.liquidglass.LiquidPillButton
@@ -208,7 +190,6 @@ import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlin.math.abs
-import kotlin.math.roundToInt
 
 @Suppress("CompositionLocalAllowlist")
 val LocalPlayerButtonsClickEvent = staticCompositionLocalOf { {} }
@@ -428,9 +409,6 @@ fun PlayerControls(
   val controlsShown by viewModel.controlsShown.collectAsState()
   val controlsInteractionEpoch by viewModel.controlsInteractionEpoch.collectAsState()
   val tvPlayFocusRequester = rememberTvInitialFocusRequester(enabled = controlsShown)
-  val overlaysFollowVideoZoom by playerPreferences.overlaysFollowVideoZoom.collectAsState()
-  val videoPanX by viewModel.videoPanX.collectAsState()
-  val videoPanY by viewModel.videoPanY.collectAsState()
   val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
   val areControlsLocked by viewModel.areControlsLocked.collectAsState()
   val seekBarShown by viewModel.seekBarShown.collectAsState()
@@ -492,15 +470,6 @@ fun PlayerControls(
     } else {
       Modifier
     }
-  // Stats text starts at the screen edge, so it always clears the camera cutout and navigation
-  // bar at the sides. The bar counts while hidden too, so the text holds still when it appears.
-  val statisticsInsetModifier =
-    Modifier
-      .windowInsetsPadding(
-        WindowInsets.displayCutout
-          .union(WindowInsets.navigationBarsIgnoringVisibility)
-          .only(WindowInsetsSides.Horizontal),
-      ).then(safeAreaInsetModifier)
   val navigationBarBottomInsetModifier =
     if (showSystemNavigationBar) {
       Modifier.windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
@@ -1061,30 +1030,6 @@ fun PlayerControls(
             .zIndex(0f),
       )
     }
-    if (statisticsPage == 6) {
-      // Mirror the SurfaceView transform so page 6 stays on the video like mpv's own stats pages.
-      Box(
-        Modifier.fillMaxSize().graphicsLayer {
-          if (overlaysFollowVideoZoom) {
-            val zoomScale = app.gyrolet.mpvrx.ui.player.videoZoomMultiplier(currentZoom)
-            scaleX = zoomScale
-            scaleY = zoomScale
-            translationX = videoPanX
-            translationY = videoPanY
-          }
-        },
-      ) {
-        CustomStatsPageSixOverlay(
-          viewModel = viewModel,
-          modifier =
-            Modifier
-              .align(Alignment.TopStart)
-              .then(statisticsInsetModifier)
-              .padding(top = 16.dp, start = 14.dp),
-        )
-      }
-    }
-
     // Keep this outside the controls' AnimatedVisibility / constraint layout.
     PersistentStatusHud(
       viewModel = viewModel,
@@ -2545,488 +2490,6 @@ fun PlayerControls(
   }
 }
 
-private const val MEMORY_STATS_SAMPLE_INTERVAL_MS = 5_000L
-
-private data class ProcessMemorySnapshot(
-  val totalPssBytes: Long,
-  val javaHeapUsedBytes: Long,
-  val javaHeapMaxBytes: Long,
-  val nativeHeapBytes: Long,
-)
-
-private fun readProcessMemorySnapshot(): ProcessMemorySnapshot {
-  val runtime = Runtime.getRuntime()
-  val memoryInfo = Debug.MemoryInfo()
-  Debug.getMemoryInfo(memoryInfo)
-  return ProcessMemorySnapshot(
-    totalPssBytes = memoryInfo.totalPss.toLong() * 1024L,
-    javaHeapUsedBytes = runtime.totalMemory() - runtime.freeMemory(),
-    javaHeapMaxBytes = runtime.maxMemory(),
-    nativeHeapBytes = Debug.getNativeHeapAllocatedSize(),
-  )
-}
-
-private data class CustomStatsSnapshot(
-  val fileName: String,
-  val renderContext: String,
-  val video: String,
-  val audio: String,
-  val cpuPercent: Float,
-  val processMemoryText: String,
-  val playbackCacheText: String,
-  val batteryPercentText: String,
-  val batteryRateText: String,
-  val batteryWattsText: String,
-  val batteryTempText: String,
-  val hdrActive: String,
-  val sessionPlayTimeText: String,
-  val decoderEfficiencyText: String,
-  val thermalStateText: String,
-  val peakTempText: String,
-  val tempRiseText: String,
-)
-
-@Composable
-private fun CustomStatsPageSixOverlay(
-  viewModel: PlayerViewModel,
-  modifier: Modifier = Modifier,
-) {
-  val context = LocalContext.current.applicationContext
-  val torrentState by viewModel.torrentState.collectAsState()
-  val isHdrOutputEnabled by viewModel.isHdrScreenOutputEnabled.collectAsState()
-  val hdrScreenMode by viewModel.hdrScreenMode.collectAsState()
-  val hdrOutputText =
-    stringResource(
-      R.string.hdr_mode_output_diagnostic,
-      stringResource(hdrScreenMode.shortTitleRes),
-    )
-  val processMemoryFormat = stringResource(R.string.diagnostics_process_memory_value)
-  val playbackCacheFormat = stringResource(R.string.diagnostics_playback_cache_value)
-  val stats by produceState(
-    initialValue =
-      CustomStatsSnapshot(
-        fileName = "--",
-        renderContext = "--",
-        video = "--",
-        audio = "--",
-        cpuPercent = 0f,
-        processMemoryText = "--",
-        playbackCacheText = "--",
-        batteryPercentText = "--%",
-        batteryRateText = "Unknown",
-        batteryWattsText = "-- W",
-        batteryTempText = "--°C",
-        hdrActive = "--",
-        sessionPlayTimeText = "00:00:00",
-        decoderEfficiencyText = "Unknown",
-        thermalStateText = "Normal",
-        peakTempText = "--°C",
-        tempRiseText = "+0.0°C",
-      ),
-    isHdrOutputEnabled,
-    hdrOutputText,
-    processMemoryFormat,
-    playbackCacheFormat,
-  ) {
-    var lastCpuMs = runCatching { android.os.Process.getElapsedCpuTime() }.getOrDefault(0L)
-    var lastTimeMs = android.os.SystemClock.elapsedRealtime()
-    var lastMemorySampleMs = lastTimeMs
-    var memorySnapshot = withContext(Dispatchers.Default) { readProcessMemorySnapshot() }
-
-    var startBatteryTemp: Float? = null
-    var peakBatteryTemp = 0.0f
-    var totalActivePlayTimeMs = 0L
-    val processorCount = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
-    var smoothedCpuPercent = 0f
-    var cpuSampleCount = 0
-
-    while (true) {
-      val fileName = runCatching { PlaybackSession.getPropertyString("media-title") ?: "--" }.getOrDefault("--")
-      val currentVideoOutput =
-        runCatching {
-          PlaybackSession.getPropertyString("current-vo")
-            ?: PlaybackSession.getPropertyString("vo")
-            ?: "--"
-        }.getOrDefault("--")
-      val videoCodec = runCatching { PlaybackSession.getPropertyString("current-tracks/video/codec") ?: "--" }.getOrDefault("--")
-      val audioCodec = runCatching { PlaybackSession.getPropertyString("current-tracks/audio/codec") ?: "--" }.getOrDefault("--")
-
-      val currentCpuMs = runCatching { android.os.Process.getElapsedCpuTime() }.getOrDefault(lastCpuMs)
-      val currentTimeMs = android.os.SystemClock.elapsedRealtime()
-      val cpuDelta = (currentCpuMs - lastCpuMs).coerceAtLeast(0L)
-      val timeDelta = (currentTimeMs - lastTimeMs).coerceAtLeast(1L)
-      if (currentTimeMs - lastMemorySampleMs >= MEMORY_STATS_SAMPLE_INTERVAL_MS) {
-        memorySnapshot =
-          runCatching {
-            withContext(Dispatchers.Default) { readProcessMemorySnapshot() }
-          }.getOrDefault(memorySnapshot)
-        lastMemorySampleMs = currentTimeMs
-      }
-      val rawCpuPercent =
-        if (cpuSampleCount > 0) {
-          ((cpuDelta.toFloat() / timeDelta.toFloat()) * 100f / processorCount)
-            .coerceIn(0f, 100f)
-        } else {
-          0f
-        }
-
-      when (cpuSampleCount) {
-        0 -> Unit
-        1 -> smoothedCpuPercent = rawCpuPercent
-        else -> smoothedCpuPercent = smoothedCpuPercent * 0.65f + rawCpuPercent * 0.35f
-      }
-      cpuSampleCount++
-
-      val processMemoryText =
-        String.format(
-          processMemoryFormat,
-          formatTorrentBytes(memorySnapshot.totalPssBytes),
-          formatTorrentBytes(memorySnapshot.javaHeapUsedBytes),
-          formatTorrentBytes(memorySnapshot.javaHeapMaxBytes),
-          formatTorrentBytes(memorySnapshot.nativeHeapBytes),
-        )
-      val cacheDurationSeconds =
-        runCatching { PlaybackSession.getPropertyDouble("demuxer-cache-duration") }
-          .getOrNull()
-          ?.takeIf { it.isFinite() && it >= 0.0 }
-          ?: 0.0
-      val packetCacheBytes =
-        runCatching { PlaybackSession.getPropertyDouble("demuxer-cache-state/fw-bytes") }
-          .getOrNull()
-          ?.takeIf { it.isFinite() && it >= 0.0 }
-          ?.toLong()
-          ?: 0L
-      val fileCacheBytes =
-        runCatching { PlaybackSession.getPropertyDouble("demuxer-cache-state/file-cache-bytes") }
-          .getOrNull()
-          ?.takeIf { it.isFinite() && it >= 0.0 }
-          ?.toLong()
-          ?: 0L
-      val playbackCacheText =
-        String.format(
-          playbackCacheFormat,
-          cacheDurationSeconds,
-          formatTorrentBytes(packetCacheBytes),
-          formatTorrentBytes(fileCacheBytes),
-        )
-
-      val battery = readBatterySnapshot(context)
-      val isPaused = runCatching { PlaybackSession.getPropertyBoolean("pause") }.getOrDefault(false) == true
-
-      if (!isPaused) {
-        totalActivePlayTimeMs += timeDelta
-      }
-      val playSecs = totalActivePlayTimeMs / 1000L
-      val sessionPlayTimeText = String.format("%02d:%02d:%02d", playSecs / 3600, (playSecs % 3600) / 60, playSecs % 60)
-
-      val currentTempText = battery.tempText.replace("°C", "").trim()
-      val currentTemp = currentTempText.toFloatOrNull() ?: 0f
-
-      if (startBatteryTemp == null && currentTemp > 0f) {
-        startBatteryTemp = currentTemp
-      }
-      if (currentTemp > peakBatteryTemp) {
-        peakBatteryTemp = currentTemp
-      }
-
-      val peakTempText = if (peakBatteryTemp > 0f) String.format("%.1f°C", peakBatteryTemp) else "--°C"
-      val tempRiseText =
-        if (startBatteryTemp != null) {
-          val rise = currentTemp - startBatteryTemp
-          String.format("%+.1f°C", rise)
-        } else {
-          "+0.0°C"
-        }
-
-      val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as? android.os.PowerManager
-      val thermalStatus =
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-          powerManager?.currentThermalStatus ?: 0
-        } else {
-          0
-        }
-      val thermalStateText =
-        when (thermalStatus) {
-          0 -> "Normal"
-          1 -> "Light Throttling"
-          2 -> "Moderate Throttling"
-          3 -> "Severe Throttling"
-          4 -> "Critical Throttling"
-          5 -> "Emergency!"
-          6 -> "Overheating Shutdown!"
-          else -> "Normal"
-        }
-
-      val currentHwdec = runCatching { PlaybackSession.getPropertyString("hwdec-current") ?: "no" }.getOrDefault("no")
-      val gpuApi = runCatching { PlaybackSession.getPropertyString("gpu-api") ?: "--" }.getOrDefault("--")
-      val gpuContext = runCatching { PlaybackSession.getPropertyString("gpu-context") ?: "--" }.getOrDefault("--")
-      val renderContext = "$currentVideoOutput | $gpuApi | $gpuContext"
-      val decoderEfficiencyText =
-        when {
-          currentHwdec == "no" || currentHwdec.isBlank() -> "Low (Software Decoding, CPU-heavy)"
-          currentHwdec.contains("copy") -> "Moderate (Hardware-copy, GPU texture overhead)"
-          else -> "High (Hardware Direct, $gpuApi backend)"
-        }
-
-      value =
-        CustomStatsSnapshot(
-          fileName = fileName,
-          renderContext = renderContext,
-          video = videoCodec,
-          audio = audioCodec,
-          cpuPercent = smoothedCpuPercent,
-          processMemoryText = processMemoryText,
-          playbackCacheText = playbackCacheText,
-          batteryPercentText = battery.percentageText,
-          batteryRateText = battery.rateText,
-          batteryWattsText = battery.wattsText,
-          batteryTempText = battery.tempText,
-          hdrActive =
-            runCatching {
-              val sourceGamma = PlaybackSession.getPropertyString("video-params/gamma").orEmpty()
-              val sourcePrimaries = PlaybackSession.getPropertyString("video-params/primaries").orEmpty()
-              val sourcePeak = PlaybackSession.getPropertyDouble("video-params/sig-peak") ?: 0.0
-
-              val isHdrSource =
-                sourceGamma == "pq" ||
-                  sourceGamma == "hlg" ||
-                  (sourcePrimaries == "bt.2020" && sourcePeak > 1.0)
-
-              val sourceLabel = if (isHdrSource) "HDR Source" else "SDR Source"
-              val outputLabel =
-                if (isHdrOutputEnabled) {
-                  hdrOutputText
-                } else {
-                  "SDR Output"
-                }
-
-              "$sourceLabel | $outputLabel"
-            }.getOrDefault("Unknown"),
-          sessionPlayTimeText = sessionPlayTimeText,
-          decoderEfficiencyText = decoderEfficiencyText,
-          thermalStateText = thermalStateText,
-          peakTempText = peakTempText,
-          tempRiseText = tempRiseText,
-        )
-
-      lastCpuMs = currentCpuMs
-      lastTimeMs = currentTimeMs
-
-      delay(if (isPaused) 2000L else 1000L)
-    }
-  }
-
-  Column(
-    modifier =
-      modifier
-        .widthIn(max = 520.dp)
-        .alpha(0.88f),
-    verticalArrangement = Arrangement.spacedBy(1.dp),
-  ) {
-    val baseStyle =
-      MaterialTheme.typography.bodySmall.copy(
-        color = Color.White,
-        fontSize = 8.sp,
-        lineHeight = 10.sp,
-        shadow =
-          Shadow(
-            color = Color.Black,
-            offset =
-              androidx.compose.ui.geometry
-                .Offset(1.2f, 1.2f),
-            blurRadius = 3f,
-          ),
-      )
-    val headerStyle =
-      baseStyle.copy(
-        fontWeight = FontWeight.Bold,
-        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-        fontSize = 8.5.sp,
-      )
-    val labelStyle = baseStyle.copy(fontWeight = FontWeight.Bold)
-    val valueStyle = baseStyle
-
-    OutlinedText(stringResource(R.string.diagnostics_playback_decoder_header), style = headerStyle)
-    OutlinedLabeled("File", stats.fileName, labelStyle, valueStyle)
-    OutlinedLabeled(
-      "Decoder & VO",
-      "${stats.renderContext} | ${stats.video} | Eff: ${stats.decoderEfficiencyText}",
-      labelStyle,
-      valueStyle,
-    )
-    OutlinedLabeled("Audio", "${stats.audio} | HDR: ${stats.hdrActive}", labelStyle, valueStyle)
-
-    when (val currentTorrentState = torrentState) {
-      is TorrentStreamingState.Connecting -> {
-        Spacer(modifier = Modifier.height(2.dp))
-        OutlinedText(stringResource(R.string.diagnostics_torrent_header), style = headerStyle)
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          Box(modifier = Modifier.weight(1f)) {
-            OutlinedLabeled(
-              stringResource(R.string.diagnostics_torrent_peer_status),
-              stringResource(
-                R.string.diagnostics_torrent_peers_value,
-                currentTorrentState.peers,
-                currentTorrentState.seeds,
-              ),
-              labelStyle,
-              valueStyle,
-            )
-          }
-          Box(modifier = Modifier.weight(1f)) {
-            OutlinedLabeled(
-              stringResource(R.string.diagnostics_torrent_transfer),
-              stringResource(
-                R.string.diagnostics_torrent_transfer_value,
-                formatTorrentSpeed(currentTorrentState.downloadSpeed),
-                formatTorrentSpeed(currentTorrentState.uploadSpeed),
-              ),
-              labelStyle,
-              valueStyle,
-            )
-          }
-        }
-      }
-      is TorrentStreamingState.Streaming -> {
-        val fileSize = currentTorrentState.fileSize.coerceAtLeast(0L)
-        val downloadedBytes = currentTorrentState.downloadedBytes.coerceAtLeast(0L).coerceAtMost(fileSize)
-        val bufferProgress =
-          currentTorrentState.bufferProgress
-            .takeIf { it.isFinite() }
-            ?.coerceIn(0f, 1f)
-            ?: 0f
-        Spacer(modifier = Modifier.height(2.dp))
-        OutlinedText(stringResource(R.string.diagnostics_torrent_header), style = headerStyle)
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          Box(modifier = Modifier.weight(1f)) {
-            OutlinedLabeled(
-              stringResource(R.string.diagnostics_torrent_peer_status),
-              stringResource(
-                R.string.diagnostics_torrent_peers_value,
-                currentTorrentState.peers,
-                currentTorrentState.seeds,
-              ),
-              labelStyle,
-              valueStyle,
-            )
-          }
-          Box(modifier = Modifier.weight(1f)) {
-            OutlinedLabeled(
-              stringResource(R.string.diagnostics_torrent_loaded),
-              stringResource(
-                R.string.diagnostics_torrent_loaded_value,
-                formatTorrentBytes(downloadedBytes),
-                formatTorrentBytes(fileSize),
-                (bufferProgress * 100f).roundToInt(),
-              ),
-              labelStyle,
-              valueStyle,
-            )
-          }
-        }
-        OutlinedLabeled(
-          stringResource(R.string.diagnostics_torrent_transfer),
-          stringResource(
-            R.string.diagnostics_torrent_transfer_value,
-            formatTorrentSpeed(currentTorrentState.downloadSpeed),
-            formatTorrentSpeed(currentTorrentState.uploadSpeed),
-          ),
-          labelStyle,
-          valueStyle,
-        )
-        LinearProgressIndicator(
-          progress = { bufferProgress },
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .height(3.dp)
-              .padding(vertical = 0.5.dp),
-        )
-      }
-      is TorrentStreamingState.Error,
-      TorrentStreamingState.Idle,
-      -> Unit
-    }
-
-    Spacer(modifier = Modifier.height(2.dp))
-    OutlinedText(stringResource(R.string.diagnostics_power_thermals_header), style = headerStyle)
-    OutlinedLabeled(
-      "Battery",
-      "${stats.batteryPercentText} | ${stats.batteryWattsText} | Rate: ${stats.batteryRateText}",
-      labelStyle,
-      valueStyle,
-    )
-    OutlinedLabeled(
-      "Temp",
-      "${stats.batteryTempText} (Peak: ${stats.peakTempText} | Rise: ${stats.tempRiseText})",
-      labelStyle,
-      valueStyle,
-    )
-    OutlinedLabeled("Thermal", stats.thermalStateText, labelStyle, valueStyle)
-
-    Spacer(modifier = Modifier.height(2.dp))
-    OutlinedText(stringResource(R.string.diagnostics_session_header), style = headerStyle)
-    OutlinedLabeled("Active", stats.sessionPlayTimeText, labelStyle, valueStyle)
-
-    LinearProgressIndicator(
-      progress = { stats.cpuPercent / 100f },
-      modifier =
-        Modifier
-          .fillMaxWidth()
-          .height(3.dp)
-          .padding(vertical = 0.5.dp),
-    )
-    OutlinedLabeled(stringResource(R.string.diagnostics_app_cpu), "${stats.cpuPercent.toInt()}%", labelStyle, valueStyle)
-
-    Spacer(modifier = Modifier.height(2.dp))
-    OutlinedText(stringResource(R.string.diagnostics_memory_cache_header), style = headerStyle)
-    OutlinedLabeled(
-      stringResource(R.string.diagnostics_process_memory),
-      stats.processMemoryText,
-      labelStyle,
-      valueStyle,
-    )
-    OutlinedLabeled(
-      stringResource(R.string.diagnostics_playback_cache),
-      stats.playbackCacheText,
-      labelStyle,
-      valueStyle,
-    )
-  }
-}
-
-@Composable
-private fun OutlinedText(
-  text: String,
-  style: androidx.compose.ui.text.TextStyle,
-) {
-  Box {
-    Text(
-      text = text,
-      style =
-        style.copy(
-          color = Color.Black,
-          shadow = null,
-          drawStyle =
-            Stroke(
-              width = with(LocalDensity.current) { 1.2.dp.toPx() },
-              join = StrokeJoin.Round,
-            ),
-        ),
-    )
-    Text(
-      text = text,
-      style = style,
-    )
-  }
-}
-
 private const val UNMEASURED_HEIGHT = -1
 
 /** Last measured heights of the bottom-cluster layers, kept while a layer is hidden. */
@@ -3069,43 +2532,6 @@ private val ControlsEdgeVignetteBrush =
     0.95f to Color.Black.copy(alpha = 0.52f),
     1.00f to Color.Black.copy(alpha = 0.58f),
   )
-
-@Composable
-private fun OutlinedLabeled(
-  label: String,
-  value: String,
-  labelStyle: androidx.compose.ui.text.TextStyle,
-  valueStyle: androidx.compose.ui.text.TextStyle,
-) {
-  val annotated =
-    buildAnnotatedString {
-      withStyle(SpanStyle(fontWeight = labelStyle.fontWeight)) {
-        append("$label: ")
-      }
-      withStyle(SpanStyle(fontWeight = valueStyle.fontWeight)) {
-        append(value)
-      }
-    }
-  Box {
-    Text(
-      text = annotated,
-      style =
-        labelStyle.copy(
-          color = Color.Black,
-          shadow = null,
-          drawStyle =
-            Stroke(
-              width = with(LocalDensity.current) { 1.2.dp.toPx() },
-              join = StrokeJoin.Round,
-            ),
-        ),
-    )
-    Text(
-      text = annotated,
-      style = labelStyle,
-    )
-  }
-}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
