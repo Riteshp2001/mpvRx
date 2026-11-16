@@ -1,11 +1,22 @@
 /* SPDX-License-Identifier: AGPL-3.0-or-later */
 package app.gyrolet.mpvrx.ui.player
 
+import android.content.Context
 import java.io.File
 
 /** Keep app-generated scripts out of mpv's user-script autoload directory and cache inventory. */
 internal object MpvScriptAssets {
   fun generatedDirectory(filesDir: File): File = File(filesDir, "mpvrx-generated-scripts")
+
+  @Synchronized
+  fun installStatisticsScript(context: Context): File {
+    val directory = generatedDirectory(context.filesDir)
+    check(directory.isDirectory || directory.mkdirs()) { "Could not create generated script directory" }
+    val source = context.assets.open("mpv/stats.lua").bufferedReader().use { it.readText() }
+    return File(directory, "stats.lua").also { script ->
+      if (!script.isFile || script.readText() != source) script.writeText(source)
+    }
+  }
 
   fun userScriptNames(filesDir: File): Set<String> =
     File(filesDir, "scripts").listFiles()

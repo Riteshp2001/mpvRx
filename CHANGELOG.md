@@ -4,6 +4,8 @@ These notes are written in plain English and focus on what changed for real use.
 
 ## Unreleased
 
+- **Statistics and Console switching:** Statistics use an app-managed, FongMi-compatible Lua renderer with explicit show/hide control instead of blind toggles. FongMi's MEMC, passthrough diagnostics, and text-export binding are retained. Page changes redraw immediately, Off cancels one-shot displays, and delayed Console events no longer replace a newer selection.
+- **Native Page 6 and touch scrolling:** Time, network, battery, thermals, CPU, memory, cache, and torrent information now share stats.lua instead of a separate Compose overlay. Android-only readings are sampled in the background only while Page 6 is visible. Vertical swipes scroll long statistics pages and Console logs without changing volume, brightness, or command history; keyboard scrolling remains available.
 - **External script filenames:** Save As keeps the original filename and extension for Lua scripts and configuration files instead of asking Android to save them as plain-text `.txt` documents.
 - **Ordered audio and subtitle preferences:** Preferred languages and subtitle-title choices use left-to-right fallback order, including two-/three-letter language aliases and regional tags. Saved choices remain fallback options, saved subtitles-off stays off, and sidecar discovery no longer unconditionally selects its first result over the preferred language.
 - **Hold-speed freeze fixed:** Playback-speed ramps and swipe adjustments no longer wait for mpv on the UI thread. New gestures supersede pending speed updates, and updates for a replaced track are discarded.

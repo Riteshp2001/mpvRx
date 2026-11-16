@@ -4726,17 +4726,6 @@ class PlayerActivity :
         handlePauseStateChange(value)
       }
       "eof-reached" -> handleEndOfFile(value)
-      "user-data/mpv/console/open" -> {
-        if (!value) {
-          if (advancedPreferences.enabledStatisticsPage.get() == 7) {
-            advancedPreferences.enabledStatisticsPage.set(0)
-          }
-        } else {
-          if (advancedPreferences.enabledStatisticsPage.get() != 7) {
-            advancedPreferences.enabledStatisticsPage.set(7)
-          }
-        }
-      }
     }
   }
 
