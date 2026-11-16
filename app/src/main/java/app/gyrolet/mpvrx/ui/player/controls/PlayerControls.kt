@@ -2220,7 +2220,9 @@ fun PlayerControls(
               (remaining ?: 0f).takeIf { it > 0f }
                 ?: (seekbarDuration - displayedSeekbarPosition).coerceAtLeast(0f)
 
+            val isLiveMedia by viewModel.isLiveMedia.collectAsState()
             SeekbarWithTimers(
+              isLive = isLiveMedia,
               position = displayedSeekbarPosition,
               committedPosition = precisePosition,
               externalScrubbing = isHorizontalSeekActive,

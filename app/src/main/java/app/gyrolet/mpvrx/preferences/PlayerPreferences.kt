@@ -113,6 +113,9 @@ class PlayerPreferences(
 
   /** Subtitles and the statistics OSD (pages 1-6) scale together with video zoom. */
   val overlaysFollowVideoZoom = preferenceStore.getBoolean("overlays_follow_video_zoom", false)
+
+  /** FongMi build: keep the outgoing picture until the next video's first frame. */
+  val keepVideoFrameBetweenFiles = preferenceStore.getBoolean("keep_video_frame_between_files", true)
   val defaultVideoZoom = preferenceStore.getFloat("default_video_zoom", 0f)
   val panAndZoomEnabled = preferenceStore.getBoolean("pan_and_zoom_enabled", false)
 

@@ -69,6 +69,9 @@ data class TrackNode(
   @SerialName("replaygain-album-gain") val replayGainAlbumGain: Double? = null,
   @SerialName("dolby-vision-profile") val dolbyVisionProfile: Long? = null,
   @SerialName("dolby-vision-level") val dolbyVisionLevel: Long? = null,
+  // FongMi build: the profile before Profile 7 conversion (demuxer-dovi-profile7).
+  @SerialName("source-dolby-vision-profile") val sourceDolbyVisionProfile: Long? = null,
+  @SerialName("source-dolby-vision-level") val sourceDolbyVisionLevel: Long? = null,
   val metadata: Map<String, String?>? = null,
 ) {
   val isAudio = type == "audio"

@@ -915,6 +915,7 @@ class PlayerActivity :
     setupPlayerControls()
     setupAudioPlayerViewObserver()
     setupMotionInterpolationObserver()
+    setupLiveRendererSwitch()
     setupMediaSession()
     lifecycleScope.launch {
       thumbnailRepository.cacheRevision.drop(1).collect {
@@ -951,7 +952,9 @@ class PlayerActivity :
         ) { scripts, enabled, directory -> Triple(scripts, enabled, directory) }
           .collectLatest {
             delay(200)
-            if (!mpvInitialized || !player.userScriptsNeedReload()) return@collectLatest
+            if (!mpvInitialized) return@collectLatest
+            if (applyUserScriptChangesLive()) return@collectLatest
+            if (!player.userScriptsNeedReload()) return@collectLatest
             PlaybackSession.state.first { state ->
               state.phase !in setOf(PlaybackPhase.INITIALIZING, PlaybackPhase.LOADING, PlaybackPhase.STOPPING)
             }
@@ -1578,6 +1581,37 @@ class PlayerActivity :
     PlaybackSession.setPropertyFloat("video-pan-y", mpvPanY)
     viewModel.onAmbientGeometryChanged()
     applySubtitleBlendMode()
+  }
+
+  /**
+   * FongMi build: gpu-next, Vulkan and Anime4K changes made while the player is open move the
+   * playing video to the new renderer instead of waiting for the core to be recreated.
+   */
+  private fun setupLiveRendererSwitch() {
+    if (!FongMiMpv.isBuildSupported) return
+    lifecycleScope.launch {
+      combine(
+        decoderPreferences.gpuNext.changes(),
+        decoderPreferences.useVulkan.changes(),
+        decoderPreferences.enableAnime4K.changes(),
+        decoderPreferences.anime4kMode.changes(),
+      ) { _, _, _, _ -> }
+        .drop(1)
+        .collect {
+          if (!canIssueMpvCommands()) return@collect
+          val switched = withContext(Dispatchers.IO) { player.switchRendererLive() } ?: return@collect
+          if (!canIssueMpvCommands()) return@collect
+          if (switched) {
+            // Shaders, HDR output and the motion core each depend on the renderer.
+            player.applyAnime4KShaders()
+            viewModel.refreshHdrScreenOutputForCurrentVideo()
+            viewModel.motionInterpolation.refresh()
+            applyVideoTransform()
+          } else if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            viewModel.showToast(getString(R.string.player_renderer_switch_failed))
+          }
+        }
+    }
   }
 
   /** Motion interpolation changes the rate the display should run at, so renegotiate it. */
@@ -3814,6 +3848,29 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * FongMi build: syncs the selected scripts and loads or unloads them in the running core, which
+   * keeps playing. False when mpvRx does not manage the core's scripts, e.g. mpv.conf auto-loads.
+   */
+  private suspend fun applyUserScriptChangesLive(): Boolean {
+    if (!FongMiMpv.isBuildSupported || !PlaybackSession.managesUserScriptsLive) return false
+    val userScriptsKey = advancedPreferences.userScriptsConfigurationKey()
+    if (!PlaybackSession.userScriptsDiffer(userScriptsKey)) return true
+    val entries =
+      withContext(Dispatchers.IO) {
+        synchronized(USER_MPV_ASSET_LOCK) {
+          syncFromUserMpvDirectory()
+          rememberUserMpvAssetSelection(getSharedPreferences(MPV_ASSET_SYNC_PREFERENCES, MODE_PRIVATE))
+        }
+        MpvScriptAssets.autoloadEntries(filesDir)
+      }
+    return PlaybackSession.syncManagedUserScripts(
+      entries = entries,
+      location = advancedPreferences.mpvConfStorageUri.get(),
+      userScriptsKey = userScriptsKey,
+    )
+  }
+
   private fun restartForUserScriptChanges(replacementIntent: Intent? = null): Boolean {
     if (!mpvInitialized || !ownsPlaybackSession() || isFinishing || scriptRuntimeRestartPending || !player.userScriptsNeedReload()) return false
     val nextIntent = replacementIntent?.let(::Intent) ?: currentPlaybackIntentForScriptReload() ?: return false
@@ -5531,6 +5588,7 @@ class PlayerActivity :
         duration = duration.toInt(),
         isPositionRestorePending =
           PlaybackSession.isPositionRestorePending(PlaybackSession.state.value.activeGeneration),
+        isLive = PlaybackSession.isLiveMedia(),
         playbackSpeed = PlaybackSession.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
         videoZoom = PlaybackSession.videoZoom.value,
         sid = player.sid,

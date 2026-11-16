@@ -25,6 +25,8 @@ import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.preferences.DecoderPreferences
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SpatialAudioMode
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
@@ -262,6 +264,12 @@ object PlaybackSession : MPVLib.EventObserver {
   private val audioPreferences by lazy {
     org.koin.java.KoinJavaComponent.get<AudioPreferences>(AudioPreferences::class.java)
   }
+  private val decoderPreferences by lazy {
+    org.koin.java.KoinJavaComponent.get<DecoderPreferences>(DecoderPreferences::class.java)
+  }
+  private val playerPreferences by lazy {
+    org.koin.java.KoinJavaComponent.get<PlayerPreferences>(PlayerPreferences::class.java)
+  }
   private val observers = CopyOnWriteArraySet<MPVLib.EventObserver>()
   private val _state = MutableStateFlow(PlaybackSessionState())
   private val _queue = MutableStateFlow(PlaybackQueueState())
@@ -315,6 +323,10 @@ object PlaybackSession : MPVLib.EventObserver {
   private var desiredVideoOutput = "gpu"
   private var activeCoreConfigurationKey: String? = null
   private var activeUserScriptsKey: String? = null
+  // FongMi build: user scripts mpvRx loaded itself, by entry name, with their mpv client ids.
+  private var managesUserScripts = false
+  private val loadedUserScripts = linkedMapOf<String, Long>()
+  private var loadedUserScriptsLocation: String? = null
   private var attachedSurfaceOwner: Any? = null
   private var attachedSurfaceWidth = 0
   private var attachedSurfaceHeight = 0
@@ -377,6 +389,82 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   if (currentKey == AdvancedPreferences.USER_SCRIPTS_DISABLED) return false
   return nativeLock.withLock { initialized && activeUserScriptsKey != currentKey }
 }
+
+  /**
+   * FongMi build, right after init with `load-scripts=no`: loads the user scripts mpv would have
+   * auto-loaded, keeping their client ids so a selection change can unload them. mpv.conf can turn
+   * auto-loading back on; mpv has then loaded them itself and changes keep restarting the core.
+   */
+  internal fun loadManagedUserScripts(
+    entries: List<java.io.File>,
+    location: String,
+  ) {
+    withReadyCore(Unit) {
+      managesUserScripts = FongMiMpv.isBuildSupported && MPVLib.getPropertyString("load-scripts") == "no"
+      if (managesUserScripts) syncManagedUserScriptsLocked(entries, location)
+    }
+  }
+
+  /** Whether user-script changes can be applied to the running core. */
+  internal val managesUserScriptsLive: Boolean
+    get() = nativeLock.withLock { initialized && managesUserScripts }
+
+  /** Unlike [userScriptsNeedReload], also reports switching scripts off. */
+  internal fun userScriptsDiffer(currentKey: String): Boolean =
+    nativeLock.withLock { initialized && activeUserScriptsKey != currentKey }
+
+  /**
+   * Unloads scripts that left [entries] and loads the new ones, then records [userScriptsKey] as
+   * the running selection. A changed scripts [location] reloads every script, since equal names
+   * may now hold different files.
+   */
+  internal fun syncManagedUserScripts(
+    entries: List<java.io.File>,
+    location: String,
+    userScriptsKey: String,
+  ): Boolean =
+    withReadyCore(false) {
+      if (!initialized || !managesUserScripts) return@withReadyCore false
+      syncManagedUserScriptsLocked(entries, location)
+      val previous = activeUserScriptsKey
+      activeUserScriptsKey = userScriptsKey
+      // The core key embeds the selection (MPVView.initializeCoreSession); keep its other parts.
+      activeCoreConfigurationKey =
+        activeCoreConfigurationKey?.let { key ->
+          val segment = "|scripts=$previous|"
+          if (previous != null && segment in key) key.replace(segment, "|scripts=$userScriptsKey|") else null
+        }
+      true
+    }
+
+  private fun syncManagedUserScriptsLocked(
+    entries: List<java.io.File>,
+    location: String,
+  ) {
+    val wanted = entries.associateBy { it.name }
+    val reloadAll = loadedUserScriptsLocation != null && loadedUserScriptsLocation != location
+    val iterator = loadedUserScripts.entries.iterator()
+    while (iterator.hasNext()) {
+      val (name, clientId) = iterator.next()
+      if (reloadAll || name !in wanted) {
+        // Shutdown is queued; mpv drops the script's bindings and overlays as its client ends.
+        runCatching { MPVLib.command("unload-script", clientId.toString()) }
+          .onFailure { Log.w(TAG, "Could not unload script $name", it) }
+        iterator.remove()
+      }
+    }
+    wanted.forEach { (name, file) ->
+      if (name in loadedUserScripts) return@forEach
+      val clientId =
+        runCatching { MPVLib.commandNode("load-script", file.absolutePath)?.get("client_id")?.asInt() }.getOrNull()
+      if (clientId != null && clientId > 0) {
+        loadedUserScripts[name] = clientId
+      } else {
+        Log.w(TAG, "Could not load script $name")
+      }
+    }
+    loadedUserScriptsLocation = location
+  }
 
   fun reloadMpvConfig(configPath: String): Boolean =
     nativeLock.withLock {
@@ -736,6 +824,20 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
 
   fun isOsdSurfaceAttachedTo(owner: Any): Boolean = nativeLock.withLock { attachedOsdOwner === owner }
 
+  /**
+   * FongMi build: the cover picture mpv found in the playing file. Audio plays without a selected
+   * video track, so every track is checked rather than current-tracks/video.
+   */
+  fun albumArtBytes(): ByteArray? =
+    withReadyCore(null) {
+      if (!FongMiMpv.isBuildSupported) return@withReadyCore null
+      val count = MPVLib.getPropertyInt("track-list/count") ?: return@withReadyCore null
+      (0 until count).firstNotNullOfOrNull { index -> FongMiMpv.getPropertyByteArray("track-list/$index/albumart-data") }
+    }
+
+  /** FongMi build: whether mpv reports the current media as a live broadcast. */
+  fun isLiveMedia(): Boolean = FongMiMpv.isBuildSupported && getPropertyBoolean(FongMiMpv.MEDIA_LIVE) == true
+
   fun unbindOsdSurface(owner: Any): Boolean =
     withCore(default = false) {
       if (attachedOsdOwner !== owner) return@withCore false
@@ -756,11 +858,19 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     if (!MpvConfigOverridePolicy.isOwnedByMpvConf("android-dolby-vision-output")) {
       MPVLib.setPropertyString("android-dolby-vision-output", output)
     }
-    // Phones decode Dolby Vision profiles 5 and 8, so profile 7 remuxes are converted to 8.1.
-    if (!MpvConfigOverridePolicy.isOwnedByMpvConf("demuxer-dovi-profile7")) {
-      MPVLib.setPropertyString("demuxer-dovi-profile7", if (output == "direct") "p81" else "preserve")
-    }
     appliedDolbyVisionOutput = output
+    applyDolbyVisionProfile7Locked()
+  }
+
+  /** Profile 7 handling follows the output; the demuxer reads it when the next file opens. */
+  fun applyDolbyVisionProfile7() {
+    withCore(Unit) { if (DolbyVisionDirect.isBuildSupported) applyDolbyVisionProfile7Locked() }
+  }
+
+  private fun applyDolbyVisionProfile7Locked() {
+    if (MpvConfigOverridePolicy.isOwnedByMpvConf("demuxer-dovi-profile7")) return
+    val direct = appliedDolbyVisionOutput == "direct"
+    MPVLib.setPropertyString("demuxer-dovi-profile7", decoderPreferences.doviProfile7.get().mpvValueFor(direct))
   }
 
   fun isRendererReadyFor(owner: Any): Boolean =
@@ -842,6 +952,35 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   /** The configured video output, even while background playback has swapped mpv to `null`. */
   val videoOutput: String
     get() = desiredVideoOutput
+
+  /**
+   * FongMi build: rebuilds only the playing video's output on another GPU renderer, keeping the
+   * file, position and audio (`android-set-gpu-output`). mpv rolls back to the previous output on
+   * failure. False when it cannot switch now, e.g. without a playing video track. Blocks while
+   * the output is rebuilt, so callers stay off the main thread.
+   */
+  fun switchGpuOutput(
+    gpuNext: Boolean,
+    vulkan: Boolean,
+    fromBackendKey: String,
+    toBackendKey: String,
+  ): Boolean =
+    withReadyCore(false) {
+      if (!FongMiMpv.isBuildSupported || !rendererOutputReady) return@withReadyCore false
+      val switched =
+        runCatching {
+          MPVLib.commandNode("android-set-gpu-output", if (gpuNext) "yes" else "no", if (vulkan) "yes" else "no")
+        }.getOrNull() != null
+      if (switched) {
+        desiredVideoOutput = if (gpuNext) "gpu-next" else "gpu"
+        // The core now matches the new renderer selection; anything unexpected rebuilds it on reopen.
+        activeCoreConfigurationKey =
+          activeCoreConfigurationKey
+            ?.takeIf { it.startsWith("$fromBackendKey|") }
+            ?.let { toBackendKey + it.removePrefix(fromBackendKey) }
+      }
+      switched
+    }
 
   fun markBackground() {
     updateState { current ->
@@ -1081,6 +1220,9 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     attachedSurfaceOwner = null
     attachedOsdOwner = null
     appliedDolbyVisionOutput = null
+    managesUserScripts = false
+    loadedUserScripts.clear()
+    loadedUserScriptsLocation = null
     attachedSurfaceWidth = 0
     attachedSurfaceHeight = 0
     runCatching { unregisterNativeObserver() }
@@ -1426,6 +1568,15 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         MPVLib.setPropertyString("force-window", "no")
       }
 
+      // The outgoing picture stays on the Surface until the next file's first frame. An audio or
+      // unidentified item may never deliver one, so it gets the normal blank reset instead.
+      if (FongMiMpv.isBuildSupported && !MpvConfigOverridePolicy.isOwnedByMpvConf("android-keep-video-frame")) {
+        val keepFrame =
+          playerPreferences.keepVideoFrameBetweenFiles.get() &&
+            resolvedItem.declaredMediaKind() == DeclaredPlaybackMediaKind.VIDEO
+        MPVLib.setPropertyString("android-keep-video-frame", if (keepFrame) "yes" else "no")
+      }
+
       // Disable the outgoing track only once this replacement request owns the native lock. Doing
       // it during asynchronous URI preparation can blank playback even when that work is cancelled.
       MPVLib.setPropertyString("vid", "no")
@@ -1445,6 +1596,8 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
           if (flattenEditions && !MpvConfigOverridePolicy.isOwnedByMpvConf("flatten-editions")) {
             add("flatten-editions=yes")
           }
+          // mpv only recognises disc images by a URI ending in .iso.
+          if (FongMiMpv.isBuildSupported && resolvedItem.isIsoWithoutIsoUri(playableUri)) add("force-iso=yes")
         }.joinToString(",")
       PlaybackPerformanceTrace.mark("LOADFILE_SENT", "generation=$generation")
       MPVLib.command("loadfile", playableUri, "replace", "-1", loadOptions)
@@ -1703,6 +1856,21 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       }
     }
   }
+
+  internal fun setPlaybackSpeedForGeneration(
+    expectedGeneration: Long,
+    speed: Float,
+    canApply: () -> Boolean,
+  ): Boolean =
+    withReadyCore(false) {
+      val current = _state.value
+      if (!canApply() || current.generation != expectedGeneration || loadedGeneration != expectedGeneration ||
+        current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND) ||
+        MpvConfigOverridePolicy.isOwnedByMpvConf("speed")
+      ) return@withReadyCore false
+      MPVLib.setPropertyFloat("speed", speed)
+      true
+    }
 
   fun getPropertyBoolean(property: String): Boolean? = withReadyCore(null) { MPVLib.getPropertyBoolean(property) }
 

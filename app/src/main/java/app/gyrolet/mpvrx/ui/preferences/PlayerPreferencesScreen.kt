@@ -320,6 +320,23 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                 },
               )
 
+              if (app.gyrolet.mpvrx.BuildConfig.MPV_SUPPORTS_FONGMI_EXTENSIONS) {
+                PreferenceDivider()
+                val keepVideoFrame by preferences.keepVideoFrameBetweenFiles.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_keep_video_frame_title),
+                  value = keepVideoFrame,
+                  onValueChange = preferences.keepVideoFrameBetweenFiles::set,
+                  title = { Text(stringResource(R.string.pref_keep_video_frame_title)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_keep_video_frame_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+              }
+
               PreferenceDivider()
 
               val playlistMode by preferences.playlistMode.collectAsState()

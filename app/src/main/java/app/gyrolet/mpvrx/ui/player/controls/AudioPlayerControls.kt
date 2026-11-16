@@ -384,6 +384,28 @@ private fun rememberAudioPresentationMetadata(
   return metadata
 }
 
+/** FongMi build: decodes the cover mpv parsed from the playing file, once per [key]. */
+@Composable
+private fun rememberMpvAlbumArt(
+  enabled: Boolean,
+  key: Any?,
+): Bitmap? {
+  val active = enabled && app.gyrolet.mpvrx.ui.player.FongMiMpv.isBuildSupported
+  val artwork by androidx.compose.runtime.produceState<Bitmap?>(null, active, key) {
+    value =
+      if (!active) {
+        null
+      } else {
+        withContext(Dispatchers.IO) {
+          PlaybackSession.albumArtBytes()?.let { bytes ->
+            runCatching { android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size) }.getOrNull()
+          }
+        }
+      }
+  }
+  return artwork
+}
+
 @Composable
 internal fun rememberAudioAlbumArt(
   pathOrUri: String?,
@@ -918,7 +940,14 @@ fun AudioPlayerControls(
       pathOrUri = currentMediaSource?.takeIf { isAudiobook || isLocalArtworkSource(it) } ?: mediaPath?.takeIf { it.isNotBlank() } ?: currentMediaSource,
       artworkUri = currentArtworkUri,
     )
-  val albumArtBitmap = currentAudioPresentation?.artwork
+  // Android's retriever cannot read covers from streams; FongMi's mpv already parsed the file's own.
+  val hasMpvAlbumArt by viewModel.hasAlbumArt.collectAsState()
+  val mpvAlbumArt =
+    rememberMpvAlbumArt(
+      enabled = currentAudioPresentation != null && currentAudioPresentation.artwork == null && hasMpvAlbumArt,
+      key = currentItem?.stableId,
+    )
+  val albumArtBitmap = currentAudioPresentation?.artwork ?: mpvAlbumArt
 
   fun cleanSongTitle(
     title: String,
@@ -2369,7 +2398,9 @@ fun AudioPlayerControls(
             ?: (currentDurSec - currentPosSec).coerceAtLeast(0f)
 
         androidx.compose.runtime.key(audiobook?.book?.id ?: currentItem?.stableId) {
+        val isLiveMedia by viewModel.isLiveMedia.collectAsState()
         SeekbarWithTimers(
+          isLive = isLiveMedia,
           position = timelinePosition,
           committedPosition = timelinePosition,
           duration = timelineDuration.coerceAtLeast(1f),

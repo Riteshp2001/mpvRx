@@ -30,6 +30,10 @@ class DecoderPreferences(
 
   /** FongMi build: let MediaCodec render Dolby Vision directly, with subtitles on an overlay. */
   val dolbyVisionDirect = preferenceStore.getBoolean("dolby_vision_direct", false)
+  val doviProfile7 = preferenceStore.getEnum("dovi_profile7", DolbyVisionProfile7.Automatic)
+
+  /** FongMi build: how hardware-decoded frames are imported into Vulkan. */
+  val vulkanFrameImport = preferenceStore.getEnum("vulkan_frame_import", VulkanFrameImport.Auto)
 
   /** Boost SDR content into the HDR range when using the Linear HDR pipeline. */
   val boostSdrToHdr = preferenceStore.getBoolean("boost_sdr_to_hdr", true)

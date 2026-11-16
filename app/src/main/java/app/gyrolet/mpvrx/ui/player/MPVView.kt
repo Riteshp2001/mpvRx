@@ -502,6 +502,20 @@ class MPVView(
     // rendering heuristic, matching mpv's defaults.
     PlaybackSession.setOptionString("vd-lavc-dr", "auto")
 
+    // mpv.conf is parsed during init, after these, so its own values still win.
+    if (FongMiMpv.isBuildSupported) {
+      PlaybackSession.setOptionString(
+        "android-vulkan-aimagereader-backend",
+        decoderPreferences.vulkanFrameImport.get().mpvValue,
+      )
+      PlaybackSession.setOptionString(
+        "demuxer-dovi-profile7",
+        decoderPreferences.doviProfile7.get().mpvValueFor(directOutput = false),
+      )
+      // postInitOptions loads the user scripts itself, so they can be unloaded again live.
+      PlaybackSession.setOptionString("load-scripts", "no")
+    }
+
     if (inputs.useYuv420p) {
       PlaybackSession.setOptionString("vf", "format=yuv420p")
     }
@@ -615,6 +629,13 @@ class MPVView(
       }
     }
     pendingStartupShaders = null
+
+    if (FongMiMpv.isBuildSupported) {
+      PlaybackSession.loadManagedUserScripts(
+        MpvScriptAssets.autoloadEntries(context.filesDir),
+        advancedPreferences.mpvConfStorageUri.get(),
+      )
+    }
 
     when (decoderPreferences.debanding.get()) {
       Debanding.None -> {}
@@ -983,6 +1004,13 @@ class MPVView(
         "secondary-sub-pos" to
           clampSubtitlePosition(subtitlesPreferences.secondarySubPos.get()).toString(),
       )
+      if (FongMiMpv.isBuildSupported) {
+        add("sub-offset-y" to subtitlesPreferences.subOffsetY.get().toString())
+        add("secondary-sub-offset-y" to subtitlesPreferences.secondarySubOffsetY.get().toString())
+        add("image-subs-brightness" to subtitlesPreferences.imageSubsBrightness.get().toString())
+        add("image-subs-override" to if (subtitlesPreferences.imageSubsOverride.get()) "yes" else "no")
+        add("image-subs-color" to subtitlesPreferences.imageSubsColor.get().toColorHexString())
+      }
     }
   }
 
@@ -1119,6 +1147,51 @@ class MPVView(
       usesVulkan = usesVulkan,
       buildSupportsMediaCodecVulkan = BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN,
     )
+
+  /**
+   * FongMi build: moves the playing video to the renderer the gpu-next, Vulkan and Anime4K settings
+   * now select, without recreating the core. Null when the renderer already matches, else whether
+   * mpv switched. Blocks while mpv rebuilds the output, so call it off the main thread.
+   */
+  internal fun switchRendererLive(): Boolean? {
+    // An OpenGL retry after a failed Vulkan start keeps the renderer it could open, and mpv.conf
+    // keeps a renderer it chose itself.
+    if (!FongMiMpv.isBuildSupported || forceOpenGlFallback ||
+      MpvConfigOverridePolicy.isOwnedByMpvConf("gpu-api") || MpvConfigOverridePolicy.isOwnedByMpvConf("gpu-context")
+    ) {
+      return null
+    }
+    val target =
+      selectRenderBackend(
+        anime4kEnabled = decoderPreferences.enableAnime4K.get() && decoderPreferences.anime4kMode.get() != "OFF",
+        gpuNextEnabled = decoderPreferences.gpuNext.get(),
+        vulkanEnabled =
+          RendererBackendPolicy.canUseVulkan(
+            buildIncludesVulkan = BuildConfig.MPV_SUPPORTS_VULKAN,
+            deviceSupportsVulkan = VulkanCapabilities.isDeviceSupported(context),
+            userEnabledVulkan = decoderPreferences.useVulkan.get(),
+            forceOpenGlFallback = false,
+          ),
+      )
+    val current =
+      RenderBackendSelection(
+        vo = PlaybackSession.videoOutput,
+        gpuApi = PlaybackSession.getPropertyString("gpu-api").orEmpty(),
+        gpuContext = PlaybackSession.getPropertyString("gpu-context").orEmpty(),
+        reason = "running",
+      )
+    if (target.configurationKey == current.configurationKey) return null
+    val switched =
+      PlaybackSession.switchGpuOutput(
+        gpuNext = target.vo == "gpu-next",
+        vulkan = target.gpuApi == "vulkan",
+        fromBackendKey = current.configurationKey,
+        toBackendKey = target.configurationKey,
+      )
+    // Cached init inputs hold the previous renderer selection.
+    if (switched) preparedInitInputs = null
+    return switched
+  }
 
   /**
    * Pure decision over already-resolved ingredients. [initOptions] passes the precomputed values;

@@ -4,6 +4,7 @@ These notes are written in plain English and focus on what changed for real use.
 
 ## Unreleased
 
+- **Hold-speed freeze fixed:** Playback-speed ramps and swipe adjustments no longer wait for mpv on the UI thread. New gestures supersede pending speed updates, and updates for a replaced track are discarded.
 - **Recent-playback markers in Tree mode:** The latest played video now receives the same italic, highlighted title as in other browser views, including Tree list, grid, and search results.
 - **Clearer Liquid Glass player controls:** Removed the extra dark overlay and reduced the edge vignette so subtitles remain easier to read. Text labels match their icons, and hidden regular and custom button backgrounds retain readable content.
 - **Custom OpenAI-compatible AI provider:** Added an API base URL, a separate optional key, manual model IDs, and optional model discovery for Chat Completions. Endpoint errors remain visible without exposing the configured key.

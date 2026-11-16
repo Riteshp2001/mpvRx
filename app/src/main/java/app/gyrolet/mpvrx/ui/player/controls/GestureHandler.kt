@@ -602,6 +602,7 @@ fun GestureHandler(
             }
           }
         }.pointerInput(
+          mediaGeneration,
           areControlsLocked,
           multipleSpeedGesture,
           brightnessGesture,
@@ -710,7 +711,7 @@ fun GestureHandler(
             var longPressJob =
               coroutineScope.launch {
                 delay(longPressDelay)
-                if (!longPressTriggered) {
+                if (!longPressTriggered && PlaybackSession.isCurrentGeneration(subtitleGestureGeneration)) {
                   // Gesture movement cancels the subtitle hold before this callback runs.
                   if (subtitleHoldEligible || !isStartOnSubtitleText) {
                     if (subtitleHoldEligible && claimGesture(GestureOwner.SUBTITLE_VERTICAL)) {
@@ -742,17 +743,8 @@ fun GestureHandler(
                       longPressTriggeredDuringTouch = true
                       actionHaptics.pickup()
                       originalSpeed = playbackSpeed ?: 1f
-                      // Ramp speed up incrementally to avoid audio filter stutter
-                      val startSpeed = originalSpeed
                       val targetSpeed = nearestHoldSpeedPreset(multipleSpeedGesture)
-                      val steps = 5
-                      val stepDelay = 16L // ~one frame per step
-                      for (i in 1..steps) {
-                        val t = i.toFloat() / steps
-                        val intermediateSpeed = startSpeed + (targetSpeed - startSpeed) * t
-                        PlaybackSession.setPropertyFloat("speed", intermediateSpeed)
-                        if (i < steps) delay(stepDelay)
-                      }
+                      viewModel.setGesturePlaybackSpeed(targetSpeed, subtitleGestureGeneration, ramp = true)
 
                       isDynamicSpeedControlActive = true
                       hasSwipedEnough = false
@@ -995,7 +987,7 @@ fun GestureHandler(
                               isSpeedLocked = false
                               isDynamicSpeedControlActive = false
                               originalSpeed = playerPreferences.defaultSpeed.get()
-                              PlaybackSession.setPropertyFloat("speed", originalSpeed)
+                              viewModel.setGesturePlaybackSpeed(originalSpeed, subtitleGestureGeneration)
                               actionHaptics.pickup()
                               viewModel.playerUpdate.update {
                                 PlayerUpdates.ShowText(context.getString(R.string.player_speed_gesture_restored))
@@ -1027,7 +1019,7 @@ fun GestureHandler(
                               if (abs(lastAppliedSpeed - newSpeed) > 0.01f) {
                                 actionHaptics.tick()
                                 lastAppliedSpeed = newSpeed
-                                PlaybackSession.setPropertyFloat("speed", newSpeed)
+                                viewModel.setGesturePlaybackSpeed(newSpeed, subtitleGestureGeneration)
                                 viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(newSpeed) }
                               }
                             }
@@ -1189,19 +1181,7 @@ fun GestureHandler(
                 isDynamicSpeedControlActive = false
                 hasSwipedEnough = false
                 if (!isSpeedLocked) {
-                  // Ramp speed back down incrementally to avoid audio filter stutter
-                  val currentSpeed = PlaybackSession.getPropertyFloat("speed") ?: multipleSpeedGesture
-                  val targetSpeed = originalSpeed
-                  val steps = 5
-                  val stepDelay = 16L
-                  coroutineScope.launch {
-                    for (i in 1..steps) {
-                      val t = i.toFloat() / steps
-                      val intermediateSpeed = currentSpeed + (targetSpeed - currentSpeed) * t
-                      PlaybackSession.setPropertyFloat("speed", intermediateSpeed)
-                      if (i < steps) delay(stepDelay)
-                    }
-                  }
+                  viewModel.setGesturePlaybackSpeed(originalSpeed, subtitleGestureGeneration, ramp = true)
                 }
                 viewModel.playerUpdate.update { PlayerUpdates.None }
               }
@@ -1268,7 +1248,7 @@ fun GestureHandler(
                 viewModel.playerUpdate.update { PlayerUpdates.None }
               }
               if (isLongPressing) {
-                if (!isSpeedLocked) PlaybackSession.setPropertyFloat("speed", originalSpeed)
+                if (!isSpeedLocked) viewModel.setGesturePlaybackSpeed(originalSpeed, subtitleGestureGeneration)
                 isLongPressing = false
                 isDynamicSpeedControlActive = false
                 viewModel.playerUpdate.update { PlayerUpdates.None }

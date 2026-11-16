@@ -9,6 +9,7 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
+import app.gyrolet.mpvrx.ui.player.FongMiMpv
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
 import androidx.annotation.StringRes
@@ -45,18 +46,23 @@ import androidx.core.graphics.toColorInt
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.preference.Preference
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.preferences.preference.deleteAndGet
 import app.gyrolet.mpvrx.presentation.components.ExpandableCard
+import app.gyrolet.mpvrx.presentation.components.SliderItem
 import app.gyrolet.mpvrx.ui.components.ExpressiveColorPicker
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.applySubtitleLayout
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
+import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
+import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject
 
 @Composable
@@ -86,6 +92,7 @@ fun SubtitleSettingsColorsCard(
     Column(verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing)) {
       AssOverrideWarningBanner(viewModel = viewModel, preferences = preferences)
 
+      val colorTypes = remember { SubColorType.entries.filter { it != SubColorType.Image || FongMiMpv.isBuildSupported } }
       var currentColorType by remember { mutableStateOf(SubColorType.Text) }
       var currentColor by remember { mutableIntStateOf(getCurrentMPVColor(currentColorType)) }
       LaunchedEffect(currentColorType) {
@@ -106,7 +113,7 @@ fun SubtitleSettingsColorsCard(
             .horizontalScroll(rememberScrollState())
             .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
       ) {
-        SubColorType.entries.forEach { type ->
+        colorTypes.forEach { type ->
           IconToggleButton(
             checked = currentColorType == type,
             onCheckedChange = { currentColorType = type },
@@ -116,6 +123,7 @@ fun SubtitleSettingsColorsCard(
                 SubColorType.Text -> Icons.RoundedFilled.FormatColorText
                 SubColorType.Border -> Icons.RoundedFilled.BorderColor
                 SubColorType.Shadow -> Icons.RoundedFilled.Shadow
+                SubColorType.Image -> Icons.RoundedFilled.Image
               },
               null,
             )
@@ -150,9 +158,58 @@ fun SubtitleSettingsColorsCard(
           currentColorType.preference(preferences).set(it)
           val hexColor = it.toColorHexString()
           PlaybackSession.setPropertyString(currentColorType.property, hexColor)
+          // An image subtitle colour only shows while recolouring is on.
+          if (currentColorType == SubColorType.Image && !preferences.imageSubsOverride.get()) {
+            preferences.imageSubsOverride.set(true)
+            PlaybackSession.setPropertyString("image-subs-override", "yes")
+          }
         },
       )
+      if (currentColorType == SubColorType.Image) {
+        ImageSubtitleControls(preferences, configOwnedOptions)
+      }
     }
+  }
+}
+
+/** PGS, VobSub and DVB subtitles are pictures, so they get a recolour switch and brightness instead of styles. */
+@Composable
+private fun ImageSubtitleControls(
+  preferences: SubtitlesPreferences,
+  configOwnedOptions: Set<String>,
+) {
+  val recolor by preferences.imageSubsOverride.collectAsState()
+  val brightness by preferences.imageSubsBrightness.collectAsState()
+  ProvidePreferenceLocals {
+    SwitchPreference(
+      recolor,
+      groupIndex = 0,
+      groupSize = 2,
+      enabled = "image-subs-override" !in configOwnedOptions,
+      onValueChange = {
+        preferences.imageSubsOverride.set(it)
+        PlaybackSession.setPropertyString("image-subs-override", if (it) "yes" else "no")
+      },
+      title = { Text(stringResource(R.string.player_sheets_sub_image_recolor)) },
+    )
+  }
+  PanelConnectedTile(index = 1, itemCount = 2) {
+    SliderItem(
+      label = stringResource(R.string.player_sheets_sub_image_brightness),
+      value = brightness,
+      valueText = brightness.toFixed(2).toString(),
+      onChange = {
+        preferences.imageSubsBrightness.set(it)
+        PlaybackSession.setPropertyDouble("image-subs-brightness", it.toDouble())
+      },
+      max = 2f,
+      min = 0.5f,
+      // 0.05 steps between 0.5 and 2.0.
+      steps = 29,
+      enabled = "image-subs-brightness" !in configOwnedOptions,
+      hapticLandmarks = listOf(1f),
+      icon = { Icon(Icons.RoundedFilled.BrightnessMedium, null) },
+    )
   }
 }
 
@@ -184,6 +241,13 @@ enum class SubColorType(
     "sub-shadow-color",
     preference = SubtitlesPreferences::shadowColor,
   ),
+
+  /** FongMi build only. */
+  Image(
+    R.string.player_sheets_subtitles_color_image,
+    "image-subs-color",
+    preference = SubtitlesPreferences::imageSubsColor,
+  ),
 }
 
 fun resetColors(
@@ -195,6 +259,12 @@ fun resetColors(
       SubColorType.Text -> preferences.textColor.deleteAndGet().toColorHexString()
       SubColorType.Border -> preferences.borderColor.deleteAndGet().toColorHexString()
       SubColorType.Shadow -> preferences.shadowColor.deleteAndGet().toColorHexString()
+      SubColorType.Image -> {
+        val recolor = preferences.imageSubsOverride.deleteAndGet()
+        PlaybackSession.setPropertyString("image-subs-override", if (recolor) "yes" else "no")
+        PlaybackSession.setPropertyDouble("image-subs-brightness", preferences.imageSubsBrightness.deleteAndGet().toDouble())
+        preferences.imageSubsColor.deleteAndGet().toColorHexString()
+      }
     }
   PlaybackSession.setPropertyString(type.property, hexColor)
 }

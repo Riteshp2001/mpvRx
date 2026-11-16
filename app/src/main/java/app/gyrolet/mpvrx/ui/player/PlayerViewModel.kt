@@ -51,6 +51,7 @@ import app.gyrolet.mpvrx.domain.syncplay.SyncplayFile
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayPlaybackState
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioChannels
+import app.gyrolet.mpvrx.preferences.AudioPassthrough
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
@@ -1067,6 +1068,16 @@ class PlayerViewModel(
       }
     }.distinctUntilChanged()
       .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+  /** FongMi build: mpv reports a live broadcast (HLS/DASH live, RTSP, endless streams). */
+  val isLiveMedia: StateFlow<Boolean> =
+    if (FongMiMpv.isBuildSupported) {
+      PlaybackSession.propBoolean[FongMiMpv.MEDIA_LIVE]
+        .map { it == true }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    } else {
+      MutableStateFlow(false)
+    }
 
   val hasAlbumArt: StateFlow<Boolean> =
     allTracks
@@ -2868,6 +2879,20 @@ fun restartFromBeginning() {
         // mpv reopens the audio decoder and falls back to PCM if the output rejects the format.
         if (_isMpvCoreReady.value) PlaybackSession.setPropertyString("audio-spdif", passthrough.codecs)
       }
+    }
+    // FongMi's mpv reports that fallback. Say so once per setting, not on every file of a playlist.
+    if (FongMiMpv.isBuildSupported && !hostedInBrowser) viewModelScope.launch {
+      var notified = false
+      launch { audioPreferences.audioPassthrough.changes().drop(1).collect { notified = false } }
+      PlaybackSession.propBoolean[FongMiMpv.AUDIO_PASSTHROUGH_FAILED]
+        .map { it == true }
+        .distinctUntilChanged()
+        .collect { failed ->
+          if (failed && !notified && audioPreferences.audioPassthrough.get() != AudioPassthrough.Off) {
+            notified = true
+            showToast(appContext.getString(R.string.player_passthrough_failed))
+          }
+        }
     }
     viewModelScope.launch(playbackStateDispatcher) {
       audioPreferences.audioOutput.changes().distinctUntilChanged().drop(1).collect { output ->
@@ -5652,19 +5677,49 @@ fun restartFromBeginning() {
   }
 
   // mpv property writes block until the core handles them; gestures must never wait on that.
-  private val subtitleGestureDispatcher = Dispatchers.IO.limitedParallelism(1)
+  private val gesturePropertyDispatcher = Dispatchers.IO.limitedParallelism(1)
+  private var speedGestureJob: Job? = null
   private val pendingSubtitleProperties = ConcurrentHashMap<String, Float>()
   private val subtitleFlushQueued = AtomicBoolean(false)
   @Volatile private var savedSubtitleBoxStyle: SubtitleGestureBoxStyle? = null
   @Volatile private var hiddenSubtitleVisibility: String? = null
   private var lastSubtitleGestureText: String? = null
 
+  internal fun setGesturePlaybackSpeed(
+    speed: Float,
+    expectedGeneration: Long,
+    ramp: Boolean = false,
+  ) {
+    require(speed.isFinite() && speed > 0f)
+    if (!PlaybackSession.isCurrentGeneration(expectedGeneration) ||
+      MpvConfigOverridePolicy.isOwnedByMpvConf("speed")
+    ) return
+
+    speedGestureJob?.cancel()
+    speedGestureJob = viewModelScope.launch(gesturePropertyDispatcher) {
+      val startSpeed = if (ramp) {
+        PlaybackSession.readLoadedMedia(expectedGeneration) { reader -> reader.double("speed")?.toFloat() }
+          ?: return@launch
+      } else {
+        speed
+      }
+      if (ramp && startSpeed == speed) return@launch
+      val steps = if (ramp) 5 else 1
+      for (step in 1..steps) {
+        ensureActive()
+        val value = if (step == steps) speed else startSpeed + (speed - startSpeed) * step / steps
+        if (!PlaybackSession.setPlaybackSpeedForGeneration(expectedGeneration, value) { isActive }) return@launch
+        if (step < steps) delay(16)
+      }
+    }
+  }
+
   /** Only the newest value per property reaches mpv, so fast drags never queue up stale frames. */
   private fun queueSubtitleProperty(property: String, value: Float) {
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
     pendingSubtitleProperties[property] = value
     if (!subtitleFlushQueued.compareAndSet(false, true)) return
-    viewModelScope.launch(subtitleGestureDispatcher) {
+    viewModelScope.launch(gesturePropertyDispatcher) {
       subtitleFlushQueued.set(false)
       pendingSubtitleProperties.keys.toList().forEach { key ->
         pendingSubtitleProperties.remove(key)?.let { PlaybackSession.setPropertyFloat(key, it) }
@@ -5703,7 +5758,7 @@ fun restartFromBeginning() {
    * The style is shared by both tracks, so the other track is hidden until release when [target] is set.
    */
   fun setSubtitleGestureHighlight(active: Boolean, target: SubtitleGestureTarget? = null) {
-    viewModelScope.launch(subtitleGestureDispatcher) {
+    viewModelScope.launch(gesturePropertyDispatcher) {
       if (active) {
         if (savedSubtitleBoxStyle != null) return@launch
         val style = SubtitleGestureBoxStyle(
