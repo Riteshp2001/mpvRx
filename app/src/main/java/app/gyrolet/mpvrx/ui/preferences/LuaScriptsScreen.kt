@@ -54,6 +54,7 @@ import app.gyrolet.mpvrx.ui.lua.LuaSelectionFootnote
 import app.gyrolet.mpvrx.ui.lua.rememberLuaScriptsCatalog
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalRootBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
@@ -67,6 +68,7 @@ object LuaScriptsScreen : Screen {
   override fun Content() {
     val context = LocalContext.current
     val backStack = LocalBackStack.current
+    val editorBackStack = LocalRootBackStack.current ?: backStack
     val preferences = koinInject<AdvancedPreferences>()
     val mpvConfStorageLocation by preferences.mpvConfStorageUri.collectAsState()
     val selectedScripts by preferences.selectedLuaScripts.collectAsState()
@@ -76,6 +78,7 @@ object LuaScriptsScreen : Screen {
         storageUri = mpvConfStorageLocation,
         selectedScripts = selectedScripts,
         onSelectionPruned = preferences.selectedLuaScripts::set,
+        refreshKey = editorBackStack.size to backStack.size,
       )
     val enabledScriptsCount = selectedScripts.count { it in catalog.availableScripts }
     val scriptsListEnabled = enableLuaScripts && mpvConfStorageLocation.isNotBlank()
@@ -181,7 +184,7 @@ object LuaScriptsScreen : Screen {
       },
       floatingActionButton = {
         FloatingActionButton(
-          onClick = { backStack.navigateTo(LuaScriptEditorScreen(scriptName = null)) },
+          onClick = { editorBackStack.navigateTo(LuaScriptEditorScreen(scriptName = null)) },
           containerColor = MaterialTheme.colorScheme.primaryContainer,
           modifier = Modifier.padding(bottom = app.gyrolet.mpvrx.ui.browser.fab.FabPlacement.scaffoldBottomPadding()),
         ) {
@@ -264,7 +267,7 @@ object LuaScriptsScreen : Screen {
                       tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                   }
-                  IconButton(onClick = { backStack.navigateTo(LuaScriptEditorScreen(scriptName = scriptName)) }) {
+                  IconButton(onClick = { editorBackStack.navigateTo(LuaScriptEditorScreen(scriptName = scriptName)) }) {
                     Icon(
                       imageVector = Icons.RoundedFilled.Edit,
                       contentDescription =

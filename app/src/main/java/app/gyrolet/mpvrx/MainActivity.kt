@@ -119,6 +119,7 @@ import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
 import app.gyrolet.mpvrx.ui.player.TrackNode
 import app.gyrolet.mpvrx.ui.player.toObject
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalRootBackStack
 import app.gyrolet.mpvrx.ui.utils.ScreenNavDisplay
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
@@ -716,6 +717,7 @@ open class MainActivity : AppCompatActivity() {
     // Provide both LocalBackStack and the LazyList/Grid states to all screens
     CompositionLocalProvider(
       LocalBackStack provides typedBackstack,
+      LocalRootBackStack provides typedBackstack,
     ) {
       val hasNavEntries = typedBackstack.isNotEmpty()
 

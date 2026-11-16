@@ -15,24 +15,37 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.util.Log
 import android.view.ViewTreeObserver
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.runtime.Composable
@@ -179,6 +192,24 @@ fun MpvScriptEditor(
     }
   }
 
+  val normalizedLanguage = remember(language) { language.lowercase() }
+  val isScriptLanguage = normalizedLanguage == "lua" || normalizedLanguage == "js" || normalizedLanguage == "javascript"
+  val commentToken =
+    remember(normalizedLanguage) {
+      when (normalizedLanguage) {
+        "lua" -> "--"
+        "js", "javascript" -> "//"
+        else -> "#"
+      }
+    }
+
+  fun jumpToRequestedLine() {
+    targetLine.toIntOrNull()?.let {
+      editor.jumpToLine((it - 1).coerceIn(0, (editor.lineCount - 1).coerceAtLeast(0)))
+    }
+    showGoToLine = false
+  }
+
   Column(modifier = modifier) {
     // The code viewport takes the remaining height, and tools are docked at the IME edge
     // rather than covering the first lines of text or occupying a permanently tall header.
@@ -189,99 +220,264 @@ fun MpvScriptEditor(
       },
       modifier = Modifier.weight(1f).fillMaxWidth(),
     )
-    HorizontalDivider(color = colors.outlineVariant)
+    HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.55f))
     Surface(
       color = colors.surfaceContainerLow,
       tonalElevation = 1.dp,
     ) {
       Column(modifier = Modifier.fillMaxWidth()) {
-        if (showSearch) {
-          Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-          ) {
-            OutlinedTextField(
-              value = findText,
-              onValueChange = { findText = it },
-              placeholder = { Text("Find") },
-              singleLine = true,
-              textStyle = MaterialTheme.typography.bodyMedium,
-              modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = { if (findText.isNotBlank()) editor.searcher.gotoPrevious() },
-              contentPadding = PaddingValues(horizontal = 6.dp)) { Text("↑") }
-            TextButton(onClick = { if (findText.isNotBlank()) editor.searcher.gotoNext() },
-              contentPadding = PaddingValues(horizontal = 6.dp)) { Text("↓") }
-          }
-          Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-          ) {
-            OutlinedTextField(
-              value = replaceText,
-              onValueChange = { replaceText = it },
-              placeholder = { Text("Replace with") },
-              singleLine = true,
-              textStyle = MaterialTheme.typography.bodyMedium,
-              modifier = Modifier.weight(1f),
-            )
-            TextButton(
-              onClick = {
-                if (findText.isNotBlank()) {
-                  if (editor.searcher.isMatchedPositionSelected) {
-                    editor.searcher.replaceCurrentMatch(replaceText)
-                  } else editor.searcher.gotoNext()
-                }
-              },
-              contentPadding = PaddingValues(horizontal = 6.dp),
-            ) { Text("Replace", style = MaterialTheme.typography.labelMedium) }
-            TextButton(
-              onClick = { if (findText.isNotBlank()) editor.searcher.replaceAll(replaceText) },
-              contentPadding = PaddingValues(horizontal = 6.dp),
-            ) { Text("All", style = MaterialTheme.typography.labelMedium) }
-          }
-        }
-        if (showGoToLine) {
-          Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-          ) {
-            OutlinedTextField(
-              value = targetLine,
-              onValueChange = { targetLine = it.filter(Char::isDigit).take(7) },
-              placeholder = { Text("Line number") },
-              singleLine = true,
-              textStyle = MaterialTheme.typography.bodyMedium,
-              modifier = Modifier.weight(1f),
-            )
-            OutlinedButton(onClick = {
-              targetLine.toIntOrNull()?.let {
-                editor.jumpToLine((it - 1).coerceIn(0, (editor.lineCount - 1).coerceAtLeast(0)))
-              }
-              showGoToLine = false
-            }) { Text("Go") }
-          }
-        }
-        Row(
-          modifier = Modifier.fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-          horizontalArrangement = Arrangement.spacedBy(2.dp),
+        AnimatedVisibility(
+          visible = showSearch,
+          enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+          exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut(),
         ) {
-          TextButton(onClick = { if (editor.canUndo()) editor.undo() }) { Text("Undo") }
-          TextButton(onClick = { if (editor.canRedo()) editor.redo() }) { Text("Redo") }
-          TextButton(onClick = { showSearch = !showSearch }) { Text(if (showSearch) "Close" else "Find") }
-          TextButton(onClick = { wordWrap = !wordWrap }) { Text(if (wordWrap) "No wrap" else "Wrap") }
-          TextButton(onClick = { editor.selectAll() }) { Text("Select all") }
-          TextButton(onClick = { editor.insertText("    ", 4) }) { Text("Tab") }
-          TextButton(onClick = { editor.insertText("#", 1) }) { Text("#") }
-          TextButton(onClick = { showGoToLine = !showGoToLine }) { Text("Line") }
-          TextButton(onClick = { textSize = (textSize - 1f).coerceAtLeast(10f) }) { Text("A−") }
-          TextButton(onClick = { textSize = (textSize + 1f).coerceAtMost(24f) }) { Text("A+") }
+          Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+          ) {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+              OutlinedTextField(
+                value = findText,
+                onValueChange = { findText = it },
+                placeholder = { Text("Find in file") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { if (findText.isNotBlank()) editor.searcher.gotoNext() }),
+                modifier = Modifier.weight(1f),
+              )
+              EditorToolChip(
+                label = "↑",
+                onClick = { if (findText.isNotBlank()) editor.searcher.gotoPrevious() },
+              )
+              EditorToolChip(
+                label = "↓",
+                onClick = { if (findText.isNotBlank()) editor.searcher.gotoNext() },
+              )
+              EditorToolChip(
+                label = "✕",
+                onClick = { showSearch = false },
+              )
+            }
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+              OutlinedTextField(
+                value = replaceText,
+                onValueChange = { replaceText = it },
+                placeholder = { Text("Replace with") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                modifier = Modifier.weight(1f),
+              )
+              EditorToolChip(
+                label = "Replace",
+                onClick = {
+                  if (findText.isNotBlank()) {
+                    if (editor.searcher.isMatchedPositionSelected) {
+                      editor.searcher.replaceCurrentMatch(replaceText)
+                    } else {
+                      editor.searcher.gotoNext()
+                    }
+                  }
+                },
+              )
+              EditorToolChip(
+                label = "All",
+                onClick = { if (findText.isNotBlank()) editor.searcher.replaceAll(replaceText) },
+              )
+            }
+            HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.35f))
+          }
+        }
+
+        AnimatedVisibility(
+          visible = showGoToLine,
+          enter = expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+          exit = shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut(),
+        ) {
+          Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+              modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+              OutlinedTextField(
+                value = targetLine,
+                onValueChange = { targetLine = it.filter(Char::isDigit).take(7) },
+                placeholder = { Text("Line number") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                keyboardOptions =
+                  KeyboardOptions(
+                    keyboardType = KeyboardType.Number,
+                    imeAction = ImeAction.Go,
+                  ),
+                keyboardActions = KeyboardActions(onGo = { jumpToRequestedLine() }),
+                modifier = Modifier.weight(1f),
+              )
+              EditorToolChip(
+                label = "Go",
+                active = true,
+                onClick = ::jumpToRequestedLine,
+              )
+              EditorToolChip(
+                label = "✕",
+                onClick = { showGoToLine = false },
+              )
+            }
+            HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.35f))
+          }
+        }
+
+        Row(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState())
+              .padding(horizontal = 8.dp, vertical = 6.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+          EditorToolChip(label = "Undo", onClick = { if (editor.canUndo()) editor.undo() })
+          EditorToolChip(label = "Redo", onClick = { if (editor.canRedo()) editor.redo() })
+
+          EditorToolbarDivider()
+
+          EditorToolChip(
+            label = "Tab",
+            monospace = true,
+            onClick = { editor.insertText("    ", 4) },
+          )
+          EditorToolChip(
+            label = commentToken,
+            monospace = true,
+            onClick = { editor.insertText("$commentToken ", commentToken.length + 1) },
+          )
+          if (isScriptLanguage) {
+            EditorToolChip(
+              label = "( )",
+              monospace = true,
+              onClick = { editor.insertText("()", 1) },
+            )
+            EditorToolChip(
+              label = "{ }",
+              monospace = true,
+              onClick = { editor.insertText("{}", 1) },
+            )
+            EditorToolChip(
+              label = "\" \"",
+              monospace = true,
+              onClick = { editor.insertText("\"\"", 1) },
+            )
+            EditorToolChip(
+              label = "=",
+              monospace = true,
+              onClick = { editor.insertText(" = ", 3) },
+            )
+          }
+
+          EditorToolbarDivider()
+
+          EditorToolChip(
+            label = "Find",
+            active = showSearch,
+            onClick = { showSearch = !showSearch },
+          )
+          EditorToolChip(
+            label = "Line",
+            active = showGoToLine,
+            onClick = { showGoToLine = !showGoToLine },
+          )
+          EditorToolChip(
+            label = "Wrap",
+            active = wordWrap,
+            onClick = { wordWrap = !wordWrap },
+          )
+          EditorToolChip(
+            label = "Select all",
+            onClick = { editor.selectAll() },
+          )
+
+          EditorToolbarDivider()
+
+          EditorToolChip(
+            label = "A−",
+            onClick = { textSize = (textSize - 1f).coerceAtLeast(10f) },
+          )
+          Text(
+            text = "${textSize.toInt()}sp",
+            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+            color = colors.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 2.dp),
+          )
+          EditorToolChip(
+            label = "A+",
+            onClick = { textSize = (textSize + 1f).coerceAtMost(24f) },
+          )
         }
       }
     }
   }
+}
+
+@Composable
+private fun EditorToolChip(
+  label: String,
+  onClick: () -> Unit,
+  active: Boolean = false,
+  monospace: Boolean = false,
+) {
+  val colors = MaterialTheme.colorScheme
+  Surface(
+    onClick = onClick,
+    shape = CircleShape,
+    color = if (active) colors.primaryContainer else colors.surfaceContainerHigh,
+    contentColor = if (active) colors.onPrimaryContainer else colors.onSurface,
+    border =
+      BorderStroke(
+        width = 1.dp,
+        color =
+          if (active) {
+            colors.primary.copy(alpha = 0.35f)
+          } else {
+            colors.outlineVariant.copy(alpha = 0.28f)
+          },
+      ),
+    modifier = Modifier.height(32.dp),
+  ) {
+    Box(
+      contentAlignment = Alignment.Center,
+      modifier = Modifier.padding(horizontal = 12.dp),
+    ) {
+      Text(
+        text = label,
+        style =
+          MaterialTheme.typography.labelMedium.let { base ->
+            if (monospace) base.copy(fontFamily = FontFamily.Monospace) else base
+          },
+        fontWeight = if (active) FontWeight.Bold else FontWeight.SemiBold,
+        maxLines = 1,
+      )
+    }
+  }
+}
+
+@Composable
+private fun EditorToolbarDivider() {
+  VerticalDivider(
+    modifier = Modifier.height(18.dp),
+    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+  )
 }
 
 private class SafeCodeEditor(

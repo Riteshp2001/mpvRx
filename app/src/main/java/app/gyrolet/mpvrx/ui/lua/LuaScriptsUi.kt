@@ -59,11 +59,12 @@ fun rememberLuaScriptsCatalog(
   storageUri: String,
   selectedScripts: Set<String>,
   onSelectionPruned: (Set<String>) -> Unit,
+  refreshKey: Any? = Unit,
 ): LuaScriptsCatalogState {
   val context = LocalContext.current
   var state by remember(storageUri) { mutableStateOf(LuaScriptsCatalogState()) }
 
-  LaunchedEffect(storageUri) {
+  LaunchedEffect(storageUri, refreshKey) {
     if (storageUri.isBlank()) {
       state = LuaScriptsCatalogState(availableScripts = emptyList(), isLoading = false)
       return@LaunchedEffect

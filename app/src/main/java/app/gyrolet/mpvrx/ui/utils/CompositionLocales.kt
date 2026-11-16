@@ -17,5 +17,8 @@ import app.gyrolet.mpvrx.presentation.Screen
 val LocalBackStack: ProvidableCompositionLocal<NavBackStack<Screen>> =
   compositionLocalOf { error("LocalBackStack not initialized!") }
 
+val LocalRootBackStack: ProvidableCompositionLocal<NavBackStack<Screen>?> =
+  compositionLocalOf { null }
+
 val LocalShowSettingsBackArrow: ProvidableCompositionLocal<Boolean> =
   compositionLocalOf { true }

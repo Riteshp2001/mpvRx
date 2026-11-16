@@ -202,13 +202,16 @@ internal fun ScreenNavDisplay(
         val entryOpaque =
           remember(route) {
             opaqueBackground ||
+              route is app.gyrolet.mpvrx.ui.preferences.LuaScriptEditorScreen ||
               (opaqueFrom != null && backStack.indexOf(opaqueFrom).let { it >= 0 && it <= backStack.indexOf(route) })
           }
         val entryColor =
           if (entryOpaque) MaterialTheme.colorScheme.background else wallpaperAwareBackgroundColor()
         // The Preferences list handles its own bottom scroll clearance. Insetting its
         // whole NavEntry instead leaves a large blank strip above the mini-player.
-        val scrollHandlesOverlay = route == app.gyrolet.mpvrx.ui.preferences.PreferencesScreen
+        val scrollHandlesOverlay =
+          route == app.gyrolet.mpvrx.ui.preferences.PreferencesScreen ||
+            route is app.gyrolet.mpvrx.ui.preferences.LuaScriptEditorScreen
         val insetByHost = bottomOverlayExempt != null && route != bottomOverlayExempt &&
           !NavigationBarState.isInSelectionMode && !scrollHandlesOverlay
         val inheritedClearance = LocalNavigationBarHeight.current

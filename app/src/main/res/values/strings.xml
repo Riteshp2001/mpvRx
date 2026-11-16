@@ -3237,4 +3237,9 @@
   <string name="player_skip_credits">Skip credits</string>
   <string name="player_skip_preview">Skip preview</string>
   <string name="player_skip_automatic">%1$s (automatic)</string>
+  <string name="lua_editor_title">Script editor</string>
+  <string name="lua_editor_fullscreen">Fullscreen editor</string>
+  <string name="lua_editor_exit_fullscreen">Exit fullscreen</string>
+  <string name="lua_editor_discard_title">Discard unsaved changes?</string>
+  <string name="lua_editor_discard_message">Your edits to \"%1$s\" have not been saved.</string>
 </resources>
