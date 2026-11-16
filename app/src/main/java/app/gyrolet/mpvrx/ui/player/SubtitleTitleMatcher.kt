@@ -9,24 +9,17 @@
 
 package app.gyrolet.mpvrx.ui.player
 
-/** Selects a subtitle title by applying comma-separated preferences from left to right. */
+/** Selects the first available title preference, with later entries used only as fallbacks. */
 internal object SubtitleTitleMatcher {
   fun findBestMatchIndex(
     titles: List<String>,
     orderedKeywords: List<String>,
   ): Int? {
-    var candidates = titles.indices.toList()
-    var matchedAnyKeyword = false
-
     for (keyword in orderedKeywords.map(String::trim).filter(String::isNotEmpty)) {
-      val matches = candidates.filter { index -> matchesKeyword(titles[index], keyword) }
-      if (matches.isNotEmpty()) {
-        candidates = matches
-        matchedAnyKeyword = true
-      }
+      val index = titles.indexOfFirst { matchesKeyword(it, keyword) }
+      if (index >= 0) return index
     }
-
-    return candidates.firstOrNull().takeIf { matchedAnyKeyword }
+    return null
   }
 
   private fun matchesKeyword(

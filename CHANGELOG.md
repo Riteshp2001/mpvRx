@@ -4,6 +4,8 @@ These notes are written in plain English and focus on what changed for real use.
 
 ## Unreleased
 
+- **External script filenames:** Save As keeps the original filename and extension for Lua scripts and configuration files instead of asking Android to save them as plain-text `.txt` documents.
+- **Ordered audio and subtitle preferences:** Preferred languages and subtitle-title choices use left-to-right fallback order, including two-/three-letter language aliases and regional tags. Saved choices remain fallback options, saved subtitles-off stays off, and sidecar discovery no longer unconditionally selects its first result over the preferred language.
 - **Hold-speed freeze fixed:** Playback-speed ramps and swipe adjustments no longer wait for mpv on the UI thread. New gestures supersede pending speed updates, and updates for a replaced track are discarded.
 - **Recent-playback markers in Tree mode:** The latest played video now receives the same italic, highlighted title as in other browser views, including Tree list, grid, and search results.
 - **Clearer Liquid Glass player controls:** Removed the extra dark overlay and reduced the edge vignette so subtitles remain easier to read. Text labels match their icons, and hidden regular and custom button backgrounds retain readable content.

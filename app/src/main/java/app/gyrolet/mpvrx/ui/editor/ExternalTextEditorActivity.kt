@@ -202,7 +202,8 @@ private fun ExternalTextEditorScreen(
   }
 
   val createCopy = rememberLauncherForActivityResult(
-    ActivityResultContracts.CreateDocument("text/plain"),
+    // Let the original filename determine its type; text/plain makes providers append .txt.
+    ActivityResultContracts.CreateDocument("application/octet-stream"),
   ) { destination ->
     if (destination != null) writeDocument(destination, closeOnSuccess = false)
   }

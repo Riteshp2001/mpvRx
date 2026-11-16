@@ -1,7 +1,7 @@
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/readme/hero-dark.svg">
-    <img src=".github/readme/hero-light.svg" width="840" alt="mpvRx — video and music. Purple sticker-style wordmark with the ribbon play logo.">
+    <img src=".github/readme/hero-light.svg" width="840" alt="mpvRx — video and music. Purple ribbon play logo followed by the aligned sticker-style wordmark.">
   </picture>
 </div>
 

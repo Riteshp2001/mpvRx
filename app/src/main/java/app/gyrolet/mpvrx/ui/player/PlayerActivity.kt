@@ -5137,46 +5137,6 @@ class PlayerActivity :
 
     setIntentExtras(intent.extras)
 
-    lifecycleScope.launch(Dispatchers.IO) {
-      try {
-        // Load playback state (will skip track restoration if preferred language configured)
-        val hasState =
-          loadVideoPlaybackState(
-            identifier = loadedMediaIdentifier,
-            legacyIdentifier = loadedLegacyIdentifier,
-            loadGeneration = loadGeneration,
-            positionRestoreOverride = positionRestoreOverride,
-            initialPositionApplied = initialPositionApplied,
-          )
-        if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
-
-        // Apply track selection logic (defaults only apply when no saved state)
-        trackSelector.onFileLoaded(hasState)
-
-        // Apply default zoom only if there's no saved state
-        if (!hasState) {
-          withContext(Dispatchers.Main) {
-            if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@withContext
-            val zoomPreference = playerPreferences.defaultVideoZoom.get()
-            viewModel.setVideoZoom(zoomPreference)
-          }
-        }
-        withContext(Dispatchers.Main) {
-          if (PlaybackSession.isCurrentGeneration(loadGeneration)) applyVideoTransform()
-        }
-      } finally {
-        PlaybackSession.completePositionRestore(loadGeneration)
-        val restoredPosMs = readMpvIntSeconds("time-pos", viewModel.pos ?: 0).toLong() * 1000L
-        if (restoredPosMs > 0) {
-          jellyfinSessionReporter?.reportPlaybackProgress(
-            positionMs = restoredPosMs,
-            isPaused = viewModel.paused ?: false,
-            eventName = "TimeUpdate",
-          )
-        }
-      }
-    }
-
     // Save to recently played when video actually loads and plays
     lifecycleScope.launch(Dispatchers.IO) {
       if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
@@ -5247,6 +5207,7 @@ class PlayerActivity :
             videoFileName = loadedFileName,
             networkConnectionId = networkConnectionId,
             expectedGeneration = loadGeneration,
+            selectFirst = false,
           )
         } else {
           // Regular file or direct network stream
@@ -5260,10 +5221,50 @@ class PlayerActivity :
               videoFilePath = filePath,
               videoFileName = loadedFileName,
               expectedGeneration = loadGeneration,
+              selectFirst = false,
             )
           }
         }
       }
+    }
+
+    val autoloadJob = subtitleAutoloadJob
+    lifecycleScope.launch(Dispatchers.IO) {
+      val restored = try {
+        loadVideoPlaybackState(
+          identifier = loadedMediaIdentifier,
+          legacyIdentifier = loadedLegacyIdentifier,
+          loadGeneration = loadGeneration,
+          positionRestoreOverride = positionRestoreOverride,
+          initialPositionApplied = initialPositionApplied,
+        )
+      } finally {
+        // Directory discovery must not hold the initial resume seek or paused-state restoration.
+        PlaybackSession.completePositionRestore(loadGeneration)
+        if (PlaybackSession.isCurrentGeneration(loadGeneration)) {
+          val restoredPosMs = readMpvIntSeconds("time-pos", viewModel.pos ?: 0).toLong() * 1000L
+          if (restoredPosMs > 0) {
+            jellyfinSessionReporter?.reportPlaybackProgress(
+              positionMs = restoredPosMs,
+              isPaused = viewModel.paused ?: false,
+              eventName = "TimeUpdate",
+            )
+          }
+        }
+      }
+      if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
+      withContext(Dispatchers.Main) {
+        if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@withContext
+        if (!restored.hasState) viewModel.setVideoZoom(playerPreferences.defaultVideoZoom.get())
+        applyVideoTransform()
+      }
+      autoloadJob?.join()
+      if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
+      trackSelector.onFileLoaded(
+        hasState = restored.hasSavedTracks,
+        expectedGeneration = loadGeneration,
+        savedSubtitlesOff = restored.subtitlesOff,
+      )
     }
 
     updateMediaSessionMetadata(
@@ -5655,26 +5656,32 @@ class PlayerActivity :
     return state
   }
 
+  private data class LoadedPlaybackState(
+    val hasState: Boolean = false,
+    val hasSavedTracks: Boolean = false,
+    val subtitlesOff: Boolean = false,
+  )
+
   private suspend fun loadVideoPlaybackState(
     identifier: String,
     legacyIdentifier: String?,
     loadGeneration: Long,
     positionRestoreOverride: PlaybackPositionRestoreOverride?,
     initialPositionApplied: Boolean,
-  ): Boolean {
+  ): LoadedPlaybackState {
     if (identifier.isBlank() || !PlaybackSession.isCurrentGeneration(loadGeneration)) {
-      return false
+      return LoadedPlaybackState()
     }
 
     PlaybackSession.state.value.currentItem?.takeIf { it.audiobook != null }?.let { item ->
       AudiobookPlayback.applyBookSettings(item, loadGeneration)
-      return true
+      return LoadedPlaybackState(hasState = true)
     }
 
     return runCatching {
       val state = resolvePlaybackState(identifier, legacyIdentifier)
 
-      if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@runCatching false
+      if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@runCatching LoadedPlaybackState()
 
       if (positionRestoreOverride == null) {
         if (!initialPositionApplied) {
@@ -5692,19 +5699,23 @@ class PlayerActivity :
           }
         }
       }
-      applyPlaybackState(state, restoreAudioTrack = positionRestoreOverride == null)
+      applyPlaybackState(state, restoreAudioTrack = positionRestoreOverride == null, loadGeneration = loadGeneration)
 
-      if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@runCatching false
+      if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@runCatching LoadedPlaybackState()
 
       withContext(Dispatchers.Main) {
         if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@withContext
         applyDefaultSettings(state)
       }
 
-      state != null || positionRestoreOverride != null
+      LoadedPlaybackState(
+        hasState = state != null || positionRestoreOverride != null,
+        hasSavedTracks = state != null,
+        subtitlesOff = state != null && state.sid <= 0,
+      )
     }.onFailure { e ->
       Log.e(TAG, "Error loading playback state", e)
-    }.getOrDefault(false)
+    }.getOrDefault(LoadedPlaybackState())
   }
 
   /**
@@ -5717,6 +5728,7 @@ class PlayerActivity :
   private suspend fun applyPlaybackState(
     state: PlaybackStateEntity?,
     restoreAudioTrack: Boolean,
+    loadGeneration: Long,
   ) {
     if (state == null) return
 
@@ -5729,23 +5741,20 @@ class PlayerActivity :
       Log.d(TAG, "Restoring ${externalSubUris.size} external subtitle(s)")
 
       for (subUri in externalSubUris) {
+        if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return
         viewModel.addSubtitleSuspend(Uri.parse(subUri), select = false, silent = true)
       }
     }
+    if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return
 
-    // Restore explicit selections as well as "off" so mpv's pre-load language choice cannot
-    // override a saved manual choice.
-    val restoredSid = state.sid.takeIf { it > 0 } ?: -1
-    if (player.sid != restoredSid) {
-      player.sid = restoredSid
-      if (restoredSid > 0) Log.d(TAG, "Restored primary subtitle track: $restoredSid (user selection)")
-    }
-
-    val restoredSecondarySid = state.secondarySid.takeIf { it > 0 } ?: -1
-    if (player.secondarySid != restoredSecondarySid) {
-      player.secondarySid = restoredSecondarySid
-      if (restoredSecondarySid > 0) {
-        Log.d(TAG, "Restored secondary subtitle track: $restoredSecondarySid (user selection)")
+    if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.SUBTITLE_TRACK_SELECTION)) {
+      val restoredSid = state.sid.takeIf { it > 0 }?.toString() ?: "no"
+      if (player.sid != (state.sid.takeIf { it > 0 } ?: -1)) {
+        PlaybackSession.commandForGeneration(loadGeneration, "set", "sid", restoredSid)
+      }
+      val restoredSecondarySid = state.secondarySid.takeIf { it > 0 }?.toString() ?: "no"
+      if (player.secondarySid != (state.secondarySid.takeIf { it > 0 } ?: -1)) {
+        PlaybackSession.commandForGeneration(loadGeneration, "set", "secondary-sid", restoredSecondarySid)
       }
     }
 
@@ -5754,8 +5763,10 @@ class PlayerActivity :
       forceAssOverride = subtitlesPreferences.overrideAssSubs.get(),
     )
 
-    if (restoreAudioTrack && state.aid > 0 && player.aid != state.aid) {
-      player.aid = state.aid
+    if (restoreAudioTrack && state.aid > 0 && player.aid != state.aid &&
+      !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)
+    ) {
+      PlaybackSession.commandForGeneration(loadGeneration, "set", "aid", state.aid.toString())
       Log.d(TAG, "Restored audio track: ${state.aid} (user selection)")
     }
 

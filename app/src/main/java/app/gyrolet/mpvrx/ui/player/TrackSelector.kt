@@ -14,60 +14,22 @@ import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
+import java.util.Locale
+import java.util.MissingResourceException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 /**
- * Handles automatic track selection based on user preferences.
- * Combines an intelligent multi-pass Context Engine with optimized data structures.
- * Adapted from https://github.com/Chinna95P/mpv-anime-build/blob/main/scripts/track-selector.lua
+ * Selects tracks using ordered language or title preferences, with saved selections as fallback.
+ * A saved subtitles-off choice remains off. mpv.conf-owned language selection is left to mpv.
  *
- * **Performance Optimization:**
- * To minimize expensive JNI calls to MPV, all track properties are read exactly once
- * upon file load and cached into a list of `Track` objects. The selection logic
- * evaluates this cached list.
- *
- * **State Management (Watch-Later):**
- * If a file is resumed (`hasState = true`), any previously saved track selections—or
- * a manually saved "subtitles off" state—are strictly respected, completely bypassing
- * the auto-selection engine.
- *
- * **Audio Selection Strategy (Highest to Lowest Priority):**
- * 1. **Preferred Clean Audio:** Matches the user's preferred language while explicitly
- * filtering out non-main tracks (e.g., commentary, ADH, descriptions).
- * 2. **Fallback Clean Audio:** Selects the first available track that does not contain
- * ignored keywords.
- *
- * **Subtitle Selection Strategy (Highest to Lowest Priority):**
- * Subtitle selection is highly dependent on the auto-detected media context (Anime vs. Live-Action).
- * - **Pass 00 (External Override):** Automatically prioritizes manually loaded external subtitle files.
- * - **Pass 0 (Preferred Title):** Applies the user's ordered keywords to subtitle track titles.
- * - **Pass A0 (Anime Only - Native Default):** If exactly *one* subtitle track is flagged
- * as default and it is Japanese, it is selected. This protects against muxing errors
- * where multiple tracks are incorrectly flagged as default by the encoder.
- * - **Pass A (Anime Only - Smart Dialogue):** Prioritizes tracks matching the preferred
- * language that contain keywords like "dialogue", "full", or "script".
- * - **Pass B (Clean Match):** Finds the preferred language but aggressively strips out
- * secondary tracks like "signs", "songs", "lyrics", "sdh", or "forced".
- * - **Pass C (Last Resort):** Selects the first available track matching the preferred language.
- * - **Pass D (Title-Name Fallback):** For tracks where the encoder left the language tag
- *   empty or set it to "und"/"zxx", matches by common descriptive titles such as
- *   "Subtitle", "Subtitles", "Full Subtitles", "English", "Dialogue", etc. Covers
- *   Crunchyroll/HiDive web-rips and fansub encodes that omit the language metadata.
- * - **Pass E (Single Clean Track):** If exactly one non-signs/non-SDH subtitle track
- *   exists (regardless of language), it is selected as the unambiguous dialogue track.
+ * Based on https://github.com/Chinna95P/mpv-anime-build/blob/main/scripts/track-selector.lua.
  */
-
 class TrackSelector(
   private val audioPreferences: AudioPreferences,
   private val subtitlesPreferences: SubtitlesPreferences,
 ) {
-  companion object {
-    private const val TAG = "TrackSelector"
-  }
-
-  // The Data Class for massively improved performance.
   private data class Track(
     val id: Int,
     val type: String,
@@ -80,444 +42,244 @@ class TrackSelector(
     val image: Boolean,
   )
 
-  suspend fun onFileLoaded(hasState: Boolean = false) =
-    withContext(Dispatchers.Main) {
-      var attempts = 0
-      val maxAttempts = 20
+  suspend fun onFileLoaded(
+    hasState: Boolean = false,
+    expectedGeneration: Long = PlaybackSession.state.value.generation,
+    savedSubtitlesOff: Boolean = false,
+  ) = withContext(Dispatchers.IO) {
+    var trackCount = 0
+    for (attempt in 0 until 20) {
+      if (!PlaybackSession.isCurrentGeneration(expectedGeneration)) return@withContext
+      trackCount = PlaybackSession.getPropertyInt("track-list/count") ?: 0
+      if (trackCount > 0) break
+      delay(50)
+    }
+    if (trackCount == 0) return@withContext
+    val tracks = readTracks(expectedGeneration) ?: return@withContext
+    if (tracks.none { it.type == "video" && !it.image }) return@withContext
 
-      while (attempts < maxAttempts) {
-        val count = PlaybackSession.getPropertyInt("track-list/count") ?: 0
-        if (count > 0) break
-        delay(50)
-        attempts++
-      }
+    if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)) {
+      ensureAudioTrackSelected(tracks, hasState, expectedGeneration)
+    }
+    if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.SUBTITLE_TRACK_SELECTION)) {
+      ensureSubtitleTrackSelected(tracks, hasState, expectedGeneration, savedSubtitlesOff)
+    }
+  }
 
-      val trackCount = PlaybackSession.getPropertyInt("track-list/count") ?: 0
-      if (trackCount == 0) return@withContext
-
-      // Read all tracks once
-      val tracks = readTracks(trackCount)
-
-      if (!isVideoFile(tracks)) {
-        Log.d(TAG, "Smart Tracks: Audio/Image file detected. Script disabled.")
-        return@withContext
-      }
-
-      if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)) {
-        ensureAudioTrackSelected(tracks, hasState)
-      }
-      if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.SUBTITLE_TRACK_SELECTION)) {
-        ensureSubtitleTrackSelected(tracks, hasState)
+  private fun readTracks(generation: Long): List<Track>? =
+    PlaybackSession.readLoadedMedia(generation) { reader ->
+      buildList {
+        val count = reader.int("track-list/count") ?: 0
+        for (index in 0 until count) {
+          val prefix = "track-list/$index"
+          val id = reader.int("$prefix/id") ?: continue
+          val type = reader.string("$prefix/type") ?: continue
+          add(
+            Track(
+              id = id,
+              type = type,
+              lang = reader.string("$prefix/lang").orEmpty().lowercase(Locale.ROOT),
+              title = reader.string("$prefix/title").orEmpty().lowercase(Locale.ROOT),
+              isDefault = reader.string("$prefix/default") == "yes",
+              forced = reader.string("$prefix/forced") == "yes",
+              hearing = reader.string("$prefix/hearing-impaired") == "yes",
+              external = reader.string("$prefix/external") == "yes",
+              image = reader.string("$prefix/image") == "yes",
+            ),
+          )
+        }
       }
     }
 
-  private fun readTracks(count: Int): List<Track> {
-    val list = mutableListOf<Track>()
-    for (i in 0 until count) {
-      val id = PlaybackSession.getPropertyInt("track-list/$i/id") ?: continue
-      val type = PlaybackSession.getPropertyString("track-list/$i/type") ?: continue
+  private fun ensureAudioTrackSelected(tracks: List<Track>, hasState: Boolean, generation: Long) {
+    val current = getTrackSelectionId("aid")
+    val audioTracks = tracks.filter { it.type == "audio" }
+    val preferences = preferences(audioPreferences.preferredLanguages.get())
+    if (hasState && preferences.isEmpty() && audioTracks.any { it.id == current }) return
 
-      list.add(
-        Track(
-          id = id,
-          type = type,
-          lang = (PlaybackSession.getPropertyString("track-list/$i/lang") ?: "").lowercase(),
-          title = (PlaybackSession.getPropertyString("track-list/$i/title") ?: "").lowercase(),
-          isDefault = PlaybackSession.getPropertyBoolean("track-list/$i/default") ?: false,
-          forced = PlaybackSession.getPropertyBoolean("track-list/$i/forced") ?: false,
-          hearing = PlaybackSession.getPropertyBoolean("track-list/$i/hearing-impaired") ?: false,
-          external = PlaybackSession.getPropertyBoolean("track-list/$i/external") ?: false,
-          image = PlaybackSession.getPropertyBoolean("track-list/$i/image") ?: false,
-        ),
-      )
+    val cleanTracks = audioTracks.filter { track -> ignoredAudioTitles.none { track.title.contains(it) } }
+    for (preference in preferences) {
+      val match = cleanTracks.mapNotNull { track -> matchRank(track, preference)?.let { track to it } }
+        .minByOrNull { it.second }?.first
+      if (match != null) {
+        selectTrack("aid", match.id, generation, "Preferred audio: $preference")
+        return
+      }
     }
-    return list
+    if (audioTracks.any { it.id == current }) return
+    cleanTracks.firstOrNull()?.let { selectTrack("aid", it.id, generation, "Clean audio fallback") }
   }
 
-  // ==================================================
-  // AUTO-DETECTION HELPERS
-  // ==================================================
-
-  private fun isVideoFile(tracks: List<Track>): Boolean = tracks.any { it.type == "video" && !it.image }
-
-  private fun isAnimeFolder(path: String?): Boolean {
-    if (path == null) return false
-    val p = path.lowercase()
-    return p.contains("/anime/") ||
-      p.contains("\\anime\\") ||
-      p.contains("donghua") ||
-      p.contains("cartoon") ||
-      p.contains("animation") ||
-      p.contains("3d_anime")
-  }
-
-  private fun isLiveAction(
-    path: String?,
-    title: String?,
-  ): Boolean {
-    val searchStr = "${path ?: ""} ${title ?: ""}".lowercase()
-    return searchStr.contains("live action") ||
-      searchStr.contains("live-action") ||
-      searchStr.contains("liveaction") ||
-      searchStr.contains("drama") ||
-      searchStr.contains("real person")
-  }
-
-  private fun detectAnimeContext(tracks: List<Track>): Boolean {
-    val path = PlaybackSession.getPropertyString("path") ?: ""
-    val title = PlaybackSession.getPropertyString("media-title") ?: ""
-    val filename = PlaybackSession.getPropertyString("filename") ?: ""
-
-    val signalFolder = isAnimeFolder(path)
-    val signalLiveAction = isLiveAction(path, title)
-
-    val syntaxRegex = Regex("\\[.*\\]")
-    val signalSyntax = syntaxRegex.containsMatchIn(title)
-
-    val crcRegex = Regex("\\[[0-9a-fA-F]{8}\\]")
-    val signalCrc = crcRegex.containsMatchIn(filename) || crcRegex.containsMatchIn(title)
-
-    val signalAudio = tracks.any { it.type == "audio" && (it.lang == "jpn" || it.lang == "ja") }
-
-    if (signalLiveAction) return false
-    if (signalCrc) return true
-    if (signalFolder || signalAudio || signalSyntax) return true
-
-    return false
-  }
-
-  // ==================================================
-  // 1. AUDIO SELECTION LOGIC (Multi-Pass Preserved)
-  // ==================================================
-
-  private suspend fun ensureAudioTrackSelected(
+  private fun ensureSubtitleTrackSelected(
     tracks: List<Track>,
     hasState: Boolean,
+    generation: Long,
+    savedSubtitlesOff: Boolean,
   ) {
-    try {
-      val currentAid = getTrackSelectionId("aid")
-      if (hasState && currentAid > 0) return
+    val current = getTrackSelectionId("sid")
+    if (!subtitlesPreferences.autoEnableSubtitles.get()) {
+      if (current > 0) selectTrack("sid", 0, generation, "Automatic subtitles disabled")
+      return
+    }
+    if (hasState && savedSubtitlesOff) {
+      if (current > 0) selectTrack("sid", 0, generation, "Saved subtitles-off choice")
+      return
+    }
 
-      val preferredLangs =
-        audioPreferences.preferredLanguages
-          .get()
-          .split(",")
-          .map { it.trim().lowercase() }
-          .filter { it.isNotEmpty() }
+    val subTracks = tracks.filter { it.type == "sub" }
+    val configuredPreferences = preferences(subtitlesPreferences.preferredLanguages.get())
+    if (hasState && configuredPreferences.isEmpty() && subTracks.any { it.id == current }) return
+    val preferred = configuredPreferences.ifEmpty {
+      preferences(PlaybackSession.getPropertyString("slang").orEmpty()).ifEmpty { listOf("en") }
+    }
+    val anime = detectAnimeContext(tracks, generation)
+    val externalTracks = subTracks.filter { it.external }
+    val externalFallback =
+      externalTracks.firstOrNull { languageTag(it.lang) == null } ?: externalTracks.firstOrNull()
+    val nativeFallback =
+      if (anime) {
+        subTracks.singleOrNull { it.isDefault }?.takeIf { languageTag(it.lang)?.substringBefore('-') == "ja" }
+      } else {
+        null
+      }
+    if (configuredPreferences.isEmpty()) {
+      (externalFallback ?: nativeFallback)?.let {
+        selectTrack("sid", it.id, generation, "Unconfigured subtitle default")
+        return
+      }
+    }
 
-      val ignoreKeywords = listOf("commentary", "description", "adh", "comment", "extra")
-      val audioTracks = tracks.filter { it.type == "audio" }
-
-      // Priority 1: Preferred clean audio
-      if (preferredLangs.isNotEmpty()) {
-        for (prefLang in preferredLangs) {
-          for (track in audioTracks) {
-            if (track.lang == prefLang || track.lang.startsWith(prefLang)) {
-              if (ignoreKeywords.none { track.title.contains(it) }) {
-                if (currentAid == track.id) {
-                  Log.d(TAG, "Smart Audio: Selected ${track.lang} (id=${track.id}) [Already Active. Skipping Change.]")
-                } else {
-                  Log.d(TAG, "Smart Audio: Selected ${track.lang} (id=${track.id}) [Applied]")
-                  setTrackSelectionId("aid", track.id)
-                }
-                return
-              }
+    // Resolve each preference across both embedded and external tracks before trying the next.
+    for (preference in preferred) {
+      val match = subTracks.mapNotNull { track -> matchRank(track, preference)?.let { track to it } }
+        .minWithOrNull(
+          compareBy<Pair<Track, Int>> { if (isCleanSubtitle(it.first)) 0 else 1 }
+            .thenBy { it.second }
+            .thenBy { if (it.first.external) 0 else 1 }
+            .thenBy {
+              if (anime && dialogueTitleKeywords.any { keyword -> it.first.title.contains(keyword) }) 0 else 1
             }
-          }
-        }
+            .thenBy { if (it.first.isDefault) 0 else 1 },
+        )?.first
+      if (match != null) {
+        selectTrack("sid", match.id, generation, "Preferred subtitle: $preference")
+        return
       }
+    }
+    if (hasState && subTracks.any { it.id == current }) return
 
-      // Priority 2: Fallback MPV default
-      if (currentAid > 0) return
-
-      // Priority 3: First available clean audio track
-      for (track in audioTracks) {
-        if (ignoreKeywords.none { track.title.contains(it) }) {
-          if (currentAid == track.id) {
-            Log.d(TAG, "Smart Audio: Fallback (id=${track.id}) [Already Active. Skipping Change.]")
-          } else {
-            Log.d(TAG, "Smart Audio: Fallback (id=${track.id}) [Applied]")
-            setTrackSelectionId("aid", track.id)
-          }
-          return
-        }
-      }
-    } catch (e: Exception) {
-      Log.e(TAG, "Audio selection failed", e)
+    (externalFallback ?: nativeFallback)?.let {
+      selectTrack("sid", it.id, generation, "Subtitle default fallback")
+      return
+    }
+    subTracks.firstOrNull { track ->
+      languageTag(track.lang) == null && isCleanSubtitle(track) &&
+        dialogueTitleKeywords.any { track.title.contains(it) }
+    }?.let {
+      selectTrack("sid", it.id, generation, "Untitled-language dialogue fallback")
+      return
+    }
+    subTracks.filter(::isCleanSubtitle).singleOrNull()?.let {
+      selectTrack("sid", it.id, generation, "Single clean subtitle fallback")
     }
   }
 
-  // ==================================================
-  // 2. SUBTITLE SELECTION LOGIC (Multi-Pass Preserved)
-  // ==================================================
+  private fun selectTrack(property: String, id: Int, generation: Long, reason: String) {
+    if (!PlaybackSession.isCurrentGeneration(generation) || getTrackSelectionId(property) == id) return
+    val value = if (id > 0) id.toString() else "no"
+    if (PlaybackSession.commandForGeneration(generation, "set", property, value)) {
+      Log.d(TAG, "$reason ($property=$value)")
+    }
+  }
 
-  private suspend fun ensureSubtitleTrackSelected(
-    tracks: List<Track>,
-    hasState: Boolean,
-  ) {
-    try {
-      val currentSid = getTrackSelectionId("sid")
+  private fun isCleanSubtitle(track: Track): Boolean =
+    !track.forced && !track.hearing && ignoredSubtitleTitles.none { track.title.contains(it) }
 
-      // Respect "Off – Never enable subtitles automatically" setting
-      if (!subtitlesPreferences.autoEnableSubtitles.get()) {
-        Log.d(TAG, "Smart Sub: Auto-enable subtitles is off. Skipping auto-selection.")
-        if (currentSid > 0) {
-          setTrackSelectionId("sid", 0)
-        }
-        return
+  private fun detectAnimeContext(tracks: List<Track>, generation: Long): Boolean {
+    val metadata = PlaybackSession.readLoadedMedia(generation) { reader ->
+      listOf("path", "media-title", "filename").map { reader.string(it).orEmpty().lowercase(Locale.ROOT) }
+    } ?: return false
+    val (path, title, filename) = metadata
+    val description = "$path $title"
+    if (listOf("live action", "live-action", "liveaction", "drama", "real person").any { description.contains(it) }) {
+      return false
+    }
+    return listOf("/anime/", "\\anime\\", "donghua", "cartoon", "animation", "3d_anime").any { path.contains(it) } ||
+      Regex("\\[.*\\]").containsMatchIn(title) ||
+      Regex("\\[[0-9a-f]{8}\\]").containsMatchIn(filename) ||
+      tracks.any { it.type == "audio" && languageTag(it.lang)?.substringBefore('-') == "ja" }
+  }
+
+  private fun matchRank(track: Track, preference: String): Int? {
+    if (preference == "*") return 2
+    val preferredTag = languageTag(preference)
+    if (preferredTag == null) {
+      return 2.takeIf {
+        SubtitleTitleMatcher.findBestMatchIndex(listOf(track.title), listOf(preference)) != null
       }
-
-      // Respect manual "Subtitles Off" state
-      if (hasState && currentSid == 0) {
-        Log.d(TAG, "Smart Sub: User disabled subtitles manually. Respecting choice.")
-        return
+    }
+    val trackTag = languageTag(track.lang)
+    if (trackTag != null) {
+      return when {
+        trackTag == preferredTag -> 0
+        trackTag.substringBefore('-') == preferredTag.substringBefore('-') -> 1
+        else -> null
       }
-
-      if (hasState && currentSid > 0) return
-
-      val isAnimeContext = detectAnimeContext(tracks)
-      Log.d(TAG, "Smart Tracks: Context defined by Internal Auto-Detection -> $isAnimeContext")
-
-      var preferredLangs =
-        subtitlesPreferences.preferredLanguages
-          .get()
-          .split(",")
-          .map { it.trim().lowercase() }
-          .filter { it.isNotEmpty() }
-
-      if (preferredLangs.isEmpty()) {
-        preferredLangs =
-          (PlaybackSession.getPropertyString("slang") ?: "")
-            .split(",")
-            .map { it.trim().lowercase() }
-            .filter { it.isNotEmpty() }
+    }
+    val locale = Locale.forLanguageTag(preferredTag)
+    val titleKeywords = buildList {
+      add(preference)
+      add(preferredTag)
+      add(preferredTag.substringBefore('-'))
+      add(locale.getDisplayLanguage(Locale.ENGLISH).lowercase(Locale.ROOT))
+      add(locale.getDisplayLanguage(locale).lowercase(Locale.ROOT))
+      try {
+        add(locale.isO3Language)
+      } catch (_: MissingResourceException) {
+        // Unknown locale names remain eligible for literal title matching above.
       }
-      if (preferredLangs.isEmpty()) preferredLangs = listOf("eng", "en")
+    }
+    return 2.takeIf { SubtitleTitleMatcher.findBestMatchIndex(listOf(track.title), titleKeywords) != null }
+  }
 
-      val ignoreSubs = listOf("signs", "songs", "lyrics", "forced", "sdh", "colored", "karaoke")
-      val subTracks = tracks.filter { it.type == "sub" }
+  private fun preferences(value: String): List<String> =
+    value.split(',').map { it.trim().lowercase(Locale.ROOT) }.filter(String::isNotEmpty).distinct()
 
-      // PASS 00: EXTERNAL TRACK OVERRIDE (Protects manually loaded subtitle files & respects language preference)
-      val externalTracks = subTracks.filter { it.external }
-      if (externalTracks.isNotEmpty()) {
-        // 1. Apply ordered title keywords to external tracks.
-        val titleMatchIndex =
-          SubtitleTitleMatcher.findBestMatchIndex(
-            titles = externalTracks.map(Track::title),
-            orderedKeywords = preferredLangs,
-          )
-        if (titleMatchIndex != null) {
-          val track = externalTracks[titleMatchIndex]
-          if (currentSid != track.id) setTrackSelectionId("sid", track.id)
-          Log.d(TAG, "Smart Sub: Preferred external title matched (id=${track.id})")
-          return
-        }
+  private fun languageTag(value: String): String? {
+    val tag = value.trim().lowercase(Locale.ROOT).replace('_', '-')
+    val base = languageCodes[tag.substringBefore('-')] ?: return null
+    return base + tag.substringAfter('-', "").takeIf(String::isNotEmpty)?.let { "-$it" }.orEmpty()
+  }
 
-        // 2. Try to find an external track matching preferred languages in order
-        for (prefLang in preferredLangs) {
-          for (track in externalTracks) {
-            if (track.lang == prefLang || track.lang.startsWith(prefLang)) {
-              if (currentSid == track.id) {
-                Log.d(
-                  TAG,
-                  "Smart Sub: Preferred External Subtitle Detected (id=${track.id}, lang=${track.lang}) [Already Active. Skipping Change.]",
-                )
-              } else {
-                Log.d(
-                  TAG,
-                  "Smart Sub: Preferred External Subtitle Detected (id=${track.id}, lang=${track.lang}) [Applied]",
-                )
-                setTrackSelectionId("sid", track.id)
-              }
-              return
-            }
+  private companion object {
+    const val TAG = "TrackSelector"
+    val ignoredAudioTitles = listOf("commentary", "description", "adh", "comment", "extra")
+    val ignoredSubtitleTitles = listOf("signs", "songs", "lyrics", "forced", "sdh", "colored", "karaoke")
+    val dialogueTitleKeywords = listOf(
+      "subtitle", "dialogue", "dialog", "translation", "english", "main", "script", "full", "caption",
+    )
+    val languageCodes: Map<String, String> by lazy {
+      buildMap {
+        for (code in Locale.getISOLanguages()) {
+          val locale = Locale.forLanguageTag(code)
+          put(code, code)
+          put(locale.getDisplayLanguage(Locale.ENGLISH).lowercase(Locale.ROOT), code)
+          try {
+            put(locale.isO3Language.lowercase(Locale.ROOT), code)
+          } catch (_: MissingResourceException) {
+            // Some Android locales do not expose an ISO 639-2 code.
           }
         }
-
-        // 3. Try to find manually loaded subtitle files (usually have empty or "und" lang)
-        val unknownLangCodes = setOf("", "und", "zxx")
-        for (track in externalTracks) {
-          if (track.lang in unknownLangCodes) {
-            if (currentSid == track.id) {
-              Log.d(
-                TAG,
-                "Smart Sub: Manual/Undetermined External Subtitle Detected (id=${track.id}) [Already Active. Skipping Change.]",
-              )
-            } else {
-              Log.d(TAG, "Smart Sub: Manual/Undetermined External Subtitle Detected (id=${track.id}) [Applied]")
-              setTrackSelectionId("sid", track.id)
-            }
-            return
-          }
-        }
-
-        // 4. Fallback: select the first available external track
-        val fallbackTrack = externalTracks.first()
-        if (currentSid == fallbackTrack.id) {
-          Log.d(
-            TAG,
-            "Smart Sub: Fallback External Subtitle Detected (id=${fallbackTrack.id}) [Already Active. Skipping Change.]",
-          )
-        } else {
-          Log.d(TAG, "Smart Sub: Fallback External Subtitle Detected (id=${fallbackTrack.id}) [Applied]")
-          setTrackSelectionId("sid", fallbackTrack.id)
-        }
-        return
-      }
-
-      // PASS 0: ORDERED SUBTITLE TITLE PREFERENCES
-      // A matching keyword narrows the current candidates. Later keywords act as tie-breakers
-      // without overriding an earlier, higher-priority match.
-      val titleMatchIndex =
-        SubtitleTitleMatcher.findBestMatchIndex(
-          titles = subTracks.map(Track::title),
-          orderedKeywords = preferredLangs,
+        putAll(
+          mapOf(
+            "alb" to "sq", "arm" to "hy", "baq" to "eu", "bur" to "my", "chi" to "zh",
+            "cze" to "cs", "dut" to "nl", "fre" to "fr", "geo" to "ka", "ger" to "de",
+            "gre" to "el", "ice" to "is", "mac" to "mk", "mao" to "mi", "may" to "ms",
+            "per" to "fa", "rum" to "ro", "slo" to "sk", "tib" to "bo", "wel" to "cy",
+            "jp" to "ja", "iw" to "he", "in" to "id", "ji" to "yi",
+          ),
         )
-      if (titleMatchIndex != null) {
-        val track = subTracks[titleMatchIndex]
-        if (currentSid != track.id) setTrackSelectionId("sid", track.id)
-        Log.d(TAG, "Smart Sub: Preferred title matched (id=${track.id})")
-        return
       }
-
-      // PASS A0: KEEP FILE'S NATIVE DEFAULT JAPANESE SUBS FOR ANIME
-      if (isAnimeContext) {
-        val defaultCount = subTracks.count { it.isDefault }
-
-        if (defaultCount == 1) {
-          for (track in subTracks) {
-            if (track.isDefault) {
-              if (track.lang == "jpn" || track.lang == "ja" || track.lang == "jp") {
-                if (currentSid == track.id) {
-                  Log.d(
-                    TAG,
-                    "Smart Sub: Native File Default Japanese Sub (id=${track.id}) [Already Active. Skipping Change.]",
-                  )
-                } else {
-                  Log.d(TAG, "Smart Sub: Native File Default Japanese Sub (id=${track.id}) [Applied]")
-                  setTrackSelectionId("sid", track.id)
-                }
-                return
-              }
-            }
-          }
-        } else if (defaultCount > 1) {
-          Log.d(TAG, "Smart Sub: Multiple default tracks detected (Muxing error). Ignoring.")
-        }
-      }
-
-      // PASS A: SMART ANIME DIALOGUE
-      if (isAnimeContext) {
-        for (prefLang in preferredLangs) {
-          for (track in subTracks) {
-            if (track.lang == prefLang || track.lang.startsWith(prefLang)) {
-              if (track.title.contains("dialogue") || track.title.contains("full") || track.title.contains("script")) {
-                if (currentSid == track.id) {
-                  Log.d(TAG, "Smart Sub: Anime Dialogue matched (id=${track.id}) [Already Active. Skipping Change.]")
-                } else {
-                  Log.d(TAG, "Smart Sub: Anime Dialogue matched (id=${track.id}) [Applied]")
-                  setTrackSelectionId("sid", track.id)
-                }
-                return
-              }
-            }
-          }
-        }
-      }
-
-      // PASS B: CLEAN LANGUAGE MATCH
-      for (prefLang in preferredLangs) {
-        for (track in subTracks) {
-          if (track.lang == prefLang || track.lang.startsWith(prefLang)) {
-            if (ignoreSubs.none { track.title.contains(it) } && !track.forced && !track.hearing) {
-              if (currentSid == track.id) {
-                Log.d(TAG, "Smart Sub: Clean Match (id=${track.id}) [Already Active. Skipping Change.]")
-              } else {
-                Log.d(TAG, "Smart Sub: Clean Match (id=${track.id}) [Applied]")
-                setTrackSelectionId("sid", track.id)
-              }
-              return
-            }
-          }
-        }
-      }
-
-      // PASS C: LAST RESORT MATCHING
-      for (prefLang in preferredLangs) {
-        for (track in subTracks) {
-          if (track.lang == prefLang || track.lang.startsWith(prefLang)) {
-            if (currentSid == track.id) {
-              Log.d(TAG, "Smart Sub: Fallback Match (id=${track.id}) [Already Active. Skipping Change.]")
-            } else {
-              Log.d(TAG, "Smart Sub: Fallback Match (id=${track.id}) [Applied]")
-              setTrackSelectionId("sid", track.id)
-            }
-            return
-          }
-        }
-      }
-
-      // PASS D: TITLE-NAME FALLBACK
-      // Handles tracks where the encoder left lang empty/undetermined but gave the track
-      // a descriptive title like "Subtitle", "Subtitles", "Full Subtitles", "English", etc.
-      // Common in anime web-rips (Crunchyroll, HiDive) and some fansub encodes.
-      val unknownLangCodes = setOf("", "und", "zxx")
-      val dialogueTitleKeywords =
-        listOf(
-          "subtitle",
-          "subtitles",
-          "full subtitle",
-          "full sub",
-          "dialogue",
-          "dialog",
-          "translation",
-          "english",
-          "main",
-          "script",
-          "full",
-          "caption",
-        )
-      for (track in subTracks) {
-        if (track.lang in unknownLangCodes) {
-          if (dialogueTitleKeywords.any { track.title.contains(it) }) {
-            if (ignoreSubs.none { track.title.contains(it) } && !track.forced && !track.hearing) {
-              if (currentSid == track.id) {
-                Log.d(
-                  TAG,
-                  "Smart Sub: Title-Name Fallback '${track.title}' (id=${track.id}) [Already Active. Skipping Change.]",
-                )
-              } else {
-                Log.d(TAG, "Smart Sub: Title-Name Fallback '${track.title}' (id=${track.id}) [Applied]")
-                setTrackSelectionId("sid", track.id)
-              }
-              return
-            }
-          }
-        }
-      }
-
-      // PASS E: SINGLE CLEAN TRACK FALLBACK
-      // If only one non-signs/non-SDH subtitle track exists regardless of language,
-      // it is almost certainly the intended dialogue track. Select it.
-      val cleanSubTracks =
-        subTracks.filter {
-          ignoreSubs.none { kw -> it.title.contains(kw) } && !it.forced && !it.hearing
-        }
-      if (cleanSubTracks.size == 1) {
-        val track = cleanSubTracks.first()
-        if (currentSid == track.id) {
-          Log.d(TAG, "Smart Sub: Single Track Fallback (id=${track.id}) [Already Active. Skipping Change.]")
-        } else {
-          Log.d(
-            TAG,
-            "Smart Sub: Single Track Fallback lang='${track.lang}' title='${track.title}' (id=${track.id}) [Applied]",
-          )
-          setTrackSelectionId("sid", track.id)
-        }
-        return
-      }
-    } catch (e: Exception) {
-      Log.e(TAG, "Subtitle selection failed", e)
     }
   }
 }
