@@ -99,7 +99,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.SeekbarStyle
@@ -2448,76 +2447,5 @@ fun StandardSeekbar(
       size = Size(thumbWidthPx, thumbHeightPx),
       cornerRadius = CornerRadius(thumbWidthPx / 2f),
     )
-  }
-}
-
-@Preview(name = "Seekbar - Wavy (default)")
-@Composable
-private fun PreviewSeekBarWavy() {
-  SeekbarWithTimers(
-    position = 30f,
-    duration = 180f,
-    remaining= 150f,
-    onValueChange = {},
-    onValueChangeFinished = {},
-    timersInverted = Pair(false, true),
-    positionTimerOnClick = {},
-    durationTimerOnCLick = {},
-    chapters = persistentListOf(),
-    skipSegments = persistentListOf(),
-    paused = false,
-    seekbarStyle = SeekbarStyle.Wavy,
-  )
-}
-
-@Preview(name = "Seekbar - Slim (normal)")
-@Composable
-private fun PreviewSeekBarSlim() {
-  SeekbarWithTimers(
-    position = 30f,
-    duration = 180f,
-    remaining= 150f,
-    onValueChange = {},
-    onValueChangeFinished = {},
-    timersInverted = Pair(false, true),
-    positionTimerOnClick = {},
-    durationTimerOnCLick = {},
-    chapters = persistentListOf(),
-    skipSegments = persistentListOf(),
-    paused = false,
-    seekbarStyle = SeekbarStyle.Slim,
-  )
-}
-
-@Preview(name = "Seekbar - Slim (scrubbing)")
-@Composable
-private fun PreviewSeekBarSlimScrubbing() {
-  SeekbarWithTimers(
-    position = 30f,
-    duration = 180f,
-    remaining= 150f,
-    onValueChange = {},
-    onValueChangeFinished = {},
-    timersInverted = Pair(false, true),
-    positionTimerOnClick = {},
-    durationTimerOnCLick = {},
-    chapters = persistentListOf(),
-    skipSegments = persistentListOf(),
-    paused = false,
-    seekbarStyle = SeekbarStyle.Slim,
-  )
-}
-
-@Preview(name = "Seekbar Style Previews")
-@Composable
-private fun PreviewSeekbarStyles() {
-  androidx.compose.foundation.layout.Column(
-    modifier = Modifier.padding(16.dp),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
-  ) {
-    SeekbarStyle.entries.forEach { style ->
-      androidx.compose.material3.Text(style.name)
-      SeekbarStylePreview(style = style)
-    }
   }
 }

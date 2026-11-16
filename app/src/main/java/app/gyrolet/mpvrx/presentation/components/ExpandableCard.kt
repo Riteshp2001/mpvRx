@@ -27,19 +27,15 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CardElevation
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -128,27 +124,4 @@ fun ExpandableCard(
       }
     }
   }
-}
-
-@Composable
-@Preview
-private fun PreviewExpandableCard() {
-  var isExpanded by remember { mutableStateOf(true) }
-
-  ExpandableCard(
-    isExpanded,
-    title = {
-      Text(
-        androidx.compose.ui.res
-          .stringResource(app.gyrolet.mpvrx.R.string.pref_preferences),
-      )
-    },
-    content = {
-      Text(
-        androidx.compose.ui.res
-          .stringResource(app.gyrolet.mpvrx.R.string.pref_appearance_summary),
-      )
-    },
-    onExpand = { isExpanded = it },
-  )
 }

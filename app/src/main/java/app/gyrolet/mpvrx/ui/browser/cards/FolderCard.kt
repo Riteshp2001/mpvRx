@@ -76,7 +76,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
-import kotlin.math.pow
 
 @androidx.compose.runtime.Immutable
 data class FolderCardUiConfig(
@@ -687,13 +686,8 @@ private fun formatDuration(durationMs: Long): String {
   }
 }
 
-private fun formatFileSize(bytes: Long): String {
-  if (bytes <= 0) return "0 B"
-  val units = arrayOf("B", "KB", "MB", "GB", "TB")
-  val digitGroups = (kotlin.math.log10(bytes.toDouble()) / kotlin.math.log10(1024.0)).toInt()
-  val value = bytes / 1024.0.pow(digitGroups.toDouble())
-  return String.format(java.util.Locale.getDefault(), "%.1f %s", value, units[digitGroups])
-}
+private fun formatFileSize(bytes: Long): String =
+  app.gyrolet.mpvrx.utils.storage.VideoScanUtils.formatFileSize(bytes)
 
 // Hoisted because a card formats a date on every recomposition and SimpleDateFormat construction
 // parses the pattern and clones a Calendar each time.

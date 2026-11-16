@@ -32,6 +32,7 @@ import app.gyrolet.mpvrx.ui.lua.LuaScriptsEmptyState
 import app.gyrolet.mpvrx.ui.lua.LuaScriptsLoadingState
 import app.gyrolet.mpvrx.ui.lua.LuaSelectionFootnote
 import app.gyrolet.mpvrx.ui.lua.rememberLuaScriptsCatalog
+import app.gyrolet.mpvrx.ui.lua.toggleLuaScriptSelection
 import app.gyrolet.mpvrx.ui.theme.spacing
 import org.koin.compose.koinInject
 
@@ -55,12 +56,6 @@ fun LuaScriptsPanel(
   val scriptsListEnabled = enableLuaScripts && mpvConfStorageLocation.isNotBlank()
   val connectedItemCount =
     if (catalog.isLoading || mpvConfStorageLocation.isBlank()) 1 else catalog.availableScripts.size + 1
-
-  fun toggleScriptSelection(scriptName: String) {
-    val isEnabled = selectedScripts.contains(scriptName)
-    val newSelection = if (isEnabled) selectedScripts - scriptName else selectedScripts + scriptName
-    preferences.selectedLuaScripts.set(newSelection)
-  }
 
   DraggablePanel(
     modifier = modifier,
@@ -110,7 +105,7 @@ fun LuaScriptsPanel(
               shape = rememberConnectedShape(index + 1, connectedItemCount, ConnectedLayout.Vertical),
               selected = selectedScripts.contains(scriptName),
               controlsEnabled = scriptsListEnabled,
-              onToggle = { toggleScriptSelection(scriptName) },
+              onToggle = { toggleLuaScriptSelection(preferences, scriptName) },
             )
           }
         }

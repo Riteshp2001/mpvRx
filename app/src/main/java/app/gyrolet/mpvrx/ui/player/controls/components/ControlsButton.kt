@@ -19,10 +19,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.AppIcon
-import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.AdaptiveControlsButton
 import app.gyrolet.mpvrx.ui.liquidglass.PlayerLiquidTokens
 import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonAlpha
@@ -108,14 +106,5 @@ fun ControlsGroup(
       androidx.compose.foundation.layout.Arrangement
         .spacedBy(if (LocalBorderlessPlayerControls.current) 0.dp else spacing.extraSmall),
     content = content,
-  )
-}
-
-@Preview
-@Composable
-private fun PreviewControlsButton() {
-  ControlsButton(
-    Icons.RoundedFilled.CatchingPokemon,
-    onClick = {},
   )
 }

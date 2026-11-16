@@ -164,19 +164,6 @@ class MPVView(
   }
 
   /**
-   * Configures the process-wide player and binds this view as its current rendering surface.
-   * Re-entering the player reuses the live core; it never creates a second native instance.
-   */
-  fun initializeSession(
-    configDir: String,
-    cacheDir: String,
-  ): Result<Boolean> {
-    val result = initializeCoreSession(configDir, cacheDir)
-    if (result.isSuccess) attachSessionSurface()
-    return result
-  }
-
-  /**
    * Configures the process-wide native core without touching Android view state.
    *
    * Keeping the Surface handoff out of this method lets [PlayerActivity] overlap the expensive
@@ -1135,7 +1122,7 @@ class MPVView(
 
   /**
    * Pure decision over already-resolved ingredients. [initOptions] passes the precomputed values;
-   * [initializeSession] resolves them itself because it needs the selection for the core key and
+   * [initializeCoreSession] resolves them itself because it needs the selection for the core key and
    * must ignore [forceOpenGlFallback] there.
    */
   private fun selectRenderBackend(

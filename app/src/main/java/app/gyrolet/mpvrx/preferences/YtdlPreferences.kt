@@ -22,8 +22,6 @@ class YtdlPreferences(
   preferenceStore: PreferenceStore,
 ) {
   val ytdlFormat = preferenceStore.getString("video_ytdl_format", "")
-  val ytdlQuality = preferenceStore.getInt("ytdl_quality", -1) // -1 for any
-  val preferH264 = preferenceStore.getBoolean("ytdl_prefer_h264", false)
   val codecPreference = preferenceStore.getEnum("ytdl_codec_preference", YtdlCodecPreference.AUTO)
   val maxFps = preferenceStore.getInt("ytdl_max_fps", 0)
   val hdrPreference = preferenceStore.getEnum("ytdl_hdr_preference", YtdlHdrPreference.ANY)

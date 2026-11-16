@@ -90,15 +90,6 @@ internal suspend fun lyricsGetAuthorized(
     },
   )
 
-/** Body of an authenticated GET without service-specific browser headers. */
-internal suspend fun lyricsGetBearer(
-  url: String,
-  bearer: String,
-): String? {
-  if (bearer.isBlank()) return null
-  return lyricsGet(url, mapOf("Authorization" to "Bearer $bearer"))
-}
-
 internal suspend fun lyricsPost(
   url: String,
   body: String,

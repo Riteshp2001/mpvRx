@@ -133,13 +133,19 @@ internal object AiResponseParser {
   fun error(
     json: Json,
     body: String,
-  ): String =
-    runCatching {
-      val root = json.parseToJsonElement(body).asObject()
-      root?.get("error").asObject()?.let { errorMessage(it, "AI provider") }
-        ?: root?.get("message").stringValue()
-        ?: body.take(400)
-    }.getOrElse { body.take(400) }
+    apiKey: String = "",
+    maxLength: Int = 400,
+  ): String {
+    val raw =
+      runCatching {
+        val root = json.parseToJsonElement(body).asObject()
+        root?.get("error").asObject()?.let { errorMessage(it, "AI provider") }
+          ?: root?.get("message").stringValue()
+          ?: body
+      }.getOrElse { body }
+    val redacted = if (apiKey.isBlank()) raw else raw.replace(apiKey, "[redacted]")
+    return redacted.take(maxLength)
+  }
 
   fun modelArray(
     json: Json,

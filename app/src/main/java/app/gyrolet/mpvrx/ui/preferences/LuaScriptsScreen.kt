@@ -14,7 +14,6 @@ import app.gyrolet.mpvrx.ui.tv.tvContentFocus
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
-import android.content.Intent
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,7 +24,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -37,9 +35,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
-import androidx.core.net.toUri
-import androidx.documentfile.provider.DocumentFile
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -52,6 +47,9 @@ import app.gyrolet.mpvrx.ui.lua.LuaScriptsEmptyState
 import app.gyrolet.mpvrx.ui.lua.LuaScriptsLoadingState
 import app.gyrolet.mpvrx.ui.lua.LuaSelectionFootnote
 import app.gyrolet.mpvrx.ui.lua.rememberLuaScriptsCatalog
+import app.gyrolet.mpvrx.ui.lua.resolveLuaScriptsDir
+import app.gyrolet.mpvrx.ui.lua.shareLuaScriptFile
+import app.gyrolet.mpvrx.ui.lua.toggleLuaScriptSelection
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalRootBackStack
@@ -83,68 +81,36 @@ object LuaScriptsScreen : Screen {
     val enabledScriptsCount = selectedScripts.count { it in catalog.availableScripts }
     val scriptsListEnabled = enableLuaScripts && mpvConfStorageLocation.isNotBlank()
 
-    fun toggleScriptSelection(scriptName: String) {
-      val isEnabled = selectedScripts.contains(scriptName)
-      val newSelection = if (isEnabled) selectedScripts - scriptName else selectedScripts + scriptName
-      preferences.selectedLuaScripts.set(newSelection)
-    }
-
     fun shareScript(scriptName: String) {
       if (mpvConfStorageLocation.isBlank()) {
         Toast
           .makeText(
             context,
-            context.getString(app.gyrolet.mpvrx.R.string.ui_no_storage_location_configured),
+            context.getString(R.string.ui_no_storage_location_configured),
             Toast.LENGTH_SHORT,
           ).show()
         return
       }
 
       runCatching {
-        val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-        if (tree != null && tree.exists()) {
-          val scriptsDir =
-            tree.listFiles().firstOrNull {
-              it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true
-            } ?: tree
+        val scriptFile =
+          resolveLuaScriptsDir(context, mpvConfStorageLocation)
+            ?.listFiles()
+            ?.firstOrNull { it.isFile && it.name == scriptName }
 
-          val scriptFile =
-            scriptsDir.listFiles().firstOrNull {
-              it.isFile && it.name == scriptName
-            }
-
-          if (scriptFile != null) {
-            val cacheFile = File(context.cacheDir, scriptName)
-            context.contentResolver.openInputStream(scriptFile.uri)?.use { input ->
-              cacheFile.outputStream().use { output ->
-                input.copyTo(output)
-              }
-            }
-
-            val shareUri =
-              FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.provider",
-                cacheFile,
-              )
-
-            val shareIntent =
-              Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_STREAM, shareUri)
-                putExtra(Intent.EXTRA_SUBJECT, scriptName)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-              }
-
-            context.startActivity(Intent.createChooser(shareIntent, "Share script"))
-          } else {
-            Toast
-              .makeText(
-                context,
-                context.getString(app.gyrolet.mpvrx.R.string.ui_script_file_not_found),
-                Toast.LENGTH_SHORT,
-              ).show()
+        if (scriptFile != null) {
+          val cacheFile = File(context.cacheDir, scriptName)
+          context.contentResolver.openInputStream(scriptFile.uri)?.use { input ->
+            cacheFile.outputStream().use { output -> input.copyTo(output) }
           }
+          shareLuaScriptFile(context, scriptName, cacheFile)
+        } else {
+          Toast
+            .makeText(
+              context,
+              context.getString(R.string.ui_script_file_not_found),
+              Toast.LENGTH_SHORT,
+            ).show()
         }
       }.onFailure { error ->
         Toast
@@ -255,7 +221,7 @@ object LuaScriptsScreen : Screen {
                 shape = rememberConnectedShape(index + 1, catalog.availableScripts.size + 1, ConnectedLayout.Vertical),
                 selected = selectedScripts.contains(scriptName),
                 controlsEnabled = scriptsListEnabled,
-                onToggle = { toggleScriptSelection(scriptName) },
+                onToggle = { toggleLuaScriptSelection(preferences, scriptName) },
                 trailingContent = {
                   IconButton(onClick = { shareScript(scriptName) }) {
                     Icon(

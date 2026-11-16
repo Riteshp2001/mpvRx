@@ -89,7 +89,7 @@ class Anime4KManager(
 
   /**
    * Initialize: copy shaders from assets to internal storage
-   * This must be called and complete successfully before using getShaderChain()
+   * This must be called and complete successfully before resolving shader paths
    */
   fun initialize(): Boolean {
     if (isInitialized) {
@@ -407,15 +407,6 @@ class Anime4KManager(
       "1.0", "1" -> "1"
       else -> "unknown"
     }
-
-  /**
-   * Get shader chain for the specified mode and quality
-   * Returns empty string if mode is OFF or initialization failed
-   */
-  fun getShaderChain(
-    mode: Mode,
-    quality: Quality,
-  ): String = getShaderPaths(mode, quality).joinToString(":")
 
   fun getShaderPaths(mode: Mode): List<String> = getShaderPaths(mode, DEFAULT_QUALITY)
 

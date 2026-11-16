@@ -49,16 +49,6 @@ private data class AnthropicMessage(
 )
 
 @Serializable
-private data class AnthropicErrorBody(
-  val error: AnthropicErrorDetail? = null,
-)
-
-@Serializable
-private data class AnthropicErrorDetail(
-  val message: String? = null,
-)
-
-@Serializable
 private data class AnthropicMessagesRequest(
   val model: String,
   @SerialName("max_tokens") val maxTokens: Int = 1024,
@@ -110,7 +100,9 @@ class AnthropicClient(
           val parsed =
             apiClient.newCall(request).awaitResponse().use { response ->
               val body = response.body.string()
-              if (!response.isSuccessful) throw Exception("Anthropic API error ${response.code}: ${parseError(body)}")
+              if (!response.isSuccessful) {
+                throw Exception("Anthropic API error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
+              }
               json.decodeFromString<AnthropicModelListResponse>(body)
             }
           models += parsed.data
@@ -187,17 +179,11 @@ class AnthropicClient(
 
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
-          if (!response.isSuccessful) throw Exception("Anthropic generate error ${response.code}: ${parseError(body)}")
+          if (!response.isSuccessful) {
+            throw Exception("Anthropic generate error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
+          }
           AiResponseParser.anthropic(json, body, "Anthropic")
         }
       }
-    }
-
-  private fun parseError(body: String): String =
-    try {
-      val error = json.decodeFromString<AnthropicErrorBody>(body)
-      error.error?.message ?: body
-    } catch (_: Exception) {
-      body.take(200)
     }
 }

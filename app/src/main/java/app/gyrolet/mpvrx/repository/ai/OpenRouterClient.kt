@@ -47,16 +47,6 @@ private data class OrMessage(
 )
 
 @Serializable
-private data class OrErrorBody(
-  val error: OrErrorDetail? = null,
-)
-
-@Serializable
-private data class OrErrorDetail(
-  val message: String? = null,
-)
-
-@Serializable
 private data class OrChatRequest(
   val model: String,
   val messages: List<OrMessage>,
@@ -84,7 +74,9 @@ class OpenRouterClient(
 
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
-          if (!response.isSuccessful) throw Exception("OpenRouter API error ${response.code}: ${parseError(body)}")
+          if (!response.isSuccessful) {
+            throw Exception("OpenRouter API error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
+          }
 
           val parsed = json.decodeFromString<OrModelListResponse>(body)
           parsed.data.map { model ->
@@ -154,17 +146,11 @@ class OpenRouterClient(
 
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
-          if (!response.isSuccessful) throw Exception("OpenRouter generate error ${response.code}: ${parseError(body)}")
+          if (!response.isSuccessful) {
+            throw Exception("OpenRouter generate error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
+          }
           AiResponseParser.openAiCompatible(json, body, "OpenRouter")
         }
       }
-    }
-
-  private fun parseError(body: String): String =
-    try {
-      val error = json.decodeFromString<OrErrorBody>(body)
-      error.error?.message ?: body
-    } catch (_: Exception) {
-      body.take(200)
     }
 }

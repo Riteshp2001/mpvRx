@@ -37,16 +37,6 @@ private data class TogMessage(
 )
 
 @Serializable
-private data class TogErrorBody(
-  val error: TogErrorDetail? = null,
-)
-
-@Serializable
-private data class TogErrorDetail(
-  val message: String? = null,
-)
-
-@Serializable
 private data class TogChatRequest(
   val model: String,
   val messages: List<TogMessage>,
@@ -74,7 +64,9 @@ class TogetherClient(
 
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
-          if (!response.isSuccessful) throw Exception("Together API error ${response.code}: ${parseError(body)}")
+          if (!response.isSuccessful) {
+            throw Exception("Together API error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
+          }
 
           AiResponseParser
             .modelArray(json, body, "Together")
@@ -139,17 +131,11 @@ class TogetherClient(
 
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
-          if (!response.isSuccessful) throw Exception("Together generate error ${response.code}: ${parseError(body)}")
+          if (!response.isSuccessful) {
+            throw Exception("Together generate error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
+          }
           AiResponseParser.openAiCompatible(json, body, "Together")
         }
       }
-    }
-
-  private fun parseError(body: String): String =
-    try {
-      val error = json.decodeFromString<TogErrorBody>(body)
-      error.error?.message ?: body
-    } catch (_: Exception) {
-      body.take(200)
     }
 }

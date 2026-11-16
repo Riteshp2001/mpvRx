@@ -119,15 +119,9 @@ internal fun continueWatchingVideos(items: List<RecentlyPlayedItem>): List<Video
     .asSequence()
     .filterIsInstance<RecentlyPlayedItem.VideoItem>()
     .map { it.video }
-    .filter { video -> !video.isAudio && !video.path.isNetworkSource() }
+    .filter { video -> !video.isAudio && !FileTypeUtils.isNetworkStreamUri(video.path) }
     .take(ContinueWatchingMaxItems)
     .toList()
-
-private fun String.isNetworkSource(): Boolean =
-  startsWith("http://", ignoreCase = true) ||
-    startsWith("https://", ignoreCase = true) ||
-    startsWith("rtmp://", ignoreCase = true) ||
-    startsWith("rtsp://", ignoreCase = true)
 
 /**
  * Collapsible Material 3 Expressive "Continue Watching" panel for the top of Home.

@@ -714,12 +714,7 @@ internal class MpvRxSubtitleHubApiSources(
   ): String? = SubtitleHubSearchMatcher.displayFormat(extensionFromName(value) ?: fallback)
 
   private fun extensionFromName(value: String): String? =
-    value
-      .substringBefore('?')
-      .substringAfterLast('/')
-      .substringAfterLast('.', "")
-      .lowercase()
-      .takeIf { it.isNotBlank() && it.length <= 5 }
+    app.gyrolet.mpvrx.repository.subtitle.SubtitleArchiveExtractor.extensionFromName(value)
 
   private fun absoluteUrl(
     baseUrl: String,

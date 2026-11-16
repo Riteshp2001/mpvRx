@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.lua
 
+import android.content.Context
+import android.content.Intent
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -21,7 +23,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import app.gyrolet.mpvrx.ui.components.IconSwitch
@@ -41,13 +42,61 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
+
+private val SUPPORTED_SCRIPT_EXTENSIONS = setOf("lua", "js")
+
+fun resolveLuaScriptsDir(
+  context: Context,
+  storageUri: String,
+): DocumentFile? {
+  if (storageUri.isBlank()) return null
+  val tree = DocumentFile.fromTreeUri(context, storageUri.toUri()) ?: return null
+  if (!tree.exists()) return null
+  return tree.listFiles().firstOrNull {
+    it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true
+  } ?: tree
+}
+
+fun toggleLuaScriptSelection(
+  preferences: AdvancedPreferences,
+  scriptName: String,
+) {
+  val selected = preferences.selectedLuaScripts.get()
+  preferences.selectedLuaScripts.set(
+    if (scriptName in selected) selected - scriptName else selected + scriptName,
+  )
+}
+
+fun shareLuaScriptFile(
+  context: Context,
+  scriptName: String,
+  cacheFile: File,
+) {
+  val shareUri =
+    FileProvider.getUriForFile(
+      context,
+      "${context.packageName}.provider",
+      cacheFile,
+    )
+  val shareIntent =
+    Intent(Intent.ACTION_SEND).apply {
+      type = "text/plain"
+      putExtra(Intent.EXTRA_STREAM, shareUri)
+      putExtra(Intent.EXTRA_SUBJECT, scriptName)
+      addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+  context.startActivity(Intent.createChooser(shareIntent, "Share $scriptName"))
+}
 
 data class LuaScriptsCatalogState(
   val availableScripts: List<String> = emptyList(),
@@ -76,21 +125,12 @@ fun rememberLuaScriptsCatalog(
       withContext(Dispatchers.IO) {
         runCatching {
           val scripts = mutableListOf<String>()
-          val tree = DocumentFile.fromTreeUri(context, storageUri.toUri())
-          if (tree != null && tree.exists()) {
-            val scriptsDir =
-              tree.listFiles().firstOrNull {
-                it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true
-              } ?: tree
-            val scriptExtensions = setOf("lua", "js")
-
-            scriptsDir.listFiles().forEach { file ->
-              if (!file.isFile) return@forEach
-              val name = file.name ?: return@forEach
-              val extension = name.substringAfterLast('.', "").lowercase()
-              if (extension in scriptExtensions) {
-                scripts += name
-              }
+          resolveLuaScriptsDir(context, storageUri)?.listFiles()?.forEach { file ->
+            if (!file.isFile) return@forEach
+            val name = file.name ?: return@forEach
+            val extension = name.substringAfterLast('.', "").lowercase()
+            if (extension in SUPPORTED_SCRIPT_EXTENSIONS) {
+              scripts += name
             }
           }
           scripts.sorted()

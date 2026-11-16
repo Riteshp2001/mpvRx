@@ -39,16 +39,6 @@ private data class GroqMessage(
   val content: String,
 )
 
-@Serializable
-private data class GroqErrorBody(
-  val error: GroqErrorDetail? = null,
-)
-
-@Serializable
-private data class GroqErrorDetail(
-  val message: String? = null,
-)
-
 class GroqClient(
   private val client: OkHttpClient,
   private val json: Json,
@@ -70,8 +60,7 @@ class GroqClient(
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
           if (!response.isSuccessful) {
-            val errorMsg = parseError(body)
-            throw Exception("Groq API error ${response.code}: $errorMsg")
+            throw Exception("Groq API error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
           }
 
           val parsed = json.decodeFromString<GroqModelListResponse>(body)
@@ -138,20 +127,11 @@ class GroqClient(
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
           if (!response.isSuccessful) {
-            val errorMsg = parseError(body)
-            throw Exception("Groq generate error ${response.code}: $errorMsg")
+            throw Exception("Groq generate error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
           }
           AiResponseParser.openAiCompatible(json, body, "Groq")
         }
       }
-    }
-
-  private fun parseError(body: String): String =
-    try {
-      val error = json.decodeFromString<GroqErrorBody>(body)
-      error.error?.message ?: body
-    } catch (_: Exception) {
-      body.take(200)
     }
 }
 

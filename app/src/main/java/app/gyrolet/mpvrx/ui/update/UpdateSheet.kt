@@ -380,12 +380,8 @@ private fun DownloadProgressSection(progress: Float) {
 private fun formatFileSize(
   size: Long,
   unknownLabel: String,
-): String {
-  if (size <= 0) return unknownLabel
-  val units = arrayOf("B", "KB", "MB", "GB", "TB")
-  val digitGroups = (Math.log10(size.toDouble()) / Math.log10(1024.0)).toInt()
-  return String.format("%.1f %s", size / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
-}
+): String =
+  if (size <= 0) unknownLabel else app.gyrolet.mpvrx.utils.storage.VideoScanUtils.formatFileSize(size)
 
 private fun formatDate(dateString: String): String {
   return try {

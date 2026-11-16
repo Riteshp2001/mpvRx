@@ -14,7 +14,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import okhttp3.HttpUrl
@@ -39,16 +38,6 @@ private data class OpenAiModelListResponse(
 private data class OpenAiMessage(
   val role: String,
   val content: String,
-)
-
-@Serializable
-private data class OpenAiErrorBody(
-  val error: OpenAiErrorDetail? = null,
-)
-
-@Serializable
-private data class OpenAiErrorDetail(
-  val message: String? = null,
 )
 
 @Serializable
@@ -91,7 +80,7 @@ class OpenAiClient(
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
           if (!response.isSuccessful) {
-            throw Exception("$providerName at $target returned HTTP ${response.code}: ${parseError(body, apiKey)}")
+            throw Exception("$providerName at $target returned HTTP ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
           }
 
           val parsed = json.decodeFromString<OpenAiModelListResponse>(body)
@@ -115,7 +104,7 @@ class OpenAiClient(
         apiClient.newCall(request).awaitResponse().use { response ->
           if (!response.isSuccessful) {
             throw Exception(
-              "$providerName at $target returned HTTP ${response.code}: ${parseError(response.body.string(), apiKey)}",
+              "$providerName at $target returned HTTP ${response.code}: ${AiResponseParser.error(json, response.body.string(), apiKey, 200)}",
             )
           }
           if (compatible) "Endpoint ready" else "API key verified successfully"
@@ -163,7 +152,7 @@ class OpenAiClient(
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
           if (!response.isSuccessful) {
-            throw Exception("$providerName at $target returned HTTP ${response.code}: ${parseError(body, apiKey)}")
+            throw Exception("$providerName at $target returned HTTP ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
           }
           AiResponseParser.openAiCompatible(json, body, providerName)
         }
@@ -186,15 +175,6 @@ class OpenAiClient(
         header("Authorization", "Bearer $apiKey")
       }
     }
-
-  private fun parseError(body: String, apiKey: String): String {
-    val message = try {
-      json.decodeFromString<OpenAiErrorBody>(body).error?.message ?: body
-    } catch (_: SerializationException) {
-      body
-    }
-    return (if (apiKey.isBlank()) message else message.replace(apiKey, "[redacted]")).take(200)
-  }
 
   private fun isReasoningModel(model: String): Boolean {
     val id = model.substringAfterLast('/').lowercase()

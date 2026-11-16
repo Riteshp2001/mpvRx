@@ -473,7 +473,7 @@ object VideoScanUtils : KoinComponent {
   internal fun formatFileSize(bytes: Long): String {
     if (bytes <= 0) return "0 B"
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    val digitGroups = (log10(bytes.toDouble()) / log10(1024.0)).toInt()
+    val digitGroups = (log10(bytes.toDouble()) / log10(1024.0)).toInt().coerceIn(0, units.lastIndex)
     return String.format(
       Locale.getDefault(),
       "%.1f %s",
@@ -647,6 +647,12 @@ object FileTypeUtils {
   }
 
   fun isAudioFile(file: File): Boolean = file.extension.lowercase(Locale.getDefault()) in AUDIO_EXTENSIONS
+
+  fun isNetworkStreamUri(path: String): Boolean =
+    path.startsWith("http://", ignoreCase = true) ||
+      path.startsWith("https://", ignoreCase = true) ||
+      path.startsWith("rtmp://", ignoreCase = true) ||
+      path.startsWith("rtsp://", ignoreCase = true)
 
   fun stripExtension(title: String): String {
     val dotIndex = title.lastIndexOf('.')

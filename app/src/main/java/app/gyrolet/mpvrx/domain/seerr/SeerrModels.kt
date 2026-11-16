@@ -475,13 +475,6 @@ data class Genre(
 )
 
 @Serializable
-data class Studio(
-  @SerialName("id") val id: Int,
-  @SerialName("name") val name: String,
-  @SerialName("logoPath") val logoPath: String? = null,
-)
-
-@Serializable
 data class Network(
   @SerialName("id") val id: Int,
   @SerialName("name") val name: String,

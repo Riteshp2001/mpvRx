@@ -835,12 +835,7 @@ class MpvRxSubtitleHubRepository(
   private fun String.codeEquals(other: String): Boolean = normalizeCode() == other.normalizeCode()
 
   private fun extensionFromName(value: String): String? =
-    value
-      .substringBefore("?")
-      .substringAfterLast("/")
-      .substringAfterLast(".", "")
-      .lowercase()
-      .takeIf { it.isNotBlank() && it.length <= 5 }
+    app.gyrolet.mpvrx.repository.subtitle.SubtitleArchiveExtractor.extensionFromName(value)
 
   private data class ResolvedDownload(
     val url: String,

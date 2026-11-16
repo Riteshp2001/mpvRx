@@ -9,18 +9,10 @@
 
 package app.gyrolet.mpvrx.presentation.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 
@@ -72,28 +64,4 @@ object LeftSideOvalShape : Shape {
       }
     return Outline.Generic(path)
   }
-}
-
-@Preview
-@Composable
-private fun PreviewRightSideOvalBox() {
-  Box(
-    modifier =
-      Modifier
-        .fillMaxSize()
-        .clip(RightSideOvalShape)
-        .background(Color.Red),
-  ) {}
-}
-
-@Preview
-@Composable
-private fun PreviewLeftSideOvalBox() {
-  Box(
-    modifier =
-      Modifier
-        .fillMaxSize()
-        .clip(LeftSideOvalShape)
-        .background(Color.Red),
-  ) {}
 }

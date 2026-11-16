@@ -9,10 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandVertically
@@ -81,12 +79,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
-import androidx.core.net.toUri
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.documentfile.provider.DocumentFile
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -101,6 +96,8 @@ import app.gyrolet.mpvrx.ui.editor.MpvHelpScreen
 import app.gyrolet.mpvrx.ui.editor.MpvScriptEditor
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.lua.resolveLuaScriptsDir
+import app.gyrolet.mpvrx.ui.lua.shareLuaScriptFile
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
@@ -230,25 +227,17 @@ data class LuaScriptEditorScreen(
       if (scriptName != null && mpvConfStorageLocation.isNotBlank()) {
         withContext(Dispatchers.IO) {
           runCatching {
-            val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-            if (tree != null && tree.exists()) {
-              val scriptsDir =
-                tree.listFiles().firstOrNull {
-                  it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true
-                } ?: tree
-
-              val scriptFile = scriptsDir.findFile(scriptName)
-              if (scriptFile != null && scriptFile.exists()) {
-                val content =
-                  context.contentResolver.openInputStream(scriptFile.uri)?.bufferedReader()?.use { reader ->
-                    reader.readText()
-                  }
-                if (content != null) {
-                  withContext(Dispatchers.Main) {
-                    loadedContent = content
-                    if (!userEditedWhileLoading) {
-                      scriptContent = content
-                    }
+            val scriptFile = resolveLuaScriptsDir(context, mpvConfStorageLocation)?.findFile(scriptName)
+            if (scriptFile != null && scriptFile.exists()) {
+              val content =
+                context.contentResolver.openInputStream(scriptFile.uri)?.bufferedReader()?.use { reader ->
+                  reader.readText()
+                }
+              if (content != null) {
+                withContext(Dispatchers.Main) {
+                  loadedContent = content
+                  if (!userEditedWhileLoading) {
+                    scriptContent = content
                   }
                 }
               }
@@ -277,35 +266,18 @@ data class LuaScriptEditorScreen(
 
       scope.launch(Dispatchers.IO) {
         try {
-          if (mpvConfStorageLocation.isBlank()) {
-            withContext(Dispatchers.Main) {
-              Toast
-                .makeText(
-                  context,
-                  context.getString(R.string.ui_no_storage_location_set),
-                  Toast.LENGTH_LONG,
-                ).show()
-            }
-            return@launch
-          }
-
-          val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-          if (tree == null) {
-            withContext(Dispatchers.Main) {
-              Toast
-                .makeText(
-                  context,
-                  context.getString(R.string.ui_no_storage_location_set),
-                  Toast.LENGTH_LONG,
-                ).show()
-            }
-            return@launch
-          }
-
           val scriptsDir =
-            tree.listFiles().firstOrNull {
-              it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true
-            } ?: tree
+            resolveLuaScriptsDir(context, mpvConfStorageLocation) ?: run {
+              withContext(Dispatchers.Main) {
+                Toast
+                  .makeText(
+                    context,
+                    context.getString(R.string.ui_no_storage_location_set),
+                    Toast.LENGTH_LONG,
+                  ).show()
+              }
+              return@launch
+            }
 
           val existingScriptName = scriptName.orEmpty()
           if (!isNewScript && existingScriptName != finalFileName) {
@@ -404,23 +376,8 @@ data class LuaScriptEditorScreen(
         try {
           val cacheFile = File(context.cacheDir, targetName)
           cacheFile.writeText(snapshotContent, Charsets.UTF_8)
-
-          val contentUri =
-            FileProvider.getUriForFile(
-              context,
-              "${context.packageName}.provider",
-              cacheFile,
-            )
-
           withContext(Dispatchers.Main) {
-            val shareIntent =
-              Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_STREAM, contentUri)
-                putExtra(Intent.EXTRA_SUBJECT, targetName)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-              }
-            context.startActivity(Intent.createChooser(shareIntent, "Share $targetName"))
+            shareLuaScriptFile(context, targetName, cacheFile)
           }
         } catch (e: Exception) {
           withContext(Dispatchers.Main) {
@@ -449,33 +406,22 @@ data class LuaScriptEditorScreen(
       dismissKeyboard()
       scope.launch(Dispatchers.IO) {
         try {
-          val tree = DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri())
-          if (tree != null && tree.exists()) {
-            val scriptsDir =
-              tree.listFiles().firstOrNull {
-                it.isDirectory && it.name?.equals("scripts", ignoreCase = true) == true
-              } ?: tree
+          val scriptFile = resolveLuaScriptsDir(context, mpvConfStorageLocation)?.findFile(targetName)
+          if (scriptFile != null && scriptFile.exists() && scriptFile.delete()) {
+            val selectedScripts = preferences.selectedLuaScripts.get()
+            if (selectedScripts.contains(targetName)) {
+              preferences.selectedLuaScripts.set(selectedScripts - targetName)
+            }
+            File(File(context.filesDir, "scripts"), targetName).delete()
 
-            val scriptFile = scriptsDir.findFile(targetName)
-            if (scriptFile != null && scriptFile.exists()) {
-              val deleted = scriptFile.delete()
-              if (deleted) {
-                val selectedScripts = preferences.selectedLuaScripts.get()
-                if (selectedScripts.contains(targetName)) {
-                  preferences.selectedLuaScripts.set(selectedScripts - targetName)
-                }
-                File(File(context.filesDir, "scripts"), targetName).delete()
-
-                withContext(Dispatchers.Main) {
-                  Toast
-                    .makeText(
-                      context,
-                      context.getString(R.string.toast_file_deleted, targetName),
-                      Toast.LENGTH_SHORT,
-                    ).show()
-                  backStack.popSafely()
-                }
-              }
+            withContext(Dispatchers.Main) {
+              Toast
+                .makeText(
+                  context,
+                  context.getString(R.string.toast_file_deleted, targetName),
+                  Toast.LENGTH_SHORT,
+                ).show()
+              backStack.popSafely()
             }
           }
         } catch (e: Exception) {
@@ -505,7 +451,7 @@ data class LuaScriptEditorScreen(
                 .union(WindowInsets.ime),
             ),
       ) {
-        AnimatedVisibility(
+        androidx.compose.animation.AnimatedVisibility(
           visible = !isFullscreen,
           enter =
             if (reduceMotion) {
@@ -904,7 +850,7 @@ data class LuaScriptEditorScreen(
           )
 
           // Compact floating HUD pill when distraction-free fullscreen is active
-          AnimatedVisibility(
+          androidx.compose.animation.AnimatedVisibility(
             visible = isFullscreen,
             enter = if (reduceMotion) EnterTransition.None else fadeIn(AppMotion.Effect.Alpha),
             exit = if (reduceMotion) ExitTransition.None else fadeOut(AppMotion.Effect.Alpha),

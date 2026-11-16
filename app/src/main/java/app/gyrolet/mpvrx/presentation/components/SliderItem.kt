@@ -13,12 +13,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
@@ -26,16 +22,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.rememberAdjustmentHaptics
@@ -185,99 +175,4 @@ internal fun SliderItemHeader(
       textAlign = TextAlign.End,
     )
   }
-}
-
-@Composable
-fun VerticalSliderItem(
-  label: String,
-  value: Int,
-  valueText: String,
-  onChange: (Int) -> Unit,
-  max: Int,
-  modifier: Modifier = Modifier,
-  min: Int = 0,
-  icon: @Composable () -> Unit = {},
-) {
-  val haptics = rememberAdjustmentHaptics(min.toFloat(), max.toFloat())
-
-  Column(
-    modifier =
-      modifier
-        .fillMaxHeight()
-        .padding(
-          horizontal = MaterialTheme.spacing.medium,
-          vertical = MaterialTheme.spacing.smaller,
-        ),
-    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.larger),
-    horizontalAlignment = Alignment.CenterHorizontally,
-  ) {
-    icon()
-    VerticalSlider(
-      value = value,
-      min = min,
-      max = max,
-      onValueChange = {
-        if (it != value) {
-          onChange(it)
-          haptics.move(value.toFloat(), it.toFloat())
-        }
-      },
-      modifier = Modifier.weight(1f),
-    )
-    Column {
-      Text(
-        text = label,
-        style = MaterialTheme.typography.bodyMedium,
-      )
-      Text(valueText)
-    }
-  }
-}
-
-@Composable
-fun VerticalSlider(
-  value: Int,
-  min: Int,
-  max: Int,
-  onValueChange: (Int) -> Unit,
-  modifier: Modifier = Modifier,
-) {
-  Slider(
-    modifier =
-      modifier
-        .tvFocusHighlight(RoundedCornerShape(12.dp), focusedScale = 1.01f)
-        .graphicsLayer {
-          rotationZ = 270f
-          transformOrigin = TransformOrigin(0f, 0f)
-        }.layout { measurable, constraints ->
-          val placeable =
-            measurable.measure(
-              Constraints(
-                minWidth = constraints.minHeight,
-                maxWidth = constraints.maxHeight,
-                minHeight = constraints.minWidth,
-                maxHeight = constraints.maxWidth,
-              ),
-            )
-          layout(placeable.height, placeable.width) {
-            placeable.place(-placeable.width, 0)
-          }
-        }.width(180.dp)
-        .height(50.dp),
-    value = value.toFloat(),
-    valueRange = min.toFloat()..max.toFloat(),
-    onValueChange = { onValueChange(it.roundToInt()) },
-  )
-}
-
-@Preview
-@Composable
-private fun PreviewVerticalSliderItem() {
-  VerticalSliderItem(
-    "sex",
-    1,
-    "2",
-    {},
-    5,
-  )
 }
