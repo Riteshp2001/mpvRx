@@ -604,16 +604,10 @@ class MPVView(
   }
 
   fun applyStartupStatistics() {
-    // The native core survives Activity recreation and playlist loads. A toggle on every
-    // load would turn an already enabled statistics overlay off on the next file.
-    if (PlaybackSession.getPropertyString("user-data/mpvrx/startup-stats-applied") == "yes") return
-    PlaybackSession.setPropertyString("user-data/mpvrx/startup-stats-applied", "yes")
-    advancedPreferences.enabledStatisticsPage.get().let {
-      if (it in 1..5) {
-        PlaybackSession.command("script-binding", "stats/display-stats-toggle")
-        PlaybackSession.command("script-binding", "stats/display-page-$it")
-      }
-    }
+    // The mirror lives in user-data and dies with the core, and every transition is idempotent,
+    // so this can run on every load: a fresh core gets the selection applied, while a surviving
+    // core keeps the overlay that is already on screen instead of toggling it off.
+    PlaybackSession.restoreStatisticsPage()
   }
 
   private fun observeProperties() {

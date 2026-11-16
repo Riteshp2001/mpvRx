@@ -200,6 +200,8 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS = 180L
   private const val AMBIENT_SHADER_PREFIX = "ambient_"
   private const val AMBIENT_SHADER_SUFFIX = ".glsl"
+  /** Mirror of the last applied statistics page; absent means a fresh core with the overlay down. */
+  private const val STATISTICS_PAGE_PROPERTY = "user-data/mpvrx/statistics-page"
   private val TIMELINE_PROPERTIES =
     setOf(
       "time-pos",
@@ -261,6 +263,9 @@ object PlaybackSession : MPVLib.EventObserver {
   )
 
   private val nativeLock = ReentrantLock(true)
+  private val advancedPreferences by lazy {
+    org.koin.java.KoinJavaComponent.get<AdvancedPreferences>(AdvancedPreferences::class.java)
+  }
   private val audioPreferences by lazy {
     org.koin.java.KoinJavaComponent.get<AudioPreferences>(AudioPreferences::class.java)
   }
@@ -1708,6 +1713,64 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
 
   fun commandNode(vararg command: String): MPVNode? = withCore(null) { MPVLib.commandNode(*command) }
+
+  /**
+   * Applies the statistics page selection (0 = off, 1..5 = mpv stats pages, 6 = the app's own
+   * time/network overlay, 7 = console) as one atomic transition and stores it as the visible
+   * selection.
+   *
+   * mpv's stats.lua keeps its visibility and page in script-local state with no property to read,
+   * so the last applied selection is mirrored in [STATISTICS_PAGE_PROPERTY]. Absent means a fresh
+   * core, which always starts with the overlay hidden. Every transition reads that mirror under
+   * the session lock, so the chips stay idempotent: a page is only ever shown (never blind-
+   * toggled, which is what turned "off" back into page 1) and hiding is skipped when the overlay
+   * is already down. Showing always toggles first when the mirror says the overlay is down,
+   * because `display-page-N` on a hidden overlay starts stats.lua's self-clearing oneshot mode,
+   * which vanished after four seconds and left the mirror and the screen disagreeing.
+   */
+  fun setStatisticsPage(page: Int) {
+    if (page !in 0..7) return
+    // The preference is the chip highlight; write it even when the core is not ready so the
+    // selection never lags behind the tap, then reconcile the core when it is.
+    advancedPreferences.enabledStatisticsPage.set(page)
+    withCore(Unit) {
+      val applied = getPropertyString(STATISTICS_PAGE_PROPERTY)
+      val previous = applied?.toIntOrNull() ?: 0
+      val consoleOpen = getPropertyBoolean("user-data/mpv/console/open") == true
+      if (page != 7 && consoleOpen) command("script-message-to", "console", "disable")
+      // Already in the requested state: nothing to send, so a repeated tap cannot flip it.
+      if (previous == page && (page != 7 || consoleOpen)) return@withCore
+      val statsVisible = previous in 1..5
+      if (page in 1..5) {
+        // Unhide first: display-page-N on a hidden overlay starts stats.lua's self-clearing
+        // oneshot mode, which disappears after four seconds.
+        if (!statsVisible) command("script-binding", "stats/display-stats-toggle")
+        command("script-binding", "stats/display-page-$page")
+      } else if (statsVisible) {
+        command("script-binding", "stats/display-stats-toggle")
+      }
+      if (page == 7 && !consoleOpen) command("script-binding", "console/enable")
+      setPropertyString(STATISTICS_PAGE_PROPERTY, page.toString())
+    }
+  }
+
+  /**
+   * Restores the selected statistics page on load. Safe to call on every load: the mirror makes
+   * the transition idempotent, so an overlay that is already up stays up instead of being
+   * toggled off by a second restore. The console is only restored while it is actually open;
+   * the app's own overlay (6) needs no mpv state and is drawn from the preference.
+   */
+  fun restoreStatisticsPage() {
+    val page = advancedPreferences.enabledStatisticsPage.get()
+    val consoleOpen = getPropertyBoolean("user-data/mpv/console/open") == true
+    setStatisticsPage(
+      when {
+        page in 1..5 || page == 6 -> page
+        page == 7 && consoleOpen -> 7
+        else -> 0
+      },
+    )
+  }
 
   internal fun removeVideoFilter(label: String) {
     val removal = arrayOf("vf", "remove", "@$label")
