@@ -28,7 +28,12 @@ enum class MpvConfigOverride(
         "profile",
         "gpu-api",
         "gpu-context",
-      ),
+      ) +
+        if (app.gyrolet.mpvrx.BuildConfig.MPV_SUPPORTS_FONGMI_EXTENSIONS) {
+          setOf("android-keep-video-frame")
+        } else {
+          emptySet()
+        },
   ),
   DECODER(
     preferenceKey = "decoder",
@@ -38,7 +43,12 @@ enum class MpvConfigOverride(
         "hwdec-codecs",
         "vd-lavc-dr",
         "vd-lavc-film-grain",
-      ),
+      ) +
+        if (app.gyrolet.mpvrx.BuildConfig.MPV_SUPPORTS_FONGMI_EXTENSIONS) {
+          setOf("android-vulkan-aimagereader-backend")
+        } else {
+          emptySet()
+        },
   ),
   HDR_AND_SHADERS(
     preferenceKey = "hdr_and_shaders",
@@ -161,7 +171,18 @@ enum class MpvConfigOverride(
         "secondary-sub-pos",
         "secondary-sub-ass-override",
         "blend-subtitles",
-      ),
+      ) +
+        if (app.gyrolet.mpvrx.BuildConfig.MPV_SUPPORTS_FONGMI_EXTENSIONS) {
+          setOf(
+            "sub-offset-y",
+            "secondary-sub-offset-y",
+            "image-subs-brightness",
+            "image-subs-override",
+            "image-subs-color",
+          )
+        } else {
+          emptySet()
+        },
   ),
   PLAYBACK_TIMING(
     preferenceKey = "playback_timing",

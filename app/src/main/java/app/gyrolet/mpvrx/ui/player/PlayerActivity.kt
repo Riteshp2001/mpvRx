@@ -159,6 +159,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
@@ -915,6 +916,7 @@ class PlayerActivity :
     setupPlayerControls()
     setupAudioPlayerViewObserver()
     setupMotionInterpolationObserver()
+    setupLiveRendererSwitch()
     setupMediaSession()
     lifecycleScope.launch {
       thumbnailRepository.cacheRevision.drop(1).collect {
@@ -951,7 +953,9 @@ class PlayerActivity :
         ) { scripts, enabled, directory -> Triple(scripts, enabled, directory) }
           .collectLatest {
             delay(200)
-            if (!mpvInitialized || !player.userScriptsNeedReload()) return@collectLatest
+            if (!mpvInitialized) return@collectLatest
+            if (applyUserScriptChangesLive()) return@collectLatest
+            if (!player.userScriptsNeedReload()) return@collectLatest
             PlaybackSession.state.first { state ->
               state.phase !in setOf(PlaybackPhase.INITIALIZING, PlaybackPhase.LOADING, PlaybackPhase.STOPPING)
             }
@@ -1333,9 +1337,18 @@ class PlayerActivity :
         }
       }
       lifecycleScope.launch {
-        decoderPreferences.dolbyVisionDirect.changes().distinctUntilChanged().collect { enabled ->
-          player.setOsdOverlay(enabled && DolbyVisionDirect.isBuildSupported)
-        }
+        // Direct Dolby Vision and Surface zoom both draw subtitles on the overlay.
+        combine(
+          decoderPreferences.dolbyVisionDirect.changes(),
+          decoderPreferences.surfaceVideoTransform.changes(),
+        ) { dolbyVision, surfaceZoom -> dolbyVision to surfaceZoom }
+          .distinctUntilChanged()
+          .collect { (dolbyVision, surfaceZoom) ->
+            val overlay = dolbyVision || (surfaceZoom && FongMiMpv.isBuildSupported)
+            player.setOsdOverlay(overlay && DolbyVisionDirect.isBuildSupported)
+            // A kept overlay does not rebind, so the Dolby Vision output follows the setting here.
+            PlaybackSession.refreshDolbyVisionOutput()
+          }
       }
     }
     if (playerControlsComposed) return
@@ -1551,6 +1564,24 @@ class PlayerActivity :
         ) { _, _, _, _ -> Unit }.collect { applyVideoTransform() }
       }
     }
+    if (FongMiMpv.isBuildSupported) {
+      player.onSurfaceTransformInputsChanged = { if (!isDestroyed) applyVideoTransform() }
+      lifecycleScope.launch {
+        repeatOnLifecycle(Lifecycle.State.STARTED) {
+          // Surface zoom sizes the video Surface itself, so it follows every input of that size.
+          merge(
+            decoderPreferences.surfaceVideoTransform.changes().map { },
+            playerPreferences.isAmbientEnabled.changes().map { },
+            PlaybackSession.propBoolean[FongMiMpv.SURFACE_TRANSFORM_ACTIVE].map { },
+            PlaybackSession.propDouble["video-params/aspect"].map { },
+            PlaybackSession.propInt["video-params/rotate"].map { },
+            PlaybackSession.propDouble["video-aspect-override"].map { },
+            PlaybackSession.propDouble["panscan"].map { },
+            PlaybackSession.propString["video-crop"].map { },
+          ).collect { applyVideoTransform() }
+        }
+      }
+    }
   }
 
   private fun applyVideoTransform() {
@@ -1576,8 +1607,46 @@ class PlayerActivity :
     PlaybackSession.setPropertyFloat("video-zoom", if (followVideo) 0f else zoom)
     PlaybackSession.setPropertyFloat("video-pan-x", mpvPanX)
     PlaybackSession.setPropertyFloat("video-pan-y", mpvPanY)
+    // With Surface zoom mpv keeps these as logical values and the video Surface moves instead.
+    player.applySurfaceVideoTransform(
+      allowed = !followVideo && !isVideoAmbientPresentationActive,
+      zoom = zoom,
+      panX = panX,
+      panY = panY,
+    )
     viewModel.onAmbientGeometryChanged()
     applySubtitleBlendMode()
+  }
+
+  /**
+   * FongMi build: gpu-next, Vulkan and Anime4K changes made while the player is open move the
+   * playing video to the new renderer instead of waiting for the core to be recreated.
+   */
+  private fun setupLiveRendererSwitch() {
+    if (!FongMiMpv.isBuildSupported) return
+    lifecycleScope.launch {
+      combine(
+        decoderPreferences.gpuNext.changes(),
+        decoderPreferences.useVulkan.changes(),
+        decoderPreferences.enableAnime4K.changes(),
+        decoderPreferences.anime4kMode.changes(),
+      ) { _, _, _, _ -> }
+        .drop(1)
+        .collect {
+          if (!canIssueMpvCommands()) return@collect
+          val switched = withContext(Dispatchers.IO) { player.switchRendererLive() } ?: return@collect
+          if (!canIssueMpvCommands()) return@collect
+          if (switched) {
+            // Shaders, HDR output and the motion core each depend on the renderer.
+            player.applyAnime4KShaders()
+            viewModel.refreshHdrScreenOutputForCurrentVideo()
+            viewModel.motionInterpolation.refresh()
+            applyVideoTransform()
+          } else if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            viewModel.showToast(getString(R.string.player_renderer_switch_failed))
+          }
+        }
+    }
   }
 
   /** Motion interpolation changes the rate the display should run at, so renegotiate it. */
@@ -3814,6 +3883,29 @@ class PlayerActivity :
     }
   }
 
+  /**
+   * FongMi build: syncs the selected scripts and loads or unloads them in the running core, which
+   * keeps playing. False when mpvRx does not manage the core's scripts, e.g. mpv.conf auto-loads.
+   */
+  private suspend fun applyUserScriptChangesLive(): Boolean {
+    if (!FongMiMpv.isBuildSupported || !PlaybackSession.managesUserScriptsLive) return false
+    val userScriptsKey = advancedPreferences.userScriptsConfigurationKey()
+    if (!PlaybackSession.userScriptsDiffer(userScriptsKey)) return true
+    val entries =
+      withContext(Dispatchers.IO) {
+        synchronized(USER_MPV_ASSET_LOCK) {
+          syncFromUserMpvDirectory()
+          rememberUserMpvAssetSelection(getSharedPreferences(MPV_ASSET_SYNC_PREFERENCES, MODE_PRIVATE))
+        }
+        MpvScriptAssets.autoloadEntries(filesDir)
+      }
+    return PlaybackSession.syncManagedUserScripts(
+      entries = entries,
+      location = advancedPreferences.mpvConfStorageUri.get(),
+      userScriptsKey = userScriptsKey,
+    )
+  }
+
   private fun restartForUserScriptChanges(replacementIntent: Intent? = null): Boolean {
     if (!mpvInitialized || !ownsPlaybackSession() || isFinishing || scriptRuntimeRestartPending || !player.userScriptsNeedReload()) return false
     val nextIntent = replacementIntent?.let(::Intent) ?: currentPlaybackIntentForScriptReload() ?: return false
@@ -5531,6 +5623,7 @@ class PlayerActivity :
         duration = duration.toInt(),
         isPositionRestorePending =
           PlaybackSession.isPositionRestorePending(PlaybackSession.state.value.activeGeneration),
+        isLive = PlaybackSession.isLiveMedia(),
         playbackSpeed = PlaybackSession.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
         videoZoom = PlaybackSession.videoZoom.value,
         sid = player.sid,

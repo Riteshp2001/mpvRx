@@ -136,6 +136,15 @@ internal fun PlaybackItem.declaredMediaKind(): DeclaredPlaybackMediaKind {
   return DeclaredPlaybackMediaKind.UNKNOWN
 }
 
+/**
+ * A disc image that [loadUri], the URI given to mpv, no longer names, e.g. a content:// file opened
+ * as fd://N. Paths that keep the name are left to mpv's own disc probing, which prefers DVD-Audio
+ * on hybrid discs.
+ */
+internal fun PlaybackItem.isIsoWithoutIsoUri(loadUri: String): Boolean =
+  !loadUri.endsWith(".iso", ignoreCase = true) &&
+    sequenceOf(originalUri, playableUri, title).filterNotNull().any { it.fileExtension().equals("iso", ignoreCase = true) }
+
 data class AudiobookPlaybackInfo(val bookId: Long, val trackId: Long)
 
 internal fun PlaybackItem.isDefinitelyAudioOnly(): Boolean =

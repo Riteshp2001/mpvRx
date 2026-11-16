@@ -16,6 +16,22 @@ internal object MpvScriptAssets {
       .orEmpty()
 
   /**
+   * What mpv's own auto-loading starts from the scripts directory: visible Lua and JavaScript files
+   * and folders with a main script, in name order. The FongMi build loads these itself.
+   */
+  fun autoloadEntries(filesDir: File): List<File> =
+    File(filesDir, "scripts").listFiles()
+      ?.filter { entry ->
+        !entry.name.startsWith('.') &&
+          when {
+            entry.isFile -> entry.extension.lowercase() in setOf("lua", "js")
+            entry.isDirectory -> listOf("main.lua", "main.js").any { File(entry, it).isFile }
+            else -> false
+          }
+      }?.sortedBy(File::getName)
+      .orEmpty()
+
+  /**
    * Mirror require() modules from the already-synced local helper folders. This avoids a second
    * recursive SAF walk and preserves unchanged files instead of deleting/rebuilding the cache.
    * Top-level user scripts are entry points, not modules, so only helper folders are mirrored.

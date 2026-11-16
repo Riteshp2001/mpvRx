@@ -344,6 +344,8 @@ internal fun SeekbarWithTimers(
   isPortrait: Boolean = false,
   applyHorizontalPadding: Boolean = true,
   timerTextColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+  // A live broadcast has no meaningful end, so the duration timer becomes a LIVE badge.
+  isLive: Boolean = false,
   centerContent: @Composable () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
@@ -431,15 +433,19 @@ internal fun SeekbarWithTimers(
 
         centerContent()
 
-        VideoTimer(
-          value = if (timersInverted.second) -remaining else duration,
-          isInverted = timersInverted.second,
-          textColor = timerTextColor,
-          onClick = {
-            clickEvent()
-            durationTimerOnCLick()
-          },
-        )
+        if (isLive) {
+          LiveBadge()
+        } else {
+          VideoTimer(
+            value = if (timersInverted.second) -remaining else duration,
+            isInverted = timersInverted.second,
+            textColor = timerTextColor,
+            onClick = {
+              clickEvent()
+              durationTimerOnCLick()
+            },
+          )
+        }
       }
     }
   } else {
@@ -488,16 +494,20 @@ internal fun SeekbarWithTimers(
         modifier = Modifier.weight(1f).height(if (showWavyVisualizer) 64.dp else 48.dp),
       )
 
-      VideoTimer(
-        value = if (timersInverted.second) -remaining else duration,
-        isInverted = timersInverted.second,
-        textColor = timerTextColor,
-        onClick = {
-          clickEvent()
-          durationTimerOnCLick()
-        },
-        modifier = Modifier.width(60.dp),
-      )
+      if (isLive) {
+        LiveBadge(Modifier.width(60.dp))
+      } else {
+        VideoTimer(
+          value = if (timersInverted.second) -remaining else duration,
+          isInverted = timersInverted.second,
+          textColor = timerTextColor,
+          onClick = {
+            clickEvent()
+            durationTimerOnCLick()
+          },
+          modifier = Modifier.width(60.dp),
+        )
+      }
     }
   }
 }
@@ -2244,6 +2254,21 @@ private fun SeekbarPreviewFeatureToggle(
         textAlign = TextAlign.Center,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
+      )
+    }
+  }
+}
+
+@Composable
+private fun LiveBadge(modifier: Modifier = Modifier) {
+  Box(modifier.padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
+    Surface(color = MaterialTheme.colorScheme.error, shape = MaterialTheme.shapes.extraSmall) {
+      Text(
+        text = stringResource(R.string.player_live_badge),
+        color = MaterialTheme.colorScheme.onError,
+        style = MaterialTheme.typography.labelSmall,
+        maxLines = 1,
+        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
       )
     }
   }

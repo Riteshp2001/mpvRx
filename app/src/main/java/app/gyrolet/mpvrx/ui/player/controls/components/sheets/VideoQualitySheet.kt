@@ -94,7 +94,7 @@ fun VideoQualitySheet(
                   style = MaterialTheme.typography.bodyLarge,
                   fontWeight = if (track.isSelected) FontWeight.SemiBold else FontWeight.Normal,
                 )
-                qualityDetails(track)?.let { details ->
+                qualityDetails(track, dolbyVisionLabel(track))?.let { details ->
                   Text(
                     text = details,
                     style = MaterialTheme.typography.bodySmall,
@@ -138,7 +138,19 @@ private fun qualityLabel(track: TrackNode): String {
   return listOfNotNull(resolution, fps).joinToString(" • ")
 }
 
-private fun qualityDetails(track: TrackNode): String? {
+/** "DV 8", or for a converted Profile 7 track "DV 8 (from DV 7)" / "HDR10 (from DV 7)". */
+@Composable
+private fun dolbyVisionLabel(track: TrackNode): String? {
+  val profile = track.dolbyVisionProfile?.takeIf { it > 0L }
+  val source = track.sourceDolbyVisionProfile?.takeIf { it > 0L && it != profile }
+  val output = profile?.let { "DV $it" } ?: source?.let { "HDR10" } ?: return null
+  return if (source == null) output else stringResource(R.string.video_track_from_dolby_vision, output, source.toInt())
+}
+
+private fun qualityDetails(
+  track: TrackNode,
+  dolbyVision: String?,
+): String? {
   val dimensions =
     if ((track.demuxW ?: 0L) > 0L && (track.demuxH ?: 0L) > 0L) {
       "${track.demuxW}×${track.demuxH}"
@@ -161,6 +173,7 @@ private fun qualityDetails(track: TrackNode): String? {
     track.effectiveTitle?.takeUnless { it == qualityLabel(track) },
     dimensions,
     codec,
+    dolbyVision,
     bitrate,
   ).distinct()
     .joinToString(" • ")

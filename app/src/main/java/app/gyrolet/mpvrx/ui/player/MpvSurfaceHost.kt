@@ -8,6 +8,7 @@ import android.content.Context
 import android.graphics.PixelFormat
 import android.graphics.SurfaceTexture
 import android.util.AttributeSet
+import android.view.Gravity
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -148,6 +149,28 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
     releaseOsdSurface()
     osdOverlayView = null
     removeView(overlay)
+  }
+
+  /**
+   * FongMi Surface zoom: sizes and moves only the video SurfaceView, so the full-size subtitle
+   * overlay keeps its resolution. Null restores the full-size, untransformed video.
+   */
+  internal fun setVideoSurfaceLayout(layout: SurfaceVideoLayout?) {
+    val video = getChildAt(0) as? SurfaceView ?: return
+    if (video === osdOverlayView) return
+    val params = video.layoutParams as LayoutParams
+    val width = layout?.width ?: LayoutParams.MATCH_PARENT
+    val height = layout?.height ?: LayoutParams.MATCH_PARENT
+    if (params.width != width || params.height != height || params.gravity != Gravity.CENTER) {
+      params.width = width
+      params.height = height
+      params.gravity = Gravity.CENTER
+      video.layoutParams = params
+    }
+    video.scaleX = layout?.scale ?: 1f
+    video.scaleY = layout?.scale ?: 1f
+    video.translationX = layout?.translationX ?: 0f
+    video.translationY = layout?.translationY ?: 0f
   }
 
   private fun releaseOsdSurface() {

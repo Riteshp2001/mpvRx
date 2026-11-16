@@ -367,6 +367,17 @@ object SearchablePreferences {
           screen = PlayerPreferencesScreen,
         ),
       )
+      if (app.gyrolet.mpvrx.BuildConfig.MPV_SUPPORTS_FONGMI_EXTENSIONS) {
+        add(
+          SearchablePreference(
+            titleRes = R.string.pref_keep_video_frame_title,
+            summaryRes = R.string.pref_keep_video_frame_summary,
+            keywords = listOf("black", "flash", "frame", "gapless", "next", "transition"),
+            category = "Player",
+            screen = PlayerPreferencesScreen,
+          ),
+        )
+      }
       add(
         SearchablePreference(
           titleRes = R.string.pref_auto_pip_title,
@@ -957,6 +968,31 @@ object SearchablePreferences {
             titleRes = R.string.pref_decoder_dolby_vision_direct_title,
             summaryRes = R.string.pref_decoder_dolby_vision_direct_summary,
             keywords = listOf("dolby vision", "dv", "dovi", "hdr", "passthrough", "direct", "mediacodec"),
+            category = "Decoder",
+            screen = DecoderPreferencesScreen,
+          ),
+        )
+        add(
+          SearchablePreference(
+            titleRes = R.string.pref_decoder_dovi_p7_title,
+            keywords = listOf("dolby vision", "dv", "dovi", "profile 7", "fel", "mel", "enhancement layer", "8.1", "hdr10"),
+            category = "Decoder",
+            screen = DecoderPreferencesScreen,
+          ),
+        )
+        add(
+          SearchablePreference(
+            titleRes = R.string.pref_decoder_vulkan_import_title,
+            keywords = listOf("vulkan", "aimagereader", "mediacodec", "import", "compute", "fragment", "direct"),
+            category = "Decoder",
+            screen = DecoderPreferencesScreen,
+          ),
+        )
+        add(
+          SearchablePreference(
+            titleRes = R.string.pref_decoder_surface_zoom_title,
+            summaryRes = R.string.pref_decoder_surface_zoom_summary,
+            keywords = listOf("zoom", "pan", "surface", "subtitles", "sharp", "transform"),
             category = "Decoder",
             screen = DecoderPreferencesScreen,
           ),

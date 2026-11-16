@@ -50,14 +50,18 @@ import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
+import app.gyrolet.mpvrx.preferences.DolbyVisionProfile7
 import app.gyrolet.mpvrx.preferences.MpvConfigOverride
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.preferences.VulkanFrameImport
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.Debanding
 import app.gyrolet.mpvrx.ui.player.DolbyVisionDirect
+import app.gyrolet.mpvrx.ui.player.FongMiMpv
 import app.gyrolet.mpvrx.ui.player.HwPlusGuard
 import app.gyrolet.mpvrx.ui.player.MPVProfile
 import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
@@ -92,6 +96,8 @@ object DecoderPreferencesScreen : Screen {
         .any(configOwnedOptions::contains)
     val yuv420ConfigOwned = "vf" in configOwnedOptions
     val dolbyVisionConfigOwned = "android-dolby-vision-output" in configOwnedOptions
+    val doviProfile7ConfigOwned = "demuxer-dovi-profile7" in configOwnedOptions
+    val vulkanFrameImportConfigOwned = "android-vulkan-aimagereader-backend" in configOwnedOptions
     val backstack = LocalBackStack.current
     val context = LocalContext.current
     val isDeviceVulkanSupported = remember { VulkanCapabilities.isDeviceSupported(context) }
@@ -285,6 +291,35 @@ object DecoderPreferencesScreen : Screen {
                 },
               )
 
+              if (FongMiMpv.isBuildSupported && isVulkanSupported) {
+                PreferenceDivider()
+                // How MediaCodec frames reach Vulkan; a forced mode helps when one path misrenders.
+                val vulkanFrameImport by preferences.vulkanFrameImport.collectAsState()
+                ExpressivePreferenceItem {
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_vulkan_import_title),
+                  value = vulkanFrameImport,
+                  onValueChange = {
+                    preferences.vulkanFrameImport.set(it)
+                    // The next hardware decoder picks it up.
+                    if (embeddedInPlayer) {
+                      PlaybackSession.setPropertyString("android-vulkan-aimagereader-backend", it.mpvValue)
+                    }
+                  },
+                  values = VulkanFrameImport.entries,
+                  valueToText = { AnnotatedString(stringResource(it.titleRes)) },
+                  enabled = useVulkan && !vulkanFrameImportConfigOwned,
+                  title = { Text(stringResource(R.string.pref_decoder_vulkan_import_title)) },
+                  summary = {
+                    Text(
+                      stringResource(vulkanFrameImport.titleRes),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+                }
+              }
+
               PreferenceDivider()
 
               val debanding by preferences.debanding.collectAsState()
@@ -357,6 +392,55 @@ object DecoderPreferencesScreen : Screen {
                       if (dolbyVisionDirect && textureRendering) {
                         Text(
                           stringResource(R.string.pref_decoder_dolby_vision_direct_needs_surface),
+                          color = MaterialTheme.colorScheme.error,
+                          style = MaterialTheme.typography.bodySmall,
+                        )
+                      }
+                    }
+                  },
+                )
+
+                PreferenceDivider()
+                val doviProfile7 by preferences.doviProfile7.collectAsState()
+                ExpressivePreferenceItem {
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_dovi_p7_title),
+                  value = doviProfile7,
+                  onValueChange = {
+                    preferences.doviProfile7.set(it)
+                    // The demuxer reads it when the next video opens.
+                    PlaybackSession.applyDolbyVisionProfile7()
+                  },
+                  values = DolbyVisionProfile7.entries,
+                  valueToText = { AnnotatedString(stringResource(it.titleRes)) },
+                  enabled = !doviProfile7ConfigOwned,
+                  title = { Text(stringResource(R.string.pref_decoder_dovi_p7_title)) },
+                  summary = {
+                    Text(
+                      stringResource(doviProfile7.titleRes),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+                }
+
+                PreferenceDivider()
+                val surfaceZoom by preferences.surfaceVideoTransform.collectAsState()
+                val ambientEnabled by koinInject<PlayerPreferences>().isAmbientEnabled.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_surface_zoom_title),
+                  value = surfaceZoom,
+                  onValueChange = { preferences.surfaceVideoTransform.set(it) },
+                  title = { Text(stringResource(R.string.pref_decoder_surface_zoom_title)) },
+                  summary = {
+                    Column {
+                      Text(
+                        stringResource(R.string.pref_decoder_surface_zoom_summary),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                      if (surfaceZoom && (textureRendering || ambientEnabled)) {
+                        Text(
+                          stringResource(R.string.pref_decoder_surface_zoom_unavailable),
                           color = MaterialTheme.colorScheme.error,
                           style = MaterialTheme.typography.bodySmall,
                         )

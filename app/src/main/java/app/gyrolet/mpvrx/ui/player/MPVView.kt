@@ -111,6 +111,8 @@ class MPVView(
         // mpv draws subtitles only on an attached overlay, which another owner (an external
         // display) cannot show. rebindCurrentSurface() attaches it again.
         PlaybackSession.unbindOsdSurface(this)
+        // Without the overlay Surface zoom is off; the video child returns to full size.
+        post { onSurfaceTransformInputsChanged?.invoke() }
       }
     }
 
@@ -122,7 +124,10 @@ class MPVView(
         liquidGlassInHdr = appearancePreferences.liquidGlassInHdr.get(),
       ),
     )
-    setOsdOverlay(DolbyVisionDirect.isEnabled(decoderPreferences))
+    setOsdOverlay(
+      DolbyVisionDirect.isEnabled(decoderPreferences) ||
+        (FongMiMpv.isBuildSupported && decoderPreferences.surfaceVideoTransform.get()),
+    )
   }
 
   /** A slow Surface must not prevent the media load and its watchdog from starting. */
@@ -502,6 +507,20 @@ class MPVView(
     // rendering heuristic, matching mpv's defaults.
     PlaybackSession.setOptionString("vd-lavc-dr", "auto")
 
+    // mpv.conf is parsed during init, after these, so its own values still win.
+    if (FongMiMpv.isBuildSupported) {
+      PlaybackSession.setOptionString(
+        "android-vulkan-aimagereader-backend",
+        decoderPreferences.vulkanFrameImport.get().mpvValue,
+      )
+      PlaybackSession.setOptionString(
+        "demuxer-dovi-profile7",
+        decoderPreferences.doviProfile7.get().mpvValueFor(directOutput = false),
+      )
+      // postInitOptions loads the user scripts itself, so they can be unloaded again live.
+      PlaybackSession.setOptionString("load-scripts", "no")
+    }
+
     if (inputs.useYuv420p) {
       PlaybackSession.setOptionString("vf", "format=yuv420p")
     }
@@ -615,6 +634,13 @@ class MPVView(
       }
     }
     pendingStartupShaders = null
+
+    if (FongMiMpv.isBuildSupported) {
+      PlaybackSession.loadManagedUserScripts(
+        MpvScriptAssets.autoloadEntries(context.filesDir),
+        advancedPreferences.mpvConfStorageUri.get(),
+      )
+    }
 
     when (decoderPreferences.debanding.get()) {
       Debanding.None -> {}
@@ -756,6 +782,51 @@ class MPVView(
     )
   }
 
+  /** Re-runs the player's transform pass when Surface zoom's inputs change outside its flows. */
+  internal var onSurfaceTransformInputsChanged: (() -> Unit)? = null
+
+  /**
+   * FongMi Surface zoom. Publishes the video rectangle and asks mpv to leave the video layout to
+   * this view; the video Surface moves only once mpv reports that delegation as active. Subtitles
+   * stay on the full-size overlay, which must exist: mpv stops drawing them without it.
+   */
+  internal fun applySurfaceVideoTransform(
+    allowed: Boolean,
+    zoom: Float,
+    panX: Float,
+    panY: Float,
+  ) {
+    if (!FongMiMpv.isBuildSupported) return
+    val wanted =
+      allowed && decoderPreferences.surfaceVideoTransform.get() &&
+        !isTextureSurface && osdSurface != null && PlaybackSession.isOsdSurfaceAttachedTo(this) &&
+        !playerPreferences.isAmbientEnabled.get() && !PlaybackSession.isAmbientShaderActive
+    if (!wanted) {
+      PlaybackSession.clearSurfaceVideoTransform()
+      setVideoSurfaceLayout(null)
+      return
+    }
+    val layout =
+      VideoAspectGeometry.currentEffectiveDisplayAspect()?.let { aspect ->
+        SurfaceVideoLayout.calculate(
+          viewWidth = width,
+          viewHeight = height,
+          videoAspect = aspect,
+          panscan = PlaybackSession.getPropertyDouble("panscan") ?: 0.0,
+          zoomMultiplier = videoZoomMultiplier(zoom),
+          panX = panX,
+          panY = panY,
+        )
+      }
+    if (layout == null) {
+      setVideoSurfaceLayout(null)
+      return
+    }
+    PlaybackSession.publishSurfaceVideoTransform(layout.geometryCommand(width, height).toList())
+    val active = PlaybackSession.propBoolean[FongMiMpv.SURFACE_TRANSFORM_ACTIVE].value == true
+    setVideoSurfaceLayout(if (active) layout else null)
+  }
+
   private fun ensureOsdSurfaceAttached() {
     val surface = osdSurface ?: return
     if (isExiting || !surfaceBindingEnabled || !renderCallbacksEnabled || !surface.isValid ||
@@ -766,6 +837,7 @@ class MPVView(
 
   override fun onOsdSurfaceAvailable(surface: Surface, width: Int, height: Int) {
     ensureOsdSurfaceAttached()
+    post { onSurfaceTransformInputsChanged?.invoke() }
   }
 
   override fun onOsdSurfaceSizeChanged(width: Int, height: Int) {
@@ -775,6 +847,8 @@ class MPVView(
 
   override fun onOsdSurfaceDestroyed() {
     if (renderCallbacksEnabled) PlaybackSession.unbindOsdSurface(this)
+    // Runs after the overlay is gone, so Surface zoom stops while subtitles have nowhere to draw.
+    post { onSurfaceTransformInputsChanged?.invoke() }
   }
 
   override fun onRenderSurfaceDestroyed() {
@@ -983,6 +1057,13 @@ class MPVView(
         "secondary-sub-pos" to
           clampSubtitlePosition(subtitlesPreferences.secondarySubPos.get()).toString(),
       )
+      if (FongMiMpv.isBuildSupported) {
+        add("sub-offset-y" to subtitlesPreferences.subOffsetY.get().toString())
+        add("secondary-sub-offset-y" to subtitlesPreferences.secondarySubOffsetY.get().toString())
+        add("image-subs-brightness" to subtitlesPreferences.imageSubsBrightness.get().toString())
+        add("image-subs-override" to if (subtitlesPreferences.imageSubsOverride.get()) "yes" else "no")
+        add("image-subs-color" to subtitlesPreferences.imageSubsColor.get().toColorHexString())
+      }
     }
   }
 
@@ -1119,6 +1200,51 @@ class MPVView(
       usesVulkan = usesVulkan,
       buildSupportsMediaCodecVulkan = BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN,
     )
+
+  /**
+   * FongMi build: moves the playing video to the renderer the gpu-next, Vulkan and Anime4K settings
+   * now select, without recreating the core. Null when the renderer already matches, else whether
+   * mpv switched. Blocks while mpv rebuilds the output, so call it off the main thread.
+   */
+  internal fun switchRendererLive(): Boolean? {
+    // An OpenGL retry after a failed Vulkan start keeps the renderer it could open, and mpv.conf
+    // keeps a renderer it chose itself.
+    if (!FongMiMpv.isBuildSupported || forceOpenGlFallback ||
+      MpvConfigOverridePolicy.isOwnedByMpvConf("gpu-api") || MpvConfigOverridePolicy.isOwnedByMpvConf("gpu-context")
+    ) {
+      return null
+    }
+    val target =
+      selectRenderBackend(
+        anime4kEnabled = decoderPreferences.enableAnime4K.get() && decoderPreferences.anime4kMode.get() != "OFF",
+        gpuNextEnabled = decoderPreferences.gpuNext.get(),
+        vulkanEnabled =
+          RendererBackendPolicy.canUseVulkan(
+            buildIncludesVulkan = BuildConfig.MPV_SUPPORTS_VULKAN,
+            deviceSupportsVulkan = VulkanCapabilities.isDeviceSupported(context),
+            userEnabledVulkan = decoderPreferences.useVulkan.get(),
+            forceOpenGlFallback = false,
+          ),
+      )
+    val current =
+      RenderBackendSelection(
+        vo = PlaybackSession.videoOutput,
+        gpuApi = PlaybackSession.getPropertyString("gpu-api").orEmpty(),
+        gpuContext = PlaybackSession.getPropertyString("gpu-context").orEmpty(),
+        reason = "running",
+      )
+    if (target.configurationKey == current.configurationKey) return null
+    val switched =
+      PlaybackSession.switchGpuOutput(
+        gpuNext = target.vo == "gpu-next",
+        vulkan = target.gpuApi == "vulkan",
+        fromBackendKey = current.configurationKey,
+        toBackendKey = target.configurationKey,
+      )
+    // Cached init inputs hold the previous renderer selection.
+    if (switched) preparedInitInputs = null
+    return switched
+  }
 
   /**
    * Pure decision over already-resolved ingredients. [initOptions] passes the precomputed values;

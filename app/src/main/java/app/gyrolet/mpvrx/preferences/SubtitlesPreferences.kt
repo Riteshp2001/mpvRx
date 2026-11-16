@@ -52,6 +52,15 @@ class SubtitlesPreferences(
   val justification = preferenceStore.getEnum("sub_justify", SubtitleJustification.Auto)
   val subPos = preferenceStore.getInt("sub_pos", 100)
   val secondarySubPos = preferenceStore.getInt("secondary_sub_pos", 10)
+
+  /** FongMi build: moves whole rendered tracks, image subtitles included, by % of the frame height. */
+  val subOffsetY = preferenceStore.getInt("sub_offset_y", 0)
+  val secondarySubOffsetY = preferenceStore.getInt("secondary_sub_offset_y", 0)
+
+  /** FongMi build: brightness and optional recolouring of image (PGS, VobSub, DVB) subtitles. */
+  val imageSubsBrightness = preferenceStore.getFloat("image_subs_brightness", 1f)
+  val imageSubsOverride = preferenceStore.getBoolean("image_subs_override", false)
+  val imageSubsColor = preferenceStore.getInt("image_subs_color", Color.White.toArgb())
   val secondarySubPinchZoom = preferenceStore.getBoolean("secondary_sub_pinch_zoom", false)
 
   val overrideAssSubs = preferenceStore.getBoolean("sub_override_ass")

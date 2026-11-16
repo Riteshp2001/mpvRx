@@ -51,6 +51,7 @@ import app.gyrolet.mpvrx.domain.syncplay.SyncplayFile
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayPlaybackState
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioChannels
+import app.gyrolet.mpvrx.preferences.AudioPassthrough
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
@@ -1067,6 +1068,16 @@ class PlayerViewModel(
       }
     }.distinctUntilChanged()
       .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+  /** FongMi build: mpv reports a live broadcast (HLS/DASH live, RTSP, endless streams). */
+  val isLiveMedia: StateFlow<Boolean> =
+    if (FongMiMpv.isBuildSupported) {
+      PlaybackSession.propBoolean[FongMiMpv.MEDIA_LIVE]
+        .map { it == true }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    } else {
+      MutableStateFlow(false)
+    }
 
   val hasAlbumArt: StateFlow<Boolean> =
     allTracks
@@ -2868,6 +2879,20 @@ fun restartFromBeginning() {
         // mpv reopens the audio decoder and falls back to PCM if the output rejects the format.
         if (_isMpvCoreReady.value) PlaybackSession.setPropertyString("audio-spdif", passthrough.codecs)
       }
+    }
+    // FongMi's mpv reports that fallback. Say so once per setting, not on every file of a playlist.
+    if (FongMiMpv.isBuildSupported && !hostedInBrowser) viewModelScope.launch {
+      var notified = false
+      launch { audioPreferences.audioPassthrough.changes().drop(1).collect { notified = false } }
+      PlaybackSession.propBoolean[FongMiMpv.AUDIO_PASSTHROUGH_FAILED]
+        .map { it == true }
+        .distinctUntilChanged()
+        .collect { failed ->
+          if (failed && !notified && audioPreferences.audioPassthrough.get() != AudioPassthrough.Off) {
+            notified = true
+            showToast(appContext.getString(R.string.player_passthrough_failed))
+          }
+        }
     }
     viewModelScope.launch(playbackStateDispatcher) {
       audioPreferences.audioOutput.changes().distinctUntilChanged().drop(1).collect { output ->

@@ -143,6 +143,9 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "false")
       // FongMi's mpv swaps the Android Surface inside the running video output.
       buildConfigField("boolean", "MPV_SUPPORTS_IN_PLACE_SURFACE", "false")
+      // FongMi's mpv adds subtitle offset, image subtitle, live, passthrough, disc image,
+      // renderer switch and Android Surface layout options, properties and commands.
+      buildConfigField("boolean", "MPV_SUPPORTS_FONGMI_EXTENSIONS", "false")
     }
 
     create("playstore") {
@@ -161,6 +164,9 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "false")
       // FongMi's mpv swaps the Android Surface inside the running video output.
       buildConfigField("boolean", "MPV_SUPPORTS_IN_PLACE_SURFACE", "false")
+      // FongMi's mpv adds subtitle offset, image subtitle, live, passthrough, disc image,
+      // renderer switch and Android Surface layout options, properties and commands.
+      buildConfigField("boolean", "MPV_SUPPORTS_FONGMI_EXTENSIONS", "false")
     }
 
     create("noVulkan") {
@@ -177,6 +183,9 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "false")
       // FongMi's mpv swaps the Android Surface inside the running video output.
       buildConfigField("boolean", "MPV_SUPPORTS_IN_PLACE_SURFACE", "false")
+      // FongMi's mpv adds subtitle offset, image subtitle, live, passthrough, disc image,
+      // renderer switch and Android Surface layout options, properties and commands.
+      buildConfigField("boolean", "MPV_SUPPORTS_FONGMI_EXTENSIONS", "false")
     }
 
     create("fongmi") {
@@ -193,6 +202,9 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_DOLBY_VISION_DIRECT", "true")
       // FongMi's mpv swaps the Android Surface inside the running video output.
       buildConfigField("boolean", "MPV_SUPPORTS_IN_PLACE_SURFACE", "true")
+      // FongMi's mpv adds subtitle offset, image subtitle, live, passthrough, disc image,
+      // renderer switch and Android Surface layout options, properties and commands.
+      buildConfigField("boolean", "MPV_SUPPORTS_FONGMI_EXTENSIONS", "true")
     }
 
     configureEach {

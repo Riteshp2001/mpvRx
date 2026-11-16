@@ -36,6 +36,8 @@ private val livePlayerSettings = setOf(
   R.string.pref_background_playback_behavior,
   R.string.pref_player_remember_brightness,
   R.string.pref_autoplay_next_video_title,
+  // Applied when the next item loads.
+  R.string.pref_keep_video_frame_title,
   R.string.pref_auto_pip_title,
   R.string.pref_auto_pip_home_only_title,
   R.string.pref_enable_video_mini_player_title,
@@ -126,7 +128,20 @@ private val liveDecoderSettings = setOf(
   R.string.motion_title,
   R.string.motion_target_title,
   R.string.pref_decoder_dolby_vision_direct_title,
-)
+) +
+  if (app.gyrolet.mpvrx.BuildConfig.MPV_SUPPORTS_FONGMI_EXTENSIONS) {
+    setOf(
+      // FongMi's mpv swaps the renderer of the playing video (android-set-gpu-output).
+      R.string.pref_decoder_gpu_next_title,
+      R.string.pref_decoder_vulkan_experimental_title,
+      // These take effect with the next decoder or file.
+      R.string.pref_decoder_vulkan_import_title,
+      R.string.pref_decoder_dovi_p7_title,
+      R.string.pref_decoder_surface_zoom_title,
+    )
+  } else {
+    emptySet()
+  }
 
 private val settingNativeOptions = mapOf(
   R.string.pref_audio_pitch_correction_title to setOf("audio-pitch-correction"),
@@ -145,6 +160,11 @@ private val settingNativeOptions = mapOf(
   R.string.pref_subtitles_secondary_pinch_zoom to setOf("sub-scale", "secondary-sub-scale"),
   R.string.pref_decoder_try_hw_dec_title to setOf("hwdec", "hwdec-codecs"),
   R.string.pref_decoder_dolby_vision_direct_title to setOf("android-dolby-vision-output"),
+  R.string.pref_decoder_gpu_next_title to setOf("gpu-api", "gpu-context"),
+  R.string.pref_decoder_vulkan_experimental_title to setOf("gpu-api", "gpu-context"),
+  R.string.pref_decoder_vulkan_import_title to setOf("android-vulkan-aimagereader-backend"),
+  R.string.pref_decoder_dovi_p7_title to setOf("demuxer-dovi-profile7"),
+  R.string.pref_keep_video_frame_title to setOf("android-keep-video-frame"),
   R.string.pref_decoder_debanding_title to setOf(
     "vf", "deband", "deband-iterations", "deband-threshold", "deband-range", "deband-grain",
   ),

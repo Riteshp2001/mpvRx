@@ -30,6 +30,8 @@ internal data class PlaybackStateSnapshot(
   val audioDelayMs: Int,
   val externalSubtitles: String,
   val isPositionRestorePending: Boolean = false,
+  /** A live stream's position is a moment in a broadcast that will be gone on the next visit. */
+  val isLive: Boolean = false,
 )
 
 internal object PlaybackStatePersistence {
@@ -40,13 +42,17 @@ internal object PlaybackStatePersistence {
     watchedThreshold: Int,
   ): PlaybackStateEntity {
     val lastPosition =
-      calculateSavePosition(
-        oldState = oldState,
-        currentPosition = snapshot.currentPosition,
-        duration = snapshot.duration,
-        savePositionOnQuit = savePositionOnQuit,
-        isPositionRestorePending = snapshot.isPositionRestorePending,
-      )
+      if (snapshot.isLive) {
+        0
+      } else {
+        calculateSavePosition(
+          oldState = oldState,
+          currentPosition = snapshot.currentPosition,
+          duration = snapshot.duration,
+          savePositionOnQuit = savePositionOnQuit,
+          isPositionRestorePending = snapshot.isPositionRestorePending,
+        )
+      }
     val duration = snapshot.duration
     val timeRemaining = if (duration > lastPosition) duration - lastPosition else 0
 
