@@ -146,7 +146,6 @@ fun RenderPlayerButton(
     }
     val advancedPreferences = koinInject<AdvancedPreferences>()
     val playerPreferences = koinInject<PlayerPreferences>()
-    val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
     val enableLiquidGlass = liquidGlassActive()
     when (button) {
     PlayerButton.BACK_ARROW -> {
@@ -1683,17 +1682,9 @@ fun RenderPlayerButton(
       val clockFormat by playerPreferences.clockFormat.collectAsState()
       val stat by rememberTimeAndNetworkStat(clockFormat)
       val toggleTimeAndNetwork = {
-        if (PlaybackSession.getPropertyBoolean("user-data/mpv/console/open") == true) {
-          PlaybackSession.command("script-message-to", "console", "disable")
-        }
-        if (statisticsPage == 6) {
-          advancedPreferences.enabledStatisticsPage.set(0)
-        } else {
-          if (statisticsPage in 1..5) {
-            PlaybackSession.command("script-binding", "stats/display-stats-toggle")
-          }
-          advancedPreferences.enabledStatisticsPage.set(6)
-        }
+        // setStatisticsPage owns the preference, the console and mpv's stats overlay together.
+        val nextPage = if (advancedPreferences.enabledStatisticsPage.get() == 6) 0 else 6
+        PlaybackSession.setStatisticsPage(nextPage)
         onOpenSheet(Sheets.None)
       }
       if (compact) {
@@ -1815,6 +1806,7 @@ internal data class BatterySnapshot(
   val rateText: String,
   val wattsText: String,
   val tempText: String,
+  val temperatureCelsius: Float? = null,
 )
 
 internal fun readBatterySnapshot(context: Context): BatterySnapshot {
@@ -1878,10 +1870,13 @@ internal fun readBatterySnapshot(context: Context): BatterySnapshot {
       "-- W"
     }
 
-  val tempCelsius = batteryIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1)?.takeIf { it > 0 }
+  val tempCelsius =
+    batteryIntent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)
+      ?.takeUnless { it == Int.MIN_VALUE }
+      ?.div(10f)
   val tempText =
     if (tempCelsius != null) {
-      String.format("%.1f°C", tempCelsius / 10f)
+      String.format("%.1f°C", tempCelsius)
     } else {
       "--°C"
     }
@@ -1891,6 +1886,7 @@ internal fun readBatterySnapshot(context: Context): BatterySnapshot {
     rateText = rateText,
     wattsText = wattsText,
     tempText = tempText,
+    temperatureCelsius = tempCelsius,
   )
 }
 
