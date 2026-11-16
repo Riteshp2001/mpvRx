@@ -1,8 +1,9 @@
-<p align="center">
-  <img src="website/public/images/icon.svg" width="250" height="250" alt="mpvRx solid purple app icon" />
-</p>
-
-<h1 align="center">mpvRx</h1>
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/hero-dark.svg">
+    <img src=".github/readme/hero-light.svg" width="840" alt="mpvRx — video and music. Purple sticker-style wordmark with the ribbon play logo.">
+  </picture>
+</div>
 
 <p align="center">
   <a href="https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22app.gyrolet.mpvrx%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FRiteshp2001%2FmpvRx%22%2C%22author%22%3A%22Riteshp2001%22%2C%22name%22%3A%22mpvRx%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22filterReleaseNotesByRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22verifyLatestTag%5C%22%3Afalse%2C%5C%22sortMethodChoice%5C%22%3A%5C%22date%5C%22%2C%5C%22useLatestAssetDateAsReleaseDate%5C%22%3Afalse%2C%5C%22releaseTitleAsVersion%5C%22%3Afalse%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%22%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22releaseDateAsVersion%5C%22%3Afalse%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22minimumUpdateAgeDays%5C%22%3A%5C%22%5C%22%2C%5C%22appName%5C%22%3A%5C%22%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%2C%5C%22includeZips%5C%22%3Afalse%2C%5C%22zippedApkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22includeTarballs%5C%22%3Afalse%2C%5C%22tarballedApkFilterRegEx%5C%22%3A%5C%22%5C%22%7D%22%2C%22overrideSource%22%3Anull%7D">
@@ -16,14 +17,12 @@
   <i>No ads. No trackers. No noise. Just a serious video player with a calmer surface and a sharper edge.</i>
 </p>
 
-> [!IMPORTANT]
-> [Join us on Telegram](https://t.me/+yA0f2nknCAc1ODZl)
-
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Android-brightgreen.svg" />
   <img src="https://img.shields.io/badge/License-AGPL_v3-blue.svg" />
   <img src="https://img.shields.io/github/v/release/Riteshp2001/mpvRx.svg?logo=github&label=Release&cacheSeconds=3600" />
   <img src="https://img.shields.io/github/downloads/Riteshp2001/mpvRx/total?logo=github&cacheSeconds=3600" />
+  <a href="https://t.me/+yA0f2nknCAc1ODZl"><img src="https://img.shields.io/badge/Telegram-Join-26A5E4.svg?logo=telegram&amp;logoColor=white" alt="Join the mpvRx Telegram community" /></a>
 </p>
 
 ---
@@ -57,7 +56,7 @@
 mpvRx pushes the mpv-android experience further with deep customization, thermal-aware performance, and unique quality-of-life features. Here's what sets it apart:
 
 <details close>
-<summary><b>🎨 Theme & Visual System</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/appearance-dark.svg"><img src=".github/readme/icons/appearance-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Theme & Visual System</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -72,7 +71,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>🖐️ Gesture System</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/gestures-dark.svg"><img src=".github/readme/icons/gestures-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Gesture System</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -91,7 +90,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details>
-<summary><b>📺 HDR & Video Pipeline</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/hdr-dark.svg"><img src=".github/readme/icons/hdr-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>HDR & Video Pipeline</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -105,7 +104,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>🔥 Thermal & Battery Management</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/thermal-dark.svg"><img src=".github/readme/icons/thermal-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Thermal & Battery Management</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -118,7 +117,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>🧩 Anime4K & Upscaling</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/upscaling-dark.svg"><img src=".github/readme/icons/upscaling-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Anime4K & Upscaling</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -130,7 +129,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>💡 Ambient Mode</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/ambient-dark.svg"><img src=".github/readme/icons/ambient-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Ambient Mode</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -141,7 +140,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>📝 Subtitle System</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/subtitles-dark.svg"><img src=".github/readme/icons/subtitles-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Subtitle System</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -157,7 +156,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>🎮 Player Controls</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/controls-dark.svg"><img src=".github/readme/icons/controls-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Player Controls</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -175,7 +174,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>📺 Google Cast</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/cast-dark.svg"><img src=".github/readme/icons/cast-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Google Cast</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -192,7 +191,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>🧭 Smart Orientation</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/orientation-dark.svg"><img src=".github/readme/icons/orientation-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Smart Orientation</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -203,7 +202,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>🔍 File Browser & Navigation</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/library-dark.svg"><img src=".github/readme/icons/library-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>File Browser & Navigation</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -223,7 +222,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>🎵 Music Library & Audio Player</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/music-dark.svg"><img src=".github/readme/icons/music-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Music Library & Audio Player</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -243,7 +242,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>🎧 Navidrome / Subsonic Music Streaming</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/music-server-dark.svg"><img src=".github/readme/icons/music-server-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Navidrome / Subsonic Music Streaming</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -261,7 +260,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>🍿 Jellyfin Client (Expressive Cinematic UI)</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/cinema-dark.svg"><img src=".github/readme/icons/cinema-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Jellyfin Client (Expressive Cinematic UI)</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -278,7 +277,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>⚡ Unified Media & Torrent Streaming</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/network-dark.svg"><img src=".github/readme/icons/network-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Unified Media & Torrent Streaming</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -294,7 +293,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>🤖 AI Integration</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/ai-dark.svg"><img src=".github/readme/icons/ai-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>AI Integration</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -308,7 +307,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>📜 Scripting & Editor</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/development-dark.svg"><img src=".github/readme/icons/development-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Scripting & Editor</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -321,7 +320,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 </details>
 
 <details close>
-<summary><b>⚙️ Utilities</b></summary>
+<summary><picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/controls-dark.svg"><img src=".github/readme/icons/controls-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> <b>Utilities</b></summary>
 
 | Feature | Description |
 |---|---|
@@ -352,7 +351,7 @@ Local playlist discovery runs when the Playlists page is first loaded and after 
 
 ---
 
-## 🔋 Battery Optimization guide for Mpv
+## <picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/battery-dark.svg"><img src=".github/readme/icons/battery-light.svg" width="32" height="32" align="top" alt=""></picture> Battery Optimization guide for Mpv
 
 First Pro Tip Keep Mpv Conf empty if you are newbie
 
@@ -426,7 +425,7 @@ If you find mpvRx useful and would like to support its development, consider buy
 
 <div align="center">
 
-### ☕ Buy Me a Coffee
+### <picture><source media="(prefers-color-scheme: dark)" srcset=".github/readme/icons/coffee-dark.svg"><img src=".github/readme/icons/coffee-light.svg" width="28" height="28" align="absmiddle" alt=""></picture> Buy Me a Coffee
 
 <a href="https://www.buymeacoffee.com/riteshp2001">
   <img src="https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee">
@@ -510,6 +509,8 @@ Thank you to everyone who helps build and improve mpvRx.
 ## License
 
 Distributed under **GNU Affero General Public License v3.0 (AGPL-3.0-or-later)**. See `LICENSE` for more information.
+
+README icons use Google's [Material Symbols Rounded](https://github.com/google/material-design-icons), recolored on expressive tonal shapes for light and dark themes. See their [Apache 2.0 license](.github/readme/LICENSE-Material-Symbols).
 
 ---
 
