@@ -21,6 +21,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -94,6 +95,7 @@ object ScreenshotSaver {
             filename = PlaybackSession.getPropertyString("filename"),
             filenameNoExt = PlaybackSession.getPropertyString("filename/no-ext"),
             mediaTitle = PlaybackSession.getPropertyString("media-title"),
+            sessionTitle = PlaybackSession.state.value.currentItem?.title,
             path = PlaybackSession.getPropertyString("path"),
             positionSeconds = PlaybackSession.getPropertyDouble("time-pos") ?: 0.0,
           )
@@ -128,6 +130,7 @@ object ScreenshotSaver {
             filename = PlaybackSession.getPropertyString("filename"),
             filenameNoExt = PlaybackSession.getPropertyString("filename/no-ext"),
             mediaTitle = PlaybackSession.getPropertyString("media-title"),
+            sessionTitle = PlaybackSession.state.value.currentItem?.title,
             path = PlaybackSession.getPropertyString("path"),
             positionSeconds = PlaybackSession.getPropertyDouble("time-pos") ?: 0.0,
           )
@@ -325,18 +328,48 @@ object ScreenshotTemplate {
     filename: String? = null,
     filenameNoExt: String? = null,
     mediaTitle: String? = null,
+    sessionTitle: String? = null,
     path: String? = null,
     positionSeconds: Double = 0.0,
   ): String {
+    val isNetworkStream =
+      path?.let(FileTypeUtils::isNetworkStreamUri) == true ||
+        filename?.let { it.contains('?') || it.contains('&') || FileTypeUtils.isNetworkStreamUri(it) } == true
+    val cleanProvidedTitle =
+      sequenceOf(sessionTitle, mediaTitle)
+        .mapNotNull { candidate ->
+          candidate?.trim()?.takeIf { it.isNotBlank() && !FileTypeUtils.isNetworkStreamUri(it) }
+        }.firstOrNull()
+    val sanitizedStreamSegment =
+      (filename?.substringBefore('?')?.ifBlank { null }
+        ?: path?.substringBefore('?')?.substringAfterLast('/')?.ifBlank { null })
+        ?.let { runCatching { Uri.decode(it) }.getOrDefault(it) }
+        ?.takeUnless { segment ->
+          segment.equals("stream", ignoreCase = true) ||
+            segment.equals("play", ignoreCase = true) ||
+            segment.equals("videoplayback", ignoreCase = true) ||
+            segment.equals("manifest", ignoreCase = true) ||
+            segment.startsWith("master.", ignoreCase = true) ||
+            segment.startsWith("index.", ignoreCase = true)
+        }
+
     val resolvedFilename =
-      filename?.ifBlank { null }
-        ?: path?.substringAfterLast('/')?.ifBlank { null }
-        ?: mediaTitle?.ifBlank { null }
-        ?: "video"
+      if (isNetworkStream) {
+        cleanProvidedTitle ?: sanitizedStreamSegment ?: "video"
+      } else {
+        filename?.ifBlank { null }
+          ?: path?.substringAfterLast('/')?.ifBlank { null }
+          ?: cleanProvidedTitle
+          ?: "video"
+      }
 
     val resolvedFilenameNoExt =
-      filenameNoExt?.ifBlank { null }
-        ?: resolvedFilename.substringBeforeLast('.')
+      if (isNetworkStream) {
+        FileTypeUtils.stripExtension(resolvedFilename)
+      } else {
+        filenameNoExt?.ifBlank { null }
+          ?: resolvedFilename.substringBeforeLast('.')
+      }
 
     val posSec = positionSeconds.coerceAtLeast(0.0)
     val totalMs = (posSec * 1000.0).toLong()

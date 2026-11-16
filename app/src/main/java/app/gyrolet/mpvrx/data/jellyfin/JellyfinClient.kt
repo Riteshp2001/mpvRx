@@ -350,8 +350,9 @@ class JellyfinClient(
     withContext(Dispatchers.IO) {
       runCatching {
         val base = normalizeUrl(serverUrl)
+        val fetchLimit = (limit * 2).coerceAtLeast(limit)
         val endpoint =
-          "$base/Users/$userId/Items/Resume?Limit=$limit&Fields=Overview,PrimaryImageAspectRatio,UserData,SeriesName,SeriesId,SeriesPrimaryImageTag,SeasonName,IndexNumber,ParentIndexNumber,MediaSources,MediaStreams,Genres,OfficialRating,CommunityRating,CriticRating,ProductionYear,Taglines,PremiereDate,Status"
+          "$base/Users/$userId/Items/Resume?Limit=$fetchLimit&MediaTypes=Video&Fields=Overview,PrimaryImageAspectRatio,UserData,SeriesName,SeriesId,SeriesPrimaryImageTag,SeasonName,IndexNumber,ParentIndexNumber,MediaSources,MediaStreams,Genres,OfficialRating,CommunityRating,CriticRating,ProductionYear,Taglines,PremiereDate,Status"
         val request =
           Request
             .Builder()
@@ -949,6 +950,55 @@ class JellyfinClient(
       httpClient.newCall(request).awaitResponse().close()
     }.onFailure { Log.w(TAG, "Failed reporting playback stop: ${it.message}") }
   }
+
+  suspend fun syncPlaybackPosition(
+    serverUrl: String,
+    token: String,
+    itemId: String,
+    positionTicks: Long,
+  ): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val base = normalizeUrl(serverUrl)
+        val clampedTicks = positionTicks.coerceAtLeast(0L)
+        val payload =
+          JsonObject(
+            mapOf(
+              "ItemId" to kotlinx.serialization.json.JsonPrimitive(itemId),
+              "PositionTicks" to kotlinx.serialization.json.JsonPrimitive(clampedTicks),
+              "PlayMethod" to kotlinx.serialization.json.JsonPrimitive("DirectPlay"),
+            ),
+          ).toString()
+
+        val startRequest =
+          Request
+            .Builder()
+            .url("$base/Sessions/Playing")
+            .addJellyfinHeaders(token)
+            .addHeader("Content-Type", "application/json")
+            .post(payload.toRequestBody(JSON_MEDIA_TYPE))
+            .build()
+        httpClient.newCall(startRequest).awaitResponse().use { response ->
+          if (!response.isSuccessful) {
+            throw IOException("Failed to start offline sync session: HTTP ${response.code}")
+          }
+        }
+
+        val stopRequest =
+          Request
+            .Builder()
+            .url("$base/Sessions/Playing/Stopped")
+            .addJellyfinHeaders(token)
+            .addHeader("Content-Type", "application/json")
+            .post(payload.toRequestBody(JSON_MEDIA_TYPE))
+            .build()
+        httpClient.newCall(stopRequest).awaitResponse().use { response ->
+          if (!response.isSuccessful) {
+            throw IOException("Failed to commit offline playback position: HTTP ${response.code}")
+          }
+        }
+      }
+    }
 
   suspend fun markPlayed(
     serverUrl: String,

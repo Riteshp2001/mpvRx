@@ -275,12 +275,29 @@ class JellyfinRepository(
   suspend fun markPlayed(
     server: JellyfinServer,
     item: JellyfinItem,
+  ): Result<Unit> = markPlayedById(server, item.id)
+
+  suspend fun markPlayedById(
+    server: JellyfinServer,
+    itemId: String,
   ): Result<Unit> =
     client.markPlayed(
       serverUrl = server.serverUrl,
       userId = server.userId,
-      itemId = item.id,
+      itemId = itemId,
       token = server.accessToken,
+    )
+
+  suspend fun syncPlaybackPosition(
+    server: JellyfinServer,
+    itemId: String,
+    positionTicks: Long,
+  ): Result<Unit> =
+    client.syncPlaybackPosition(
+      serverUrl = server.serverUrl,
+      token = server.accessToken,
+      itemId = itemId,
+      positionTicks = positionTicks,
     )
 
   suspend fun markUnplayed(

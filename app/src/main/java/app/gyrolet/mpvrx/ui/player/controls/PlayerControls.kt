@@ -31,7 +31,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
@@ -189,7 +188,6 @@ import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusReq
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
-import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.ui.theme.playerRippleConfiguration
 import app.gyrolet.mpvrx.ui.theme.spacing
@@ -1433,26 +1431,26 @@ fun PlayerControls(
           // pills have twice the old 8dp clearance, independently of the tighter seekbar gaps.
           val customRowBottomOffset = bottomClusterTop + customButtonsGap - CustomButtonsRowInsetVertical
           val customRowEdgeMargin = spacing.large - CustomButtonsRowInsetHorizontal
-          val customRowAboveSkipChip =
-            showLandscapeLeftCustomButtons || showLandscapeRightCustomButtons || showPortraitCustomButtons
-          val customRowVisibleHeight =
+          val hasCustomRowInOrientation =
+            if (isPortrait) customButtons.isNotEmpty() else (leftCustomButtons.isNotEmpty() || rightCustomButtons.isNotEmpty())
+          val customRowRestingHeight =
             (maxOf(
-              if (showLandscapeLeftCustomButtons) measured(bottomHeights.leftCustomRow, CustomButtonsRowFallbackHeight) else 0.dp,
-              if (showLandscapeRightCustomButtons || showPortraitCustomButtons) measured(bottomHeights.rightCustomRow, CustomButtonsRowFallbackHeight) else 0.dp,
+              if (!isPortrait && leftCustomButtons.isNotEmpty()) {
+                measured(bottomHeights.leftCustomRow, CustomButtonsRowFallbackHeight)
+              } else {
+                0.dp
+              },
+              if ((!isPortrait && rightCustomButtons.isNotEmpty()) || (isPortrait && customButtons.isNotEmpty())) {
+                measured(bottomHeights.rightCustomRow, CustomButtonsRowFallbackHeight)
+              } else {
+                0.dp
+              },
             ) - CustomButtonsRowInsetVertical * 2).coerceAtLeast(0.dp)
-          val visibleBottomClusterTop = when {
-            areButtonsVisible -> bottomClusterTop
-            seekbarVisible -> (bandCenters[BottomSlot.Seekbar] ?: clusterEdge) + bandHeight(BottomSlot.Seekbar) / 2
-            else -> clusterEdge
-          }
-          val skipChipBottomTarget =
-            visibleBottomClusterTop +
-              if (customRowAboveSkipChip) customButtonsGap + customRowVisibleHeight + spacing.smaller else spacing.smaller
-          val skipChipBottomOffset by animateDpAsState(
-            targetValue = skipChipBottomTarget,
-            animationSpec = if (reduceMotion) snap() else AppMotion.Spatial.StandardDp,
-            label = "skip_chip_bottom_offset",
-          )
+          // Keep the skip marker anchored at its resting clearance above the bottom controls
+          // cluster whether controls are visible or hidden (#986).
+          val skipChipBottomOffset =
+            bottomClusterTop +
+              if (hasCustomRowInOrientation) customButtonsGap + customRowRestingHeight + spacing.smaller else spacing.smaller
 
           val skipChipVisible =
             currentSkippableSegment != null &&

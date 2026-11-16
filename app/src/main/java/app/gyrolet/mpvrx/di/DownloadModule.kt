@@ -14,6 +14,7 @@ import app.gyrolet.mpvrx.domain.download.DownloadLocations
 import app.gyrolet.mpvrx.domain.download.DownloadOutputReservations
 import app.gyrolet.mpvrx.domain.download.LinkDownloadCoordinator
 import app.gyrolet.mpvrx.domain.download.YtdlpDownloadEngine
+import app.gyrolet.mpvrx.domain.jellyfin.JellyfinOfflineSyncManager
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
@@ -24,4 +25,12 @@ val DownloadModule =
     single { AppDownloadManager(androidContext(), get<app.gyrolet.mpvrx.database.MpvRxDatabase>().downloadItemDao(), get(), get()) }
     single { YtdlpDownloadEngine(androidContext(), get(), get()) }
     single { LinkDownloadCoordinator(get(), get()) }
+    single {
+      JellyfinOfflineSyncManager(
+        androidContext(),
+        get<app.gyrolet.mpvrx.database.MpvRxDatabase>().downloadItemDao(),
+        get(),
+        get(),
+      )
+    }
   }

@@ -44,6 +44,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -765,14 +766,17 @@ fun JellyfinContent(
                       top = topBarHeight + 8.dp,
                       bottom = navigationBarHeight + 96.dp,
                     ),
-                    verticalArrangement = Arrangement.spacedBy(JellyfinSpacing.ListItemGap),
+                    verticalArrangement = Arrangement.spacedBy(if (allEpisodes) 4.dp else JellyfinSpacing.ListItemGap),
                   ) {
-                    items(items, key = { it.id }) { item ->
+                    itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
                       uiState.activeServer?.let { server ->
                         if (allEpisodes || item.type == "Episode") {
                           JellyfinEpisodeCard(
                             item = item,
                             server = server,
+                            index = if (allEpisodes) index else null,
+                            itemCount = if (allEpisodes) items.size else null,
+                            showSeriesContext = !allEpisodes,
                             onPlay = {
                               if (selectionManager.isInSelectionMode) {
                                 selectionManager.toggleFromUser(item)

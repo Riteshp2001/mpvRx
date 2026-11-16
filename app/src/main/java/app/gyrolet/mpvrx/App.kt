@@ -184,6 +184,12 @@ class App :
     startIdleMpvCoreReaper()
     startWidgetUpdates()
     startWatchStatsTracking()
+    applicationScope.launch(Dispatchers.IO) {
+      delay(2_000L)
+      runCatching {
+        getKoin().get<app.gyrolet.mpvrx.domain.jellyfin.JellyfinOfflineSyncManager>().ensureStarted()
+      }.onFailure { Log.w(TAG, "Failed to start Jellyfin offline sync manager", it) }
+    }
 
     applicationScope.launch {
       runCatching {

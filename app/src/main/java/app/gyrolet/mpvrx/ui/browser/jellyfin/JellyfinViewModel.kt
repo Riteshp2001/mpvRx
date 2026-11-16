@@ -160,6 +160,7 @@ class JellyfinViewModel(
   private val browserPreferences: BrowserPreferences by inject()
   private val appearancePreferences: AppearancePreferences by inject()
   private val downloadManager: AppDownloadManager by inject()
+  private val offlineSyncManager: app.gyrolet.mpvrx.domain.jellyfin.JellyfinOfflineSyncManager by inject()
 
   private var loadDashboardJob: Job? = null
   private var loadItemsJob: Job? = null
@@ -180,16 +181,19 @@ class JellyfinViewModel(
   val uiState: StateFlow<JellyfinUiState> = _uiState.asStateFlow()
 
   init {
+    offlineSyncManager.ensureStarted()
     loadServers()
     viewModelScope.launch(Dispatchers.IO) {
       var lastServerPlaybackAt = 0L
       PlaybackStateEvents.changes.collectLatest { mediaIdentifier ->
-        // Every playback saves its position every few seconds. Only this server's items can move
-        // its resume rows, so local playback no longer triggers a network refresh on each save.
+        // Every playback saves its position every few seconds. Only this server's items (or
+        // downloaded Jellyfin copies) can move its rows, so unrelated local playback stays quiet.
         val now = android.os.SystemClock.elapsedRealtime()
         if (isServerItemPlaying()) lastServerPlaybackAt = now
         val serverPlaybackRecent = lastServerPlaybackAt > 0L && now - lastServerPlaybackAt < SERVER_PLAYBACK_REFRESH_WINDOW_MS
-        if (mediaIdentifier.isBlank() || serverPlaybackRecent) {
+        val isDownloadedJellyfin =
+          mediaIdentifier.isNotBlank() && offlineSyncManager.isDownloadedJellyfinIdentifier(mediaIdentifier)
+        if (mediaIdentifier.isBlank() || serverPlaybackRecent || isDownloadedJellyfin) {
           refreshPlaybackStateSilently()
         }
       }
@@ -209,22 +213,32 @@ class JellyfinViewModel(
     val server = _uiState.value.activeServer ?: return
     viewModelScope.launch(Dispatchers.IO) {
       delay(400) // Brief delay to ensure Jellyfin server has committed the stop/progress session data
+      offlineSyncManager.syncPending()
       val resumeResult = jellyfinRepository.getResumeItems(server, limit = 16).getOrNull()
       if (resumeResult != null) {
-        _uiState.update { it.copy(resumeItems = resumeResult) }
+        val overlaidResume = offlineSyncManager.applyLocalStateOverlays(server.id, resumeResult)
+        _uiState.update { it.copy(resumeItems = deduplicateContinueWatching(overlaidResume, limit = 16)) }
       }
 
       val detail = _uiState.value.detailItem
       if (detail != null) {
-        val updatedDetail = jellyfinRepository.getItem(server, detail.id).getOrNull()
+        val updatedDetail =
+          jellyfinRepository.getItem(server, detail.id).getOrNull()?.let { fetched ->
+            offlineSyncManager.applyLocalStateOverlays(server.id, listOf(fetched)).first()
+          }
         if (updatedDetail != null) {
           _uiState.update { it.copy(detailItem = updatedDetail) }
+        } else {
+          val overlaidCurrent = offlineSyncManager.applyLocalStateOverlays(server.id, listOf(detail)).first()
+          _uiState.update { it.copy(detailItem = overlaidCurrent) }
         }
         val seasonId = _uiState.value.selectedDetailSeasonId
         if (seasonId != null) {
           val episodes = jellyfinRepository.getEpisodes(server, detail.id, seasonId).getOrNull()
-          if (episodes != null) {
-            _uiState.update { it.copy(detailEpisodes = episodes) }
+          val sourceEpisodes = episodes ?: _uiState.value.detailEpisodes
+          if (sourceEpisodes.isNotEmpty()) {
+            val overlaidEpisodes = offlineSyncManager.applyLocalStateOverlays(server.id, sourceEpisodes)
+            _uiState.update { it.copy(detailEpisodes = overlaidEpisodes) }
           }
         }
       }
@@ -238,9 +252,9 @@ class JellyfinViewModel(
           sortBy = _uiState.value.sortBy,
           sortOrder = _uiState.value.sortOrder,
         ).getOrNull()
-        if (updatedItems != null && updatedItems.items.isNotEmpty()) {
-          _uiState.update { it.copy(currentItems = updatedItems.items) }
-        }
+        val sourceItems = updatedItems?.items?.takeIf { it.isNotEmpty() } ?: _uiState.value.currentItems
+        val overlaidItems = offlineSyncManager.applyLocalStateOverlays(server.id, sourceItems)
+        _uiState.update { it.copy(currentItems = overlaidItems) }
       }
     }
   }
@@ -312,6 +326,7 @@ class JellyfinViewModel(
     loadDashboardJob =
       viewModelScope.launch {
         _uiState.update { it.copy(isLoading = true, error = null) }
+        offlineSyncManager.syncPending()
 
         val libsDeferred = async { jellyfinRepository.getLibraries(server) }
         val resumeDeferred = async { jellyfinRepository.getResumeItems(server, limit = 16) }
@@ -370,7 +385,11 @@ class JellyfinViewModel(
           return true
         }
 
-        val resume = resumeRaw.filter { isVideoMedia(it) }
+        val resume =
+          deduplicateContinueWatching(
+            offlineSyncManager.applyLocalStateOverlays(server.id, resumeRaw.filter { isVideoMedia(it) }),
+            limit = 16,
+          )
 
         // Fetch latest media for each non-music library concurrently
         val videoLibs = libs.filter { !isMusicLibrary(it) }
@@ -489,6 +508,78 @@ class JellyfinViewModel(
           )
         }
       }
+  }
+
+  private fun deduplicateContinueWatching(
+    items: List<JellyfinItem>,
+    limit: Int = 16,
+  ): List<JellyfinItem> {
+    if (items.isEmpty()) return emptyList()
+
+    val eligible =
+      items.filter { item ->
+        !item.isAudio &&
+          !item.isSeason &&
+          item.type != "Season" &&
+          item.type != "Audio" &&
+          item.type != "MusicAlbum" &&
+          item.type != "MusicArtist" &&
+          item.type != "Folder" &&
+          item.type != "CollectionFolder" &&
+          (!item.isFolder || item.isSeries || item.type == "Series")
+      }
+    if (eligible.isEmpty()) return emptyList()
+
+    fun seriesGroupKey(item: JellyfinItem): String? {
+      val isShowItem =
+        item.type == "Episode" ||
+          item.isSeries ||
+          item.type == "Series" ||
+          !item.seriesId.isNullOrBlank() ||
+          !item.seriesName.isNullOrBlank()
+      if (!isShowItem) return null
+      val resolvedSeriesId =
+        (if (item.isSeries || item.type == "Series") item.id else item.seriesId)
+          ?.trim()
+          ?.takeIf { it.isNotBlank() }
+      if (resolvedSeriesId != null) return "series_id:$resolvedSeriesId"
+      val resolvedName =
+        (if (item.isSeries || item.type == "Series") item.name else (item.seriesName ?: item.name))
+          .trim()
+          .lowercase()
+      return "series_name:$resolvedName"
+    }
+
+    fun candidatePriority(item: JellyfinItem, originalIndex: Int): Comparable<*> =
+      when {
+        // Prefer an in-progress Episode over any Series/Season container or finished item
+        item.type == "Episode" && item.progressPercent > 0f && !item.isPlayed -> 0
+        item.type == "Episode" && !item.isPlayed -> 1
+        item.type == "Episode" -> 2
+        else -> 3
+      }.let { tier ->
+        // Lower tier wins; ties keep the item Jellyfin ranked most recent (lowest originalIndex)
+        tier * 10_000 + originalIndex
+      }
+
+    data class IndexedEntry(val firstIndex: Int, val bestRank: Int, val item: JellyfinItem)
+
+    val byGroupKey = LinkedHashMap<String, IndexedEntry>()
+    eligible.forEachIndexed { index, item ->
+      val key = seriesGroupKey(item) ?: "item:${item.id}"
+      val rank = candidatePriority(item, index) as Int
+      val existing = byGroupKey[key]
+      if (existing == null) {
+        byGroupKey[key] = IndexedEntry(firstIndex = index, bestRank = rank, item = item)
+      } else if (rank < existing.bestRank) {
+        byGroupKey[key] = existing.copy(bestRank = rank, item = item)
+      }
+    }
+
+    return byGroupKey.values
+      .sortedBy { it.firstIndex }
+      .map { it.item }
+      .take(limit)
   }
 
   private fun mediaDeduplicationKey(item: JellyfinItem): String {
@@ -1353,7 +1444,11 @@ class JellyfinViewModel(
     seasonEpisodesJob =
       viewModelScope.launch {
         val result = jellyfinRepository.getEpisodes(active, series.id, seasonId)
-        val episodes = result.getOrDefault(emptyList())
+        val episodes =
+          offlineSyncManager.applyLocalStateOverlays(
+            active.id,
+            result.getOrDefault(emptyList()),
+          )
         _uiState.update {
           it.copy(
             detailEpisodes = episodes,

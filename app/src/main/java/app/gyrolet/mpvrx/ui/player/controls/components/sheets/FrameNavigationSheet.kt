@@ -176,9 +176,10 @@ fun FrameNavigationSheet(
                       videoUri = videoUri,
                       videoPath = videoUri.takeIf { it.startsWith("/") },
                       videoTitle =
-                        PlaybackSession.getPropertyString("media-title")
-                          ?: PlaybackSession.getPropertyString("filename")
-                          ?: videoUri.substringAfterLast('/'),
+                        PlaybackSession.state.value.currentItem?.title?.takeIf { it.isNotBlank() }
+                          ?: PlaybackSession.getPropertyString("media-title")?.takeIf { it.isNotBlank() }
+                          ?: PlaybackSession.getPropertyString("filename")?.substringBefore('?')?.takeIf { it.isNotBlank() }
+                          ?: videoUri.substringBefore('?').substringAfterLast('/'),
                       positionMs = (positionSeconds * 1000.0).toLong().coerceAtLeast(0L),
                       capturedAt = System.currentTimeMillis(),
                       folderId = targetFolderId,
