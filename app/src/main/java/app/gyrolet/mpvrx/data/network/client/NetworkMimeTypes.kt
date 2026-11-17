@@ -11,12 +11,19 @@ package app.gyrolet.mpvrx.data.network.client
 
 internal object NetworkMimeTypes {
   private val genericVideoExtensions =
-    setOf("m2v", "ogv", "mts", "m2ts", "vob", "divx", "xvid", "f4v", "rm", "rmvb", "asf")
+    setOf(
+      "m2v", "ogv", "mts", "m2ts", "m2t", "vob", "divx", "xvid", "f4v", "rm", "rmvb",
+      "asf", "ogm", "mpe", "m1v", "m2p", "mk3d", "mxf", "gxf", "wtv", "dvr-ms", "nuv",
+      "y4m", "nsv", "smk", "bik", "roq", "amv", "swf", "tod", "dv", "vro", "xmv",
+      "hdmov", "braw", "r3d", "mjpeg", "3gp2", "pss",
+    )
   private val genericAudioExtensions =
     setOf(
-      "m4a", "flac", "ogg", "oga", "opus", "wav", "wave", "wma", "amr", "awb", "ac3",
-      "eac3", "dts", "mka", "aif", "aiff", "aifc", "ape", "mp1", "mp2", "mpa", "mpc",
-      "tta", "tak", "caf", "au", "snd", "ra", "spx", "weba", "3ga", "dsf", "dff", "mlp",
+      "m4a", "m4b", "m4r", "f4a", "flac", "ogg", "oga", "opus", "wav", "wave", "wma",
+      "amr", "awb", "ac3", "eac3", "ac4", "dts", "mka", "aif", "aiff", "aifc", "ape",
+      "mp1", "mp2", "mpa", "mpc", "mpp", "tta", "tak", "wv", "shn", "ofr", "ofs", "vqf",
+      "w64", "rf64", "gsm", "mmf", "voc", "cda", "8svx", "kar", "rmi", "xm", "s3m",
+      "caf", "au", "snd", "ra", "spx", "weba", "3ga", "dsf", "dff", "mlp",
       "truehd", "mid", "midi",
     )
 

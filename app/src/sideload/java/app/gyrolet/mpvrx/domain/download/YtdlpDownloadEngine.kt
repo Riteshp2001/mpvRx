@@ -16,6 +16,7 @@ import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.utils.media.HttpUtils
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -549,8 +550,10 @@ class YtdlpDownloadEngine(
     private val PROGRESS_REGEX = Regex("""\[download]\s+([0-9.]+)%(.*)""")
     private val DESTINATION_REGEX = Regex("""\[download] Destination: (.+)""")
     private val ALREADY_DOWNLOADED_REGEX = Regex("""\[download] (.+) has already been downloaded""")
-    private val PLAYABLE_EXTENSIONS =
-      setOf("mkv", "mp4", "m4v", "webm", "mov", "avi", "ts", "m2ts", "mp3", "m4a", "opus", "ogg", "flac", "wav")
+    // Single source of truth: every video and audio extension the library recognises, so a
+    // finished download is detected no matter which container yt-dlp picked.
+    private val PLAYABLE_EXTENSIONS: Set<String> =
+      FileTypeUtils.VIDEO_EXTENSIONS + FileTypeUtils.AUDIO_EXTENSIONS
 
     fun parseProgressLine(line: String): Pair<Float, String>? {
       val match = PROGRESS_REGEX.find(line.trim()) ?: return null

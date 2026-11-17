@@ -191,7 +191,9 @@ class RecentlyPlayedViewModel(
           "m4v" -> "video/x-m4v"
           "3gp" -> "video/3gpp"
           "ts" -> "video/mp2t"
-          else -> "video/*"
+          // Delegates to the shared registry so every other audio/video extension the
+          // library recognises gets a real MIME instead of the video/* fallback.
+          else -> FileTypeUtils.getMimeTypeFromExtension(extension)
         }
 
       Video(
@@ -341,7 +343,7 @@ class RecentlyPlayedViewModel(
         "m3u8" -> "application/x-mpegURL"
         "m3u" -> "application/x-mpegURL"
         "mpd" -> "application/dash+xml"
-        else -> "video/*"
+        else -> FileTypeUtils.getMimeTypeFromExtension(extension)
       }
     val isAudio = HttpUtils.isMusicStreamingUrl(uri)
 

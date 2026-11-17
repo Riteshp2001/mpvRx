@@ -76,7 +76,14 @@ object MusicLibraryScanner {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) columns + MediaStore.MediaColumns.RELATIVE_PATH else columns
     }
 
-    val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.DURATION} > 1000"
+    // IS_MUSIC stays 0 for manually copied / freshly downloaded files (very common for .m4a)
+    // and MediaStore can hand back a null duration before its metadata pass finishes. Both
+    // conditions used to drop those rows from Songs silently, so any indexed audio row is a
+    // candidate here; the library's own duration, blacklist and audiobook filters decide.
+    val selection =
+      "${MediaStore.Audio.Media.IS_MUSIC} != 0 OR " +
+        "${MediaStore.Audio.Media.DURATION} > 1000 OR " +
+        "${MediaStore.Audio.Media.MIME_TYPE} LIKE 'audio/%'"
     val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
 
     try {

@@ -15,6 +15,7 @@ import androidx.documentfile.provider.DocumentFile
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.utils.media.ChecksumUtils
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleStorageDirectory
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
@@ -197,7 +198,9 @@ class OnlineSubtitleFileStore(
     val STANDARD_SUBTITLE_EXTENSIONS = setOf("srt", "ass", "ssa", "vtt", "sub")
     val STRIPPED_FILE_EXTENSIONS =
       STANDARD_SUBTITLE_EXTENSIONS +
-        setOf("zip", "rar", "7z", "txt", "mkv", "mp4", "avi", "mov", "wmv", "flv", "webm", "m4v", "ts")
+        setOf("zip", "rar", "7z", "txt") +
+        FileTypeUtils.VIDEO_EXTENSIONS +
+        FileTypeUtils.AUDIO_EXTENSIONS
     val GENERIC_SUBTITLE_NAMES =
       setOf(
         "sub",

@@ -339,30 +339,17 @@ class FileSystemBrowserViewModel(
       val folder = File(path)
 
       if (folder.exists() && folder.isDirectory) {
-        // Scan all video files in the folder
-        val videoFiles =
+        // Rescan every file the library recognises. The hard-coded short video list that
+        // lived here meant new containers - and every audio format, e.g. .m4a - never
+        // reached MediaStore, so they never showed up in the Songs list either.
+        val mediaFiles =
           folder.listFiles { file ->
             file.isFile &&
-              file.extension.lowercase() in
-              listOf(
-                "mp4",
-                "mkv",
-                "avi",
-                "mov",
-                "wmv",
-                "flv",
-                "webm",
-                "m4v",
-                "3gp",
-                "mpg",
-                "mpeg",
-                "ts",
-                "m2ts",
-              )
+              (FileTypeUtils.isVideoFile(file) || FileTypeUtils.isAudioFile(file))
           }
 
-        if (!videoFiles.isNullOrEmpty()) {
-          val filePaths = videoFiles.map { it.absolutePath }.toTypedArray()
+        if (!mediaFiles.isNullOrEmpty()) {
+          val filePaths = mediaFiles.map { it.absolutePath }.toTypedArray()
 
           android.media.MediaScannerConnection.scanFile(
             getApplication(),

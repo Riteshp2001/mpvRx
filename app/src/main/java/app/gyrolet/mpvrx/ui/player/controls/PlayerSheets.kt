@@ -346,19 +346,22 @@ fun PlayerSheets(
         remember {
           listOf(
             // Common compressed audio
-            "mp3", "m4a", "aac", "ogg", "oga", "opus", "wma",
+            "mp3", "m4a", "m4b", "m4r", "aac", "ogg", "oga", "opus", "wma", "f4a",
             // Lossless audio
             "flac", "alac", "wav", "wave", "ape", "tta", "tak", "aif", "aiff", "aifc",
+            "wv", "shn", "ofr", "ofs", "mpc", "mpp", "vqf", "w64", "rf64",
             // Multichannel & surround / cinema formats
-            "ac3", "eac3", "dts", "dtshd", "dts-hd", "thd", "truehd", "mlp",
+            "ac3", "eac3", "ac4", "dts", "dtshd", "dts-hd", "thd", "truehd", "mlp",
             // Audio containers & video files with audio
-            "mka", "mkv", "mp4", "webm", "caf", "weba",
+            "mka", "mkv", "mp4", "webm", "caf", "weba", "mpg", "mpeg", "ts", "m2ts",
+            "mts", "m2t", "avi", "mov", "wmv", "flv", "m4v", "3gp", "ogv", "ogm",
             // Voice / telephony
-            "amr", "awb", "spx", "3ga",
+            "amr", "awb", "spx", "3ga", "gsm", "voc", "mmf",
             // High-resolution DSD
             "dsf", "dff",
             // Legacy / Tracker / Misc
-            "au", "snd", "ra", "mp1", "mp2", "mpa", "mpc", "mid", "midi",
+            "au", "snd", "ra", "mp1", "mp2", "mpa", "mid", "midi", "kar", "rmi",
+            "cda", "8svx", "xm", "s3m",
           )
         }
 

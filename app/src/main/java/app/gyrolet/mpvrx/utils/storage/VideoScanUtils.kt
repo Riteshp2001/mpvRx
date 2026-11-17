@@ -587,6 +587,34 @@ object FileTypeUtils {
       "rm",
       "rmvb",
       "asf",
+      // Everything else ffmpeg/demuxers recognise: broadcast, camcorder, console,
+      // camera-RAW and legacy containers.
+      "m2t",
+      "mpe",
+      "mk3d",
+      "mxf",
+      "gxf",
+      "wtv",
+      "dvr-ms",
+      "nuv",
+      "y4m",
+      "nsv",
+      "smk",
+      "bik",
+      "roq",
+      "amv",
+      "swf",
+      "tod",
+      "dv",
+      "vro",
+      "m1v",
+      "m2p",
+      "xmv",
+      "hdmov",
+      "braw",
+      "r3d",
+      "ogm",
+      "mjpeg",
     )
 
   val AUDIO_EXTENSIONS =
@@ -631,6 +659,28 @@ object FileTypeUtils {
       "truehd",
       "mid",
       "midi",
+      // Everything else that carries audio: ringtones, patched lossless, legacy and
+      // archivist formats. Kept in one place so pickers, scanners and mime mapping agree.
+      "m4r",
+      "f4a",
+      "wv",
+      "shn",
+      "ofr",
+      "ofs",
+      "vqf",
+      "w64",
+      "rf64",
+      "mpp",
+      "ac4",
+      "gsm",
+      "mmf",
+      "voc",
+      "cda",
+      "8svx",
+      "kar",
+      "rmi",
+      "xm",
+      "s3m",
     )
 
   val IMAGE_EXTENSIONS =
@@ -696,10 +746,29 @@ object FileTypeUtils {
       "m4v" -> "video/x-m4v"
       "3gp" -> "video/3gpp"
       "3g2" -> "video/3gpp2"
-      "mpg", "mpeg" -> "video/mpeg"
+      "mpg", "mpeg", "m2v", "mpe", "m1v", "m2p" -> "video/mpeg"
+      "ts", "mts", "m2ts", "m2t" -> "video/mp2t"
+      "ogv", "ogm" -> "video/ogg"
+      "vob" -> "video/mpeg"
+      "asf" -> "video/x-ms-asf"
+      "rm" -> "application/vnd.rn-realmedia"
+      "rmvb" -> "application/vnd.rn-realmedia-vbr"
+      "divx" -> "video/divx"
+      "xvid" -> "video/x-msvideo"
+      "f4v" -> "video/x-flv"
+      "mk3d" -> "video/x-matroska"
+      "mxf" -> "application/mxf"
+      "gxf" -> "application/gxf"
+      "wtv" -> "video/wtv"
+      "dvr-ms" -> "video/x-ms-dvr"
+      "nuv" -> "video/x-nuv"
+      "y4m" -> "video/x-yuv4mpegvideo"
+      "dv" -> "video/dv"
+      "mjpeg" -> "video/x-motion-jpeg"
+      "swf" -> "application/x-shockwave-flash"
       "iso" -> "application/x-iso9660-image"
       "mp1", "mp2", "mp3", "mpa" -> "audio/mpeg"
-      "m4a", "aac" -> "audio/mp4"
+      "m4a", "m4b", "m4r", "f4a", "aac" -> "audio/mp4"
       "flac" -> "audio/flac"
       "ogg", "oga", "opus", "spx" -> "audio/ogg"
       "wav", "wave" -> "audio/wav"
@@ -707,13 +776,26 @@ object FileTypeUtils {
       "amr", "awb" -> "audio/amr"
       "ac3" -> "audio/ac3"
       "eac3" -> "audio/eac3"
+      "ac4" -> "audio/ac4"
       "dts" -> "audio/vnd.dts"
       "ape" -> "audio/ape"
       "mka" -> "audio/x-matroska"
       "aif", "aiff", "aifc" -> "audio/aiff"
-      "mpc" -> "audio/x-musepack"
+      "mpc", "mpp" -> "audio/x-musepack"
       "tta" -> "audio/x-tta"
       "tak" -> "audio/x-tak"
+      "wv" -> "audio/x-wavpack"
+      "shn" -> "audio/x-shorten"
+      "ofr", "ofs" -> "audio/x-optimfrog"
+      "vqf" -> "audio/x-twinvq"
+      "w64", "rf64" -> "audio/x-w64"
+      "gsm" -> "audio/gsm"
+      "mmf" -> "audio/x-smf"
+      "voc" -> "audio/x-voc"
+      "cda" -> "audio/x-cda"
+      "8svx" -> "audio/8svx"
+      "kar", "rmi" -> "audio/midi"
+      "xm", "s3m" -> "audio/x-mod"
       "caf" -> "audio/x-caf"
       "au", "snd" -> "audio/basic"
       "ra" -> "audio/vnd.rn-realaudio"
@@ -723,6 +805,9 @@ object FileTypeUtils {
       "dff" -> "audio/x-dff"
       "mlp", "truehd" -> "audio/vnd.dolby.mlp"
       "mid", "midi" -> "audio/midi"
+      // Any other extension the library recognises as audio must not fall through to
+      // "video/*" - that mislabels the file for pickers, shares and MIME negotiation.
+      in AUDIO_EXTENSIONS -> "audio/*"
       else -> "video/*"
     }
 }
