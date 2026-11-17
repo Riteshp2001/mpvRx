@@ -2247,6 +2247,12 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_nav_profile_summary">Combinar Recientes, Listas y Capturas en una sola pestaña</string>
   <string name="profile_view_all">Ver todo</string>
   <string name="profile_edit">Editar perfil</string>
+  <string name="profile_layout_title">Diseño del perfil</string>
+  <string name="profile_layout_summary">Arrastra para reordenar y usa los interruptores para mostrar u ocultar elementos. Las tarjetas de estadísticas permanecen en su sección.</string>
+  <string name="profile_layout_hubs">Tarjetas de acceso</string>
+  <string name="profile_layout_sections">Secciones del perfil</string>
+  <string name="profile_layout_statistics">Tarjetas de estadísticas</string>
+  <string name="profile_layout_reset">Restablecer diseño del perfil</string>
   <string name="profile_display_name">Nombre visible</string>
   <string name="profile_choose_photo">Elegir foto</string>
   <string name="profile_remove_photo">Quitar foto</string>

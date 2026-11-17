@@ -128,6 +128,13 @@ class AppearancePreferences(
   val showProfileTab = preferenceStore.getBoolean("show_profile_tab", true)
   val profileName = preferenceStore.getString("profile_name", "")
   val profileImagePath = preferenceStore.getString("profile_image_path", "")
+  val profileHubOrder = preferenceStore.profileLayoutOrder("profile_hub_order", ProfileHubCard.entries.map { it.name })
+  val profileHiddenHubs = preferenceStore.getStringSet("profile_hidden_hubs")
+  val profileSectionOrder = preferenceStore.profileLayoutOrder("profile_section_order", ProfileSection.entries.map { it.name })
+  val profileHiddenSections = preferenceStore.getStringSet("profile_hidden_sections")
+  val profileStatisticsOrder =
+    preferenceStore.profileLayoutOrder("profile_statistics_order", ProfileStatisticsCard.entries.map { it.name })
+  val profileHiddenStatistics = preferenceStore.getStringSet("profile_hidden_statistics")
   val showNetworkTab = preferenceStore.getBoolean("show_network_tab", false)
   val showJellyfinTab = preferenceStore.getBoolean("show_jellyfin_tab", false)
   /** Persistent visual order of bottom navigation tabs. Home remains the root destination. */

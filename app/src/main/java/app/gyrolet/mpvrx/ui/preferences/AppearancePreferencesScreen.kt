@@ -959,26 +959,29 @@ object AppearancePreferencesScreen : Screen {
                 else -> ReorderableTabItem(id, stringResource(R.string.pref_nav_profile_title), stringResource(R.string.pref_nav_profile_summary), showProfileTab, titleRes = R.string.pref_nav_profile_title)
               }
             }
-            ExpressivePreferenceGroup {
-              ReorderableTabPreferences(
-                tabs = tabItems,
-                onEnabledChange = { id, enabled ->
-                  when (id) {
-                    "MUSIC" -> preferences.showMusicTab.set(enabled)
-                    "NETWORK" -> preferences.showNetworkTab.set(enabled)
-                    "JELLYFIN" -> preferences.showJellyfinTab.set(enabled)
-                    "PROFILE" -> preferences.showProfileTab.set(enabled)
-                  }
-                },
-                onMove = { id, destination ->
-                  if (id != "HOME") {
-                    val current = ordered.toMutableList()
-                    current.remove(id)
-                    current.add(destination.coerceIn(1, current.size), id)
-                    preferences.bottomNavigationOrder.set(current)
-                  }
-                },
-              )
+            Column(modifier = Modifier.fillMaxWidth()) {
+              ExpressivePreferenceGroup {
+                ReorderableTabPreferences(
+                  tabs = tabItems,
+                  onEnabledChange = { id, enabled ->
+                    when (id) {
+                      "MUSIC" -> preferences.showMusicTab.set(enabled)
+                      "NETWORK" -> preferences.showNetworkTab.set(enabled)
+                      "JELLYFIN" -> preferences.showJellyfinTab.set(enabled)
+                      "PROFILE" -> preferences.showProfileTab.set(enabled)
+                    }
+                  },
+                  onMove = { id, destination ->
+                    if (id != "HOME") {
+                      val current = ordered.toMutableList()
+                      current.remove(id)
+                      current.add(destination.coerceIn(1, current.size), id)
+                      preferences.bottomNavigationOrder.set(current)
+                    }
+                  },
+                )
+              }
+              ProfileLayoutPreferences(preferences)
             }
           }
 

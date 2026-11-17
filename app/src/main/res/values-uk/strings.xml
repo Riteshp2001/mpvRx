@@ -2274,6 +2274,12 @@
   <string name="pref_nav_profile_summary">Об\'єднати «Нещодавні», «Плейлисти» та «Знімки» в одну вкладку</string>
   <string name="profile_view_all">Показати все</string>
   <string name="profile_edit">Редагувати профіль</string>
+  <string name="profile_layout_title">Макет профілю</string>
+  <string name="profile_layout_summary">Перетягуйте для зміни порядку й використовуйте перемикачі, щоб показувати або приховувати елементи. Картки статистики залишаються у своєму розділі.</string>
+  <string name="profile_layout_hubs">Картки розділів</string>
+  <string name="profile_layout_sections">Розділи профілю</string>
+  <string name="profile_layout_statistics">Картки статистики</string>
+  <string name="profile_layout_reset">Скинути макет профілю</string>
   <string name="profile_display_name">Відображуване ім\'я</string>
   <string name="profile_choose_photo">Вибрати фото</string>
   <string name="profile_remove_photo">Видалити фото</string>
@@ -2349,7 +2355,7 @@
   <string name="watch_stats_video">Відео</string>
   <string name="watch_stats_audio">Аудіо</string>
   <string name="watch_stats_last_seven_days">Останні 7 днів</string>
-  <string name="watch_stats_top_media">Найчастіше переглядалися</string>
+  <string name="watch_stats_top_media">Найчастіше відтворювалися</string>
   <string name="watch_stats_empty">Відтворіть щось, щоб розпочати збір статистики.</string>
   <string name="watch_stats_reset_confirm">Скинути всю статистику відтворення? Історію, статус перегляду та плейлисти буде збережено.</string>
   <string name="pref_debug_log_size_title">Обмеження розміру журналу</string>

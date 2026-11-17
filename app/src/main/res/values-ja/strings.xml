@@ -2233,6 +2233,12 @@
   <string name="pref_nav_profile_summary">履歴、プレイリスト、スナップショットを1つのタブにまとめる</string>
   <string name="profile_view_all">すべて表示</string>
   <string name="profile_edit">プロフィールを編集</string>
+  <string name="profile_layout_title">プロフィールのレイアウト</string>
+  <string name="profile_layout_summary">ドラッグで並べ替え、スイッチで項目の表示を切り替えます。統計カードは統計セクション内に表示されます。</string>
+  <string name="profile_layout_hubs">ハブカード</string>
+  <string name="profile_layout_sections">プロフィールのセクション</string>
+  <string name="profile_layout_statistics">統計カード</string>
+  <string name="profile_layout_reset">プロフィールのレイアウトをリセット</string>
   <string name="profile_display_name">表示名</string>
   <string name="profile_choose_photo">写真を選択</string>
   <string name="profile_remove_photo">写真を削除</string>
@@ -2315,7 +2321,7 @@
   <string name="watch_stats_video">動画</string>
   <string name="watch_stats_audio">音声</string>
   <string name="watch_stats_last_seven_days">過去 7 日間</string>
-  <string name="watch_stats_top_media">よく視聴するメディア</string>
+  <string name="watch_stats_top_media">よく再生するメディア</string>
   <string name="watch_stats_empty">メディアを再生すると統計が記録されます。</string>
   <string name="watch_stats_reset_confirm">再生統計をすべてリセットしますか？履歴、視聴済みの状態、プレイリストは保持されます。</string>
   <string name="pref_debug_log_size_title">ログサイズ上限</string>

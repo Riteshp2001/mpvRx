@@ -2247,6 +2247,12 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_nav_profile_summary">Regrouper Récents, Playlists et Captures dans un seul onglet</string>
   <string name="profile_view_all">Tout afficher</string>
   <string name="profile_edit">Modifier le profil</string>
+  <string name="profile_layout_title">Disposition du profil</string>
+  <string name="profile_layout_summary">Faites glisser pour réorganiser et utilisez les interrupteurs pour afficher ou masquer les éléments. Les cartes de statistiques restent dans leur section.</string>
+  <string name="profile_layout_hubs">Cartes de raccourcis</string>
+  <string name="profile_layout_sections">Sections du profil</string>
+  <string name="profile_layout_statistics">Cartes de statistiques</string>
+  <string name="profile_layout_reset">Réinitialiser la disposition du profil</string>
   <string name="profile_display_name">Nom affiché</string>
   <string name="profile_choose_photo">Choisir une photo</string>
   <string name="profile_remove_photo">Supprimer la photo</string>
@@ -2329,7 +2335,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="watch_stats_video">Vidéo</string>
   <string name="watch_stats_audio">Audio</string>
   <string name="watch_stats_last_seven_days">7 derniers jours</string>
-  <string name="watch_stats_top_media">Les plus regardés</string>
+  <string name="watch_stats_top_media">Les plus lus</string>
   <string name="watch_stats_empty">Lisez des médias pour commencer à créer vos statistiques.</string>
   <string name="watch_stats_reset_confirm">Réinitialiser toutes les statistiques de lecture ? Votre historique, les éléments vus et les playlists seront conservés.</string>
   <string name="pref_debug_log_size_title">Limite de taille des journaux</string>

@@ -2162,6 +2162,12 @@
   <string name="pref_nav_profile_summary">हाल के, प्लेलिस्ट और स्नैपशॉट को एक टैब में मिलाएं</string>
   <string name="profile_view_all">सभी देखें</string>
   <string name="profile_edit">प्रोफ़ाइल संपादित करें</string>
+  <string name="profile_layout_title">प्रोफ़ाइल लेआउट</string>
+  <string name="profile_layout_summary">क्रम बदलने के लिए खींचें और आइटम दिखाने या छिपाने के लिए स्विच इस्तेमाल करें। आँकड़ों के कार्ड अपने सेक्शन में ही रहते हैं।</string>
+  <string name="profile_layout_hubs">हब कार्ड</string>
+  <string name="profile_layout_sections">प्रोफ़ाइल सेक्शन</string>
+  <string name="profile_layout_statistics">आँकड़ों के कार्ड</string>
+  <string name="profile_layout_reset">प्रोफ़ाइल लेआउट रीसेट करें</string>
   <string name="profile_display_name">प्रदर्शित नाम</string>
   <string name="profile_choose_photo">फ़ोटो चुनें</string>
   <string name="profile_remove_photo">फ़ोटो हटाएं</string>
@@ -2244,7 +2250,7 @@
   <string name="watch_stats_video">वीडियो</string>
   <string name="watch_stats_audio">ऑडियो</string>
   <string name="watch_stats_last_seven_days">पिछले 7 दिन</string>
-  <string name="watch_stats_top_media">सबसे अधिक देखा गया</string>
+  <string name="watch_stats_top_media">सबसे अधिक चलाया गया</string>
   <string name="watch_stats_empty">आँकड़े बनाने के लिए कुछ मीडिया चलाएँ।</string>
   <string name="watch_stats_reset_confirm">सभी प्लेबैक आँकड़े रीसेट करें? आपका इतिहास, देखे गए आइटम की स्थिति और प्लेलिस्ट बनी रहेंगी।</string>
   <string name="pref_debug_log_size_title">लॉग आकार सीमा</string>

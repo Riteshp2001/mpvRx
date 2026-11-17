@@ -2243,6 +2243,12 @@
   <string name="pref_nav_profile_summary">将最近、播放列表和快照合并到一个标签页</string>
   <string name="profile_view_all">查看全部</string>
   <string name="profile_edit">编辑个人资料</string>
+  <string name="profile_layout_title">个人页面布局</string>
+  <string name="profile_layout_summary">拖动以调整顺序，使用开关显示或隐藏项目。统计卡片保留在统计分区内。</string>
+  <string name="profile_layout_hubs">快捷入口卡片</string>
+  <string name="profile_layout_sections">个人页面分区</string>
+  <string name="profile_layout_statistics">统计卡片</string>
+  <string name="profile_layout_reset">重置个人页面布局</string>
   <string name="profile_display_name">显示名称</string>
   <string name="profile_choose_photo">选择照片</string>
   <string name="profile_remove_photo">移除照片</string>
@@ -2325,7 +2331,7 @@
   <string name="watch_stats_video">视频</string>
   <string name="watch_stats_audio">音频</string>
   <string name="watch_stats_last_seven_days">最近 7 天</string>
-  <string name="watch_stats_top_media">观看最多</string>
+  <string name="watch_stats_top_media">播放最多</string>
   <string name="watch_stats_empty">播放一些媒体后即可生成统计。</string>
   <string name="watch_stats_reset_confirm">重置所有播放统计？历史记录、观看状态和播放列表将保留。</string>
   <string name="pref_debug_log_size_title">日志大小限制</string>

@@ -2275,6 +2275,12 @@
   <string name="pref_nav_profile_summary">Объединить «Недавние», «Плейлисты» и «Кадры» в одну вкладку</string>
   <string name="profile_view_all">Показать все</string>
   <string name="profile_edit">Изменить профиль</string>
+  <string name="profile_layout_title">Макет профиля</string>
+  <string name="profile_layout_summary">Перетаскивайте для изменения порядка и используйте переключатели для показа или скрытия элементов. Карточки статистики остаются в своём разделе.</string>
+  <string name="profile_layout_hubs">Карточки разделов</string>
+  <string name="profile_layout_sections">Разделы профиля</string>
+  <string name="profile_layout_statistics">Карточки статистики</string>
+  <string name="profile_layout_reset">Сбросить макет профиля</string>
   <string name="profile_display_name">Отображаемое имя</string>
   <string name="profile_choose_photo">Выбрать фото</string>
   <string name="profile_remove_photo">Удалить фото</string>
@@ -2357,7 +2363,7 @@
   <string name="watch_stats_video">Видео</string>
   <string name="watch_stats_audio">Аудио</string>
   <string name="watch_stats_last_seven_days">Последние 7 дней</string>
-  <string name="watch_stats_top_media">Самые просматриваемые</string>
+  <string name="watch_stats_top_media">Чаще всего воспроизводятся</string>
   <string name="watch_stats_empty">Запустите воспроизведение, чтобы начать сбор статистики.</string>
   <string name="watch_stats_reset_confirm">Сбросить всю статистику воспроизведения? История, статус просмотра и плейлисты будут сохранены.</string>
   <string name="pref_debug_log_size_title">Ограничение размера журналов</string>

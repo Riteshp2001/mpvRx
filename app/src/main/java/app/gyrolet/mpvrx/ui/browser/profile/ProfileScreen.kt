@@ -128,6 +128,9 @@ import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.preferences.ProfileHubCard
+import app.gyrolet.mpvrx.preferences.ProfileSection
+import app.gyrolet.mpvrx.preferences.visibleProfileItems
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
@@ -195,6 +198,16 @@ object ProfileScreen : Screen {
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
     val profileName by appearancePreferences.profileName.collectAsState()
     val profileImagePath by appearancePreferences.profileImagePath.collectAsState()
+    val hubOrder by appearancePreferences.profileHubOrder.collectAsState()
+    val hiddenHubs by appearancePreferences.profileHiddenHubs.collectAsState()
+    val sectionOrder by appearancePreferences.profileSectionOrder.collectAsState()
+    val hiddenSections by appearancePreferences.profileHiddenSections.collectAsState()
+    val visibleHubs = remember(hubOrder, hiddenHubs) {
+      visibleProfileItems(ProfileHubCard.entries, hubOrder, hiddenHubs)
+    }
+    val visibleSections = remember(sectionOrder, hiddenSections) {
+      visibleProfileItems(ProfileSection.entries, sectionOrder, hiddenSections)
+    }
     val showRecentThumbnails by browserPreferences.recentView.showThumbnails.collectAsState()
     val playlistManualGrid by browserPreferences.playlistView.manualGridColumnsEnabled.collectAsState()
     val playlistGridColumnsPortrait by browserPreferences.playlistView.gridColumnsPortrait.collectAsState()
@@ -362,7 +375,7 @@ object ProfileScreen : Screen {
               recentCount = recentItems.size,
               playlistCount = playlists.size,
               snapshotCount = snapshots.size,
-              showNetwork = true,
+              hubCards = visibleHubs,
               collapseProgress = heroCollapseProgress,
               onEditProfile = {
                 haptics.tick()
@@ -375,160 +388,173 @@ object ProfileScreen : Screen {
             )
           }
 
-          item(key = "recents_header") {
-            SectionHeader(
-              title = stringResource(R.string.pref_advanced_enable_recently_played_title),
-              count = if (enableRecentlyPlayed) recentItems.size else null,
-              onViewAll = { backStack.navigateTo(RecentlyPlayedScreen) },
-            )
-          }
-          item(key = "recents_shelf") {
-            when {
-              !enableRecentlyPlayed ->
-                ShelfEmptyCard(
-                  icon = Icons.RoundedFilled.History,
-                  title = stringResource(R.string.ui_recently_played_disabled),
-                  message = stringResource(R.string.ui_recently_played_disabled_message),
-                )
+          visibleSections.forEach { section ->
+            when (section) {
+              ProfileSection.RECENTS -> {
+                item(key = "recents_header") {
+                  SectionHeader(
+                    title = stringResource(R.string.pref_advanced_enable_recently_played_title),
+                    count = if (enableRecentlyPlayed) recentItems.size else null,
+                    onViewAll = { backStack.navigateTo(RecentlyPlayedScreen) },
+                  )
+                }
+                item(key = "recents_shelf") {
+                  when {
+                    !enableRecentlyPlayed ->
+                      ShelfEmptyCard(
+                        icon = Icons.RoundedFilled.History,
+                        title = stringResource(R.string.ui_recently_played_disabled),
+                        message = stringResource(R.string.ui_recently_played_disabled_message),
+                      )
 
-              recentShelf.isEmpty() ->
-                ShelfEmptyCard(
-                  icon = Icons.RoundedFilled.History,
-                  title = stringResource(R.string.ui_no_recently_played_videos),
-                  message = stringResource(R.string.profile_recents_empty_message),
-                )
+                    recentShelf.isEmpty() ->
+                      ShelfEmptyCard(
+                        icon = Icons.RoundedFilled.History,
+                        title = stringResource(R.string.ui_no_recently_played_videos),
+                        message = stringResource(R.string.profile_recents_empty_message),
+                      )
 
-              else ->
-                LazyRow(
-                  contentPadding = PaddingValues(horizontal = horizontalShelfPadding),
-                  horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                  items(
-                    recentShelf,
-                    key = { item ->
-                      when (item) {
-                        is RecentlyPlayedItem.VideoItem -> "video_${item.video.path}"
-                        is RecentlyPlayedItem.PlaylistItem -> "playlist_${item.playlist.id}"
-                      }
-                    },
-                  ) { item ->
-                    when (item) {
-                      is RecentlyPlayedItem.VideoItem -> {
-                        val info = playbackInfo[item.video.path]
-                        RecentVideoCard(
-                          video = item.video,
-                          progress = info?.progressPercentage?.takeUnless { info.isWatched },
-                          showThumbnail = showRecentThumbnails,
-                          onClick = { playRecent(item.video) },
-                          onLongClick = {
-                            haptics.pickup()
-                            activeVideoItem = item
+                    else ->
+                      LazyRow(
+                        contentPadding = PaddingValues(horizontal = horizontalShelfPadding),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                      ) {
+                        items(
+                          recentShelf,
+                          key = { item ->
+                            when (item) {
+                              is RecentlyPlayedItem.VideoItem -> "video_${item.video.path}"
+                              is RecentlyPlayedItem.PlaylistItem -> "playlist_${item.playlist.id}"
+                            }
                           },
-                        )
-                      }
+                        ) { item ->
+                          when (item) {
+                            is RecentlyPlayedItem.VideoItem -> {
+                              val info = playbackInfo[item.video.path]
+                              RecentVideoCard(
+                                video = item.video,
+                                progress = info?.progressPercentage?.takeUnless { info.isWatched },
+                                showThumbnail = showRecentThumbnails,
+                                onClick = { playRecent(item.video) },
+                                onLongClick = {
+                                  haptics.pickup()
+                                  activeVideoItem = item
+                                },
+                              )
+                            }
 
-                      is RecentlyPlayedItem.PlaylistItem -> {
+                            is RecentlyPlayedItem.PlaylistItem -> {
+                              PlaylistCard(
+                                playlist = item.playlist,
+                                itemCount = item.videoCount,
+                                onClick = { backStack.navigateTo(PlaylistDetailScreen(item.playlist.id)) },
+                                onLongClick = { },
+                                onThumbClick = { backStack.navigateTo(PlaylistDetailScreen(item.playlist.id)) },
+                                modifier = Modifier.width(SHELF_VIDEO_CARD_WIDTH),
+                                isGridMode = true,
+                                onDeleteClick =
+                                  if (playlistViewModel.isProtectedPlaylist(item.playlist)) {
+                                    null
+                                  } else {
+                                    { playlistToDelete = item.playlist }
+                                  },
+                              )
+                            }
+                          }
+                        }
+                      }
+                  }
+                }
+              }
+
+              ProfileSection.PLAYLISTS -> {
+                item(key = "playlists_header") {
+                  SectionHeader(
+                    title = stringResource(R.string.ui_playlists),
+                    count = playlists.size,
+                    onViewAll = { backStack.navigateTo(PlaylistScreen) },
+                  )
+                }
+                item(key = "playlists_shelf") {
+                  if (playlists.isEmpty()) {
+                    ShelfEmptyCard(
+                      icon = Icons.RoundedFilled.Subscriptions,
+                      title = stringResource(R.string.ui_no_playlists_yet),
+                      message = stringResource(R.string.profile_playlists_empty_message),
+                    )
+                  } else {
+                    LazyRow(
+                      contentPadding = PaddingValues(horizontal = horizontalShelfPadding),
+                      horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                      items(playlists.take(SHELF_LIMIT), key = { it.playlist.id }) { entry ->
                         PlaylistCard(
-                          playlist = item.playlist,
-                          itemCount = item.videoCount,
-                          onClick = { backStack.navigateTo(PlaylistDetailScreen(item.playlist.id)) },
+                          playlist = entry.playlist,
+                          itemCount = entry.itemCount,
+                          onClick = { backStack.navigateTo(PlaylistDetailScreen(entry.playlist.id)) },
                           onLongClick = { },
-                          onThumbClick = { backStack.navigateTo(PlaylistDetailScreen(item.playlist.id)) },
+                          onThumbClick = { backStack.navigateTo(PlaylistDetailScreen(entry.playlist.id)) },
                           modifier = Modifier.width(SHELF_VIDEO_CARD_WIDTH),
                           isGridMode = true,
                           onDeleteClick =
-                            if (playlistViewModel.isProtectedPlaylist(item.playlist)) {
+                            if (playlistViewModel.isProtectedPlaylist(entry.playlist)) {
                               null
                             } else {
-                              { playlistToDelete = item.playlist }
+                              { playlistToDelete = entry.playlist }
                             },
                         )
                       }
                     }
                   }
                 }
-            }
-          }
+              }
 
-          item(key = "playlists_header") {
-            SectionHeader(
-              title = stringResource(R.string.ui_playlists),
-              count = playlists.size,
-              onViewAll = { backStack.navigateTo(PlaylistScreen) },
-            )
-          }
-          item(key = "playlists_shelf") {
-            if (playlists.isEmpty()) {
-              ShelfEmptyCard(
-                icon = Icons.RoundedFilled.Subscriptions,
-                title = stringResource(R.string.ui_no_playlists_yet),
-                message = stringResource(R.string.profile_playlists_empty_message),
-              )
-            } else {
-              LazyRow(
-                contentPadding = PaddingValues(horizontal = horizontalShelfPadding),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-              ) {
-                items(playlists.take(SHELF_LIMIT), key = { it.playlist.id }) { entry ->
-                  PlaylistCard(
-                    playlist = entry.playlist,
-                    itemCount = entry.itemCount,
-                    onClick = { backStack.navigateTo(PlaylistDetailScreen(entry.playlist.id)) },
-                    onLongClick = { },
-                    onThumbClick = { backStack.navigateTo(PlaylistDetailScreen(entry.playlist.id)) },
-                    modifier = Modifier.width(SHELF_VIDEO_CARD_WIDTH),
-                    isGridMode = true,
-                    onDeleteClick =
-                      if (playlistViewModel.isProtectedPlaylist(entry.playlist)) {
-                        null
-                      } else {
-                        { playlistToDelete = entry.playlist }
-                      },
+              ProfileSection.SNAPSHOTS -> {
+                item(key = "snapshots_header") {
+                  SectionHeader(
+                    title = stringResource(R.string.ui_snapshots),
+                    count = snapshots.size,
+                    onViewAll = { backStack.navigateTo(SnapshotScreen) },
                   )
+                }
+                item(key = "snapshots_shelf") {
+                  if (snapshots.isEmpty()) {
+                    ShelfEmptyCard(
+                      icon = Icons.RoundedFilled.Image,
+                      title = stringResource(R.string.snapshot_empty_title),
+                      message = stringResource(R.string.snapshot_empty_message),
+                    )
+                  } else {
+                    LazyRow(
+                      contentPadding = PaddingValues(horizontal = horizontalShelfPadding),
+                      horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                      itemsIndexed(snapshots.take(SHELF_LIMIT), key = { _, capture -> capture.id }) { index, capture ->
+                        LaunchedEffect(capture.id) { snapshotViewModel.loadThumbnail(capture) }
+                        SnapshotShelfCard(
+                          capture = capture,
+                          thumbnail = snapshotThumbnails[capture.id],
+                          onClick = {
+                            backStack.navigateTo(
+                              SnapshotDetailScreen(
+                                captures = snapshots.map { it.toDetailItem() },
+                                initialIndex = index,
+                              ),
+                            )
+                          },
+                        )
+                      }
+                    }
+                  }
+                }
+              }
+
+              ProfileSection.STATISTICS -> {
+                item(key = "watch_statistics") {
+                  ProfileWatchStatistics()
                 }
               }
             }
-          }
-
-          item(key = "snapshots_header") {
-            SectionHeader(
-              title = stringResource(R.string.ui_snapshots),
-              count = snapshots.size,
-              onViewAll = { backStack.navigateTo(SnapshotScreen) },
-            )
-          }
-          item(key = "snapshots_shelf") {
-            if (snapshots.isEmpty()) {
-              ShelfEmptyCard(
-                icon = Icons.RoundedFilled.Image,
-                title = stringResource(R.string.snapshot_empty_title),
-                message = stringResource(R.string.snapshot_empty_message),
-              )
-            } else {
-              LazyRow(
-                contentPadding = PaddingValues(horizontal = horizontalShelfPadding),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-              ) {
-                itemsIndexed(snapshots.take(SHELF_LIMIT), key = { _, capture -> capture.id }) { index, capture ->
-                  LaunchedEffect(capture.id) { snapshotViewModel.loadThumbnail(capture) }
-                  SnapshotShelfCard(
-                    capture = capture,
-                    thumbnail = snapshotThumbnails[capture.id],
-                    onClick = {
-                      backStack.navigateTo(
-                        SnapshotDetailScreen(
-                          captures = snapshots.map { it.toDetailItem() },
-                          initialIndex = index,
-                        ),
-                      )
-                    },
-                  )
-                }
-              }
-            }
-          }
-          item(key = "watch_statistics") {
-            ProfileWatchStatistics()
           }
         }
       }
@@ -656,7 +682,7 @@ private fun ProfileOverviewCard(
   recentCount: Int,
   playlistCount: Int,
   snapshotCount: Int,
-  showNetwork: Boolean,
+  hubCards: List<ProfileHubCard>,
   collapseProgress: Float,
   onEditProfile: () -> Unit,
   onRecents: () -> Unit,
@@ -668,7 +694,14 @@ private fun ProfileOverviewCard(
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
   val editLabel = stringResource(R.string.profile_edit)
-  val totalItems = recentCount + playlistCount + snapshotCount
+  val totalItems = hubCards.sumOf { hub ->
+    when (hub) {
+      ProfileHubCard.RECENTS -> recentCount
+      ProfileHubCard.PLAYLISTS -> playlistCount
+      ProfileHubCard.SNAPSHOTS -> snapshotCount
+      ProfileHubCard.NETWORK -> 0
+    }
+  }
   val avatarScale = 1f - 0.25f * collapseProgress
   val avatarAlpha = (1f - collapseProgress * 1.5f).coerceIn(0f, 1f)
 
@@ -754,25 +787,27 @@ private fun ProfileOverviewCard(
 
     // Intentional Material 3 Expressive connected bento group; no large tinted backdrop.
     // The logical corner radii adapt automatically to 1, 2 or 4 columns and RTL direction.
-    val shortcuts = buildList {
-      add(ProfileShortcutDestination(
-        Icons.RoundedFilled.History, stringResource(R.string.ui_recents), recentCount,
-        MaterialTheme.colorScheme.primary, onRecents,
-      ))
-      add(ProfileShortcutDestination(
-        Icons.RoundedFilled.Subscriptions, stringResource(R.string.ui_playlists), playlistCount,
-        MaterialTheme.colorScheme.secondary, onPlaylists,
-      ))
-      add(ProfileShortcutDestination(
-        Icons.RoundedFilled.Image, stringResource(R.string.ui_snapshots), snapshotCount,
-        MaterialTheme.colorScheme.tertiary, onSnapshots,
-      ))
-      if (showNetwork) add(ProfileShortcutDestination(
-        Icons.RoundedFilled.BringYourOwnIp, stringResource(R.string.ui_network), null,
-        MaterialTheme.colorScheme.primary, onNetwork,
-      ))
+    val shortcuts = hubCards.map { hub ->
+      when (hub) {
+        ProfileHubCard.RECENTS -> ProfileShortcutDestination(
+          Icons.RoundedFilled.History, stringResource(R.string.ui_recents), recentCount,
+          MaterialTheme.colorScheme.primary, onRecents,
+        )
+        ProfileHubCard.PLAYLISTS -> ProfileShortcutDestination(
+          Icons.RoundedFilled.Subscriptions, stringResource(R.string.ui_playlists), playlistCount,
+          MaterialTheme.colorScheme.secondary, onPlaylists,
+        )
+        ProfileHubCard.SNAPSHOTS -> ProfileShortcutDestination(
+          Icons.RoundedFilled.Image, stringResource(R.string.ui_snapshots), snapshotCount,
+          MaterialTheme.colorScheme.tertiary, onSnapshots,
+        )
+        ProfileHubCard.NETWORK -> ProfileShortcutDestination(
+          Icons.RoundedFilled.BringYourOwnIp, stringResource(R.string.ui_network), null,
+          MaterialTheme.colorScheme.primary, onNetwork,
+        )
+      }
     }
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    if (shortcuts.isNotEmpty()) BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
       val columns = when {
         maxWidth < 300.dp -> 1
         maxWidth >= 680.dp -> 4

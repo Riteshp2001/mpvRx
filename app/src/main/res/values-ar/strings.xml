@@ -2305,6 +2305,12 @@
   <string name="pref_nav_profile_summary">دمج الأخيرة وقوائم التشغيل واللقطات في علامة تبويب واحدة</string>
   <string name="profile_view_all">عرض الكل</string>
   <string name="profile_edit">تعديل الملف الشخصي</string>
+  <string name="profile_layout_title">تخطيط الملف الشخصي</string>
+  <string name="profile_layout_summary">اسحب لتغيير الترتيب واستخدم المفاتيح لإظهار العناصر أو إخفائها. تبقى بطاقات الإحصاءات داخل قسم الإحصاءات.</string>
+  <string name="profile_layout_hubs">بطاقات الاختصارات</string>
+  <string name="profile_layout_sections">أقسام الملف الشخصي</string>
+  <string name="profile_layout_statistics">بطاقات الإحصاءات</string>
+  <string name="profile_layout_reset">إعادة ضبط تخطيط الملف الشخصي</string>
   <string name="profile_display_name">الاسم المعروض</string>
   <string name="profile_choose_photo">اختيار صورة</string>
   <string name="profile_remove_photo">إزالة الصورة</string>
@@ -2387,7 +2393,7 @@
   <string name="watch_stats_video">فيديو</string>
   <string name="watch_stats_audio">صوت</string>
   <string name="watch_stats_last_seven_days">آخر 7 أيام</string>
-  <string name="watch_stats_top_media">الأكثر مشاهدة</string>
+  <string name="watch_stats_top_media">الأكثر تشغيلًا</string>
   <string name="watch_stats_empty">شغّل بعض الوسائط لبدء إنشاء الإحصاءات.</string>
   <string name="watch_stats_reset_confirm">هل تريد إعادة ضبط كل إحصاءات التشغيل؟ سيُحتفظ بالسجل وحالة المشاهدة وقوائم التشغيل.</string>
   <string name="pref_debug_log_size_title">حد حجم السجل</string>

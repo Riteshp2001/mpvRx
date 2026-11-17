@@ -2254,6 +2254,12 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="pref_nav_profile_summary">Combinar Recentes, Playlists e Capturas em uma única aba</string>
   <string name="profile_view_all">Ver tudo</string>
   <string name="profile_edit">Editar perfil</string>
+  <string name="profile_layout_title">Layout do perfil</string>
+  <string name="profile_layout_summary">Arraste para reordenar e use os interruptores para mostrar ou ocultar itens. Os cartões de estatísticas ficam dentro da seção de estatísticas.</string>
+  <string name="profile_layout_hubs">Cartões de atalhos</string>
+  <string name="profile_layout_sections">Seções do perfil</string>
+  <string name="profile_layout_statistics">Cartões de estatísticas</string>
+  <string name="profile_layout_reset">Redefinir layout do perfil</string>
   <string name="profile_display_name">Nome de exibição</string>
   <string name="profile_choose_photo">Escolher foto</string>
   <string name="profile_remove_photo">Remover foto</string>

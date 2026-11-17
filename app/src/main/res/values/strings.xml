@@ -2726,6 +2726,12 @@
   <string name="pref_nav_profile_summary">Combine Recents, Playlists and Snapshots into a single tab</string>
   <string name="profile_view_all">View all</string>
   <string name="profile_edit">Edit profile</string>
+  <string name="profile_layout_title">Profile layout</string>
+  <string name="profile_layout_summary">Drag to reorder and use the switches to show or hide items. Statistics cards stay inside the statistics section.</string>
+  <string name="profile_layout_hubs">Hub cards</string>
+  <string name="profile_layout_sections">Profile sections</string>
+  <string name="profile_layout_statistics">Statistics cards</string>
+  <string name="profile_layout_reset">Reset Profile layout</string>
   <string name="profile_display_name">Display name</string>
   <string name="profile_choose_photo">Choose photo</string>
   <string name="profile_remove_photo">Remove photo</string>
@@ -2816,7 +2822,7 @@
   <string name="watch_stats_today">Today: %1$s</string>
   <string name="watch_stats_media_breakdown">Media breakdown</string>
   <string name="watch_stats_overall_playback">Overall playback</string>
-  <string name="watch_stats_top_media">Most watched</string>
+  <string name="watch_stats_top_media">Most played</string>
   <string name="watch_stats_empty">Play some media to start building your statistics.</string>
   <string name="watch_stats_reset_confirm">Reset all playback statistics? Your history, watched status and playlists will be kept.</string>
   <string name="pref_debug_log_size_title">Log size limit</string>
