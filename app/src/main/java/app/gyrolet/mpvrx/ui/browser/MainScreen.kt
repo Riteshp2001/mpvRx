@@ -498,8 +498,7 @@ object MainScreen : Screen, TvEdgeToEdgeScreen {
         }
     }
 
-    // Keep the app's established Haze path for the normal navigation bar. Liquid Glass uses the
-    // separate Kyant layer backdrop declared with the screen state above.
+    // Progressive blur still needs its Haze source when Liquid Glass captures a Kyant backdrop.
     val navigationBackdrop = rememberHazeState()
 
     val mainNavBar = @Composable { modifier: Modifier ->
@@ -581,13 +580,14 @@ object MainScreen : Screen, TvEdgeToEdgeScreen {
               Modifier
                 .fillMaxSize()
                 .padding(tvContentPadding)
+                .then(if (liquidGlassEnabled) Modifier.layerBackdrop(liquidLayerBackdrop) else Modifier)
                 .then(
-                    when {
-                      liquidGlassEnabled -> Modifier.layerBackdrop(liquidLayerBackdrop)
-                      !legacyNavigationBar -> Modifier.hazeSource(navigationBackdrop)
-                      else -> Modifier
-                    },
-                  ),
+                  if (!legacyNavigationBar && (!liquidGlassEnabled || progressiveNavigationBlur)) {
+                    Modifier.hazeSource(navigationBackdrop)
+                  } else {
+                    Modifier
+                  },
+                ),
           ) {
             CompositionLocalProvider(
               LocalNavigationBarHeight provides contentBottomPadding,
@@ -612,11 +612,12 @@ object MainScreen : Screen, TvEdgeToEdgeScreen {
                   .clipToBounds()
                   .graphicsLayer { alpha = tabContentAlpha.value }
                   .nestedScroll(NavigationBarState.navScrollConnection)
+                  .then(if (liquidGlassEnabled) Modifier.layerBackdrop(liquidLayerBackdrop) else Modifier)
                   .then(
-                    when {
-                      liquidGlassEnabled -> Modifier.layerBackdrop(liquidLayerBackdrop)
-                      !legacyNavigationBar -> Modifier.hazeSource(navigationBackdrop)
-                      else -> Modifier
+                    if (!legacyNavigationBar && (!liquidGlassEnabled || progressiveNavigationBlur)) {
+                      Modifier.hazeSource(navigationBackdrop)
+                    } else {
+                      Modifier
                     },
                   ),
               key = { page -> visibleTabs.getOrNull(page)?.name ?: "removed-tab-$page" },
@@ -874,7 +875,7 @@ object MainScreen : Screen, TvEdgeToEdgeScreen {
               }
               Box(Modifier.matchParentSize()) {
                 // Haze only runs while its navigation surface is visible.
-                if (!liquidGlassEnabled && progressiveNavigationBlur && !legacyNavigationBar) {
+                if (progressiveNavigationBlur && !legacyNavigationBar) {
                   ProgressiveNavigationBackdrop(
                     state = navigationBackdrop,
                     modifier =
