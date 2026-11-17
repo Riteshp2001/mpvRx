@@ -2275,12 +2275,6 @@
   <string name="pref_nav_profile_summary">Объединить «Недавние», «Плейлисты» и «Кадры» в одну вкладку</string>
   <string name="profile_view_all">Показать все</string>
   <string name="profile_edit">Изменить профиль</string>
-  <string name="profile_layout_title">Макет профиля</string>
-  <string name="profile_layout_summary">Перетаскивайте для изменения порядка и используйте переключатели для показа или скрытия элементов. Карточки статистики остаются в своём разделе.</string>
-  <string name="profile_layout_hubs">Карточки разделов</string>
-  <string name="profile_layout_sections">Разделы профиля</string>
-  <string name="profile_layout_statistics">Карточки статистики</string>
-  <string name="profile_layout_reset">Сбросить макет профиля</string>
   <string name="profile_recently_added">Недавно добавленные</string>
   <string name="profile_recently_added_empty">Здесь появляются видео, добавленные в медиатеку.</string>
   <string name="profile_display_name">Отображаемое имя</string>

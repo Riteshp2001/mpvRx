@@ -2305,12 +2305,6 @@
   <string name="pref_nav_profile_summary">دمج الأخيرة وقوائم التشغيل واللقطات في علامة تبويب واحدة</string>
   <string name="profile_view_all">عرض الكل</string>
   <string name="profile_edit">تعديل الملف الشخصي</string>
-  <string name="profile_layout_title">تخطيط الملف الشخصي</string>
-  <string name="profile_layout_summary">اسحب لتغيير الترتيب واستخدم المفاتيح لإظهار العناصر أو إخفائها. تبقى بطاقات الإحصاءات داخل قسم الإحصاءات.</string>
-  <string name="profile_layout_hubs">بطاقات الاختصارات</string>
-  <string name="profile_layout_sections">أقسام الملف الشخصي</string>
-  <string name="profile_layout_statistics">بطاقات الإحصاءات</string>
-  <string name="profile_layout_reset">إعادة ضبط تخطيط الملف الشخصي</string>
   <string name="profile_recently_added">المضافة حديثًا</string>
   <string name="profile_recently_added_empty">تظهر هنا الفيديوهات المضافة إلى مكتبتك.</string>
   <string name="profile_display_name">الاسم المعروض</string>

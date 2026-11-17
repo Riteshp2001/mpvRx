@@ -84,10 +84,6 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_appearance_thumbnail_quality_title, itemIndex = 5),
         SettingsSearchListAnchor(titleRes = R.string.pref_gesture_tap_thumbnail_to_select_title, itemIndex = 5),
         SettingsSearchListAnchor(titleRes = R.string.pref_appearance_show_network_thumbnails_title, itemIndex = 5),
-        SettingsSearchListAnchor(titleRes = R.string.profile_layout_title, itemIndex = 7),
-        SettingsSearchListAnchor(titleRes = R.string.profile_layout_hubs, itemIndex = 7),
-        SettingsSearchListAnchor(titleRes = R.string.profile_layout_sections, itemIndex = 7),
-        SettingsSearchListAnchor(titleRes = R.string.profile_layout_statistics, itemIndex = 7),
       ),
     LiquidGlassPreferencesScreen to
       listOf(

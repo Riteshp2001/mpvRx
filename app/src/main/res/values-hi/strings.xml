@@ -2162,12 +2162,6 @@
   <string name="pref_nav_profile_summary">हाल के, प्लेलिस्ट और स्नैपशॉट को एक टैब में मिलाएं</string>
   <string name="profile_view_all">सभी देखें</string>
   <string name="profile_edit">प्रोफ़ाइल संपादित करें</string>
-  <string name="profile_layout_title">प्रोफ़ाइल लेआउट</string>
-  <string name="profile_layout_summary">क्रम बदलने के लिए खींचें और आइटम दिखाने या छिपाने के लिए स्विच इस्तेमाल करें। आँकड़ों के कार्ड अपने सेक्शन में ही रहते हैं।</string>
-  <string name="profile_layout_hubs">हब कार्ड</string>
-  <string name="profile_layout_sections">प्रोफ़ाइल सेक्शन</string>
-  <string name="profile_layout_statistics">आँकड़ों के कार्ड</string>
-  <string name="profile_layout_reset">प्रोफ़ाइल लेआउट रीसेट करें</string>
   <string name="profile_recently_added">हाल ही में जोड़े गए</string>
   <string name="profile_recently_added_empty">आपकी लाइब्रेरी में जोड़े गए वीडियो यहाँ दिखते हैं।</string>
   <string name="profile_display_name">प्रदर्शित नाम</string>

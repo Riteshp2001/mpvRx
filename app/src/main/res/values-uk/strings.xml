@@ -2274,12 +2274,6 @@
   <string name="pref_nav_profile_summary">Об\'єднати «Нещодавні», «Плейлисти» та «Знімки» в одну вкладку</string>
   <string name="profile_view_all">Показати все</string>
   <string name="profile_edit">Редагувати профіль</string>
-  <string name="profile_layout_title">Макет профілю</string>
-  <string name="profile_layout_summary">Перетягуйте для зміни порядку й використовуйте перемикачі, щоб показувати або приховувати елементи. Картки статистики залишаються у своєму розділі.</string>
-  <string name="profile_layout_hubs">Картки розділів</string>
-  <string name="profile_layout_sections">Розділи профілю</string>
-  <string name="profile_layout_statistics">Картки статистики</string>
-  <string name="profile_layout_reset">Скинути макет профілю</string>
   <string name="profile_recently_added">Нещодавно додані</string>
   <string name="profile_recently_added_empty">Тут з’являються відео, додані до медіатеки.</string>
   <string name="profile_display_name">Відображуване ім\'я</string>

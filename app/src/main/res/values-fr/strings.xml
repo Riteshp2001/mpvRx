@@ -2247,12 +2247,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_nav_profile_summary">Regrouper Récents, Playlists et Captures dans un seul onglet</string>
   <string name="profile_view_all">Tout afficher</string>
   <string name="profile_edit">Modifier le profil</string>
-  <string name="profile_layout_title">Disposition du profil</string>
-  <string name="profile_layout_summary">Faites glisser pour réorganiser et utilisez les interrupteurs pour afficher ou masquer les éléments. Les cartes de statistiques restent dans leur section.</string>
-  <string name="profile_layout_hubs">Cartes de raccourcis</string>
-  <string name="profile_layout_sections">Sections du profil</string>
-  <string name="profile_layout_statistics">Cartes de statistiques</string>
-  <string name="profile_layout_reset">Réinitialiser la disposition du profil</string>
   <string name="profile_recently_added">Ajouts récents</string>
   <string name="profile_recently_added_empty">Les vidéos ajoutées à votre bibliothèque apparaissent ici.</string>
   <string name="profile_display_name">Nom affiché</string>

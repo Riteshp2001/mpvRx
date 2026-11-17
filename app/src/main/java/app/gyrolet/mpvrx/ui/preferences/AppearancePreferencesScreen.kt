@@ -981,7 +981,6 @@ object AppearancePreferencesScreen : Screen {
                   },
                 )
               }
-              ProfileLayoutPreferences(preferences)
             }
           }
 
