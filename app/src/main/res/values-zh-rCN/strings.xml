@@ -219,6 +219,13 @@
   <string name="pref_player_display_show_status_bar">显示带控制项的系统状态栏</string>
   <string name="pref_gesture">手势</string>
   <string name="pref_gesture_summary">单击/双击、媒体控制</string>
+  <string name="gesture_guide_hint">在此体验手势，正常控制仍然可用。</string>
+  <string name="gesture_guide_locked">控制已锁定，请解锁后体验。</string>
+  <string name="gesture_guide_panels">请关闭已打开的面板后体验。</string>
+  <string name="gesture_guide_vertical">上下滑动</string>
+  <string name="gesture_guide_mini_player">迷你播放器</string>
+  <string name="gesture_guide_center_tap">中间区域的单击仅在框内生效。</string>
+  <string name="gesture_guide_hold_speed">在字幕之外长按：%1$s 倍速</string>
   <string name="pref_gesture_double_tap_title">点击手势</string>
   <string name="pref_gesture_double_tap_none">无</string>
   <string name="pref_gesture_double_tap_seek">定位播放</string>

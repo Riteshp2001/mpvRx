@@ -219,6 +219,13 @@
   <string name="pref_player_display_show_status_bar">Afficher la barre d’état système avec les commandes</string>
   <string name="pref_gesture">Gestes</string>
   <string name="pref_gesture_summary">Appui simple/double, commandes multimédias</string>
+  <string name="gesture_guide_hint">Essayez les gestes ici. Les commandes habituelles restent actives.</string>
+  <string name="gesture_guide_locked">Commandes verrouillées. Déverrouillez pour essayer.</string>
+  <string name="gesture_guide_panels">Fermez le panneau ouvert pour essayer.</string>
+  <string name="gesture_guide_vertical">Balayez vers le haut / bas</string>
+  <string name="gesture_guide_mini_player">Mini-lecteur</string>
+  <string name="gesture_guide_center_tap">Les appuis simples au centre fonctionnent uniquement dans le cadre.</string>
+  <string name="gesture_guide_hold_speed">Maintenez hors des sous-titres : vitesse %1$s</string>
   <string name="pref_gesture_double_tap_title">Gestes par appui</string>
   <string name="pref_gesture_double_tap_none">Aucun</string>
   <string name="pref_gesture_double_tap_seek">Rechercher</string>

@@ -23,6 +23,7 @@ local o = {
     key_page_4 = "4",
     key_page_5 = "5",
     key_page_6 = "6",
+    key_page_7 = "7",
     key_page_0 = "0",
     -- For pages which support scrolling
     key_scroll_up = "UP",
@@ -120,6 +121,12 @@ local before_page_render = function() return true end
 local statistics_hidden = function() end
 local statistics_search_active = false
 local android_stats = {}
+local gesture_guide_data = {}
+local gesture_guide_overlay = mp.create_osd_overlay("ass-events")
+gesture_guide_overlay.z = 5
+local gesture_guide_visible = false
+-- Selection IDs 7/8 already belong to Console/performance in saved preferences.
+local gesture_guide_selection = 9
 -- Timer used to update cache stats.
 local cache_recorder_timer
 -- Current page and <page key>:<page function> mappings
@@ -1574,6 +1581,213 @@ local function app_stats()
     return finalize_page(header, content, true)
 end
 
+local function gesture_guide()
+    local width, height = mp.get_osd_size()
+    if width <= 0 or height <= 0 then return end
+    local scale = 720 / min(width, height)
+    width, height = width * scale, height * scale
+    local portrait = height > width
+    local tall = portrait and height / width >= 1.6
+    local data = gesture_guide_data
+    local accents = {data.left_color or "EAC5CB", data.center_color or "E3CFCE",
+                     data.right_color or "C5C4EF"}
+    local ass = require("mp.assdraw").ass_new()
+    local padding = max(24, mp.get_property_number("osd-margin-x", 16) * height / 720)
+    local gap = 12
+    local muted = "BDB9C5"
+    local top = max(padding, (data.top_inset or 0) * height)
+    local bottom = height - max(padding, (data.bottom_inset or 0) * height)
+
+    local function shape(color, alpha, border, draw)
+        ass:new_event()
+        ass:append(format("{\\r\\an7\\pos(0,0)\\bord%g\\shad0\\1c&H%s&" ..
+                          "\\3c&H%s&\\1a&H%02X&\\3a&H%02X&}",
+                          border or 0, color, color, alpha or 0, alpha or 0))
+        ass:draw_start()
+        draw()
+        ass:draw_stop()
+    end
+
+    local function box(x, y, w, h, color, alpha, radius)
+        if w <= 0 or h <= 0 then return end
+        shape(color, alpha, 0, function()
+            ass:round_rect_cw(x, y, x + w, y + h, min(radius or 18, w / 2, h / 2))
+        end)
+    end
+
+    local function wrapped(value, columns, max_lines)
+        local chars = {}
+        for char in tostring(value):gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+            chars[#chars + 1] = char
+        end
+        local lines, first = {}, 1
+        while first <= #chars and #lines < max_lines do
+            local last, units = first - 1, 0
+            while last < #chars do
+                local cost = #chars[last + 1] > 1 and 2 or 1
+                if units + cost > columns then break end
+                last, units = last + 1, units + cost
+            end
+            last = max(first, last)
+            if last < #chars then
+                for i = last, first + math.floor((last - first) / 2), -1 do
+                    if chars[i] == " " then last = i; break end
+                end
+            end
+            local line = table.concat(chars, "", first, last):gsub("%s+$", "")
+            if #lines == max_lines - 1 and last < #chars then line = line .. "..." end
+            lines[#lines + 1] = mp.command_native({"escape-ass", line})
+            first = last + 1
+            while chars[first] == " " do first = first + 1 end
+        end
+        return table.concat(lines, "\\N")
+    end
+
+    local function text(value, x, y, w, size, color, bold, lines)
+        if not value or w <= 0 then return end
+        ass:new_event()
+        ass:append(format("{\\r\\an7\\pos(%g,%g)\\fs%g\\fn%s\\b%d\\bord0.6\\shad0" ..
+                          "\\1c&H%s&\\3c&H18151C&\\q2\\clip(%g,%g,%g,%g)}",
+                          x, y, size, o.font ~= "" and o.font or "sans-serif",
+                          bold and 1 or 0, color or "FFFFFF", x, y,
+                          x + w, y + size * 1.5 * (lines or 2)))
+        ass:append(wrapped(value, max(2, math.floor(w / (size * 0.56))), lines or 2))
+    end
+
+    local function icon(kind, x, y, size, color)
+        shape(color, 0x10, 1.5, function()
+            local c, r = size / 2, size * 0.28
+            if kind == "hold" or kind == "tap" then
+                ass:round_rect_cw(x + 2, y + 2, x + size - 2, y + size - 2, c - 2)
+                ass:round_rect_ccw(x + 6, y + 6, x + size - 6, y + size - 6, c - 6)
+            elseif kind == "subtitles" then
+                ass:round_rect_cw(x, y + 3, x + size, y + size - 3, 4)
+                ass:round_rect_ccw(x + 3, y + 6, x + size - 3, y + size - 6, 2)
+                ass:rect_cw(x + 6, y + c - 1, x + size - 6, y + c + 1)
+            else
+                if kind ~= "vertical" and kind ~= "up" and kind ~= "down" then
+                    ass:move_to(x + 2, y + c); ass:line_to(x + size - 2, y + c)
+                    ass:move_to(x + r, y + c - r); ass:line_to(x + 2, y + c)
+                    ass:line_to(x + r, y + c + r)
+                    ass:move_to(x + size - r, y + c - r); ass:line_to(x + size - 2, y + c)
+                    ass:line_to(x + size - r, y + c + r)
+                end
+                if kind ~= "horizontal" then
+                    ass:move_to(x + c, y + 2); ass:line_to(x + c, y + size - 2)
+                    if kind ~= "down" then
+                        ass:move_to(x + c - r, y + r); ass:line_to(x + c, y + 2)
+                        ass:line_to(x + c + r, y + r)
+                    end
+                    if kind ~= "up" then
+                        ass:move_to(x + c - r, y + size - r); ass:line_to(x + c, y + size - 2)
+                        ass:line_to(x + c + r, y + size - r)
+                    end
+                end
+            end
+        end)
+    end
+
+    local fraction = max(0.01, min(0.5, data.tap_width or 0.35))
+    local boundaries = {0, width * fraction, width * (1 - fraction), width}
+    for i = 1, 3 do
+        local y0, y1 = top, bottom
+        if i == 2 and data.center_single then
+            y0, y1 = height * (data.center_top or 0.35), height * (1 - (data.center_top or 0.35))
+        end
+        box(boundaries[i] + 3, y0, boundaries[i + 1] - boundaries[i] - 6,
+            y1 - y0, accents[i], 0xEE, 20)
+    end
+    for _, x in ipairs({boundaries[2], boundaries[3]}) do
+        for y = top + 8, bottom - 8, 24 do
+            box(x - 0.7, y, 1.4, 10, accents[2], 0xA0, 0)
+        end
+    end
+    if data.center_single then
+        local y0 = height * (data.center_top or 0.35)
+        local y1 = height * (1 - (data.center_top or 0.35))
+        box(boundaries[2], y0, boundaries[3] - boundaries[2], 2, accents[2], 0x70, 0)
+        box(boundaries[2], y1 - 2, boundaries[3] - boundaries[2], 2, accents[2], 0x70, 0)
+    end
+
+    local header_y = top + (data.controls_visible and (portrait and 86 or 50) or 8)
+    box(padding, header_y, width - padding * 2, 90, "18151C", 0x25, 24)
+    box(padding + 14, header_y + 15, 44, 44, accents[2], 0xC0, 14)
+    text("7", padding + 27, header_y + 21, 28, 26, accents[2], true, 1)
+    text(data.title or "Gestures", padding + 72, header_y + 14,
+         width - padding * 2 - 240, 26, "FFFFFF", true, 1)
+    text(data.orientation, width - padding - 154, header_y + 20, 140, 18, accents[2], false, 1)
+    text(data.status, padding + 72, header_y + 51, width - padding * 2 - 90, 17, muted, false, 2)
+
+    local tap_y = max(header_y + 112, height * (tall and 0.34 or 0.28))
+    local card_width = (width - padding * 2 - gap * 2) / 3
+    local card_height = tall and 152 or 132
+    for i, tap in ipairs(data.taps or {}) do
+        if i > 3 then break end
+        local x = padding + (i - 1) * (card_width + gap)
+        local anchor = (boundaries[i] + boundaries[i + 1]) / 2
+        shape(accents[i], 0x80, 1, function()
+            ass:move_to(x + card_width / 2, tap_y - 4)
+            ass:line_to(anchor, tap_y - 22)
+        end)
+        box(anchor - 3, tap_y - 27, 6, 6, accents[i], 0x20, 3)
+        box(x, tap_y, card_width, card_height, accents[i], 0x70, 22)
+        box(x + 1.5, tap_y + 1.5, card_width - 3, card_height - 3, "18151C",
+            data.blocked and 0x65 or 0x25, 21)
+        icon("tap", x + 14, tap_y + 15, 24, accents[i])
+        text(tap.single and "1x" or "2x", x + 47, tap_y + 17, card_width - 60, 17, accents[i], true, 1)
+        text(tap.label, x + 14, tap_y + (tall and 48 or 44), card_width - 28,
+             tall and 17 or 15, muted, false, 2)
+        text(tap.action, x + 14, tap_y + (tall and 92 or 84), card_width - 28,
+             tall and 20 or 18, tap.enabled and "FFFFFF" or muted, true, 2)
+    end
+
+    local rail_y = tap_y + card_height + (tall and 54 or 16)
+    local reserved = data.center_reserved
+    local rail_width = reserved and card_width or (width - padding * 2 - gap) / 2
+    local rail_color = data.vertical_enabled and "FFFFFF" or muted
+    for i, label in ipairs({data.vertical_left, data.vertical_right}) do
+        local x = i == 1 and padding or width - padding - rail_width
+        box(x, rail_y, rail_width, 98, "18151C", 0x35, 20)
+        icon("vertical", x + 14, rail_y + 17, 26, accents[i == 1 and 1 or 3])
+        text(label, x + 50, rail_y + 13, rail_width - 62, 20, rail_color, true, 2)
+        text(data.vertical_hint, x + 14, rail_y + 59, rail_width - 28, 16, muted, false, 2)
+    end
+    if reserved then
+        local x = padding + card_width + gap
+        box(x, rail_y, card_width, 98, "18151C", 0x35, 20)
+        if data.swipe_up then
+            icon("up", x + 12, rail_y + 14, 22, accents[2])
+            text(data.swipe_up, x + 44, rail_y + 12, card_width - 56, 19, "FFFFFF", true, 1)
+        end
+        if data.swipe_down then
+            icon("down", x + 12, rail_y + 55, 22, accents[2])
+            text(data.swipe_down, x + 44, rail_y + 54, card_width - 56, 19, "FFFFFF", true, 2)
+        end
+        if not data.swipe_up and not data.swipe_down then
+            text(data.disabled_label, x + 14, rail_y + 32, card_width - 28, 19, muted, false, 2)
+        end
+    end
+
+    local hints = data.hints or {}
+    local columns = tall and 2 or portrait and 3 or 4
+    local hint_width = (width - padding * 2 - gap * (columns - 1)) / columns
+    local rows = math.ceil(#hints / columns)
+    local hint_height = tall and 72 or portrait and 56 or 62
+    local hints_y = max(rail_y + 126, bottom - rows * (hint_height + gap) - 48)
+    for i, hint in ipairs(hints) do
+        local x = padding + ((i - 1) % columns) * (hint_width + gap)
+        local y = hints_y + math.floor((i - 1) / columns) * (hint_height + gap)
+        box(x, y, hint_width, hint_height, "18151C", 0x35, 18)
+        icon(hint.icon, x + 12, y + 18, 24, accents[2])
+        text(hint.text, x + 48, y + 12, hint_width - 60, 17, muted, false, 2)
+    end
+    text(data.center_note, padding, bottom - 28, width - padding * 2, 16, accents[2], false, 1)
+    gesture_guide_overlay.res_x = math.floor(width + 0.5)
+    gesture_guide_overlay.res_y = math.floor(height + 0.5)
+    gesture_guide_overlay.data = ass.text
+    gesture_guide_overlay:update()
+end
+
 -- Current page and <page key>:<page function> mapping
 curr_page = o.key_page_1
 pages = {
@@ -1583,6 +1797,7 @@ pages = {
     [o.key_page_4] = { idx = 4, f = keybinding_info, desc = "Active Key Bindings", scroll = true },
     [o.key_page_5] = { idx = 5, f = track_info, desc = "Tracks Info", scroll = true },
     [o.key_page_6] = { idx = 6, f = app_stats, desc = "Time, Network & System", scroll = true },
+    [o.key_page_7] = { idx = 7, f = gesture_guide, desc = "Gestures" },
     [o.key_page_0] = { idx = 0, f = perf_stats, desc = "Internal Performance Info", scroll = true },
 }
 
@@ -1623,6 +1838,18 @@ end
 -- Call the function for `page` and print it to OSD
 local function print_page(page, after_scroll)
     if not before_page_render(pages[page].idx) then return end
+    if pages[page].idx == 7 then
+        if not gesture_guide_visible then
+            if o.persistent_overlay then mp.set_osd_ass(0, 0, "") else mp.osd_message("", 0) end
+        end
+        gesture_guide()
+        gesture_guide_visible = true
+        stats_visible = true
+        return
+    elseif gesture_guide_visible then
+        gesture_guide_overlay:remove()
+        gesture_guide_visible = false
+    end
     -- the page functions assume we start in ass-enabled mode.
     -- that's true for mp.set_osd_ass, but not for mp.osd_message.
     local ass_content = pages[page].f(after_scroll)
@@ -1663,6 +1890,8 @@ update_scale = function ()
 end
 
 local function clear_screen()
+    gesture_guide_overlay:remove()
+    gesture_guide_visible = false
     if o.persistent_overlay then mp.set_osd_ass(0, 0, "") else mp.osd_message("", 0) end
     stats_visible = false
     statistics_hidden()
@@ -1777,11 +2006,13 @@ end
 
 -- Add keybindings for every page
 add_page_bindings = function()
+    if curr_page == o.key_page_7 then return end
     local function a(k)
         return function()
             reset_scroll_offsets()
-            update_scroll_bindings(k)
+            remove_page_bindings()
             curr_page = k
+            add_page_bindings()
             print_page(k)
             if display_timer.oneshot then display_timer:kill() ; display_timer:resume() end
         end
@@ -1937,8 +2168,9 @@ local function show_page(index)
         if page.idx == index then
             if display_timer:is_enabled() and not display_timer.oneshot then
                 reset_scroll_offsets()
+                remove_page_bindings()
                 curr_page = key
-                update_scroll_bindings(key)
+                add_page_bindings()
                 print_page(key)
             else
                 -- Unlike the stock toggle, explicit selection also replaces a one-shot.
@@ -1955,7 +2187,8 @@ end
 local function reconcile()
     if not request_revision then return end
     reconciling = true
-    local native_page = requested_page >= 1 and requested_page <= 6 or requested_page == 8
+    local native_page = requested_page >= 1 and requested_page <= 6 or
+                        requested_page == 8 or requested_page == gesture_guide_selection
     if not native_page or console_pending ~= nil or console_open() then
         if statistics_search_active then
             statistics_search_active = false
@@ -1979,7 +2212,8 @@ local function reconcile()
     end
     if native_page then
         -- mpv's internal performance page is key 0, distinct from the app's Off.
-        show_page(requested_page == 8 and 0 or requested_page)
+        show_page(requested_page == 8 and 0 or
+                  requested_page == gesture_guide_selection and 7 or requested_page)
     end
     publish_page(requested_page)
     reconciling = false
@@ -1987,7 +2221,7 @@ end
 
 before_page_render = function(index)
     if reconciling then return true end
-    requested_page = index == 0 and 8 or index
+    requested_page = index == 0 and 8 or index == 7 and gesture_guide_selection or index
     if statistics_search_active and index == 4 then
         publish_page(requested_page)
         return true
@@ -2016,7 +2250,7 @@ mp.observe_property(request_property, "native", function(_, value)
     end
     local revision, page = value:match("^(%d+):(%d+)$")
     page = tonumber(page)
-    if not revision or not page or page > 8 then
+    if not revision or not page or page > gesture_guide_selection then
         mp.msg.error("Invalid statistics request: " .. tostring(value))
         return
     end
@@ -2054,6 +2288,24 @@ mp.observe_property("user-data/mpvrx/statistics-android", "native", function(_, 
         return
     end
     android_stats = data
+end)
+
+mp.observe_property("user-data/mpvrx/gesture-guide", "native", function(_, value)
+    if value == nil then
+        gesture_guide_data = {}
+        return
+    end
+    if type(value) ~= "string" then
+        mp.msg.error("Invalid gesture guide type: " .. type(value))
+        return
+    end
+    local data, err = utils.parse_json(value)
+    if type(data) ~= "table" then
+        mp.msg.error("Invalid gesture guide: " .. tostring(err))
+        return
+    end
+    gesture_guide_data = data
+    if gesture_guide_visible then gesture_guide() end
 end)
 
 mp.register_script_message("mpvrx-stats-scroll", function(delta)

@@ -207,6 +207,9 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val STATISTICS_REQUEST_PROPERTY = "user-data/mpvrx/statistics-request"
   private const val STATISTICS_STATE_PROPERTY = "user-data/mpvrx/statistics-state"
   private const val STATISTICS_ANDROID_PROPERTY = "user-data/mpvrx/statistics-android"
+  private const val GESTURE_GUIDE_PROPERTY = "user-data/mpvrx/gesture-guide"
+  // Keep the persisted Console (7) and internal performance (8) IDs unchanged.
+  internal const val GESTURES_STATISTICS_PAGE = 9
   private val statisticsErrorHandler = CoroutineExceptionHandler { _, error ->
     Log.e(TAG, "Statistics update failed", error)
   }
@@ -1736,9 +1739,9 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
 
   fun commandNode(vararg command: String): MPVNode? = withCore(null) { MPVLib.commandNode(*command) }
 
-  /** 0 = Off, 1..6 = stats.lua pages, 7 = Console, 8 = mpv's keyboard-only page 0. */
+  /** 0 = Off, 1..6 = stats pages, 7 = Console, 8 = mpv page 0, 9 = Gestures (displayed as Page 7). */
   fun setStatisticsPage(page: Int) {
-    require(page in 0..8) { "Invalid statistics page: $page" }
+    require(page in 0..GESTURES_STATISTICS_PAGE) { "Invalid statistics page: $page" }
     val revision =
       synchronized(statisticsStateLock) {
         statisticsSelectionRequested = true
@@ -1759,8 +1762,8 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   fun restoreStatisticsPage() = synchronized(statisticsStateLock) {
     if (!statisticsSelectionRequested) {
       val saved = advancedPreferences.enabledStatisticsPage.get()
-      if (saved !in 0..8) Log.w(TAG, "Discarding invalid saved statistics page: $saved")
-      setStatisticsPage(if (saved in 1..6 || saved == 8) saved else 0)
+      if (saved !in 0..GESTURES_STATISTICS_PAGE) Log.w(TAG, "Discarding invalid saved statistics page: $saved")
+      setStatisticsPage(if (saved in 1..6 || saved == 8 || saved == GESTURES_STATISTICS_PAGE) saved else 0)
     }
   }
 
@@ -1776,7 +1779,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     val parts = value.split(':', limit = 2)
     val revision = parts.getOrNull(0)?.toLongOrNull()
     val page = parts.getOrNull(1)?.toIntOrNull()
-    if (revision == null || page == null || page !in 0..8) {
+    if (revision == null || page == null || page !in 0..GESTURES_STATISTICS_PAGE) {
       Log.w(TAG, "Invalid statistics state from mpv: $value")
       return
     }
@@ -1797,6 +1800,20 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         val page = _visibleStatisticsPage.value
         if (current && page in scrollableStatisticsPages && advancedPreferences.enabledStatisticsPage.get() == page) {
           MPVLib.command("script-message", "mpvrx-stats-scroll", lines.coerceIn(-100, 100).toString())
+        }
+      }
+    }
+  }
+
+  internal fun updateGestureGuide(data: String) {
+    val revision = synchronized(statisticsStateLock) { statisticsRevision }
+    statisticsCommands.launch {
+      withReadyCore(Unit) {
+        val current = synchronized(statisticsStateLock) { revision == statisticsRevision }
+        if (current && _visibleStatisticsPage.value == GESTURES_STATISTICS_PAGE &&
+          advancedPreferences.enabledStatisticsPage.get() == GESTURES_STATISTICS_PAGE
+        ) {
+          MPVLib.setPropertyString(GESTURE_GUIDE_PROPERTY, data)
         }
       }
     }

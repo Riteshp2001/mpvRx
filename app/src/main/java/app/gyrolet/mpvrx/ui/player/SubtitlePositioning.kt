@@ -123,7 +123,10 @@ fun applySubtitleLayout(
 }
 
 /** True when the SurfaceView itself is zoomed, so subtitles and mpv's OSD move with the video. */
-fun overlaysFollowVideoZoom(): Boolean = GlobalContext.get().get<PlayerPreferences>().overlaysFollowVideoZoom.get()
+fun overlaysFollowVideoZoom(): Boolean =
+  // The gesture map describes screen regions, so zoom only the video while it is visible.
+  PlaybackSession.visibleStatisticsPage.value != PlaybackSession.GESTURES_STATISTICS_PAGE &&
+    GlobalContext.get().get<PlayerPreferences>().overlaysFollowVideoZoom.get()
 
 fun applySubtitleBlendMode() {
   val blendMode = subtitleBlendMode()

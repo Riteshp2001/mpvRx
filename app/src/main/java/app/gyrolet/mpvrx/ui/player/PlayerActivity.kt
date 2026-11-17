@@ -1565,7 +1565,8 @@ class PlayerActivity :
           viewModel.videoPanX,
           viewModel.videoPanY,
           playerPreferences.overlaysFollowVideoZoom.changes(),
-        ) { _, _, _, _ -> Unit }.collect { applyVideoTransform() }
+          PlaybackSession.visibleStatisticsPage,
+        ) { _, _, _, _, _ -> Unit }.collect { applyVideoTransform() }
       }
     }
   }
@@ -1576,7 +1577,7 @@ class PlayerActivity :
     val panY = viewModel.videoPanY.value
     // A SurfaceView transform zooms video, libass subtitles and mpv's OSD as one composited image;
     // mpv's video-zoom moves only the video plane and leaves overlays where they are.
-    val followVideo = playerPreferences.overlaysFollowVideoZoom.get()
+    val followVideo = overlaysFollowVideoZoom()
     val viewScale = if (followVideo) videoZoomMultiplier(zoom) else 1f
     binding.player.scaleX = viewScale
     binding.player.scaleY = viewScale

@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -32,11 +33,16 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntSize
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
@@ -61,7 +67,11 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.koin.compose.koinInject
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.max
@@ -256,6 +266,146 @@ fun GestureHandler(
         with(density) { 36.dp.toPx() },
       )
     }
+
+  var gestureViewport by remember { mutableStateOf(IntSize.Zero) }
+  if (statisticsPage == PlaybackSession.GESTURES_STATISTICS_PAGE && gestureViewport.width > 0 && gestureViewport.height > 0) {
+    val colors = MaterialTheme.colorScheme
+    val queue by PlaybackSession.queue.collectAsState()
+    val sheet by viewModel.sheetShown.collectAsState()
+    val controlsShown by viewModel.controlsShown.collectAsState()
+    val blocked = areControlsLocked || (anyPanelShown && !allowGesturesInPanels) || sheet != Sheets.None
+    val tapFraction = (doubleTapSeekAreaWidth / 100f).coerceIn(0.01f, 0.5f)
+    val seekDuration = context.resources.getQuantityString(R.plurals.seconds, doubleTapToSeekDuration, doubleTapToSeekDuration)
+    val verticalActions =
+      when {
+        brightnessGesture && volumeGesture -> {
+          val brightness = context.getString(R.string.color_picker_brightness)
+          val volume = context.getString(R.string.compressor_volume)
+          if (swapVolumeAndBrightness) volume to brightness else brightness to volume
+        }
+        brightnessGesture -> context.getString(R.string.color_picker_brightness).let { it to it }
+        volumeGesture -> context.getString(R.string.compressor_volume).let { it to it }
+        else -> null
+      }
+    val hasSubtitles = subtitleTracks.any { it.isSelected }
+    val data =
+      buildJsonObject {
+        put("title", context.getString(R.string.pref_gesture))
+        put(
+          "status",
+          context.getString(
+            when {
+              areControlsLocked -> R.string.gesture_guide_locked
+              blocked -> R.string.gesture_guide_panels
+              else -> R.string.gesture_guide_hint
+            },
+          ),
+        )
+        put("blocked", blocked)
+        put("disabled_label", context.getString(R.string.generic_disabled))
+        put("controls_visible", controlsShown)
+        put(
+          "orientation",
+          context.getString(
+            if (gestureViewport.height > gestureViewport.width) R.string.pref_player_orientation_portrait
+            else R.string.pref_player_orientation_landscape,
+          ),
+        )
+        put("tap_width", tapFraction)
+        put("center_top", CENTER_SINGLE_TAP_VERTICAL_EDGE_FRACTION)
+        put("center_single", useSingleTapForCenter)
+        put("top_inset", (topGestureDeadZonePx / gestureViewport.height).coerceIn(0f, 0.5f))
+        put("bottom_inset", (bottomGestureDeadZonePx / gestureViewport.height).coerceIn(0f, 0.5f))
+        put("left_color", colors.primary.toGestureGuideColor())
+        put("center_color", colors.secondary.toGestureGuideColor())
+        put("right_color", colors.tertiary.toGestureGuideColor())
+        put(
+          "taps",
+          buildJsonArray {
+            val actions = listOf(leftTapGesture, centerTapGesture, rightTapGesture)
+            val singles = listOf(useSingleTapForLeft, useSingleTapForCenter, useSingleTapForRight)
+            val singleTitles = listOf(
+              R.string.pref_gesture_single_tap_left_title,
+              R.string.pref_gesture_single_tap_center_title,
+              R.string.pref_gesture_single_tap_right_title,
+            )
+            val doubleTitles = listOf(
+              R.string.pref_gesture_double_tap_left_title,
+              R.string.pref_gesture_double_tap_center_title,
+              R.string.pref_gesture_double_tap_right_title,
+            )
+            actions.forEachIndexed { index, action ->
+              val enabled =
+                action != SingleActionGesture.None &&
+                  !(index == 1 && (action == SingleActionGesture.Seek || tapFraction >= 0.5f))
+              add(
+                buildJsonObject {
+                  put("label", context.getString(if (singles[index]) singleTitles[index] else doubleTitles[index]))
+                  put("single", singles[index])
+                  put("enabled", enabled && !blocked)
+                  put(
+                    "action",
+                    when {
+                      !enabled -> context.getString(R.string.generic_disabled)
+                      action == SingleActionGesture.Seek ->
+                        "${context.getString(action.titleRes)} ${if (index == 0) "-" else "+"}$seekDuration"
+                      else -> context.getString(action.titleRes)
+                    },
+                  )
+                },
+              )
+            }
+          },
+        )
+        put("vertical_hint", context.getString(R.string.gesture_guide_vertical))
+        put("vertical_left", verticalActions?.first ?: context.getString(R.string.generic_disabled))
+        put("vertical_right", verticalActions?.second ?: context.getString(R.string.generic_disabled))
+        put("vertical_enabled", verticalActions != null && !blocked)
+        put("center_reserved", enableCenterSwipeUpGesture || (enableVideoMiniPlayer && !externalPanelShown))
+        if (enableCenterSwipeUpGesture && queue.isExplicitQueue) put("swipe_up", context.getString(R.string.ui_playlist))
+        if (enableVideoMiniPlayer && !externalPanelShown) put("swipe_down", context.getString(R.string.gesture_guide_mini_player))
+        if (useSingleTapForCenter && tapFraction < 0.5f) put("center_note", context.getString(R.string.gesture_guide_center_tap))
+        put(
+          "hints",
+          buildJsonArray {
+            fun hint(icon: String, text: String) {
+              add(
+                buildJsonObject {
+                  put("icon", icon)
+                  put("text", text)
+                },
+              )
+            }
+            if (horizontalSwipeToSeek && !anyPanelShown) {
+              hint("horizontal", context.getString(R.string.pref_player_gestures_horizontal_swipe_to_seek))
+            }
+            if (multipleSpeedGesture > 0f && paused == false) {
+              hint(
+                "hold",
+                context.getString(R.string.gesture_guide_hold_speed, "${nearestHoldSpeedPreset(multipleSpeedGesture)}x"),
+              )
+            }
+            if (pinchToZoomGesture) hint("pinch", context.getString(R.string.pref_player_gestures_pinch_to_zoom))
+            if (panAndZoomEnabled) hint("pan", context.getString(R.string.ui_pan_zoom))
+            if (hasSubtitles) {
+              if (centerVerticalSubtitlePositionGesture && !MpvConfigOverridePolicy.isOwnedByMpvConf("sub-pos")) {
+                hint("subtitles", context.getString(R.string.pref_gesture_center_vertical_subtitle_position_title))
+              }
+              if (pinchToZoomSubtitles && !MpvConfigOverridePolicy.isOwnedByMpvConf("sub-scale")) {
+                hint("pinch", context.getString(R.string.pref_player_gestures_pinch_to_zoom_subtitles))
+              }
+              if (swipeSubtitlesToSeekDialog) {
+                hint("horizontal", context.getString(R.string.pref_player_gestures_swipe_subtitles_to_seek_dialog))
+              }
+            }
+          },
+        )
+      }.toString()
+    LaunchedEffect(data) { PlaybackSession.updateGestureGuide(data) }
+  }
+  LaunchedEffect(statisticsPage) {
+    if (statisticsPage == PlaybackSession.GESTURES_STATISTICS_PAGE) viewModel.hideControls()
+  }
 
   // Isolated tap state tracking
   var tapCount by remember { mutableStateOf(0) }
@@ -1669,10 +1819,23 @@ fun GestureHandler(
           }
         }
 
-  Box(modifier = modifier.fillMaxSize().then(playlistSwipeModifier)) {
+  Box(
+    modifier = modifier.fillMaxSize().onSizeChanged { gestureViewport = it }.then(playlistSwipeModifier),
+  ) {
     Box(modifier = backgroundGestureModifier)
     content()
   }
+}
+
+private fun Color.toGestureGuideColor(): String {
+  val readable = if (luminance() < 0.4f) lerp(this, Color.White, 0.6f) else this
+  return String.format(
+    Locale.ROOT,
+    "%02X%02X%02X",
+    (readable.blue * 255).roundToInt(),
+    (readable.green * 255).roundToInt(),
+    (readable.red * 255).roundToInt(),
+  )
 }
 
 fun calculateNewVerticalGestureValue(

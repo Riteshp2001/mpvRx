@@ -219,6 +219,13 @@
   <string name="pref_player_display_show_status_bar">Mostrar barra de status do sistema com os controles</string>
   <string name="pref_gesture">Gestos</string>
   <string name="pref_gesture_summary">Toque único/duplo, controles de mídia</string>
+  <string name="gesture_guide_hint">Experimente os gestos aqui. Os controles normais continuam ativos.</string>
+  <string name="gesture_guide_locked">Controles bloqueados. Desbloqueie para experimentar.</string>
+  <string name="gesture_guide_panels">Feche o painel aberto para experimentar.</string>
+  <string name="gesture_guide_vertical">Deslize para cima / baixo</string>
+  <string name="gesture_guide_mini_player">Miniplayer</string>
+  <string name="gesture_guide_center_tap">Toques únicos no centro funcionam apenas dentro da área contornada.</string>
+  <string name="gesture_guide_hold_speed">Mantenha pressionado fora das legendas: velocidade %1$s</string>
   <string name="pref_gesture_double_tap_title">Gestos de toque</string>
   <string name="pref_gesture_double_tap_none">Nenhum</string>
   <string name="pref_gesture_double_tap_seek">Buscar</string>

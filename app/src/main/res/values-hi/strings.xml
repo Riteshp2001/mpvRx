@@ -213,6 +213,13 @@
   <string name="pref_player_display_show_status_bar">कंट्रोल्स के साथ सिस्टम स्टेटस बार दिखाएं</string>
   <string name="pref_gesture">जेस्चर</string>
   <string name="pref_gesture_summary">सिंगल/डबल टैप, मीडिया कंट्रोल्स</string>
+  <string name="gesture_guide_hint">यहाँ जेस्चर आज़माएँ। सामान्य नियंत्रण सक्रिय रहते हैं।</string>
+  <string name="gesture_guide_locked">नियंत्रण लॉक हैं। आज़माने के लिए अनलॉक करें।</string>
+  <string name="gesture_guide_panels">आज़माने के लिए खुला पैनल बंद करें।</string>
+  <string name="gesture_guide_vertical">ऊपर / नीचे स्वाइप करें</string>
+  <string name="gesture_guide_mini_player">मिनी प्लेयर</string>
+  <string name="gesture_guide_center_tap">बीच में सिंगल टैप केवल रेखांकित बॉक्स के अंदर काम करता है।</string>
+  <string name="gesture_guide_hold_speed">उपशीर्षकों से दूर दबाकर रखें: %1$s गति</string>
   <string name="pref_gesture_double_tap_title">टैप जेस्चर</string>
   <string name="pref_gesture_double_tap_none">कोई नहीं</string>
   <string name="pref_gesture_double_tap_seek">सीक</string>

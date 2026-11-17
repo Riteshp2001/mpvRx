@@ -219,6 +219,13 @@
   <string name="pref_player_display_show_status_bar">操作中にシステムステータスバーを表示</string>
   <string name="pref_gesture">ジェスチャー</string>
   <string name="pref_gesture_summary">シングル/ダブルタップ、メディア操作</string>
+  <string name="gesture_guide_hint">ここでジェスチャーを試せます。通常の操作も引き続き使えます。</string>
+  <string name="gesture_guide_locked">操作はロック中です。解除して試してください。</string>
+  <string name="gesture_guide_panels">開いているパネルを閉じて試してください。</string>
+  <string name="gesture_guide_vertical">上下にスワイプ</string>
+  <string name="gesture_guide_mini_player">ミニプレーヤー</string>
+  <string name="gesture_guide_center_tap">中央のシングルタップは枠内でのみ動作します。</string>
+  <string name="gesture_guide_hold_speed">字幕以外を長押し：速度 %1$s</string>
   <string name="pref_gesture_double_tap_title">タップジェスチャー</string>
   <string name="pref_gesture_double_tap_none">なし</string>
   <string name="pref_gesture_double_tap_seek">シーク</string>

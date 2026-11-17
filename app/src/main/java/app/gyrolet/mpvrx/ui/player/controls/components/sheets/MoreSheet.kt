@@ -82,6 +82,7 @@ fun MoreSheet(
 ) {
   val advancedPreferences = koinInject<AdvancedPreferences>()
   val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
+  val statisticsPages = remember { (0..6).toList() + listOf(PlaybackSession.GESTURES_STATISTICS_PAGE, 7) }
   val enableLuaScripts by advancedPreferences.enableLuaScripts.collectAsState()
   val selectedLuaScripts by advancedPreferences.selectedLuaScripts.collectAsState()
   val mpvConfStorageLocation by advancedPreferences.mpvConfStorageUri.collectAsState()
@@ -238,19 +239,15 @@ fun MoreSheet(
       LazyRow(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
       ) {
-        items(8, key = { it }) { page ->
+        items(statisticsPages, key = { it }) { page ->
           FilterChip(
             label = {
               Text(
-                if (page == 7) {
-                  "Console"
-                } else {
-                  stringResource(
-                    if (page == 0) {
-                      R.string.player_sheets_tracks_off
-                    } else {
-                      R.string.player_sheets_stats_page_chip
-                    },
+                when (page) {
+                  PlaybackSession.GESTURES_STATISTICS_PAGE -> stringResource(R.string.pref_gesture)
+                  7 -> "Console"
+                  else -> stringResource(
+                    if (page == 0) R.string.player_sheets_tracks_off else R.string.player_sheets_stats_page_chip,
                     page,
                   )
                 },
@@ -260,6 +257,7 @@ fun MoreSheet(
               // One coordinator owns the chips, the preference and mpv's stats.lua state; it
               // closes the console itself and keeps the overlay from being blind-toggled.
               PlaybackSession.setStatisticsPage(page)
+              if (page == PlaybackSession.GESTURES_STATISTICS_PAGE) onDismissRequest()
             },
             selected = statisticsPage == page,
             leadingIcon = null,

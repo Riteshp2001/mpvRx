@@ -302,6 +302,13 @@
   <string name="pref_player_display_show_status_bar">Show system status bar with controls</string>
   <string name="pref_gesture">Gestures</string>
   <string name="pref_gesture_summary">Single/double tap, media controls</string>
+  <string name="gesture_guide_hint">Try gestures here. Your normal controls stay active.</string>
+  <string name="gesture_guide_locked">Controls locked. Unlock to practise.</string>
+  <string name="gesture_guide_panels">Close the open panel to practise.</string>
+  <string name="gesture_guide_vertical">Swipe up / down</string>
+  <string name="gesture_guide_mini_player">Mini player</string>
+  <string name="gesture_guide_center_tap">Center single taps work only inside the outlined box.</string>
+  <string name="gesture_guide_hold_speed">Hold away from subtitles: %1$s speed</string>
   <string name="pref_gesture_double_tap_title">Tap gestures</string>
   <string name="pref_gesture_require_double_tap_title">Require double tap for every seek</string>
   <string name="pref_gesture_require_double_tap_summary">Require a fresh double tap for each seek in double-tap regions. Turn off to keep seeking with single taps while feedback is visible. Single-tap regions are unchanged.</string>

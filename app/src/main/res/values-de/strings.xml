@@ -219,6 +219,13 @@
   <string name="pref_player_display_show_status_bar">Systemstatusleiste mit Steuerelementen anzeigen</string>
   <string name="pref_gesture">Gesten</string>
   <string name="pref_gesture_summary">Einfach-/Doppeltipp, Mediensteuerung</string>
+  <string name="gesture_guide_hint">Probiere hier Gesten aus. Die normale Steuerung bleibt aktiv.</string>
+  <string name="gesture_guide_locked">Steuerung gesperrt. Zum Ausprobieren entsperren.</string>
+  <string name="gesture_guide_panels">Schließe zum Ausprobieren das geöffnete Bedienfeld.</string>
+  <string name="gesture_guide_vertical">Nach oben / unten wischen</string>
+  <string name="gesture_guide_mini_player">Mini-Player</string>
+  <string name="gesture_guide_center_tap">Einzeltipps in der Mitte wirken nur innerhalb des markierten Felds.</string>
+  <string name="gesture_guide_hold_speed">Abseits der Untertitel gedrückt halten: %1$s Geschwindigkeit</string>
   <string name="pref_gesture_double_tap_title">Tippgesten</string>
   <string name="pref_gesture_double_tap_none">Keine</string>
   <string name="pref_gesture_double_tap_seek">Suchen</string>

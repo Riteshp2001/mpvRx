@@ -219,6 +219,13 @@
   <string name="pref_player_display_show_status_bar">Показывать системную строку состояния вместе с элементами управления</string>
   <string name="pref_gesture">Жесты</string>
   <string name="pref_gesture_summary">Одиночное/двойное касание, управление мультимедиа</string>
+  <string name="gesture_guide_hint">Пробуйте жесты здесь. Обычное управление остаётся активным.</string>
+  <string name="gesture_guide_locked">Управление заблокировано. Разблокируйте, чтобы попробовать.</string>
+  <string name="gesture_guide_panels">Закройте открытую панель, чтобы попробовать.</string>
+  <string name="gesture_guide_vertical">Смахните вверх / вниз</string>
+  <string name="gesture_guide_mini_player">Мини-плеер</string>
+  <string name="gesture_guide_center_tap">Одиночные касания в центре работают только внутри рамки.</string>
+  <string name="gesture_guide_hold_speed">Удерживайте вне субтитров: скорость %1$s</string>
   <string name="pref_gesture_double_tap_title">Жесты касанием</string>
   <string name="pref_gesture_double_tap_none">Нет</string>
   <string name="pref_gesture_double_tap_seek">Перемотка</string>
