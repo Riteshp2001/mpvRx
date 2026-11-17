@@ -28,6 +28,7 @@ import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlPlaylistMode
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpInstallationStatus
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpReleaseChannel
+import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpCookieControls
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
@@ -220,7 +221,14 @@ internal fun YtdlpManagerSections(modifier: Modifier = Modifier) {
               )
           }
 
-          PreferenceSectionHeader(position = PreferenceSectionPosition.Last, 
+          PreferenceSectionHeader(
+            position = PreferenceSectionPosition.Middle,
+            title = stringResource(R.string.ytdlp_cookies_title),
+            modifier = Modifier.settingsSearchTarget(R.string.ytdlp_cookies_title),
+          )
+          YtdlpCookieControls(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+
+          PreferenceSectionHeader(position = PreferenceSectionPosition.Last,
             title = stringResource(R.string.ytdlp_playlist_behavior),
             modifier = Modifier.settingsSearchTarget(R.string.ytdlp_playlist_behavior),
           )

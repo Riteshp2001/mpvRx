@@ -120,6 +120,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.panels.toColorHexString
 import app.gyrolet.mpvrx.ui.player.components.VideoAmbientBackground
 import app.gyrolet.mpvrx.ui.player.components.rememberVideoAmbientFrame
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
+import app.gyrolet.mpvrx.ui.player.ytdlp.YouTubeAuthenticationRecovery
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.ui.remote.RemotePairingPrompt
 import app.gyrolet.mpvrx.ui.torrent.torrentSelectionActivityClass
@@ -406,6 +407,7 @@ class PlayerActivity :
   private var acceptedPreparedPlaybackLaunch: PreparedPlaybackLaunch? = null
   private var scriptRuntimeRestartPending = false
   private var coreRecoveryPending = false
+  private var youtubeAuthenticationRecovery: PendingMediaLoadRecovery? = null
 
   /**
    * Playlist ID for tracking play history (optional, only for custom playlists)
@@ -1376,6 +1378,7 @@ class PlayerActivity :
               onMinimize = ::minimizeFromHandOff,
             )
             RemotePairingPrompt()
+            YouTubeAuthenticationRecovery(onRetry = ::retryAfterYouTubeCookieImport)
           }
         }
       }
@@ -3037,6 +3040,7 @@ class PlayerActivity :
     PlaybackActivityOwner.beginRequest(playbackOwnerToken) {
       lastExitBackPressAtMs = null
       subtitleAutoloadJob?.cancel()
+      youtubeAuthenticationRecovery = null
       mediaRequestGeneration++
     }
 
@@ -4978,6 +4982,7 @@ class PlayerActivity :
         if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) restartAfterCoreShutdown()
       }
       MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> {
+        youtubeAuthenticationRecovery = null
         val loadGeneration = PlaybackSession.state.value.activeGeneration
         if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return
         val recovery = pendingMediaLoadRecovery
@@ -6707,6 +6712,11 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     playbackLoadWatchdogJob = null
     pendingMediaLoadRecovery = null
 
+    val session = PlaybackSession.state.value
+    if (session.generation == request.generation && session.youtubeAuthenticationRequired) {
+      finishPlaybackLoadFailure(request, error)
+      return
+    }
     if (request.attempt >= MAX_PLAYBACK_LOAD_RETRIES || isFinishing || isDestroyed || player.isExiting) {
       finishPlaybackLoadFailure(request, error)
       return
@@ -6762,8 +6772,58 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     val message = error?.takeIf { it.isNotBlank() } ?: "Media did not become ready"
     PlaybackSession.reportLoadTimeout(request.generation, message)
     viewModel.onVideoLoadCompleted()
-    viewModel.showToast(getString(R.string.toast_playback_load_failed))
+    val session = PlaybackSession.state.value
+    if (session.generation == request.generation && session.youtubeAuthenticationRequired) {
+      youtubeAuthenticationRecovery = request
+      viewModel.showControls()
+    } else {
+      viewModel.showToast(getString(R.string.toast_playback_load_failed))
+    }
     Log.e(TAG, "Media load failed after recovery: $message")
+  }
+
+  private fun retryAfterYouTubeCookieImport(generation: Long): Boolean {
+    val session = PlaybackSession.state.value
+    val item = session.currentItem ?: return false
+    if (session.generation != generation || session.phase != PlaybackPhase.ERROR ||
+      !session.youtubeAuthenticationRequired || isFinishing || isDestroyed
+    ) return false
+    val failed =
+      youtubeAuthenticationRecovery?.takeIf { it.generation == generation }
+        ?: pendingMediaLoadRecovery?.takeIf { it.generation == generation }
+    if (!beginMediaRequest()) return false
+    val requestGeneration = mediaRequestGeneration
+    mediaLoadJob?.cancel()
+    cancelPlaybackLoadRecovery()
+    isReady = false
+    playWhenFileLoaded = true
+    viewModel.onVideoLoadStarted()
+    mediaLoadJob = lifecycleScope.launch(mediaLoadDispatcher) {
+      try {
+        if (!isCurrentMediaRequest(requestGeneration) || !PlaybackSession.isCurrentGeneration(generation)) {
+          return@launch
+        }
+        issuePlaybackLoad(
+          item = item,
+          attempt = MAX_PLAYBACK_LOAD_RETRIES,
+          requestGeneration = requestGeneration,
+          legacyMediaIdentifier = failed?.legacyMediaIdentifier ?: legacyMediaIdentifier,
+          ytdlFormat = failed?.ytdlFormat,
+          positionRestoreOverride = failed?.positionRestoreOverride,
+        )
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (error: Exception) {
+        Log.e(TAG, "Could not retry YouTube playback after cookie import", error)
+        withContext(Dispatchers.Main) {
+          if (!isCurrentMediaRequest(requestGeneration)) return@withContext
+          playWhenFileLoaded = false
+          viewModel.onVideoLoadCompleted()
+          viewModel.showToast(getString(R.string.toast_playback_load_failed))
+        }
+      }
+    }
+    return true
   }
 
   private fun cancelPlaybackLoadRecovery() {

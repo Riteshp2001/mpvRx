@@ -31,6 +31,7 @@ import app.gyrolet.mpvrx.preferences.SpatialAudioMode
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.utils.media.HttpUtils
+import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpCookies
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 import kotlinx.coroutines.CancellationException
@@ -72,6 +73,7 @@ data class PlaybackSessionState(
   val paused: Boolean = true,
   val currentItem: PlaybackItem? = null,
   val error: String? = null,
+  val youtubeAuthenticationRequired: Boolean = false,
   /** Why the current network media is waiting for data, or null while it plays (or is local). */
   val bufferingReason: BufferingReason? = null,
 ) {
@@ -157,7 +159,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private val nativeEvents = CoroutineScope(SupervisorJob() + Dispatchers.Default.limitedParallelism(1))
   private var nativeObserver: NativeEventObserver? = null
 
-  private class NativeEventObserver : MPVLib.EventObserver {
+  private class NativeEventObserver : MPVLib.EventObserver, MPVLib.LogObserver {
     @Volatile private var fileGeneration: Long? = null
 
     private fun enqueue(eventId: Int? = null, coreEvent: Boolean = false, action: () -> Unit) {
@@ -187,6 +189,24 @@ object PlaybackSession : MPVLib.EventObserver {
     override fun eventProperty(property: String, value: MPVNode) =
       enqueue(coreEvent = property == STATISTICS_STATE_PROPERTY) { PlaybackSession.eventProperty(property, value) }
 
+    override fun logMessage(prefix: String, level: Int, text: String) {
+      if (prefix != "ytdl_hook" || level > MPVLib.MpvLogLevel.MPV_LOG_LEVEL_ERROR ||
+        !YtdlpCookies.isAuthenticationError(text)
+      ) return
+      val generation = fileGeneration ?: return
+      enqueue {
+        val current = _state.value
+        if (current.generation == generation &&
+          current.phase in setOf(PlaybackPhase.LOADING, PlaybackPhase.ERROR) &&
+          current.currentItem?.let { item ->
+            sequenceOf(item.originalUri, item.playableUri).any(YtdlpCookies::isYouTubeSource)
+          } == true
+        ) {
+          updateState { it.copy(youtubeAuthenticationRequired = true) }
+        }
+      }
+    }
+
     override fun event(eventId: Int, data: MPVNode) {
       if (eventId == MPVLib.MpvEvent.MPV_EVENT_START_FILE) fileGeneration = _state.value.generation
       enqueue(eventId) { PlaybackSession.event(eventId, data) }
@@ -198,6 +218,7 @@ object PlaybackSession : MPVLib.EventObserver {
     val observer = nativeObserver ?: return
     nativeObserver = null
     MPVLib.removeObserver(observer)
+    MPVLib.removeLogObserver(observer)
   }
 
   private val BUFFERING_STATUS_PROPERTIES = setOf("pause", "paused-for-cache", "seeking", "demuxer-via-network", "eof-reached")
@@ -629,6 +650,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
           NativeEventObserver().also { observer ->
             nativeObserver = observer
             MPVLib.addObserver(observer)
+            MPVLib.addLogObserver(observer)
           }
           reobserveTrackedProperties()
           observeProperties()
@@ -1571,6 +1593,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
           paused = holdForPositionRestore || desiredPaused,
           currentItem = resolvedItem,
           error = null,
+          youtubeAuthenticationRequired = false,
         )
       }
       clearTimelinePropertiesLocked()
@@ -2675,6 +2698,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
                 activeGeneration = it.generation,
                 paused = appliedPaused,
                 error = null,
+                youtubeAuthenticationRequired = false,
               )
             }
             propBoolean.emit("pause", appliedPaused)

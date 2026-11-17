@@ -169,10 +169,6 @@ class BrowserPreferences(
   val showFolderPath = preferenceStore.getBoolean("show_folder_path", false)
   val showFolderThumbnails = preferenceStore.getBoolean("show_folder_thumbnails", false)
 
-  // "Continue Watching" carousel at the top of Home (off by default)
-  val showContinueWatching = preferenceStore.getBoolean("show_continue_watching", false)
-  val continueWatchingExpanded = preferenceStore.getBoolean("continue_watching_expanded", true)
-
   // Auto-scroll to last played media preference (like MX Player)
   val autoScrollToLastPlayed = preferenceStore.getBoolean("auto_scroll_to_last_played", false)
 
