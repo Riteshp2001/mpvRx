@@ -1249,7 +1249,7 @@
   <string name="diagnostics_process_memory">Process</string>
   <string name="diagnostics_process_memory_value">PSS %1$s | Java %2$s/%3$s | Native %4$s</string>
   <string name="diagnostics_playback_cache">Playback</string>
-  <string name="diagnostics_playback_cache_value">Buffered %1$.1f s | Packets %2$s | File %3$s</string>
+  <string name="diagnostics_playback_cache_value">Buffered %1$.1f s | Packets %2$s | Disk cache %3$s</string>
   <string name="toast_failed_to_read_file">Failed to read file: %1$s</string>
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (Experimental)</string>
   <string name="hdr_mode_off">Off</string>

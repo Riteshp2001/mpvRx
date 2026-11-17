@@ -124,10 +124,11 @@ internal class StatisticsDiagnostics(
     val activeSeconds = activeTimeMs / 1000L
     val cacheText =
       PlaybackSession.readLoadedMedia(state.generation) { properties ->
+        val cache = properties.node("demuxer-cache-state")?.asMap() ?: return@readLoadedMedia null
         Triple(
-          properties.double("demuxer-cache-duration"),
-          properties.double("demuxer-cache-state/fw-bytes"),
-          properties.double("demuxer-cache-state/file-cache-bytes"),
+          cache["cache-duration"]?.asDouble() ?: properties.double("demuxer-cache-duration"),
+          cache["fw-bytes"]?.asInt(),
+          cache["file-cache-bytes"]?.asInt(),
         )
       }?.let { (duration, packets, file) ->
         duration?.takeIf { it.isFinite() && it >= 0.0 }?.let {
@@ -135,7 +136,7 @@ internal class StatisticsDiagnostics(
             R.string.diagnostics_playback_cache_value,
             it,
             formatCacheBytes(packets),
-            formatCacheBytes(file),
+            file?.let(::formatCacheBytes) ?: context.getString(R.string.generic_disabled),
           )
         }
       }
@@ -308,6 +309,6 @@ internal class StatisticsDiagnostics(
       )
     }
 
-  private fun formatCacheBytes(value: Double?): String =
-    value?.takeIf { it.isFinite() && it >= 0.0 }?.let { formatTorrentBytes(it.toLong()) } ?: "--"
+  private fun formatCacheBytes(value: Long?): String =
+    value?.takeIf { it >= 0L }?.let(::formatTorrentBytes) ?: "--"
 }

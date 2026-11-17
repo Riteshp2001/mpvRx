@@ -931,7 +931,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="diagnostics_process_memory">Prozess</string>
   <string name="diagnostics_process_memory_value">PSS %1$s | Java %2$s/%3$s | Nativ %4$s</string>
   <string name="diagnostics_playback_cache">Wiedergabe</string>
-  <string name="diagnostics_playback_cache_value">Gepuffert %1$.1f s | Pakete %2$s | Datei %3$s</string>
+  <string name="diagnostics_playback_cache_value">Gepuffert %1$.1f s | Pakete %2$s | Disk-Cache %3$s</string>
   <string name="toast_failed_to_read_file">Datei konnte nicht gelesen werden: %1$s</string>
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (Experimentell)</string>
   <string name="hdr_mode_off">Aus</string>

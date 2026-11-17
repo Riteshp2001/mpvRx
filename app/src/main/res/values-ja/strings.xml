@@ -927,7 +927,7 @@
   <string name="diagnostics_process_memory">プロセス</string>
   <string name="diagnostics_process_memory_value">PSS %1$s | Java %2$s/%3$s | ネイティブ %4$s</string>
   <string name="diagnostics_playback_cache">再生</string>
-  <string name="diagnostics_playback_cache_value">バッファ %1$.1f 秒 | パケット %2$s | ファイル %3$s</string>
+  <string name="diagnostics_playback_cache_value">バッファ %1$.1f 秒 | パケット %2$s | ディスクキャッシュ %3$s</string>
   <string name="toast_failed_to_read_file">ファイルを読み込めませんでした: %1$s</string>
   <string name="pref_decoder_vulkan_experimental_title">Vulkan（試験的）</string>
   <string name="hdr_mode_off">オフ</string>

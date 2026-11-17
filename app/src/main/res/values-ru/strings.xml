@@ -939,7 +939,7 @@
   <string name="diagnostics_process_memory">Процесс</string>
   <string name="diagnostics_process_memory_value">PSS %1$s | Java %2$s/%3$s | Нативная %4$s</string>
   <string name="diagnostics_playback_cache">Воспроизведение</string>
-  <string name="diagnostics_playback_cache_value">В буфере %1$.1f с | Пакеты %2$s | Файл %3$s</string>
+  <string name="diagnostics_playback_cache_value">В буфере %1$.1f с | Пакеты %2$s | Дисковый кэш %3$s</string>
   <string name="toast_failed_to_read_file">Не удалось прочитать файл: %1$s</string>
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (экспериментально)</string>
   <string name="hdr_mode_off">Выкл.</string>

@@ -931,7 +931,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="diagnostics_process_memory">Processus</string>
   <string name="diagnostics_process_memory_value">PSS %1$s | Java %2$s/%3$s | Mémoire native %4$s</string>
   <string name="diagnostics_playback_cache">Lecture</string>
-  <string name="diagnostics_playback_cache_value">En mémoire tampon %1$.1f s | Paquets %2$s | Fichier %3$s</string>
+  <string name="diagnostics_playback_cache_value">En mémoire tampon %1$.1f s | Paquets %2$s | Cache disque %3$s</string>
   <string name="toast_failed_to_read_file">Impossible de lire le fichier : %1$s</string>
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (Expérimental)</string>
   <string name="hdr_mode_off">Désactivé</string>

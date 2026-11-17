@@ -845,7 +845,7 @@
   <string name="diagnostics_process_memory">प्रोसेस</string>
   <string name="diagnostics_process_memory_value">PSS %1$s | Java %2$s/%3$s | नेटिव %4$s</string>
   <string name="diagnostics_playback_cache">प्लेबैक</string>
-  <string name="diagnostics_playback_cache_value">बफ़र %1$.1f सेकंड | पैकेट %2$s | फ़ाइल %3$s</string>
+  <string name="diagnostics_playback_cache_value">बफ़र %1$.1f सेकंड | पैकेट %2$s | डिस्क कैश %3$s</string>
   <string name="toast_failed_to_read_file">फाइल पढ़ना नाकाम: %1$s</string>
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (प्रायोगिक)</string>
   <string name="hdr_mode_off">बंद</string>
