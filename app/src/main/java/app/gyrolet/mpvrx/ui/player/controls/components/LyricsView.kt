@@ -77,7 +77,10 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -138,6 +141,7 @@ fun LyricsView(
   val isAudiobook = playbackState.currentItem?.audiobook != null
   val precisePosition by viewModel.precisePosition.collectAsState()
   val listState = rememberLazyListState()
+  val plainListState = rememberLazyListState()
   val density = LocalDensity.current
   var lyricsViewportPx by remember { mutableIntStateOf(0) }
   // When a sheet-level callback is provided the translate dialog is shown at the top-level
@@ -517,7 +521,7 @@ fun LyricsView(
 
             activeLyrics != null && !activeLyrics.plain.isNullOrEmpty() -> {
               LazyColumn(
-              state = plainListState,
+                state = plainListState,
                 modifier = Modifier.fillMaxSize(),
                 userScrollEnabled = interactive,
                 verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -577,7 +581,7 @@ fun LyricsView(
             }
           }
         }
-        lyricsStack(interactive = true)
+        lyricsStack(true)
 
         // Progressive blur: the same lyrics rendered a second time, blurred and masked
         // so only a band at each edge stays visible - text softens out instead of
@@ -586,7 +590,7 @@ fun LyricsView(
           Box(
             modifier = Modifier
               .fillMaxSize()
-              .blur(22.dp, edgeTreatment = BlurredEdgeTreatment.Clamp)
+              .blur(22.dp, edgeTreatment = BlurredEdgeTreatment.Unbounded)
               .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
               .drawWithContent {
                 drawContent()
@@ -602,7 +606,7 @@ fun LyricsView(
               },
             contentAlignment = Alignment.Center,
           ) {
-            lyricsStack(interactive = false)
+            lyricsStack(false)
           }
         }
       }
