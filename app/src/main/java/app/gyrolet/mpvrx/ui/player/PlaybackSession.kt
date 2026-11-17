@@ -852,7 +852,14 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         DolbyVisionDirect.attachOsdSurface(surface)
         MPVLib.setPropertyString("android-osd-surface-size", "${width}x$height")
         attachedOsdOwner = owner
-        setDolbyVisionOutputLocked("direct")
+        // Direct output makes FongMi's FFmpeg insist on a native Dolby Vision MediaCodec
+        // decoder and fail the whole video track when the device has none (for example
+        // HDR10-only phones playing profile 8.1 through MediaCodec embed end up with audio
+        // and no picture). Only request it when a DV decoder actually exists; "configured"
+        // keeps the embed output and lets the decoder fall back to the base layer.
+        setDolbyVisionOutputLocked(
+          if (DolbyVisionDirect.hasDolbyVisionDecoder) "direct" else "configured",
+        )
       }.onFailure { error ->
         Log.e(TAG, "Could not attach the subtitle overlay Surface", error)
         detachOsdSurfaceLocked()
