@@ -659,6 +659,9 @@ object FileTypeUtils {
       "truehd",
       "mid",
       "midi",
+      // MPEG-4 Audio LATM/LOAS streams (the mime Android's codec list reports for AAC)
+      "latm",
+      "loas",
       // Everything else that carries audio: ringtones, patched lossless, legacy and
       // archivist formats. Kept in one place so pickers, scanners and mime mapping agree.
       "m4r",
@@ -769,6 +772,7 @@ object FileTypeUtils {
       "iso" -> "application/x-iso9660-image"
       "mp1", "mp2", "mp3", "mpa" -> "audio/mpeg"
       "m4a", "m4b", "m4r", "f4a", "aac" -> "audio/mp4"
+      "latm", "loas" -> "audio/mp4a-latm"
       "flac" -> "audio/flac"
       "ogg", "oga", "opus", "spx" -> "audio/ogg"
       "wav", "wave" -> "audio/wav"

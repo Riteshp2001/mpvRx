@@ -369,6 +369,8 @@ object MediaInfoParser {
       "m4b",
       "m4r",
       "flac",
+      "latm",
+      "loas",
       "ogg",
       "oga",
       "opus",

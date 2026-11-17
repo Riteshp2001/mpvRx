@@ -2135,6 +2135,21 @@
                 <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.rmi" />
                 <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.rmi" />
                 <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.rmi" />
+                <data android:pathPattern=".*\\.latm" />
+                <data android:pathPattern=".*\\..*\\.latm" />
+                <data android:pathPattern=".*\\..*\\..*\\.latm" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.latm" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.latm" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.latm" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.latm" />
+
+                <data android:pathPattern=".*\\.loas" />
+                <data android:pathPattern=".*\\..*\\.loas" />
+                <data android:pathPattern=".*\\..*\\..*\\.loas" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.loas" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\.loas" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\.loas" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\.loas" />
             </intent-filter>
 
             <!-- Extractor-site handlers are declared only by the sideload manifest. -->

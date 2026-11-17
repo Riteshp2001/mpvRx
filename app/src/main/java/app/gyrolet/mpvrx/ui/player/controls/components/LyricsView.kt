@@ -219,354 +219,390 @@ fun LyricsView(
         contentAlignment = Alignment.Center,
       ) {
         val activeLyrics = state.lyrics
-        when {
-          state.isLoading && activeLyrics == null -> {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-              CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-              Spacer(modifier = Modifier.height(12.dp))
-              val loadingLine = rememberPlaceholderLine(LyricsPlaceholders.LOADING, PLACEHOLDER_ROTATE_MS)
-              Text(
-                text = loadingLine,
-                fontFamily = fontFamilyForText(loadingLine),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-              )
+        // Only the scrolling lists need the edge treatment; static placeholders do not.
+        val showEdgeBlur = activeLyrics != null &&
+          (!activeLyrics.synced.isNullOrEmpty() || !activeLyrics.plain.isNullOrEmpty())
+        val lyricsStack: @Composable (Boolean) -> Unit = { interactive ->
+          when {
+            state.isLoading && activeLyrics == null -> {
+              Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.height(12.dp))
+                val loadingLine = rememberPlaceholderLine(LyricsPlaceholders.LOADING, PLACEHOLDER_ROTATE_MS)
+                Text(
+                  text = loadingLine,
+                  fontFamily = fontFamilyForText(loadingLine),
+                  textAlign = TextAlign.Center,
+                  style = MaterialTheme.typography.bodyMedium,
+                  fontWeight = FontWeight.Bold,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
             }
-          }
 
-          activeLyrics != null && !activeLyrics.synced.isNullOrEmpty() -> {
-            val centerPadding = with(density) { (lyricsViewportPx / 2f).toDp() }
-            // A duet puts the answering singer on the opposite edge; a solo song stays centred.
-            val hasDuet = remember(activeLyrics) { activeLyrics.synced.any { it.alignEnd } }
-            LazyColumn(
-              state = listState,
-              modifier = Modifier.fillMaxSize(),
-              verticalArrangement = Arrangement.spacedBy(18.dp),
-              contentPadding = PaddingValues(vertical = centerPadding),
-            ) {
-              itemsIndexed(
-                items = activeLyrics.synced,
-                key = { index, line -> "${line.time}_${index}" },
-                contentType = { _, _ -> "lyric_synced_line" },
-              ) { index, line ->
-                val isPrimaryLine = index == state.activeLineIndex
-                // Voices overlap: a line whose words are still being sung stays lit
-                // after the next one has taken over the cursor.
-                val stillSinging by remember(line) {
-                  derivedStateOf {
-                    val end = line.endTime
-                    end != null && !line.words.isNullOrEmpty() &&
-                      smoothPositionMs.value in line.time.toLong() until end.toLong()
+            activeLyrics != null && !activeLyrics.synced.isNullOrEmpty() -> {
+              val centerPadding = with(density) { (lyricsViewportPx / 2f).toDp() }
+              // A duet puts the answering singer on the opposite edge; a solo song stays centred.
+              val hasDuet = remember(activeLyrics) { activeLyrics.synced.any { it.alignEnd } }
+              LazyColumn(
+                state = listState,
+                userScrollEnabled = interactive,
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+                contentPadding = PaddingValues(vertical = centerPadding),
+              ) {
+                itemsIndexed(
+                  items = activeLyrics.synced,
+                  key = { index, line -> "${line.time}_${index}" },
+                  contentType = { _, _ -> "lyric_synced_line" },
+                ) { index, line ->
+                  val isPrimaryLine = index == state.activeLineIndex
+                  // Voices overlap: a line whose words are still being sung stays lit
+                  // after the next one has taken over the cursor.
+                  val stillSinging by remember(line) {
+                    derivedStateOf {
+                      val end = line.endTime
+                      end != null && !line.words.isNullOrEmpty() &&
+                        smoothPositionMs.value in line.time.toLong() until end.toLong()
+                    }
                   }
-                }
-                val isActiveLine = isPrimaryLine || stillSinging
-                // The backing voice shows only while it is itself being sung (a short
-                // lead-in and tail keep it from flickering at the edges).
-                val backingSinging by remember(line) {
-                  derivedStateOf {
-                    val backing = line.background ?: return@derivedStateOf false
-                    val start = backing.time.toLong() - BACKING_LEAD_IN_MS
-                    val end =
-                      (backing.endTime ?: line.endTime)?.toLong()?.plus(BACKING_TAIL_MS)
-                        ?: (backing.time.toLong() + 3_000L)
-                    smoothPositionMs.value in start until end
+                  val isActiveLine = isPrimaryLine || stillSinging
+                  // The backing voice shows only while it is itself being sung (a short
+                  // lead-in and tail keep it from flickering at the edges).
+                  val backingSinging by remember(line) {
+                    derivedStateOf {
+                      val backing = line.background ?: return@derivedStateOf false
+                      val start = backing.time.toLong() - BACKING_LEAD_IN_MS
+                      val end =
+                        (backing.endTime ?: line.endTime)?.toLong()?.plus(BACKING_TAIL_MS)
+                          ?: (backing.time.toLong() + 3_000L)
+                      smoothPositionMs.value in start until end
+                    }
                   }
-                }
-                // Once the lead has finished and the backing voice carries on, the lead
-                // stops being lit even though it still owns the line cursor.
-                val leadFinished by remember(line) {
-                  derivedStateOf {
-                    val end = line.endTime
-                    end != null && !line.words.isNullOrEmpty() &&
-                      smoothPositionMs.value >= end.toLong() + LEAD_DONE_GRACE_MS
+                  // Once the lead has finished and the backing voice carries on, the lead
+                  // stops being lit even though it still owns the line cursor.
+                  val leadFinished by remember(line) {
+                    derivedStateOf {
+                      val end = line.endTime
+                      end != null && !line.words.isNullOrEmpty() &&
+                        smoothPositionMs.value >= end.toLong() + LEAD_DONE_GRACE_MS
+                    }
                   }
-                }
-                val leadLit = isActiveLine && !(leadFinished && line.background != null && backingSinging)
-                val rowAlignment: Alignment.Horizontal =
-                  when {
-                    !hasDuet -> Alignment.CenterHorizontally
-                    line.alignEnd -> Alignment.End
-                    else -> Alignment.Start
-                  }
-                val rowArrangement: Arrangement.Horizontal =
-                  when {
-                    !hasDuet -> Arrangement.Center
-                    line.alignEnd -> Arrangement.End
-                    else -> Arrangement.Start
-                  }
-                val rowTextAlign =
-                  when {
-                    !hasDuet -> TextAlign.Center
-                    line.alignEnd -> TextAlign.End
-                    else -> TextAlign.Start
-                  }
-                val (ogText, transText) = remember(line.line, line.translation, translationDisplayMode) {
-                  val rawTrans = line.translation?.trim()
-                  if (translationDisplayMode == LyricsTranslationDisplayMode.Replace && !rawTrans.isNullOrBlank()) {
-                    Pair(rawTrans, null)
-                  } else if (!rawTrans.isNullOrBlank() && !rawTrans.equals(line.line.trim(), ignoreCase = true)) {
-                    Pair(line.line.trim(), rawTrans)
-                  } else if (line.line.contains("\n")) {
-                    val parts = line.line.split("\n", limit = 2)
-                    Pair(parts[0].trim(), parts.getOrNull(1)?.trim())
-                  } else if (line.line.contains(" / ")) {
-                    val parts = line.line.split(" / ", limit = 2)
-                    Pair(parts[0].trim(), parts.getOrNull(1)?.trim())
-                  } else if (line.line.contains(" | ")) {
-                    val parts = line.line.split(" | ", limit = 2)
-                    Pair(parts[0].trim(), parts.getOrNull(1)?.trim())
-                  } else {
-                    Pair(line.line.trim(), null)
-                  }
-                }
-
-                val isBlankLine = ogText.isBlank()
-                val displayText = if (isBlankLine) ". . ." else ogText
-                val hasTranslation = !transText.isNullOrBlank()
-
-                val distanceFromActive =
-                  if (state.activeLineIndex >= 0) kotlin.math.abs(index - state.activeLineIndex) else 0
-
-                val lineAlpha by animateFloatAsState(
-                  targetValue =
+                  val leadLit = isActiveLine && !(leadFinished && line.background != null && backingSinging)
+                  val rowAlignment: Alignment.Horizontal =
                     when {
-                      isActiveLine -> 1.0f
-                      distanceFromActive == 1 -> 0.74f
-                      distanceFromActive == 2 -> 0.52f
-                      else -> 0.34f
-                    },
-                  animationSpec = tween(durationMillis = if (isActiveLine) 320 else 460, easing = FastOutSlowInEasing),
-                  label = "LineAlpha",
-                )
-
-                val lineScale by animateFloatAsState(
-                  targetValue = if (isActiveLine) 1.025f else 0.985f,
-                  animationSpec = spring(dampingRatio = 0.86f, stiffness = 220f),
-                  label = "LineScale",
-                )
-
-                val lineBlur by animateDpAsState(
-                  targetValue =
+                      !hasDuet -> Alignment.CenterHorizontally
+                      line.alignEnd -> Alignment.End
+                      else -> Alignment.Start
+                    }
+                  val rowArrangement: Arrangement.Horizontal =
                     when {
-                      isActiveLine || state.activeLineIndex < 0 -> 0.dp
-                      distanceFromActive == 1 -> 0.6.dp
-                      distanceFromActive == 2 -> 1.0.dp
-                      else -> 0.dp
-                    },
-                  animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
-                  label = "LineBlur",
-                )
+                      !hasDuet -> Arrangement.Center
+                      line.alignEnd -> Arrangement.End
+                      else -> Arrangement.Start
+                    }
+                  val rowTextAlign =
+                    when {
+                      !hasDuet -> TextAlign.Center
+                      line.alignEnd -> TextAlign.End
+                      else -> TextAlign.Start
+                    }
+                  val (ogText, transText) = remember(line.line, line.translation, translationDisplayMode) {
+                    val rawTrans = line.translation?.trim()
+                    if (translationDisplayMode == LyricsTranslationDisplayMode.Replace && !rawTrans.isNullOrBlank()) {
+                      Pair(rawTrans, null)
+                    } else if (!rawTrans.isNullOrBlank() && !rawTrans.equals(line.line.trim(), ignoreCase = true)) {
+                      Pair(line.line.trim(), rawTrans)
+                    } else if (line.line.contains("\n")) {
+                      val parts = line.line.split("\n", limit = 2)
+                      Pair(parts[0].trim(), parts.getOrNull(1)?.trim())
+                    } else if (line.line.contains(" / ")) {
+                      val parts = line.line.split(" / ", limit = 2)
+                      Pair(parts[0].trim(), parts.getOrNull(1)?.trim())
+                    } else if (line.line.contains(" | ")) {
+                      val parts = line.line.split(" | ", limit = 2)
+                      Pair(parts[0].trim(), parts.getOrNull(1)?.trim())
+                    } else {
+                      Pair(line.line.trim(), null)
+                    }
+                  }
 
-                val activeColor = MaterialTheme.colorScheme.onSurface
-                val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f)
+                  val isBlankLine = ogText.isBlank()
+                  val displayText = if (isBlankLine) ". . ." else ogText
+                  val hasTranslation = !transText.isNullOrBlank()
 
-                val lineColor by animateColorAsState(
-                  targetValue = if (leadLit) activeColor else inactiveColor,
-                  animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
-                  label = "LineColor",
-                )
+                  val distanceFromActive =
+                    if (state.activeLineIndex >= 0) kotlin.math.abs(index - state.activeLineIndex) else 0
 
-                Column(
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .then(
-                      if (lineBlur > 0.dp) {
-                        Modifier.blur(
-                          lineBlur,
-                          edgeTreatment = BlurredEdgeTreatment(RoundedCornerShape(8.dp)),
-                        )
-                      } else {
-                        Modifier
+                  val lineAlpha by animateFloatAsState(
+                    targetValue =
+                      when {
+                        isActiveLine -> 1.0f
+                        distanceFromActive == 1 -> 0.74f
+                        distanceFromActive == 2 -> 0.52f
+                        else -> 0.34f
                       },
-                    )
-                    .graphicsLayer {
-                      alpha = lineAlpha
-                      scaleX = lineScale
-                      scaleY = lineScale
-                      transformOrigin =
-                        TransformOrigin(
-                          when {
-                            !hasDuet -> 0.5f
-                            line.alignEnd -> 1f
-                            else -> 0f
-                          },
-                          0.5f,
-                        )
-                    }
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable {
-                      onTap?.invoke()
-                      if (!isLyricsFullscreen) {
-                        val targetSeconds = line.time / 1000f
-                        PlaybackSession.command("seek", targetSeconds.toString(), "absolute+exact")
-                      }
-                    }
-                    .padding(vertical = 4.dp, horizontal = 6.dp),
-                  horizontalAlignment = rowAlignment,
-                ) {
-                  if (leadLit && !isBlankLine && !line.words.isNullOrEmpty()) {
-                    val isRtl = displayText.hasRtlDirection()
-                    CompositionLocalProvider(
-                      LocalLayoutDirection provides if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr,
-                    ) {
-                      FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = rowArrangement,
-                        verticalArrangement = Arrangement.Center,
-                      ) {
-                        line.words.forEachIndexed { wordIndex, word ->
-                          val wordStartMs = word.time.toLong()
-                          val wordEndMs =
-                            line.words.getOrNull(wordIndex + 1)?.time?.toLong()
-                              ?.takeIf { it > wordStartMs }
-                              ?: line.endTime?.toLong()?.takeIf { it > wordStartMs }
-                              ?: activeLyrics.synced.getOrNull(index + 1)?.time?.toLong()
-                                ?.coerceAtMost(line.time.toLong() + 8_000L)
-                                ?.takeIf { it > wordStartMs }
-                              ?: (wordStartMs + 600L)
-                          AnimatedLyricWord(
-                            word = word,
-                            endTimeMs = wordEndMs,
-                            positionMs = smoothPositionMs,
-                            activeColor = activeColor,
-                            inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                            fontSize = if (isLyricsFullscreen) 30.sp else 26.sp,
-                            isRtl = isRtl,
+                    animationSpec = tween(durationMillis = if (isActiveLine) 320 else 460, easing = FastOutSlowInEasing),
+                    label = "LineAlpha",
+                  )
+
+                  val lineScale by animateFloatAsState(
+                    targetValue = if (isActiveLine) 1.025f else 0.985f,
+                    animationSpec = spring(dampingRatio = 0.86f, stiffness = 220f),
+                    label = "LineScale",
+                  )
+
+                  val lineBlur by animateDpAsState(
+                    targetValue =
+                      when {
+                        isActiveLine || state.activeLineIndex < 0 -> 0.dp
+                        distanceFromActive == 1 -> 0.6.dp
+                        distanceFromActive == 2 -> 1.0.dp
+                        else -> 0.dp
+                      },
+                    animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+                    label = "LineBlur",
+                  )
+
+                  val activeColor = MaterialTheme.colorScheme.onSurface
+                  val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.62f)
+
+                  val lineColor by animateColorAsState(
+                    targetValue = if (leadLit) activeColor else inactiveColor,
+                    animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+                    label = "LineColor",
+                  )
+
+                  Column(
+                    modifier = Modifier
+                      .fillMaxWidth()
+                      .then(
+                        if (lineBlur > 0.dp) {
+                          Modifier.blur(
+                            lineBlur,
+                            edgeTreatment = BlurredEdgeTreatment(RoundedCornerShape(8.dp)),
                           )
+                        } else {
+                          Modifier
+                        },
+                      )
+                      .graphicsLayer {
+                        alpha = lineAlpha
+                        scaleX = lineScale
+                        scaleY = lineScale
+                        transformOrigin =
+                          TransformOrigin(
+                            when {
+                              !hasDuet -> 0.5f
+                              line.alignEnd -> 1f
+                              else -> 0f
+                            },
+                            0.5f,
+                          )
+                      }
+                      .clip(RoundedCornerShape(8.dp))
+                      .clickable {
+                        onTap?.invoke()
+                        if (!isLyricsFullscreen) {
+                          val targetSeconds = line.time / 1000f
+                          PlaybackSession.command("seek", targetSeconds.toString(), "absolute+exact")
                         }
                       }
-                    }
-                  } else {
-                    Text(
-                      text = displayText,
-                      color = lineColor,
-                      fontSize = when {
-                        leadLit && isLyricsFullscreen -> 30.sp
-                        leadLit -> 26.sp
-                        isLyricsFullscreen -> 24.sp
-                        else -> 22.sp
-                      },
-                      fontWeight = if (leadLit) FontWeight.Black else FontWeight.ExtraBold,
-                      fontFamily = fontFamilyForText(displayText),
-                      textAlign = rowTextAlign,
-                      modifier = Modifier.fillMaxWidth(),
-                    )
-                  }
-
-                  // The backing voice stays hidden until its line is being sung, then
-                  // appears small and dim under the lead, on its own timings.
-                  line.background?.let { backing ->
-                    AnimatedVisibility(
-                      visible = backingSinging,
-                      enter =
-                        fadeIn(tween(340, easing = FastOutSlowInEasing)) +
-                          slideInVertically(spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow)) { it / 2 } +
-                          scaleIn(
-                            initialScale = 0.9f,
-                            transformOrigin = TransformOrigin(if (!hasDuet) 0.5f else if (line.alignEnd) 1f else 0f, 0f),
-                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow),
-                          ) +
-                          expandVertically(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessLow)),
-                      exit =
-                        fadeOut(tween(300, easing = FastOutSlowInEasing)) +
-                          slideOutVertically(tween(380, easing = FastOutSlowInEasing)) { it / 4 } +
-                          shrinkVertically(tween(420, easing = FastOutSlowInEasing)),
-                    ) {
-                      BackingVoice(
-                        backing = backing,
-                        positionMs = smoothPositionMs,
-                        activeColor = activeColor,
-                        fullscreen = isLyricsFullscreen,
-                        arrangement = rowArrangement,
+                      .padding(vertical = 4.dp, horizontal = 6.dp),
+                    horizontalAlignment = rowAlignment,
+                  ) {
+                    if (leadLit && !isBlankLine && !line.words.isNullOrEmpty()) {
+                      val isRtl = displayText.hasRtlDirection()
+                      CompositionLocalProvider(
+                        LocalLayoutDirection provides if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr,
+                      ) {
+                        FlowRow(
+                          modifier = Modifier.fillMaxWidth(),
+                          horizontalArrangement = rowArrangement,
+                          verticalArrangement = Arrangement.Center,
+                        ) {
+                          line.words.forEachIndexed { wordIndex, word ->
+                            val wordStartMs = word.time.toLong()
+                            val wordEndMs =
+                              line.words.getOrNull(wordIndex + 1)?.time?.toLong()
+                                ?.takeIf { it > wordStartMs }
+                                ?: line.endTime?.toLong()?.takeIf { it > wordStartMs }
+                                ?: activeLyrics.synced.getOrNull(index + 1)?.time?.toLong()
+                                  ?.coerceAtMost(line.time.toLong() + 8_000L)
+                                  ?.takeIf { it > wordStartMs }
+                                ?: (wordStartMs + 600L)
+                            AnimatedLyricWord(
+                              word = word,
+                              endTimeMs = wordEndMs,
+                              positionMs = smoothPositionMs,
+                              activeColor = activeColor,
+                              inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                              fontSize = if (isLyricsFullscreen) 30.sp else 26.sp,
+                              isRtl = isRtl,
+                            )
+                          }
+                        }
+                      }
+                    } else {
+                      Text(
+                        text = displayText,
+                        color = lineColor,
+                        fontSize = when {
+                          leadLit && isLyricsFullscreen -> 30.sp
+                          leadLit -> 26.sp
+                          isLyricsFullscreen -> 24.sp
+                          else -> 22.sp
+                        },
+                        fontWeight = if (leadLit) FontWeight.Black else FontWeight.ExtraBold,
+                        fontFamily = fontFamilyForText(displayText),
                         textAlign = rowTextAlign,
-                        translated = backing.translation?.trim()?.takeIf { it.isNotBlank() },
-                        replaceWithTranslation = translationDisplayMode == LyricsTranslationDisplayMode.Replace,
+                        modifier = Modifier.fillMaxWidth(),
+                      )
+                    }
+
+                    // The backing voice stays hidden until its line is being sung, then
+                    // appears small and dim under the lead, on its own timings.
+                    line.background?.let { backing ->
+                      AnimatedVisibility(
+                        visible = backingSinging,
+                        enter =
+                          fadeIn(tween(340, easing = FastOutSlowInEasing)) +
+                            slideInVertically(spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow)) { it / 2 } +
+                            scaleIn(
+                              initialScale = 0.9f,
+                              transformOrigin = TransformOrigin(if (!hasDuet) 0.5f else if (line.alignEnd) 1f else 0f, 0f),
+                              animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow),
+                            ) +
+                            expandVertically(spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessLow)),
+                        exit =
+                          fadeOut(tween(300, easing = FastOutSlowInEasing)) +
+                            slideOutVertically(tween(380, easing = FastOutSlowInEasing)) { it / 4 } +
+                            shrinkVertically(tween(420, easing = FastOutSlowInEasing)),
+                      ) {
+                        BackingVoice(
+                          backing = backing,
+                          positionMs = smoothPositionMs,
+                          activeColor = activeColor,
+                          fullscreen = isLyricsFullscreen,
+                          arrangement = rowArrangement,
+                          textAlign = rowTextAlign,
+                          translated = backing.translation?.trim()?.takeIf { it.isNotBlank() },
+                          replaceWithTranslation = translationDisplayMode == LyricsTranslationDisplayMode.Replace,
+                        )
+                      }
+                    }
+
+                    // Render Translation if present (Smaller font size, highlighted together with original when active)
+                    if (hasTranslation) {
+                      val translationColor by animateColorAsState(
+                        targetValue = if (isActiveLine) activeColor.copy(alpha = 0.85f) else inactiveColor.copy(alpha = 0.70f),
+                        animationSpec = tween(durationMillis = 250),
+                        label = "TranslationColor",
+                      )
+                      Spacer(modifier = Modifier.height(2.dp))
+                      Text(
+                        text = transText.orEmpty(),
+                        color = translationColor,
+                        fontSize = if (isActiveLine) 18.sp else 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = fontFamilyForText(transText.orEmpty()),
+                        textAlign = rowTextAlign,
+                        modifier = Modifier.fillMaxWidth(),
                       )
                     }
                   }
+                }
+              }
+            }
 
-                  // Render Translation if present (Smaller font size, highlighted together with original when active)
-                  if (hasTranslation) {
-                    val translationColor by animateColorAsState(
-                      targetValue = if (isActiveLine) activeColor.copy(alpha = 0.85f) else inactiveColor.copy(alpha = 0.70f),
-                      animationSpec = tween(durationMillis = 250),
-                      label = "TranslationColor",
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                      text = transText.orEmpty(),
-                      color = translationColor,
-                      fontSize = if (isActiveLine) 18.sp else 16.sp,
-                      fontWeight = FontWeight.Bold,
-                      fontFamily = fontFamilyForText(transText.orEmpty()),
-                      textAlign = rowTextAlign,
-                      modifier = Modifier.fillMaxWidth(),
-                    )
+            activeLyrics != null && !activeLyrics.plain.isNullOrEmpty() -> {
+              LazyColumn(
+              state = plainListState,
+                modifier = Modifier.fillMaxSize(),
+                userScrollEnabled = interactive,
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 220.dp),
+              ) {
+                itemsIndexed(
+                  items = activeLyrics.plain,
+                  key = { index, _ -> index },
+                  contentType = { _, _ -> "lyric_plain_line" },
+                ) { _, lineText ->
+                  val textToDisplay = if (lineText.isBlank()) ". . ." else lineText
+                  Text(
+                    text = textToDisplay,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = fontFamilyForText(textToDisplay),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                  )
+                }
+              }
+            }
+
+            else -> {
+              Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+              ) {
+                val emptyLine =
+                  if (isAudiobook) stringResource(R.string.audiobook_no_text) else rememberPlaceholderLine(LyricsPlaceholders.EMPTY)
+                Text(
+                  text = emptyLine,
+                  fontFamily = fontFamilyForText(emptyLine),
+                  textAlign = TextAlign.Center,
+                  style = MaterialTheme.typography.bodyMedium,
+                  fontWeight = FontWeight.Bold,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (isAudiobook || state.onlineEnabled) {
+                  Spacer(modifier = Modifier.height(8.dp))
+                  TextButton(
+                    onClick = {
+                      if (isAudiobook) {
+                        viewModel.loadLyricsForCurrentTrack(forceRefresh = true)
+                      } else {
+                        viewModel.searchLyricsOnline()
+                      }
+                    },
+                  ) {
+                    val searchLabel =
+                      if (isAudiobook) R.string.audiobook_retry else R.string.lyrics_search_online
+                    Text(text = stringResource(searchLabel), fontWeight = FontWeight.Bold)
                   }
                 }
               }
             }
           }
+        }
+        lyricsStack(interactive = true)
 
-          activeLyrics != null && !activeLyrics.plain.isNullOrEmpty() -> {
-            LazyColumn(
-              modifier = Modifier.fillMaxSize(),
-              verticalArrangement = Arrangement.spacedBy(14.dp),
-              contentPadding = PaddingValues(top = 16.dp, bottom = 220.dp),
-            ) {
-              itemsIndexed(
-                items = activeLyrics.plain,
-                key = { index, _ -> index },
-                contentType = { _, _ -> "lyric_plain_line" },
-              ) { _, lineText ->
-                val textToDisplay = if (lineText.isBlank()) ". . ." else lineText
-                Text(
-                  text = textToDisplay,
-                  color = MaterialTheme.colorScheme.onSurface,
-                  fontSize = 24.sp,
-                  fontWeight = FontWeight.Black,
-                  fontFamily = fontFamilyForText(textToDisplay),
-                  textAlign = TextAlign.Center,
-                  modifier = Modifier.fillMaxWidth(),
+        // Progressive blur: the same lyrics rendered a second time, blurred and masked
+        // so only a band at each edge stays visible - text softens out instead of
+        // cutting off where the source chips and the action footer sit.
+        if (showEdgeBlur) {
+          Box(
+            modifier = Modifier
+              .fillMaxSize()
+              .blur(22.dp, edgeTreatment = BlurredEdgeTreatment.Clamp)
+              .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+              .drawWithContent {
+                drawContent()
+                drawRect(
+                  brush = Brush.verticalGradient(
+                    0f to Color.Black,
+                    0.16f to Color.Transparent,
+                    0.84f to Color.Transparent,
+                    1f to Color.Black,
+                  ),
+                  blendMode = BlendMode.DstIn,
                 )
-              }
-            }
-          }
-
-          else -> {
-            Column(
-              horizontalAlignment = Alignment.CenterHorizontally,
-              verticalArrangement = Arrangement.Center,
-            ) {
-              val emptyLine =
-                if (isAudiobook) stringResource(R.string.audiobook_no_text) else rememberPlaceholderLine(LyricsPlaceholders.EMPTY)
-              Text(
-                text = emptyLine,
-                fontFamily = fontFamilyForText(emptyLine),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-              )
-              if (isAudiobook || state.onlineEnabled) {
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                  onClick = {
-                    if (isAudiobook) {
-                      viewModel.loadLyricsForCurrentTrack(forceRefresh = true)
-                    } else {
-                      viewModel.searchLyricsOnline()
-                    }
-                  },
-                ) {
-                  val searchLabel =
-                    if (isAudiobook) R.string.audiobook_retry else R.string.lyrics_search_online
-                  Text(text = stringResource(searchLabel), fontWeight = FontWeight.Bold)
-                }
-              }
-            }
+              },
+            contentAlignment = Alignment.Center,
+          ) {
+            lyricsStack(interactive = false)
           }
         }
       }

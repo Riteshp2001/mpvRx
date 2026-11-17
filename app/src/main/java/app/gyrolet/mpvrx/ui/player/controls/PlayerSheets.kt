@@ -347,6 +347,7 @@ fun PlayerSheets(
           listOf(
             // Common compressed audio
             "mp3", "m4a", "m4b", "m4r", "aac", "ogg", "oga", "opus", "wma", "f4a",
+            "latm", "loas",
             // Lossless audio
             "flac", "alac", "wav", "wave", "ape", "tta", "tak", "aif", "aiff", "aifc",
             "wv", "shn", "ofr", "ofs", "mpc", "mpp", "vqf", "w64", "rf64",

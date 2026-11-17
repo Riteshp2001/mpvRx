@@ -101,6 +101,8 @@ class TorrentStreamingEngine(
         "hdmov" to "video/quicktime",
         "iso" to "application/x-iso9660-image",
         "kar" to "audio/midi",
+        "latm" to "audio/mp4a-latm",
+        "loas" to "audio/mp4a-latm",
         "m1v" to "video/mpeg",
         "m2p" to "video/mpeg",
         "m2t" to "video/mp2t",

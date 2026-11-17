@@ -60,6 +60,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -146,6 +147,7 @@ import app.gyrolet.mpvrx.ui.utils.dragElevation
 import app.gyrolet.mpvrx.ui.utils.rememberReorderFeedback
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.onSizeChanged
@@ -733,6 +735,7 @@ private fun ImmersiveArtworkBackground(
   motionArtwork: ByteArray?,
   remoteMotionQuery: MotionArtworkQuery?,
   isPlaying: Boolean,
+  headerFadeHeight: Dp,
   swipeOffset: androidx.compose.runtime.State<Float>,
   previousBitmap: Bitmap?,
   previousArtworkUrl: String?,
@@ -754,21 +757,7 @@ private fun ImmersiveArtworkBackground(
   BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
     val artworkHeight = minOf(maxHeight * 0.64f, maxWidth * 1.7f)
     val viewportWidth = constraints.maxWidth.toFloat()
-    Box(
-      Modifier.fillMaxWidth().height(artworkHeight)
-        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-        .drawWithCache {
-          val artworkMask = Brush.verticalGradient(
-            0f to Color.White,
-            0.48f to Color.White,
-            1f to Color.Transparent,
-          )
-          onDrawWithContent {
-            drawContent()
-            drawRect(artworkMask, blendMode = BlendMode.DstIn)
-          }
-        },
-    ) {
+    val artworkContent: @Composable BoxScope.() -> Unit = {
       if (direction > 0 && hasPrevious) {
         Box(
           Modifier.fillMaxSize().graphicsLayer {
@@ -803,6 +792,44 @@ private fun ImmersiveArtworkBackground(
           isPlaying = isPlaying && !reducedMotion,
         )
       }
+    }
+    Box(
+      Modifier.fillMaxWidth().height(artworkHeight)
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithCache {
+          val artworkMask = Brush.verticalGradient(
+            0f to Color.White,
+            0.48f to Color.White,
+            1f to Color.Transparent,
+          )
+          onDrawWithContent {
+            drawContent()
+            drawRect(artworkMask, blendMode = BlendMode.DstIn)
+          }
+        },
+    ) {
+      artworkContent()
+    }
+
+    // The header used to sit under a flat scrim. Blur a copy of the cover instead and
+    // fade that blur out below the status bar so the top edge dissolves progressively.
+    Box(
+      Modifier.fillMaxWidth().height(artworkHeight)
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithCache {
+          val fadeEnd = (headerFadeHeight.toPx() * 1.7f / size.height).coerceIn(0.12f, 1f)
+          val headerMask = Brush.verticalGradient(
+            0f to Color.White,
+            (fadeEnd * 0.6f) to Color.White,
+            fadeEnd to Color.Transparent,
+          )
+          onDrawWithContent {
+            drawContent()
+            drawRect(headerMask, blendMode = BlendMode.DstIn)
+          }
+        },
+    ) {
+      Box(Modifier.fillMaxSize().blur(30.dp)) { artworkContent() }
     }
   }
 }
@@ -1414,6 +1441,7 @@ fun AudioPlayerControls(
         motionArtwork = currentAudioPresentation?.motionArtwork?.takeIf { activeCoverOverride == null },
         remoteMotionQuery = motionQuery?.takeIf { activeCoverOverride == null },
         isPlaying = isPlaying,
+        headerFadeHeight = with(LocalDensity.current) { stableInsets.getTop(this).toDp() } + 96.dp,
         swipeOffset = animatableOffsetX.asState(),
         previousBitmap = swipePrevCoverBitmap,
         previousArtworkUrl = prevItem?.artworkUri?.takeIf {

@@ -80,6 +80,8 @@ object HttpUtils {
       "m4b",
       "m4r",
       "aac",
+      "latm",
+      "loas",
       "flac",
       "wav",
       "wave",

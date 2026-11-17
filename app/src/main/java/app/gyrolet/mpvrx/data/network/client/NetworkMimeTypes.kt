@@ -24,7 +24,7 @@ internal object NetworkMimeTypes {
       "mp1", "mp2", "mpa", "mpc", "mpp", "tta", "tak", "wv", "shn", "ofr", "ofs", "vqf",
       "w64", "rf64", "gsm", "mmf", "voc", "cda", "8svx", "kar", "rmi", "xm", "s3m",
       "caf", "au", "snd", "ra", "spx", "weba", "3ga", "dsf", "dff", "mlp",
-      "truehd", "mid", "midi",
+      "truehd", "mid", "midi", "latm", "loas",
     )
 
   fun forFileName(fileName: String): String? =
@@ -44,6 +44,7 @@ internal object NetworkMimeTypes {
       "ts" -> "video/mp2t"
       "m4s" -> "video/iso.segment"
       "aac" -> "audio/aac"
+      "latm", "loas" -> "audio/mp4a-latm"
       "mp3" -> "audio/mpeg"
       "vtt" -> "text/vtt"
       "srt", "ass", "ssa" -> "text/plain"
