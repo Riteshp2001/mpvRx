@@ -733,8 +733,6 @@ private fun ImmersiveArtworkBackground(
   motionArtwork: ByteArray?,
   remoteMotionQuery: MotionArtworkQuery?,
   isPlaying: Boolean,
-  surfaceColor: Color,
-  headerFadeHeight: androidx.compose.ui.unit.Dp,
   swipeOffset: androidx.compose.runtime.State<Float>,
   previousBitmap: Bitmap?,
   previousArtworkUrl: String?,
@@ -805,19 +803,6 @@ private fun ImmersiveArtworkBackground(
           isPlaying = isPlaying && !reducedMotion,
         )
       }
-      Box(
-        Modifier.fillMaxSize().drawWithCache {
-          val headerScrim = Brush.verticalGradient(
-            0f to surfaceColor.copy(alpha = 0.82f),
-            0.60f to surfaceColor.copy(alpha = 0.76f),
-            1f to Color.Transparent,
-            endY = headerFadeHeight.toPx(),
-          )
-          onDrawBehind {
-            drawRect(headerScrim)
-          }
-        },
-      )
     }
   }
 }
@@ -1429,8 +1414,6 @@ fun AudioPlayerControls(
         motionArtwork = currentAudioPresentation?.motionArtwork?.takeIf { activeCoverOverride == null },
         remoteMotionQuery = motionQuery?.takeIf { activeCoverOverride == null },
         isPlaying = isPlaying,
-        surfaceColor = immersiveSurface,
-        headerFadeHeight = with(LocalDensity.current) { stableInsets.getTop(this).toDp() } + 96.dp,
         swipeOffset = animatableOffsetX.asState(),
         previousBitmap = swipePrevCoverBitmap,
         previousArtworkUrl = prevItem?.artworkUri?.takeIf {

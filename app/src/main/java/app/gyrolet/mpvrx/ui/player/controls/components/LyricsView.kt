@@ -77,10 +77,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -212,102 +209,12 @@ fun LyricsView(
       ) { onTap?.invoke() },
     color = Color.Transparent,
   ) {
-    Column(
-      modifier = Modifier
-        .fillMaxSize()
-        .padding(vertical = 4.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-      // Optional Header
-      if (showTitleHeader) {
-        val mediaTitle by PlaybackSession.propString["media-title"].collectAsState()
-        val artistName by PlaybackSession.propString["metadata/by-key/Artist"].collectAsState()
-        val displayTitle = mediaTitle?.takeIf { it.isNotBlank() } ?: "Current Track"
-        val displayArtist = artistName?.takeIf { it.isNotBlank() } ?: ""
-
-        Column(
-          modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-          horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-          Text(
-            text = displayTitle,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.ExtraBold,
-            fontFamily = fontFamilyForText(displayTitle),
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-          )
-          if (displayArtist.isNotBlank()) {
-            Text(
-              text = displayArtist,
-              style = MaterialTheme.typography.bodySmall,
-              fontWeight = FontWeight.Bold,
-              fontFamily = fontFamilyForText(displayArtist),
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              maxLines = 1,
-            )
-          }
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-      }
-
-      if (hasEmbedded) {
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          if (hasEmbedded) FilterChip(
-            selected = state.selectedSource == LyricsSourceType.EMBEDDED || state.selectedSource == LyricsSourceType.LOCAL,
-            onClick = { viewModel.switchLyricsSource(LyricsSourceType.EMBEDDED) },
-            label = {
-              Text(
-                when {
-                  state.hasSavedEdits -> stringResource(R.string.lyrics_source_edited)
-                  state.embeddedLyrics?.sourceType == LyricsSourceType.LOCAL -> stringResource(R.string.lyrics_source_local)
-                  else -> stringResource(R.string.lyrics_source_embedded)
-                },
-                fontWeight = FontWeight.Bold,
-              )
-            },
-            colors = FilterChipDefaults.filterChipColors(
-              selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-              selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ),
-          )
-
-          if (hasEmbedded && !isAudiobook) FilterChip(
-            selected = state.selectedSource == LyricsSourceType.ONLINE,
-            onClick = { viewModel.switchLyricsSource(LyricsSourceType.ONLINE) },
-            label = {
-              Text(stringResource(R.string.lyrics_source_online), fontWeight = FontWeight.Bold)
-            },
-            colors = FilterChipDefaults.filterChipColors(
-              selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-              selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ),
-          )
-
-          if (state.isLoading) {
-            Spacer(modifier = Modifier.width(6.dp))
-            CircularProgressIndicator(
-              modifier = Modifier.size(16.dp),
-              strokeWidth = 2.dp,
-              color = MaterialTheme.colorScheme.primary,
-            )
-          }
-        }
-      }
-
-      if (hasEmbedded || (state.onlineEnabled && state.onlineLyrics != null)) {
-        Spacer(modifier = Modifier.height(14.dp))
-      }
-
-      // Edge-to-Edge Synced Lyrics Scroll Area with bottom 33% gradient fade
+    Box(modifier = Modifier.fillMaxSize()) {
+      // Lyrics run edge to edge so they fill the sections the source chips and the
+      // action footer used to reserve; those controls float above the text instead.
       Box(
         modifier = Modifier
-          .weight(1f)
-          .fillMaxWidth()
+          .fillMaxSize()
           .onSizeChanged { lyricsViewportPx = it.height },
         contentAlignment = Alignment.Center,
       ) {
@@ -335,20 +242,7 @@ fun LyricsView(
             val hasDuet = remember(activeLyrics) { activeLyrics.synced.any { it.alignEnd } }
             LazyColumn(
               state = listState,
-              modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                .drawWithContent {
-                  drawContent()
-                  drawRect(
-                    brush = Brush.verticalGradient(
-                      0.0f to Color.Black,
-                      0.50f to Color.Black,
-                      1.0f to Color.Transparent,
-                    ),
-                    blendMode = BlendMode.DstIn,
-                  )
-                },
+              modifier = Modifier.fillMaxSize(),
               verticalArrangement = Arrangement.spacedBy(18.dp),
               contentPadding = PaddingValues(vertical = centerPadding),
             ) {
@@ -618,20 +512,7 @@ fun LyricsView(
 
           activeLyrics != null && !activeLyrics.plain.isNullOrEmpty() -> {
             LazyColumn(
-              modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                .drawWithContent {
-                  drawContent()
-                  drawRect(
-                    brush = Brush.verticalGradient(
-                      0.0f to Color.Black,
-                      0.50f to Color.Black,
-                      1.0f to Color.Transparent,
-                    ),
-                    blendMode = BlendMode.DstIn,
-                  )
-                },
+              modifier = Modifier.fillMaxSize(),
               verticalArrangement = Arrangement.spacedBy(14.dp),
               contentPadding = PaddingValues(top = 16.dp, bottom = 220.dp),
             ) {
@@ -690,187 +571,286 @@ fun LyricsView(
         }
       }
 
-      state.errorMessage?.let { message ->
-        Text(
-          text = message,
-          style = MaterialTheme.typography.bodySmall,
-          fontFamily = fontFamilyForText(message),
-          color = MaterialTheme.colorScheme.error,
-          textAlign = TextAlign.Center,
-          modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
-        )
+      // Optional title and source chips sit on top of the lyrics.
+      Column(
+        modifier = Modifier
+          .align(Alignment.TopCenter)
+          .fillMaxWidth()
+          .padding(top = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+      ) {
+        // Optional Header
+        if (showTitleHeader) {
+          val mediaTitle by PlaybackSession.propString["media-title"].collectAsState()
+          val artistName by PlaybackSession.propString["metadata/by-key/Artist"].collectAsState()
+          val displayTitle = mediaTitle?.takeIf { it.isNotBlank() } ?: "Current Track"
+          val displayArtist = artistName?.takeIf { it.isNotBlank() } ?: ""
+
+          Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+          ) {
+            Text(
+              text = displayTitle,
+              style = MaterialTheme.typography.titleMedium,
+              fontWeight = FontWeight.ExtraBold,
+              fontFamily = fontFamilyForText(displayTitle),
+              color = MaterialTheme.colorScheme.onSurface,
+              maxLines = 1,
+            )
+            if (displayArtist.isNotBlank()) {
+              Text(
+                text = displayArtist,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                fontFamily = fontFamilyForText(displayArtist),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+              )
+            }
+          }
+          Spacer(modifier = Modifier.height(4.dp))
+        }
+
+        if (hasEmbedded) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            if (hasEmbedded) FilterChip(
+              selected = state.selectedSource == LyricsSourceType.EMBEDDED || state.selectedSource == LyricsSourceType.LOCAL,
+              onClick = { viewModel.switchLyricsSource(LyricsSourceType.EMBEDDED) },
+              label = {
+                Text(
+                  when {
+                    state.hasSavedEdits -> stringResource(R.string.lyrics_source_edited)
+                    state.embeddedLyrics?.sourceType == LyricsSourceType.LOCAL -> stringResource(R.string.lyrics_source_local)
+                    else -> stringResource(R.string.lyrics_source_embedded)
+                  },
+                  fontWeight = FontWeight.Bold,
+                )
+              },
+              colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+              ),
+            )
+
+            if (hasEmbedded && !isAudiobook) FilterChip(
+              selected = state.selectedSource == LyricsSourceType.ONLINE,
+              onClick = { viewModel.switchLyricsSource(LyricsSourceType.ONLINE) },
+              label = {
+                Text(stringResource(R.string.lyrics_source_online), fontWeight = FontWeight.Bold)
+              },
+              colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+              ),
+            )
+
+            if (state.isLoading) {
+              Spacer(modifier = Modifier.width(6.dp))
+              CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary,
+              )
+            }
+          }
+        }
       }
 
-      val hasTimedLyricsForActions = state.lyrics?.synced?.isNotEmpty() == true
-      val showTranslateAction = hasTimedLyricsForActions && !app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD
-      val leftActionCount = (if (isAudiobook) 0 else 1) + (if (showTranslateAction) 1 else 0)
-      val reduceFooterMotion = AppMotion.playerReducedMotion()
-      AnimatedVisibility(
-        visible = hasTimedLyricsForActions || !isAudiobook,
-        enter = fadeIn(if (reduceFooterMotion) AppMotion.ReducedAlpha else AppMotion.Effect.Alpha),
-        exit = fadeOut(if (reduceFooterMotion) AppMotion.ReducedAlpha else AppMotion.Effect.Alpha),
+      // Error line and the edit / translate / sync footer sit on top of the lyrics.
+      Column(
+        modifier = Modifier
+          .align(Alignment.BottomCenter)
+          .fillMaxWidth()
+          .padding(bottom = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
       ) {
-        var isSyncExpanded by rememberSaveable { mutableStateOf(false) }
+        state.errorMessage?.let { message ->
+          Text(
+            text = message,
+            style = MaterialTheme.typography.bodySmall,
+            fontFamily = fontFamilyForText(message),
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
+          )
+        }
 
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-          verticalAlignment = Alignment.Bottom,
+        val hasTimedLyricsForActions = state.lyrics?.synced?.isNotEmpty() == true
+        val showTranslateAction = hasTimedLyricsForActions && !app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD
+        val leftActionCount = (if (isAudiobook) 0 else 1) + (if (showTranslateAction) 1 else 0)
+        val reduceFooterMotion = AppMotion.playerReducedMotion()
+        AnimatedVisibility(
+          visible = hasTimedLyricsForActions || !isAudiobook,
+          enter = fadeIn(if (reduceFooterMotion) AppMotion.ReducedAlpha else AppMotion.Effect.Alpha),
+          exit = fadeOut(if (reduceFooterMotion) AppMotion.ReducedAlpha else AppMotion.Effect.Alpha),
         ) {
-          if (leftActionCount > 0) {
-            Column(verticalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing)) {
-              if (!isAudiobook) {
-                app.gyrolet.mpvrx.ui.player.controls.components.sheets.LyricsEditAction(
-                  viewModel = viewModel,
-                  modifier = Modifier.size(40.dp),
-                  connectedIndex = 0,
-                  connectedCount = leftActionCount,
-                )
-              }
-              if (showTranslateAction) {
-                val translateInteraction = remember { MutableInteractionSource() }
-                val translatePressed by translateInteraction.collectIsPressedAsState()
-                val translateShape = rememberConnectedShape(
-                  leftActionCount - 1, leftActionCount, ConnectedLayout.Vertical,
-                  tokens = AppConnectedControlShapeTokens,
-                  pressed = translatePressed,
-                  selected = state.isTranslationActive,
-                )
-                Surface(
-                  onClick = { openTranslateSheet() },
-                  enabled = !state.isLoading,
-                  shape = translateShape,
-                  interactionSource = translateInteraction,
-                  color = animatedConnectedContainerColor(
-                    selected = state.isTranslationActive,
+          var isSyncExpanded by rememberSaveable { mutableStateOf(false) }
+
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.Bottom,
+          ) {
+            if (leftActionCount > 0) {
+              Column(verticalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing)) {
+                if (!isAudiobook) {
+                  app.gyrolet.mpvrx.ui.player.controls.components.sheets.LyricsEditAction(
+                    viewModel = viewModel,
+                    modifier = Modifier.size(40.dp),
+                    connectedIndex = 0,
+                    connectedCount = leftActionCount,
+                  )
+                }
+                if (showTranslateAction) {
+                  val translateInteraction = remember { MutableInteractionSource() }
+                  val translatePressed by translateInteraction.collectIsPressedAsState()
+                  val translateShape = rememberConnectedShape(
+                    leftActionCount - 1, leftActionCount, ConnectedLayout.Vertical,
+                    tokens = AppConnectedControlShapeTokens,
                     pressed = translatePressed,
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                  ),
-                  modifier = Modifier.size(40.dp).appPressFeedback(
-                    translateInteraction, enabled = !state.isLoading, pressedScale = 0.95f,
-                  ),
+                    selected = state.isTranslationActive,
+                  )
+                  Surface(
+                    onClick = { openTranslateSheet() },
+                    enabled = !state.isLoading,
+                    shape = translateShape,
+                    interactionSource = translateInteraction,
+                    color = animatedConnectedContainerColor(
+                      selected = state.isTranslationActive,
+                      pressed = translatePressed,
+                      containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                      selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    ),
+                    modifier = Modifier.size(40.dp).appPressFeedback(
+                      translateInteraction, enabled = !state.isLoading, pressedScale = 0.95f,
+                    ),
+                  ) {
+                    Box(contentAlignment = Alignment.Center) {
+                      if (state.isTranslating) {
+                        CircularProgressIndicator(
+                          modifier = Modifier.size(20.dp),
+                          strokeWidth = 2.5.dp,
+                          color = MaterialTheme.colorScheme.primary,
+                        )
+                      } else {
+                        Icon(
+                          imageVector = Icons.RoundedFilled.Translate,
+                          contentDescription = stringResource(R.string.lyrics_translate_title),
+                          tint = if (state.isTranslationActive) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                          modifier = Modifier.size(22.dp),
+                        )
+                      }
+                    }
+                  }
+                }
+              }
+              if (hasTimedLyricsForActions) Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            // Sync Section on the Right (pinned to right when collapsed, expands leftwards across remaining space)
+            if (hasTimedLyricsForActions) Box(
+              modifier = Modifier
+                .weight(1f)
+                .height(40.dp),
+              contentAlignment = Alignment.CenterEnd,
+            ) {
+              // When expanded, the sync control bar slides in from right to left, filling the remaining space
+              androidx.compose.animation.AnimatedVisibility(
+                visible = isSyncExpanded,
+                enter = if (reduceFooterMotion) fadeIn(AppMotion.ReducedAlpha) else fadeIn(animationSpec = tween(220)) +
+                  slideInHorizontally(initialOffsetX = { it }, animationSpec = spring(dampingRatio = 0.85f, stiffness = 350f)) +
+                  expandHorizontally(expandFrom = Alignment.End, animationSpec = spring(dampingRatio = 0.85f, stiffness = 350f)),
+                exit = if (reduceFooterMotion) fadeOut(AppMotion.ReducedAlpha) else fadeOut(animationSpec = tween(180)) +
+                  slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(180)) +
+                  shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(180)),
+              ) {
+                Surface(
+                  shape = RoundedCornerShape(12.dp),
+                  color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp),
                 ) {
-                  Box(contentAlignment = Alignment.Center) {
-                    if (state.isTranslating) {
-                      CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.5.dp,
-                        color = MaterialTheme.colorScheme.primary,
-                      )
-                    } else {
+                  Row(
+                    modifier = Modifier
+                      .fillMaxSize()
+                      .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                  ) {
+                    SyncOffsetButton(
+                      label = "-0.5s",
+                      modifier = Modifier.weight(1f),
+                      onClick = { viewModel.adjustLyricsSyncOffset(-500) },
+                    )
+                    SyncOffsetButton(
+                      label = "-0.1s",
+                      modifier = Modifier.weight(1f),
+                      onClick = { viewModel.adjustLyricsSyncOffset(-100) },
+                    )
+                    SyncOffsetButton(
+                      label = "${if (state.syncOffsetMs >= 0) "+" else ""}${state.syncOffsetMs / 1000f}s",
+                      modifier = Modifier.weight(1.2f),
+                      emphasized = true,
+                      onClick = { viewModel.resetLyricsSyncOffset() },
+                    )
+                    SyncOffsetButton(
+                      label = "+0.1s",
+                      modifier = Modifier.weight(1f),
+                      onClick = { viewModel.adjustLyricsSyncOffset(100) },
+                    )
+                    SyncOffsetButton(
+                      label = "+0.5s",
+                      modifier = Modifier.weight(1f),
+                      onClick = { viewModel.adjustLyricsSyncOffset(500) },
+                    )
+                    // Collapse close button
+                    Box(
+                      modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { isSyncExpanded = false }
+                        .padding(horizontal = 6.dp, vertical = 6.dp),
+                      contentAlignment = Alignment.Center,
+                    ) {
                       Icon(
-                        imageVector = Icons.RoundedFilled.Translate,
-                        contentDescription = stringResource(R.string.lyrics_translate_title),
-                        tint = if (state.isTranslationActive) MaterialTheme.colorScheme.primary
-                          else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(22.dp),
+                        imageVector = Icons.RoundedFilled.Close,
+                        contentDescription = stringResource(R.string.ui_close),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
                       )
                     }
                   }
                 }
               }
-            }
-            if (hasTimedLyricsForActions) Spacer(modifier = Modifier.width(8.dp))
-          }
 
-          // Sync Section on the Right (pinned to right when collapsed, expands leftwards across remaining space)
-          if (hasTimedLyricsForActions) Box(
-            modifier = Modifier
-              .weight(1f)
-              .height(40.dp),
-            contentAlignment = Alignment.CenterEnd,
-          ) {
-            // When expanded, the sync control bar slides in from right to left, filling the remaining space
-            androidx.compose.animation.AnimatedVisibility(
-              visible = isSyncExpanded,
-              enter = if (reduceFooterMotion) fadeIn(AppMotion.ReducedAlpha) else fadeIn(animationSpec = tween(220)) +
-                slideInHorizontally(initialOffsetX = { it }, animationSpec = spring(dampingRatio = 0.85f, stiffness = 350f)) +
-                expandHorizontally(expandFrom = Alignment.End, animationSpec = spring(dampingRatio = 0.85f, stiffness = 350f)),
-              exit = if (reduceFooterMotion) fadeOut(AppMotion.ReducedAlpha) else fadeOut(animationSpec = tween(180)) +
-                slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(180)) +
-                shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(180)),
-            ) {
-              Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .height(40.dp),
+              // When collapsed, the sync icon button sits on the far right
+              androidx.compose.animation.AnimatedVisibility(
+                visible = !isSyncExpanded,
+                enter = if (reduceFooterMotion) fadeIn(AppMotion.ReducedAlpha) else fadeIn(animationSpec = tween(220)) +
+                  expandHorizontally(expandFrom = Alignment.End, animationSpec = spring(dampingRatio = 0.85f, stiffness = 350f)),
+                exit = if (reduceFooterMotion) fadeOut(AppMotion.ReducedAlpha) else fadeOut(animationSpec = tween(180)) +
+                  shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(180)),
               ) {
-                Row(
-                  modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 4.dp),
-                  verticalAlignment = Alignment.CenterVertically,
+                Surface(
+                  onClick = { isSyncExpanded = true },
+                  shape = RoundedCornerShape(12.dp),
+                  color = if (state.syncOffsetMs != 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                  modifier = Modifier.size(40.dp),
                 ) {
-                  SyncOffsetButton(
-                    label = "-0.5s",
-                    modifier = Modifier.weight(1f),
-                    onClick = { viewModel.adjustLyricsSyncOffset(-500) },
-                  )
-                  SyncOffsetButton(
-                    label = "-0.1s",
-                    modifier = Modifier.weight(1f),
-                    onClick = { viewModel.adjustLyricsSyncOffset(-100) },
-                  )
-                  SyncOffsetButton(
-                    label = "${if (state.syncOffsetMs >= 0) "+" else ""}${state.syncOffsetMs / 1000f}s",
-                    modifier = Modifier.weight(1.2f),
-                    emphasized = true,
-                    onClick = { viewModel.resetLyricsSyncOffset() },
-                  )
-                  SyncOffsetButton(
-                    label = "+0.1s",
-                    modifier = Modifier.weight(1f),
-                    onClick = { viewModel.adjustLyricsSyncOffset(100) },
-                  )
-                  SyncOffsetButton(
-                    label = "+0.5s",
-                    modifier = Modifier.weight(1f),
-                    onClick = { viewModel.adjustLyricsSyncOffset(500) },
-                  )
-                  // Collapse close button
-                  Box(
-                    modifier = Modifier
-                      .clip(RoundedCornerShape(8.dp))
-                      .clickable { isSyncExpanded = false }
-                      .padding(horizontal = 6.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center,
-                  ) {
+                  Box(contentAlignment = Alignment.Center) {
                     Icon(
-                      imageVector = Icons.RoundedFilled.Close,
-                      contentDescription = stringResource(R.string.ui_close),
-                      tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                      modifier = Modifier.size(16.dp),
+                      imageVector = Icons.RoundedFilled.Timer,
+                      contentDescription = stringResource(R.string.lyrics_sync_timing),
+                      tint = if (state.syncOffsetMs != 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                      modifier = Modifier.size(22.dp),
                     )
                   }
-                }
-              }
-            }
-
-            // When collapsed, the sync icon button sits on the far right
-            androidx.compose.animation.AnimatedVisibility(
-              visible = !isSyncExpanded,
-              enter = if (reduceFooterMotion) fadeIn(AppMotion.ReducedAlpha) else fadeIn(animationSpec = tween(220)) +
-                expandHorizontally(expandFrom = Alignment.End, animationSpec = spring(dampingRatio = 0.85f, stiffness = 350f)),
-              exit = if (reduceFooterMotion) fadeOut(AppMotion.ReducedAlpha) else fadeOut(animationSpec = tween(180)) +
-                shrinkHorizontally(shrinkTowards = Alignment.End, animationSpec = tween(180)),
-            ) {
-              Surface(
-                onClick = { isSyncExpanded = true },
-                shape = RoundedCornerShape(12.dp),
-                color = if (state.syncOffsetMs != 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.size(40.dp),
-              ) {
-                Box(contentAlignment = Alignment.Center) {
-                  Icon(
-                    imageVector = Icons.RoundedFilled.Timer,
-                    contentDescription = stringResource(R.string.lyrics_sync_timing),
-                    tint = if (state.syncOffsetMs != 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp),
-                  )
                 }
               }
             }
