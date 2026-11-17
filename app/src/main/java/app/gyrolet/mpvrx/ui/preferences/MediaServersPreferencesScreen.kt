@@ -68,6 +68,7 @@ import app.gyrolet.mpvrx.ui.browser.navidrome.NavidromeViewModel
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
 import app.gyrolet.mpvrx.ui.preferences.components.AppPreference as Preference
@@ -78,6 +79,16 @@ object MediaServersPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    SettingsCategoryMenu(
+      R.string.pref_media_servers_title,
+      listOf(SettingsPage.JELLYFIN, SettingsPage.SEERR, SettingsPage.NAVIDROME, SettingsPage.AUDIOBOOKSHELF)
+        .map { it.link },
+    )
+  }
+
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  internal fun DetailsContent(page: SettingsPage? = null) {
     val context = LocalContext.current
     val backStack = LocalBackStack.current
     val appearancePreferences = koinInject<AppearancePreferences>()
@@ -109,14 +120,14 @@ object MediaServersPreferencesScreen : Screen {
     Scaffold(
       topBar = {
         SettingsTopAppBar(
-          title = stringResource(R.string.pref_media_servers_title),
+          title = stringResource(page?.titleRes ?: R.string.pref_media_servers_title),
           onBack = { backStack.popSafely() },
         )
       },
     ) { padding ->
       ProvideExpressivePreferenceLocals(horizontalSpacing = 24.dp) {
         val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(MediaServersPreferencesScreen, MaterialTheme.colorScheme.primary)
+          rememberSettingsSearchList(LocalCurrentScreen.current ?: MediaServersPreferencesScreen, MaterialTheme.colorScheme.primary)
 
         LazyColumn(
           state = settingsListState,
@@ -127,14 +138,14 @@ object MediaServersPreferencesScreen : Screen {
               .then(settingsHighlight),
         ) {
           // --- JELLYFIN SECTION ---
-          item {
+          if (SettingsPage.JELLYFIN.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.First, 
               title = stringResource(R.string.pref_jellyfin_title),
               modifier = Modifier.settingsSearchTarget(R.string.pref_media_servers_title),
             )
           }
 
-          item {
+          if (SettingsPage.JELLYFIN.includes(page)) item {
             PreferenceCard {
               if (jellyfinUiState.servers.isEmpty()) {
                 ConnectMediaServerRow(
@@ -304,11 +315,11 @@ object MediaServersPreferencesScreen : Screen {
           }
 
           // --- SEERR SECTION ---
-          item {
+          if (SettingsPage.SEERR.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_seerr_title))
           }
 
-          item {
+          if (SettingsPage.SEERR.includes(page)) item {
             PreferenceCard {
               if (seerrUiState.isConnected) {
                 val userText =
@@ -425,13 +436,13 @@ object MediaServersPreferencesScreen : Screen {
           }
 
           // --- NAVIDROME SECTION ---
-          item {
+          if (SettingsPage.NAVIDROME.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, 
               title = stringResource(R.string.pref_navidrome_title),
             )
           }
 
-          item {
+          if (SettingsPage.NAVIDROME.includes(page)) item {
             PreferenceCard {
               if (navidromeUiState.servers.isEmpty()) {
                 ConnectMediaServerRow(
@@ -601,13 +612,13 @@ object MediaServersPreferencesScreen : Screen {
           }
 
           // --- AUDIOBOOKSHELF SECTION ---
-          item {
+          if (SettingsPage.AUDIOBOOKSHELF.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Last, 
               title = stringResource(R.string.pref_audiobookshelf_title),
             )
           }
 
-          item {
+          if (SettingsPage.AUDIOBOOKSHELF.includes(page)) item {
             PreferenceCard {
               if (audiobookshelfUiState.servers.isEmpty()) {
                 ConnectMediaServerRow(

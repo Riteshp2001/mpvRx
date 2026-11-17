@@ -46,6 +46,7 @@ import app.gyrolet.mpvrx.ui.player.SingleActionGesture
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.Serializable
@@ -59,6 +60,19 @@ object GesturePreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    if (LocalPlayerSettingsPanel.current) {
+      DetailsContent()
+      return
+    }
+    SettingsCategoryMenu(
+      R.string.pref_gesture,
+      listOf(SettingsPage.SWIPES, SettingsPage.TAPS, SettingsPage.MEDIA_KEYS).map { it.link },
+    )
+  }
+
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  internal fun DetailsContent(page: SettingsPage? = null) {
     val preferences = koinInject<GesturePreferences>()
     val playerPreferences = koinInject<PlayerPreferences>()
     val resources = LocalResources.current
@@ -74,14 +88,14 @@ object GesturePreferencesScreen : Screen {
       contentWindowInsets = settingsContentWindowInsets(),
       topBar = {
         SettingsTopAppBar(
-          title = stringResource(R.string.pref_gesture),
+          title = stringResource(page?.titleRes ?: R.string.pref_gesture),
           onBack = { backstack.popSafely() },
         )
       },
     ) { padding ->
       ProvideExpressivePreferenceLocals {
         val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(GesturePreferencesScreen, MaterialTheme.colorScheme.primary)
+          rememberSettingsSearchList(LocalCurrentScreen.current ?: GesturePreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
           state = settingsListState,
           modifier =
@@ -91,13 +105,13 @@ object GesturePreferencesScreen : Screen {
               .then(settingsHighlight),
         ) {
           // ── Swipe & Speed ──────────────────────────────────────────────
-          item {
+          if (SettingsPage.SWIPES.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.First, 
               title = stringResource(R.string.pref_section_swipe_speed),
               modifier = Modifier.settingsSearchTarget(R.string.pref_gesture),
             )
           }
-          item {
+          if (SettingsPage.SWIPES.includes(page)) item {
             PreferenceCard {
               val hapticFeedbackEnabled by preferences.hapticFeedbackEnabled.collectAsState()
               SwitchPreference(
@@ -290,11 +304,11 @@ object GesturePreferencesScreen : Screen {
           }
 
           // ── Tap Gestures ───────────────────────────────────────────────
-          item {
+          if (SettingsPage.TAPS.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_gesture_double_tap_title))
           }
 
-          item {
+          if (SettingsPage.TAPS.includes(page)) item {
             PreferenceCard {
               val requireDoubleTapForEverySeek by preferences.requireDoubleTapForEverySeek.collectAsState()
               SwitchPreference(
@@ -597,11 +611,11 @@ object GesturePreferencesScreen : Screen {
             }
           }
 
-          item {
+          if (SettingsPage.MEDIA_KEYS.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_gesture_media_title))
           }
 
-          item {
+          if (SettingsPage.MEDIA_KEYS.includes(page)) item {
             PreferenceCard {
               val mediaPreviousGesture by preferences.mediaPreviousGesture.collectAsState()
               ExpressivePreferenceItem {

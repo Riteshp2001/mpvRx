@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
@@ -30,6 +31,7 @@ import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpReleaseChannel
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpCookieControls
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference
 import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
@@ -44,7 +46,7 @@ import org.koin.compose.koinInject
 /** Complete manager UI, shared by the Network page and the legacy deep-link screen. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun YtdlpManagerSections(modifier: Modifier = Modifier) {
+internal fun YtdlpManagerSections(modifier: Modifier = Modifier, includeCookies: Boolean = true) {
     if (!app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP) return
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -221,39 +223,26 @@ internal fun YtdlpManagerSections(modifier: Modifier = Modifier) {
               )
           }
 
-          PreferenceSectionHeader(
-            position = PreferenceSectionPosition.Middle,
-            title = stringResource(R.string.ytdlp_cookies_title),
-            modifier = Modifier.settingsSearchTarget(R.string.ytdlp_cookies_title),
-          )
-          YtdlpCookieControls(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+          if (includeCookies) {
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
+              title = stringResource(R.string.ytdlp_cookies_title),
+              modifier = Modifier.settingsSearchTarget(R.string.ytdlp_cookies_title),
+            )
+            YtdlpCookieControls(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+          }
 
-          PreferenceSectionHeader(position = PreferenceSectionPosition.Last,
-            title = stringResource(R.string.ytdlp_playlist_behavior),
-            modifier = Modifier.settingsSearchTarget(R.string.ytdlp_playlist_behavior),
-          )
-
-          SingleChoiceSegmentedButtonRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-          ) {
-            YtdlPlaylistMode.entries.forEachIndexed { index, mode ->
-              SegmentedButton(
-                selected = playlistMode == mode,
-                enabled = playbackOptionsEnabled,
-                onClick = { ytdlPreferences.playlistMode.set(mode) },
-                shape = SegmentedButtonDefaults.itemShape(
-                  index = index,
-                  count = YtdlPlaylistMode.entries.size,
-                ),
-                icon = { SegmentedButtonDefaults.Icon(active = playlistMode == mode) },
-              ) {
-                Text(
-                  text = mode.title,
-                  style = MaterialTheme.typography.labelMedium,
-                  maxLines = 2,
-                )
-              }
-            }
+          ExpressivePreferenceGroup {
+            AppListPreference(
+              modifier = Modifier.settingsSearchTarget(R.string.ytdlp_playlist_behavior),
+              value = playlistMode,
+              enabled = playbackOptionsEnabled,
+              onValueChange = ytdlPreferences.playlistMode::set,
+              values = YtdlPlaylistMode.entries,
+              valueToText = { AnnotatedString(it.title) },
+              title = { Text(stringResource(R.string.ytdlp_playlist_behavior)) },
+              summary = { Text(playlistMode.title) },
+            )
           }
         }
       }

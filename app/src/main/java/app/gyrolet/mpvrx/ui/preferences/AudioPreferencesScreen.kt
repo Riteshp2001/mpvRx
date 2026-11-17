@@ -61,6 +61,7 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
@@ -78,6 +79,19 @@ object AudioPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    if (LocalPlayerSettingsPanel.current) {
+      DetailsContent()
+      return
+    }
+    SettingsCategoryMenu(
+      R.string.pref_audio,
+      listOf(SettingsPage.AUDIO_OUTPUT, SettingsPage.MUSIC, SettingsPage.LYRICS).map { it.link },
+    )
+  }
+
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  internal fun DetailsContent(page: SettingsPage? = null) {
     val context = LocalContext.current
     val resources = LocalResources.current
     val backstack = LocalBackStack.current
@@ -96,14 +110,14 @@ object AudioPreferencesScreen : Screen {
       contentWindowInsets = settingsContentWindowInsets(),
       topBar = {
         SettingsTopAppBar(
-          title = stringResource(R.string.pref_audio),
+          title = stringResource(page?.titleRes ?: R.string.pref_audio),
           onBack = { backstack.popSafely() },
         )
       },
     ) { padding ->
       ProvideExpressivePreferenceLocals {
         val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(AudioPreferencesScreen, MaterialTheme.colorScheme.primary)
+          rememberSettingsSearchList(LocalCurrentScreen.current ?: AudioPreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
           state = settingsListState,
           modifier =
@@ -112,7 +126,7 @@ object AudioPreferencesScreen : Screen {
               .padding(padding)
               .then(settingsHighlight),
         ) {
-          if (!playerPanel) {
+          if (!playerPanel && SettingsPage.MUSIC.includes(page)) {
           item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.First,
               title = stringResource(R.string.pref_media_library_section),
@@ -426,11 +440,11 @@ object AudioPreferencesScreen : Screen {
           }
 
           }
-          item {
+          if (SettingsPage.AUDIO_OUTPUT.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_playback))
           }
 
-          item {
+          if (SettingsPage.AUDIO_OUTPUT.includes(page)) item {
             PreferenceCard {
               val preferredLanguages by preferences.preferredLanguages.collectAsState()
               ExpressivePreferenceItem {
@@ -730,7 +744,7 @@ object AudioPreferencesScreen : Screen {
             }
           }
 
-          if (playerPanel) return@LazyColumn
+          if (playerPanel || !SettingsPage.LYRICS.includes(page)) return@LazyColumn
           item {
             PreferenceSectionHeader(
               position = PreferenceSectionPosition.Middle,

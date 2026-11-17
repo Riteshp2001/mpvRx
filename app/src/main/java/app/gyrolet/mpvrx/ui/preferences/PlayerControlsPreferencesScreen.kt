@@ -20,17 +20,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
@@ -42,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -61,6 +57,7 @@ import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference
 import app.gyrolet.mpvrx.ui.preferences.components.PlayerButtonChip
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
@@ -85,6 +82,26 @@ object PlayerControlsPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    if (LocalPlayerSettingsPanel.current) {
+      DetailsContent()
+      return
+    }
+    SettingsCategoryMenu(
+      if (app.gyrolet.mpvrx.ui.tv.isTelevision()) R.string.pref_section_display_controls else R.string.pref_layout_title,
+      listOf(
+        SettingsPage.BUTTON_LAYOUTS.link,
+        SettingsPage.SEEKBAR.link,
+        SettingsPage.CONTROL_APPEARANCE.link,
+        SettingsPageLink(R.string.pref_persistent_status_title, PersistentStatusBarPreferencesScreen),
+        SettingsPage.DISPLAY.link,
+        SettingsPage.OVERLAYS.link,
+      ),
+    )
+  }
+
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  internal fun DetailsContent(page: SettingsPage? = null) {
     val television = app.gyrolet.mpvrx.ui.tv.isTelevision()
     val backstack = LocalBackStack.current
     val appearancePrefs = koinInject<AppearancePreferences>()
@@ -120,14 +137,14 @@ object PlayerControlsPreferencesScreen : Screen {
       contentWindowInsets = settingsContentWindowInsets(),
       topBar = {
         SettingsTopAppBar(
-          title = stringResource(id = if (television) R.string.pref_section_display_controls else R.string.pref_layout_title),
+          title = stringResource(page?.titleRes ?: if (television) R.string.pref_section_display_controls else R.string.pref_layout_title),
           onBack = { backstack.popSafely() },
         )
       },
     ) { padding ->
       ProvideExpressivePreferenceLocals {
         val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(PlayerControlsPreferencesScreen, MaterialTheme.colorScheme.primary)
+          rememberSettingsSearchList(LocalCurrentScreen.current ?: PlayerControlsPreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
           state = settingsListState,
           modifier =
@@ -136,7 +153,7 @@ object PlayerControlsPreferencesScreen : Screen {
               .padding(padding)
               .then(settingsHighlight),
         ) {
-          if (!television) {
+          if (!television && SettingsPage.BUTTON_LAYOUTS.includes(page)) {
             // Landscape Controls Section
             item {
               PreferenceSectionHeader(position = PreferenceSectionPosition.First,
@@ -204,14 +221,14 @@ object PlayerControlsPreferencesScreen : Screen {
           }
 
           // Persistent in-video HUD controls, immediately after portrait layout controls.
-          item {
+          if (page == null) item {
             PreferenceSectionHeader(
               position = PreferenceSectionPosition.Middle,
               title = stringResource(R.string.pref_persistent_status_title),
               modifier = Modifier.settingsSearchTarget(R.string.pref_persistent_status_title),
             )
           }
-          item {
+          if (page == null) item {
             PreferenceCard {
               ExpressivePreferenceItem {
                 app.gyrolet.mpvrx.ui.preferences.components.AppPreference(
@@ -228,12 +245,11 @@ object PlayerControlsPreferencesScreen : Screen {
             }
           }
 
-          if (!television) {
+          if (!television && SettingsPage.SEEKBAR.includes(page)) {
             // Seekbar Section
             item {
               PreferenceSectionHeader(position = PreferenceSectionPosition.Middle,
                 title = stringResource(R.string.pref_section_seekbar_style),
-                modifier = Modifier.settingsSearchTarget(R.string.pref_section_seekbar_style),
               )
             }
 
@@ -258,27 +274,16 @@ object PlayerControlsPreferencesScreen : Screen {
                   )
                 }
                 PreferenceCard {
-                  SeekbarStyle.entries.forEach { style ->
-                    val isSelected = seekbarStyle == style
-                    // Every option is an independent Material Expressive tile:
-                    // OFF, selected, and a single available option have identical curvature.
-                    ExpressivePreferenceItem(selected = isSelected, standalone = true) {
-                      ListItem(
-                        trailingContent = {
-                          RadioButton(selected = isSelected, onClick = null)
-                        },
-                        colors = androidx.compose.material3.ListItemDefaults.colors(
-                          containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                        ),
-                        modifier = Modifier.selectable(
-                          selected = isSelected,
-                          role = Role.RadioButton,
-                          onClick = { appearancePrefs.seekbarStyle.set(style) },
-                        ),
-                      ) {
-                        Text(style.name)
-                      }
-                    }
+                  ExpressivePreferenceItem(standalone = true) {
+                    ListPreference(
+                      modifier = Modifier.settingsSearchTarget(R.string.pref_section_seekbar_style),
+                      value = seekbarStyle,
+                      onValueChange = appearancePrefs.seekbarStyle::set,
+                      values = SeekbarStyle.entries,
+                      valueToText = { AnnotatedString(it.name) },
+                      title = { Text(stringResource(R.string.pref_section_seekbar_style)) },
+                      summary = { Text(seekbarStyle.name) },
+                    )
                   }
                 }
               }
@@ -286,11 +291,11 @@ object PlayerControlsPreferencesScreen : Screen {
           }
 
           // Appearance Section
-          item {
+          if (SettingsPage.CONTROL_APPEARANCE.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_player_controls_appearance))
           }
 
-          item {
+          if (SettingsPage.CONTROL_APPEARANCE.includes(page)) item {
             val forceDarkPlayerButtonsBackground by appearancePrefs.forceDarkPlayerButtonsBackground.collectAsState()
             val playerButtonsBackgroundOpacity by appearancePrefs.playerButtonsBackgroundOpacity.collectAsState()
             val storedPlayerTimeToDisappear by playerPrefs.playerTimeToDisappear.collectAsState()

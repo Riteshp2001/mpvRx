@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
@@ -55,6 +56,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -198,6 +200,7 @@ object PreferencesScreen : Screen {
     val backstack = LocalBackStack.current
     val colorScheme = MaterialTheme.colorScheme
     val emphasizedTypography = LocalEmphasizedTypography.current
+    var expandedSection by rememberSaveable { mutableStateOf<String?>(null) }
 
     Scaffold(
       topBar = {
@@ -246,6 +249,10 @@ object PreferencesScreen : Screen {
             section = section,
             selectedScreen = selectedScreen,
             onItemClick = { destination -> onScreenSelected(destination.screen) },
+            expanded = selectedScreen != null || expandedSection == section.title,
+            onToggle = if (selectedScreen != null) null else {
+              { expandedSection = section.title.takeUnless { expandedSection == it } }
+            },
           )
         }
       }
@@ -259,6 +266,30 @@ object PreferencesScreen : Screen {
     val secureFolderPreferences = koinInject<SecureFolderPreferences>()
     val isSecureFolderEntryHidden by secureFolderPreferences.isEntryPointHidden.collectAsState()
     return listOfNotNull(
+      SettingsSection(
+        title = stringResource(R.string.pref_section_general),
+        tint = colorScheme.onSurfaceVariant,
+        items = listOf(
+          SettingsDestination(
+            title = stringResource(R.string.settings_app_preferences),
+            summary = listOf(
+              stringResource(R.string.pref_app_language_title),
+              stringResource(R.string.pref_advanced_notification_style),
+            ).joinToString(", "),
+            icon = Icons.RoundedFilled.Language,
+            screen = SettingsPageScreen(SettingsPage.APP),
+          ),
+          SettingsDestination(
+            title = stringResource(R.string.pref_section_backup_restore),
+            summary = listOf(
+              stringResource(R.string.pref_export_settings_title),
+              stringResource(R.string.pref_import_settings_title),
+            ).joinToString(", "),
+            icon = Icons.RoundedFilled.History,
+            screen = SettingsPageScreen(SettingsPage.BACKUPS),
+          ),
+        ),
+      ),
       SettingsSection(
         title = stringResource(R.string.pref_section_appearance),
         tint = colorScheme.onSurfaceVariant,
@@ -295,7 +326,6 @@ object PreferencesScreen : Screen {
                 listOf(
                   stringResource(R.string.pref_section_general),
                   stringResource(R.string.pref_player_seeking_title),
-                  stringResource(R.string.pref_section_display_controls),
                   stringResource(R.string.pref_screenshots_section),
                 ).joinToString(", "),
               icon = Icons.RoundedFilled.Slideshow,
@@ -303,7 +333,11 @@ object PreferencesScreen : Screen {
             ),
             SettingsDestination(
               title = stringResource(R.string.pref_audio),
-              summary = stringResource(R.string.pref_audio_summary),
+              summary = listOf(
+                stringResource(R.string.settings_audio_output),
+                stringResource(R.string.settings_music_player),
+                stringResource(R.string.player_lyrics_title),
+              ).joinToString(", "),
               icon = Icons.RoundedFilled.Audiotrack,
               screen = AudioPreferencesScreen,
             ),
@@ -341,7 +375,7 @@ object PreferencesScreen : Screen {
           ),
       ),
       SettingsSection(
-        title = stringResource(R.string.pref_section_storage),
+        title = stringResource(R.string.settings_library_storage),
         tint = colorScheme.onSurfaceVariant,
         items =
           listOfNotNull(
@@ -350,6 +384,24 @@ object PreferencesScreen : Screen {
               summary = stringResource(R.string.pref_folders_summary),
               icon = Icons.RoundedFilled.Folder,
               screen = FoldersPreferencesScreen,
+            ),
+            SettingsDestination(
+              title = stringResource(R.string.settings_library_display),
+              summary = stringResource(R.string.pref_appearance_category_file_browser),
+              icon = Icons.RoundedFilled.Palette,
+              screen = SettingsPageScreen(SettingsPage.LIBRARY_DISPLAY),
+            ),
+            SettingsDestination(
+              title = stringResource(R.string.pref_appearance_category_thumbnails),
+              summary = stringResource(R.string.pref_appearance_thumbnail_generator_summary),
+              icon = Icons.RoundedFilled.Image,
+              screen = SettingsPageScreen(SettingsPage.THUMBNAILS),
+            ),
+            SettingsDestination(
+              title = stringResource(R.string.settings_history_cache),
+              summary = stringResource(R.string.pref_section_data_cache),
+              icon = Icons.RoundedFilled.History,
+              screen = SettingsPageScreen(SettingsPage.HISTORY_CACHE),
             ),
             if (!isSecureFolderEntryHidden) {
               SettingsDestination(
@@ -364,7 +416,7 @@ object PreferencesScreen : Screen {
           ),
       ),
       SettingsSection(
-        title = stringResource(R.string.ui_network),
+        title = stringResource(R.string.settings_connections),
         tint = colorScheme.onSurfaceVariant,
         items =
           listOfNotNull(
@@ -390,21 +442,16 @@ object PreferencesScreen : Screen {
               icon = Icons.RoundedFilled.Tv,
               screen = RemoteControlScreen,
             ),
+            if (!app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD) {
+              SettingsDestination(
+                title = stringResource(R.string.pref_section_ai_title),
+                summary = stringResource(R.string.pref_section_ai_summary),
+                icon = Icons.RoundedFilled.AutoAwesome,
+                screen = AiIntegrationScreen,
+              )
+            } else null,
           ),
       ),
-      SettingsSection(
-        title = stringResource(R.string.pref_section_ai),
-        tint = colorScheme.onSurfaceVariant,
-        items =
-          listOf(
-            SettingsDestination(
-              title = stringResource(R.string.pref_section_ai_title),
-              summary = stringResource(R.string.pref_section_ai_summary),
-              icon = Icons.RoundedFilled.AutoAwesome,
-              screen = AiIntegrationScreen,
-            ),
-          ),
-      ).takeUnless { app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD },
       SettingsSection(
         title = stringResource(R.string.pref_section_advanced),
         tint = colorScheme.onSurfaceVariant,
@@ -414,9 +461,9 @@ object PreferencesScreen : Screen {
               title = stringResource(R.string.pref_advanced),
               summary =
                 listOf(
-                  stringResource(R.string.pref_section_app_language),
-                  stringResource(R.string.pref_section_backup_restore),
                   stringResource(R.string.pref_section_mpv_config),
+                  stringResource(R.string.pref_section_scripts),
+                  stringResource(R.string.pref_section_logging),
                 ).joinToString(", "),
               icon = Icons.Alternatives.AdvancedSettings,
               screen = AdvancedPreferencesScreen,
@@ -506,6 +553,8 @@ private fun SettingsSectionBlock(
   section: SettingsSection,
   selectedScreen: Screen?,
   onItemClick: (SettingsDestination) -> Unit,
+  expanded: Boolean = true,
+  onToggle: (() -> Unit)? = null,
 ) {
   val emphasizedTypography = LocalEmphasizedTypography.current
 
@@ -515,25 +564,48 @@ private fun SettingsSectionBlock(
         .fillMaxWidth()
         .padding(top = 10.dp, bottom = 14.dp),
   ) {
-    Column(
-      modifier = Modifier.padding(horizontal = 24.dp),
+    Row(
+      modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+        .clip(RoundedCornerShape(16.dp))
+        .then(if (onToggle != null) Modifier.clickable(role = Role.Button, onClick = onToggle) else Modifier)
+        .padding(horizontal = 8.dp, vertical = if (onToggle != null) 12.dp else 0.dp),
+      verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(
-        text = section.title,
-        modifier = Modifier.semantics { heading() },
-        style = emphasizedTypography.titleMedium,
-        color = MaterialTheme.colorScheme.onSurface,
-      )
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+          text = section.title,
+          modifier = Modifier.semantics { heading() },
+          style = emphasizedTypography.titleMedium,
+          color = MaterialTheme.colorScheme.onSurface,
+        )
+        if (onToggle != null) {
+          Text(
+            text = section.items.joinToString(", ") { it.title },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
+      }
+      if (onToggle != null) {
+        Icon(
+          if (expanded) Icons.RoundedFilled.ExpandLess else Icons.RoundedFilled.ExpandMore,
+          contentDescription = null,
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
     }
 
-    Spacer(modifier = Modifier.height(8.dp))
-
-    SettingsDestinationGroup(
-      section = section,
-      selectedScreen = selectedScreen,
-      onItemClick = onItemClick,
-      modifier = Modifier.padding(horizontal = 16.dp),
-    )
+    if (expanded) {
+      Spacer(modifier = Modifier.height(8.dp))
+      SettingsDestinationGroup(
+        section = section,
+        selectedScreen = selectedScreen,
+        onItemClick = onItemClick,
+        modifier = Modifier.padding(horizontal = 16.dp),
+      )
+    }
   }
 }
 

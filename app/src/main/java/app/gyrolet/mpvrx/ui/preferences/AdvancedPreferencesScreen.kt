@@ -74,6 +74,7 @@ import app.gyrolet.mpvrx.ui.player.MpvConfigCache
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.preferences.components.RestartRequiredDialog
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
@@ -133,6 +134,16 @@ object AdvancedPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    SettingsCategoryMenu(
+      R.string.pref_advanced,
+      listOf(SettingsPage.CONFIG_STORAGE, SettingsPage.MPV_CONFIG, SettingsPage.SCRIPTS, SettingsPage.LOGGING)
+        .map { it.link },
+    )
+  }
+
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  internal fun DetailsContent(page: SettingsPage? = null) {
     val context = LocalContext.current
     val backStack = LocalBackStack.current
     val preferences = koinInject<AdvancedPreferences>()
@@ -339,7 +350,7 @@ object AdvancedPreferencesScreen : Screen {
     Scaffold(
       topBar = {
         SettingsTopAppBar(
-          title = stringResource(R.string.pref_advanced),
+          title = stringResource(page?.titleRes ?: R.string.pref_advanced),
           onBack = { backStack.popSafely() },
         )
       },
@@ -347,7 +358,7 @@ object AdvancedPreferencesScreen : Screen {
       ProvideExpressivePreferenceLocals {
         val mpvConfStorageLocation = configurationFolderUri
         val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(AdvancedPreferencesScreen, MaterialTheme.colorScheme.primary)
+          rememberSettingsSearchList(LocalCurrentScreen.current ?: AdvancedPreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
           state = settingsListState,
           modifier =
@@ -357,11 +368,11 @@ object AdvancedPreferencesScreen : Screen {
               .then(settingsHighlight),
         ) {
           // Backup & Restore Section
-          item {
+          if (SettingsPage.BACKUPS.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.First, title = stringResource(R.string.pref_section_backup_restore))
           }
 
-          item {
+          if (SettingsPage.BACKUPS.includes(page)) item {
             PreferenceCard {
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_auto_backup_title),
@@ -450,11 +461,11 @@ object AdvancedPreferencesScreen : Screen {
           }
 
           // Storage Root Section
-          item {
+          if (SettingsPage.CONFIG_STORAGE.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_storage_root))
           }
 
-          item {
+          if (SettingsPage.CONFIG_STORAGE.includes(page)) item {
             PreferenceCard {
               ExpressivePreferenceItem {
               Preference(
@@ -511,11 +522,11 @@ object AdvancedPreferencesScreen : Screen {
           }
 
           // MPV Configuration Section
-          item {
+          if (SettingsPage.MPV_CONFIG.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_mpv_config))
           }
 
-          item {
+          if (SettingsPage.MPV_CONFIG.includes(page)) item {
             PreferenceCard {
               var mpvConf by remember { mutableStateOf(preferences.mpvConf.get()) }
               var inputConf by remember { mutableStateOf(preferences.inputConf.get()) }
@@ -597,11 +608,11 @@ object AdvancedPreferencesScreen : Screen {
           }
 
           // Scripts Section
-          item {
+          if (SettingsPage.SCRIPTS.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_scripts))
           }
 
-          item {
+          if (SettingsPage.SCRIPTS.includes(page)) item {
             PreferenceCard {
               val selectedScripts by preferences.selectedLuaScripts.collectAsState()
               val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
@@ -678,15 +689,15 @@ object AdvancedPreferencesScreen : Screen {
           }
 
           // Language and notification style share one connected Advanced group.
-          item {
+          if (SettingsPage.APP.includes(page)) item {
             PreferenceSectionHeader(
               position = PreferenceSectionPosition.Middle,
-              title = stringResource(R.string.pref_advanced),
+              title = stringResource(page?.titleRes ?: R.string.pref_advanced),
               modifier = Modifier.settingsSearchTarget(R.string.pref_advanced),
             )
           }
 
-          item {
+          if (SettingsPage.APP.includes(page)) item {
             val notificationStyle by preferences.notificationStyle.collectAsState()
             val supportedNotificationStyles =
               remember {
@@ -736,11 +747,11 @@ object AdvancedPreferencesScreen : Screen {
           }
 
           // Data & Cache Section
-          item {
+          if (SettingsPage.HISTORY_CACHE.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_data_cache))
           }
 
-          item {
+          if (SettingsPage.HISTORY_CACHE.includes(page)) item {
             PreferenceCard {
               var isConfirmDialogShown by remember { mutableStateOf(false) }
               val playbackStateRepository = koinInject<PlaybackStateRepository>()
@@ -1069,11 +1080,11 @@ object AdvancedPreferencesScreen : Screen {
           }
 
           // Logging, diagnostics & privacy Section
-          item {
+          if (SettingsPage.LOGGING.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_logging))
           }
 
-          item {
+          if (SettingsPage.LOGGING.includes(page)) item {
             PreferenceCard {
               val activity = LocalActivity.current!!
               val verboseLogging by preferences.verboseLogging.collectAsState()

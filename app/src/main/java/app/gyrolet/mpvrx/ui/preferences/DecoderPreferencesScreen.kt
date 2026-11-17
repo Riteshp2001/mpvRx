@@ -69,6 +69,7 @@ import app.gyrolet.mpvrx.ui.player.RendererBackendPolicy
 import app.gyrolet.mpvrx.ui.player.shouldUseTextureRendering
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import kotlinx.serialization.Serializable
@@ -80,7 +81,27 @@ object DecoderPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    if (LocalPlayerSettingsPanel.current) {
+      DetailsContent()
+      return
+    }
+    SettingsCategoryMenu(
+      R.string.pref_decoder,
+      buildList {
+        add(SettingsPage.RENDERER.link)
+        add(SettingsPage.ENHANCEMENT.link)
+        add(SettingsPage.UPSCALING.link)
+        if (MotionInterpolation.isBuildSupported) add(SettingsPage.MOTION.link)
+      },
+    )
+  }
+
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  internal fun DetailsContent(page: SettingsPage? = null) {
     val preferences = koinInject<DecoderPreferences>()
+    val mediaCodecEmbed by preferences.mediaCodecEmbed.collectAsState()
+    val useVulkan by preferences.useVulkan.collectAsState()
     val embeddedInPlayer = LocalPlayerSettingsPanel.current
     val advancedPreferences = koinInject<AdvancedPreferences>()
     val storedConfigOverrides by advancedPreferences.mpvConfOverrides.collectAsState()
@@ -109,14 +130,14 @@ object DecoderPreferencesScreen : Screen {
       contentWindowInsets = settingsContentWindowInsets(),
       topBar = {
         SettingsTopAppBar(
-          title = stringResource(R.string.pref_decoder),
+          title = stringResource(page?.titleRes ?: R.string.pref_decoder),
           onBack = { backstack.popSafely() },
         )
       },
     ) { padding ->
       ProvideExpressivePreferenceLocals {
         val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(DecoderPreferencesScreen, MaterialTheme.colorScheme.primary)
+          rememberSettingsSearchList(LocalCurrentScreen.current ?: DecoderPreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
           state = settingsListState,
           modifier =
@@ -125,15 +146,16 @@ object DecoderPreferencesScreen : Screen {
               .padding(padding)
               .then(settingsHighlight),
         ) {
-          if (!embeddedInPlayer) item {
+          if (!embeddedInPlayer && page != SettingsPage.MOTION) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Single, 
-              title = stringResource(R.string.pref_decoder),
+              title = stringResource(page?.titleRes ?: R.string.pref_decoder),
               modifier = Modifier.settingsSearchTarget(R.string.pref_decoder),
             )
           }
 
-          item {
+          if (page != SettingsPage.MOTION) item {
             PreferenceCard {
+              if (SettingsPage.RENDERER.includes(page)) {
               val profile by preferences.profile.collectAsState()
               val currentProfile = MPVProfile.fromValue(profile)
               ExpressivePreferenceItem {
@@ -156,7 +178,6 @@ object DecoderPreferencesScreen : Screen {
               PreferenceDivider()
 
               val tryHWDecoding by preferences.tryHWDecoding.collectAsState()
-              val mediaCodecEmbed by preferences.mediaCodecEmbed.collectAsState()
               val forcedOnByMediaCodecEmbed: @Composable () -> Unit = {
                 MediaCodecEmbedNote(R.string.pref_decoder_mediacodec_embed_forced_on)
               }
@@ -212,7 +233,6 @@ object DecoderPreferencesScreen : Screen {
               PreferenceDivider()
 
               val gpuNext by preferences.gpuNext.collectAsState()
-              val useVulkan by preferences.useVulkan.collectAsState() // Added to check Vulkan state
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_gpu_next_title),
                 value = gpuNext && !mediaCodecEmbed,
@@ -362,8 +382,9 @@ object DecoderPreferencesScreen : Screen {
                 }
               }
 
-              PreferenceDivider()
-
+              }
+              if (SettingsPage.ENHANCEMENT.includes(page)) {
+              if (page == null) PreferenceDivider()
               val debanding by preferences.debanding.collectAsState()
               ExpressivePreferenceItem {
               ListPreference(
@@ -481,8 +502,9 @@ object DecoderPreferencesScreen : Screen {
                 }
               }
 
-              PreferenceDivider()
-
+              }
+              if (SettingsPage.UPSCALING.includes(page)) {
+              if (page == null) PreferenceDivider()
               val enableAnime4K by preferences.enableAnime4K.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_anime4k_title),
@@ -656,10 +678,11 @@ object DecoderPreferencesScreen : Screen {
                   }
                 }
               }
+              }
             }
           }
 
-          if (MotionInterpolation.isBuildSupported) {
+          if (MotionInterpolation.isBuildSupported && SettingsPage.MOTION.includes(page)) {
             if (!embeddedInPlayer) item {
               PreferenceSectionHeader(position = PreferenceSectionPosition.Single,
                 title = stringResource(R.string.motion_title),

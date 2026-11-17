@@ -70,6 +70,7 @@ import app.gyrolet.mpvrx.ui.preferences.PreferenceDivider
 import app.gyrolet.mpvrx.ui.preferences.PreferenceSectionHeader
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -133,6 +134,18 @@ object AiIntegrationScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    SettingsCategoryMenu(
+      R.string.pref_section_ai_title,
+      listOf(
+        SettingsPage.AI_FEATURES, SettingsPage.AI_PROVIDER, SettingsPage.AI_SPEECH,
+        SettingsPage.AI_TRANSLATION, SettingsPage.AI_PROMPTS,
+      ).map { it.link },
+    )
+  }
+
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  internal fun DetailsContent(page: SettingsPage? = null) {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
     val preferences = koinInject<AiPreferences>()
@@ -243,7 +256,7 @@ object AiIntegrationScreen : Screen {
       }
     }
 
-    LaunchedEffect(enabled, provider, activeApiKey, if (isCustomProvider) customOpenAiBaseUrl else "") {
+    LaunchedEffect(enabled, provider, activeApiKey, if (isCustomProvider) customOpenAiBaseUrl else "", page) {
       configurationRevision++
       modelLoadRequestId++
       keyVerificationRequestId++
@@ -268,7 +281,7 @@ object AiIntegrationScreen : Screen {
           modelLoadError = context.getString(R.string.pref_ai_cached_models_invalid)
         }
       }
-      if (enabled && providerConfigured) {
+      if (enabled && providerConfigured && SettingsPage.AI_PROVIDER.includes(page)) {
         val scheduledRequestId = modelLoadRequestId
         delay(600L)
         if (scheduledRequestId == modelLoadRequestId) loadModels()
@@ -284,14 +297,14 @@ object AiIntegrationScreen : Screen {
     Scaffold(
       topBar = {
         SettingsTopAppBar(
-          title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_section_ai_title),
+          title = stringResource(page?.titleRes ?: R.string.pref_section_ai_title),
           onBack = { backstack.popSafely() },
         )
       },
     ) { padding ->
       ProvideExpressivePreferenceLocals {
         val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(AiIntegrationScreen, MaterialTheme.colorScheme.primary)
+          rememberSettingsSearchList(LocalCurrentScreen.current ?: AiIntegrationScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
           state = settingsListState,
           modifier =
@@ -330,9 +343,9 @@ object AiIntegrationScreen : Screen {
           }
 
           if (enabled) {
-            item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_ai_provider_section)) }
+            if (SettingsPage.AI_PROVIDER.includes(page)) item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_ai_provider_section)) }
 
-            item {
+            if (SettingsPage.AI_PROVIDER.includes(page)) item {
               PreferenceCard {
                 val providers = AiProvider.values().toList()
                 ExpressivePreferenceItem {
@@ -423,7 +436,7 @@ val apiKeyInfo =
                   else -> null
                 }
 
-              if (apiKeyInfo != null) {
+              if (apiKeyInfo != null && SettingsPage.AI_PROVIDER.includes(page)) {
                 item {
                   PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, 
                     title = stringResource(R.string.pref_api_config_section),
@@ -615,14 +628,14 @@ val apiKeyInfo =
                   }
                 }
 
-                item {
+                if (SettingsPage.AI_PROVIDER.includes(page)) item {
                   PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, 
                     title = stringResource(R.string.pref_model_section),
                     modifier = Modifier.settingsSearchTarget(R.string.search_ai_model_selection_title),
                   )
                 }
 
-                item {
+                if (SettingsPage.AI_PROVIDER.includes(page)) item {
                   PreferenceCard {
                     if (isCustomProvider) {
                       ExpressivePreferenceItem {
@@ -911,9 +924,9 @@ val apiKeyInfo =
                 }
               }
 
-            item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_ai_features_subsection)) }
+            if (SettingsPage.AI_FEATURES.includes(page)) item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_ai_features_subsection)) }
 
-            item {
+            if (SettingsPage.AI_FEATURES.includes(page)) item {
               PreferenceCard {
                 SwitchPreference(
                   modifier = Modifier.settingsSearchTarget(R.string.pref_ai_rename_title),
@@ -957,14 +970,14 @@ val apiKeyInfo =
               }
             }
 
-            item {
+            if (SettingsPage.AI_SPEECH.includes(page)) item {
               PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, 
                 title = stringResource(R.string.pref_stt_section),
                 modifier = Modifier.settingsSearchTarget(R.string.search_stt_title),
               )
             }
 
-              item {
+              if (SettingsPage.AI_SPEECH.includes(page)) item {
                 PreferenceCard {
                   val sttProviders = listOf(AiProvider.GROQ, AiProvider.OPENAI, AiProvider.OPENROUTER)
                   val sttProvider by preferences.sttProvider.collectAsState()
@@ -1130,14 +1143,14 @@ val apiKeyInfo =
                 }
               }
 
-              item {
+              if (SettingsPage.AI_TRANSLATION.includes(page)) item {
                 PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, 
                   title = stringResource(R.string.pref_translation_section),
                   modifier = Modifier.settingsSearchTarget(R.string.pref_translation_section),
                 )
               }
 
-              item {
+              if (SettingsPage.AI_TRANSLATION.includes(page)) item {
                 PreferenceCard {
                   SwitchPreference(
                     modifier = Modifier.settingsSearchTarget(R.string.pref_enable_translation_title),
@@ -1173,14 +1186,14 @@ val apiKeyInfo =
                 }
               }
 
-            item {
+            if (SettingsPage.AI_PROMPTS.includes(page)) item {
               PreferenceSectionHeader(position = PreferenceSectionPosition.Last, 
                 title = stringResource(R.string.pref_custom_prompt_section),
                 modifier = Modifier.settingsSearchTarget(R.string.search_custom_ai_prompts_title),
               )
             }
 
-            item {
+            if (SettingsPage.AI_PROMPTS.includes(page)) item {
               PreferenceCard {
                 SwitchPreference(
                   modifier = Modifier.settingsSearchTarget(R.string.pref_override_instructions_title),

@@ -59,6 +59,7 @@ import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotFormat
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
@@ -74,6 +75,19 @@ object PlayerPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    if (LocalPlayerSettingsPanel.current) {
+      DetailsContent()
+      return
+    }
+    SettingsCategoryMenu(
+      R.string.pref_player,
+      listOf(SettingsPage.PLAYBACK, SettingsPage.SEEKING, SettingsPage.SCREENSHOTS).map { it.link },
+    )
+  }
+
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  internal fun DetailsContent(page: SettingsPage? = null) {
     val backstack = LocalBackStack.current
     val context = LocalContext.current
     val resources = LocalResources.current
@@ -94,14 +108,14 @@ object PlayerPreferencesScreen : Screen {
       contentWindowInsets = settingsContentWindowInsets(),
       topBar = {
         SettingsTopAppBar(
-          title = stringResource(id = R.string.pref_player),
+          title = stringResource(id = page?.titleRes ?: R.string.pref_player),
           onBack = { backstack.popSafely() },
         )
       },
     ) { padding ->
       ProvideExpressivePreferenceLocals {
         val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(PlayerPreferencesScreen, MaterialTheme.colorScheme.primary)
+          rememberSettingsSearchList(LocalCurrentScreen.current ?: PlayerPreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
           state = settingsListState,
           modifier =
@@ -111,13 +125,13 @@ object PlayerPreferencesScreen : Screen {
               .then(settingsHighlight),
         ) {
           // ── General ───────────────────────────────────────────────────────
-          item {
+          if (SettingsPage.PLAYBACK.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.First,
               title = stringResource(R.string.pref_section_general),
               modifier = Modifier.settingsSearchTarget(R.string.pref_player),
             )
           }
-          item {
+          if (SettingsPage.PLAYBACK.includes(page)) item {
             PreferenceCard {
               DevicePreference(R.string.pref_player_orientation) {
                 val orientation by preferences.orientation.collectAsState()
@@ -555,8 +569,8 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           }
 
           // ── Seeking ───────────────────────────────────────────────────────
-          item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_player_seeking_title)) }
-          item {
+          if (SettingsPage.SEEKING.includes(page)) item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_player_seeking_title)) }
+          if (SettingsPage.SEEKING.includes(page)) item {
             PreferenceCard {
               DevicePreference(R.string.show_splash_ovals_on_double_tap_to_seek) {
                 val showDoubleTapOvals by preferences.showDoubleTapOvals.collectAsState()
@@ -841,8 +855,8 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           }
 
           // ── Display & Controls ────────────────────────────────────────────
-          item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_display_controls)) }
-          item {
+          if (SettingsPage.DISPLAY.includes(page)) item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_display_controls)) }
+          if (SettingsPage.DISPLAY.includes(page)) item {
             PreferenceCard {
               DevicePreference(R.string.pref_player_controls_drawer_title) {
                 val showControlsDrawer by preferences.showControlsDrawer.collectAsState()
@@ -948,8 +962,8 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           }
 
           // ── Screenshots ─────────────────────────────────────────────────
-          item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_screenshots_section)) }
-          item {
+          if (SettingsPage.SCREENSHOTS.includes(page)) item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_screenshots_section)) }
+          if (SettingsPage.SCREENSHOTS.includes(page)) item {
             PreferenceCard {
               val screenshotFormat by preferences.screenshotFormat.collectAsState()
               ExpressivePreferenceItem {
@@ -1080,8 +1094,8 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           }
 
           // ── Overlays ─────────────────────────────────────────────────────
-          item { PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_overlays)) }
-          item {
+          if (SettingsPage.OVERLAYS.includes(page)) item { PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_overlays)) }
+          if (SettingsPage.OVERLAYS.includes(page)) item {
             PreferenceCard {
               val showVolumeGestureOverlay by preferences.showVolumeGestureOverlay.collectAsState()
               SwitchPreference(

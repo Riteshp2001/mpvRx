@@ -14,30 +14,27 @@ import app.gyrolet.mpvrx.ui.tv.tvContentFocus
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpCookieControls
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
-import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -47,6 +44,25 @@ object NetworkConfigurationPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    if (!app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP && !app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) {
+      PreferencesScreen.Content()
+      return
+    }
+    SettingsCategoryMenu(
+      R.string.ui_network,
+      buildList {
+        if (app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP) {
+          add(SettingsPage.YTDLP.link)
+          add(SettingsPage.COOKIES.link)
+        }
+        if (app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) add(SettingsPage.P2P.link)
+      },
+    )
+  }
+
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  internal fun DetailsContent(page: SettingsPage? = null) {
     if (!app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP && !app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) {
       // Old saved navigation stacks may still contain this former settings destination.
       PreferencesScreen.Content()
@@ -58,22 +74,9 @@ object NetworkConfigurationPreferencesScreen : Screen {
 
     Scaffold(
       topBar = {
-        TopAppBar(
-          title = {
-            Text(
-              text = stringResource(R.string.ui_network),
-              style = MaterialTheme.typography.headlineSmall,
-              fontWeight = FontWeight.ExtraBold,
-              color = MaterialTheme.colorScheme.primary,
-            )
-          },
-          navigationIcon = {
-            if (LocalShowSettingsBackArrow.current) {
-              IconButton(onClick = { backStack.popSafely() }) {
-                Icon(Icons.RoundedFilled.ArrowBack, contentDescription = null)
-              }
-            }
-          },
+        SettingsTopAppBar(
+          title = stringResource(page?.titleRes ?: R.string.ui_network),
+          onBack = { backStack.popSafely() },
         )
       },
     ) { padding ->
@@ -91,9 +94,14 @@ object NetworkConfigurationPreferencesScreen : Screen {
         ) {
           // Streaming tools live directly on Network. YT-DLP intentionally comes first,
           // followed by P2P, matching the order in which users choose a stream source.
-          if (app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP) YtdlpManagerSections()
+          if (app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP && SettingsPage.YTDLP.includes(page)) {
+            YtdlpManagerSections(includeCookies = page == null)
+          }
+          if (app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP && page == SettingsPage.COOKIES) {
+            YtdlpCookieControls(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp))
+          }
 
-          if (app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) {
+          if (app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT && SettingsPage.P2P.includes(page)) {
             PreferenceSectionHeader(title = stringResource(R.string.pref_section_p2p_streaming))
             ExpressivePreferenceGroup {
               SwitchPreference(

@@ -324,7 +324,7 @@ object SettingsSearchNavigation {
 }
 
 val SearchablePreference.searchTargetKey: String
-  get() = (targetRes ?: titleRes)?.let { "res:$it" } ?: "text:${title.orEmpty()}"
+  get() = targetKey ?: (targetRes ?: titleRes)?.let { "res:$it" } ?: "text:${title.orEmpty()}"
 
 /** Scrolls to one concrete preference row and briefly highlights only that row. */
 fun Modifier.settingsSearchTarget(
@@ -401,6 +401,12 @@ fun Modifier.highlightBackground(highlighted: Boolean): Modifier {
   )
   return this.background(color = highlight)
 }
+
+internal fun originalSettingsAnchorIndex(preference: SearchablePreference): Int? =
+  settingsSearchListAnchors[preference.screen]?.firstOrNull {
+    preference.searchTargetKey == "res:${it.titleRes}" ||
+      (it.title != null && preference.searchTargetKey == "text:${it.title}")
+  }?.itemIndex ?: preference.anchorItemIndex
 
 private suspend fun scrollToSettingsSearchTarget(
   screen: Screen,

@@ -86,6 +86,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.player.defaultSubtitleFontDisplayName
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.CustomFontEntry
@@ -109,6 +110,19 @@ object SubtitlesPreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    if (LocalPlayerSettingsPanel.current) {
+      DetailsContent()
+      return
+    }
+    SettingsCategoryMenu(
+      R.string.pref_subtitles,
+      listOf(SettingsPage.SUBTITLE_BEHAVIOR, SettingsPage.SUBTITLE_FONTS, SettingsPage.SUBTITLE_SEARCH).map { it.link },
+    )
+  }
+
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  internal fun DetailsContent(page: SettingsPage? = null) {
     val context = LocalContext.current
     val backstack = LocalBackStack.current
     val playerPanel = LocalPlayerSettingsPanel.current
@@ -170,7 +184,7 @@ object SubtitlesPreferencesScreen : Screen {
       contentWindowInsets = settingsContentWindowInsets(),
       topBar = {
         SettingsTopAppBar(
-          title = stringResource(R.string.pref_subtitles),
+          title = stringResource(page?.titleRes ?: R.string.pref_subtitles),
           onBack = { backstack.popSafely() },
         )
       },
@@ -296,7 +310,7 @@ object SubtitlesPreferencesScreen : Screen {
         }
 
         val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(SubtitlesPreferencesScreen, MaterialTheme.colorScheme.primary)
+          rememberSettingsSearchList(LocalCurrentScreen.current ?: SubtitlesPreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
           state = settingsListState,
           modifier =
@@ -306,14 +320,14 @@ object SubtitlesPreferencesScreen : Screen {
               .then(settingsHighlight),
         ) {
           // === GENERAL SECTION ===
-          item {
+          if (SettingsPage.SUBTITLE_BEHAVIOR.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.First, 
               title = stringResource(R.string.general),
               modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles),
             )
           }
 
-          item {
+          if (SettingsPage.SUBTITLE_BEHAVIOR.includes(page)) item {
             PreferenceCard {
               val preferredLanguages by preferences.preferredLanguages.collectAsState()
               ExpressivePreferenceItem {
@@ -436,11 +450,11 @@ object SubtitlesPreferencesScreen : Screen {
 
           // === FONT SECTION ===
           if (!playerPanel) {
-          item {
+          if (SettingsPage.SUBTITLE_FONTS.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_subtitle_fonts))
           }
 
-          item {
+          if (SettingsPage.SUBTITLE_FONTS.includes(page)) item {
             PreferenceCard {
               ExpressivePreferenceItem {
               Preference(
@@ -604,14 +618,14 @@ object SubtitlesPreferencesScreen : Screen {
 
           }
           // === ONLINE SUBTITLE SECTION ===
-          item {
+          if (SettingsPage.SUBTITLE_SEARCH.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Last, 
               title = stringResource(R.string.pref_section_subtitle_search),
               modifier = Modifier.settingsSearchTarget(R.string.pref_subtitle_search_title),
             )
           }
 
-          item {
+          if (SettingsPage.SUBTITLE_SEARCH.includes(page)) item {
             PreferenceCard {
               var showClearDialog by remember { mutableStateOf(false) }
 

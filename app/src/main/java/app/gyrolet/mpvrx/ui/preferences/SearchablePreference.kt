@@ -35,6 +35,7 @@ data class SearchablePreference(
   val screen: Screen,
   @StringRes val targetRes: Int? = null,
   val anchorItemIndex: Int? = null,
+  val targetKey: String? = null,
 )
 
 data class SettingsSearchResult(
@@ -2421,10 +2422,10 @@ object SearchablePreferences {
         (if (television) TvSettingsPolicy.supportsSearch(preference) else TvSettingsPolicy.supportsMobileSearch(preference))
 
     val directResults =
-      staticPreferences
+      (staticPreferences + settingsPageSearchEntries())
         .mapIndexedNotNull { index, preference ->
           val entry = if (television) TvSettingsPolicy.searchEntry(preference) else preference
-          entry.takeIf(::available)?.match(normalizedQuery, getStringRes, index)
+          entry.takeIf(::available)?.let(::reorganizedSettingsPreference)?.match(normalizedQuery, getStringRes, index)
         }.sortedWith(
           compareByDescending<SettingsSearchResult> { it.score }
             .thenBy { it.preference.category }
@@ -2437,7 +2438,7 @@ object SearchablePreferences {
     return screenFallbackPreferences
       .mapIndexedNotNull { index, preference ->
         val entry = if (television) TvSettingsPolicy.searchEntry(preference) else preference
-        entry.takeIf(::available)?.match(normalizedQuery, getStringRes, staticPreferences.size + index)
+        entry.takeIf(::available)?.let(::reorganizedSettingsPreference)?.match(normalizedQuery, getStringRes, staticPreferences.size + index)
       }.sortedByDescending(SettingsSearchResult::score)
   }
 

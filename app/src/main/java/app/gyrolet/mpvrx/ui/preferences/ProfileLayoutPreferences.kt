@@ -9,9 +9,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -21,13 +27,24 @@ import app.gyrolet.mpvrx.preferences.ProfileStatisticsCard
 import app.gyrolet.mpvrx.preferences.preference.Preference
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton
+import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference
+
+private enum class ProfileEditorGroup(@StringRes val titleRes: Int) {
+  HUBS(R.string.profile_layout_hubs),
+  SECTIONS(R.string.profile_layout_sections),
+  STATISTICS(R.string.profile_layout_statistics),
+}
 
 @Composable
-internal fun ProfileLayoutPreferences(preferences: AppearancePreferences) {
+internal fun ProfileLayoutPreferences(preferences: AppearancePreferences, showTitle: Boolean = true) {
+  var group by rememberSaveable { mutableStateOf(ProfileEditorGroup.HUBS) }
+  val searchTarget by SettingsSearchNavigation.target.collectAsState()
+  LaunchedEffect(searchTarget?.requestId) {
+    ProfileEditorGroup.entries.firstOrNull { searchTarget?.key == "res:${it.titleRes}" }?.let { group = it }
+  }
   Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-    PreferenceSectionHeader(
+    if (showTitle) PreferenceSectionHeader(
       title = stringResource(R.string.profile_layout_title),
-      modifier = Modifier.settingsSearchTarget(R.string.profile_layout_title),
     )
     Text(
       text = stringResource(R.string.profile_layout_summary),
@@ -35,24 +52,39 @@ internal fun ProfileLayoutPreferences(preferences: AppearancePreferences) {
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
-    ProfileLayoutGroup(
-      titleRes = R.string.profile_layout_hubs,
-      choices = ProfileHubCard.entries.map { it.name to it.titleRes },
-      orderPreference = preferences.profileHubOrder,
-      hiddenPreference = preferences.profileHiddenHubs,
-    )
-    ProfileLayoutGroup(
-      titleRes = R.string.profile_layout_sections,
-      choices = ProfileSection.entries.map { it.name to it.titleRes },
-      orderPreference = preferences.profileSectionOrder,
-      hiddenPreference = preferences.profileHiddenSections,
-    )
-    ProfileLayoutGroup(
-      titleRes = R.string.profile_layout_statistics,
-      choices = ProfileStatisticsCard.entries.map { it.name to it.titleRes },
-      orderPreference = preferences.profileStatisticsOrder,
-      hiddenPreference = preferences.profileHiddenStatistics,
-    )
+    PreferenceCard {
+      ExpressivePreferenceItem(standalone = true) {
+        AppListPreference(
+          modifier = Modifier.settingsSearchTarget(R.string.profile_layout_title),
+          value = group,
+          onValueChange = { group = it },
+          values = ProfileEditorGroup.entries,
+          valueToText = { AnnotatedString(stringResource(it.titleRes)) },
+          title = { Text(stringResource(R.string.generic_configure)) },
+          summary = { Text(stringResource(group.titleRes)) },
+        )
+      }
+    }
+    when (group) {
+      ProfileEditorGroup.HUBS -> ProfileLayoutGroup(
+        titleRes = group.titleRes,
+        choices = ProfileHubCard.entries.map { it.name to it.titleRes },
+        orderPreference = preferences.profileHubOrder,
+        hiddenPreference = preferences.profileHiddenHubs,
+      )
+      ProfileEditorGroup.SECTIONS -> ProfileLayoutGroup(
+        titleRes = group.titleRes,
+        choices = ProfileSection.entries.map { it.name to it.titleRes },
+        orderPreference = preferences.profileSectionOrder,
+        hiddenPreference = preferences.profileHiddenSections,
+      )
+      ProfileEditorGroup.STATISTICS -> ProfileLayoutGroup(
+        titleRes = group.titleRes,
+        choices = ProfileStatisticsCard.entries.map { it.name to it.titleRes },
+        orderPreference = preferences.profileStatisticsOrder,
+        hiddenPreference = preferences.profileHiddenStatistics,
+      )
+    }
     AppDialogTextButton(
       modifier = Modifier.padding(horizontal = 16.dp),
       onClick = {

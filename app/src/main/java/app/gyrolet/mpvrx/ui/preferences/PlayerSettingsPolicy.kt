@@ -171,7 +171,7 @@ private val settingNativeOptions = mapOf(
 )
 
 internal fun isLivePlayerSetting(screen: app.gyrolet.mpvrx.presentation.Screen?, @StringRes key: Int?): Boolean =
-  when (screen) {
+  when (screen.settingsSourceScreen()) {
     is ControlLayoutEditorScreen -> true
     PlayerControlsPreferencesScreen, PersistentStatusBarPreferencesScreen -> true
     GesturePreferencesScreen -> key !in setOf(R.string.pref_video_swipe_title, R.string.pref_nested_tab_swipes_title)

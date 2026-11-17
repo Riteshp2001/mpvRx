@@ -509,6 +509,9 @@ private fun localizedSearchCategory(category: String): String =
 @androidx.annotation.StringRes
 internal fun searchCategoryTitleRes(category: String): Int =
     when (category) {
+      "General" -> R.string.pref_section_general
+      "Storage" -> R.string.settings_library_storage
+      "Controls" -> R.string.pref_section_gestures_controls
       "About" -> R.string.pref_section_about
       "Advanced" -> R.string.search_category_advanced
       "AI" -> R.string.search_category_ai
@@ -516,10 +519,10 @@ internal fun searchCategoryTitleRes(category: String): Int =
       "Audio" -> R.string.search_category_audio
       "Decoder" -> R.string.search_category_decoder
       "Codecs" -> R.string.pref_codecs_title
-      "Folders" -> R.string.search_category_folders
+      "Folders" -> R.string.settings_library_storage
       "Media Servers" -> R.string.pref_media_servers_title
       "Gestures" -> R.string.search_category_gestures
-      "Network" -> R.string.ui_network
+      "Network" -> R.string.settings_connections
       "Player" -> R.string.search_category_player
       "Subtitles" -> R.string.search_category_subtitles
       else -> R.string.search_category_advanced

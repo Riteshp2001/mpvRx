@@ -20,6 +20,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 
 /** The floating player panel already owns system/keyboard insets; embedded pages need only their content padding. */
 @Composable
@@ -37,10 +38,12 @@ internal fun SettingsTopAppBar(
   windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
 ) {
   if (LocalPlayerSettingsPanel.current) return
+  val page = (LocalCurrentScreen.current as? SettingsPageScreen)?.page
+  val searchableTitle = page?.let { titleModifier.settingsSearchTarget(it.searchKey) } ?: titleModifier
   TopAppBar(
     title = {
       Text(
-        modifier = titleModifier,
+        modifier = searchableTitle,
         text = title,
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.ExtraBold,

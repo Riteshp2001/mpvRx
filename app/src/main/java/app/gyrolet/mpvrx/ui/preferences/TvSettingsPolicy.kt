@@ -62,9 +62,10 @@ internal object TvSettingsPolicy {
   )
 
   fun supportsScreen(screen: Screen): Boolean =
-    screen != GesturePreferencesScreen && screen != VideoSwipePreferencesScreen &&
+    screen.settingsSourceScreen() != GesturePreferencesScreen && screen != VideoSwipePreferencesScreen &&
       screen != AppIconPreferencesScreen && screen != CustomButtonScreen &&
-      screen !is ControlLayoutEditorScreen
+      screen !is ControlLayoutEditorScreen &&
+      (screen !is SettingsPageScreen || screen.page !in setOf(SettingsPage.BUTTON_LAYOUTS, SettingsPage.SEEKBAR))
 
   fun supportsTitle(@StringRes title: Int?): Boolean = title !in mobileTitles
 

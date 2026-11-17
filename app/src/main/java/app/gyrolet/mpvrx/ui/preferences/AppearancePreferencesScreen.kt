@@ -73,6 +73,7 @@ import app.gyrolet.mpvrx.ui.theme.CustomThemeDefinition
 import app.gyrolet.mpvrx.ui.theme.WallpaperDerivedThemeName
 import app.gyrolet.mpvrx.ui.theme.LocalThemeTransitionState
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.collections.immutable.persistentListOf
@@ -94,6 +95,20 @@ object AppearancePreferencesScreen : Screen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
+    if (LocalPlayerSettingsPanel.current) {
+      DetailsContent()
+      return
+    }
+    SettingsCategoryMenu(
+      R.string.pref_appearance_title,
+      listOf(SettingsPage.THEME, SettingsPage.NAVIGATION, SettingsPage.PROFILE, SettingsPage.ANIMATIONS)
+        .map { it.link },
+    )
+  }
+
+  @OptIn(ExperimentalMaterial3Api::class)
+  @Composable
+  internal fun DetailsContent(page: SettingsPage? = null) {
     val context = LocalContext.current
     val preferences = koinInject<AppearancePreferences>()
     val browserPreferences = koinInject<BrowserPreferences>()
@@ -234,14 +249,14 @@ object AppearancePreferencesScreen : Screen {
     Scaffold(
       topBar = {
         SettingsTopAppBar(
-          title = stringResource(R.string.pref_appearance_title),
+          title = stringResource(page?.titleRes ?: R.string.pref_appearance_title),
           onBack = { backstack.popSafely() },
         )
       },
     ) { padding ->
       ProvideExpressivePreferenceLocals {
         val (settingsListState, settingsHighlight) =
-          rememberSettingsSearchList(AppearancePreferencesScreen, MaterialTheme.colorScheme.primary)
+          rememberSettingsSearchList(LocalCurrentScreen.current ?: AppearancePreferencesScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
           state = settingsListState,
           modifier =
@@ -250,14 +265,14 @@ object AppearancePreferencesScreen : Screen {
               .padding(padding)
               .then(settingsHighlight),
         ) {
-          item {
+          if (SettingsPage.THEME.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.First,
               title = stringResource(id = R.string.pref_appearance_category_theme),
               modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_title),
             )
           }
 
-          item {
+          if (SettingsPage.THEME.includes(page)) item {
             // Leave previews off a painted panel; only the actual preference controls
             // belong to the per-item connected background group.
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -490,13 +505,13 @@ object AppearancePreferencesScreen : Screen {
             }
           }
 
-          item {
+          if (SettingsPage.LIBRARY_DISPLAY.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Middle,
               title = stringResource(id = R.string.pref_appearance_category_file_browser),
             )
           }
 
-          item {
+          if (SettingsPage.LIBRARY_DISPLAY.includes(page)) item {
             ExpressivePreferenceGroup {
               val itemCount = 7
               val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
@@ -673,13 +688,13 @@ object AppearancePreferencesScreen : Screen {
             }
           }
 
-          item {
+          if (SettingsPage.THUMBNAILS.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Middle,
               title = stringResource(id = R.string.pref_appearance_category_thumbnails),
             )
           }
 
-          item {
+          if (SettingsPage.THUMBNAILS.includes(page)) item {
             ExpressivePreferenceGroup {
               val showFramePosition = thumbnailGenerator != ThumbnailGenerator.MediaStore && thumbnailMode == ThumbnailMode.FrameAtPosition
               val itemCount = if (showFramePosition) 8 else 7
@@ -931,14 +946,14 @@ object AppearancePreferencesScreen : Screen {
             }
           }
 
-          item {
+          if (SettingsPage.NAVIGATION.includes(page)) item {
             PreferenceSectionHeader(
               position = PreferenceSectionPosition.Middle,
               title = stringResource(R.string.pref_appearance_category_navigation),
             )
           }
 
-          item {
+          if (SettingsPage.NAVIGATION.includes(page)) item {
             val showMusicTab by preferences.showMusicTab.collectAsState()
             val showProfileTab by preferences.showProfileTab.collectAsState()
             val showNetworkTab by preferences.showNetworkTab.collectAsState()
@@ -981,19 +996,22 @@ object AppearancePreferencesScreen : Screen {
                   },
                 )
               }
-              ProfileLayoutPreferences(preferences)
             }
           }
 
+          if (SettingsPage.PROFILE.includes(page)) item {
+            ProfileLayoutPreferences(preferences, showTitle = page == null)
+          }
+
           if (!television) {
-            item {
+            if (SettingsPage.NAVIGATION.includes(page)) item {
               PreferenceSectionHeader(
                 position = PreferenceSectionPosition.Middle,
                 title = stringResource(R.string.pref_nav_actions_section),
               )
             }
 
-            item {
+            if (SettingsPage.NAVIGATION.includes(page)) item {
               ExpressivePreferenceGroup {
                 val showQuickPlayFab by preferences.showQuickPlayFab.collectAsState()
                 SwitchPreference(
@@ -1080,14 +1098,14 @@ object AppearancePreferencesScreen : Screen {
             }
           } else {
             // Same item count as the phone block above, so later search anchors still line up.
-            item {
+            if (SettingsPage.NAVIGATION.includes(page)) item {
               PreferenceSectionHeader(
                 position = PreferenceSectionPosition.Middle,
                 title = stringResource(R.string.pref_nav_actions_section),
               )
             }
 
-            item {
+            if (SettingsPage.NAVIGATION.includes(page)) item {
               ExpressivePreferenceGroup {
                 val confirmBackToExit by gesturePreferences.confirmBackToExit.collectAsState()
                 SwitchPreference(
@@ -1104,11 +1122,11 @@ object AppearancePreferencesScreen : Screen {
           }
 
           // ── Animations ────────────────────────────────────────
-          item {
+          if (SettingsPage.ANIMATIONS.includes(page)) item {
             PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_animations))
           }
 
-          item {
+          if (SettingsPage.ANIMATIONS.includes(page)) item {
             ExpressivePreferenceGroup {
               val controlsAnimStyle by playerPreferences.controlsAnimStyle.collectAsState()
               ExpressivePreferenceTile(index = 0, itemCount = 4) {
