@@ -28,7 +28,7 @@
   <string name="pref_liquid_glass_in_hdr_title">HDR मोड में लिक्विड ग्लास</string>
   <string name="pref_liquid_glass_in_hdr_summary">HDR आउटपुट चालू होने पर भी प्लेयर कंट्रोल पर लाइव ग्लास बनाए रखें। HDR वीडियो SDR जैसा दिखेगा</string>
   <string name="pref_liquid_glass_in_hdr_warning_title">HDR मोड में लिक्विड ग्लास इस्तेमाल करें?</string>
-  <string name="pref_liquid_glass_in_hdr_warning_message">लिक्विड ग्लास के लिए वीडियो को TextureView के ज़रिए दिखाना ज़रूरी है। Android इस तरह दिखाए गए HDR वीडियो को SDR में बदल देता है, इसलिए HDR आउटपुट की अतिरिक्त चमक और कंट्रास्ट खो जाते हैं, और प्लेबैक में ज़्यादा बैटरी लग सकती है। असली HDR वापस पाने के लिए इसे कभी भी बंद करें।</string>
+  <string name="pref_liquid_glass_in_hdr_warning_message">Liquid Glass, TextureView से HDR को SDR में बदलता है और अधिक बैटरी ले सकता है। असली HDR के लिए इसे बंद करें।</string>
   <string name="pref_liquid_glass_in_hdr_warning_confirm">फिर भी चालू करें</string>
   <string name="pref_appearance_system_font_title">सिस्टम फॉन्ट इस्तेमाल करें</string>
   <string name="pref_appearance_system_font_summary">Google Sans की जगह mpvRx में Android सिस्टम टाइपफेस इस्तेमाल करें</string>
@@ -67,17 +67,17 @@
   <string name="pref_appearance_show_video_thumbnails_title">वीडियो थंबनेल दिखाएं</string>
   <string name="pref_appearance_show_video_thumbnails_summary">वीडियो लिस्ट और फोल्डर्स में जनरेट किए गए थंबनेल दिखाएं</string>
   <string name="pref_appearance_thumbnail_generation_title">थंबनेल जनरेशन रणनीति</string>
-  <string name="pref_appearance_thumbnail_generation_summary">थंबनेल कैसे जनरेट हों चुनें, जैसे एम्बेडेड आर्टवर्क या किसी खास फ्रेम पोजीशन से</string>
+  <string name="pref_appearance_thumbnail_generation_summary">एम्बेडेड कवर या वीडियो फ़्रेम चुनें।</string>
   <string name="pref_appearance_thumbnail_generation_change_title">थंबनेल रणनीति बदलें?</string>
-  <string name="pref_appearance_thumbnail_generation_change_summary">इससे कैश किए गए थंबनेल हट जाएंगे। ब्राउज़ करते समय चुनी गई रणनीति से नए थंबनेल जनरेट होंगे।</string>
+  <string name="pref_appearance_thumbnail_generation_change_summary">कैश थंबनेल मिटाकर ब्राउज़ करते समय फिर बनाएँ?</string>
   <string name="pref_appearance_thumbnail_quality_title">थंबनेल क्वालिटी</string>
-  <string name="pref_appearance_thumbnail_quality_summary">अधिकतम थंबनेल रिज़ॉल्यूशन: %1$d px। ज्यादा क्वालिटी से स्टोरेज ज्यादा इस्तेमाल होगी और जनरेशन धीमा हो सकता है।</string>
+  <string name="pref_appearance_thumbnail_quality_summary">थंबनेल सीमा: %1$d px। बड़ी तस्वीरें अधिक स्टोरेज और प्रोसेसिंग लेती हैं।</string>
   <string name="pref_appearance_thumbnail_position_title">थंबनेल फ्रेम पोजीशन</string>
   <string name="pref_appearance_thumbnail_position_summary">वीडियो के %1$d%% पर फ्रेम कैप्चर करें</string>
   <string name="pref_appearance_thumbnail_parallelism_title">थंबनेल प्रोसेसिंग कोर</string>
   <string name="pref_appearance_thumbnail_parallelism_auto">स्वचालित (%2$d में से %1$d)</string>
   <string name="pref_appearance_thumbnail_parallelism_value">%2$d में से %1$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">एक साथ कितने थंबनेल बनाए जाते हैं। ज़्यादा होने पर तेज़ होता है, लेकिन ज़्यादा मेमोरी और बैटरी लगती है और स्क्रॉल अटक सकता है। स्वचालित इस डिवाइस के लिए सुरक्षित मान चुनता है।</string>
+  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">ज़्यादा थ्रेड तेज़ हैं, पर मेमोरी, बैटरी खपत और रुकावट बढ़ सकती है। Auto सुझाया जाता है।</string>
   <string name="pref_appearance_thumbnail_parallelism_warning">इस डिवाइस के लिए सुझाए गए %1$d से ज़्यादा है। अगर सूचियाँ अटकें या ऐप बैकग्राउंड में बंद हो जाए, तो इसे कम करें।</string>
   <string name="pref_appearance_show_network_thumbnails_title">नेटवर्क थंबनेल दिखाएं (प्रायोगिक)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">नेटवर्क स्ट्रीम्स के लिए थंबनेल जनरेट करें (मोबाइल नेटवर्क पर डेटा उपयोग बढ़ सकता है)</string>
@@ -141,11 +141,11 @@
   <string name="pref_enable_video_mini_player_title">वीडियो मिनी प्लेयर सक्षम करें</string>
   <string name="pref_enable_video_mini_player_summary">बैक दबाने पर वीडियो प्लेबैक को फ़्लोटिंग मिनी प्लेयर में छोटा करें</string>
   <string name="pref_video_mini_player_dependency_title">वीडियो बैकग्राउंड प्लेबैक सक्षम करें?</string>
-  <string name="pref_video_mini_player_dependency_message">वीडियो मिनी प्लेयर को पूर्ण प्लेयर छोड़ने के बाद भी वीडियो चलाते रहने के लिए वीडियो प्लेयर बैकग्राउंड प्लेबैक की आवश्यकता है।</string>
+  <string name="pref_video_mini_player_dependency_message">वीडियो प्लेयर बैकग्राउंड प्लेबैक सक्षम होना चाहिए।</string>
   <string name="pref_video_mini_player_dependency_confirm">सक्षम करें और जारी रखें</string>
   <string name="pref_player_keep_screen_on_when_paused_title">पॉज होने पर स्क्रीन ऑन रखें</string>
   <string name="pref_player_external_display_projection_title">बाहरी डिस्प्ले प्रोजेक्शन</string>
-  <string name="pref_player_external_display_projection_summary">HDMI, USB-C या वायरलेस डिस्प्ले कनेक्ट होने पर वीडियो उस पर चलाएं और फोन की स्क्रीन बंद होने दें</string>
+  <string name="pref_player_external_display_projection_summary">फ़ोन की स्क्रीन बंद रखकर HDMI, USB-C या वायरलेस डिस्प्ले पर चलाएँ।</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">वीडियो पॉज होने पर स्क्रीन जागती रहती है</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">वीडियो पॉज होने पर स्क्रीन बंद हो सकती है</string>
   <string name="pref_player_autoplay_after_screen_unlock_title">स्क्रीन अनलॉक होने पर ऑटोप्ले करें</string>
@@ -228,18 +228,18 @@
   <string name="pref_gesture_use_single_tap_for_center_title">बीच में सिंगल टैप</string>
   <string name="pref_gesture_use_single_tap_for_right_title">दाईं ओर सिंगल टैप</string>
   <string name="pref_gesture_use_single_tap_for_left_summary">बाईं ओर की कार्रवाई के लिए दो बार की जगह एक बार टैप करें।</string>
-  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">बीच के क्षेत्र में एक बार टैप करें (डिफ़ॉल्ट चौड़ाई 30% और ऊँचाई 30%)। बीच के बाकी टैप कंट्रोल दिखाते या छिपाते हैं।</string>
+  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">बीच के क्षेत्र (30% चौड़ा, 30% ऊँचा) में सिंगल टैप करें। बाकी टैप से नियंत्रण दिखेंगे या छिपेंगे।</string>
   <string name="pref_gesture_use_single_tap_for_right_summary">दाईं ओर की कार्रवाई के लिए दो बार की जगह एक बार टैप करें।</string>
   <string name="pref_gesture_center_vertical_subtitle_position_title">खींचकर उपशीर्षक खिसकाएँ</string>
-  <string name="pref_gesture_center_vertical_subtitle_position_summary">मुख्य उपशीर्षक को खिसकाने के लिए बीच में दबाकर रखें, फिर ऊपर या नीचे खींचें। किसी भी उपशीर्षक को सीधे दबाकर रखने पर उसका ट्रैक अलग से खिसकाया जा सकता है। सामान्य स्वाइप से प्लेलिस्ट पहले की तरह खुलती है।</string>
-  <string name="pref_gesture_double_tap_custom_info">आप input.conf में इन की-कोड्स का इस्तेमाल करके इन जेस्चरों पर कस्टम एक्शन बांध सकते हैं:\n\nबाएं: MBTN_LEFT_DBL\nबीच: MBTN_MID_DBL\nदाएं: MBTN_RIGHT_DBL</string>
+  <string name="pref_gesture_center_vertical_subtitle_position_summary">सबटाइटल को दबाकर खिसकाएँ, या मुख्य ट्रैक के लिए बीच में दबाएँ। सक्षम होने पर पिंच से आकार बदलें।</string>
+  <string name="pref_gesture_double_tap_custom_info">input.conf कुंजियाँ:\nबाएँ: MBTN_LEFT_DBL\nबीच: MBTN_MID_DBL\nदाएँ: MBTN_RIGHT_DBL</string>
   <string name="pref_gesture_media_title">मीडिया कंट्रोल्स</string>
   <string name="pref_gesture_media_previous">पिछला</string>
   <string name="pref_gesture_media_play">प्ले/पॉज</string>
   <string name="pref_gesture_media_next">अगला</string>
-  <string name="pref_gesture_media_custom_info">आप input.conf में इन की-कोड्स का इस्तेमाल करके मीडिया कंट्रोल्स पर कस्टम एक्शन बांध सकते हैं:\n\nपिछला: PREV\nप्ले/पॉज: PLAYPAUSE\nअगला: NEXT</string>
+  <string name="pref_gesture_media_custom_info">input.conf कुंजियाँ:\nपिछला: PREV\nचलाएँ/रोकें: PLAYPAUSE\nअगला: NEXT</string>
   <string name="pref_gesture_tap_thumbnail_to_select_title">चुनने के लिए थंबनेल टैप करें</string>
-  <string name="pref_gesture_tap_thumbnail_to_select_summary">सक्षम होने पर, थंबनेल टैप करने से सिलेक्शन मोड शुरू होता है। अक्षम होने पर, थंबनेल टैप करने पर वीडियो चलती है।</string>
+  <string name="pref_gesture_tap_thumbnail_to_select_summary">चलाने के बजाय चुनने के लिए थंबनेल टैप करें।</string>
   <string name="pref_decoder">डिकोडर</string>
   <string name="pref_decoder_summary">हार्डवेयर डिकोडिंग, पिक्सल फॉर्मेट, डीबैंडिंग</string>
   <string name="pref_decoder_profile_title">MPV प्रोफाइल</string>
@@ -259,7 +259,7 @@
   <string name="renderer_build_notice_supported_device">OpenGL इस्तेमाल हो रहा है; Vulkan के लिए स्टैंडर्ड बिल्ड इंस्टॉल करें।</string>
   <string name="renderer_build_notice_unsupported_device">OpenGL इस्तेमाल हो रहा है; यह डिवाइस Vulkan 1.3 समर्थित नहीं करता।</string>
   <string name="pref_decoder_yuv420p_title">YUV420P पिक्सल फॉर्मेट इस्तेमाल करें</string>
-  <string name="pref_decoder_yuv420p_summary">कुछ वीडियो कोडेक्स पर काली स्क्रीन ठीक कर सकता है, क्वालिटी की कीमत पर परफॉर्मेंस भी बेहतर कर सकता है</string>
+  <string name="pref_decoder_yuv420p_summary">काली स्क्रीन ठीक कर सकता है या गति बढ़ा सकता है, पर गुणवत्ता घटती है।</string>
   <string name="pref_subtitles">सबटाइटल</string>
   <string name="pref_subtitles_summary">पसंदीदा भाषाएं, फॉन्ट और खोज</string>
   <string name="pref_subtitle_search_title">ऑनलाइन सबटाइटल खोज</string>
@@ -288,7 +288,7 @@
   <string name="pref_audio_summary">पसंदीदा भाषाएं, ऑडियो चैनल, पिच करेक्शन</string>
   <string name="pref_audio_orientation_title">ऑडियो प्लेयर ओरिएंटेशन</string>
   <string name="pref_audio_pitch_correction_title">ऑडियो पिच करेक्शन सक्षम करें</string>
-  <string name="pref_audio_pitch_correction_summary">तेज स्पीड पर ऑडियो को पतला और धीमी स्पीड पर भारी होने से रोकता है</string>
+  <string name="pref_audio_pitch_correction_summary">प्लेबैक गति बदलने पर मूल पिच बनाए रखें।</string>
   <string name="pref_audio_volume_normalization_title">वॉल्यूम नॉर्मलाइज़ेशन</string>
   <string name="pref_audio_volume_normalization_summary">लाउडनेस को एक जैसा बनाए रखने के लिए ऑडियो वॉल्यूम अपने आप एडजस्ट करें</string>
   <string name="pref_audio_drc_title">डायनामिक रेंज कम्प्रेशन (DRC)</string>
@@ -302,7 +302,7 @@
   <string name="pref_audio_visualizer_style_particle">कण</string>
   <string name="pref_audio_visualizer_galaxy_credit">Zain Raza (CodePen) से प्रेरित</string>
   <string name="pref_audio_ambient_mode_title">एम्बिएंट मोड</string>
-  <string name="pref_audio_ambient_mode_summary">म्यूजिक प्लेयर में एल्बम कवर आर्ट से बने गतिशील रंग ग्रेडिएंट प्रदर्शित करें (विज़ुअलाइज़र सक्रिय होने पर अक्षम)</string>
+  <string name="pref_audio_ambient_mode_summary">कवर से पृष्ठभूमि के रंग। विज़ुअलाइज़र चलते समय छिपे रहते हैं।</string>
   <string name="pref_audio_wavy_seekbar_title">लहरदार सीकबार</string>
   <string name="pref_audio_wavy_seekbar_summary">सीकबार के ऊपर मल्टी-लेयर फ्लूइड वेवी विज़ुअलाइज़र एनिमेशन प्रदर्शित करें</string>
   <string name="pref_audio_channels">ऑडियो चैनल</string>
@@ -311,7 +311,7 @@
   <string name="pref_audio_channels_mono">मोनो</string>
   <string name="pref_audio_channels_stereo">स्टीरियो</string>
   <string name="pref_audio_channels_stereo_reversed">रिवर्स्ड स्टीरियो</string>
-  <string name="pref_audio_preferred_language">कई ऑडियो स्ट्रीम वाली वीडियो में डिफ़ॉल्ट रूप से चुनी जाने वाली ऑडियो भाषा(एं), दो या तीन अक्षर वाले भाषा कोड काम करते हैं। कई वैल्यू कॉमा से अलग की जा सकती हैं।</string>
+  <string name="pref_audio_preferred_language">कॉमा से अलग भाषा कोड, जैसे en,eng,ja। प्राथमिकता बाएँ से दाएँ।</string>
   <string name="pref_audio_volume_boost_cap">वॉल्यूम बूस्ट सीमा</string>
   <string name="pref_advanced">एडवांस्ड</string>
   <string name="pref_advanced_summary">कॉन्फ़िगरेशन लोकेशन, mpv.conf</string>
@@ -343,7 +343,7 @@
   <string name="pref_anime4k_title">Anime4K अपस्केलिंग</string>
   <string name="pref_anime4k_summary">Anime4K अपस्केलिंग फिल्टर सक्षम करें</string>
   <string name="pref_anime4k_incompatibility">Anime4K असंगति</string>
-  <string name="pref_anime4k_gpu_next_error">Anime4K के लिए या तो लीगेसी GPU चाहिए, या Vulkan के साथ gpu-next। OpenGL पर gpu-next शेडर संगतता के लिए लीगेसी GPU पर वापस चला जाएगा।</string>
+  <string name="pref_anime4k_gpu_next_error">Anime4K को legacy GPU या Vulkan वाला GPU Next चाहिए। OpenGL पर legacy GPU इस्तेमाल होगा।</string>
   <string name="anime4k_mode_title">Anime4K प्रीसेट</string>
   <string name="pref_anime4k_quality_title">Anime4K क्वालिटी</string>
   <string name="anime4k_mode_off">बंद</string>
@@ -358,7 +358,7 @@
   <string name="anime4k_quality_balanced">संतुलित</string>
   <string name="anime4k_quality_high">उच्च</string>
   <string name="pref_anime4k_in_4k_title">4K वीडियो में सक्षम करें</string>
-  <string name="pref_anime4k_in_4k_summary">4K और 8K वीडियो के लिए Anime4K अपस्केलिंग की अनुमति दें (GPU लोड और थर्मल थ्रॉटलिंग बढ़ सकता है)</string>
+  <string name="pref_anime4k_in_4k_summary">4K/8K वीडियो के लिए सक्षम करें। GPU लोड और गर्मी बढ़ सकती है।</string>
   <string name="pref_anime4k_darken_title">Anime4K लाइनों को गहरा करें</string>
   <string name="pref_anime4k_darken_summary">मुख्य अपस्केलर के बाद लाइन डार्कनिंग जोड़ता है।</string>
   <string name="pref_anime4k_thin_title">Anime4K पतली लाइनें</string>
@@ -451,7 +451,7 @@
   <string name="player_aspect_crop">क्रॉप</string>
   <string name="player_aspect_stretch">स्ट्रेच</string>
   <string name="crash_screen_title">अप्रत्याशित त्रुटि</string>
-  <string name="crash_screen_subtitle">लगता है %s में कोई अनजान गड़बड़ी हुई है। GitHub इश्यू में क्रैश लॉग शेयर करने पर विचार करें।</string>
+  <string name="crash_screen_subtitle">%s में अनपेक्षित त्रुटि हुई। GitHub मुद्दे में लॉग साझा करें।</string>
   <string name="crash_screen_logs_title">क्रैश लॉग:</string>
   <string name="crash_screen_share">क्रैश लॉग शेयर करें</string>
   <string name="crash_screen_restart">ऐप रीस्टार्ट करें</string>
@@ -487,7 +487,7 @@
   <string name="toast_audio_background_playback_off">ऑडियो का बैकग्राउंड प्लेबैक बंद है</string>
   <string name="pref_audio_background_playback_summary">ऑडियो प्लेयर से बाहर जाने या स्क्रीन बंद करने पर ऑडियो चलता रखें</string>
   <string name="pref_audio_mini_player_track_switching_title">मिनी प्लेयर में गाने बदलें</string>
-  <string name="pref_audio_mini_player_track_switching_summary">जब मिनी प्लेयर या बैकग्राउंड प्लेबैक सक्रिय हो, तो दूसरा गाना चुनने पर पूरा प्लेयर खोले बिना मिनी प्लेयर में गाना बदल जाता है</string>
+  <string name="pref_audio_mini_player_track_switching_summary">पूरा प्लेयर खोले बिना मिनी प्लेयर में ट्रैक बदलें।</string>
   <string name="pref_video_background_playback_title">वीडियो प्लेयर बैकग्राउंड प्लेबैक</string>
   <string name="pref_video_background_playback_summary">वीडियो प्लेयर से बाहर जाने या स्क्रीन बंद करने पर वीडियो का ऑडियो चलता रखें</string>
   <string name="deselect_all">सभी अनसिलेक्ट करें</string>
@@ -742,7 +742,7 @@
   <string name="pref_custom_prompt_section">कस्टम प्रॉम्प्ट</string>
   <string name="pref_override_instructions_title">डिफ़ॉल्ट निर्देश ओवरराइड करें</string>
   <string name="pref_custom_prompts_header">कस्टम प्रॉम्प्ट</string>
-  <string name="pref_custom_prompts_description">उस टास्क के लिए बिल्ट-इन निर्देश इस्तेमाल करने हेतु फील्ड खाली छोड़ें। अगर आपके पास कोई पुराना ग्लोबल प्रॉम्प्ट सेव है, तो वह फॉलबैक के रूप में इस्तेमाल होगा।</string>
+  <string name="pref_custom_prompts_description">खाली फ़ील्ड में बिल्ट-इन निर्देश या सहेजा गया ग्लोबल प्रॉम्प्ट इस्तेमाल होगा।</string>
   <string name="pref_custom_rename_prompt_label">कस्टम रिनेम प्रॉम्प्ट</string>
   <string name="pref_custom_translation_prompt_label">कस्टम सबटाइटल ट्रांसलेशन प्रॉम्प्ट</string>
   <string name="pref_custom_format_prompt_label">कस्टम सबटाइटल फॉर्मेटिंग प्रॉम्प्ट</string>
@@ -1210,11 +1210,11 @@
   <string name="ui_mpvrx_needs_access_to_your_video_files_to_provide_its_core_funct">mpvRx को अपनी मुख्य कार्यक्षमता एक मीडिया प्लेयर के रूप में देने के लिए आपकी वीडियो फाइलों तक एक्सेस चाहिए।</string>
   <string name="ui_the_permission_is_used_exclusively_for">यह परमिशन सिर्फ इनके लिए इस्तेमाल होती है:</string>
   <string name="ui_discovering_and_displaying_your_video_files_n_playing_media_cont">• आपकी वीडियो फाइलें ढूंढना और दिखाना\n• मीडिया कंटेंट चलाना\n• सबटाइटल फाइलें लोड करना</string>
-  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">mpvRx को हमेशा स्टोरेज एक्सेस परमिशन की ज़रूरत रही है क्योंकि ऐप के लिए आपके डिवाइस पर सभी मीडिया और सबटाइटल फाइलें ढूंढना ज़रूरी है, जिनमें वे भी शामिल हैं जो सिस्टम द्वारा समर्थित नहीं हैं।</string>
-  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">हालांकि, सिक्योरिटी पॉलिसी में बदलाव के कारण, Android 11 और उससे ऊपर के लिए बने ऐप्स को अब यही एक्सेस जारी रखने के लिए अतिरिक्त परमिशन चाहिए।</string>
-  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">कृपया जान लें कि यह परमिशन सिर्फ आपके डिवाइस पर मीडिया/सबटाइटल फाइलों की ऑटो-डिस्कवरी के लिए इस्तेमाल होती है और हमें किसी भी तरह से दूसरे ऐप्स की निजी डेटा फाइलों तक पहुंचने नहीं देगी।</string>
-  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">mpvRx एक ओपन सोर्स प्रोजेक्ट है। आप हमारी GitHub रिपॉज़िटरी पर जाकर सोर्स कोड देख सकते हैं और परमिशन कैसे इस्तेमाल होती है, यह जांच सकते हैं:</string>
-  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">बेफ़िक्र रहें, आपकी प्राइवेसी हमारी सबसे बड़ी प्राथमिकता है, और हम न तो किसी और मकसद के लिए आपकी फाइलें एक्सेस करते हैं और न ही उन्हें अपने सर्वर पर भेजते या स्टोर करते हैं। वे आपके डिवाइस पर ही सुरक्षित रहती हैं।</string>
+  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">स्टोरेज अनुमति से mpvRx बिना इंडेक्स वाली फ़ाइल समेत मीडिया और सबटाइटल खोजता है।</string>
+  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">Android 11 और नए संस्करणों में पूरे स्टोरेज की पहुँच के लिए अतिरिक्त अनुमति चाहिए।</string>
+  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">केवल मीडिया और सबटाइटल खोजने के लिए, निजी ऐप डेटा के लिए नहीं।</string>
+  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">अनुमतियों का इस्तेमाल हमारे ओपन-सोर्स कोड में देखें:</string>
+  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">फ़ाइलें आपके डिवाइस पर रहती हैं। हम उन्हें अपने सर्वर पर अपलोड नहीं करते।</string>
   <string name="ui_app_permissions">ऐप परमिशन</string>
   <string name="ui_permissions_setup_subtitle">मुख्य फीचर और मीडिया प्लेबैक सक्षम करने के लिए परमिशन कॉन्फ़िगर करें।</string>
   <string name="ui_file_permission_title">फाइल और स्टोरेज एक्सेस</string>
@@ -1224,7 +1224,7 @@
   <string name="ui_notification_permission_title">नोटिफिकेशन</string>
   <string name="ui_notification_permission_desc">वैकल्पिक। मीडिया प्लेबैक कंट्रोल्स, बैकग्राउंड स्टेटस और अपडेट अलर्ट के लिए ज़रूरी।</string>
   <string name="ui_audio_record_permission_title">ऑडियो रिकॉर्ड करें</string>
-  <string name="ui_audio_record_permission_desc">वैकल्पिक। ऑडियो विज़ुअलाइज़र को रीयल-टाइम स्पेक्ट्रम और फ्रीक्वेंसी एनर्जी प्रोसेस करने के लिए ज़रूरी।</string>
+  <string name="ui_audio_record_permission_desc">वैकल्पिक। विज़ुअलाइज़र को लाइव ध्वनि स्तर पढ़ने देता है।</string>
   <string name="ui_permission_granted">दी गई</string>
   <string name="ui_next">अगला</string>
   <string name="ui_grant_permission_hint">परमिशन देने के लिए टैप करें</string>
@@ -1235,7 +1235,7 @@
   <string name="ui_no_results_found">कोई नतीजा नहीं मिला</string>
   <string name="ui_no_android">Android नहीं</string>
   <string name="ui_script_runtime">स्क्रिप्ट रनटाइम</string>
-  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">नई सक्षम की गई स्क्रिप्ट्स प्लेबैक के दौरान लोड हो सकती हैं। जिन स्क्रिप्ट्स को आप बंद करते हैं, उन्हें पूरी तरह रुकने के लिए वीडियो फिर से खोलनी पड़ सकती है।</string>
+  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">सक्षम स्क्रिप्ट अभी लोड होंगी। बंद स्क्रिप्ट पूरी तरह रोकने के लिए वीडियो फिर खोलें।</string>
   <string name="ui_media_info">मीडिया जानकारी</string>
   <string name="ui_analyzing_media_file">मीडिया फाइल का विश्लेषण हो रहा है...</string>
   <string name="ui_media_tracks_summary">मीडिया ट्रैक सारांश</string>
@@ -1260,9 +1260,9 @@
   <string name="ui_filter_presets">फिल्टर प्रीसेट</string>
   <string name="ui_yt_dlp_manager">yt-dlp मैनेजर</string>
   <string name="ytdlp_auth_required_title">YouTube सत्यापन ज़रूरी है</string>
-  <string name="ytdlp_auth_required_message">YouTube को सत्यापन या नई साइन-इन कुकी चाहिए। जिस ब्राउज़र में यह वीडियो चलता है, उससे Netscape प्रारूप की cookies.txt फ़ाइल आयात करें; mpvRx अपने आप एक बार फिर कोशिश करेगा।</string>
+  <string name="ytdlp_auth_required_message">YouTube को सत्यापन चाहिए। एक बार फिर कोशिश के लिए काम कर रहे ब्राउज़र से नई Netscape cookies.txt आयात करें।</string>
   <string name="ytdlp_cookies_title">YouTube कुकी</string>
-  <string name="ytdlp_cookies_summary">आयात की गई साइन-इन कुकी आगे भी प्लेबैक में इस्तेमाल होती हैं। केवल YouTube कुकी निजी स्टोरेज में रखी जाती हैं और बैकअप में शामिल नहीं होतीं। ज़रूरत खत्म होने पर इन्हें यहाँ मिटाएँ।</string>
+  <string name="ytdlp_cookies_summary">YouTube कुकी निजी, बैकअप से बाहर स्टोरेज में रहती हैं। ज़रूरत खत्म होने पर मिटाएँ।</string>
   <string name="ytdlp_cookies_configured">कुकी सेट की गई हैं</string>
   <string name="ytdlp_cookies_help">YouTube कुकी कैसे निर्यात करें</string>
   <string name="ytdlp_cookies_help_failed">निर्देश खोलने के लिए कोई ब्राउज़र उपलब्ध नहीं है।</string>
@@ -1326,7 +1326,7 @@
   <string name="ui_subtitle_translation_can_be_a_bit_messy">सबटाइटल ट्रांसलेशन कभी-कभी थोड़ा गड़बड़ हो सकता है। </string>
   <string name="ui_real_time_model">रीयल-टाइम मॉडल</string>
   <string name="ui_auto_translate_target_languages">ऑटो-ट्रांसलेट टारगेट भाषाएं</string>
-  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">सबटाइटल ट्रांसलेट करते समय, अगर 1 भाषा कॉन्फ़िगर है तो सीधे ट्रांसलेट होगा। अगर 2+ हैं, तो एक पिकर दिखेगा।</string>
+  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">एक भाषा पर सीधा अनुवाद; कई भाषाओं पर चयन खुलेगा।</string>
   <string name="ui_no_target_languages_configured">कोई टारगेट भाषा कॉन्फ़िगर नहीं है</string>
   <string name="ui_search_languages">भाषाएं खोजें...</string>
   <string name="ui_refresh">रिफ्रेश करें</string>
@@ -1468,7 +1468,7 @@
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">एज के साथ जीवंत नियॉन जैसे रंग</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">OLED डिस्प्ले के लिए बेहतर ब्लैक</string>
   <string name="filter_preset_custom_section">कस्टम प्रीसेट</string>
-  <string name="filter_preset_custom_empty">चमक, कंट्रास्ट, गामा, संतृप्ति, ह्यू और शार्पनेस समायोजित करें, फिर इस संयोजन को बाद के उपयोग के लिए सहेजें।</string>
+  <string name="filter_preset_custom_empty">चित्र समायोजित करें, फिर सेटिंग को प्रीसेट के रूप में सहेजें।</string>
   <string name="filter_preset_save_current">वर्तमान सहेजें</string>
   <string name="filter_preset_save_title">कस्टम प्रीसेट सहेजें</string>
   <string name="filter_preset_rename_title">प्रीसेट का नाम बदलें</string>
@@ -1482,7 +1482,7 @@
   <string name="filter_preset_menu_description">प्रीसेट विकल्प</string>
   <string name="filter_preset_save">सहेजें</string>
   <string name="syncplay_title">Syncplay</string>
-  <string name="syncplay_description">दोस्तों के साथ वीडियो एक साथ देखें। साथ में देखना शुरू करने के लिए Syncplay सर्वर से कनेक्ट करें।</string>
+  <string name="syncplay_description">Syncplay सर्वर के ज़रिए साथ देखें।</string>
   <string name="syncplay_connected_as">रूम %2$s में %1$s के रूप में कनेक्ट है</string>
   <string name="syncplay_users_in_room">रूम में यूज़र:</string>
   <string name="syncplay_disconnect">डिस्कनेक्ट करें</string>
@@ -1542,13 +1542,13 @@
   <string name="secure_folder_delete_confirm_title">%1$d आइटम हमेशा के लिए डिलीट करें?</string>
   <string name="secure_folder_delete_confirm_subtitle">यह वापस नहीं हो सकता — फाइलें आपके सिक्योर फोल्डर से हमेशा के लिए हट जाएंगी।</string>
   <string name="secure_folder_hide_entry_title">सिक्योर फोल्डर सेटिंग्स छुपाएं?</string>
-  <string name="secure_folder_hide_entry_subtitle">सिक्योर फोल्डर सेटिंग्स, सेटिंग्स से हट जाएंगी। दोबारा खोलने के लिए होम स्क्रीन के ऊपर हेडर पर डबल-टैप करके सिक्योर फोल्डर PIN स्क्रीन खोलें, फिर उसके ऊपर दाईं ओर सेटिंग्स आइकन दबाएं।</string>
+  <string name="secure_folder_hide_entry_subtitle">यह पेज सेटिंग से छिपेगा। वापस आने के लिए: होम शीर्षक पर दो बार टैप करें, PIN डालें, फिर सेटिंग खोलें।</string>
   <string name="secure_folder_settings_title">सिक्योर फोल्डर सेटिंग्स</string>
   <string name="secure_folder_settings_summary">बायोमेट्रिक अनलॉक, PIN, प्राइवेसी और रीसेट विकल्प।</string>
   <string name="secure_folder_settings_security">सुरक्षा</string>
   <string name="secure_folder_settings_danger_zone">खतरनाक क्षेत्र</string>
   <string name="secure_folder_settings_help">मदद</string>
-  <string name="secure_folder_settings_help_text">सिक्योर फोल्डर खोलने के लिए होम स्क्रीन के ऊपर ऐप के नाम पर डबल-टैप या लॉन्ग-प्रेस करें।</string>
+  <string name="secure_folder_settings_help_text">होम शीर्षक पर डबल टैप या देर तक दबाकर सुरक्षित फ़ोल्डर खोलें।</string>
   <string name="secure_folder_settings_setup_first">पहले सिक्योर फोल्डर खोलकर PIN सेट करें।</string>
   <string name="secure_folder_biometric_title">बायोमेट्रिक अनलॉक चालू करें</string>
   <string name="secure_folder_biometric_summary">अनलॉक के लिए फिंगरप्रिंट या चेहरे का उपयोग करें</string>
@@ -1577,7 +1577,7 @@
   <string name="secure_folder_move_to">सिक्योर फोल्डर में ले जाएं</string>
   <string name="secure_folder_moving_progress">सिक्योर फोल्डर में ले जाया जा रहा है…</string>
   <string name="secure_folder_move_folders_title">%1$d फोल्डर सिक्योर फोल्डर में ले जाएं?</string>
-  <string name="secure_folder_move_folders_subtitle">अंदर की हर वीडियो इस लिस्ट और ऐप में हर जगह से गायब हो जाएगी जब तक कि रीस्टोर न किया जाए।</string>
+  <string name="secure_folder_move_folders_subtitle">बहाल करने तक इन फ़ोल्डर के सभी वीडियो छिपाएँ।</string>
   <string name="secure_folder_move_items_title">%1$d आइटम सिक्योर फोल्डर में ले जाएं?</string>
   <string name="secure_folder_move_items_subtitle">वे इस लिस्ट और ऐप में हर जगह से गायब हो जाएंगी जब तक कि रीस्टोर न किया जाए।</string>
   <string name="secure_folder_moved_success">%1$d फाइलें सिक्योर फोल्डर में ले जाई गईं</string>
@@ -1596,7 +1596,7 @@
   <string name="secure_folder_progress_format">%2$d में से %1$d · %3$d%%</string>
   <string name="pref_codecs_decoders_summary">%1$d हार्डवेयर • %2$d सॉफ्टवेयर डिकोडर</string>
   <string name="pref_codecs_banner_title">हार्डवेयर बनाम सॉफ्टवेयर डिकोडिंग</string>
-  <string name="pref_codecs_banner_desc">हार्डवेयर डिकोडर डेडिकेटेड VPU/GPU चिप पर सीधे वीडियो डिकोड करते हैं, न्यूनतम पावर इस्तेमाल करते हुए। सॉफ्टवेयर डिकोडर CPU कोर पर चलते हैं, जिससे हाई-बिटरेट या 4K प्लेबैक (जैसे बिना HW सपोर्ट वाला AV1) के दौरान बैटरी ज्यादा खर्च होती है और गर्मी बढ़ती है।</string>
+  <string name="pref_codecs_banner_desc">हार्डवेयर डिकोडिंग कम बिजली लेती है। सॉफ़्टवेयर डिकोडिंग से गर्मी और बैटरी खपत बढ़ सकती है।</string>
   <string name="pref_codecs_core_title">मुख्य वीडियो कोडेक स्टेटस</string>
   <string name="pref_codecs_search_placeholder">कोडेक नाम, फॉर्मेट या MIME खोजें...</string>
   <string name="pref_codecs_filter_all">सभी (%d)</string>
@@ -1660,7 +1660,7 @@
     <string name="ui_recent_streams">हालिया स्ट्रीम लिंक</string>
     <string name="ui_play_now">चलाएं</string>
     <string name="ui_no_saved_media_title">कोई लिंक सहेजा नहीं गया</string>
-    <string name="ui_no_saved_media_description">अपना मीडिया संग्रह बनाने के लिए स्ट्रीम URL, मैग्नेट लिंक पेस्ट करें या हाल के लिंक से सहेजें।</string>
+    <string name="ui_no_saved_media_description">स्ट्रीम URL, मैग्नेट लिंक या हाल का लिंक जोड़ें।</string>
     <string name="ui_search_episodes">एपिसोड खोजें…</string>
     <string name="ui_sort_ascending">आरोही क्रम में क्रमबद्ध करें</string>
     <string name="ui_sort_descending">अवरोही क्रम में क्रमबद्ध करें</string>
@@ -1704,7 +1704,7 @@
   <string name="pref_mpv_conf_override_osd">OSD सुरक्षित क्षेत्र</string>
   <string name="pref_mpv_conf_override_osd_summary">OSD फ़ॉन्ट, मार्जिन और सुरक्षित क्षेत्र ओवरराइड करता है।</string>
   <string name="mpv_config_owned_title">mpv.conf द्वारा नियंत्रित</string>
-  <string name="mpv_config_owned_message">यह ऐप नियंत्रण अक्षम है क्योंकि इसके लिए आवश्यक एक या अधिक विकल्प उन्नत सेटिंग में mpv.conf को सौंपे गए हैं।</string>
+  <string name="mpv_config_owned_message">mpv.conf द्वारा नियंत्रित। यह नियंत्रण इस्तेमाल करने के लिए उन्नत सेटिंग में विकल्प का नियंत्रण बदलें।</string>
   <string name="pref_lyrics_translation_category">गीत अनुवाद एवं लिप्यंतरण</string>
   <string name="pref_lyrics_auto_translate">विदेशी गीतों का स्वतः अनुवाद करें</string>
   <string name="pref_lyrics_auto_translate_summary">विदेशी भाषा के बोलों का स्वचालित रूप से अनुवाद करें</string>
@@ -1817,7 +1817,7 @@
   <string name="storage_permission_needed_desc">मीडिया ब्राउज़ और प्ले करने के लिए स्टोरेज एक्सेस दें।</string>
   <string name="storage_permission_grant">एक्सेस दें</string>
   <string name="pref_player_web_stream_links_title">स्ट्रीमिंग साइट लिंक खोलें</string>
-  <string name="pref_player_web_stream_links_summary">समर्थित स्ट्रीमिंग साइट लिंक और टेक्स्ट के रूप में साझा किए गए लिंक के लिए mpvRx दिखाएं। इसे बंद करने पर भी मीडिया फ़ाइलें और सीधे मीडिया URL खोले जा सकते हैं।</string>
+  <string name="pref_player_web_stream_links_summary">समर्थित वेबसाइट लिंक mpvRx में खोलें। बंद होने पर भी सीधे मीडिया लिंक काम करेंगे।</string>
 
   <string name="btn_label_scopes">स्कोप</string>
   <string name="scopes_title">स्कोप</string>
@@ -1883,7 +1883,7 @@
   <string name="player_started_afresh_pill">शुरुआत से चलाया गया</string>
   <string name="player_restart_action">दोबारा शुरू करें</string>
   <string name="pref_resume_indicator_overlay_title">फिर से शुरू करने का संकेतक</string>
-  <string name="pref_resume_indicator_overlay_summary">फिर शुरू करने या शुरुआत की स्थिति का फीडबैक पिल दिखाएँ। पूछें मोड में उसका इंटरैक्टिव फिर-से-शुरू पिल हमेशा दिखेगा</string>
+  <string name="pref_resume_indicator_overlay_summary">फिर शुरू करने के संकेत दिखाएँ। पूछें मोड में उसका संकेत हमेशा रहेगा।</string>
 
   <!-- Media Servers Settings -->
   <string name="pref_media_servers_title">मीडिया सर्वर</string>
@@ -1936,16 +1936,16 @@
   <string name="pref_appearance_custom_wallpaper_colors_failed">इस वॉलपेपर से रंग नहीं निकाले जा सके</string>
   <string name="wallpaper_save_failed">वॉलपेपर सहेजा नहीं जा सका। कृपया चित्र फिर से चुनें।</string>
   <string name="pref_haptic_feedback_title">हैप्टिक फ़ीडबैक</string>
-  <string name="pref_haptic_feedback_summary">चयन, खींचने और नियंत्रण समायोजन पर स्पर्श प्रतिक्रिया। सिस्टम सेटिंग का पालन करता है।</string>
+  <string name="pref_haptic_feedback_summary">चयन, खींचने और समायोजन पर प्रतिक्रिया। सिस्टम सेटिंग का पालन करता है।</string>
   <string name="pref_nested_tab_swipes_title">अंदरूनी टैब के बीच स्वाइप करें</string>
-  <string name="pref_nested_tab_swipes_summary">संगीत, नेटवर्क और हाल के आइटम में बाएँ/दाएँ स्वाइप चालू करें। मुख्य नेविगेशन और आइटम की स्वाइप कार्रवाइयाँ नहीं बदलेंगी।</string>
+  <string name="pref_nested_tab_swipes_summary">संगीत, नेटवर्क और हाल के आइटम के सब-टैब में स्वाइप करें।</string>
   <string name="oss_kmp_vibrate_description">WonDDak (jmseb3) की हैप्टिक फ़ीडबैक लाइब्रेरी।</string>
   <string name="ambient_style_youtube">YouTube</string>
-  <string name="ambient_youtube_auto_hint">YouTube मोड पूरी तरह स्वचालित है। YouTube के एम्बिएंट मोड की तरह, मौजूदा फ़्रेम का हल्का धुंधला प्रक्षेपण खाली पट्टियों को रोशन करता है।</string>
+  <string name="ambient_youtube_auto_hint">वीडियो के धुँधले प्रक्षेपण से पट्टियाँ अपने आप रोशन होती हैं।</string>
   <string name="btn_label_post_processing">पोस्ट-प्रोसेसिंग</string>
   <string name="clip_end_short">अंत</string>
   <string name="clip_start_short">शुरुआत</string>
-  <string name="enter_subtitle_title_preferences">उपशीर्षक शीर्षक के कीवर्ड या भाषा कोड प्राथमिकता क्रम में, कॉमा से अलग करके दर्ज करें। पहले मिले मेल को प्राथमिकता दी जाएगी।</string>
+  <string name="enter_subtitle_title_preferences">कॉमा से अलग सबटाइटल शब्द या भाषा कोड; प्राथमिकता बाएँ से दाएँ।</string>
   <string name="generic_configure">कॉन्फ़िगर करें</string>
   <string name="generic_install">इंस्टॉल करें</string>
   <string name="music_source_navidrome">Navidrome म्यूज़िक</string>
@@ -2152,7 +2152,7 @@
   <string name="pref_background_playback_remember">मेरी पसंद हमेशा याद रखें</string>
   <string name="pref_background_playback_remember_summary">अगले वीडियो के लिए भी बैकग्राउंड प्लेबैक की पसंद रखें।</string>
   <string name="pref_background_playback_per_video">हर वीडियो के लिए पसंद याद रखें</string>
-  <string name="pref_background_playback_per_video_summary">हर वीडियो के लिए बैकग्राउंड प्लेबैक की पसंद अलग सहेजें। दूसरे वीडियो के लिए यह चालू किए जाने तक बंद रहेगा।</string>
+  <string name="pref_background_playback_per_video_summary">हर वीडियो के लिए बैकग्राउंड प्लेबैक अलग याद रखें।</string>
   <string name="jellyfin_technical_details">तकनीकी विवरण</string>
 
   <!-- Snapshots (frame capture) -->
@@ -2163,7 +2163,7 @@
   <string name="profile_view_all">सभी देखें</string>
   <string name="profile_edit">प्रोफ़ाइल संपादित करें</string>
   <string name="profile_layout_title">प्रोफ़ाइल लेआउट</string>
-  <string name="profile_layout_summary">क्रम बदलने के लिए खींचें और आइटम दिखाने या छिपाने के लिए स्विच इस्तेमाल करें। आँकड़ों के कार्ड अपने सेक्शन में ही रहते हैं।</string>
+  <string name="profile_layout_summary">क्रम बदलने को खींचें; दिखाने या छिपाने को टॉगल करें। आँकड़ों के कार्ड अपने सेक्शन में रहेंगे।</string>
   <string name="profile_layout_hubs">हब कार्ड</string>
   <string name="profile_layout_sections">प्रोफ़ाइल सेक्शन</string>
   <string name="profile_layout_statistics">आँकड़ों के कार्ड</string>
@@ -2222,7 +2222,7 @@
   <string name="snapshot_delete_folder_empty_message">यह ऐप से फ़ोल्डर हटा देता है।</string>
 
   <string name="snapshot_folder_empty_title">यह फ़ोल्डर खाली है</string>
-  <string name="snapshot_folder_empty_message">स्नैपशॉट सूची में किसी स्नैपशॉट को देर तक दबाएं और यहां रखने के लिए \"फ़ोल्डर में ले जाएं\" चुनें।</string>
+  <string name="snapshot_folder_empty_message">स्नैपशॉट दबाकर रखें और «फ़ोल्डर में ले जाएँ» चुनें।</string>
 
   <string name="snapshot_sort_folder_name">फ़ोल्डर का नाम</string>
   <string name="snapshot_sort_created_at">बनाने की तिथि</string>
@@ -2242,7 +2242,7 @@
   <string name="oss_anime4k_description">एनिमेटेड वीडियो के लिए रियल-टाइम अपस्केलिंग और पुनर्स्थापन शेडर।</string>
   <string name="oss_hdr_toys_description">HDR टोन मैपिंग, गैमट मैपिंग और ट्रांसफ़र फ़ंक्शन शेडर।</string>
   <string name="pref_auto_backup_title">सेटिंग्स का ऑटो बैकअप</string>
-  <string name="pref_auto_backup_summary">mpvRx के बैकग्राउंड में जाने पर बदली सेटिंग्स को Configuration/Backup में सहेजें। नवीनतम सात बैकअप रखे जाते हैं।</string>
+  <string name="pref_auto_backup_summary">ऐप बैकग्राउंड में जाने पर बैकअप लें। Configuration/Backup में सात प्रतियाँ रखता है।</string>
   <string name="pref_auto_backup_select_folder">पहले कॉन्फ़िगरेशन फ़ोल्डर चुनें</string>
   <string name="pref_auto_backup_last_backup">पिछला बैकअप: %1$s</string>
   <string name="watch_stats_title">देखने के आँकड़े</string>
@@ -2258,9 +2258,9 @@
   <string name="pref_debug_log_size_title">लॉग आकार सीमा</string>
   <string name="pref_debug_log_size_summary">लॉग दर्शक और साझा निदान में अधिकतम %1$d MB रखें।</string>
   <string name="onboarding_configuration_title">mpvRx स्टोरेज सेट करें</string>
-  <string name="onboarding_configuration_desc">सेटिंग्स, बैकअप, स्क्रिप्ट, सबटाइटल और डाउनलोड के लिए कॉन्फ़िगरेशन फ़ोल्डर चुनें।</string>
+  <string name="onboarding_configuration_desc">सेटिंग, बैकअप, स्क्रिप्ट, सबटाइटल और डाउनलोड के लिए फ़ोल्डर चुनें।</string>
   <string name="onboarding_configuration_card_title">कॉन्फ़िगरेशन फ़ोल्डर</string>
-  <string name="onboarding_configuration_card_desc">अपना mpvRx कॉन्फ़िगरेशन फ़ोल्डर चुनें। रूट या Backup में मौजूद सेटिंग्स अपने आप बहाल होंगी।</string>
+  <string name="onboarding_configuration_card_desc">Configuration फ़ोल्डर चुनें। उसके मूल या Backup से सेटिंग बहाल होंगी।</string>
   <string name="onboarding_configuration_restoring">सेटिंग्स बैकअप जाँचे जा रहे हैं…</string>
   <string name="onboarding_configuration_no_backup">फ़ोल्डर सेट हो गया। डाउनलोड Configuration/Downloads का उपयोग करेंगे।</string>
   <string name="onboarding_configuration_restored">%1$s से सेटिंग्स बहाल हुईं। डाउनलोड Configuration/Downloads का उपयोग करेंगे।</string>
@@ -2278,7 +2278,7 @@
   <string name="legacy_navigation_bar_title">क्लासिक नेविगेशन बार</string>
   <string name="legacy_navigation_bar_summary">फ़्लोटिंग पिल की जगह पूरी चौड़ाई वाला क्लासिक नेविगेशन बार इस्तेमाल करें।</string>
   <string name="progressive_navigation_blur_title">क्रमिक नेविगेशन ब्लर</string>
-  <string name="progressive_navigation_blur_summary">फ़्लोटिंग नेविगेशन बार के पीछे Haze का क्रमिक ब्लर इस्तेमाल करें। क्लासिक नेविगेशन बार चालू होने पर यह अपने आप बंद हो जाता है।</string>
+  <string name="progressive_navigation_blur_summary">फ़्लोटिंग नेविगेशन बार के पीछे ब्लर। क्लासिक नेविगेशन में उपलब्ध नहीं।</string>
   <string name="pref_seekbar_preview_skip_markers">स्किप चिह्न</string>
   <string name="pref_liquid_glass_optics">प्रकाशिकी</string>
   <string name="pref_liquid_glass_opacity">पृष्ठभूमि की अपारदर्शिता</string>
@@ -2302,11 +2302,11 @@
   <string name="debug_logs_config_saved">आपके कॉन्फ़िगरेशन फ़ोल्डर के %1$s में लॉग सहेजे गए।</string>
   <string name="debug_logs_config_save_failed">लॉग सहेजे नहीं जा सके। कॉन्फ़िगरेशन फ़ोल्डर की अनुमति जाँचें या उसे फिर चुनें।</string>
   <string name="pref_gesture_show_seekbar_horizontal_title">कंट्रोल छिपे होने पर सीक बार दिखाएँ</string>
-  <string name="pref_gesture_show_seekbar_horizontal_summary">हॉरिज़ॉन्टल स्वाइप से सीक करते समय, प्लेयर कंट्रोल छिपे होने पर भी सीक बार दिखाएँ। समय दिखाने वाला संकेत पहले जैसा ही रहेगा।</string>
+  <string name="pref_gesture_show_seekbar_horizontal_summary">नियंत्रण छिपे होने पर भी स्वाइप सीकिंग में सीकबार दिखाएँ।</string>
   <string name="player_zoom_overlays_follow">वीडियो के साथ प्लेयर OSD और उपशीर्षक ज़ूम करें</string>
   <string name="player_zoom_overlays_follow_summary">उपशीर्षक और आँकड़ों के पृष्ठ 1–6 वीडियो ज़ूम के साथ बदलते हैं। बंद होने पर आकार स्थिर रहेगा।</string>
   <string name="network_smb_share_folder">शेयर / फ़ोल्डर (वैकल्पिक)</string>
-  <string name="network_smb_share_hint">सभी साझा फ़ोल्डर देखने के लिए खाली छोड़ें या / डालें। किसी खास फ़ोल्डर को खोलने के लिए /Media या /Media/Movies डालें।</string>
+  <string name="network_smb_share_hint">सभी शेयर के लिए खाली छोड़ें या / दें; किसी फ़ोल्डर के लिए /Media/Movies जैसा पथ दें।</string>
   <string name="pref_app_icon_title">ऐप आइकन</string>
   <string name="pref_app_icon_summary">लॉन्चर में दिखने वाला आइकन चुनें</string>
   <string name="app_icon_change_failed">ऐप आइकन बदला नहीं जा सका।</string>
@@ -2428,7 +2428,7 @@
   <string name="pref_paxsenix_api_key_dialog_desc">अपनी PaxSenix API कुंजी पेस्ट करें। केवल बिना कुंजी वाले स्रोतों के लिए इसे खाली छोड़ें।</string>
   <string name="pref_lyrics_sources_category">ऑनलाइन गीत के बोल</string>
   <string name="pref_lyrics_auto_fetch_online">गीत के बोल ऑनलाइन स्वचालित रूप से पाएँ</string>
-  <string name="pref_lyrics_auto_fetch_online_summary">ऑनलाइन स्रोतों में केवल तब खोजें जब एम्बेडेड या स्थानीय गीत के बोल उपलब्ध न हों। आप ऑनलाइन मैन्युअल खोज भी कर सकते हैं।</string>
+  <string name="pref_lyrics_auto_fetch_online_summary">एम्बेडेड या स्थानीय बोल न मिलने पर ऑनलाइन बोल खोजें।</string>
   <string name="lyrics_translation_off_summary">बिना अनुवाद के मूल भाषा दिखाएँ</string>
   <string name="lyrics_translation_dual_line">दो पंक्तियाँ</string>
   <string name="lyrics_translation_replace">मूल को बदलें</string>
@@ -2453,7 +2453,7 @@
   <string name="network_server_scan">आस-पास के सर्वर खोजें</string>
   <string name="network_server_scanning">आस-पास के सर्वर खोज रहे हैं…</string>
   <string name="network_server_scan_unavailable">खोज उपलब्ध नहीं है या अधूरी है। सहेजा गया पता चुनें या खुद दर्ज करें।</string>
-  <string name="network_server_discovery_hint">स्थानीय नेटवर्क पर अपनी सेवा प्रकाशित करने वाले सर्वर खोजता है। डिवाइस के पते केवल शॉर्टकट हैं, खोजे गए सर्वर नहीं। लॉगिन विवरण नीचे दर्ज करें।</string>
+  <string name="network_server_discovery_hint">LAN पर घोषित सर्वर खोजता है। डिवाइस पते शॉर्टकट हैं; लॉगिन जानकारी नीचे दें।</string>
   <string name="network_smb_username_hint">अपना उपयोगकर्ता नाम दर्ज करें या डोमेन खाते के लिए DOMAIN\\username इस्तेमाल करें।</string>
   <string name="pref_playstore_hidden_title">चुने हुए छिपे फ़ोल्डर</string>
   <string name="pref_playstore_hidden_summary">मीडिया और उपफ़ोल्डर शामिल करने के लिए फ़ोल्डर चुनें।</string>
@@ -2540,7 +2540,7 @@
   <string name="color_picker_selected">चुना हुआ रंग</string>
   <string name="color_picker_quick_colors">त्वरित रंग</string>
   <string name="app_icon_custom_background">कस्टम बैकग्राउंड</string>
-  <string name="app_icon_custom_background_hint">एक रंग चुनें। Android ऐप ड्रॉअर में सबसे मिलते-जुलते पहले से मौजूद आइकन का उपयोग करेगा। आपका सटीक रंग होम स्क्रीन आइकन के रूप में सहेजा और हाल के ऐप्स में इस्तेमाल किया जा सकता है।</string>
+  <string name="app_icon_custom_background_hint">ऐप ड्रॉअर में सबसे मिलता-जुलता बिल्ट-इन आइकन होगा; होम और हाल के ऐप में आपका चुना रंग।</string>
   <string name="app_icon_custom_logo_hint">कस्टम बैकग्राउंड पर लगाने के लिए कोई भी लोगो चुनें।</string>
   <string name="app_icon_custom_requested">आपका डिज़ाइन</string>
   <string name="app_icon_custom_native_match">लॉन्चर का वास्तविक आइकन</string>
@@ -2574,7 +2574,7 @@
   <string name="selection_info_fps_value">%1$.2f फ़्रेम/सेकंड</string>
   <string name="selection_info_metadata_note">सारांश में लाइब्रेरी में उपलब्ध मेटाडेटा का उपयोग किया जाता है। पूरा मेटाडेटा देखने के लिए किसी फ़ाइल पर टैप करें।</string>
   <string name="selection_info_missing_metadata">अनुपलब्ध मेटाडेटा</string>
-  <string name="selection_info_missing_metadata_value">अज्ञात आकार वाली फ़ाइलें: %1$d; अज्ञात अवधि वाली फ़ाइलें: %2$d। कुल और औसत में केवल ज्ञात मान शामिल हैं।</string>
+  <string name="selection_info_missing_metadata_value">अज्ञात आकार: %1$d; अवधि: %2$d। कुल में केवल ज्ञात मान शामिल हैं।</string>
   <string name="selection_info_no_media">चुने गए फ़ोल्डर में चलाने योग्य मीडिया नहीं मिला</string>
   <string name="selection_info_copy_summary">सारांश कॉपी करें</string>
   <string name="selection_info_open_media_info">मीडिया की पूरी जानकारी खोलें</string>
@@ -2639,14 +2639,14 @@
   <string name="thumbnail_no">नहीं</string>
   <string name="thumbnail_refresh">जानकारी रीफ़्रेश करें</string>
   <string name="thumbnail_generate">थंबनेल बनाएं</string>
-  <string name="thumbnail_quality_note">पूर्वावलोकन मौजूदा सेटिंग के अनुसार वास्तव में कैश की गई छवि दिखाता है। मीडिया ब्राउज़र की टाइलें तय की गई आकार सीमा से छोटी छवि कैश कर सकती हैं। यह टैब खोलने से नया फ़्रेम नहीं बनता।</string>
+  <string name="thumbnail_quality_note">यह कैश में मौजूद पूर्वावलोकन है, नया फ़्रेम नहीं। इसका आकार चुनी सीमा से कम हो सकता है।</string>
   <string name="thumbnail_inspection_failed">थंबनेल की जानकारी नहीं पढ़ी जा सकी। रीफ़्रेश करके देखें।</string>
   <string name="thumbnail_generation_unavailable">चुने गए जनरेटर से इस फ़ाइल के लिए थंबनेल नहीं मिला।</string>
 
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">स्थानीय थंबनेल और गानों के कवर के लिए ऑटो, सीधे फ़ाइल से या MediaStore चुनें</string>
   <string name="pref_thumbnail_generator_auto">ऑटो (डिफ़ॉल्ट)</string>
-  <string name="pref_thumbnail_generator_auto_summary">पहले MediaStore आज़माएँ; थंबनेल या गाने का कवर उपलब्ध न होने पर सीधे फ़ाइल से निकालें, छिपे फ़ोल्डरों में भी। मोड बदलने से कैश किए गए थंबनेल साफ़ हो जाते हैं।</string>
+  <string name="pref_thumbnail_generator_auto_summary">पहले Android थंबनेल, न मिलने पर Native। बदलने पर कैश मिटता है।</string>
   <string name="thumbnail_strategy_auto">पहले MediaStore, फिर सीधे फ़ाइल से</string>
 
   <string name="update_download_failed">डाउनलोड विफल हुआ। जारी रखने के लिए फिर कोशिश करें पर टैप करें।</string>
@@ -2655,7 +2655,7 @@
   <string name="update_checking_download">डाउनलोड किए गए APK की जाँच हो रही है…</string>
   <string name="update_check_failed">अपडेट की जाँच नहीं हो सकी। कनेक्शन जाँचें या बाद में फिर कोशिश करें।</string>
   <string name="update_auto_install">अपने आप डाउनलोड और इंस्टॉल करें</string>
-  <string name="update_auto_install_summary">बिना डेटा सीमा वाले नेटवर्क पर डाउनलोड करें और mpvRx का उपयोग न होने पर इंस्टॉल करें। Android अनुमति माँग सकता है।</string>
+  <string name="update_auto_install_summary">अनमीटर्ड नेटवर्क पर डाउनलोड; खाली होने पर इंस्टॉल। Android अनुमति माँग सकता है।</string>
   <string name="update_download_and_install">डाउनलोड और इंस्टॉल करें</string>
   <string name="update_background_downloading">ऐप अपडेट डाउनलोड हो रहा है…</string>
   <string name="update_installing">अपडेट इंस्टॉल हो रहा है…</string>
@@ -2666,8 +2666,8 @@
   <string name="pref_appearance_thumbnail_generator_title">थंबनेल जनरेटर</string>
   <string name="pref_thumbnail_generator_native">सीधे फ़ाइल से</string>
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
-  <string name="pref_thumbnail_generator_native_summary">मीडिया फ़ाइल से स्थानीय वीडियो के थंबनेल और गानों के कवर निकालें। विकल्प बदलने पर कैश किए गए थंबनेल मिट जाते हैं।</string>
-  <string name="pref_thumbnail_generator_mediastore_summary">स्थानीय वीडियो और गानों के लिए Android के थंबनेल और एल्बम कवर इस्तेमाल करें। विकल्प बदलने पर कैश किए गए थंबनेल मिट जाते हैं; कवर उपलब्ध न होने पर उसकी जगह एक संकेतक दिखता है। नेटवर्क पूर्वावलोकन सीधे फ़ाइल से बनाए जाते हैं।</string>
+  <string name="pref_thumbnail_generator_native_summary">स्थानीय फ़ाइल से थंबनेल और कवर निकालें। बदलने पर कैश मिटता है।</string>
+  <string name="pref_thumbnail_generator_mediastore_summary">Android थंबनेल और कवर इस्तेमाल करें। बदलने पर कैश मिटता है। नेटवर्क पूर्वावलोकन Native इस्तेमाल करते हैं।</string>
   <string name="ui_update_channels_summary">स्थिर संस्करण, हर रात के पूर्वावलोकन या प्रायोगिक CI बिल्ड।</string>
   <string name="update_experimental_build_format">प्रायोगिक r%1$d</string>
   <string name="tv_nav_settings">सेटिंग्स</string>
@@ -2682,7 +2682,7 @@
   <string name="tv_player_quality">वीडियो गुणवत्ता</string>
   <string name="tv_player_seek_bar">सीक बार</string>
   <string name="pref_audio_animated_artwork_title">एनिमेटेड एल्बम कवर</string>
-  <string name="pref_audio_animated_artwork_summary">फ़ुल-स्क्रीन संगीत प्लेयर में Apple Music से मेल खाते एनिमेटेड कवर पाएँ। गाने का शीर्षक, कलाकार और एल्बम Apple को भेजे जाते हैं और मोबाइल डेटा इस्तेमाल होता है। डिफ़ॉल्ट रूप से बंद है; कवर उपलब्ध न होने पर मौजूदा कवर बना रहता है। इसे देखने के लिए विज़ुअलाइज़र से कवर पर जाएँ।</string>
+  <string name="pref_audio_animated_artwork_summary">Apple Music के ऐनिमेटेड कवर। ट्रैक की जानकारी साझा करता है और डेटा खर्च करता है; न मिलने पर स्थिर कवर रहता है।</string>
   <string name="jellyfin_featured">चुनिंदा</string>
   <string name="jellyfin_series">सीरीज़</string>
   <string name="jellyfin_movie">फ़िल्म</string>
@@ -2770,8 +2770,8 @@
   <string name="clip_track_auto_off">स्वचालित / बंद</string>
   <string name="pref_blacklist_count">%1$d ब्लैकलिस्ट फ़ोल्डर</string>
   <string name="pref_whitelist_disabled">व्हाइटलिस्ट बंद है</string>
-  <string name="pref_blacklist_summary">इस सूची के फ़ोल्डर आपके मीडिया से छिपाए जाते हैं। हर फ़ोल्डर के लिए चुनें कि उसके वीडियो, ऑडियो या दोनों छिपाने हैं।</string>
-  <string name="pref_whitelist_summary">व्हाइटलिस्ट चालू होने पर केवल ये फ़ोल्डर और इनके सबफ़ोल्डर स्कैन होते हैं। कोई फ़ोल्डर न जोड़ने पर कुछ भी सीमित नहीं होता।</string>
+  <string name="pref_blacklist_summary">इन फ़ोल्डर के वीडियो, ऑडियो या दोनों छिपाएँ।</string>
+  <string name="pref_whitelist_summary">केवल ये फ़ोल्डर और सबफ़ोल्डर स्कैन करें। खाली सूची कोई रोक नहीं लगाती।</string>
   <string name="pref_whitelist_empty_message">स्कैन करने के लिए फ़ोल्डर जोड़ने हेतु नीचे दिया बटन टैप करें</string>
   <string name="clip_section_range">रेंज</string>
   <string name="clip_section_output">आउटपुट</string>
@@ -2792,7 +2792,7 @@
   <string name="pref_audio_spatial_title">स्थानिक ऑडियो</string>
   <string name="pref_audio_spatial_summary">ज़्यादा इमर्सिव अनुभव के लिए स्टीरियो ट्रैक का ध्वनि विस्तार बढ़ाता है</string>
   <string name="pref_measure_enabled_title">Measure के साथ निदान साझा करें</string>
-  <string name="pref_measure_enabled_summary">क्रैश, ANR, प्रदर्शन आँकड़े और सत्र गतिविधि Measure को भेजने के लिए सहमति दें। डिफ़ॉल्ट रूप से बंद।</string>
+  <string name="pref_measure_enabled_summary">क्रैश, ANR, प्रदर्शन और सेशन डेटा Measure को भेजें। डिफ़ॉल्ट रूप से बंद।</string>
   <string name="pref_measure_not_configured">निदान उपलब्ध नहीं: इस बिल्ड में Measure API कुंजी नहीं है।</string>
   <string name="pref_layout_portrait_playback_position">पोर्ट्रेट प्लेबैक नियंत्रण</string>
   <string name="pref_layout_landscape_playback_position">लैंडस्केप प्लेबैक नियंत्रण</string>
@@ -2807,7 +2807,7 @@
   <string name="player_skip_automatic">%1$s (स्वचालित)</string>
   <string name="grayscale_watched_thumbnails">देखे गए वीडियो के थंबनेल धूसर करें</string>
   <string name="pref_gesture_require_double_tap_title">हर बार आगे या पीछे जाने के लिए दो बार टैप ज़रूरी करें</string>
-  <string name="pref_gesture_require_double_tap_summary">दो बार टैप वाले क्षेत्रों में हर बार आगे या पीछे जाने के लिए फिर से दो बार टैप करना ज़रूरी है। इसे बंद करने पर प्रतिक्रिया दिखने तक एक बार टैप करके आगे या पीछे जा सकते हैं। एक बार टैप वाले क्षेत्र नहीं बदलते।</string>
+  <string name="pref_gesture_require_double_tap_summary">हर सीक के लिए डबल टैप ज़रूरी। बंद होने पर संकेत दिखने तक सिंगल टैप से सीक जारी रखें।</string>
   <string name="audio_footer_show_artwork">एल्बम कवर दिखाएँ</string>
   <string name="audio_footer_show_visualizer">विज़ुअलाइज़र दिखाएँ</string>
   <string name="toast_updating_thumbnail_generator">थंबनेल अपडेट हो रहे हैं</string>
@@ -2825,11 +2825,11 @@
   <string name="player_settings_dependency">मौजूदा सेटिंग्स या मीडिया के साथ उपलब्ध नहीं है।</string>
   <string name="player_settings_config_owned">mpv.conf द्वारा नियंत्रित</string>
   <string name="pref_custom_openai_base_url_title">OpenAI-संगत कस्टम बेस URL</string>
-  <string name="pref_custom_openai_base_url_summary">HTTP(S) API का बेस URL दर्ज करें, जैसे https://example.com/v1। Chat Completions और वैकल्पिक मॉडल खोज समर्थित हैं। URL में लॉगिन जानकारी न डालें।</string>
+  <string name="pref_custom_openai_base_url_summary">Chat Completions बेस URL, जैसे https://example.com/v1। इसमें API कुंजी न डालें।</string>
   <string name="pref_custom_openai_key_title">कस्टम प्रदाता की API कुंजी</string>
-  <string name="pref_custom_openai_key_summary">जिन सर्वर पर प्रमाणीकरण ज़रूरी नहीं है, उनके लिए वैकल्पिक है। API कुंजी का उपयोग करते समय HTTPS को प्राथमिकता दें।</string>
+  <string name="pref_custom_openai_key_summary">बिना प्रमाणीकरण वाले सर्वर पर वैकल्पिक। कुंजी भेजते समय HTTPS इस्तेमाल करें।</string>
   <string name="pref_custom_openai_model_title">कस्टम मॉडल ID</string>
-  <string name="pref_custom_openai_model_summary">मॉडल ID स्वयं दर्ज करें या मॉडल सूची प्राप्त करें। मॉडल खोज उपलब्ध न हो, तो ID दर्ज करके मॉडल एक्सेस जांचें का उपयोग करें।</string>
+  <string name="pref_custom_openai_model_summary">मॉडल ID दें या सूची लाएँ, फिर मॉडल की पहुँच जाँचें।</string>
   <string name="pref_custom_openai_check_endpoint">एंडपॉइंट जाँचें</string>
   <string name="pref_ai_cached_models_invalid">सहेजी गई मॉडल सूची पढ़ी नहीं जा सकी। मॉडल सूची फिर से प्राप्त करें।</string>
 
@@ -2934,7 +2934,7 @@
   <string name="lyrics_editor_saved">बोल के बदलाव सहेजे गए</string>
   <string name="lyrics_editor_restored">मूल बोल बहाल हुए</string>
   <string name="pref_audio_immersive_artwork_title">पूरी स्क्रीन में घुलता एल्बम कवर</string>
-  <string name="pref_audio_immersive_artwork_summary">पोर्ट्रेट संगीत प्लेयर में किनारे तक फैला एल्बम कवर दिखाएँ, जो पृष्ठभूमि में धीरे-धीरे घुलता है। डिफ़ॉल्ट रूप से बंद है। इसे देखने के लिए विज़ुअलाइज़र से कवर पर जाएँ।</string>
+  <string name="pref_audio_immersive_artwork_summary">पोर्ट्रेट और लैंडस्केप में किनारे तक फैला कवर।</string>
   <string name="wallpaper_preset_link">लिंक से</string>
   <string name="wallpaper_link_title">वॉलपेपर डाउनलोड करें</string>
   <string name="wallpaper_link_label">तस्वीर का लिंक</string>
@@ -2947,7 +2947,7 @@
   <string name="remote_settings_title_phone">टीवी का रिमोट</string>
   <string name="remote_settings_summary_phone">इस फ़ोन से टीवी पर MPVRX नियंत्रित करें और लिंक लिखें</string>
   <string name="remote_tv_enable">फ़ोन से रिमोट नियंत्रण की अनुमति दें</string>
-  <string name="remote_tv_enable_summary">MPVRX खुला होने पर उसी नेटवर्क के फ़ोन पेयर करने का अनुरोध भेज सकते हैं। हर फ़ोन को आप यहीं टीवी पर अनुमति देते हैं।</string>
+  <string name="remote_tv_enable_summary">उसी नेटवर्क के फ़ोन जोड़ें। हर अनुरोध को इस टीवी पर मंज़ूरी चाहिए।</string>
   <string name="remote_tv_address">यह टीवी: %1$s</string>
   <string name="remote_tv_address_unavailable">पता देखने के लिए इस टीवी को किसी नेटवर्क से जोड़ें।</string>
   <string name="remote_tv_how_to">अपने फ़ोन पर MPVRX खोलें, सेटिंग्स &gt; टीवी का रिमोट पर जाएँ और यह टीवी चुनें। सूची में न मिले, तो ऊपर दिया गया पता दर्ज करें।</string>
@@ -3019,8 +3019,8 @@
   <string name="pref_audio_spatial_mode">स्थानिक ऑडियो मोड</string>
   <string name="pref_audio_spatial_stereo">स्टीरियो विस्तार</string>
   <string name="pref_audio_hrtf_title">हेडफ़ोन - KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">साथ दिए गए 96 kHz KU100 डेटासेट से संगीत के लिए बाइनॉरल HRTF प्रसंस्करण। sofalizer और libmysofa समर्थन वाला mpv बिल्ड ज़रूरी है।</string>
-  <string name="pref_audio_hrtf_unavailable">इस ट्रैक के लिए HRTF चालू नहीं हो सका। जाँचें कि mpv बिल्ड में sofalizer और libmysofa शामिल हैं, या स्टीरियो विस्तार चुनें।</string>
+  <string name="pref_audio_hrtf_summary">KU100 बाइनॉरल ऑडियो। sofalizer और libmysofa वाला mpv चाहिए।</string>
+  <string name="pref_audio_hrtf_unavailable">sofalizer और libmysofa वाला mpv चाहिए। अन्यथा स्टीरियो वाइडनिंग चुनें।</string>
   <string name="pref_layout_playback_with_buttons">बटनों की पंक्ति के साथ</string>
   <string name="pref_action_open_page">पेज खोलें</string>
   <string name="pref_action_open_dialog">संवाद खोलें</string>
@@ -3081,4 +3081,7 @@
   <string name="theme_color_primary">मुख्य एक्सेंट</string>
   <string name="theme_color_secondary">दूसरा एक्सेंट</string>
   <string name="theme_color_tertiary">उभारने वाला एक्सेंट</string>
+  <string name="permission_video_access_summary">Downloads, Movies और DCIM के वीडियो तक पहुँच देता है।</string>
+  <string name="permission_media_access_summary">सहेजी गई वीडियो और ऑडियो फ़ाइल तक पहुँच देता है।</string>
+  <string name="pref_audio_passthrough_summary">सराउंड ऑडियो बिना डिकोडिंग या इफ़ेक्ट के रिसीवर को भेजें।</string>
 </resources>

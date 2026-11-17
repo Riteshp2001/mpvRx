@@ -38,7 +38,7 @@
   <string name="pref_liquid_glass_in_hdr_title">Рідке скло в режимі HDR</string>
   <string name="pref_liquid_glass_in_hdr_summary">Зберігати живе скло на елементах керування плеєра, коли ввімкнено вивід HDR. HDR-відео виглядатиме як SDR</string>
   <string name="pref_liquid_glass_in_hdr_warning_title">Використовувати рідке скло в режимі HDR?</string>
-  <string name="pref_liquid_glass_in_hdr_warning_message">Для рідкого скла відео має відображатися через TextureView. Android перетворює HDR-відео, відображене таким способом, на SDR, тому вивід HDR втрачає додаткову яскравість і контрастність, а відтворення може споживати більше заряду акумулятора. Вимкніть цей параметр будь-коли, щоб повернути справжній HDR.</string>
+  <string name="pref_liquid_glass_in_hdr_warning_message">Liquid Glass перетворює HDR на SDR через TextureView і може витрачати більше батареї. Вимкніть для справжнього HDR.</string>
   <string name="pref_liquid_glass_in_hdr_warning_confirm">Усе одно ввімкнути</string>
   <string name="pref_appearance_system_font_title">Використовувати системний шрифт</string>
   <string name="pref_appearance_system_font_summary">Використовувати системний шрифт Android у mpvRx замість Google Sans</string>
@@ -77,17 +77,17 @@
   <string name="pref_appearance_show_video_thumbnails_title">Показувати мініатюри відео</string>
   <string name="pref_appearance_show_video_thumbnails_summary">Відображати створені мініатюри у списках відео та папках</string>
   <string name="pref_appearance_thumbnail_generation_title">Стратегія створення мініатюр</string>
-  <string name="pref_appearance_thumbnail_generation_summary">Виберіть спосіб створення мініатюр: вбудовані обкладинки або вказаний кадр відео</string>
+  <string name="pref_appearance_thumbnail_generation_summary">Виберіть вбудовану обкладинку або кадр відео.</string>
   <string name="pref_appearance_thumbnail_generation_change_title">Змінити стратегію створення мініатюр?</string>
-  <string name="pref_appearance_thumbnail_generation_change_summary">Це очистить кеш мініатюр. Нові мініатюри створюватимуться за вибраною стратегією під час перегляду.</string>
+  <string name="pref_appearance_thumbnail_generation_change_summary">Очистити кеш мініатюр і створювати їх знову під час перегляду?</string>
   <string name="pref_appearance_thumbnail_quality_title">Якість мініатюр</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Максимальна роздільність мініатюр: %1$d пікс. Вища якість займає більше місця і може створюватися повільніше.</string>
+  <string name="pref_appearance_thumbnail_quality_summary">Межа мініатюр: %1$d px. Більшим зображенням потрібно більше пам’яті й обробки.</string>
   <string name="pref_appearance_thumbnail_position_title">Позиція кадру мініатюри</string>
   <string name="pref_appearance_thumbnail_position_summary">Захоплювати кадр на позначці %1$d%% тривалості відео</string>
   <string name="pref_appearance_thumbnail_parallelism_title">Ядра для мініатюр</string>
   <string name="pref_appearance_thumbnail_parallelism_auto">Авто (%1$d з %2$d)</string>
   <string name="pref_appearance_thumbnail_parallelism_value">%1$d з %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">Скільки мініатюр створюється одночасно. Що більше, то швидше, але більше витрачається пам’яті й заряду, а прокручування може підгальмовувати. Авто вибирає безпечне значення для цього пристрою.</string>
+  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">Більше потоків — швидше, але зростають витрати пам’яті, батареї й ризик ривків. Рекомендовано авто.</string>
   <string name="pref_appearance_thumbnail_parallelism_warning">Більше за рекомендоване для цього пристрою (%1$d). Зменште, якщо списки гальмують або застосунок закривається у фоні.</string>
   <string name="pref_appearance_show_network_thumbnails_title">Мініатюри для мережевих потоків (експериментально)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">Створювати мініатюри для мережевих потоків (може збільшити витрати мобільного трафіку)</string>
@@ -174,11 +174,11 @@
   <string name="pref_enable_video_mini_player_title">Увімкнути міні-відеоплеєр</string>
   <string name="pref_enable_video_mini_player_summary">Згортати відтворення відео у плаваючий мініплеєр після натискання «Назад»</string>
   <string name="pref_video_mini_player_dependency_title">Увімкнути фонове відтворення відео?</string>
-  <string name="pref_video_mini_player_dependency_message">Для роботи мініплеєра потрібне фонове відтворення, щоб відео продовжувало грати після виходу з повного екрана.</string>
+  <string name="pref_video_mini_player_dependency_message">Потрібне фонове відтворення відеопрогравача.</string>
   <string name="pref_video_mini_player_dependency_confirm">Увімкнути та продовжити</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Не вимикати екран на паузі</string>
   <string name="pref_player_external_display_projection_title">Проєкція на зовнішній екран</string>
-  <string name="pref_player_external_display_projection_summary">Коли підключено дисплей через HDMI, USB-C або бездротову мережу, відтворювати відео на ньому та вимикати екран телефона</string>
+  <string name="pref_player_external_display_projection_summary">Відтворювати на HDMI, USB-C чи бездротовому екрані з вимкненим екраном телефона.</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">Екран залишається увімкненим, коли відео на паузі</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">Екран може вимикатися, коли відео на паузі</string>
   <string name="pref_player_autoplay_after_screen_unlock_title">Автовідтворення після розблокування екрана</string>
@@ -236,7 +236,7 @@
   <string name="player_started_afresh_pill">Розпочато спочатку</string>
   <string name="player_restart_action">Перезапустити</string>
   <string name="pref_resume_indicator_overlay_title">Індикатор відновлення відтворення</string>
-  <string name="pref_resume_indicator_overlay_summary">Показувати підказки відновлення або початку відтворення. У режимі запиту плашка доступна завжди</string>
+  <string name="pref_resume_indicator_overlay_summary">Показувати підказки продовження. У режимі запиту підтвердження відображається завжди.</string>
   <string name="pref_player_double_tap_seek_duration">Тривалість перемотування дотиком</string>
   <string name="pref_player_custom_skip_duration_title">Власна тривалість пропуску</string>
   <string name="pref_player_custom_skip_duration_summary">Тривалість пропуску вперед для окремої кнопки</string>
@@ -275,26 +275,18 @@
   <string name="pref_gesture_use_single_tap_for_center_title">Один дотик по центру</string>
   <string name="pref_gesture_use_single_tap_for_right_title">Один дотик праворуч</string>
   <string name="pref_gesture_use_single_tap_for_left_summary">Торкніться один раз замість двох, щоб виконати дію ліворуч.</string>
-  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">Торкніться центральної зони один раз (ширина за замовчуванням 30%, висота 30%). Інші дотики в центрі показують або приховують елементи керування.</string>
+  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">Один дотик у центральній зоні (30% ширини й висоти). Решта приховує або показує керування.</string>
   <string name="pref_gesture_use_single_tap_for_right_summary">Торкніться один раз замість двох, щоб виконати дію праворуч.</string>
   <string name="pref_gesture_center_vertical_subtitle_position_title">Переміщення субтитрів перетягуванням</string>
-  <string name="pref_gesture_center_vertical_subtitle_position_summary">Утримуйте палець у центрі та перетягуйте вгору або вниз, щоб перемістити основні субтитри. Утримуйте палець безпосередньо на субтитрах, щоб перемістити цю доріжку окремо. Звичайні свайпи й надалі відкривають список відтворення.</string>
-  <string name="pref_gesture_double_tap_custom_info">Ви можете призначити власні дії для цих жестів у input.conf за допомогою таких кодів клавіш:
-
-Ліворуч: MBTN_LEFT_DBL
-По центру: MBTN_MID_DBL
-Праворуч: MBTN_RIGHT_DBL</string>
+  <string name="pref_gesture_center_vertical_subtitle_position_summary">Утримуйте субтитри для переміщення або центр для основної доріжки. Змінюйте розмір щипком, якщо ввімкнено.</string>
+  <string name="pref_gesture_double_tap_custom_info">Клавіші input.conf:\nЛіворуч: MBTN_LEFT_DBL\nЦентр: MBTN_MID_DBL\nПраворуч: MBTN_RIGHT_DBL</string>
   <string name="pref_gesture_media_title">Керування мультимедіа</string>
   <string name="pref_gesture_media_previous">Попередній</string>
   <string name="pref_gesture_media_play">Відтворення/Пауза</string>
   <string name="pref_gesture_media_next">Наступний</string>
-  <string name="pref_gesture_media_custom_info">Ви можете призначити власні дії для керування мультимедіа у input.conf за допомогою таких кодів клавіш:
-
-Попередній: PREV
-Відтворення/Пауза: PLAYPAUSE
-Наступний: NEXT</string>
+  <string name="pref_gesture_media_custom_info">Клавіші input.conf:\nПопереднє: PREV\nВідтворення/пауза: PLAYPAUSE\nНаступне: NEXT</string>
   <string name="pref_gesture_tap_thumbnail_to_select_title">Дотик до мініатюри для вибору</string>
-  <string name="pref_gesture_tap_thumbnail_to_select_summary">Якщо увімкнено, дотик до мініатюри активує режим вибору. Якщо вимкнено, дотик запускає відтворення відео.</string>
+  <string name="pref_gesture_tap_thumbnail_to_select_summary">Дотик до мініатюри вибирає, а не відтворює.</string>
   <string name="pref_decoder">Декодер</string>
   <string name="pref_decoder_summary">Апаратне декодування, формат пікселів, дебандинг</string>
   <string name="pref_decoder_profile_title">Профіль MPV</string>
@@ -314,7 +306,7 @@
   <string name="renderer_build_notice_supported_device">Використовується OpenGL; встановіть стандартну збірку для підтримки Vulkan.</string>
   <string name="renderer_build_notice_unsupported_device">Використовується OpenGL; цей пристрій не підтримує Vulkan 1.3.</string>
   <string name="pref_decoder_yuv420p_title">Використовувати формат пікселів YUV420P</string>
-  <string name="pref_decoder_yuv420p_summary">Може усунути чорний екран на деяких відеокодеках, а також покращити продуктивність за рахунок зниження якості</string>
+  <string name="pref_decoder_yuv420p_summary">Може усунути чорний екран або прискорити обробку ціною якості.</string>
   <string name="pref_subtitles">Субтитри</string>
   <string name="pref_subtitles_summary">Бажані мови, шрифти та пошук</string>
   <string name="pref_subtitle_search_title">Онлайн-пошук субтитрів</string>
@@ -343,7 +335,7 @@
   <string name="pref_audio_summary">Атмосферний режим, стиль візуалізатора, аудіоканали, коригування висоти тону</string>
   <string name="pref_audio_orientation_title">Орієнтація аудіоплеєра</string>
   <string name="pref_audio_pitch_correction_title">Увімкнути коригування тону аудіо</string>
-  <string name="pref_audio_pitch_correction_summary">Запобігає зміні висоти голосу (пищанню чи басу) під час зміни швидкості відтворення</string>
+  <string name="pref_audio_pitch_correction_summary">Зберігати висоту тону при зміні швидкості.</string>
   <string name="pref_audio_volume_normalization_title">Нормалізація гучності</string>
   <string name="pref_audio_volume_normalization_summary">Автоматично вирівнювати рівень гучності для підтримання стабільного звучання</string>
   <string name="pref_audio_drc_title">Стиснення динамічного діапазону (DRC)</string>
@@ -357,7 +349,7 @@
   <string name="pref_audio_visualizer_style_particle">Частинки</string>
   <string name="pref_audio_visualizer_galaxy_credit">Натхненно проєктом Зайна Рази на CodePen</string>
   <string name="pref_audio_ambient_mode_title">Атмосферний режим</string>
-  <string name="pref_audio_ambient_mode_summary">Відображати динамічні колірні градієнти на основі обкладинки альбому в музичному плеєрі (вимикається під час активного візуалізатора)</string>
+  <string name="pref_audio_ambient_mode_summary">Фон у кольорах обкладинки. Прихований під час роботи візуалізатора.</string>
   <string name="pref_audio_wavy_seekbar_title">Хвиляста смуга перемотування</string>
   <string name="pref_audio_wavy_seekbar_summary">Відображати багатошарову плавну хвилясту анімацію над смугою перемотування</string>
   <string name="pref_audio_channels">Аудіоканали</string>
@@ -366,7 +358,7 @@
   <string name="pref_audio_channels_mono">Моно</string>
   <string name="pref_audio_channels_stereo">Стерео</string>
   <string name="pref_audio_channels_stereo_reversed">Інвертоване стерео</string>
-  <string name="pref_audio_preferred_language">Мови аудіо, що вибираються за замовчуванням для відео з кількома аудіодоріжками. Підтримуються дво- або трилітерні коди. Кілька значень можна розділити комами.</string>
+  <string name="pref_audio_preferred_language">Коди мов через кому, наприклад en,eng,ja. Пріоритет зліва направо.</string>
   <string name="pref_audio_volume_boost_cap">Максимальне підсилення гучності</string>
   <string name="pref_advanced">Розширені</string>
   <string name="pref_advanced_summary">Розташування конфігурації, mpv.conf</string>
@@ -416,7 +408,7 @@
   <string name="pref_mpv_conf_override_osd">Безпечна зона OSD</string>
   <string name="pref_mpv_conf_override_osd_summary">Перевизначає шрифт OSD, відступи та безпечні зони.</string>
   <string name="mpv_config_owned_title">Керується через mpv.conf</string>
-  <string name="mpv_config_owned_message">Цей елемент керування в додатку вимкнено, оскільки один або більше пов\'язаних параметрів призначено до mpv.conf у розширених налаштуваннях.</string>
+  <string name="mpv_config_owned_message">Керується mpv.conf. Змініть призначення параметра в додаткових налаштуваннях.</string>
   <string name="pref_advanced_dump_logs_title">Зберегти журнал подій</string>
   <string name="pref_advanced_dump_logs_summary">Зберігає та копіює логи для надання розробникам</string>
   <string name="pref_advanced_verbose_logging_title">Детальне ведення журналу</string>
@@ -434,7 +426,7 @@
   <string name="pref_anime4k_title">Масштабування Anime4K</string>
   <string name="pref_anime4k_summary">Увімкнути фільтр масштабування Anime4K</string>
   <string name="pref_anime4k_incompatibility">Несумісність Anime4K</string>
-  <string name="pref_anime4k_gpu_next_error">Для Anime4K потрібен або класичний рушій GPU, або gpu-next з увімкненим Vulkan. gpu-next на OpenGL повернеться до класичного рушія GPU для сумісності з шейдерами.</string>
+  <string name="pref_anime4k_gpu_next_error">Anime4K потрібен legacy GPU або GPU Next із Vulkan. OpenGL використовує legacy GPU.</string>
   <string name="anime4k_mode_title">Пресети Anime4K</string>
   <string name="pref_anime4k_quality_title">Якість Anime4K</string>
   <string name="anime4k_mode_off">Вимкнено</string>
@@ -449,7 +441,7 @@
   <string name="anime4k_quality_balanced">Збалансована</string>
   <string name="anime4k_quality_high">Висока</string>
   <string name="pref_anime4k_in_4k_title">Увімкнути для 4K відео</string>
-  <string name="pref_anime4k_in_4k_summary">Дозволити масштабування Anime4K для відео 4K та 8K (може збільшити навантаження на GPU та спричинити тротлінг)</string>
+  <string name="pref_anime4k_in_4k_summary">Увімкнути для 4K/8K. Може збільшити навантаження на GPU й нагрів.</string>
   <string name="pref_anime4k_darken_title">Затемнення ліній Anime4K</string>
   <string name="pref_anime4k_darken_summary">Додає затемнення контурів після основного масштабування.</string>
   <string name="pref_anime4k_thin_title">Витончення ліній Anime4K</string>
@@ -542,7 +534,7 @@
   <string name="player_aspect_crop">Обрізати</string>
   <string name="player_aspect_stretch">Розтягнути</string>
   <string name="crash_screen_title">Неочікувана помилка</string>
-  <string name="crash_screen_subtitle">Схоже, у додатку %s виникла неочікувана помилка. Будь ласка, надішліть журнал збою у формі звіту на GitHub.</string>
+  <string name="crash_screen_subtitle">Несподівана помилка в %s. Додайте журнали до звернення на GitHub.</string>
   <string name="crash_screen_logs_title">Журнал збою:</string>
   <string name="crash_screen_share">Поділитися журналом збою</string>
   <string name="crash_screen_restart">Перезапустити додаток</string>
@@ -580,7 +572,7 @@
   <string name="toast_audio_background_playback_off">Фонове відтворення аудіо вимкнено</string>
   <string name="pref_audio_background_playback_summary">Продовжувати відтворення аудіо під час виходу з аудіоплеєра або вимкнення екрана</string>
   <string name="pref_audio_mini_player_track_switching_title">Перемикання треків у мініплеєрі</string>
-  <string name="pref_audio_mini_player_track_switching_summary">Коли активний мініплеєр або фонове відтворення, вибір іншої композиції оновлює мініплеєр без відкриття повноекранного плеєра</string>
+  <string name="pref_audio_mini_player_track_switching_summary">Змінювати треки в мініпрогравачі без відкриття повного програвача.</string>
   <string name="pref_video_background_playback_title">Фонове відтворення відеоплеєра</string>
   <string name="pref_video_background_playback_summary">Продовжувати відтворення звуку відео під час виходу з відеоплеєра або вимкнення екрана</string>
   <string name="deselect_all">Зняти виділення з усіх</string>
@@ -596,7 +588,7 @@
   <string name="got_it">Зрозуміло</string>
   <string name="general">Загальні</string>
   <string name="not_set_video_default">Не встановлено (використовуватиметься типове для відео)</string>
-  <string name="enter_subtitle_title_preferences">Введіть ключові слова з назв субтитрів або коди мов у порядку пріоритету через кому. Попередні мають перевагу.</string>
+  <string name="enter_subtitle_title_preferences">Ключові слова або коди мов через кому, пріоритет зліва направо.</string>
   <string name="subtitle_title_preferences_placeholder">Full,Dialogue,ukr,uk,eng,en</string>
   <string name="fonts_loaded">Завантажено шрифтів: %1$d</string>
   <string name="reload_fonts">Перезавантажити шрифти</string>
@@ -792,7 +784,7 @@
   <string name="ui_recent_streams">Нещодавні посилання потоків</string>
   <string name="ui_play_now">Відтворити</string>
   <string name="ui_no_saved_media_title">Немає збережених посилань</string>
-  <string name="ui_no_saved_media_description">Вставте URL потоку, magnet-посилання або збережіть із нещодавніх посилань для створення власної колекції.</string>
+  <string name="ui_no_saved_media_description">Додайте URL потоку, magnet-посилання або нещодавнє посилання.</string>
   <string name="pref_export_complete_title">Експорт завершено</string>
   <string name="pref_export_complete_text">Успішно експортовано %1$d елементів!</string>
   <string name="pref_import_complete_title">Імпорт завершено</string>
@@ -882,7 +874,7 @@
   <string name="pref_custom_prompt_section">Власна інструкція (Prompt)</string>
   <string name="pref_override_instructions_title">Перевизначити типові інструкції</string>
   <string name="pref_custom_prompts_header">Власні інструкції (Prompts)</string>
-  <string name="pref_custom_prompts_description">Залиште поле порожнім, щоб використовувати вбудовану інструкцію для завдання. Якщо збережено старі глобальні інструкції, вони використовуватимуться як запасні.</string>
+  <string name="pref_custom_prompts_description">Порожні поля використовують вбудовані інструкції або збережений спільний промпт.</string>
   <string name="pref_custom_rename_prompt_label">Власний промпт перейменування</string>
   <string name="pref_custom_translation_prompt_label">Власний промпт перекладу субтитрів</string>
   <string name="pref_custom_format_prompt_label">Власний промпт форматування субтитрів</string>
@@ -1078,7 +1070,7 @@
   <string name="pref_screenshots_section">Знімки екрана</string>
   <string name="lua_no_mpv_folder">Папку MPV не вибрано</string>
   <string name="lua_no_scripts_found">Скриптів не знайдено</string>
-  <string name="ambient_youtube_auto_hint">Режим YouTube повністю автоматичний — смуги підсвічуються м\'якою розмитою проєкцією поточного кадру, як у фоновому підсвічуванні YouTube.</string>
+  <string name="ambient_youtube_auto_hint">Автоматично підсвічує поля розмитою проєкцією відео.</string>
   <string name="lua_delete_script_title">Видалити скрипт?</string>
   <string name="lua_delete_script_message">Ви дійсно бажаєте видалити «%1$s»? Цю дію неможливо буде скасувати.</string>
   <string name="search_category_advanced">Розширені</string>
@@ -1218,7 +1210,7 @@
   <string name="storage_permission_needed_desc">Надайте доступ до сховища, щоб переглядати та відтворювати ваші медіафайли.</string>
   <string name="storage_permission_grant">Надати доступ</string>
   <string name="pref_player_web_stream_links_title">Відкривати посилання стрімінгових сайтів</string>
-  <string name="pref_player_web_stream_links_summary">Пропонувати mpvRx для підтримуваних посилань стрімінгових сайтів та надісланих посилань. Медіафайли та прямі URL-адреси залишаються доступними і при вимкненні.</string>
+  <string name="pref_player_web_stream_links_summary">Відкривати посилання підтримуваних сайтів у mpvRx. Прямі медіапосилання працюють і без цієї опції.</string>
   <string name="player_unknown_video">Невідоме відео</string>
   <string name="media_widget_name">Відтворення mpvRx</string>
   <string name="media_widget_description">Керування відтворенням аудіо та відео</string>
@@ -1476,11 +1468,11 @@
   <string name="ui_mpvrx_needs_access_to_your_video_files_to_provide_its_core_funct">mpvRx потребує доступу до ваших відеофайлів для виконання своїх основних функцій медіаплеєра.</string>
   <string name="ui_the_permission_is_used_exclusively_for">Цей дозвіл використовується виключно для:</string>
   <string name="ui_discovering_and_displaying_your_video_files_n_playing_media_cont">• Пошуку та відображення ваших відеофайлів\n• Відтворення медіавмісту\n• Завантаження файлів субтитрів</string>
-  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">mpvRx завжди потребував доступу до пам\'яті, оскільки це необхідно для виявлення всіх медіафайлів та субтитрів на вашому пристрої, включно з тими, які не підтримуються системою за замовчуванням.</string>
-  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">Однак через зміни в політиці безпеки додатки для Android 11 і новіших версій тепер вимагають додаткового дозволу для продовження доступу.</string>
-  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">Зверніть увагу, що цей дозвіл використовується виключно для автоматичного пошуку медіа та субтитрів на вашому пристрої і в жодному разі не надає доступу до особистих даних інших додатків.</string>
-  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">mpvRx — проєкт із відкритим вихідним кодом. Ви можете перевірити код і переконатися, як використовуються дозволи, відвідавши наш репозиторій на GitHub:</string>
-  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">Будьте певні, ваша конфіденційність — наш найвищий пріоритет. Ми не використовуємо ваші файли для інших цілей і не передаємо їх на жодні сервери. Вони залишаються виключно на вашому пристрої.</string>
+  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">Доступ до сховища дає змогу знаходити медіа й субтитри, зокрема неіндексовані формати.</string>
+  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">Android 11 і новіші потребують додаткового дозволу для повного доступу до сховища.</string>
+  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">Лише для пошуку медіа й субтитрів, не приватних даних програм.</string>
+  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">Перевірте використання дозволів у відкритому коді:</string>
+  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">Файли лишаються на пристрої. Ми не завантажуємо їх на наші сервери.</string>
   <string name="ui_app_permissions">Дозволи додатка</string>
   <string name="ui_permissions_setup_subtitle">Налаштуйте дозволи для забезпечення основних функцій та відтворення медіа.</string>
   <string name="ui_file_permission_title">Доступ до файлів і сховища</string>
@@ -1490,7 +1482,7 @@
   <string name="ui_notification_permission_title">Сповіщення</string>
   <string name="ui_notification_permission_desc">Необов\'язково. Необхідно для керування відтворенням у фоні, відображення стану та сповіщень про оновлення.</string>
   <string name="ui_audio_record_permission_title">Запис аудіо</string>
-  <string name="ui_audio_record_permission_desc">Необов\'язково. Необхідно візуалізаторам для обробки спектра та енергії звуку в реальному часі.</string>
+  <string name="ui_audio_record_permission_desc">Необов’язково. Надає візуалізатору доступ до поточних рівнів звуку.</string>
   <string name="ui_permission_granted">Надано</string>
   <string name="ui_next">Далі</string>
   <string name="ui_grant_permission_hint">Натисніть для надання дозволу</string>
@@ -1501,7 +1493,7 @@
   <string name="ui_no_results_found">Результатів не знайдено</string>
   <string name="ui_no_android">Немає Android</string>
   <string name="ui_script_runtime">Середовище виконання скриптів</string>
-  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Нові ввімкнені скрипти можуть завантажуватися під час відтворення. Для повного припинення роботи вимкнених скриптів може знадобитися повторне відкриття відео.</string>
+  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Увімкнені скрипти завантажуються одразу. Для повної зупинки вимкнених відкрийте відео знову.</string>
   <string name="ui_media">Медіа</string>
   <string name="ui_saved_media">Збережені посилання</string>
   <string name="ui_media_info">Відомості про медіа</string>
@@ -1528,9 +1520,9 @@
   <string name="ui_filter_presets">Пресети фільтрів</string>
   <string name="ui_yt_dlp_manager">Менеджер yt-dlp</string>
   <string name="ytdlp_auth_required_title">Потрібна перевірка YouTube</string>
-  <string name="ytdlp_auth_required_message">YouTube вимагає перевірку або свіжі файли cookie для входу. Імпортуйте cookies.txt у форматі Netscape з браузера, де це відео відтворюється; mpvRx автоматично повторить спробу один раз.</string>
+  <string name="ytdlp_auth_required_message">YouTube вимагає перевірку. Імпортуйте свіжий Netscape cookies.txt із робочого браузера для однієї повторної спроби.</string>
   <string name="ytdlp_cookies_title">Файли cookie YouTube</string>
-  <string name="ytdlp_cookies_summary">Імпортовані файли cookie використовуються й надалі. Зберігаються лише файли cookie YouTube у приватному сховищі без резервного копіювання. Очистьте їх тут, коли вони більше не потрібні.</string>
+  <string name="ytdlp_cookies_summary">YouTube-cookie зберігаються приватно, без резервного копіювання. Видаліть, коли більше не потрібні.</string>
   <string name="ytdlp_cookies_configured">Файли cookie налаштовано</string>
   <string name="ytdlp_cookies_help">Як експортувати файли cookie YouTube</string>
   <string name="ytdlp_cookies_help_failed">Немає браузера для відкриття інструкції.</string>
@@ -1606,7 +1598,7 @@
   <string name="ui_subtitle_translation_can_be_a_bit_messy">Переклад субтитрів може містити неточності.</string>
   <string name="ui_real_time_model">Модель реального часу</string>
   <string name="ui_auto_translate_target_languages">Цільові мови автоматичного перекладу</string>
-  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">Під час перекладу субтитрів, якщо налаштовано 1 мову, переклад виконується напряму. Якщо 2 і більше — з\'являється меню вибору.</string>
+  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">Одна мова — одразу переклад; кілька — вибір мови.</string>
   <string name="ui_no_target_languages_configured">Цільові мови не налаштовано</string>
   <string name="ui_search_languages">Пошук мов…</string>
   <string name="ui_refresh">Оновити</string>
@@ -1770,7 +1762,7 @@
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">Насичені неонові відтінки</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Посилений чорний колір для OLED-дисплеїв</string>
   <string name="syncplay_title">Syncplay</string>
-  <string name="syncplay_description">Дивіться відео синхронно з друзями. Під\'єднайтеся до сервера Syncplay для спільного перегляду.</string>
+  <string name="syncplay_description">Дивіться разом через сервер Syncplay.</string>
   <string name="syncplay_connected_as">Під\'єднано як %1$s у кімнаті %2$s</string>
   <string name="syncplay_users_in_room">Користувачів у кімнаті:</string>
   <string name="syncplay_disconnect">Від\'єднатися</string>
@@ -1830,13 +1822,13 @@
   <string name="secure_folder_delete_confirm_title">Видалити назавжди %1$d елемент(ів)?</string>
   <string name="secure_folder_delete_confirm_subtitle">Цю дію неможливо скасувати — файли буде назавжди стерто із захищеної папки.</string>
   <string name="secure_folder_hide_entry_title">Приховати Захищену папку з налаштувань?</string>
-  <string name="secure_folder_hide_entry_subtitle">Рядок «Захищена папка» буде вилучено з налаштувань. Щоб відкрити її знову, двічі торкніться назви додатка вгорі головного екрана та введіть PIN-код.</string>
+  <string name="secure_folder_hide_entry_subtitle">Приховує цю сторінку. Щоб повернутися: двічі торкніться заголовка головної, введіть PIN і відкрийте налаштування.</string>
   <string name="secure_folder_working_on_it">Обробка…</string>
   <string name="secure_folder_restore">Відновити</string>
   <string name="secure_folder_move_to">Перемістити до захищеної папки</string>
   <string name="secure_folder_moving_progress">Переміщення до захищеної папки…</string>
   <string name="secure_folder_move_folders_title">Перемістити %1$d папок до захищеної папки?</string>
-  <string name="secure_folder_move_folders_subtitle">Усі відео всередині зникнуть із цього списку та решти додатка до моменту відновлення.</string>
+  <string name="secure_folder_move_folders_subtitle">Приховати всі відео в цих папках до відновлення.</string>
   <string name="secure_folder_move_items_title">Перемістити %1$d елемент(ів) до захищеної папки?</string>
   <string name="secure_folder_move_items_subtitle">Вони зникнуть із цього списку та решти додатка до моменту їхнього відновлення.</string>
   <string name="secure_folder_moved_success">Переміщено %1$d файл(ів) до захищеної папки</string>
@@ -1858,7 +1850,7 @@
     <string name="secure_folder_settings_security">Безпека</string>
     <string name="secure_folder_settings_danger_zone">Небезпечна зона</string>
     <string name="secure_folder_settings_help">Довідка</string>
-    <string name="secure_folder_settings_help_text">Двічі торкніться або утримуйте назву застосунку вгорі головного екрана, щоб відкрити захищену папку.</string>
+    <string name="secure_folder_settings_help_text">Відкрийте захищену папку подвійним дотиком або утриманням заголовка головної.</string>
     <string name="secure_folder_settings_setup_first">Спершу відкрийте захищену папку та встановіть PIN-код.</string>
     <string name="secure_folder_biometric_title">Увімкнути біометричне розблокування</string>
     <string name="secure_folder_biometric_summary">Розблокування відбитком пальця або обличчям</string>
@@ -1880,7 +1872,7 @@
     <string name="secure_folder_destroy_no_screen_lock">Установіть блокування екрана (PIN-код, ключ або пароль), щоб скористатися цим.</string>
   <string name="pref_codecs_decoders_summary">Апаратних: %1$d • Програмних декодерів: %2$d</string>
   <string name="pref_codecs_banner_title">Апаратне та програмне декодування</string>
-  <string name="pref_codecs_banner_desc">Апаратні декодери обробляють відео на виділених чіпах VPU/GPU з мінімальним енергоспоживанням. Програмні декодери виконуються на ядрах CPU, що спричиняє швидше розряджання батареї та нагрівання під час відтворення важких форматів (наприклад AV1 без апаратної підтримки).</string>
+  <string name="pref_codecs_banner_desc">Апаратне декодування заощаджує енергію. Програмне може збільшити нагрів і витрату батареї.</string>
   <string name="pref_codecs_core_title">Стан основних відеокодеків</string>
   <string name="pref_codecs_search_placeholder">Пошук назви кодека, формату або MIME…</string>
   <string name="pref_codecs_filter_all">Усі (%d)</string>
@@ -2110,9 +2102,9 @@
   <string name="pref_appearance_custom_wallpaper_preview_unlocked">Перегляд розблоковано</string>
   <string name="wallpaper_save_failed">Не вдалося зберегти шпалери. Будь ласка, виберіть зображення знову.</string>
   <string name="pref_haptic_feedback_title">Тактильний відгук</string>
-  <string name="pref_haptic_feedback_summary">Вібраційний відгук під час вибору, перетягування та налаштування параметрів. Враховує системні параметри.</string>
+  <string name="pref_haptic_feedback_summary">Вібровідгук при виборі, перетягуванні й налаштуванні. Враховує системні налаштування.</string>
   <string name="pref_nested_tab_swipes_title">Гортання між внутрішніми вкладками</string>
-  <string name="pref_nested_tab_swipes_summary">Увімкнути гортання вліво/вправо всередині вкладок «Музика», «Мережа» та «Нещодавні».</string>
+  <string name="pref_nested_tab_swipes_summary">Свайпи між вкладеними вкладками музики, мережі й нещодавніх.</string>
   <string name="btn_label_post_processing">Постобробка</string>
   <string name="ui_post_processing">Ефекти постобробки</string>
   <string name="pp_preset_none">Немає</string>
@@ -2266,7 +2258,7 @@
   <string name="pref_background_playback_remember">Завжди пам\'ятати мій вибір</string>
   <string name="pref_background_playback_remember_summary">Зберігати вибір фонового відтворення для наступних відео.</string>
   <string name="pref_background_playback_per_video">Пам\'ятати для кожного відео окремо</string>
-  <string name="pref_background_playback_per_video_summary">Зберігати окремий вибір фонового відтворення для кожного відео. Інші відео залишаються вимкненими, доки не ввімкнете вручну.</string>
+  <string name="pref_background_playback_per_video_summary">Запам’ятовувати фонове відтворення окремо для кожного відео.</string>
   <string name="jellyfin_technical_details">Технічні подробиці</string>
   <string name="ui_snapshots">Знімки</string>
   <string name="ui_profile">Профіль</string>
@@ -2275,7 +2267,7 @@
   <string name="profile_view_all">Показати все</string>
   <string name="profile_edit">Редагувати профіль</string>
   <string name="profile_layout_title">Макет профілю</string>
-  <string name="profile_layout_summary">Перетягуйте для зміни порядку й використовуйте перемикачі, щоб показувати або приховувати елементи. Картки статистики залишаються у своєму розділі.</string>
+  <string name="profile_layout_summary">Перетягуйте для сортування, перемикайте видимість. Статистика лишається у своєму розділі.</string>
   <string name="profile_layout_hubs">Картки розділів</string>
   <string name="profile_layout_sections">Розділи профілю</string>
   <string name="profile_layout_statistics">Картки статистики</string>
@@ -2329,7 +2321,7 @@
   <string name="snapshot_delete_folder_message">Це видалить папку та її %1$d записів знімків із додатку. Самі зображення залишаться в галереї.</string>
   <string name="snapshot_delete_folder_empty_message">Це вилучить папку з додатку.</string>
   <string name="snapshot_folder_empty_title">Ця папка порожня</string>
-  <string name="snapshot_folder_empty_message">Утримуйте знімок у списку та виберіть «Перемістити до папки», щоб упорядкувати їх тут.</string>
+  <string name="snapshot_folder_empty_message">Утримуйте знімок і виберіть «Перемістити до папки».</string>
   <string name="snapshot_sort_folder_name">Назва папки</string>
   <string name="snapshot_sort_created_at">Дата створення</string>
   <string name="snapshot_sort_item_count">Кількість знімків</string>
@@ -2347,7 +2339,7 @@
   <string name="oss_anime4k_description">Шейдери апскейлінгу та відновлення анімації в реальному часі.</string>
   <string name="oss_hdr_toys_description">Шейдери тонального відображення, колірного охоплення та функцій передачі HDR.</string>
   <string name="pref_auto_backup_title">Автоматичне резервне копіювання</string>
-  <string name="pref_auto_backup_summary">Зберігати змінені налаштування в папці Configuration/Backup під час переходу додатку у фон. Зберігаються останні 7 копій.</string>
+  <string name="pref_auto_backup_summary">Копіювати при переході у фон. Зберігає сім копій у Configuration/Backup.</string>
   <string name="pref_auto_backup_select_folder">Спочатку виберіть папку Configuration</string>
   <string name="pref_auto_backup_last_backup">Остання копія: %1$s</string>
   <string name="watch_stats_title">Статистика перегляду</string>
@@ -2363,9 +2355,9 @@
   <string name="pref_debug_log_size_title">Обмеження розміру журналу</string>
   <string name="pref_debug_log_size_summary">Зберігати до %1$d МБ у переглядачі журналів та діагностиці.</string>
   <string name="onboarding_configuration_title">Налаштування сховища mpvRx</string>
-  <string name="onboarding_configuration_desc">Виберіть папку Configuration для збереження налаштувань, резервних копій, скриптів, субтитрів та завантажень.</string>
+  <string name="onboarding_configuration_desc">Виберіть папку для налаштувань, копій, скриптів, субтитрів і завантажень.</string>
   <string name="onboarding_configuration_card_title">Папка конфігурації</string>
-  <string name="onboarding_configuration_card_desc">Виберіть папку Configuration для mpvRx. Наявні налаштування з її кореня або папки Backup відновлюються автоматично.</string>
+  <string name="onboarding_configuration_card_desc">Виберіть папку конфігурації. Налаштування відновляться з її кореня або Backup.</string>
   <string name="onboarding_configuration_restoring">Перевірка резервних копій налаштувань…</string>
   <string name="onboarding_configuration_no_backup">Папку налаштовано. Завантаження використовуватимуть Configuration/Downloads.</string>
   <string name="onboarding_configuration_restored">Відновлено налаштування з %1$s. Завантаження використовуватимуть Configuration/Downloads.</string>
@@ -2387,7 +2379,7 @@
   <string name="legacy_navigation_bar_title">Класична панель навігації</string>
   <string name="legacy_navigation_bar_summary">Використовувати класичну панель навігації на всю ширину замість плаваючої панелі.</string>
   <string name="progressive_navigation_blur_title">Поступове розмиття панелі навігації</string>
-  <string name="progressive_navigation_blur_summary">Використовувати поступове розмиття Haze позаду плавучої панелі навігації. Автоматично вимикається за класичної панелі.</string>
+  <string name="progressive_navigation_blur_summary">Розмиття за плавучою панеллю. Недоступне з класичною навігацією.</string>
   <string name="pref_seekbar_preview_skip_markers">Позначки пропуску</string>
   <string name="pref_liquid_glass_optics">Оптика</string>
   <string name="pref_liquid_glass_opacity">Непрозорість тла</string>
@@ -2411,11 +2403,11 @@
   <string name="debug_logs_config_saved">Журнали збережено в %1$s у вашій папці конфігурації.</string>
   <string name="debug_logs_config_save_failed">Не вдалося зберегти журнали. Перевірте доступ до папки конфігурації або виберіть її знову.</string>
   <string name="pref_gesture_show_seekbar_horizontal_title">Показувати смугу перемотування за прихованих елементів керування</string>
-  <string name="pref_gesture_show_seekbar_horizontal_summary">Під час горизонтального свайпу показувати смугу перемотування, навіть якщо елементи керування програвачем приховані. Індикатор часу не змінюється.</string>
+  <string name="pref_gesture_show_seekbar_horizontal_summary">Показувати шкалу при перемотуванні свайпом, навіть коли керування приховане.</string>
   <string name="player_zoom_overlays_follow">Масштабувати OSD і субтитри з відео</string>
   <string name="player_zoom_overlays_follow_summary">Субтитри та сторінки статистики 1–6 масштабуються разом із відео. Якщо вимкнено, розмір залишається сталим.</string>
   <string name="network_smb_share_folder">Спільний ресурс / папка (необов’язково)</string>
-  <string name="network_smb_share_hint">Залиште поле порожнім або введіть /, щоб переглянути всі спільні папки. Введіть /Media або /Media/Movies, щоб відкрити певну папку.</string>
+  <string name="network_smb_share_hint">Порожньо або / для всіх ресурсів; або шлях, наприклад /Media/Movies.</string>
   <string name="pref_app_icon_title">Значок застосунку</string>
   <string name="pref_app_icon_summary">Виберіть значок для лаунчера</string>
   <string name="app_icon_change_failed">Не вдалося змінити значок.</string>
@@ -2465,7 +2457,7 @@
   <string name="media_widget_pill_description">Компактне керування відтворенням музики</string>
   <string name="playlist_open_action">Відкрити список відтворення</string>
   <string name="filter_preset_custom_section">Власні пресети</string>
-  <string name="filter_preset_custom_empty">Налаштуйте яскравість, контраст, гаму, насиченість, відтінок і різкість, а потім збережіть комбінацію для подальшого використання.</string>
+  <string name="filter_preset_custom_empty">Налаштуйте зображення та збережіть параметри як пресет.</string>
   <string name="filter_preset_save_current">Зберегти поточний</string>
   <string name="filter_preset_save_title">Зберегти власний пресет</string>
   <string name="filter_preset_rename_title">Перейменувати пресет</string>
@@ -2492,7 +2484,7 @@
   <string name="secure_folder_pin_length_option">%1$d цифр</string>
   <string name="pref_lyrics_sources_category">Тексти пісень з інтернету</string>
   <string name="pref_lyrics_auto_fetch_online">Автоматично отримувати тексти пісень з інтернету</string>
-  <string name="pref_lyrics_auto_fetch_online_summary">Шукати в онлайн-постачальників, лише якщо немає вбудованого або локального тексту пісні. Пошук в інтернеті вручну залишається доступним.</string>
+  <string name="pref_lyrics_auto_fetch_online_summary">Шукати текст онлайн, якщо немає вбудованого чи локального.</string>
   <string name="oss_python_description">Вбудоване середовище Python для отримання медіа з інтернету.</string>
   <string name="watch_stats_today">Сьогодні: %1$s</string>
   <string name="watch_stats_media_breakdown">Розподіл за медіа</string>
@@ -2507,7 +2499,7 @@
   <string name="network_server_scan">Знайти сервери поблизу</string>
   <string name="network_server_scanning">Пошук серверів поблизу…</string>
   <string name="network_server_scan_unavailable">Виявлення недоступне або не завершене. Виберіть збережену адресу або введіть нову.</string>
-  <string name="network_server_discovery_hint">Знаходить сервери, що оголошують про себе в локальній мережі. Адреси пристроїв — це ярлики, а не виявлені сервери. Облікові дані вводяться нижче.</string>
+  <string name="network_server_discovery_hint">Знаходить оголошені LAN-сервери. Адреси пристроїв — ярлики; введіть облікові дані нижче.</string>
   <string name="network_smb_username_hint">Використовуйте ім’я користувача або DOMAIN\\username для доменного облікового запису.</string>
   <string name="pref_playstore_hidden_title">Вибрані приховані папки</string>
   <string name="pref_playstore_hidden_summary">Виберіть папку, щоб включити її медіа та підпапки.</string>
@@ -2594,7 +2586,7 @@
   <string name="color_picker_selected">Вибраний колір</string>
   <string name="color_picker_quick_colors">Швидкі кольори</string>
   <string name="app_icon_custom_background">Власне тло</string>
-  <string name="app_icon_custom_background_hint">Виберіть колір. Android використовує найближчу вбудовану піктограму в списку застосунків. Точний колір можна зберегти як піктограму головного екрана й використовувати в нещодавніх застосунках.</string>
+  <string name="app_icon_custom_background_hint">Меню програм використовує найближчу вбудовану піктограму; головний екран і нещодавні — ваш колір.</string>
   <string name="app_icon_custom_logo_hint">Виберіть логотип для накладання на власне тло.</string>
   <string name="app_icon_custom_requested">Ваш дизайн</string>
   <string name="app_icon_custom_native_match">Фактична піктограма лаунчера</string>
@@ -2628,7 +2620,7 @@
   <string name="selection_info_fps_value">%1$.2f кадр/с</string>
   <string name="selection_info_metadata_note">Зведення використовує доступні метадані бібліотеки. Натисніть на файл, щоб переглянути всі метадані.</string>
   <string name="selection_info_missing_metadata">Недоступні метадані</string>
-  <string name="selection_info_missing_metadata_value">Файлів із невідомим розміром: %1$d; із невідомою тривалістю: %2$d. Підсумки й середні значення враховують лише відомі дані.</string>
+  <string name="selection_info_missing_metadata_value">Невідомі розмір: %1$d; тривалість: %2$d. Підсумки лише за відомими значеннями.</string>
   <string name="selection_info_no_media">У вибраних папках не знайдено відтворюваних медіафайлів</string>
   <string name="selection_info_copy_summary">Копіювати зведення</string>
   <string name="selection_info_open_media_info">Відкрити повні відомості про медіафайл</string>
@@ -2701,14 +2693,14 @@
   <string name="thumbnail_no">Ні</string>
   <string name="thumbnail_refresh">Оновити відомості</string>
   <string name="thumbnail_generate">Створити мініатюру</string>
-  <string name="thumbnail_quality_note">Попередній перегляд показує фактичне кешоване зображення для поточних налаштувань. Плитки оглядача можуть кешувати зображення, менше за задане обмеження розміру. Відкриття цієї вкладки не створює нового кадру.</string>
+  <string name="thumbnail_quality_note">Це кешований перегляд, а не новий кадр. Розмір може бути меншим за вибрану межу.</string>
   <string name="thumbnail_inspection_failed">Не вдалося прочитати відомості про мініатюру. Спробуйте оновити.</string>
   <string name="thumbnail_generation_unavailable">Вибраний генератор не повернув мініатюру для цього файлу.</string>
 
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">Виберіть автоматичний режим, пряме видобування або MediaStore для локальних мініатюр та обкладинок пісень</string>
   <string name="pref_thumbnail_generator_auto">Авто (за замовчуванням)</string>
-  <string name="pref_thumbnail_generator_auto_summary">Спочатку використовується MediaStore; якщо мініатюра або обкладинка пісні недоступна, використовується пряме видобування, зокрема у прихованих папках. Зміна режиму очищає кеш мініатюр.</string>
+  <string name="pref_thumbnail_generator_auto_summary">Спочатку мініатюри Android, потім Native, якщо їх немає. Зміна очищує кеш.</string>
   <string name="thumbnail_strategy_auto">Спочатку MediaStore, потім пряме видобування у разі невдачі</string>
 
   <string name="update_download_failed">Помилка завантаження. Натисніть «Повторити», щоб продовжити.</string>
@@ -2717,7 +2709,7 @@
   <string name="update_checking_download">Перевірка завантаженого APK…</string>
   <string name="update_check_failed">Не вдалося перевірити оновлення. Перевірте з’єднання або повторіть спробу пізніше.</string>
   <string name="update_auto_install">Автоматично завантажувати й установлювати</string>
-  <string name="update_auto_install_summary">Завантажувати через мережі без тарифікації та встановлювати, коли mpvRx не використовується. Android може запитати підтвердження.</string>
+  <string name="update_auto_install_summary">Завантажувати в безлімітних мережах, ставити під час простою. Android може запитати дозвіл.</string>
   <string name="update_download_and_install">Завантажити й установити</string>
   <string name="update_background_downloading">Завантаження оновлення застосунку…</string>
   <string name="update_installing">Установлення оновлення…</string>
@@ -2728,8 +2720,8 @@
   <string name="pref_appearance_thumbnail_generator_title">Спосіб створення мініатюр</string>
   <string name="pref_thumbnail_generator_native">Пряме видобування</string>
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
-  <string name="pref_thumbnail_generator_native_summary">Видобувати мініатюри локальних відео й обкладинки пісень із медіафайлу. Перемикання очищує кеш мініатюр.</string>
-  <string name="pref_thumbnail_generator_mediastore_summary">Використовувати мініатюри й обкладинки альбомів Android для локальних відео та пісень. Перемикання очищує кеш мініатюр; якщо зображення недоступне, відображається заповнювач. Для мережевих переглядів використовується пряме видобування.</string>
+  <string name="pref_thumbnail_generator_native_summary">Видобувати мініатюри й обкладинки з локальних файлів. Зміна очищує кеш.</string>
+  <string name="pref_thumbnail_generator_mediastore_summary">Мініатюри й обкладинки Android. Зміна очищує кеш. Мережеві перегляди використовують Native.</string>
   <string name="ui_update_channels_summary">Стабільні версії, нічні попередні версії або експериментальні збірки CI.</string>
   <string name="update_experimental_build_format">Експ. r%1$d</string>
   <string name="tv_nav_settings">Налаштування</string>
@@ -2744,7 +2736,7 @@
   <string name="tv_player_quality">Якість відео</string>
   <string name="tv_player_seek_bar">Смуга перемотування</string>
   <string name="pref_audio_animated_artwork_title">Анімовані обкладинки альбомів</string>
-  <string name="pref_audio_animated_artwork_summary">Завантажувати відповідні анімовані обкладинки з Apple Music у повноекранному музичному програвачі. Назва пісні, виконавець і альбом надсилаються до Apple; використовуються мобільні дані. Типово вимкнено. Якщо анімація недоступна, залишається поточна обкладинка. Щоб побачити її, перемкніться з візуалізатора на обкладинку.</string>
+  <string name="pref_audio_animated_artwork_summary">Анімовані обкладинки Apple Music. Передає дані треку й витрачає трафік; інакше лишається звичайна обкладинка.</string>
   <string name="jellyfin_featured">Рекомендоване</string>
   <string name="jellyfin_series">Серіал</string>
   <string name="jellyfin_movie">Фільм</string>
@@ -2832,8 +2824,8 @@
   <string name="clip_track_auto_off">Автоматично / Вимк.</string>
   <string name="pref_blacklist_count">Папок у чорному списку: %1$d</string>
   <string name="pref_whitelist_disabled">Білий список вимкнено</string>
-  <string name="pref_blacklist_summary">Папки з цього списку приховано з ваших медіафайлів. Для кожної папки виберіть, що приховувати: відео, аудіо чи обидва.</string>
-  <string name="pref_whitelist_summary">Коли білий список увімкнено, скануються лише ці папки та їхні підпапки. Якщо папки не додано, нічого не обмежується.</string>
+  <string name="pref_blacklist_summary">Приховати відео, аудіо або обидва типи в цих папках.</string>
+  <string name="pref_whitelist_summary">Сканувати лише ці папки та вкладені. Порожній список не обмежує.</string>
   <string name="pref_whitelist_empty_message">Натисніть кнопку нижче, щоб додати папки для сканування</string>
   <string name="clip_section_range">Діапазон</string>
   <string name="clip_section_output">Вивід</string>
@@ -2854,7 +2846,7 @@
   <string name="pref_audio_spatial_title">Просторовий звук</string>
   <string name="pref_audio_spatial_summary">Розширює стереозвучання для глибшого занурення</string>
   <string name="pref_measure_enabled_title">Надсилати діагностику до Measure</string>
-  <string name="pref_measure_enabled_summary">Дозволити надсилання збоїв, ANR, показників продуктивності та дій сеансу до Measure. Типово вимкнено.</string>
+  <string name="pref_measure_enabled_summary">Надсилати дані збоїв, ANR, продуктивності й сеансів до Measure. Типово вимкнено.</string>
   <string name="pref_measure_not_configured">Діагностика недоступна: у збірці немає ключа API Measure.</string>
   <string name="pref_layout_portrait_playback_position">Керування відтворенням у портретному режимі</string>
   <string name="pref_layout_landscape_playback_position">Керування відтворенням в альбомному режимі</string>
@@ -2870,7 +2862,7 @@
 
   <string name="grayscale_watched_thumbnails">Знебарвлювати мініатюри переглянутих відео</string>
   <string name="pref_gesture_require_double_tap_title">Подвійний дотик для кожного перемотування</string>
-  <string name="pref_gesture_require_double_tap_summary">Вимагати нового подвійного дотику для кожного перемотування в зонах подвійного дотику. Вимкніть, щоб продовжувати перемотування одиночними дотиками, доки видно індикатор. Зони одиночного дотику не змінюються.</string>
+  <string name="pref_gesture_require_double_tap_summary">Подвійний дотик для кожного переходу. Інакше достатньо одного, поки видно індикатор.</string>
   <string name="audio_footer_show_artwork">Показувати обкладинку альбому</string>
   <string name="audio_footer_show_visualizer">Показувати візуалізатор</string>
   <string name="toast_updating_thumbnail_generator">Оновлення мініатюр</string>
@@ -2889,11 +2881,11 @@
   <string name="player_settings_config_owned">Керується через mpv.conf</string>
 
   <string name="pref_custom_openai_base_url_title">Власна базова URL-адреса OpenAI-сумісного API</string>
-  <string name="pref_custom_openai_base_url_summary">Вкажіть базову URL-адресу API (HTTP(S)), наприклад https://example.com/v1. Підтримуються Chat Completions і, за наявності, отримання списку моделей. Не додавайте облікові дані до URL-адреси.</string>
+  <string name="pref_custom_openai_base_url_summary">Базова URL Chat Completions, наприклад https://example.com/v1. Без API-ключа.</string>
   <string name="pref_custom_openai_key_title">Ключ API власного постачальника</string>
-  <string name="pref_custom_openai_key_summary">Необов\'язковий для серверів, які не потребують автентифікації. Якщо використовуєте ключ API, віддавайте перевагу HTTPS.</string>
+  <string name="pref_custom_openai_key_summary">Необов’язково для серверів без авторизації. Передавайте ключ через HTTPS.</string>
   <string name="pref_custom_openai_model_title">Ідентифікатор власної моделі</string>
-  <string name="pref_custom_openai_model_summary">Введіть ідентифікатор моделі вручну або отримайте список моделей. Якщо отримання списку недоступне, введіть ідентифікатор і натисніть «Перевірити доступ до моделі».</string>
+  <string name="pref_custom_openai_model_summary">Введіть ID моделі або завантажте список, потім перевірте доступ.</string>
   <string name="pref_custom_openai_check_endpoint">Перевірити кінцеву точку</string>
   <string name="pref_ai_cached_models_invalid">Не вдалося прочитати збережений список моделей. Отримайте список моделей знову.</string>
 
@@ -3002,7 +2994,7 @@
   <string name="lyrics_editor_saved">Правки тексту пісні збережено</string>
   <string name="lyrics_editor_restored">Початковий текст пісні відновлено</string>
   <string name="pref_audio_immersive_artwork_title">Обкладинка на всю ширину</string>
-  <string name="pref_audio_immersive_artwork_summary">Показувати обкладинку на всю ширину з плавним переходом у фон музичного програвача в портретному режимі. Типово вимкнено. Щоб побачити ефект, перемкніться з візуалізатора на обкладинку.</string>
+  <string name="pref_audio_immersive_artwork_summary">Обкладинка без полів у портретному й альбомному режимах.</string>
 
   <string name="wallpaper_preset_link">За посиланням</string>
   <string name="wallpaper_link_title">Завантажити шпалери</string>
@@ -3016,7 +3008,7 @@
   <string name="remote_settings_title_phone">Пульт для телевізора</string>
   <string name="remote_settings_summary_phone">Керуйте MPVRX на телевізорі та вводьте посилання з цього телефона</string>
   <string name="remote_tv_enable">Дозволити керування з телефона</string>
-  <string name="remote_tv_enable_summary">Телефони в тій самій мережі можуть надсилати запити на сполучення, доки MPVRX відкрито. Кожен телефон потрібно схвалити тут, на телевізорі.</string>
+  <string name="remote_tv_enable_summary">Під’єднувати телефони в одній мережі. Кожен запит підтверджується на цьому ТВ.</string>
   <string name="remote_tv_address">Цей телевізор: %1$s</string>
   <string name="remote_tv_address_unavailable">Під\'єднайте цей телевізор до мережі, щоб побачити його адресу.</string>
   <string name="remote_tv_how_to">На телефоні відкрийте MPVRX, перейдіть до «Налаштування &gt; Пульт для телевізора» та виберіть цей телевізор. Якщо його немає в списку, введіть адресу, вказану вище.</string>
@@ -3089,8 +3081,8 @@
   <string name="pref_audio_spatial_mode">Режим просторового звуку</string>
   <string name="pref_audio_spatial_stereo">Розширення стереозвучання</string>
   <string name="pref_audio_hrtf_title">Навушники — KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">Бінауральна HRTF-обробка музики за допомогою вбудованого набору даних KU100 із частотою 96 кГц. Потрібна збірка mpv із підтримкою sofalizer і libmysofa.</string>
-  <string name="pref_audio_hrtf_unavailable">Не вдалося активувати HRTF для цієї композиції. Переконайтеся, що збірка mpv містить sofalizer і libmysofa, або виберіть розширення стереозвучання.</string>
+  <string name="pref_audio_hrtf_summary">Бінауральний звук KU100. Потрібен mpv із sofalizer і libmysofa.</string>
+  <string name="pref_audio_hrtf_unavailable">Потрібен mpv із sofalizer і libmysofa. Інакше використовуйте розширення стерео.</string>
 
   <string name="pref_layout_playback_with_buttons">Разом із рядом кнопок</string>
   <string name="pref_action_open_page">Відкрити сторінку</string>
@@ -3151,4 +3143,7 @@
   <string name="theme_color_primary">Основний акцент</string>
   <string name="theme_color_secondary">Другорядний акцент</string>
   <string name="theme_color_tertiary">Акцент виділення</string>
+  <string name="permission_video_access_summary">Доступ до відео в Downloads, Movies і DCIM.</string>
+  <string name="permission_media_access_summary">Доступ до збережених відео- й аудіофайлів.</string>
+  <string name="pref_audio_passthrough_summary">Передавати об’ємний звук на ресивер без декодування й ефектів.</string>
 </resources>

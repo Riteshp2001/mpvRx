@@ -29,7 +29,7 @@
   <string name="pref_liquid_glass_in_hdr_title">الزجاج السائل في وضع HDR</string>
   <string name="pref_liquid_glass_in_hdr_summary">الإبقاء على الزجاج الحي في عناصر التحكم بالمشغل أثناء تشغيل إخراج HDR. سيبدو فيديو HDR مثل SDR</string>
   <string name="pref_liquid_glass_in_hdr_warning_title">هل تريد استخدام الزجاج السائل في وضع HDR؟</string>
-  <string name="pref_liquid_glass_in_hdr_warning_message">يتطلب الزجاج السائل عرض الفيديو عبر TextureView. يحوّل Android فيديو HDR المعروض بهذه الطريقة إلى SDR، لذا يفقد إخراج HDR سطوعه وتباينه الإضافيين، وقد يستهلك التشغيل مزيدًا من البطارية. أوقف هذا الخيار في أي وقت لاستعادة HDR الحقيقي.</string>
+  <string name="pref_liquid_glass_in_hdr_warning_message">يحوّل Liquid Glass فيديو HDR إلى SDR عبر TextureView وقد يستهلك بطارية أكثر. أوقفه لعرض HDR الحقيقي.</string>
   <string name="pref_liquid_glass_in_hdr_warning_confirm">التفعيل على أي حال</string>
   <string name="pref_appearance_system_font_title">استخدام خط النظام</string>
   <string name="pref_appearance_system_font_summary">استخدام محرف نظام Android في mpvRx بدلًا من Google Sans</string>
@@ -68,17 +68,17 @@
   <string name="pref_appearance_show_video_thumbnails_title">إظهار الصور المصغّرة للفيديو</string>
   <string name="pref_appearance_show_video_thumbnails_summary">عرض الصور المصغّرة التي تم إنشاؤها في قوائم الفيديو والمجلدات</string>
   <string name="pref_appearance_thumbnail_generation_title">استراتيجية إنشاء الصور المصغّرة</string>
-  <string name="pref_appearance_thumbnail_generation_summary">اختيار كيفية إنشاء الصور المصغّرة، بما في ذلك الصورة المضمّنة أو موضع إطار محدد</string>
+  <string name="pref_appearance_thumbnail_generation_summary">اختر غلافًا مضمّنًا أو إطارًا من الفيديو.</string>
   <string name="pref_appearance_thumbnail_generation_change_title">تغيير استراتيجية الصور المصغّرة؟</string>
-  <string name="pref_appearance_thumbnail_generation_change_summary">سيؤدي هذا إلى مسح الصور المصغّرة المخزنة مؤقتًا. وسيتم إنشاء صور جديدة بالاستراتيجية المحددة أثناء التصفح.</string>
+  <string name="pref_appearance_thumbnail_generation_change_summary">مسح الصور المصغرة المخزنة وإعادة إنشائها أثناء التصفح؟</string>
   <string name="pref_appearance_thumbnail_quality_title">جودة الصور المصغّرة</string>
-  <string name="pref_appearance_thumbnail_quality_summary">أقصى دقة للصورة المصغّرة: %1$d بكسل. تستهلك الجودة الأعلى مساحة تخزين أكبر وقد يستغرق إنشاؤها وقتًا أطول.</string>
+  <string name="pref_appearance_thumbnail_quality_summary">حد الصور المصغرة: %1$d بكسل. الصور الأكبر تستهلك مساحة ومعالجة أكثر.</string>
   <string name="pref_appearance_thumbnail_position_title">موضع إطار الصورة المصغّرة</string>
   <string name="pref_appearance_thumbnail_position_summary">التقاط الإطار عند %1$d%% من الفيديو</string>
   <string name="pref_appearance_thumbnail_parallelism_title">أنوية معالجة الصور المصغرة</string>
   <string name="pref_appearance_thumbnail_parallelism_auto">تلقائي (%1$d من %2$d)</string>
   <string name="pref_appearance_thumbnail_parallelism_value">%1$d من %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">عدد الصور المصغرة التي تُنشأ في الوقت نفسه. القيمة الأعلى أسرع لكنها تستهلك ذاكرة وبطارية أكثر وقد تجعل التمرير متقطعًا. الوضع التلقائي يختار قيمة آمنة لهذا الجهاز.</string>
+  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">الخيوط الأكثر أسرع، لكنها قد تزيد الذاكرة واستهلاك البطارية والتقطّع. يُنصح بالتلقائي.</string>
   <string name="pref_appearance_thumbnail_parallelism_warning">أعلى من القيمة الموصى بها لهذا الجهاز (%1$d). خفّضها إذا تباطأت القوائم أو أُغلق التطبيق في الخلفية.</string>
   <string name="pref_appearance_show_network_thumbnails_title">إظهار صور الشبكة المصغّرة (تجريبي)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">إنشاء صور مصغّرة لتدفقات الشبكة (قد يزيد استهلاك البيانات على شبكات الهاتف)</string>
@@ -145,11 +145,11 @@
   <string name="pref_enable_video_mini_player_title">تفعيل المشغل المصغر للفيديو</string>
   <string name="pref_enable_video_mini_player_summary">تصغير تشغيل الفيديو إلى مشغل مصغر عائم عند الضغط على زر الرجوع</string>
   <string name="pref_video_mini_player_dependency_title">تفعيل تشغيل الفيديو في الخلفية؟</string>
-  <string name="pref_video_mini_player_dependency_message">يحتاج مشغل الفيديو المصغر إلى تشغيل الفيديو في الخلفية للحفاظ على تشغيل الفيديو بعد مغادرة المشغّل الكامل.</string>
+  <string name="pref_video_mini_player_dependency_message">يتطلب تشغيل مشغل الفيديو في الخلفية.</string>
   <string name="pref_video_mini_player_dependency_confirm">تفعيل والمتابعة</string>
   <string name="pref_player_keep_screen_on_when_paused_title">إبقاء الشاشة قيد التشغيل عند الإيقاف المؤقت</string>
   <string name="pref_player_external_display_projection_title">العرض على شاشة خارجية</string>
-  <string name="pref_player_external_display_projection_summary">عند توصيل شاشة HDMI أو USB-C أو شاشة لاسلكية، شغّل الفيديو عليها واسمح بإيقاف تشغيل شاشة الهاتف</string>
+  <string name="pref_player_external_display_projection_summary">شغّل على شاشة HDMI أو USB-C أو لاسلكية مع إطفاء شاشة الهاتف.</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">تبقى الشاشة مستيقظة أثناء إيقاف الفيديو مؤقتًا</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">يمكن إطفاء الشاشة أثناء إيقاف الفيديو مؤقتًا</string>
   <string name="pref_player_autoplay_after_screen_unlock_title">التشغيل التلقائي بعد فتح قفل الشاشة</string>
@@ -234,26 +234,18 @@
   <string name="pref_gesture_use_single_tap_for_center_title">نقرة واحدة في الوسط</string>
   <string name="pref_gesture_use_single_tap_for_right_title">نقرة واحدة على اليمين</string>
   <string name="pref_gesture_use_single_tap_for_left_summary">انقر مرة واحدة بدلًا من مرتين لتنفيذ إجراء الجانب الأيسر.</string>
-  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">انقر مرة واحدة في المنطقة الوسطى (عرضها 30% افتراضيًا وارتفاعها 30%). النقرات الأخرى في الوسط تُظهر عناصر التحكم أو تخفيها.</string>
+  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">انقر مرة في المنطقة الوسطى (بعرض وارتفاع 30%). النقرات الأخرى تبدّل ظهور التحكم.</string>
   <string name="pref_gesture_use_single_tap_for_right_summary">انقر مرة واحدة بدلًا من مرتين لتنفيذ إجراء الجانب الأيمن.</string>
   <string name="pref_gesture_center_vertical_subtitle_position_title">السحب لتحريك الترجمة</string>
-  <string name="pref_gesture_center_vertical_subtitle_position_summary">اضغط مطولاً في المنتصف ثم اسحب لأعلى أو لأسفل لتحريك الترجمة الأساسية. اضغط مطولاً على أي ترجمة لتحريك مسارها بشكل مستقل. تظل السحبات العادية تفتح قائمة التشغيل.</string>
-  <string name="pref_gesture_double_tap_custom_info">يمكنك ربط إجراءات مخصصة بهذه الإيماءات في input.conf باستخدام رموز المفاتيح التالية:
-
-يسار: MBTN_LEFT_DBL
-الوسط: MBTN_MID_DBL
-يمين: MBTN_RIGHT_DBL</string>
+  <string name="pref_gesture_center_vertical_subtitle_position_summary">اضغط مطولًا على الترجمة لتحريكها، أو على الوسط للمسار الأساسي. ضمّ الإصبعين لتغيير الحجم إن كان مفعّلًا.</string>
+  <string name="pref_gesture_double_tap_custom_info">مفاتيح input.conf:\nيسار: MBTN_LEFT_DBL\nوسط: MBTN_MID_DBL\nيمين: MBTN_RIGHT_DBL</string>
   <string name="pref_gesture_media_title">عناصر تحكم الوسائط</string>
   <string name="pref_gesture_media_previous">السابق</string>
   <string name="pref_gesture_media_play">تشغيل/إيقاف مؤقت</string>
   <string name="pref_gesture_media_next">التالي</string>
-  <string name="pref_gesture_media_custom_info">يمكنك ربط إجراءات مخصصة بعناصر تحكم الوسائط في input.conf باستخدام رموز المفاتيح التالية:
-
-السابق: PREV
-تشغيل/إيقاف مؤقت: PLAYPAUSE
-التالي: NEXT</string>
+  <string name="pref_gesture_media_custom_info">مفاتيح input.conf:\nالسابق: PREV\nتشغيل/إيقاف مؤقت: PLAYPAUSE\nالتالي: NEXT</string>
   <string name="pref_gesture_tap_thumbnail_to_select_title">انقر على الصورة المصغّرة للتحديد</string>
-  <string name="pref_gesture_tap_thumbnail_to_select_summary">عند التفعيل، يؤدي النقر على الصور المصغّرة إلى وضع التحديد. وعند التعطيل، يؤدي النقر عليها إلى تشغيل الفيديو.</string>
+  <string name="pref_gesture_tap_thumbnail_to_select_summary">انقر الصور المصغرة للتحديد بدل التشغيل.</string>
   <string name="pref_decoder">وحدة فك الترميز</string>
   <string name="pref_decoder_summary">فك ترميز عتادي، تنسيق البكسل، إزالة التدرجات</string>
   <string name="pref_decoder_profile_title">ملف MPV الشخصي</string>
@@ -273,7 +265,7 @@
   <string name="renderer_build_notice_supported_device">يُستخدم OpenGL؛ ثبّت الإصدار القياسي لاستخدام Vulkan.</string>
   <string name="renderer_build_notice_unsupported_device">يُستخدم OpenGL؛ هذا الجهاز لا يدعم Vulkan 1.3.</string>
   <string name="pref_decoder_yuv420p_title">استخدام تنسيق البكسل YUV420P</string>
-  <string name="pref_decoder_yuv420p_summary">قد يعالج الشاشة السوداء مع بعض برامج ترميز الفيديو، وقد يحسن الأداء أيضًا على حساب الجودة</string>
+  <string name="pref_decoder_yuv420p_summary">قد يصلح الشاشة السوداء أو يحسّن السرعة على حساب الجودة.</string>
   <string name="pref_subtitles">الترجمة</string>
   <string name="pref_subtitles_summary">اللغات المفضلة والخطوط والبحث</string>
   <string name="pref_subtitle_search_title">البحث عن ترجمة عبر الإنترنت</string>
@@ -302,7 +294,7 @@
   <string name="pref_audio_summary">اللغات المفضلة وقنوات الصوت وتصحيح النغمة</string>
   <string name="pref_audio_orientation_title">اتجاه مشغل الصوت</string>
   <string name="pref_audio_pitch_correction_title">تفعيل تصحيح نغمة الصوت</string>
-  <string name="pref_audio_pitch_correction_summary">يمنع ارتفاع نغمة الصوت عند السرعات العالية وانخفاضها عند السرعات البطيئة</string>
+  <string name="pref_audio_pitch_correction_summary">حافظ على النبرة الأصلية عند تغيير سرعة التشغيل.</string>
   <string name="pref_audio_volume_normalization_title">توحيد مستوى الصوت</string>
   <string name="pref_audio_volume_normalization_summary">ضبط مستوى الصوت تلقائيًا للحفاظ على مستوى علو ثابت</string>
   <string name="pref_music_tabs_title">علامات تبويب مكتبة الموسيقى</string>
@@ -312,7 +304,7 @@
   <string name="pref_audio_visualizer_style_cuboid">مكعباني</string>
   <string name="pref_audio_visualizer_galaxy_credit">مستوحى من عمل Zain Raza على CodePen</string>
   <string name="pref_audio_ambient_mode_title">الوضع المحيطي</string>
-  <string name="pref_audio_ambient_mode_summary">عرض تدرجات ألوان ديناميكية مستمدة من غلاف الألبوم في مشغل الموسيقى (معطل عند تفعيل المؤثر البصري)</string>
+  <string name="pref_audio_ambient_mode_summary">ألوان خلفية من الغلاف. تختفي أثناء تشغيل المؤثرات المرئية.</string>
   <string name="pref_audio_wavy_seekbar_title">شريط تقديم متموج</string>
   <string name="pref_audio_wavy_seekbar_summary">عرض رسوم متحركة لمؤثر بصري متموج متعدد الطبقات وانسيابي فوق شريط التقديم</string>
   <string name="pref_audio_channels">قنوات الصوت</string>
@@ -321,7 +313,7 @@
   <string name="pref_audio_channels_mono">أحادي</string>
   <string name="pref_audio_channels_stereo">ستيريو</string>
   <string name="pref_audio_channels_stereo_reversed">ستيريو معكوس</string>
-  <string name="pref_audio_preferred_language">لغة أو لغات الصوت التي يتم اختيارها افتراضيًا للفيديو ذي المسارات الصوتية المتعددة. تعمل رموز اللغات المكونة من حرفين أو ثلاثة، ويمكن فصل عدة قيم بفاصلة.</string>
+  <string name="pref_audio_preferred_language">رموز لغات مفصولة بفواصل، مثل en,eng,ja. تُطابق حسب ترتيب الإدخال.</string>
   <string name="pref_audio_volume_boost_cap">حد تعزيز مستوى الصوت</string>
   <string name="pref_advanced">متقدم</string>
   <string name="pref_advanced_summary">موقع الإعداد، mpv.conf</string>
@@ -354,7 +346,7 @@
   <string name="pref_anime4k_title">رفع الدقة باستخدام Anime4K</string>
   <string name="pref_anime4k_summary">تفعيل مرشح رفع الدقة Anime4K</string>
   <string name="pref_anime4k_incompatibility">عدم توافق Anime4K</string>
-  <string name="pref_anime4k_gpu_next_error">يتطلب Anime4K إما gpu القديم، أو gpu-next مع تفعيل Vulkan. وسيعود gpu-next على OpenGL إلى gpu القديم لضمان توافق المظللات.</string>
+  <string name="pref_anime4k_gpu_next_error">يتطلب Anime4K محرك GPU التقليدي أو GPU Next مع Vulkan. يستخدم OpenGL المحرك التقليدي.</string>
   <string name="anime4k_mode_title">إعدادات Anime4K المسبقة</string>
   <string name="pref_anime4k_quality_title">جودة Anime4K</string>
   <!-- Anime4K Modes (Renamed to Presets in UI) -->
@@ -370,7 +362,7 @@
   <string name="anime4k_quality_balanced">متوازن</string>
   <string name="anime4k_quality_high">عالٍ</string>
   <string name="pref_anime4k_in_4k_title">التفعيل في فيديوهات 4K</string>
-  <string name="pref_anime4k_in_4k_summary">السماح بتحسين Anime4K لفيديوهات 4K و8K (قد يزيد من حمولة GPU أو الاختناق الحراري)</string>
+  <string name="pref_anime4k_in_4k_summary">تفعيل لفيديو 4K/8K. قد يزيد حمل الرسوميات والحرارة.</string>
   <string name="pref_anime4k_darken_title">تغميق خطوط Anime4K</string>
   <string name="pref_anime4k_darken_summary">يضيف تغميق الخطوط بعد مرشح رفع الدقة الرئيسي.</string>
   <string name="pref_anime4k_thin_title">ترقيق خطوط Anime4K</string>
@@ -463,7 +455,7 @@
   <string name="player_aspect_crop">اقتصاص</string>
   <string name="player_aspect_stretch">تمديد</string>
   <string name="crash_screen_title">خطأ غير متوقع</string>
-  <string name="crash_screen_subtitle">يبدو أن %s واجه خطأ غير متوقع. فكّر في مشاركة سجلات التعطل ضمن مشكلة على GitHub.</string>
+  <string name="crash_screen_subtitle">حدث خطأ غير متوقع في %s. شارك السجلات في بلاغ على GitHub.</string>
   <string name="crash_screen_logs_title">سجلات التعطل:</string>
   <string name="crash_screen_share">مشاركة سجلات التعطل</string>
   <string name="crash_screen_restart">إعادة تشغيل التطبيق</string>
@@ -505,7 +497,7 @@
   <string name="toast_audio_background_playback_off">تم تعطيل تشغيل الصوت في الخلفية</string>
   <string name="pref_audio_background_playback_summary">مواصلة تشغيل الصوت عند مغادرة مشغل الصوت أو إيقاف الشاشة</string>
   <string name="pref_audio_mini_player_track_switching_title">تغيير الأغاني في المشغل المصغر</string>
-  <string name="pref_audio_mini_player_track_switching_summary">عندما يكون المشغل المصغر أو التشغيل في الخلفية نشطًا، يؤدي اختيار أغنية أخرى إلى تحديث المشغل المصغر دون فتح المشغل الكامل</string>
+  <string name="pref_audio_mini_player_track_switching_summary">بدّل المقاطع في المشغل المصغر دون فتح المشغل الكامل.</string>
   <string name="pref_video_background_playback_title">التشغيل في الخلفية (مشغل الفيديو)</string>
   <string name="pref_video_background_playback_summary">مواصلة تشغيل صوت الفيديو عند مغادرة مشغل الفيديو أو إيقاف الشاشة</string>
   <string name="deselect_all">إلغاء تحديد الكل</string>
@@ -807,7 +799,7 @@
   <string name="pref_custom_prompt_section">موجه مخصص</string>
   <string name="pref_override_instructions_title">تجاوز التعليمات الافتراضية</string>
   <string name="pref_custom_prompts_header">موجهات مخصصة</string>
-  <string name="pref_custom_prompts_description">اترك الحقل فارغًا لاستخدام التعليمات المدمجة للمهمة. إذا كان لديك موجه عام قديم محفوظ، فسيُستخدم كخيار احتياطي.</string>
+  <string name="pref_custom_prompts_description">تستخدم الحقول الفارغة التعليمات المدمجة أو التوجيه العام المحفوظ.</string>
   <string name="pref_custom_rename_prompt_label">موجه إعادة تسمية مخصص</string>
   <string name="pref_custom_translation_prompt_label">موجه ترجمة نصية مخصص</string>
   <string name="pref_custom_format_prompt_label">موجه تنسيق ترجمة مخصص</string>
@@ -1342,11 +1334,11 @@
   <string name="ui_discovering_and_displaying_your_video_files_n_playing_media_cont">• اكتشاف ملفات الفيديو وعرضها
 • تشغيل محتوى الوسائط
 • تحميل ملفات الترجمة</string>
-  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">لطالما احتاج mpvRx إلى إذن الوصول إلى وحدة التخزين لأنه ضروري للعثور على جميع ملفات الوسائط والترجمة على جهازك، بما فيها الملفات التي لا يدعمها النظام.</string>
-  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">لكن بسبب تغيير في سياسة الأمان، تتطلب التطبيقات المصممة لنظام Android 11 والإصدارات الأحدث إذنًا إضافيًا لمواصلة الوصول نفسه.</string>
-  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">يُرجى العلم أن هذا الإذن لا يُستخدم إلا للاكتشاف التلقائي لملفات الوسائط والترجمة على جهازك، ولا يتيح لنا بأي شكل الوصول إلى ملفات البيانات الخاصة التي تخزّنها التطبيقات الأخرى.</string>
-  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">mpvRx مشروع مفتوح المصدر. يمكنك مراجعة الشفرة المصدرية والتحقق من كيفية استخدام الأذونات بزيارة مستودع GitHub الخاص بنا على:</string>
-  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">اطمئن، خصوصيتك هي أولويتنا القصوى. لا نصل إلى ملفاتك لأغراض أخرى ولا ننقلها أو نخزّنها على خوادمنا؛ بل تبقى آمنة على جهازك.</string>
+  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">يتيح إذن التخزين العثور على الوسائط والترجمات، بما فيها التنسيقات غير المفهرسة.</string>
+  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">يتطلب Android 11 والأحدث إذنًا إضافيًا للوصول الكامل إلى التخزين.</string>
+  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">يُستخدم فقط للعثور على الوسائط والترجمات، لا بيانات التطبيقات الخاصة.</string>
+  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">راجع استخدام الأذونات في الشفرة المفتوحة:</string>
+  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">تبقى الملفات على جهازك. لا نرفعها إلى خوادمنا.</string>
   <string name="ui_app_permissions">أذونات التطبيق</string>
   <string name="ui_permissions_setup_subtitle">قم بتكوين الأذونات لتمكين الميزات الأساسية وتشغيل الوسائط.</string>
   <string name="ui_file_permission_title">الوصول إلى الملفات والتخزين</string>
@@ -1356,7 +1348,7 @@
   <string name="ui_notification_permission_title">الإشعارات</string>
   <string name="ui_notification_permission_desc">اختياري. مطلوب لعناصر التحكم في تشغيل الوسائط والحالة في الخلفية وتنبيهات التحديث.</string>
   <string name="ui_audio_record_permission_title">تسجيل الصوت</string>
-  <string name="ui_audio_record_permission_desc">اختياري. مطلوب للمؤثرات المرئية للصوت لمعالجة الطيف وطاقة التردد في الوقت الفعلي.</string>
+  <string name="ui_audio_record_permission_desc">اختياري. يسمح للمؤثرات المرئية بقراءة مستويات الصوت الحية.</string>
   <string name="ui_permission_granted">مسموح</string>
   <string name="ui_next">التالي</string>
   <string name="ui_grant_permission_hint">انقر لمنح الإذن</string>
@@ -1367,7 +1359,7 @@
   <string name="ui_no_results_found">لم يتم العثور على نتائج</string>
   <string name="ui_no_android">لا يدعم Android</string>
   <string name="ui_script_runtime">بيئة تشغيل البرنامج النصي</string>
-  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">يمكن تحميل البرامج النصية التي تم تفعيلها حديثًا أثناء التشغيل. وقد تحتاج البرامج النصية التي توقفها إلى إعادة فتح الفيديو قبل أن تتوقف تمامًا.</string>
+  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">تُحمّل السكربتات المفعّلة الآن. أعد فتح الفيديو لإيقاف المعطّلة بالكامل.</string>
   <string name="ui_media_info">معلومات الوسائط</string>
   <string name="ui_analyzing_media_file">جارٍ تحليل ملف الوسائط...</string>
   <string name="ui_media_tracks_summary">ملخّص مسارات الوسائط</string>
@@ -1392,9 +1384,9 @@
   <string name="ui_filter_presets">إعدادات الفلاتر المسبقة</string>
   <string name="ui_yt_dlp_manager">مدير yt-dlp</string>
   <string name="ytdlp_auth_required_title">يلزم التحقق من YouTube</string>
-  <string name="ytdlp_auth_required_message">يحتاج YouTube إلى التحقق أو ملفات ارتباط حديثة لتسجيل الدخول. استورد ملف cookies.txt بتنسيق Netscape من متصفح يشغّل هذا الفيديو، وسيعيد mpvRx المحاولة مرة واحدة تلقائيًا.</string>
+  <string name="ytdlp_auth_required_message">يلزم التحقق من YouTube. استورد ملف Netscape cookies.txt حديثًا من متصفح يعمل لإعادة المحاولة مرة واحدة.</string>
   <string name="ytdlp_cookies_title">ملفات ارتباط YouTube</string>
-  <string name="ytdlp_cookies_summary">تُستخدم ملفات ارتباط تسجيل الدخول المستوردة في التشغيل لاحقًا. تُحفظ ملفات YouTube فقط في مساحة خاصة مستثناة من النسخ الاحتياطي. امسحها هنا عند انتهاء الحاجة إليها.</string>
+  <string name="ytdlp_cookies_summary">أعد استخدام ملفات ارتباط YouTube من مساحة خاصة مستثناة من النسخ الاحتياطي. امسحها عند انتهاء الحاجة.</string>
   <string name="ytdlp_cookies_configured">تم إعداد ملفات الارتباط</string>
   <string name="ytdlp_cookies_help">كيفية تصدير ملفات ارتباط YouTube</string>
   <string name="ytdlp_cookies_help_failed">لا يوجد متصفح لفتح التعليمات.</string>
@@ -1458,7 +1450,7 @@
   <string name="ui_subtitle_translation_can_be_a_bit_messy">قد تكون ترجمة الترجمات غير دقيقة بعض الشيء. </string>
   <string name="ui_real_time_model">نموذج فوري</string>
   <string name="ui_auto_translate_target_languages">لغات هدف للترجمة التلقائية</string>
-  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">عند ترجمة الترجمات، إذا تم إعداد لغة واحدة فستُترجم مباشرة. وإذا تم إعداد لغتين أو أكثر فسيظهر محدّد.</string>
+  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">لغة واحدة تترجم مباشرة؛ ولغات متعددة تفتح قائمة اختيار.</string>
   <string name="ui_no_target_languages_configured">لم يتم إعداد لغات هدف</string>
   <string name="ui_search_languages">البحث عن لغات...</string>
   <string name="ui_refresh">تحديث</string>
@@ -1601,7 +1593,7 @@
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">ألوان نيون زاهية وحادّة</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">درجات سوداء محسّنة لشاشات OLED</string>
   <string name="filter_preset_custom_section">إعدادات مسبقة مخصصة</string>
-  <string name="filter_preset_custom_empty">اضبط السطوع والتباين وجاما والتشبّع وتدرّج اللون والحدّة، ثم احفظ التركيبة لإعادة استخدامها لاحقًا.</string>
+  <string name="filter_preset_custom_empty">اضبط الصورة، ثم احفظ الإعدادات كإعداد مسبق.</string>
   <string name="filter_preset_save_current">حفظ الحالي</string>
   <string name="filter_preset_save_title">حفظ إعداد مسبق مخصص</string>
   <string name="filter_preset_rename_title">إعادة تسمية الإعداد المسبق</string>
@@ -1615,7 +1607,7 @@
   <string name="filter_preset_menu_description">خيارات الإعداد المسبق</string>
   <string name="filter_preset_save">حفظ</string>
   <string name="syncplay_title">Syncplay</string>
-  <string name="syncplay_description">شاهد مقاطع الفيديو متزامنة مع أصدقائك. اتصل بخادم Syncplay لبدء المشاهدة معًا.</string>
+  <string name="syncplay_description">شاهدوا معًا عبر خادم Syncplay.</string>
   <string name="syncplay_connected_as">متصل باسم %1$s في الغرفة %2$s</string>
   <string name="syncplay_users_in_room">المستخدمون في الغرفة:</string>
   <string name="syncplay_disconnect">قطع الاتصال</string>
@@ -1678,13 +1670,13 @@
   <string name="secure_folder_delete_confirm_title">حذف %1$d عنصر نهائياً؟</string>
   <string name="secure_folder_delete_confirm_subtitle">لا يمكن التراجع عن هذا الإجراء — سيتم حذف الملفات نهائياً من المجلد الآمن.</string>
   <string name="secure_folder_hide_entry_title">إخفاء المجلد الآمن من التفضيلات؟</string>
-  <string name="secure_folder_hide_entry_subtitle">سيتم إزالة صف \"المجلد الآمن\" من التفضيلات. لفتحه لاحقاً، انقر مرتين على اسم التطبيق في أعلى الشاشة الرئيسية وأدخل رمز PIN.</string>
+  <string name="secure_folder_hide_entry_subtitle">يخفي هذه الصفحة من الإعدادات. للعودة: انقر عنوان الرئيسية مرتين، وأدخل PIN، ثم افتح الإعدادات.</string>
   <string name="secure_folder_working_on_it">جاري العمل…</string>
   <string name="secure_folder_restore">استعادة</string>
   <string name="secure_folder_move_to">نقل إلى المجلد الآمن</string>
   <string name="secure_folder_moving_progress">جاري النقل إلى المجلد الآمن…</string>
   <string name="secure_folder_move_folders_title">نقل %1$d مجلد إلى المجلد الآمن؟</string>
-  <string name="secure_folder_move_folders_subtitle">سيختفي كل فيديو بداخله من هذه القائمة ومن أي مكان آخر في التطبيق حتى تمت استادته.</string>
+  <string name="secure_folder_move_folders_subtitle">أخفِ كل فيديوهات هذه المجلدات حتى استعادتها.</string>
   <string name="secure_folder_move_items_title">نقل %1$d عنصر إلى المجلد الآمن؟</string>
   <string name="secure_folder_move_items_subtitle">ستختفي من هذه القائمة ومن أي مكان آخر في التطبيق حتى تمت استعادتها.</string>
   <string name="secure_folder_moved_success">تم نقل %1$d ملف إلى المجلد الآمن</string>
@@ -1706,7 +1698,7 @@
     <string name="secure_folder_settings_security">الأمان</string>
     <string name="secure_folder_settings_danger_zone">منطقة الخطر</string>
     <string name="secure_folder_settings_help">المساعدة</string>
-    <string name="secure_folder_settings_help_text">انقر مرتين أو اضغط مطولًا على اسم التطبيق أعلى الشاشة الرئيسية لفتح المجلد الآمن.</string>
+    <string name="secure_folder_settings_help_text">افتح المجلد الآمن بالنقر المزدوج أو الضغط المطول على عنوان الرئيسية.</string>
     <string name="secure_folder_settings_setup_first">افتح المجلد الآمن وعيّن رمز PIN أولًا.</string>
     <string name="secure_folder_biometric_title">تفعيل فتح القفل بالقياسات الحيوية</string>
     <string name="secure_folder_biometric_summary">استخدم بصمتك أو وجهك لفتح القفل</string>
@@ -1728,7 +1720,7 @@
     <string name="secure_folder_destroy_no_screen_lock">عيّن قفل شاشة للهاتف (PIN أو نمط أو كلمة مرور) لاستخدام هذا.</string>
   <string name="pref_codecs_decoders_summary">%1$d عتادي • %2$d فك تشفير برمجي</string>
   <string name="pref_codecs_banner_title">فك التشفير العتادي مقابل البرمجي</string>
-  <string name="pref_codecs_banner_desc">تقوم أدوات فك التشفير العتادية بفك تشفير الفيديو مباشرة على معالج الفيديو/الرسوميات، مما يستهلك طاقة أقل. بينما تعمل البرمجية على المعالج الرئيسي مما يزيد من استهلاك البطارية والحرارة.</string>
+  <string name="pref_codecs_banner_desc">فك الترميز العتادي أقل استهلاكًا للطاقة. البرمجي قد يزيد الحرارة واستهلاك البطارية.</string>
   <string name="pref_codecs_core_title">حالة ترميزات الفيديو الأساسية</string>
   <string name="pref_codecs_search_placeholder">البحث عن اسم الترميز أو التنسيق أو MIME...</string>
   <string name="pref_codecs_filter_all">الكل (%d)</string>
@@ -1802,7 +1794,7 @@
     <string name="ui_recent_streams">روابط البث الأخيرة</string>
     <string name="ui_play_now">تشغيل</string>
     <string name="ui_no_saved_media_title">لا توجد روابط محفوظة</string>
-    <string name="ui_no_saved_media_description">الصق رابط بث أو رابط مغناطيسي أو احفظ من الروابط الأخيرة لبناء مجموعتك.</string>
+    <string name="ui_no_saved_media_description">أضف رابط بث أو رابط مغناطيسي أو رابطًا حديثًا.</string>
     <string name="ui_search_episodes">بحث في الحلقات…</string>
     <string name="ui_sort_ascending">ترتيب تصاعدي</string>
     <string name="ui_sort_descending">ترتيب تنازلي</string>
@@ -1846,7 +1838,7 @@
   <string name="pref_mpv_conf_override_osd">المنطقة الآمنة لـ OSD</string>
   <string name="pref_mpv_conf_override_osd_summary">يتجاوز خط OSD وهوامشه ومناطقه الآمنة.</string>
   <string name="mpv_config_owned_title">يتحكم به mpv.conf</string>
-  <string name="mpv_config_owned_message">عنصر تحكم التطبيق هذا معطل لأن خيارًا واحدًا أو أكثر من الخيارات التي يحتاجها مسند إلى mpv.conf في الإعدادات المتقدمة.</string>
+  <string name="mpv_config_owned_message">يتحكم به mpv.conf. غيّر ملكية الخيار في الإعدادات المتقدمة لاستخدام هذا التحكم.</string>
   <string name="pref_lyrics_translation_category">ترجمة كلمات الأغاني ونقلها حرفياً</string>
   <string name="pref_lyrics_auto_translate">ترجمة كلمات الأغاني الأجنبية تلقائياً</string>
   <string name="pref_lyrics_auto_translate_summary">ترجمة كلمات الأغاني بلغات أجنبية تلقائياً إلى اللغة المفضلة</string>
@@ -1959,7 +1951,7 @@
   <string name="storage_permission_needed_desc">امنح إذن التخزين لتصفح وتشغيل الوسائط.</string>
   <string name="storage_permission_grant">منح الإذن</string>
   <string name="pref_player_web_stream_links_title">فتح روابط مواقع البث</string>
-  <string name="pref_player_web_stream_links_summary">إظهار mpvRx لروابط مواقع البث المدعومة والروابط النصية المشتركة. تظل ملفات الوسائط وروابط الوسائط المباشرة متاحة عند التعطيل.</string>
+  <string name="pref_player_web_stream_links_summary">افتح روابط المواقع المدعومة في mpvRx. تبقى روابط الوسائط المباشرة متاحة عند الإيقاف.</string>
 
   <string name="btn_label_scopes">النطاقات</string>
   <string name="scopes_title">النطاقات</string>
@@ -2025,7 +2017,7 @@
   <string name="player_started_afresh_pill">بدأ من البداية</string>
   <string name="player_restart_action">إعادة البدء</string>
   <string name="pref_resume_indicator_overlay_title">مؤشر الاستئناف</string>
-  <string name="pref_resume_indicator_overlay_summary">عرض مؤشرات موضع الاستئناف أو البدء. وضع السؤال يعرض دائمًا مؤشر الاستئناف التفاعلي</string>
+  <string name="pref_resume_indicator_overlay_summary">أظهر تلميحات الاستئناف. يبقى طلب الاستئناف ظاهرًا دائمًا في وضع السؤال.</string>
 
   <!-- Media Servers Settings -->
   <string name="pref_media_servers_title">خوادم الوسائط</string>
@@ -2071,16 +2063,16 @@
   <string name="pref_appearance_custom_wallpaper_colors_failed">تعذّر استخراج الألوان من هذه الخلفية</string>
   <string name="wallpaper_save_failed">تعذر حفظ الخلفية. يرجى اختيار الصورة مرة أخرى.</string>
   <string name="pref_haptic_feedback_title">استجابة لمسية</string>
-  <string name="pref_haptic_feedback_summary">استجابة لمسية للتحديد والسحب وضبط عناصر التحكم. تراعي إعدادات النظام.</string>
+  <string name="pref_haptic_feedback_summary">اهتزاز للتحديد والسحب والضبط، وفق إعدادات النظام.</string>
   <string name="pref_nested_tab_swipes_title">السحب بين علامات التبويب الداخلية</string>
-  <string name="pref_nested_tab_swipes_summary">تفعيل السحب لليسار واليمين داخل الموسيقى والشبكة والعناصر الأخيرة. لا تتغير إجراءات السحب للتنقل الرئيسي أو للعناصر.</string>
+  <string name="pref_nested_tab_swipes_summary">اسحب بين التبويبات الفرعية في الموسيقى والشبكة والأخيرة.</string>
   <string name="oss_kmp_vibrate_description">مكتبة استجابة لمسية من WonDDak (jmseb3).</string>
   <string name="ambient_style_youtube">YouTube</string>
-  <string name="ambient_youtube_auto_hint">يعمل وضع YouTube تلقائيًا بالكامل: تُضاء الأشرطة بإسقاط ناعم وضبابي للإطار الحالي، كما في وضع الإضاءة المحيطة في YouTube.</string>
+  <string name="ambient_youtube_auto_hint">يضيء الحواف تلقائيًا بإسقاط ضبابي من الفيديو.</string>
   <string name="btn_label_post_processing">المعالجة اللاحقة</string>
   <string name="clip_end_short">النهاية</string>
   <string name="clip_start_short">البداية</string>
-  <string name="enter_subtitle_title_preferences">أدخل كلمات من عناوين الترجمة أو رموز اللغات حسب الأولوية، وافصل بينها بفواصل. تُفضّل المطابقات الأسبق.</string>
+  <string name="enter_subtitle_title_preferences">كلمات الترجمة أو رموز اللغات مفصولة بفواصل؛ تُطابق حسب ترتيب الإدخال.</string>
   <string name="generic_configure">تهيئة</string>
   <string name="generic_install">تثبيت</string>
   <string name="music_source_navidrome">موسيقى Navidrome</string>
@@ -2295,7 +2287,7 @@
   <string name="pref_background_playback_remember">تذكر اختياري دائمًا</string>
   <string name="pref_background_playback_remember_summary">الاحتفاظ باختيار التشغيل في الخلفية للفيديوهات التالية.</string>
   <string name="pref_background_playback_per_video">تذكر الاختيار لكل فيديو</string>
-  <string name="pref_background_playback_per_video_summary">احفظ اختيار التشغيل في الخلفية لكل فيديو على حدة. يظل معطلًا للفيديوهات الأخرى حتى تفعيله لها.</string>
+  <string name="pref_background_playback_per_video_summary">تذكّر التشغيل في الخلفية لكل فيديو على حدة.</string>
   <string name="jellyfin_technical_details">التفاصيل التقنية</string>
 
   <!-- Snapshots (frame capture) -->
@@ -2306,7 +2298,7 @@
   <string name="profile_view_all">عرض الكل</string>
   <string name="profile_edit">تعديل الملف الشخصي</string>
   <string name="profile_layout_title">تخطيط الملف الشخصي</string>
-  <string name="profile_layout_summary">اسحب لتغيير الترتيب واستخدم المفاتيح لإظهار العناصر أو إخفائها. تبقى بطاقات الإحصاءات داخل قسم الإحصاءات.</string>
+  <string name="profile_layout_summary">اسحب للترتيب، وبدّل للإظهار أو الإخفاء. تبقى بطاقات الإحصاءات في قسمها.</string>
   <string name="profile_layout_hubs">بطاقات الاختصارات</string>
   <string name="profile_layout_sections">أقسام الملف الشخصي</string>
   <string name="profile_layout_statistics">بطاقات الإحصاءات</string>
@@ -2365,7 +2357,7 @@
   <string name="snapshot_delete_folder_empty_message">يؤدي هذا إلى إزالة المجلد من التطبيق.</string>
 
   <string name="snapshot_folder_empty_title">هذا المجلد فارغ</string>
-  <string name="snapshot_folder_empty_message">اضغط مطولًا على لقطة في القائمة واختر «نقل إلى مجلد» لحفظها هنا.</string>
+  <string name="snapshot_folder_empty_message">اضغط مطولًا على لقطة واختر «نقل إلى مجلد».</string>
 
   <string name="snapshot_sort_folder_name">اسم المجلد</string>
   <string name="snapshot_sort_created_at">تاريخ الإنشاء</string>
@@ -2385,7 +2377,7 @@
   <string name="oss_anime4k_description">مظللات ترقية واستعادة فورية للفيديو المتحرك.</string>
   <string name="oss_hdr_toys_description">مظللات تعيين درجات HDR والنطاق اللوني ودوال النقل.</string>
   <string name="pref_auto_backup_title">نسخ الإعدادات احتياطيًا تلقائيًا</string>
-  <string name="pref_auto_backup_summary">يحفظ الإعدادات المتغيرة في Configuration/Backup عند انتقال mpvRx إلى الخلفية، مع الاحتفاظ بآخر سبع نسخ.</string>
+  <string name="pref_auto_backup_summary">انسخ الإعدادات عند انتقال التطبيق للخلفية. يحتفظ بسبع نسخ في Configuration/Backup.</string>
   <string name="pref_auto_backup_select_folder">اختر مجلد الإعدادات أولًا</string>
   <string name="pref_auto_backup_last_backup">آخر نسخة: %1$s</string>
   <string name="watch_stats_title">إحصاءات المشاهدة</string>
@@ -2401,9 +2393,9 @@
   <string name="pref_debug_log_size_title">حد حجم السجل</string>
   <string name="pref_debug_log_size_summary">الاحتفاظ بما يصل إلى %1$d م.ب في عارض السجلات والتشخيصات المشتركة.</string>
   <string name="onboarding_configuration_title">إعداد تخزين mpvRx</string>
-  <string name="onboarding_configuration_desc">اختر مجلد الإعدادات المستخدم للإعدادات والنسخ الاحتياطية والبرامج النصية والترجمات والتنزيلات.</string>
+  <string name="onboarding_configuration_desc">اختر مجلدًا للإعدادات والنسخ الاحتياطية والسكربتات والترجمات والتنزيلات.</string>
   <string name="onboarding_configuration_card_title">مجلد الإعدادات</string>
-  <string name="onboarding_configuration_card_desc">اختر مجلد إعدادات mpvRx. ستتم استعادة الإعدادات الموجودة في الجذر أو في Backup تلقائيًا.</string>
+  <string name="onboarding_configuration_card_desc">اختر مجلد التهيئة. يستعيد الإعدادات من جذره أو من Backup.</string>
   <string name="onboarding_configuration_restoring">جارٍ البحث عن نسخ الإعدادات…</string>
   <string name="onboarding_configuration_no_backup">تم إعداد المجلد. ستستخدم التنزيلات Configuration/Downloads.</string>
   <string name="onboarding_configuration_restored">تمت استعادة الإعدادات من %1$s. ستستخدم التنزيلات Configuration/Downloads.</string>
@@ -2429,7 +2421,7 @@
   <string name="legacy_navigation_bar_title">شريط التنقل الكلاسيكي</string>
   <string name="legacy_navigation_bar_summary">استخدم شريط تنقل كلاسيكيًا بعرض الشاشة بدلًا من الشريط العائم.</string>
   <string name="progressive_navigation_blur_title">تمويه التنقل التدريجي</string>
-  <string name="progressive_navigation_blur_summary">استخدم تمويه Haze التدريجي خلف شريط التنقل العائم. يتم تعطيله تلقائيًا عند تفعيل شريط التنقل التقليدي.</string>
+  <string name="progressive_navigation_blur_summary">تمويه خلف شريط التنقل العائم. غير متاح مع التنقل التقليدي.</string>
   <string name="pref_seekbar_preview_skip_markers">علامات التخطي</string>
   <string name="pref_liquid_glass_optics">البصريات</string>
   <string name="pref_liquid_glass_opacity">عتامة الخلفية</string>
@@ -2453,11 +2445,11 @@
   <string name="debug_logs_config_saved">تم حفظ السجلات في %1$s داخل مجلد الإعدادات.</string>
   <string name="debug_logs_config_save_failed">تعذر حفظ السجلات. تحقق من الوصول إلى مجلد الإعدادات أو اختره مرة أخرى.</string>
   <string name="pref_gesture_show_seekbar_horizontal_title">إظهار شريط التقدم عند إخفاء عناصر التحكم</string>
-  <string name="pref_gesture_show_seekbar_horizontal_summary">أثناء السحب أفقيًا للتقديم أو الإرجاع، أظهر شريط التقدم حتى عند إخفاء عناصر تحكم المشغّل. لا يتأثر مؤشر الوقت.</string>
+  <string name="pref_gesture_show_seekbar_horizontal_summary">أظهر شريط التقديم أثناء السحب حتى مع إخفاء عناصر التحكم.</string>
   <string name="player_zoom_overlays_follow">تكبير واجهة المشغل والترجمة مع الفيديو</string>
   <string name="player_zoom_overlays_follow_summary">تتغير الترجمة وصفحات الإحصاءات 1–6 مع تكبير الفيديو. عند إيقافه يبقى حجمها ثابتاً.</string>
   <string name="network_smb_share_folder">المشاركة / المجلد (اختياري)</string>
-  <string name="network_smb_share_hint">اتركه فارغًا أو استخدم / لتصفح جميع المجلدات المشتركة. أدخل /Media أو /Media/Movies لفتح مجلد محدد.</string>
+  <string name="network_smb_share_hint">اتركه فارغًا أو استخدم / لكل المشاركات، أو أدخل مسارًا مثل /Media/Movies.</string>
   <string name="pref_app_icon_title">أيقونة التطبيق</string>
   <string name="pref_app_icon_summary">اختر الأيقونة التي تظهر في المشغل</string>
   <string name="app_icon_change_failed">تعذر تغيير أيقونة التطبيق.</string>
@@ -2599,7 +2591,7 @@
   <string name="pref_paxsenix_api_key_dialog_desc">الصق مفتاح API لـ PaxSenix. اتركه فارغًا لاستخدام المسارات التي لا تتطلب مفتاحًا فقط.</string>
   <string name="pref_lyrics_sources_category">كلمات الأغاني عبر الإنترنت</string>
   <string name="pref_lyrics_auto_fetch_online">جلب كلمات الأغاني من الإنترنت تلقائيًا</string>
-  <string name="pref_lyrics_auto_fetch_online_summary">ابحث في المصادر عبر الإنترنت فقط عند عدم توفر كلمات مضمّنة أو محلية. يمكنك البحث عبر الإنترنت يدويًا أيضًا.</string>
+  <string name="pref_lyrics_auto_fetch_online_summary">ابحث عن كلمات عبر الإنترنت عند غياب الكلمات المحلية أو المضمّنة.</string>
   <string name="lyrics_translation_off_summary">عرض اللغة الأصلية دون ترجمة</string>
   <string name="lyrics_translation_dual_line">سطران</string>
   <string name="lyrics_translation_replace">استبدال الأصل</string>
@@ -2624,7 +2616,7 @@
   <string name="network_server_scan">ابحث عن خوادم قريبة</string>
   <string name="network_server_scanning">جارٍ البحث عن خوادم قريبة…</string>
   <string name="network_server_scan_unavailable">الاكتشاف غير متاح أو غير مكتمل. اختر عنوانًا محفوظًا أو أدخل عنوانًا.</string>
-  <string name="network_server_discovery_hint">يبحث عن الخوادم التي تعلن عن نفسها على شبكتك المحلية. عناوين الأجهزة اختصارات وليست خوادم مكتشفة. أدخل بيانات الدخول أدناه.</string>
+  <string name="network_server_discovery_hint">يعثر على خوادم الشبكة المعلَنة. عناوين الأجهزة اختصارات؛ أدخل بيانات الدخول أدناه.</string>
   <string name="network_smb_username_hint">استخدم اسم المستخدم أو DOMAIN\\username لحساب ضمن نطاق.</string>
   <string name="pref_playstore_hidden_title">المجلدات المخفية المختارة</string>
   <string name="pref_playstore_hidden_summary">اختر مجلدًا لتضمين وسائطه ومجلداته الفرعية.</string>
@@ -2711,7 +2703,7 @@
   <string name="color_picker_selected">اللون المحدد</string>
   <string name="color_picker_quick_colors">ألوان سريعة</string>
   <string name="app_icon_custom_background">خلفية مخصصة</string>
-  <string name="app_icon_custom_background_hint">اختر لونًا. يستخدم Android أقرب أيقونة مدمجة في درج التطبيقات. ويمكن حفظ لونك الدقيق كأيقونة للشاشة الرئيسية واستخدامه في شاشة التطبيقات الحديثة.</string>
+  <string name="app_icon_custom_background_hint">تستخدم قائمة التطبيقات أقرب أيقونة مدمجة؛ وتستخدم الرئيسية والتطبيقات الأخيرة لونك المختار.</string>
   <string name="app_icon_custom_logo_hint">اختر أي شعار لوضعه فوق الخلفية المخصصة.</string>
   <string name="app_icon_custom_requested">تصميمك</string>
   <string name="app_icon_custom_native_match">أيقونة المشغل الفعلية</string>
@@ -2745,7 +2737,7 @@
   <string name="selection_info_fps_value">%1$.2f إطار/ثانية</string>
   <string name="selection_info_metadata_note">يستخدم الملخص البيانات الوصفية المتاحة في المكتبة. انقر على ملف لعرض بياناته الوصفية الكاملة.</string>
   <string name="selection_info_missing_metadata">البيانات الوصفية غير المتاحة</string>
-  <string name="selection_info_missing_metadata_value">ملفات بحجم غير معروف: %1$d؛ بمدة غير معروفة: %2$d. تستخدم الإجماليات والمتوسطات القيم المعروفة فقط.</string>
+  <string name="selection_info_missing_metadata_value">حجم مجهول: %1$d؛ مدة مجهولة: %2$d. الإجماليات للقيم المعروفة فقط.</string>
   <string name="selection_info_no_media">لم يتم العثور على وسائط قابلة للتشغيل في المجلدات المحددة</string>
   <string name="selection_info_copy_summary">نسخ الملخص</string>
   <string name="selection_info_open_media_info">فتح معلومات الوسائط الكاملة</string>
@@ -2826,14 +2818,14 @@
   <string name="thumbnail_no">لا</string>
   <string name="thumbnail_refresh">تحديث المعلومات</string>
   <string name="thumbnail_generate">إنشاء صورة مصغرة</string>
-  <string name="thumbnail_quality_note">تعرض المعاينة الصورة المخزنة مؤقتًا فعليًا وفقًا للإعدادات الحالية. قد تخزن مربعات متصفح الوسائط صورة أصغر من حد الأبعاد المحدد. لا يؤدي فتح علامة التبويب هذه إلى إنشاء إطار جديد.</string>
+  <string name="thumbnail_quality_note">هذه معاينة مخزّنة وليست إطارًا جديدًا. قد يكون حجمها أقل من الحد المختار.</string>
   <string name="thumbnail_inspection_failed">تعذرت قراءة معلومات الصورة المصغرة. حاول التحديث.</string>
   <string name="thumbnail_generation_unavailable">لم تُرجع طريقة الإنشاء المحددة صورة مصغرة لهذا الملف.</string>
 
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">اختر الوضع التلقائي أو الاستخراج المباشر أو MediaStore للصور المصغرة وأغلفة الأغاني المحلية</string>
   <string name="pref_thumbnail_generator_auto">تلقائي (الافتراضي)</string>
-  <string name="pref_thumbnail_generator_auto_summary">جرّب MediaStore أولاً، ثم استخدم الاستخراج المباشر إذا لم تتوفر صورة مصغرة أو غلاف أغنية، بما في ذلك المجلدات المخفية. يؤدي تبديل الوضع إلى مسح الصور المصغرة المخزنة مؤقتاً.</string>
+  <string name="pref_thumbnail_generator_auto_summary">استخدم صور Android أولًا، ثم Native عند غيابها. التبديل يمسح التخزين المؤقت.</string>
   <string name="thumbnail_strategy_auto">MediaStore أولاً، ثم الاستخراج المباشر عند التعذر</string>
 
   <string name="update_download_failed">فشل التنزيل. اضغط على إعادة المحاولة للاستئناف.</string>
@@ -2842,7 +2834,7 @@
   <string name="update_checking_download">جارٍ التحقق من ملف APK الذي تم تنزيله…</string>
   <string name="update_check_failed">تعذّر التحقق من التحديثات. تحقق من الاتصال أو حاول لاحقًا.</string>
   <string name="update_auto_install">التنزيل والتثبيت تلقائيًا</string>
-  <string name="update_auto_install_summary">تنزيل التحديثات عبر شبكات غير محدودة وتثبيتها عندما يكون mpvRx غير مستخدم. قد يطلب Android موافقتك.</string>
+  <string name="update_auto_install_summary">نزّل عبر شبكة غير محدودة وثبّت عند الخمول. قد يطلب Android الإذن.</string>
   <string name="update_download_and_install">تنزيل وتثبيت</string>
   <string name="update_background_downloading">جارٍ تنزيل تحديث التطبيق…</string>
   <string name="update_installing">جارٍ تثبيت التحديث…</string>
@@ -2853,8 +2845,8 @@
   <string name="pref_appearance_thumbnail_generator_title">مولّد الصور المصغرة</string>
   <string name="pref_thumbnail_generator_native">استخراج مباشر</string>
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
-  <string name="pref_thumbnail_generator_native_summary">استخراج الصور المصغرة للفيديوهات المحلية وأغلفة الأغاني من ملف الوسائط. يؤدي التبديل إلى مسح الصور المصغرة المخزنة مؤقتًا.</string>
-  <string name="pref_thumbnail_generator_mediastore_summary">استخدام صور Android المصغرة وأغلفة الألبومات للفيديوهات والأغاني المحلية. يؤدي التبديل إلى مسح الصور المصغرة المخزنة مؤقتًا؛ وتظهر صورة بديلة عند عدم توفر الغلاف. تستخدم معاينات الشبكة الاستخراج المباشر.</string>
+  <string name="pref_thumbnail_generator_native_summary">استخرج الصور المصغرة والأغلفة من الملفات المحلية. التبديل يمسح التخزين المؤقت.</string>
+  <string name="pref_thumbnail_generator_mediastore_summary">استخدم صور Android المصغرة والأغلفة. التبديل يمسح التخزين المؤقت. معاينات الشبكة تستخدم Native.</string>
   <string name="ui_update_channels_summary">إصدارات مستقرة أو معاينات ليلية أو إصدارات تجريبية من التكامل المستمر.</string>
   <string name="update_experimental_build_format">تجريبي r%1$d</string>
   <string name="tv_nav_settings">الإعدادات</string>
@@ -2869,7 +2861,7 @@
   <string name="tv_player_quality">جودة الفيديو</string>
   <string name="tv_player_seek_bar">شريط التنقل</string>
   <string name="pref_audio_animated_artwork_title">أغلفة ألبومات متحركة</string>
-  <string name="pref_audio_animated_artwork_summary">جلب أغلفة متحركة مطابقة من Apple Music في مشغّل الموسيقى بملء الشاشة. يُرسل عنوان الأغنية والفنان والألبوم إلى Apple ويستخدم بيانات الجوال. معطّل افتراضيًا؛ ويحتفظ بالغلاف الحالي عند عدم توفر غلاف متحرك. بدّل من المؤثرات المرئية إلى الغلاف لرؤيته.</string>
+  <string name="pref_audio_animated_artwork_summary">أغلفة متحركة من Apple Music. يشارك بيانات المقطع ويستهلك الإنترنت؛ يبقي الغلاف الثابت عند تعذرها.</string>
   <string name="jellyfin_featured">المحتوى المميز</string>
   <string name="jellyfin_series">مسلسل</string>
   <string name="jellyfin_movie">فيلم</string>
@@ -2957,8 +2949,8 @@
   <string name="clip_track_auto_off">تلقائي / إيقاف</string>
   <string name="pref_blacklist_count">عدد المجلدات في القائمة السوداء: %1$d</string>
   <string name="pref_whitelist_disabled">القائمة البيضاء معطّلة</string>
-  <string name="pref_blacklist_summary">تُخفى المجلدات في هذه القائمة من وسائطك. اختر لكل مجلد إخفاء مقاطع الفيديو أو الصوت أو كليهما.</string>
-  <string name="pref_whitelist_summary">عند تفعيل القائمة البيضاء، يتم فحص هذه المجلدات ومجلداتها الفرعية فقط. إذا لم تُضف أي مجلدات، فلن يُقيَّد شيء.</string>
+  <string name="pref_blacklist_summary">أخفِ الفيديوهات أو الصوت أو كليهما في هذه المجلدات.</string>
+  <string name="pref_whitelist_summary">افحص هذه المجلدات وفروعها فقط. القائمة الفارغة لا تفرض قيودًا.</string>
   <string name="pref_whitelist_empty_message">انقر على الزر أدناه لإضافة المجلدات التي تريد فحصها</string>
   <string name="clip_section_range">النطاق</string>
   <string name="clip_section_output">الإخراج</string>
@@ -2979,7 +2971,7 @@
   <string name="pref_audio_spatial_title">الصوت المكاني</string>
   <string name="pref_audio_spatial_summary">يوسّع نطاق المسارات الستيريو لتجربة صوتية أكثر غمراً</string>
   <string name="pref_measure_enabled_title">مشاركة بيانات التشخيص مع Measure</string>
-  <string name="pref_measure_enabled_summary">اشترك لإرسال الأعطال وعدم الاستجابة ومقاييس الأداء ونشاط الجلسة إلى Measure. معطل افتراضيًا.</string>
+  <string name="pref_measure_enabled_summary">أرسل بيانات الأعطال وANR والأداء والجلسات إلى Measure. معطّل افتراضيًا.</string>
   <string name="pref_measure_not_configured">التشخيص غير متاح: لا يحتوي هذا الإصدار على مفتاح Measure.</string>
   <string name="pref_layout_portrait_playback_position">عناصر التحكم في التشغيل العمودي</string>
   <string name="pref_layout_landscape_playback_position">عناصر التحكم في التشغيل الأفقي</string>
@@ -2994,7 +2986,7 @@
   <string name="player_skip_automatic">%1$s (تلقائي)</string>
   <string name="grayscale_watched_thumbnails">عرض الصور المصغّرة للمقاطع المشاهَدة بتدرّج رمادي</string>
   <string name="pref_gesture_require_double_tap_title">اشتراط نقرتين لكل انتقال زمني</string>
-  <string name="pref_gesture_require_double_tap_summary">اشتراط نقرتين جديدتين لكل انتقال زمني في مناطق النقر المزدوج. عطّل هذا الخيار لمواصلة الانتقال بنقرات مفردة ما دام مؤشر الاستجابة ظاهرًا. لا تتأثر مناطق النقر المفرد.</string>
+  <string name="pref_gesture_require_double_tap_summary">يلزم نقر مزدوج لكل تقديم. عند الإيقاف، يستمر التقديم بنقرات مفردة أثناء ظهور المؤشر.</string>
   <string name="audio_footer_show_artwork">إظهار غلاف الألبوم</string>
   <string name="audio_footer_show_visualizer">إظهار المؤثرات المرئية</string>
   <string name="toast_updating_thumbnail_generator">جارٍ تحديث الصور المصغّرة</string>
@@ -3012,11 +3004,11 @@
   <string name="player_settings_dependency">غير متاح مع الإعدادات أو الوسائط الحالية.</string>
   <string name="player_settings_config_owned">يتحكم به mpv.conf</string>
   <string name="pref_custom_openai_base_url_title">عنوان URL أساسي مخصص متوافق مع OpenAI</string>
-  <string name="pref_custom_openai_base_url_summary">أدخل عنوان HTTP(S) الأساسي لواجهة API، مثل https://example.com/v1. يدعم Chat Completions وجلب قائمة النماذج اختياريًا. لا تضمّن بيانات الاعتماد في عنوان URL.</string>
+  <string name="pref_custom_openai_base_url_summary">عنوان Chat Completions الأساسي، مثل https://example.com/v1. لا تضع مفتاح API فيه.</string>
   <string name="pref_custom_openai_key_title">مفتاح API للمزوّد المخصص</string>
-  <string name="pref_custom_openai_key_summary">اختياري للخوادم التي لا تتطلب مصادقة. يُفضّل استخدام HTTPS عند استخدام مفتاح API.</string>
+  <string name="pref_custom_openai_key_summary">اختياري للخوادم دون مصادقة. استخدم HTTPS عند إرسال مفتاح.</string>
   <string name="pref_custom_openai_model_title">معرّف النموذج المخصص</string>
-  <string name="pref_custom_openai_model_summary">أدخل معرّف النموذج يدويًا أو اجلب قائمة النماذج. إن تعذّر جلب القائمة، فأدخل المعرّف واستخدم خيار التحقق من الوصول إلى النموذج.</string>
+  <string name="pref_custom_openai_model_summary">أدخل معرّف نموذج أو اجلب القائمة، ثم تحقق من إمكانية الوصول.</string>
   <string name="pref_custom_openai_check_endpoint">التحقق من نقطة الاتصال</string>
   <string name="pref_ai_cached_models_invalid">تعذّرت قراءة قائمة النماذج المحفوظة. اجلب النماذج مجددًا.</string>
 
@@ -3125,7 +3117,7 @@
   <string name="lyrics_editor_saved">تم حفظ تعديلات كلمات الأغنية</string>
   <string name="lyrics_editor_restored">تمت استعادة كلمات الأغنية الأصلية</string>
   <string name="pref_audio_immersive_artwork_title">غلاف غامر</string>
-  <string name="pref_audio_immersive_artwork_summary">عرض الغلاف من الحافة إلى الحافة مع تلاشيه في خلفية مشغّل الموسيقى بالوضع العمودي. معطّل افتراضيًا. بدّل من المؤثرات المرئية إلى الغلاف لرؤيته.</string>
+  <string name="pref_audio_immersive_artwork_summary">غلاف من الحافة إلى الحافة بالوضعين العمودي والأفقي.</string>
   <string name="wallpaper_preset_link">من رابط</string>
   <string name="wallpaper_link_title">تنزيل خلفية</string>
   <string name="wallpaper_link_label">رابط الصورة</string>
@@ -3138,7 +3130,7 @@
   <string name="remote_settings_title_phone">التحكم بالتلفاز</string>
   <string name="remote_settings_summary_phone">تحكّم في MPVRX على تلفازك وأدخل الروابط من هذا الهاتف</string>
   <string name="remote_tv_enable">السماح بالتحكم عبر الهاتف</string>
-  <string name="remote_tv_enable_summary">يمكن للهواتف على الشبكة نفسها طلب الاقتران أثناء فتح MPVRX. توافق على كل هاتف هنا على التلفاز.</string>
+  <string name="remote_tv_enable_summary">أقرن هواتف على الشبكة نفسها. يحتاج كل طلب إلى موافقة على هذا التلفاز.</string>
   <string name="remote_tv_address">هذا التلفاز: %1$s</string>
   <string name="remote_tv_address_unavailable">صِل هذا التلفاز بشبكة لعرض عنوانه.</string>
   <string name="remote_tv_how_to">افتح MPVRX على هاتفك، وانتقل إلى الإعدادات &gt; التحكم بالتلفاز، واختر هذا التلفاز. إن لم يظهر في القائمة، فأدخل العنوان أعلاه.</string>
@@ -3210,8 +3202,8 @@
   <string name="pref_audio_spatial_mode">وضع الصوت المكاني</string>
   <string name="pref_audio_spatial_stereo">توسيع الستيريو</string>
   <string name="pref_audio_hrtf_title">سماعات الرأس - KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">معالجة HRTF ثنائية الأذن للموسيقى باستخدام مجموعة بيانات KU100 المرفقة بتردد 96 kHz. تتطلب إصدارًا من mpv يدعم sofalizer وlibmysofa.</string>
-  <string name="pref_audio_hrtf_unavailable">تعذّر تفعيل HRTF لهذا المقطع. تأكد من أن إصدار mpv يتضمن sofalizer وlibmysofa، أو اختر توسيع الستيريو.</string>
+  <string name="pref_audio_hrtf_summary">صوت ثنائي الأذن KU100. يتطلب mpv مع sofalizer وlibmysofa.</string>
+  <string name="pref_audio_hrtf_unavailable">يتطلب mpv مع sofalizer وlibmysofa. وإلا، استخدم توسيع الاستريو.</string>
   <string name="pref_layout_playback_with_buttons">مع صف أزرار</string>
   <string name="pref_action_open_page">فتح الصفحة</string>
   <string name="pref_action_open_dialog">فتح مربع الحوار</string>
@@ -3272,4 +3264,7 @@
   <string name="theme_color_primary">اللون البارز الرئيسي</string>
   <string name="theme_color_secondary">اللون البارز الثانوي</string>
   <string name="theme_color_tertiary">لون التمييز</string>
+  <string name="permission_video_access_summary">يسمح بالوصول إلى الفيديوهات في Downloads وMovies وDCIM.</string>
+  <string name="permission_media_access_summary">يسمح بالوصول إلى ملفات الفيديو والصوت المخزنة.</string>
+  <string name="pref_audio_passthrough_summary">أرسل الصوت المحيطي إلى جهاز الاستقبال دون فك ترميز أو مؤثرات.</string>
 </resources>

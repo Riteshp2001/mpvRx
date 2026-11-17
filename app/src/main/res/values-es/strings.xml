@@ -29,7 +29,7 @@
   <string name="pref_liquid_glass_in_hdr_title">Vidrio líquido en modo HDR</string>
   <string name="pref_liquid_glass_in_hdr_summary">Mantener el vidrio en vivo en los controles del reproductor cuando la salida HDR está activada. El video HDR se verá como SDR</string>
   <string name="pref_liquid_glass_in_hdr_warning_title">¿Usar vidrio líquido en modo HDR?</string>
-  <string name="pref_liquid_glass_in_hdr_warning_message">El vidrio líquido necesita que el video se dibuje mediante TextureView. Android convierte a SDR el video HDR dibujado de esta forma, por lo que la salida HDR pierde su brillo y contraste adicionales, y la reproducción puede consumir más batería. Desactívalo en cualquier momento para recuperar el HDR real.</string>
+  <string name="pref_liquid_glass_in_hdr_warning_message">Liquid Glass convierte HDR a SDR mediante TextureView y puede gastar más batería. Desactívalo para HDR real.</string>
   <string name="pref_liquid_glass_in_hdr_warning_confirm">Activar de todos modos</string>
   <string name="pref_appearance_system_font_title">Usar la fuente del sistema</string>
   <string name="pref_appearance_system_font_summary">Usar la tipografía del sistema Android en todo mpvRx en lugar de Google Sans</string>
@@ -68,17 +68,17 @@
   <string name="pref_appearance_show_video_thumbnails_title">Mostrar miniaturas de vídeo</string>
   <string name="pref_appearance_show_video_thumbnails_summary">Mostrar las miniaturas generadas en listas de vídeos y carpetas</string>
   <string name="pref_appearance_thumbnail_generation_title">Estrategia de generación de miniaturas</string>
-  <string name="pref_appearance_thumbnail_generation_summary">Elegir cómo se generan las miniaturas, incluida la ilustración incrustada o una posición concreta del fotograma</string>
+  <string name="pref_appearance_thumbnail_generation_summary">Elige la imagen integrada o un fotograma del vídeo.</string>
   <string name="pref_appearance_thumbnail_generation_change_title">¿Cambiar la estrategia de miniaturas?</string>
-  <string name="pref_appearance_thumbnail_generation_change_summary">Esto borrará las miniaturas en caché. Las nuevas miniaturas se generarán con la estrategia seleccionada a medida que navegues.</string>
+  <string name="pref_appearance_thumbnail_generation_change_summary">¿Borrar la caché de miniaturas y regenerarlas al navegar?</string>
   <string name="pref_appearance_thumbnail_quality_title">Calidad de las miniaturas</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Resolución máxima de miniatura: %1$d px. Una calidad mayor usa más almacenamiento y puede tardar más en generarse.</string>
+  <string name="pref_appearance_thumbnail_quality_summary">Límite: %1$d px. Las imágenes grandes usan más espacio y procesamiento.</string>
   <string name="pref_appearance_thumbnail_position_title">Posición del fotograma de la miniatura</string>
   <string name="pref_appearance_thumbnail_position_summary">Capturar el fotograma en el %1$d%% del vídeo</string>
   <string name="pref_appearance_thumbnail_parallelism_title">Núcleos para miniaturas</string>
   <string name="pref_appearance_thumbnail_parallelism_auto">Automático (%1$d de %2$d)</string>
   <string name="pref_appearance_thumbnail_parallelism_value">%1$d de %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">Cuántas miniaturas se generan a la vez. Más es más rápido, pero usa más memoria y batería y puede entrecortar el desplazamiento. Automático elige un valor seguro para este dispositivo.</string>
+  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">Más hilos son más rápidos, pero pueden aumentar la memoria, el consumo y los tirones. Se recomienda Auto.</string>
   <string name="pref_appearance_thumbnail_parallelism_warning">Supera los %1$d recomendados para este dispositivo. Redúcelo si las listas van lentas o la app se cierra en segundo plano.</string>
   <string name="pref_appearance_show_network_thumbnails_title">Mostrar miniaturas de red (experimental)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">Generar miniaturas para transmisiones de red (puede aumentar el uso de datos en redes móviles)</string>
@@ -145,11 +145,11 @@
   <string name="pref_enable_video_mini_player_title">Activar minireproductor de vídeo</string>
   <string name="pref_enable_video_mini_player_summary">Minimizar la reproducción de vídeo en un minireproductor flotante al pulsar Atrás</string>
   <string name="pref_video_mini_player_dependency_title">¿Activar la reproducción de vídeo en segundo plano?</string>
-  <string name="pref_video_mini_player_dependency_message">El minireproductor de vídeo necesita la reproducción de fondo del reproductor de vídeo para seguir reproduciendo después de salir del reproductor completo.</string>
+  <string name="pref_video_mini_player_dependency_message">Requiere reproducción en segundo plano del reproductor de vídeo.</string>
   <string name="pref_video_mini_player_dependency_confirm">Activar y continuar</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Mantener la pantalla encendida al pausar</string>
   <string name="pref_player_external_display_projection_title">Proyección en pantalla externa</string>
-  <string name="pref_player_external_display_projection_summary">Cuando haya una pantalla HDMI, USB-C o inalámbrica conectada, reproducir el vídeo en ella y permitir que la pantalla del teléfono se apague</string>
+  <string name="pref_player_external_display_projection_summary">Reproduce en pantallas HDMI, USB-C o inalámbricas con la pantalla del móvil apagada.</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">La pantalla permanece encendida mientras el vídeo está en pausa</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">La pantalla puede apagarse mientras el vídeo está en pausa</string>
   <string name="pref_player_autoplay_after_screen_unlock_title">Reproducir automáticamente al desbloquear la pantalla</string>
@@ -234,26 +234,18 @@
   <string name="pref_gesture_use_single_tap_for_center_title">Un toque en el centro</string>
   <string name="pref_gesture_use_single_tap_for_right_title">Un toque a la derecha</string>
   <string name="pref_gesture_use_single_tap_for_left_summary">Toca una vez en lugar de dos para ejecutar la acción de la izquierda.</string>
-  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">Toca una vez en la zona central (30% de ancho por defecto y 30% de alto). Los demás toques centrales muestran u ocultan los controles.</string>
+  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">Un toque en la zona central (30% de ancho y alto). Los demás alternan los controles.</string>
   <string name="pref_gesture_use_single_tap_for_right_summary">Toca una vez en lugar de dos para ejecutar la acción de la derecha.</string>
   <string name="pref_gesture_center_vertical_subtitle_position_title">Arrastrar para mover subtítulos</string>
-  <string name="pref_gesture_center_vertical_subtitle_position_summary">Mantén pulsado el centro y arrastra arriba o abajo para mover los subtítulos principales. Mantén pulsado un subtítulo para mover esa pista por separado. Los deslizamientos normales siguen abriendo la lista de reproducción.</string>
-  <string name="pref_gesture_double_tap_custom_info">Puedes asignar acciones personalizadas a estos gestos en input.conf mediante los siguientes códigos de tecla:
-
-Izquierda: MBTN_LEFT_DBL
-Centro: MBTN_MID_DBL
-Derecha: MBTN_RIGHT_DBL</string>
+  <string name="pref_gesture_center_vertical_subtitle_position_summary">Mantén un subtítulo para moverlo, o el centro para la pista principal. Pellizca para ajustar si está activado.</string>
+  <string name="pref_gesture_double_tap_custom_info">Teclas de input.conf:\nIzquierda: MBTN_LEFT_DBL\nCentro: MBTN_MID_DBL\nDerecha: MBTN_RIGHT_DBL</string>
   <string name="pref_gesture_media_title">Controles multimedia</string>
   <string name="pref_gesture_media_previous">Anterior</string>
   <string name="pref_gesture_media_play">Reproducir/Pausar</string>
   <string name="pref_gesture_media_next">Siguiente</string>
-  <string name="pref_gesture_media_custom_info">Puedes asignar acciones personalizadas a los controles multimedia en input.conf mediante los siguientes códigos de tecla:
-
-Anterior: PREV
-Reproducir/Pausar: PLAYPAUSE
-Siguiente: NEXT</string>
+  <string name="pref_gesture_media_custom_info">Teclas de input.conf:\nAnterior: PREV\nReproducir/pausar: PLAYPAUSE\nSiguiente: NEXT</string>
   <string name="pref_gesture_tap_thumbnail_to_select_title">Tocar miniatura para seleccionar</string>
-  <string name="pref_gesture_tap_thumbnail_to_select_summary">Cuando está activado, tocar las miniaturas inicia el modo de selección. Cuando está desactivado, al tocarlas se reproduce el vídeo.</string>
+  <string name="pref_gesture_tap_thumbnail_to_select_summary">Toca las miniaturas para seleccionar en vez de reproducir.</string>
   <string name="pref_decoder">Decodificador</string>
   <string name="pref_decoder_summary">Decodificación por hardware, formato de píxel, eliminación de bandas</string>
   <string name="pref_decoder_profile_title">Perfil de MPV</string>
@@ -273,7 +265,7 @@ Siguiente: NEXT</string>
   <string name="renderer_build_notice_supported_device">Se usa OpenGL; instala la versión estándar para usar Vulkan.</string>
   <string name="renderer_build_notice_unsupported_device">Se usa OpenGL; este dispositivo no admite Vulkan 1.3.</string>
   <string name="pref_decoder_yuv420p_title">Usar formato de píxel YUV420P</string>
-  <string name="pref_decoder_yuv420p_summary">Puede corregir pantallas negras con algunos códecs de vídeo y también mejorar el rendimiento a costa de la calidad</string>
+  <string name="pref_decoder_yuv420p_summary">Puede corregir pantallas negras o mejorar la velocidad, reduciendo calidad.</string>
   <string name="pref_subtitles">Subtítulos</string>
   <string name="pref_subtitles_summary">Idiomas preferidos, fuentes y búsqueda</string>
   <string name="pref_subtitle_search_title">Búsqueda de subtítulos en línea</string>
@@ -302,7 +294,7 @@ Siguiente: NEXT</string>
   <string name="pref_audio_summary">Idiomas preferidos, canales de audio y corrección de tono</string>
   <string name="pref_audio_orientation_title">Orientación del reproductor de audio</string>
   <string name="pref_audio_pitch_correction_title">Activar corrección de tono del audio</string>
-  <string name="pref_audio_pitch_correction_summary">Evita que el audio suene más agudo a velocidades altas y más grave a velocidades bajas</string>
+  <string name="pref_audio_pitch_correction_summary">Mantén el tono original al cambiar la velocidad.</string>
   <string name="pref_audio_volume_normalization_title">Normalización de volumen</string>
   <string name="pref_audio_volume_normalization_summary">Ajustar automáticamente el volumen para mantener niveles de sonoridad uniformes</string>
   <string name="pref_music_tabs_title">Pestañas de la biblioteca de música</string>
@@ -312,7 +304,7 @@ Siguiente: NEXT</string>
   <string name="pref_audio_visualizer_style_cuboid">Cuboide</string>
   <string name="pref_audio_visualizer_galaxy_credit">Inspirado en Zain Raza en CodePen</string>
   <string name="pref_audio_ambient_mode_title">Modo ambiente</string>
-  <string name="pref_audio_ambient_mode_summary">Mostrar gradientes de color dinámicos derivados de la portada del álbum en el reproductor de música (desactivado cuando el visualizador está activo)</string>
+  <string name="pref_audio_ambient_mode_summary">Colores de fondo de la carátula. Se ocultan al usar el visualizador.</string>
   <string name="pref_audio_wavy_seekbar_title">Barra de búsqueda ondulada</string>
   <string name="pref_audio_wavy_seekbar_summary">Mostrar una animación de visualizador ondulado fluido de múltiples capas sobre la barra de búsqueda</string>
   <string name="pref_audio_channels">Canales de audio</string>
@@ -321,7 +313,7 @@ Siguiente: NEXT</string>
   <string name="pref_audio_channels_mono">Mono</string>
   <string name="pref_audio_channels_stereo">Estéreo</string>
   <string name="pref_audio_channels_stereo_reversed">Estéreo invertido</string>
-  <string name="pref_audio_preferred_language">Idiomas de audio seleccionados por defecto en vídeos con varias pistas. Se admiten códigos de idioma de dos o tres letras y varios valores separados por comas.</string>
+  <string name="pref_audio_preferred_language">Códigos separados por comas, p. ej. en,eng,ja. Prioridad de izquierda a derecha.</string>
   <string name="pref_audio_volume_boost_cap">Límite de amplificación de volumen</string>
   <string name="pref_advanced">Avanzado</string>
   <string name="pref_advanced_summary">Ubicación de configuración, mpv.conf</string>
@@ -354,7 +346,7 @@ Siguiente: NEXT</string>
   <string name="pref_anime4k_title">Reescalado Anime4K</string>
   <string name="pref_anime4k_summary">Activar filtro de reescalado Anime4K</string>
   <string name="pref_anime4k_incompatibility">Incompatibilidad de Anime4K</string>
-  <string name="pref_anime4k_gpu_next_error">Anime4K requiere la GPU clásica o gpu-next con Vulkan activado. gpu-next con OpenGL volverá a la GPU clásica para mantener la compatibilidad de sombreadores.</string>
+  <string name="pref_anime4k_gpu_next_error">Anime4K necesita GPU clásico o GPU Next con Vulkan. OpenGL usa GPU clásico.</string>
   <string name="anime4k_mode_title">Preajustes de Anime4K</string>
   <string name="pref_anime4k_quality_title">Calidad de Anime4K</string>
   <!-- Anime4K Modes (Renamed to Presets in UI) -->
@@ -370,7 +362,7 @@ Siguiente: NEXT</string>
   <string name="anime4k_quality_balanced">Equilibrada</string>
   <string name="anime4k_quality_high">Alta</string>
   <string name="pref_anime4k_in_4k_title">Activar en videos 4K</string>
-  <string name="pref_anime4k_in_4k_summary">Permitir escalado Anime4K para videos 4K y 8K (puede aumentar la carga de GPU o estrangulamiento térmico)</string>
+  <string name="pref_anime4k_in_4k_summary">Activar para vídeos 4K/8K. Puede aumentar la carga de GPU y el calor.</string>
   <string name="pref_anime4k_darken_title">Oscurecer líneas de Anime4K</string>
   <string name="pref_anime4k_darken_summary">Añade oscurecimiento de líneas después del reescalador principal.</string>
   <string name="pref_anime4k_thin_title">Afinar líneas de Anime4K</string>
@@ -463,7 +455,7 @@ Siguiente: NEXT</string>
   <string name="player_aspect_crop">Recortar</string>
   <string name="player_aspect_stretch">Estirar</string>
   <string name="crash_screen_title">Error inesperado</string>
-  <string name="crash_screen_subtitle">Parece que %s sufrió un error inesperado. Considera compartir los registros del fallo en una incidencia de GitHub.</string>
+  <string name="crash_screen_subtitle">Error inesperado en %s. Comparte los registros en una incidencia de GitHub.</string>
   <string name="crash_screen_logs_title">Registros del fallo:</string>
   <string name="crash_screen_share">Compartir registros del fallo</string>
   <string name="crash_screen_restart">Reiniciar la aplicación</string>
@@ -501,7 +493,7 @@ Siguiente: NEXT</string>
   <string name="toast_audio_background_playback_off">Reproducción de audio en segundo plano desactivada</string>
   <string name="pref_audio_background_playback_summary">Mantener la reproducción al salir del reproductor de audio o apagar la pantalla</string>
   <string name="pref_audio_mini_player_track_switching_title">Cambiar canciones en el mini reproductor</string>
-  <string name="pref_audio_mini_player_track_switching_summary">Cuando el mini reproductor o la reproducción en segundo plano estén activos, seleccionar otra canción actualiza el mini reproductor sin abrir el reproductor completo</string>
+  <string name="pref_audio_mini_player_track_switching_summary">Cambia de pista en el minirreproductor sin abrir el reproductor completo.</string>
   <string name="pref_video_background_playback_title">Reproducción en segundo plano (Reproductor de Video)</string>
   <string name="pref_video_background_playback_summary">Mantener el audio del video al salir del reproductor de video o apagar la pantalla</string>
   <string name="deselect_all">Deseleccionar todo</string>
@@ -803,7 +795,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_custom_prompt_section">Instrucción personalizada</string>
   <string name="pref_override_instructions_title">Reemplazar instrucciones predeterminadas</string>
   <string name="pref_custom_prompts_header">Instrucciones personalizadas</string>
-  <string name="pref_custom_prompts_description">Deja un campo vacío para usar la instrucción integrada de esa tarea. Si tienes una instrucción global antigua guardada, se usará como alternativa.</string>
+  <string name="pref_custom_prompts_description">Los campos vacíos usan instrucciones integradas o tu indicación global guardada.</string>
   <string name="pref_custom_rename_prompt_label">Instrucción personalizada para cambiar nombres</string>
   <string name="pref_custom_translation_prompt_label">Instrucción personalizada para traducir subtítulos</string>
   <string name="pref_custom_format_prompt_label">Instrucción personalizada para dar formato</string>
@@ -1298,11 +1290,11 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_discovering_and_displaying_your_video_files_n_playing_media_cont">• Descubrir y mostrar tus archivos de video
 • Reproducir contenido multimedia
 • Cargar archivos de subtítulos</string>
-  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">mpvRx siempre ha necesitado permiso de acceso al almacenamiento, ya que es esencial para encontrar todos los archivos multimedia y de subtítulos del dispositivo, incluidos los no compatibles con el sistema.</string>
-  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">Sin embargo, debido a un cambio en la política de seguridad, las aplicaciones creadas para Android 11 y versiones posteriores ahora necesitan un permiso adicional para mantener el mismo acceso.</string>
-  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">Este permiso solo se utiliza para detectar automáticamente archivos multimedia y de subtítulos en tu dispositivo y no nos permite acceder de ninguna forma a los datos privados almacenados por otras aplicaciones.</string>
-  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">mpvRx es un proyecto de código abierto. Puedes revisar el código fuente y comprobar cómo se usan los permisos en nuestro repositorio de GitHub:</string>
-  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">Puedes estar tranquilo: tu privacidad es nuestra máxima prioridad. No accedemos a tus archivos para otros fines ni los transferimos o almacenamos en nuestros servidores; permanecen seguros en tu dispositivo.</string>
+  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">El acceso al almacenamiento permite buscar medios y subtítulos, incluidos formatos no indexados.</string>
+  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">Android 11 y posteriores requieren permiso adicional para acceder a todo el almacenamiento.</string>
+  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">Solo para buscar medios y subtítulos, no datos privados de otras apps.</string>
+  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">Revisa el uso de permisos en nuestro código abierto:</string>
+  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">Los archivos se quedan en tu dispositivo. No los subimos a nuestros servidores.</string>
   <string name="ui_app_permissions">Permisos de la aplicación</string>
   <string name="ui_permissions_setup_subtitle">Configura los permisos para habilitar las funciones principales y la reproducción de medios.</string>
   <string name="ui_file_permission_title">Acceso a archivos y almacenamiento</string>
@@ -1312,7 +1304,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_notification_permission_title">Notificaciones</string>
   <string name="ui_notification_permission_desc">Opcional. Requerido para controles de reproducción, estado en segundo plano y alertas de actualización.</string>
   <string name="ui_audio_record_permission_title">Grabación de audio</string>
-  <string name="ui_audio_record_permission_desc">Opcional. Requerido para visualizadores de audio para procesar el espectro y la energía de frecuencia en tiempo real.</string>
+  <string name="ui_audio_record_permission_desc">Opcional. Permite al visualizador leer niveles de sonido en directo.</string>
   <string name="ui_permission_granted">Concedido</string>
   <string name="ui_next">Siguiente</string>
   <string name="ui_grant_permission_hint">Toca para conceder permiso</string>
@@ -1323,7 +1315,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_no_results_found">No se encontraron resultados</string>
   <string name="ui_no_android">Sin Android</string>
   <string name="ui_script_runtime">Entorno de ejecución de scripts</string>
-  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Los scripts recién activados pueden cargarse durante la reproducción. Los scripts desactivados pueden requerir que vuelvas a abrir el video para dejar de ejecutarse por completo.</string>
+  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Los scripts activados cargan ahora. Reabre el vídeo para detener del todo los desactivados.</string>
   <string name="ui_media_info">Información multimedia</string>
   <string name="ui_analyzing_media_file">Analizando archivo multimedia...</string>
   <string name="ui_media_tracks_summary">Resumen de pistas multimedia</string>
@@ -1348,9 +1340,9 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_filter_presets">Preajustes de filtros</string>
   <string name="ui_yt_dlp_manager">Gestor de yt-dlp</string>
   <string name="ytdlp_auth_required_title">YouTube requiere verificación</string>
-  <string name="ytdlp_auth_required_message">YouTube necesita verificación o cookies de inicio de sesión recientes. Importa un archivo cookies.txt en formato Netscape desde un navegador donde se reproduzca este vídeo; mpvRx lo reintentará una vez automáticamente.</string>
+  <string name="ytdlp_auth_required_message">YouTube requiere verificación. Importa cookies.txt de Netscape recientes de un navegador que funcione para reintentar una vez.</string>
   <string name="ytdlp_cookies_title">Cookies de YouTube</string>
-  <string name="ytdlp_cookies_summary">Las cookies de sesión importadas se reutilizan en futuras reproducciones. Solo se guardan las de YouTube, en almacenamiento privado excluido de las copias de seguridad. Bórralas aquí cuando ya no las necesites.</string>
+  <string name="ytdlp_cookies_summary">Reutiliza cookies de YouTube en almacenamiento privado sin copias de seguridad. Bórralas cuando no las necesites.</string>
   <string name="ytdlp_cookies_configured">Cookies configuradas</string>
   <string name="ytdlp_cookies_help">Cómo exportar cookies de YouTube</string>
   <string name="ytdlp_cookies_help_failed">No hay un navegador disponible para abrir las instrucciones.</string>
@@ -1414,7 +1406,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_subtitle_translation_can_be_a_bit_messy">La traducción de subtítulos puede ser algo imprecisa. </string>
   <string name="ui_real_time_model">Modelo en tiempo real</string>
   <string name="ui_auto_translate_target_languages">Idiomas de destino para traducción automática</string>
-  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">Al traducir subtítulos, si hay 1 idioma configurado se traducen directamente. Si hay 2 o más, aparece un selector.</string>
+  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">Un idioma traduce directamente; varios abren un selector.</string>
   <string name="ui_no_target_languages_configured">No hay idiomas de destino configurados</string>
   <string name="ui_search_languages">Buscar idiomas...</string>
   <string name="ui_refresh">Actualizar</string>
@@ -1557,7 +1549,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">Colores vibrantes tipo neón con carácter</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Negros mejorados para pantallas OLED</string>
   <string name="filter_preset_custom_section">Preajustes personalizados</string>
-  <string name="filter_preset_custom_empty">Ajusta el brillo, el contraste, el gamma, la saturación, el tono y la nitidez, y guarda la combinación para reutilizarla más tarde.</string>
+  <string name="filter_preset_custom_empty">Ajusta la imagen y guarda los cambios como un preajuste.</string>
   <string name="filter_preset_save_current">Guardar actual</string>
   <string name="filter_preset_save_title">Guardar preajuste personalizado</string>
   <string name="filter_preset_rename_title">Renombrar preajuste</string>
@@ -1571,7 +1563,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="filter_preset_menu_description">Opciones del preajuste</string>
   <string name="filter_preset_save">Guardar</string>
   <string name="syncplay_title">Syncplay</string>
-  <string name="syncplay_description">Mira vídeos sincronizados con tus amigos. Conéctate a un servidor de Syncplay para empezar a verlos juntos.</string>
+  <string name="syncplay_description">Ve vídeos en grupo mediante un servidor Syncplay.</string>
   <string name="syncplay_connected_as">Conectado como %1$s en la sala %2$s</string>
   <string name="syncplay_users_in_room">Usuarios en la sala:</string>
   <string name="syncplay_disconnect">Desconectar</string>
@@ -1634,13 +1626,13 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="secure_folder_delete_confirm_title">¿Eliminar %1$d elemento(s) para siempre?</string>
   <string name="secure_folder_delete_confirm_subtitle">Esto no se puede deshacer: los archivos se eliminarán permanentemente de tu Carpeta segura.</string>
   <string name="secure_folder_hide_entry_title">¿Ocultar Carpeta segura de Preferencias?</string>
-  <string name="secure_folder_hide_entry_subtitle">La fila \"Carpeta segura\" se quitará de Preferencias. Para volver a abrirla más tarde, toca dos veces el nombre de la aplicación en la parte superior de la pantalla de inicio e introduce tu PIN.</string>
+  <string name="secure_folder_hide_entry_subtitle">Oculta esta página de Ajustes. Para volver: toca dos veces el título de Inicio, introduce el PIN y abre Ajustes.</string>
   <string name="secure_folder_working_on_it">Procesando…</string>
   <string name="secure_folder_restore">Restaurar</string>
   <string name="secure_folder_move_to">Mover a Carpeta segura</string>
   <string name="secure_folder_moving_progress">Moviendo a Carpeta segura…</string>
   <string name="secure_folder_move_folders_title">¿Mover %1$d carpeta(s) a Carpeta segura?</string>
-  <string name="secure_folder_move_folders_subtitle">Cada vídeo que contenga desaparecerá de esta lista y de cualquier otro lugar de la aplicación hasta que se restaure.</string>
+  <string name="secure_folder_move_folders_subtitle">Oculta todos los vídeos de estas carpetas hasta restaurarlos.</string>
   <string name="secure_folder_move_items_title">¿Mover %1$d elemento(s) a Carpeta segura?</string>
   <string name="secure_folder_move_items_subtitle">Desaparecerán de esta lista y de cualquier otro lugar de la aplicación hasta que se restauren.</string>
   <string name="secure_folder_moved_success">Se han movido %1$d archivo(s) a Carpeta segura</string>
@@ -1662,7 +1654,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
     <string name="secure_folder_settings_security">Seguridad</string>
     <string name="secure_folder_settings_danger_zone">Zona de peligro</string>
     <string name="secure_folder_settings_help">Ayuda</string>
-    <string name="secure_folder_settings_help_text">Toca dos veces o mantén pulsado el nombre de la app en la parte superior de la pantalla de inicio para abrir la carpeta segura.</string>
+    <string name="secure_folder_settings_help_text">Abre Carpeta segura con doble toque o pulsación larga en el título de Inicio.</string>
     <string name="secure_folder_settings_setup_first">Abre primero la carpeta segura y establece un PIN.</string>
     <string name="secure_folder_biometric_title">Activar desbloqueo biométrico</string>
     <string name="secure_folder_biometric_summary">Usa tu huella o tu rostro para desbloquear</string>
@@ -1684,7 +1676,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
     <string name="secure_folder_destroy_no_screen_lock">Configura un bloqueo de pantalla (PIN, patrón o contraseña) para usar esto.</string>
   <string name="pref_codecs_decoders_summary">%1$d por hardware • %2$d decodificadores por software</string>
   <string name="pref_codecs_banner_title">Decodificación por hardware frente a software</string>
-  <string name="pref_codecs_banner_desc">Los decodificadores por hardware procesan el video directamente en la VPU/GPU consumiendo mínima energía. Los de software usan la CPU, aumentando el consumo de batería y temperatura en 4K.</string>
+  <string name="pref_codecs_banner_desc">La decodificación por hardware ahorra energía. Por software puede aumentar el calor y el consumo.</string>
   <string name="pref_codecs_core_title">Estado de códecs de video principales</string>
   <string name="pref_codecs_search_placeholder">Buscar nombre de códec, formato o MIME...</string>
   <string name="pref_codecs_filter_all">Todos (%d)</string>
@@ -1752,7 +1744,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
     <string name="ui_recent_streams">Enlaces de transmisión recientes</string>
     <string name="ui_play_now">Reproducir</string>
     <string name="ui_no_saved_media_title">No hay enlaces guardados</string>
-    <string name="ui_no_saved_media_description">Pega una URL de transmisión, enlace magnet o guarda desde enlaces recientes para crear tu colección.</string>
+    <string name="ui_no_saved_media_description">Añade una URL de emisión, enlace magnet o enlace reciente.</string>
     <string name="ui_search_episodes">Buscar episodios…</string>
     <string name="ui_sort_ascending">Orden ascendente</string>
     <string name="ui_sort_descending">Orden descendente</string>
@@ -1796,7 +1788,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_mpv_conf_override_osd">Área segura del OSD</string>
   <string name="pref_mpv_conf_override_osd_summary">Anula la fuente, los márgenes y las áreas seguras del OSD.</string>
   <string name="mpv_config_owned_title">Controlado por mpv.conf</string>
-  <string name="mpv_config_owned_message">Este control de la aplicación está desactivado porque una o más opciones necesarias están asignadas a mpv.conf en los ajustes avanzados.</string>
+  <string name="mpv_config_owned_message">Controlado por mpv.conf. Cambia la asignación en ajustes avanzados para usar este control.</string>
   <string name="pref_lyrics_translation_category">Traducción y romanización de letras</string>
   <string name="pref_lyrics_auto_translate">Traducir automáticamente letras extranjeras</string>
   <string name="pref_lyrics_auto_translate_summary">Traduce automáticamente letras en idiomas extranjeros al idioma preferido</string>
@@ -1909,7 +1901,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="storage_permission_needed_desc">Concede acceso al almacenamiento para explorar y reproducir tus archivos.</string>
   <string name="storage_permission_grant">Conceder acceso</string>
   <string name="pref_player_web_stream_links_title">Abrir enlaces de sitios de streaming</string>
-  <string name="pref_player_web_stream_links_summary">Ofrecer mpvRx para enlaces de sitios de transmisión compatibles y enlaces compartidos como texto. Los archivos y las URL directas de medios siguen disponibles al desactivarlo.</string>
+  <string name="pref_player_web_stream_links_summary">Abre enlaces web compatibles en mpvRx. Los enlaces multimedia directos siguen disponibles al desactivarlo.</string>
 
   <string name="btn_label_scopes">Monitores</string>
   <string name="scopes_title">Monitores</string>
@@ -1975,7 +1967,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="player_started_afresh_pill">Iniciado desde el principio</string>
   <string name="player_restart_action">Reiniciar</string>
   <string name="pref_resume_indicator_overlay_title">Indicador de reanudación</string>
-  <string name="pref_resume_indicator_overlay_summary">Mostrar píldoras de posición de reanudación o inicio. El modo Preguntar siempre muestra su píldora de reanudación interactiva</string>
+  <string name="pref_resume_indicator_overlay_summary">Muestra avisos de reanudación. El modo Preguntar siempre conserva su aviso.</string>
 
   <!-- Media Servers Settings -->
   <string name="pref_media_servers_title">Servidores multimedia</string>
@@ -2021,16 +2013,16 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_appearance_custom_wallpaper_colors_failed">No se pudieron extraer los colores de este fondo</string>
   <string name="wallpaper_save_failed">No se pudo guardar el fondo. Vuelve a seleccionar la imagen.</string>
   <string name="pref_haptic_feedback_title">Respuesta háptica</string>
-  <string name="pref_haptic_feedback_summary">Respuesta táctil al seleccionar, arrastrar y ajustar controles. Respeta los ajustes del sistema.</string>
+  <string name="pref_haptic_feedback_summary">Vibración al seleccionar, arrastrar y ajustar. Respeta los ajustes del sistema.</string>
   <string name="pref_nested_tab_swipes_title">Deslizar entre pestañas internas</string>
-  <string name="pref_nested_tab_swipes_summary">Permitir deslizamientos a izquierda/derecha dentro de Música, Red y Recientes. La navegación principal y las acciones de deslizamiento de los elementos no cambian.</string>
+  <string name="pref_nested_tab_swipes_summary">Desliza entre pestañas internas de Música, Red y Recientes.</string>
   <string name="oss_kmp_vibrate_description">Biblioteca de respuesta háptica de WonDDak (jmseb3).</string>
   <string name="ambient_style_youtube">YouTube</string>
-  <string name="ambient_youtube_auto_hint">El modo YouTube es totalmente automático: las franjas se iluminan con una proyección suave y desenfocada del fotograma actual, como en el modo ambiente de YouTube.</string>
+  <string name="ambient_youtube_auto_hint">Ilumina las bandas automáticamente con una proyección desenfocada del vídeo.</string>
   <string name="btn_label_post_processing">Posprocesamiento</string>
   <string name="clip_end_short">Fin</string>
   <string name="clip_start_short">Inicio</string>
-  <string name="enter_subtitle_title_preferences">Introduce palabras clave de títulos de subtítulos o códigos de idioma por orden de prioridad, separados por comas. Las primeras coincidencias tienen preferencia.</string>
+  <string name="enter_subtitle_title_preferences">Palabras clave o códigos de idioma separados por comas, por orden de izquierda a derecha.</string>
   <string name="generic_configure">Configurar</string>
   <string name="generic_install">Instalar</string>
   <string name="music_source_navidrome">Música de Navidrome</string>
@@ -2237,7 +2229,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_background_playback_remember">Recordar siempre mi elección</string>
   <string name="pref_background_playback_remember_summary">Conservar la elección de reproducción en segundo plano para los próximos vídeos.</string>
   <string name="pref_background_playback_per_video">Recordar la elección para cada vídeo</string>
-  <string name="pref_background_playback_per_video_summary">Guardar la reproducción en segundo plano por separado para cada vídeo. En los demás vídeos seguirá desactivada hasta que la actives.</string>
+  <string name="pref_background_playback_per_video_summary">Recuerda la reproducción en segundo plano para cada vídeo.</string>
   <string name="jellyfin_technical_details">Detalles técnicos</string>
 
   <!-- Snapshots (frame capture) -->
@@ -2248,7 +2240,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="profile_view_all">Ver todo</string>
   <string name="profile_edit">Editar perfil</string>
   <string name="profile_layout_title">Diseño del perfil</string>
-  <string name="profile_layout_summary">Arrastra para reordenar y usa los interruptores para mostrar u ocultar elementos. Las tarjetas de estadísticas permanecen en su sección.</string>
+  <string name="profile_layout_summary">Arrastra para ordenar y activa o desactiva para mostrar u ocultar. Las estadísticas conservan su sección.</string>
   <string name="profile_layout_hubs">Tarjetas de acceso</string>
   <string name="profile_layout_sections">Secciones del perfil</string>
   <string name="profile_layout_statistics">Tarjetas de estadísticas</string>
@@ -2307,7 +2299,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="snapshot_delete_folder_empty_message">Esto quita la carpeta de la aplicación.</string>
 
   <string name="snapshot_folder_empty_title">Esta carpeta está vacía</string>
-  <string name="snapshot_folder_empty_message">Mantén pulsada una captura en la lista y elige «Mover a carpeta» para guardarla aquí.</string>
+  <string name="snapshot_folder_empty_message">Mantén una captura y elige «Mover a carpeta».</string>
 
   <string name="snapshot_sort_folder_name">Nombre de la carpeta</string>
   <string name="snapshot_sort_created_at">Fecha de creación</string>
@@ -2327,7 +2319,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="oss_anime4k_description">Shaders de escalado y restauración en tiempo real para vídeo animado.</string>
   <string name="oss_hdr_toys_description">Shaders de mapeo de tonos HDR, gama y funciones de transferencia.</string>
   <string name="pref_auto_backup_title">Copia automática de ajustes</string>
-  <string name="pref_auto_backup_summary">Guarda los ajustes modificados en Configuration/Backup cuando mpvRx pasa a segundo plano. Se conservan las siete copias más recientes.</string>
+  <string name="pref_auto_backup_summary">Crea una copia al pasar a segundo plano. Guarda siete en Configuration/Backup.</string>
   <string name="pref_auto_backup_select_folder">Selecciona primero una carpeta de configuración</string>
   <string name="pref_auto_backup_last_backup">Última copia: %1$s</string>
   <string name="watch_stats_title">Estadísticas de reproducción</string>
@@ -2343,9 +2335,9 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_debug_log_size_title">Límite del registro</string>
   <string name="pref_debug_log_size_summary">Conserva hasta %1$d MB en el visor y los diagnósticos compartidos.</string>
   <string name="onboarding_configuration_title">Configurar almacenamiento de mpvRx</string>
-  <string name="onboarding_configuration_desc">Elige la carpeta de configuración para ajustes, copias, scripts, subtítulos y descargas.</string>
+  <string name="onboarding_configuration_desc">Elige una carpeta para ajustes, copias, scripts, subtítulos y descargas.</string>
   <string name="onboarding_configuration_card_title">Carpeta de configuración</string>
-  <string name="onboarding_configuration_card_desc">Selecciona la carpeta de configuración de mpvRx. Los ajustes del nivel raíz o de Backup se restauran automáticamente.</string>
+  <string name="onboarding_configuration_card_desc">Elige la carpeta de configuración. Restaura ajustes de su raíz o de Backup.</string>
   <string name="onboarding_configuration_restoring">Buscando copias de ajustes…</string>
   <string name="onboarding_configuration_no_backup">Carpeta configurada. Las descargas usarán Configuration/Downloads.</string>
   <string name="onboarding_configuration_restored">Ajustes restaurados desde %1$s. Las descargas usarán Configuration/Downloads.</string>
@@ -2363,7 +2355,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="legacy_navigation_bar_title">Barra de navegación clásica</string>
   <string name="legacy_navigation_bar_summary">Usar una barra de navegación clásica a todo lo ancho en lugar de la barra flotante.</string>
   <string name="progressive_navigation_blur_title">Desenfoque progresivo de navegación</string>
-  <string name="progressive_navigation_blur_summary">Usar el desenfoque progresivo de Haze detrás de la barra de navegación flotante. Se desactiva automáticamente con la barra clásica.</string>
+  <string name="progressive_navigation_blur_summary">Desenfoque detrás de la barra flotante. No disponible con navegación clásica.</string>
   <string name="pref_seekbar_preview_skip_markers">Marcadores de omisión</string>
   <string name="pref_liquid_glass_optics">Óptica</string>
   <string name="pref_liquid_glass_opacity">Opacidad del fondo</string>
@@ -2387,11 +2379,11 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="debug_logs_config_saved">Registros guardados en %1$s dentro de tu carpeta de configuración.</string>
   <string name="debug_logs_config_save_failed">No se pudieron guardar los registros. Comprueba el acceso a tu carpeta de configuración o selecciónala de nuevo.</string>
   <string name="pref_gesture_show_seekbar_horizontal_title">Mostrar la barra de progreso con los controles ocultos</string>
-  <string name="pref_gesture_show_seekbar_horizontal_summary">Al deslizar horizontalmente para avanzar o retroceder, muestra la barra de progreso aunque los controles del reproductor estén ocultos. El indicador de tiempo no cambia.</string>
+  <string name="pref_gesture_show_seekbar_horizontal_summary">Muestra la barra al buscar deslizando, aunque los controles estén ocultos.</string>
   <string name="player_zoom_overlays_follow">Ampliar OSD y subtítulos con el vídeo</string>
   <string name="player_zoom_overlays_follow_summary">Los subtítulos y las páginas de estadísticas 1–6 siguen el zoom del vídeo. Desactivado, mantienen un tamaño fijo.</string>
   <string name="network_smb_share_folder">Recurso compartido / carpeta (opcional)</string>
-  <string name="network_smb_share_hint">Déjalo vacío o usa / para explorar todas las carpetas compartidas. Introduce /Media o /Media/Movies para abrir una carpeta específica.</string>
+  <string name="network_smb_share_hint">Vacío o / para todos los recursos, o una ruta como /Media/Movies.</string>
   <string name="pref_app_icon_title">Icono de la aplicación</string>
   <string name="pref_app_icon_summary">Elige el icono del iniciador</string>
   <string name="app_icon_change_failed">No se pudo cambiar el icono.</string>
@@ -2517,7 +2509,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_paxsenix_api_key_dialog_desc">Pega tu clave API de PaxSenix. Déjala vacía para usar solo las rutas que no necesitan clave.</string>
   <string name="pref_lyrics_sources_category">Letras en línea</string>
   <string name="pref_lyrics_auto_fetch_online">Obtener letras en línea automáticamente</string>
-  <string name="pref_lyrics_auto_fetch_online_summary">Buscar en proveedores en línea solo cuando no haya letras integradas ni locales. También puedes buscar en línea manualmente.</string>
+  <string name="pref_lyrics_auto_fetch_online_summary">Busca letras en línea si no hay letras integradas o locales.</string>
   <string name="lyrics_translation_off_summary">Mostrar el idioma original sin traducción</string>
   <string name="lyrics_translation_dual_line">Dos líneas</string>
   <string name="lyrics_translation_replace">Reemplazar el original</string>
@@ -2542,7 +2534,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="network_server_scan">Buscar servidores cercanos</string>
   <string name="network_server_scanning">Buscando servidores cercanos…</string>
   <string name="network_server_scan_unavailable">La detección no está disponible o está incompleta. Elige una dirección guardada o escribe una.</string>
-  <string name="network_server_discovery_hint">Busca servidores que se anuncian en tu red local. Las direcciones de dispositivos son accesos directos, no servidores detectados. Introduce las credenciales abajo.</string>
+  <string name="network_server_discovery_hint">Busca servidores anunciados en la red local. Las direcciones son accesos directos; introduce credenciales abajo.</string>
   <string name="network_smb_username_hint">Usa tu nombre de usuario o DOMAIN\\username para una cuenta de dominio.</string>
   <string name="pref_playstore_hidden_title">Carpetas ocultas seleccionadas</string>
   <string name="pref_playstore_hidden_summary">Elige una carpeta para incluir su contenido multimedia y sus subcarpetas.</string>
@@ -2629,7 +2621,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="color_picker_selected">Color seleccionado</string>
   <string name="color_picker_quick_colors">Colores rápidos</string>
   <string name="app_icon_custom_background">Fondo personalizado</string>
-  <string name="app_icon_custom_background_hint">Elige un color. Android utiliza el icono integrado más parecido en el cajón de aplicaciones. Puedes guardar el color exacto como icono de inicio y utilizarlo en Recientes.</string>
+  <string name="app_icon_custom_background_hint">El cajón de apps usa el icono integrado más parecido; Inicio y Recientes usan tu color.</string>
   <string name="app_icon_custom_logo_hint">Elige cualquier logotipo para superponerlo a tu fondo personalizado.</string>
   <string name="app_icon_custom_requested">Tu diseño</string>
   <string name="app_icon_custom_native_match">Icono real del iniciador</string>
@@ -2663,7 +2655,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="selection_info_fps_value">%1$.2f fotogramas/s</string>
   <string name="selection_info_metadata_note">El resumen utiliza los metadatos disponibles en la biblioteca. Toca un archivo para ver todos sus metadatos.</string>
   <string name="selection_info_missing_metadata">Metadatos no disponibles</string>
-  <string name="selection_info_missing_metadata_value">Archivos con tamaño desconocido: %1$d; duración desconocida: %2$d. Los totales y las medias solo incluyen los valores conocidos.</string>
+  <string name="selection_info_missing_metadata_value">Tamaño desconocido: %1$d; duración: %2$d. Los totales usan solo valores conocidos.</string>
   <string name="selection_info_no_media">No se encontraron archivos multimedia reproducibles en las carpetas seleccionadas</string>
   <string name="selection_info_copy_summary">Copiar resumen</string>
   <string name="selection_info_open_media_info">Abrir toda la información multimedia</string>
@@ -2728,14 +2720,14 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="thumbnail_no">No</string>
   <string name="thumbnail_refresh">Actualizar información</string>
   <string name="thumbnail_generate">Generar miniatura</string>
-  <string name="thumbnail_quality_note">La vista previa muestra la imagen realmente almacenada en caché con la configuración actual. Los mosaicos del explorador pueden almacenar una imagen más pequeña que el límite de tamaño configurado. Abrir esta pestaña no genera un fotograma nuevo.</string>
+  <string name="thumbnail_quality_note">Es la vista previa en caché, no un fotograma nuevo. Puede ser menor que el límite elegido.</string>
   <string name="thumbnail_inspection_failed">No se pudo leer la información de la miniatura. Prueba a actualizarla.</string>
   <string name="thumbnail_generation_unavailable">El generador seleccionado no devolvió una miniatura para este archivo.</string>
 
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">Elige Automático, Extracción directa o MediaStore para las miniaturas y carátulas locales</string>
   <string name="pref_thumbnail_generator_auto">Automático (predeterminado)</string>
-  <string name="pref_thumbnail_generator_auto_summary">Primero intenta MediaStore; usa la extracción directa si no hay miniatura o carátula de la canción, también en carpetas ocultas. Cambiar de modo borra las miniaturas en caché.</string>
+  <string name="pref_thumbnail_generator_auto_summary">Usa primero miniaturas de Android y luego Nativo si faltan. Cambiar borra la caché.</string>
   <string name="thumbnail_strategy_auto">Primero MediaStore y después extracción directa como alternativa</string>
 
   <string name="update_download_failed">La descarga falló. Toca Reintentar para continuar.</string>
@@ -2744,7 +2736,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="update_checking_download">Comprobando el APK descargado…</string>
   <string name="update_check_failed">No se pudieron buscar actualizaciones. Comprueba la conexión o inténtalo más tarde.</string>
   <string name="update_auto_install">Descargar e instalar automáticamente</string>
-  <string name="update_auto_install_summary">Descarga mediante redes sin límite de datos e instala cuando mpvRx no esté en uso. Android puede pedir tu aprobación.</string>
+  <string name="update_auto_install_summary">Descarga en redes sin límite e instala en reposo. Android puede pedir permiso.</string>
   <string name="update_download_and_install">Descargar e instalar</string>
   <string name="update_background_downloading">Descargando actualización de la aplicación…</string>
   <string name="update_installing">Instalando actualización…</string>
@@ -2755,8 +2747,8 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_appearance_thumbnail_generator_title">Generador de miniaturas</string>
   <string name="pref_thumbnail_generator_native">Extracción directa</string>
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
-  <string name="pref_thumbnail_generator_native_summary">Extraer miniaturas de vídeos locales y carátulas de canciones del archivo multimedia. Al cambiar se borran las miniaturas en caché.</string>
-  <string name="pref_thumbnail_generator_mediastore_summary">Usar miniaturas y carátulas de álbumes de Android para vídeos y canciones locales. Al cambiar se borran las miniaturas en caché; si falta una imagen, se muestra un marcador de posición. Las vistas previas de red usan la extracción directa.</string>
+  <string name="pref_thumbnail_generator_native_summary">Extrae miniaturas y carátulas de archivos locales. Cambiar borra la caché.</string>
+  <string name="pref_thumbnail_generator_mediastore_summary">Usa miniaturas y portadas de Android. Cambiar borra la caché. Las vistas de red usan Nativo.</string>
   <string name="ui_update_channels_summary">Versiones estables, versiones preliminares nocturnas o compilaciones experimentales de CI.</string>
   <string name="update_experimental_build_format">Exp. r%1$d</string>
   <string name="tv_nav_settings">Ajustes</string>
@@ -2771,7 +2763,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="tv_player_quality">Calidad de vídeo</string>
   <string name="tv_player_seek_bar">Barra de progreso</string>
   <string name="pref_audio_animated_artwork_title">Carátulas de álbumes animadas</string>
-  <string name="pref_audio_animated_artwork_summary">Obtener carátulas animadas coincidentes de Apple Music en el reproductor de música a pantalla completa. Envía el título, el artista y el álbum de la canción a Apple y usa datos móviles. Desactivado por defecto; conserva la carátula actual si no hay ninguna disponible. Cambia del visualizador a la carátula para verla.</string>
+  <string name="pref_audio_animated_artwork_summary">Carátulas animadas de Apple Music. Comparte metadatos y usa datos; si no hay, conserva la imagen.</string>
   <string name="jellyfin_featured">Destacados</string>
   <string name="jellyfin_series">Serie</string>
   <string name="jellyfin_movie">Película</string>
@@ -2859,8 +2851,8 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="clip_track_auto_off">Automático / Desactivado</string>
   <string name="pref_blacklist_count">%1$d carpetas en la lista negra</string>
   <string name="pref_whitelist_disabled">Lista blanca desactivada</string>
-  <string name="pref_blacklist_summary">Las carpetas de esta lista se ocultan de tu contenido. Elige para cada carpeta si se ocultan sus vídeos, su audio o ambos.</string>
-  <string name="pref_whitelist_summary">Con la lista blanca activada, solo se analizan estas carpetas y sus subcarpetas. Si no añades ninguna, no se restringe nada.</string>
+  <string name="pref_blacklist_summary">Oculta vídeos, audio o ambos en estas carpetas.</string>
+  <string name="pref_whitelist_summary">Escanea solo estas carpetas y subcarpetas. Una lista vacía no restringe nada.</string>
   <string name="pref_whitelist_empty_message">Toca el botón inferior para añadir carpetas que quieras analizar</string>
   <string name="clip_section_range">Rango</string>
   <string name="clip_section_output">Salida</string>
@@ -2881,7 +2873,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_audio_spatial_title">Audio espacial</string>
   <string name="pref_audio_spatial_summary">Amplía las pistas estéreo para una experiencia más envolvente</string>
   <string name="pref_measure_enabled_title">Compartir diagnósticos con Measure</string>
-  <string name="pref_measure_enabled_summary">Activa el envío de fallos, ANR, métricas de rendimiento y actividad de sesión a Measure. Desactivado por defecto.</string>
+  <string name="pref_measure_enabled_summary">Envía datos de fallos, ANR, rendimiento y sesiones a Measure. Desactivado por defecto.</string>
   <string name="pref_measure_not_configured">Diagnósticos no disponibles: esta compilación no tiene clave de Measure.</string>
   <string name="pref_layout_portrait_playback_position">Controles de reproducción en vertical</string>
   <string name="pref_layout_landscape_playback_position">Controles de reproducción en horizontal</string>
@@ -2897,7 +2889,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
 
   <string name="grayscale_watched_thumbnails">Miniaturas de vídeos vistos en escala de grises</string>
   <string name="pref_gesture_require_double_tap_title">Exigir un doble toque para cada salto</string>
-  <string name="pref_gesture_require_double_tap_summary">Exige un nuevo doble toque para cada salto en las zonas de doble toque. Desactiva esta opción para seguir saltando con toques simples mientras se muestra el indicador. Las zonas de toque simple no cambian.</string>
+  <string name="pref_gesture_require_double_tap_summary">Exige doble toque para cada salto. Si se desactiva, basta un toque mientras se vea el indicador.</string>
   <string name="audio_footer_show_artwork">Mostrar la carátula del álbum</string>
   <string name="audio_footer_show_visualizer">Mostrar visualizador</string>
   <string name="toast_updating_thumbnail_generator">Actualizando miniaturas</string>
@@ -2916,11 +2908,11 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="player_settings_config_owned">Controlado por mpv.conf</string>
 
   <string name="pref_custom_openai_base_url_title">URL base personalizada compatible con OpenAI</string>
-  <string name="pref_custom_openai_base_url_summary">Introduce la URL base HTTP(S) de la API, como https://example.com/v1. Se admiten Chat Completions y la consulta opcional de modelos disponibles. No incluyas credenciales en la URL.</string>
+  <string name="pref_custom_openai_base_url_summary">URL base de Chat Completions, p. ej. https://example.com/v1. No incluyas una clave API.</string>
   <string name="pref_custom_openai_key_title">Clave de API del proveedor personalizado</string>
-  <string name="pref_custom_openai_key_summary">Opcional para servidores que no requieren autenticación. Usa preferiblemente HTTPS al utilizar una clave de API.</string>
+  <string name="pref_custom_openai_key_summary">Opcional en servidores sin autenticación. Usa HTTPS al enviar una clave.</string>
   <string name="pref_custom_openai_model_title">ID del modelo personalizado</string>
-  <string name="pref_custom_openai_model_summary">Introduce el ID de un modelo manualmente u obtén la lista de modelos. Si no se puede consultar la lista, introduce el ID y usa Comprobar acceso al modelo.</string>
+  <string name="pref_custom_openai_model_summary">Introduce un ID o carga la lista y comprueba el acceso al modelo.</string>
   <string name="pref_custom_openai_check_endpoint">Comprobar el punto de conexión</string>
   <string name="pref_ai_cached_models_invalid">No se pudo leer la lista de modelos guardada. Obtén los modelos de nuevo.</string>
 
@@ -3027,7 +3019,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="lyrics_editor_saved">Cambios de la letra guardados</string>
   <string name="lyrics_editor_restored">Letra original restaurada</string>
   <string name="pref_audio_immersive_artwork_title">Carátula envolvente</string>
-  <string name="pref_audio_immersive_artwork_summary">Mostrar la carátula de borde a borde, fundiéndose con el fondo del reproductor de música en vertical. Desactivado por defecto. Cambia del visualizador a la carátula para verla.</string>
+  <string name="pref_audio_immersive_artwork_summary">Carátula de borde a borde en vertical y horizontal.</string>
 
   <string name="wallpaper_preset_link">Desde un enlace</string>
   <string name="wallpaper_link_title">Descargar fondo de pantalla</string>
@@ -3041,7 +3033,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="remote_settings_title_phone">Mando de TV</string>
   <string name="remote_settings_summary_phone">Controla MPVRX en el televisor e introduce enlaces desde este teléfono</string>
   <string name="remote_tv_enable">Permitir el mando desde el teléfono</string>
-  <string name="remote_tv_enable_summary">Los teléfonos de la misma red pueden solicitar vincularse mientras MPVRX está abierto. Debes aprobar cada teléfono aquí, en el televisor.</string>
+  <string name="remote_tv_enable_summary">Vincula móviles de la misma red. Cada solicitud necesita aprobación en este televisor.</string>
   <string name="remote_tv_address">Este televisor: %1$s</string>
   <string name="remote_tv_address_unavailable">Conecta este televisor a una red para ver su dirección.</string>
   <string name="remote_tv_how_to">En el teléfono, abre MPVRX, ve a Ajustes &gt; Mando de TV y elige este televisor. Si no aparece, introduce la dirección de arriba.</string>
@@ -3113,8 +3105,8 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_audio_spatial_mode">Modo de audio espacial</string>
   <string name="pref_audio_spatial_stereo">Ampliación estéreo</string>
   <string name="pref_audio_hrtf_title">Auriculares - KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">Procesamiento binaural HRTF para música con el conjunto de datos KU100 de 96 kHz incluido. Requiere una compilación de mpv compatible con sofalizer y libmysofa.</string>
-  <string name="pref_audio_hrtf_unavailable">No se pudo activar HRTF para esta pista. Comprueba que la compilación de mpv incluya sofalizer y libmysofa o selecciona la ampliación estéreo.</string>
+  <string name="pref_audio_hrtf_summary">Audio binaural KU100. Requiere mpv con sofalizer y libmysofa.</string>
+  <string name="pref_audio_hrtf_unavailable">Requiere mpv con sofalizer y libmysofa. Si no, usa ampliación estéreo.</string>
 
   <string name="pref_layout_playback_with_buttons">Con la fila de botones</string>
   <string name="pref_action_open_page">Abrir página</string>
@@ -3175,4 +3167,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="theme_color_tertiary_fixed_dim">Acento de realce suave atenuado</string>
   <string name="theme_color_on_tertiary_fixed">Texto sobre el acento de realce suave</string>
   <string name="theme_color_on_tertiary_fixed_variant">Texto tenue sobre el acento de realce suave</string>
+  <string name="permission_video_access_summary">Permite acceder a vídeos en Downloads, Movies y DCIM.</string>
+  <string name="permission_media_access_summary">Permite acceder a archivos de vídeo y audio guardados.</string>
+  <string name="pref_audio_passthrough_summary">Envía audio envolvente al receptor sin decodificar ni aplicar efectos.</string>
 </resources>

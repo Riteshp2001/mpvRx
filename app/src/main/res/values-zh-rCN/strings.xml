@@ -29,7 +29,7 @@
   <string name="pref_liquid_glass_in_hdr_title">HDR 模式下的液态玻璃</string>
   <string name="pref_liquid_glass_in_hdr_summary">开启 HDR 输出时，仍在播放器控件上保留实时玻璃效果。HDR 视频将显示为 SDR 效果</string>
   <string name="pref_liquid_glass_in_hdr_warning_title">在 HDR 模式下使用液态玻璃？</string>
-  <string name="pref_liquid_glass_in_hdr_warning_message">液态玻璃需要通过 TextureView 绘制视频。Android 会将以这种方式绘制的 HDR 视频转换为 SDR，因此 HDR 输出会失去额外的亮度和对比度，播放时也可能更耗电。随时关闭此选项即可恢复真正的 HDR。</string>
+  <string name="pref_liquid_glass_in_hdr_warning_message">Liquid Glass 通过 TextureView 将 HDR 转为 SDR，可能增加耗电。关闭可恢复真正的 HDR。</string>
   <string name="pref_liquid_glass_in_hdr_warning_confirm">仍然启用</string>
   <string name="pref_appearance_system_font_title">使用系统字体</string>
   <string name="pref_appearance_system_font_summary">在整个 mpvRx 中使用 Android 系统字体，而不是 Google Sans</string>
@@ -68,17 +68,17 @@
   <string name="pref_appearance_show_video_thumbnails_title">显示视频缩略图</string>
   <string name="pref_appearance_show_video_thumbnails_summary">在视频列表和文件夹中显示生成的缩略图</string>
   <string name="pref_appearance_thumbnail_generation_title">缩略图生成策略</string>
-  <string name="pref_appearance_thumbnail_generation_summary">选择缩略图的生成方式，包括嵌入封面或指定帧位置</string>
+  <string name="pref_appearance_thumbnail_generation_summary">选择内嵌封面或视频帧。</string>
   <string name="pref_appearance_thumbnail_generation_change_title">更改缩略图策略？</string>
-  <string name="pref_appearance_thumbnail_generation_change_summary">这将清除缓存的缩略图。浏览时将使用所选策略生成新的缩略图。</string>
+  <string name="pref_appearance_thumbnail_generation_change_summary">清空缩略图缓存，并在浏览时重新生成？</string>
   <string name="pref_appearance_thumbnail_quality_title">缩略图质量</string>
-  <string name="pref_appearance_thumbnail_quality_summary">缩略图最高分辨率：%1$d px。更高的质量会占用更多存储空间，生成速度也可能更慢。</string>
+  <string name="pref_appearance_thumbnail_quality_summary">缩略图上限：%1$d 像素。尺寸越大，存储和处理开销越高。</string>
   <string name="pref_appearance_thumbnail_position_title">缩略图帧位置</string>
   <string name="pref_appearance_thumbnail_position_summary">截取视频 %1$d%% 位置的画面</string>
   <string name="pref_appearance_thumbnail_parallelism_title">缩略图处理核心数</string>
   <string name="pref_appearance_thumbnail_parallelism_auto">自动（%1$d / %2$d）</string>
   <string name="pref_appearance_thumbnail_parallelism_value">%1$d / %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">同时生成的缩略图数量。数值越大越快，但会占用更多内存和电量，滚动也可能卡顿。自动会为此设备选择安全的数值。</string>
+  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">线程越多通常越快，但可能增加内存、耗电和卡顿。建议使用自动。</string>
   <string name="pref_appearance_thumbnail_parallelism_warning">高于此设备推荐的 %1$d。如果列表卡顿或应用在后台被关闭，请调低此值。</string>
   <string name="pref_appearance_show_network_thumbnails_title">显示网络缩略图（实验性）</string>
   <string name="pref_appearance_show_network_thumbnails_summary">为网络流生成缩略图（可能会增加移动网络的数据用量）</string>
@@ -145,11 +145,11 @@
   <string name="pref_enable_video_mini_player_title">启用视频迷你播放器</string>
   <string name="pref_enable_video_mini_player_summary">按返回键时将视频播放最小化为悬浮迷你播放器</string>
   <string name="pref_video_mini_player_dependency_title">启用视频后台播放？</string>
-  <string name="pref_video_mini_player_dependency_message">视频迷你播放器需要视频播放器后台播放功能，以便在离开完整播放器后继续播放视频。</string>
+  <string name="pref_video_mini_player_dependency_message">需要启用视频播放器后台播放。</string>
   <string name="pref_video_mini_player_dependency_confirm">启用并继续</string>
   <string name="pref_player_keep_screen_on_when_paused_title">暂停时保持屏幕常亮</string>
   <string name="pref_player_external_display_projection_title">外接显示投影</string>
-  <string name="pref_player_external_display_projection_summary">连接 HDMI、USB-C 或无线显示器后在其上播放视频，并允许手机屏幕熄灭</string>
+  <string name="pref_player_external_display_projection_summary">关闭手机屏幕，在 HDMI、USB-C 或无线显示器上播放。</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">视频暂停时屏幕保持唤醒</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">视频暂停时允许屏幕关闭</string>
   <string name="pref_player_autoplay_after_screen_unlock_title">解锁屏幕后自动播放</string>
@@ -234,26 +234,18 @@
   <string name="pref_gesture_use_single_tap_for_center_title">中央单击</string>
   <string name="pref_gesture_use_single_tap_for_right_title">右侧单击</string>
   <string name="pref_gesture_use_single_tap_for_left_summary">轻点一次而非两次，即可执行左侧操作。</string>
-  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">轻点一次中央区域（默认宽度为30%，高度为30%）。中央区域的其他点击可显示或隐藏播放控件。</string>
+  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">单击中央区域（宽高各 30%）。其他位置的点击用于切换控件显示。</string>
   <string name="pref_gesture_use_single_tap_for_right_summary">轻点一次而非两次，即可执行右侧操作。</string>
   <string name="pref_gesture_center_vertical_subtitle_position_title">拖动以移动字幕</string>
-  <string name="pref_gesture_center_vertical_subtitle_position_summary">长按屏幕中央后上下拖动，可移动主字幕。直接长按任意字幕后拖动，可单独移动该字幕轨道。普通滑动仍会打开播放列表。</string>
-  <string name="pref_gesture_double_tap_custom_info">可在 input.conf 中使用以下按键代码为这些手势绑定自定义操作：
-
-左侧：MBTN_LEFT_DBL
-中间：MBTN_MID_DBL
-右侧：MBTN_RIGHT_DBL</string>
+  <string name="pref_gesture_center_vertical_subtitle_position_summary">长按字幕可移动，长按中央可移动主字幕。启用缩放后可双指调整大小。</string>
+  <string name="pref_gesture_double_tap_custom_info">input.conf 按键：\n左侧：MBTN_LEFT_DBL\n中央：MBTN_MID_DBL\n右侧：MBTN_RIGHT_DBL</string>
   <string name="pref_gesture_media_title">媒体控制</string>
   <string name="pref_gesture_media_previous">上一个</string>
   <string name="pref_gesture_media_play">播放/暂停</string>
   <string name="pref_gesture_media_next">下一个</string>
-  <string name="pref_gesture_media_custom_info">可在 input.conf 中使用以下按键代码为媒体控制绑定自定义操作：
-
-上一个：PREV
-播放/暂停：PLAYPAUSE
-下一个：NEXT</string>
+  <string name="pref_gesture_media_custom_info">input.conf 按键：\n上一个：PREV\n播放/暂停：PLAYPAUSE\n下一个：NEXT</string>
   <string name="pref_gesture_tap_thumbnail_to_select_title">点击缩略图进行选择</string>
-  <string name="pref_gesture_tap_thumbnail_to_select_summary">启用后，点击缩略图将进入选择模式；禁用后，点击缩略图将播放视频。</string>
+  <string name="pref_gesture_tap_thumbnail_to_select_summary">点击缩略图以选择，而非播放。</string>
   <string name="pref_decoder">解码器</string>
   <string name="pref_decoder_summary">硬件解码、像素格式、去色带</string>
   <string name="pref_decoder_profile_title">MPV 配置文件</string>
@@ -273,7 +265,7 @@
   <string name="renderer_build_notice_supported_device">正在使用 OpenGL；如需 Vulkan，请安装标准版。</string>
   <string name="renderer_build_notice_unsupported_device">正在使用 OpenGL；此设备不支持 Vulkan 1.3。</string>
   <string name="pref_decoder_yuv420p_title">使用 YUV420P 像素格式</string>
-  <string name="pref_decoder_yuv420p_summary">可能修复部分视频编解码器的黑屏问题，也可牺牲画质来提升性能</string>
+  <string name="pref_decoder_yuv420p_summary">可能修复黑屏或提高速度，但会降低画质。</string>
   <string name="pref_subtitles">字幕</string>
   <string name="pref_subtitles_summary">首选语言、字体和搜索</string>
   <string name="pref_subtitle_search_title">在线字幕搜索</string>
@@ -302,7 +294,7 @@
   <string name="pref_audio_summary">首选语言、音频声道、音调校正</string>
   <string name="pref_audio_orientation_title">音频播放器方向</string>
   <string name="pref_audio_pitch_correction_title">启用音频音调校正</string>
-  <string name="pref_audio_pitch_correction_summary">防止快速播放时音调变高、慢速播放时音调变低</string>
+  <string name="pref_audio_pitch_correction_summary">变速时保持原音调。</string>
   <string name="pref_audio_volume_normalization_title">音量标准化</string>
   <string name="pref_audio_volume_normalization_summary">自动调整音量以保持一致的响度</string>
   <string name="pref_music_tabs_title">音乐库标签页</string>
@@ -312,7 +304,7 @@
   <string name="pref_audio_visualizer_style_cuboid">长方体</string>
   <string name="pref_audio_visualizer_galaxy_credit">灵感来自 CodePen 上的 Zain Raza</string>
   <string name="pref_audio_ambient_mode_title">氛围模式</string>
-  <string name="pref_audio_ambient_mode_summary">在音乐播放器中显示基于专辑封面生成的动态色彩渐变（可视化效果开启时禁用）</string>
+  <string name="pref_audio_ambient_mode_summary">使用封面配色作为背景；可视化效果启用时隐藏。</string>
   <string name="pref_audio_wavy_seekbar_title">波浪进度条</string>
   <string name="pref_audio_wavy_seekbar_summary">在进度条上方显示多层流动波浪可视化动画</string>
   <string name="pref_audio_channels">音频声道</string>
@@ -321,7 +313,7 @@
   <string name="pref_audio_channels_mono">单声道</string>
   <string name="pref_audio_channels_stereo">立体声</string>
   <string name="pref_audio_channels_stereo_reversed">反向立体声</string>
-  <string name="pref_audio_preferred_language">在包含多个音频流的视频中默认选择的音频语言。支持两位或三位语言代码，多个值可用逗号分隔。</string>
+  <string name="pref_audio_preferred_language">用逗号分隔语言代码，如 en,eng,ja。按从左到右的顺序匹配。</string>
   <string name="pref_audio_volume_boost_cap">音量增强上限</string>
   <string name="pref_advanced">高级</string>
   <string name="pref_advanced_summary">配置位置、mpv.conf</string>
@@ -354,7 +346,7 @@
   <string name="pref_anime4k_title">Anime4K 超分辨率</string>
   <string name="pref_anime4k_summary">启用 Anime4K 超分辨率滤镜</string>
   <string name="pref_anime4k_incompatibility">Anime4K 不兼容</string>
-  <string name="pref_anime4k_gpu_next_error">Anime4K 需要传统 gpu，或启用了 Vulkan 的 gpu-next。OpenGL 上的 gpu-next 会回退到传统 gpu，以确保着色器兼容性。</string>
+  <string name="pref_anime4k_gpu_next_error">Anime4K 需要传统 GPU 或 Vulkan 下的 GPU Next。OpenGL 使用传统 GPU。</string>
   <string name="anime4k_mode_title">Anime4K 预设</string>
   <string name="pref_anime4k_quality_title">Anime4K 质量</string>
   <!-- Anime4K Modes (Renamed to Presets in UI) -->
@@ -370,7 +362,7 @@
   <string name="anime4k_quality_balanced">均衡</string>
   <string name="anime4k_quality_high">高</string>
   <string name="pref_anime4k_in_4k_title">在 4K 视频中启用</string>
-  <string name="pref_anime4k_in_4k_summary">允许对 4K 和 8K 视频使用 Anime4K 放大（可能会增加 GPU 负载或引发发热降频）</string>
+  <string name="pref_anime4k_in_4k_summary">对 4K/8K 视频启用，可能增加 GPU 负载和发热。</string>
   <string name="pref_anime4k_darken_title">Anime4K 线条加深</string>
   <string name="pref_anime4k_darken_summary">在主要超分辨率处理后增加线条加深。</string>
   <string name="pref_anime4k_thin_title">Anime4K 线条细化</string>
@@ -463,7 +455,7 @@
   <string name="player_aspect_crop">裁剪</string>
   <string name="player_aspect_stretch">拉伸</string>
   <string name="crash_screen_title">意外错误</string>
-  <string name="crash_screen_subtitle">%s 似乎遇到了意外错误。建议在 GitHub Issue 中分享崩溃日志。</string>
+  <string name="crash_screen_subtitle">%s 出现意外错误。请在 GitHub 问题中附上日志。</string>
   <string name="crash_screen_logs_title">崩溃日志：</string>
   <string name="crash_screen_share">分享崩溃日志</string>
   <string name="crash_screen_restart">重启应用</string>
@@ -502,7 +494,7 @@
   <string name="toast_audio_background_playback_off">音频后台播放已关闭</string>
   <string name="pref_audio_background_playback_summary">在离开音频播放器或关闭屏幕时保持音频播放</string>
   <string name="pref_audio_mini_player_track_switching_title">在迷你播放器中切歌</string>
-  <string name="pref_audio_mini_player_track_switching_summary">当迷你播放器或后台播放处于活动状态时，选择另一首歌曲将直接在迷你播放器中切换，而无需打开完整播放器</string>
+  <string name="pref_audio_mini_player_track_switching_summary">在迷你播放器中切歌，不打开完整播放器。</string>
   <string name="pref_video_background_playback_title">后台播放（视频播放器）</string>
   <string name="pref_video_background_playback_summary">在离开视频播放器或关闭屏幕时保持视频音频播放</string>
   <string name="deselect_all">取消全选</string>
@@ -518,7 +510,7 @@
   <string name="got_it">知道了</string>
   <string name="general">常规</string>
   <string name="not_set_video_default">未设置（将使用视频默认值）</string>
-  <string name="enter_subtitle_title_preferences">按优先级输入字幕轨标题关键词或语言代码，用逗号分隔；越靠前优先级越高，并列时继续匹配后续关键词。</string>
+  <string name="enter_subtitle_title_preferences">用逗号分隔字幕关键词或语言代码，按从左到右的顺序匹配。</string>
   <string name="subtitle_title_preferences_placeholder">特效,简体,chs,zh</string>
   <string name="fonts_loaded">已加载 %1$d 种字体</string>
   <string name="reload_fonts">重新加载字体</string>
@@ -806,7 +798,7 @@
   <string name="pref_custom_prompt_section">自定义提示词</string>
   <string name="pref_override_instructions_title">覆盖默认指令</string>
   <string name="pref_custom_prompts_header">自定义提示词</string>
-  <string name="pref_custom_prompts_description">留空即可使用该任务的内置指令。如果保存了旧的全局提示词，它将作为备用。</string>
+  <string name="pref_custom_prompts_description">留空时使用内置指令或已保存的全局提示词。</string>
   <string name="pref_custom_rename_prompt_label">自定义重命名提示词</string>
   <string name="pref_custom_translation_prompt_label">自定义字幕翻译提示词</string>
   <string name="pref_custom_format_prompt_label">自定义字幕格式化提示词</string>
@@ -1314,11 +1306,11 @@
   <string name="ui_discovering_and_displaying_your_video_files_n_playing_media_cont">• 查找并显示您的视频文件
 • 播放媒体内容
 • 加载字幕文件</string>
-  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">mpvRx 一直需要存储访问权限，因为这是查找设备上所有媒体和字幕文件所必需的，包括系统不支持的文件。</string>
-  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">但是，由于安全政策发生变化，面向 Android 11 及更高版本构建的应用现在需要额外权限才能继续进行相同访问。</string>
-  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">请注意，此权限仅用于自动发现设备上的媒体/字幕文件，并不会让我们以任何方式访问其他应用存储的私人数据文件。</string>
-  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">mpvRx 是一个开源项目。您可以访问我们的 GitHub 仓库查看源代码并验证权限的使用方式：</string>
-  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">请放心，您的隐私是我们的首要任务。我们不会出于其他目的访问您的文件，也不会将其传输或存储到服务器；文件会安全地保留在您的设备上。</string>
+  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">存储权限让 mpvRx 查找媒体和字幕文件，包括未索引的格式。</string>
+  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">Android 11 及以上版本需要额外权限才能访问全部存储。</string>
+  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">仅用于查找媒体和字幕，不访问其他应用的私有数据。</string>
+  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">可在开源代码中查看权限的使用方式：</string>
+  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">文件保留在设备上，不会上传至我们的服务器。</string>
   <string name="ui_app_permissions">应用权限</string>
   <string name="ui_permissions_setup_subtitle">配置权限以启用核心功能和媒体播放。</string>
   <string name="ui_file_permission_title">文件与存储访问权限</string>
@@ -1328,7 +1320,7 @@
   <string name="ui_notification_permission_title">通知</string>
   <string name="ui_notification_permission_desc">可选。用于媒体播放控制、后台状态和更新提醒。</string>
   <string name="ui_audio_record_permission_title">录制音频</string>
-  <string name="ui_audio_record_permission_desc">可选。用于音频可视化效果实时处理频谱和频率能量。</string>
+  <string name="ui_audio_record_permission_desc">可选。允许可视化效果读取实时音频电平。</string>
   <string name="ui_permission_granted">已授权</string>
   <string name="ui_next">下一步</string>
   <string name="ui_grant_permission_hint">点击以授予权限</string>
@@ -1339,7 +1331,7 @@
   <string name="ui_no_results_found">未找到结果</string>
   <string name="ui_no_android">非 Android</string>
   <string name="ui_script_runtime">脚本运行时</string>
-  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">新启用的脚本可在播放期间加载。关闭的脚本可能需要重新打开视频后才会完全停止运行。</string>
+  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">启用的脚本立即加载；重新打开视频可完全停止已禁用脚本。</string>
   <string name="ui_media_info">媒体信息</string>
   <string name="ui_analyzing_media_file">正在分析媒体文件...</string>
   <string name="ui_media_tracks_summary">媒体轨道摘要</string>
@@ -1364,9 +1356,9 @@
   <string name="ui_filter_presets">滤镜预设</string>
   <string name="ui_yt_dlp_manager">yt-dlp 管理器</string>
   <string name="ytdlp_auth_required_title">YouTube 需要验证</string>
-  <string name="ytdlp_auth_required_message">YouTube 需要验证或更新的登录 Cookie。请从能播放此视频的浏览器导入 Netscape 格式的 cookies.txt，mpvRx 会自动重试此视频一次。</string>
+  <string name="ytdlp_auth_required_message">YouTube 需要验证。从可正常播放的浏览器导入新的 Netscape cookies.txt 后重试一次。</string>
   <string name="ytdlp_cookies_title">YouTube Cookie</string>
-  <string name="ytdlp_cookies_summary">导入的登录 Cookie 会用于后续播放。仅保留 YouTube Cookie，存储在不参与备份的私有空间中。不再需要时可在此清除。</string>
+  <string name="ytdlp_cookies_summary">在不参与备份的私有空间保存并复用 YouTube Cookie。不再需要时请清除。</string>
   <string name="ytdlp_cookies_configured">已配置 Cookie</string>
   <string name="ytdlp_cookies_help">如何导出 YouTube Cookie</string>
   <string name="ytdlp_cookies_help_failed">没有可用于打开说明的浏览器。</string>
@@ -1430,7 +1422,7 @@
   <string name="ui_subtitle_translation_can_be_a_bit_messy">字幕翻译可能会有些不准确。 </string>
   <string name="ui_real_time_model">实时模型</string>
   <string name="ui_auto_translate_target_languages">自动翻译目标语言</string>
-  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">翻译字幕时，如果配置了 1 种语言则直接翻译；如果配置了 2 种或更多语言，则会显示选择器。</string>
+  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">单一语言直接翻译，多种语言则显示选择器。</string>
   <string name="ui_no_target_languages_configured">未配置目标语言</string>
   <string name="ui_search_languages">搜索语言...</string>
   <string name="ui_refresh">刷新</string>
@@ -1573,7 +1565,7 @@
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">鲜艳锐利的霓虹色彩</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">为 OLED 显示屏增强黑色表现</string>
   <string name="filter_preset_custom_section">自定义预设</string>
-  <string name="filter_preset_custom_empty">调整亮度、对比度、伽马、饱和度、色调和锐度，然后保存该组合以供以后使用。</string>
+  <string name="filter_preset_custom_empty">调整画面后，将设置保存为预设。</string>
   <string name="filter_preset_save_current">保存当前设置</string>
   <string name="filter_preset_save_title">保存自定义预设</string>
   <string name="filter_preset_rename_title">重命名预设</string>
@@ -1587,7 +1579,7 @@
   <string name="filter_preset_menu_description">预设选项</string>
   <string name="filter_preset_save">保存</string>
   <string name="syncplay_title">Syncplay</string>
-  <string name="syncplay_description">与朋友同步观看视频。连接到 Syncplay 服务器即可开始一起观看。</string>
+  <string name="syncplay_description">通过 Syncplay 服务器同步观看。</string>
   <string name="syncplay_connected_as">已以 %1$s 身份连接到房间 %2$s</string>
   <string name="syncplay_users_in_room">房间中的用户：</string>
   <string name="syncplay_disconnect">断开连接</string>
@@ -1650,13 +1642,13 @@
   <string name="secure_folder_delete_confirm_title">永久删除 %1$d 个项目？</string>
   <string name="secure_folder_delete_confirm_subtitle">此操作无法撤销 — 文件将从安全文件夹中永久移除。</string>
   <string name="secure_folder_hide_entry_title">在首选项中隐藏安全文件夹？</string>
-  <string name="secure_folder_hide_entry_subtitle">“安全文件夹”选项将从首选项中移除。如需稍后再次打开，请双击主屏幕顶部的应用名称并输入PIN码。</string>
+  <string name="secure_folder_hide_entry_subtitle">从设置中隐藏此页。返回方法：双击主页标题，输入 PIN，再打开设置。</string>
   <string name="secure_folder_working_on_it">正在处理…</string>
   <string name="secure_folder_restore">恢复</string>
   <string name="secure_folder_move_to">移动到安全文件夹</string>
   <string name="secure_folder_moving_progress">正在移动到安全文件夹…</string>
   <string name="secure_folder_move_folders_title">将 %1$d 个文件夹移动到安全文件夹？</string>
-  <string name="secure_folder_move_folders_subtitle">其中的每个视频都将从列表和应用其他位置消失，直到恢复。</string>
+  <string name="secure_folder_move_folders_subtitle">隐藏这些文件夹中的所有视频，直到恢复。</string>
   <string name="secure_folder_move_items_title">将 %1$d 个项目移动到安全文件夹？</string>
   <string name="secure_folder_move_items_subtitle">它们将从列表和应用其他位置消失，直到恢复。</string>
   <string name="secure_folder_moved_success">已将 %1$d 个文件移动到安全文件夹</string>
@@ -1678,7 +1670,7 @@
     <string name="secure_folder_settings_security">安全</string>
     <string name="secure_folder_settings_danger_zone">危险区域</string>
     <string name="secure_folder_settings_help">帮助</string>
-    <string name="secure_folder_settings_help_text">双击或长按主屏幕顶部的应用名称即可打开安全文件夹。</string>
+    <string name="secure_folder_settings_help_text">双击或长按主页标题，打开安全文件夹。</string>
     <string name="secure_folder_settings_setup_first">请先打开安全文件夹并设置 PIN 码。</string>
     <string name="secure_folder_biometric_title">启用生物识别解锁</string>
     <string name="secure_folder_biometric_summary">使用指纹或面部解锁</string>
@@ -1700,7 +1692,7 @@
     <string name="secure_folder_destroy_no_screen_lock">请设置手机屏幕锁定（PIN 码、图案或密码）以使用此功能。</string>
   <string name="pref_codecs_decoders_summary">%1$d 个硬件解码器 • %2$d 个软件解码器</string>
   <string name="pref_codecs_banner_title">硬件解码与软件解码</string>
-  <string name="pref_codecs_banner_desc">硬件解码器直接在专用 VPU/GPU 芯片上解码视频，功耗极低。软件解码器在 CPU 上运行，在播放 4K 或高码率视频（如无硬解支持的 AV1）时可能导致发热和电池快耗。</string>
+  <string name="pref_codecs_banner_desc">硬件解码更省电；软件解码可能增加发热和耗电。</string>
   <string name="pref_codecs_core_title">核心视频编解码器状态</string>
   <string name="pref_codecs_search_placeholder">搜索编解码器名称、格式或 MIME...</string>
   <string name="pref_codecs_filter_all">全部 (%d)</string>
@@ -1767,7 +1759,7 @@
     <string name="ui_recent_streams">最近的流媒体链接</string>
     <string name="ui_play_now">播放</string>
     <string name="ui_no_saved_media_title">未保存任何链接</string>
-    <string name="ui_no_saved_media_description">粘贴流媒体 URL、磁力链接或从最近链接保存以建立您的媒体库。</string>
+    <string name="ui_no_saved_media_description">添加流地址、磁力链接或最近链接。</string>
     <string name="ui_search_episodes">搜索剧集…</string>
     <string name="ui_sort_ascending">升序排列</string>
     <string name="ui_sort_descending">降序排列</string>
@@ -1811,7 +1803,7 @@
   <string name="pref_mpv_conf_override_osd">OSD 安全区域</string>
   <string name="pref_mpv_conf_override_osd_summary">覆盖 OSD 字体、边距和安全区域设置。</string>
   <string name="mpv_config_owned_title">由 mpv.conf 控制</string>
-  <string name="mpv_config_owned_message">此应用控件已禁用，因为它所需的一个或多个选项已在高级设置中分配给 mpv.conf。</string>
+  <string name="mpv_config_owned_message">由 mpv.conf 控制。请在高级设置中更改选项归属后再使用此控件。</string>
   <string name="pref_lyrics_translation_category">歌词翻译与注音</string>
   <string name="pref_lyrics_auto_translate">自动翻译外语歌词</string>
   <string name="pref_lyrics_auto_translate_summary">自动将外语歌词翻译为首选语言</string>
@@ -1924,7 +1916,7 @@
   <string name="storage_permission_needed_desc">授予存储访问权限以浏览和播放媒体。</string>
   <string name="storage_permission_grant">授予访问权限</string>
   <string name="pref_player_web_stream_links_title">打开流媒体网站链接</string>
-  <string name="pref_player_web_stream_links_summary">为支持的流媒体网站链接和以文本分享的链接提供 mpvRx 选项。禁用后仍可打开媒体文件和直接媒体链接。</string>
+  <string name="pref_player_web_stream_links_summary">在 mpvRx 中打开支持的网站链接。关闭后仍可使用媒体直链。</string>
 
   <string name="btn_label_scopes">示波器</string>
   <string name="scopes_title">示波器</string>
@@ -1990,7 +1982,7 @@
   <string name="player_started_afresh_pill">已从头开始播放</string>
   <string name="player_restart_action">重新开始</string>
   <string name="pref_resume_indicator_overlay_title">继续播放提示</string>
-  <string name="pref_resume_indicator_overlay_summary">显示继续播放或起始位置反馈提示条。询问模式始终显示可操作的继续播放提示条</string>
+  <string name="pref_resume_indicator_overlay_summary">显示续播提示。“询问”模式始终保留续播确认。</string>
 
   <!-- Media Servers Settings -->
   <string name="pref_media_servers_title">媒体服务器</string>
@@ -2036,12 +2028,12 @@
   <string name="pref_appearance_custom_wallpaper_colors_failed">无法从此壁纸提取颜色</string>
   <string name="wallpaper_save_failed">无法保存壁纸，请重新选择图片。</string>
   <string name="pref_haptic_feedback_title">触觉反馈</string>
-  <string name="pref_haptic_feedback_summary">选择、拖动和调整控件时提供触觉反馈。遵循系统设置。</string>
+  <string name="pref_haptic_feedback_summary">选择、拖动和调整时提供触感反馈，遵循系统设置。</string>
   <string name="pref_nested_tab_swipes_title">滑动切换内部标签页</string>
-  <string name="pref_nested_tab_swipes_summary">允许在音乐、网络和最近播放中左右滑动切换标签页。主导航和列表项的滑动操作不受影响。</string>
+  <string name="pref_nested_tab_swipes_summary">滑动切换音乐、网络和最近播放中的子标签。</string>
   <string name="oss_kmp_vibrate_description">由 WonDDak (jmseb3) 开发的触觉反馈库。</string>
   <string name="ambient_style_youtube">YouTube</string>
-  <string name="ambient_youtube_auto_hint">YouTube 模式完全自动运行：将当前画面柔和模糊地投射到黑边区域，形成与 YouTube 氛围模式类似的光效。</string>
+  <string name="ambient_youtube_auto_hint">自动用视频的模糊投影照亮黑边。</string>
   <string name="btn_label_post_processing">后处理</string>
   <string name="clip_end_short">结束</string>
   <string name="clip_start_short">开始</string>
@@ -2233,7 +2225,7 @@
   <string name="pref_background_playback_remember">始终记住我的选择</string>
   <string name="pref_background_playback_remember_summary">为后续视频保留后台播放选择。</string>
   <string name="pref_background_playback_per_video">为每个视频记住选择</string>
-  <string name="pref_background_playback_per_video_summary">分别保存每个视频的后台播放选择。其他视频的后台播放在单独启用前保持关闭。</string>
+  <string name="pref_background_playback_per_video_summary">分别记住每个视频的后台播放设置。</string>
   <string name="jellyfin_technical_details">技术详情</string>
 
   <!-- 快照（帧捕获） -->
@@ -2244,7 +2236,7 @@
   <string name="profile_view_all">查看全部</string>
   <string name="profile_edit">编辑个人资料</string>
   <string name="profile_layout_title">个人页面布局</string>
-  <string name="profile_layout_summary">拖动以调整顺序，使用开关显示或隐藏项目。统计卡片保留在统计分区内。</string>
+  <string name="profile_layout_summary">拖动排序，开关控制显示。统计卡片保留在统计分区内。</string>
   <string name="profile_layout_hubs">快捷入口卡片</string>
   <string name="profile_layout_sections">个人页面分区</string>
   <string name="profile_layout_statistics">统计卡片</string>
@@ -2303,7 +2295,7 @@
   <string name="snapshot_delete_folder_empty_message">将从应用中移除此文件夹。</string>
 
   <string name="snapshot_folder_empty_title">此文件夹为空</string>
-  <string name="snapshot_folder_empty_message">在快照列表中长按快照，选择「移动到文件夹」即可归入这里。</string>
+  <string name="snapshot_folder_empty_message">长按截图，选择“移至文件夹”。</string>
 
   <string name="snapshot_sort_folder_name">文件夹名称</string>
   <string name="snapshot_sort_created_at">创建时间</string>
@@ -2323,7 +2315,7 @@
   <string name="oss_anime4k_description">用于动画视频的实时放大和修复着色器。</string>
   <string name="oss_hdr_toys_description">HDR 色调映射、色域映射和传递函数着色器。</string>
   <string name="pref_auto_backup_title">自动备份设置</string>
-  <string name="pref_auto_backup_summary">mpvRx 进入后台时将已更改的设置保存到 Configuration/Backup，并保留最近七份备份。</string>
+  <string name="pref_auto_backup_summary">应用转入后台时备份，在 Configuration/Backup 保留七份。</string>
   <string name="pref_auto_backup_select_folder">请先选择配置文件夹</string>
   <string name="pref_auto_backup_last_backup">上次备份：%1$s</string>
   <string name="watch_stats_title">观看统计</string>
@@ -2339,9 +2331,9 @@
   <string name="pref_debug_log_size_title">日志大小限制</string>
   <string name="pref_debug_log_size_summary">日志查看器和共享诊断最多保留 %1$d MB。</string>
   <string name="onboarding_configuration_title">设置 mpvRx 存储</string>
-  <string name="onboarding_configuration_desc">选择用于设置、备份、脚本、字幕和下载的配置文件夹。</string>
+  <string name="onboarding_configuration_desc">选择用于设置、备份、脚本、字幕和下载的文件夹。</string>
   <string name="onboarding_configuration_card_title">配置文件夹</string>
-  <string name="onboarding_configuration_card_desc">选择 mpvRx 配置文件夹。根目录或 Backup 中的设置会自动恢复。</string>
+  <string name="onboarding_configuration_card_desc">选择配置文件夹，从其根目录或 Backup 中恢复设置。</string>
   <string name="onboarding_configuration_restoring">正在检查设置备份…</string>
   <string name="onboarding_configuration_no_backup">文件夹已配置。下载将使用 Configuration/Downloads。</string>
   <string name="onboarding_configuration_restored">已从 %1$s 恢复设置。下载将使用 Configuration/Downloads。</string>
@@ -2357,7 +2349,7 @@
   <string name="legacy_navigation_bar_title">经典导航栏</string>
   <string name="legacy_navigation_bar_summary">使用全宽经典导航栏，而不是悬浮胶囊导航栏。</string>
   <string name="progressive_navigation_blur_title">渐进式导航模糊</string>
-  <string name="progressive_navigation_blur_summary">在悬浮导航栏后方使用 Haze 渐进模糊。启用经典导航栏时自动关闭。</string>
+  <string name="progressive_navigation_blur_summary">模糊悬浮导航栏后方内容。经典导航栏不支持。</string>
   <string name="pref_seekbar_preview_skip_markers">跳过标记</string>
   <string name="pref_liquid_glass_optics">光学效果</string>
   <string name="pref_liquid_glass_opacity">背景不透明度</string>
@@ -2381,11 +2373,11 @@
   <string name="debug_logs_config_saved">日志已保存到配置文件夹中的 %1$s。</string>
   <string name="debug_logs_config_save_failed">无法保存日志。请检查配置文件夹的访问权限或重新选择该文件夹。</string>
   <string name="pref_gesture_show_seekbar_horizontal_title">控制栏隐藏时显示进度条</string>
-  <string name="pref_gesture_show_seekbar_horizontal_summary">水平滑动快进或快退时，即使播放器控制栏已隐藏也显示进度条。时间提示不受影响.</string>
+  <string name="pref_gesture_show_seekbar_horizontal_summary">滑动快进或快退时显示进度条，即使控件已隐藏。</string>
   <string name="player_zoom_overlays_follow">播放器 OSD 和字幕随视频缩放</string>
   <string name="player_zoom_overlays_follow_summary">字幕和统计页面 1–6 随视频缩放。关闭时保持固定大小。</string>
   <string name="network_smb_share_folder">共享 / 文件夹（可选）</string>
-  <string name="network_smb_share_hint">留空或输入 / 可浏览所有共享文件夹。输入 /Media 或 /Media/Movies 可打开指定文件夹。</string>
+  <string name="network_smb_share_hint">留空或填 / 浏览所有共享，也可填写 /Media/Movies 等路径。</string>
   <string name="pref_app_icon_title">应用图标</string>
   <string name="pref_app_icon_summary">选择启动器中显示的图标</string>
   <string name="app_icon_change_failed">无法更改应用图标。</string>
@@ -2499,7 +2491,7 @@
   <string name="pref_paxsenix_api_key_dialog_desc">粘贴您的 PaxSenix API 密钥。留空则仅使用不需要密钥的获取通道。</string>
   <string name="pref_lyrics_sources_category">在线歌词</string>
   <string name="pref_lyrics_auto_fetch_online">自动获取在线歌词</string>
-  <string name="pref_lyrics_auto_fetch_online_summary">仅在没有内嵌或本地歌词时搜索在线来源。您仍可手动在线搜索。</string>
+  <string name="pref_lyrics_auto_fetch_online_summary">无内嵌或本地歌词时，在线查找歌词。</string>
   <string name="lyrics_translation_off_summary">显示原文，不进行翻译</string>
   <string name="lyrics_translation_dual_line">双行显示</string>
   <string name="lyrics_translation_replace">替换原文</string>
@@ -2524,7 +2516,7 @@
   <string name="network_server_scan">查找附近的服务器</string>
   <string name="network_server_scanning">正在查找附近的服务器…</string>
   <string name="network_server_scan_unavailable">发现功能不可用或未完成。请选择已保存的地址，或手动输入。</string>
-  <string name="network_server_discovery_hint">查找在局域网中广播服务的服务器。设备地址只是快捷入口，并非检测到的服务器。请在下方输入登录凭据。</string>
+  <string name="network_server_discovery_hint">查找局域网中广播的服务器。设备地址仅为快捷入口；请在下方输入凭据。</string>
   <string name="network_smb_username_hint">使用您的用户名；域账户请使用 DOMAIN\\username。</string>
   <string name="pref_playstore_hidden_title">已选择的隐藏文件夹</string>
   <string name="pref_playstore_hidden_summary">选择一个文件夹，以包含其中的媒体和子文件夹。</string>
@@ -2611,7 +2603,7 @@
   <string name="color_picker_selected">已选颜色</string>
   <string name="color_picker_quick_colors">快捷颜色</string>
   <string name="app_icon_custom_background">自定义背景</string>
-  <string name="app_icon_custom_background_hint">选择一种颜色。Android 会在应用抽屉中使用最接近的内置图标。您选择的精确颜色可保存为主屏幕图标，也可用于最近使用的应用。</string>
+  <string name="app_icon_custom_background_hint">应用抽屉使用最接近的内置图标；主页和最近任务使用所选颜色。</string>
   <string name="app_icon_custom_logo_hint">选择要叠加在自定义背景上的任意徽标。</string>
   <string name="app_icon_custom_requested">您的设计</string>
   <string name="app_icon_custom_native_match">实际启动器图标</string>
@@ -2645,7 +2637,7 @@
   <string name="selection_info_fps_value">%1$.2f 帧/秒</string>
   <string name="selection_info_metadata_note">摘要使用媒体库中已有的元数据。点按文件可查看完整元数据。</string>
   <string name="selection_info_missing_metadata">缺失的元数据</string>
-  <string name="selection_info_missing_metadata_value">大小未知的文件：%1$d；时长未知的文件：%2$d。总计和平均值仅包含已知数据。</string>
+  <string name="selection_info_missing_metadata_value">大小未知：%1$d；时长未知：%2$d。合计仅包含已知数值。</string>
   <string name="selection_info_no_media">所选文件夹中未找到可播放的媒体</string>
   <string name="selection_info_copy_summary">复制摘要</string>
   <string name="selection_info_open_media_info">打开完整媒体信息</string>
@@ -2706,14 +2698,14 @@
   <string name="thumbnail_no">否</string>
   <string name="thumbnail_refresh">刷新信息</string>
   <string name="thumbnail_generate">生成缩略图</string>
-  <string name="thumbnail_quality_note">预览显示当前设置下实际缓存的图片。媒体浏览器中的图块可能会缓存小于所设尺寸上限的图片。打开此标签页不会生成新的帧。</string>
+  <string name="thumbnail_quality_note">此处显示缓存预览，不会提取新帧。尺寸可能小于所选上限。</string>
   <string name="thumbnail_inspection_failed">无法读取缩略图信息，请尝试刷新。</string>
   <string name="thumbnail_generation_unavailable">所选生成器未能为此文件返回缩略图。</string>
 
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">为本地缩略图和歌曲封面选择自动、Native或MediaStore</string>
   <string name="pref_thumbnail_generator_auto">自动（默认）</string>
-  <string name="pref_thumbnail_generator_auto_summary">先尝试MediaStore；若无法获取缩略图或歌曲封面，则使用Native，隐藏文件夹也适用。切换模式会清除已缓存的缩略图。</string>
+  <string name="pref_thumbnail_generator_auto_summary">优先使用 Android 缩略图，缺失时改用原生提取。切换会清空缓存。</string>
   <string name="thumbnail_strategy_auto">优先使用MediaStore，失败时回退到Native</string>
 
   <string name="update_download_failed">下载失败。点击“重试”以继续下载。</string>
@@ -2722,7 +2714,7 @@
   <string name="update_checking_download">正在检查已下载的 APK…</string>
   <string name="update_check_failed">无法检查更新。请检查网络连接或稍后重试。</string>
   <string name="update_auto_install">自动下载并安装</string>
-  <string name="update_auto_install_summary">通过不限流量的网络下载，并在 mpvRx 闲置时安装。Android 可能会要求确认。</string>
+  <string name="update_auto_install_summary">在非按流量计费的网络下载，空闲时安装。Android 可能要求授权。</string>
   <string name="update_download_and_install">下载并安装</string>
   <string name="update_background_downloading">正在下载应用更新…</string>
   <string name="update_installing">正在安装更新…</string>
@@ -2733,8 +2725,8 @@
   <string name="pref_appearance_thumbnail_generator_title">缩略图生成方式</string>
   <string name="pref_thumbnail_generator_native">直接提取</string>
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
-  <string name="pref_thumbnail_generator_native_summary">从媒体文件中提取本地视频缩略图和歌曲封面。切换后会清除已缓存的缩略图。</string>
-  <string name="pref_thumbnail_generator_mediastore_summary">为本地视频和歌曲使用 Android 缩略图及专辑封面。切换后会清除已缓存的缩略图；封面不可用时显示占位图。网络预览使用直接提取方式。</string>
+  <string name="pref_thumbnail_generator_native_summary">从本地文件提取缩略图和封面。切换会清空缓存。</string>
+  <string name="pref_thumbnail_generator_mediastore_summary">使用 Android 缩略图和封面。切换会清空缓存；网络预览使用原生提取。</string>
   <string name="ui_update_channels_summary">稳定版本、每夜预览版或实验性 CI 构建。</string>
   <string name="update_experimental_build_format">实验版 r%1$d</string>
   <string name="tv_nav_settings">设置</string>
@@ -2749,7 +2741,7 @@
   <string name="tv_player_quality">视频画质</string>
   <string name="tv_player_seek_bar">进度条</string>
   <string name="pref_audio_animated_artwork_title">动态专辑封面</string>
-  <string name="pref_audio_animated_artwork_summary">在全屏音乐播放器中从 Apple Music 获取匹配的动态封面。会向 Apple 发送歌曲名称、艺人和专辑信息，并使用移动数据。默认关闭；动态封面不可用时保留现有封面。请从可视化效果切换到封面以查看动画。</string>
+  <string name="pref_audio_animated_artwork_summary">Apple Music 动态封面。会共享曲目信息并使用流量；不可用时保留静态封面。</string>
   <string name="jellyfin_featured">精选</string>
   <string name="jellyfin_series">剧集</string>
   <string name="jellyfin_movie">电影</string>
@@ -2837,8 +2829,8 @@
   <string name="clip_track_auto_off">自动 / 关闭</string>
   <string name="pref_blacklist_count">黑名单中有 %1$d 个文件夹</string>
   <string name="pref_whitelist_disabled">白名单已停用</string>
-  <string name="pref_blacklist_summary">此列表中的文件夹会从媒体中隐藏。可为每个文件夹选择隐藏视频、音频或两者。</string>
-  <string name="pref_whitelist_summary">启用白名单后，只扫描这些文件夹及其子文件夹。未添加文件夹时不作任何限制。</string>
+  <string name="pref_blacklist_summary">隐藏这些文件夹中的视频、音频或两者。</string>
+  <string name="pref_whitelist_summary">仅扫描这些文件夹及其子文件夹。列表为空时不限制。</string>
   <string name="pref_whitelist_empty_message">点击下方按钮添加要扫描的文件夹</string>
   <string name="clip_section_range">范围</string>
   <string name="clip_section_output">输出</string>
@@ -2857,7 +2849,7 @@
   <string name="pref_audio_spatial_title">空间音频</string>
   <string name="pref_audio_spatial_summary">拓宽立体声音场，带来更沉浸的听觉体验</string>
   <string name="pref_measure_enabled_title">与 Measure 共享诊断信息</string>
-  <string name="pref_measure_enabled_summary">选择向 Measure 发送崩溃、ANR、性能指标和会话活动。默认关闭。</string>
+  <string name="pref_measure_enabled_summary">向 Measure 发送崩溃、ANR、性能和会话数据。默认关闭。</string>
   <string name="pref_measure_not_configured">诊断不可用：此版本未配置 Measure API 密钥。</string>
   <string name="pref_layout_portrait_playback_position">竖屏播放控件</string>
   <string name="pref_layout_landscape_playback_position">横屏播放控件</string>
@@ -2873,7 +2865,7 @@
 
   <string name="grayscale_watched_thumbnails">已观看视频的缩略图显示为灰度</string>
   <string name="pref_gesture_require_double_tap_title">每次跳转都需双击</string>
-  <string name="pref_gesture_require_double_tap_summary">在双击区域中，每次跳转都需要重新双击。关闭后，在反馈提示仍显示时，可通过单击连续跳转。单击区域不受影响。</string>
+  <string name="pref_gesture_require_double_tap_summary">每次快进或快退都需双击。关闭后，提示显示期间单击即可继续。</string>
   <string name="audio_footer_show_artwork">显示专辑封面</string>
   <string name="audio_footer_show_visualizer">显示可视化效果</string>
   <string name="toast_updating_thumbnail_generator">正在更新缩略图</string>
@@ -2892,11 +2884,11 @@
   <string name="player_settings_config_owned">由 mpv.conf 控制</string>
 
   <string name="pref_custom_openai_base_url_title">自定义 OpenAI 兼容 API 基础 URL</string>
-  <string name="pref_custom_openai_base_url_summary">输入 HTTP(S) API 的基础地址，例如 https://example.com/v1。支持 Chat Completions 接口及可选的模型发现功能。请勿在 URL 中包含凭据。</string>
+  <string name="pref_custom_openai_base_url_summary">Chat Completions 基础地址，如 https://example.com/v1。请勿在地址中包含 API 密钥。</string>
   <string name="pref_custom_openai_key_title">自定义服务商 API 密钥</string>
-  <string name="pref_custom_openai_key_summary">对于无需身份验证的服务器，可留空。使用 API 密钥时建议使用 HTTPS。</string>
+  <string name="pref_custom_openai_key_summary">无需认证的服务器可留空。发送密钥时请使用 HTTPS。</string>
   <string name="pref_custom_openai_model_title">自定义模型 ID</string>
-  <string name="pref_custom_openai_model_summary">手动输入模型 ID，或获取模型列表。如果模型发现功能不可用，请输入 ID 并使用“检查模型访问权限”。</string>
+  <string name="pref_custom_openai_model_summary">输入模型 ID 或获取列表，再检查模型访问权限。</string>
   <string name="pref_custom_openai_check_endpoint">检查接口地址</string>
   <string name="pref_ai_cached_models_invalid">无法读取已保存的模型列表。请重新获取模型列表。</string>
 
@@ -3000,7 +2992,7 @@
   <string name="lyrics_editor_saved">歌词修改已保存</string>
   <string name="lyrics_editor_restored">已恢复原始歌词</string>
   <string name="pref_audio_immersive_artwork_title">沉浸式封面</string>
-  <string name="pref_audio_immersive_artwork_summary">封面延伸至屏幕边缘，并渐隐融入竖屏音乐播放器背景。默认关闭。从可视化效果切换到封面即可查看。</string>
+  <string name="pref_audio_immersive_artwork_summary">横竖屏均显示无边框封面。</string>
 
   <string name="wallpaper_preset_link">通过链接</string>
   <string name="wallpaper_link_title">下载壁纸</string>
@@ -3014,7 +3006,7 @@
   <string name="remote_settings_title_phone">电视遥控</string>
   <string name="remote_settings_summary_phone">用本手机控制电视上的 MPVRX 并输入链接</string>
   <string name="remote_tv_enable">允许手机遥控</string>
-  <string name="remote_tv_enable_summary">MPVRX 打开时，同一网络上的手机可以请求配对。每部手机都需要在此电视上批准。</string>
+  <string name="remote_tv_enable_summary">与同一网络的手机配对。每次请求都需在此电视上批准。</string>
   <string name="remote_tv_address">此电视：%1$s</string>
   <string name="remote_tv_address_unavailable">请将此电视连接到网络以查看其地址。</string>
   <string name="remote_tv_how_to">在手机上打开 MPVRX，进入设置 &gt; 电视遥控，然后选择此电视。如果列表中未显示，请输入上方地址。</string>
@@ -3086,8 +3078,8 @@
   <string name="pref_audio_spatial_mode">空间音频模式</string>
   <string name="pref_audio_spatial_stereo">立体声拓宽</string>
   <string name="pref_audio_hrtf_title">耳机 - KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">使用内置的 96 kHz KU100 数据集，对音乐进行双耳 HRTF 处理。需要 mpv 版本支持 sofalizer 和 libmysofa。</string>
-  <string name="pref_audio_hrtf_unavailable">无法为此曲目启用 HRTF。请确认 mpv 版本包含 sofalizer 和 libmysofa，或选择立体声拓宽。</string>
+  <string name="pref_audio_hrtf_summary">KU100 双耳音效。需要支持 sofalizer 和 libmysofa 的 mpv。</string>
+  <string name="pref_audio_hrtf_unavailable">需要支持 sofalizer 和 libmysofa 的 mpv，否则请使用立体声扩展。</string>
   <string name="pref_layout_playback_with_buttons">与按钮行放在一起</string>
   <string name="pref_action_open_page">打开页面</string>
   <string name="pref_action_open_dialog">打开对话框</string>
@@ -3148,4 +3140,7 @@
   <string name="theme_color_primary">主强调色</string>
   <string name="theme_color_secondary">次强调色</string>
   <string name="theme_color_tertiary">高亮强调色</string>
+  <string name="permission_video_access_summary">允许访问 Downloads、Movies 和 DCIM 中的视频。</string>
+  <string name="permission_media_access_summary">允许访问已存储的视频和音频文件。</string>
+  <string name="pref_audio_passthrough_summary">将环绕声音频直接传至接收器，不解码、不加音效。</string>
 </resources>

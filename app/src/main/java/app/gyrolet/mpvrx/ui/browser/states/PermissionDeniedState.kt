@@ -792,11 +792,13 @@ fun PermissionDeniedState(
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-              text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                "On Android 13 and above, this permission allows the app to read video files from your device's storage, including Downloads, Movies, and DCIM folders."
-              } else {
-                "This permission allows the app to read media files from your device's storage to play videos and audio."
-              },
+              text = stringResource(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                  R.string.permission_video_access_summary
+                } else {
+                  R.string.permission_media_access_summary
+                },
+              ),
               style = MaterialTheme.typography.bodyMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

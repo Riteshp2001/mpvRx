@@ -734,7 +734,8 @@ private fun ImmersiveArtworkBackground(
   remoteMotionQuery: MotionArtworkQuery?,
   isPlaying: Boolean,
   surfaceColor: Color,
-  headerFadeHeight: androidx.compose.ui.unit.Dp,
+  headerFadeHeight: Dp,
+  landscape: Boolean,
   swipeOffset: androidx.compose.runtime.State<Float>,
   previousBitmap: Bitmap?,
   previousArtworkUrl: String?,
@@ -754,19 +755,38 @@ private fun ImmersiveArtworkBackground(
     }
   }
   BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
-    val artworkHeight = minOf(maxHeight * 0.64f, maxWidth * 1.7f)
+    val artworkHeight = if (landscape) maxHeight else minOf(maxHeight * 0.64f, maxWidth * 1.7f)
     val viewportWidth = constraints.maxWidth.toFloat()
     Box(
       Modifier.fillMaxWidth().height(artworkHeight)
         .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
         .drawWithCache {
-          val artworkMask = Brush.verticalGradient(
-            0f to Color.White,
-            0.48f to Color.White,
+          val artworkMask = if (landscape) {
+            val rtl = layoutDirection == LayoutDirection.Rtl
+            Brush.horizontalGradient(
+              0f to Color.White,
+              0.22f to Color.White,
+              0.50f to Color.White.copy(alpha = 0.12f),
+              1f to Color.Transparent,
+              startX = if (rtl) size.width else 0f,
+              endX = if (rtl) 0f else size.width,
+            )
+          } else {
+            Brush.verticalGradient(
+              0f to Color.White,
+              0.48f to Color.White,
+              1f to Color.Transparent,
+            )
+          }
+          val headerScrim = Brush.verticalGradient(
+            0f to surfaceColor.copy(alpha = 0.24f),
+            0.45f to surfaceColor.copy(alpha = 0.10f),
             1f to Color.Transparent,
+            endY = headerFadeHeight.toPx(),
           )
           onDrawWithContent {
             drawContent()
+            drawRect(headerScrim)
             drawRect(artworkMask, blendMode = BlendMode.DstIn)
           }
         },
@@ -805,19 +825,6 @@ private fun ImmersiveArtworkBackground(
           isPlaying = isPlaying && !reducedMotion,
         )
       }
-      Box(
-        Modifier.fillMaxSize().drawWithCache {
-          val headerScrim = Brush.verticalGradient(
-            0f to surfaceColor.copy(alpha = 0.82f),
-            0.60f to surfaceColor.copy(alpha = 0.76f),
-            1f to Color.Transparent,
-            endY = headerFadeHeight.toPx(),
-          )
-          onDrawBehind {
-            drawRect(headerScrim)
-          }
-        },
-      )
     }
   }
 }
@@ -1363,7 +1370,7 @@ fun AudioPlayerControls(
     if (flushInPlaceLyrics) Modifier.padding(start = 16.dp, top = 6.dp, end = 16.dp) else Modifier
   // Visibility-independent insets keep the layout still while bars re-dispatch on resume.
   val stableInsets = WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout)
-  val showImmersiveArtwork = !isTablet && immersiveArtworkEnabled && isPortrait && !showVisualizer && !showInPlaceLyrics &&
+  val showImmersiveArtwork = !isTablet && immersiveArtworkEnabled && !showVisualizer && !showInPlaceLyrics &&
     (albumArtBitmap != null || !currentArtworkUri.isNullOrBlank() ||
       currentAudioPresentation?.motionArtwork != null || motionQuery != null)
   val immersiveSurface by animateColorAsState(
@@ -1382,7 +1389,7 @@ fun AudioPlayerControls(
   }
   val animatableOffsetX = remember { Animatable(0f) }
   val haptic = rememberAppHaptics()
-  LaunchedEffect(queueState.currentItem?.queueEntryId, showImmersiveArtwork) {
+  LaunchedEffect(queueState.currentItem?.queueEntryId, showImmersiveArtwork, isPortrait) {
     animatableOffsetX.snapTo(0f)
   }
   val nextItem = remember(queueState) { PlaybackQueueReducer.peekNext(queueState) }
@@ -1431,6 +1438,7 @@ fun AudioPlayerControls(
         isPlaying = isPlaying,
         surfaceColor = immersiveSurface,
         headerFadeHeight = with(LocalDensity.current) { stableInsets.getTop(this).toDp() } + 96.dp,
+        landscape = !isPortrait,
         swipeOffset = animatableOffsetX.asState(),
         previousBitmap = swipePrevCoverBitmap,
         previousArtworkUrl = prevItem?.artworkUri?.takeIf {
@@ -1647,14 +1655,14 @@ fun AudioPlayerControls(
                 modifier = Modifier
                   .fillMaxHeight()
                   .fillMaxWidth(if (isTablet) (if (isTabletPortrait) 0.92f else 0.88f) else if (isPortrait) 0.88f else 1f)
-                  .pointerInput(viewModel, queueState, showVisualizer, stride, showImmersiveArtwork, isAudiobook) {
+                  .pointerInput(viewModel, queueState, showVisualizer, stride, showImmersiveArtwork, isAudiobook, isPortrait, containerWidthPx) {
                     if (showVisualizer || isAudiobook || swipeWidth <= 0f) return@pointerInput
                     detectHorizontalDragGestures(
                       onDragStart = {
                         coroutineScope.launch { animatableOffsetX.stop() }
                       },
                       onDragEnd = {
-                        val threshold = swipeWidth * 0.25f
+                        val threshold = (if (showImmersiveArtwork && !isPortrait) containerWidthPx else swipeWidth) * 0.25f
                         val dragVal = animatableOffsetX.value
                         coroutineScope.launch {
                           if (dragVal < -threshold && nextItem != null) {

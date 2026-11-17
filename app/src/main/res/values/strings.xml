@@ -41,7 +41,7 @@
   <string name="pref_liquid_glass_in_hdr_title">Liquid glass in HDR mode</string>
   <string name="pref_liquid_glass_in_hdr_summary">Keep live glass on player controls while HDR output is on. HDR video will look like SDR</string>
   <string name="pref_liquid_glass_in_hdr_warning_title">Use liquid glass in HDR mode?</string>
-  <string name="pref_liquid_glass_in_hdr_warning_message">Liquid glass needs the video to be drawn through TextureView. Android converts HDR video drawn this way to SDR, so HDR output loses its extra brightness and contrast, and playback may use more battery. Turn this off anytime to restore true HDR.</string>
+  <string name="pref_liquid_glass_in_hdr_warning_message">Liquid Glass converts HDR to SDR through TextureView and may use more battery. Turn it off for true HDR.</string>
   <string name="pref_liquid_glass_in_hdr_warning_confirm">Enable anyway</string>
   <string name="pref_appearance_category_liquid_glass">Liquid glass</string>
   <string name="pref_liquid_glass_optics">Optics</string>
@@ -100,23 +100,23 @@
   <string name="pref_appearance_thumbnail_generator_title">Thumbnail generator</string>
   <string name="pref_appearance_thumbnail_generator_summary">Choose Auto, Native or MediaStore for local thumbnails and song covers</string>
   <string name="pref_thumbnail_generator_auto">Auto (Default)</string>
-  <string name="pref_thumbnail_generator_auto_summary">Try MediaStore first; use Native if a thumbnail or song cover is unavailable, including in hidden folders. Switching clears cached thumbnails.</string>
+  <string name="pref_thumbnail_generator_auto_summary">Use Android thumbnails first, then Native if missing. Switching clears the cache.</string>
   <string name="pref_thumbnail_generator_native">Native</string>
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
-  <string name="pref_thumbnail_generator_native_summary">Extract local video thumbnails and song covers from the media file. Switching clears cached thumbnails.</string>
-  <string name="pref_thumbnail_generator_mediastore_summary">Use Android thumbnails and album art for local videos and songs. Switching clears cached thumbnails; unavailable artwork shows a placeholder. Network previews use Native.</string>
+  <string name="pref_thumbnail_generator_native_summary">Extract thumbnails and covers from local files. Switching clears the cache.</string>
+  <string name="pref_thumbnail_generator_mediastore_summary">Use Android thumbnails and covers. Switching clears the cache. Network previews use Native.</string>
   <string name="pref_appearance_thumbnail_generation_title">Thumbnail generation strategy</string>
-  <string name="pref_appearance_thumbnail_generation_summary">Choose how thumbnails are generated, including embedded artwork or a specific frame position</string>
+  <string name="pref_appearance_thumbnail_generation_summary">Choose embedded artwork or a video frame.</string>
   <string name="pref_appearance_thumbnail_generation_change_title">Change thumbnail strategy?</string>
-  <string name="pref_appearance_thumbnail_generation_change_summary">This will clear cached thumbnails. New thumbnails will be generated with the selected strategy as you browse.</string>
+  <string name="pref_appearance_thumbnail_generation_change_summary">Clear cached thumbnails and regenerate them as you browse?</string>
   <string name="pref_appearance_thumbnail_quality_title">Thumbnail quality</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Maximum thumbnail resolution: %1$d px. Higher quality uses more storage and may generate more slowly.</string>
+  <string name="pref_appearance_thumbnail_quality_summary">Thumbnail limit: %1$d px. Larger images use more storage and processing.</string>
   <string name="pref_appearance_thumbnail_position_title">Thumbnail frame position</string>
   <string name="pref_appearance_thumbnail_position_summary">Capture the frame at %1$d%% of the video</string>
   <string name="pref_appearance_thumbnail_parallelism_title">Thumbnail processing cores</string>
   <string name="pref_appearance_thumbnail_parallelism_auto">Auto (%1$d of %2$d)</string>
   <string name="pref_appearance_thumbnail_parallelism_value">%1$d of %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">How many thumbnails are created at the same time. More is faster but uses more memory and battery and can make scrolling stutter. Auto picks a safe value for this device.</string>
+  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">More threads are faster but may increase memory use, battery drain and stutter. Auto is recommended.</string>
   <string name="pref_appearance_thumbnail_parallelism_warning">Higher than the %1$d recommended for this device. Lower it if lists lag or the app is closed in the background.</string>
   <string name="pref_appearance_show_network_thumbnails_title">Show network thumbnails (Experimental)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">Generate thumbnails for network streams (May increase data usage on mobile networks)</string>
@@ -208,11 +208,11 @@
   <string name="pref_enable_video_mini_player_title">Enable Video Mini Player</string>
   <string name="pref_enable_video_mini_player_summary">Minimize video playback into a floating Mini Player when pressing Back</string>
   <string name="pref_video_mini_player_dependency_title">Enable video background playback?</string>
-  <string name="pref_video_mini_player_dependency_message">Video Mini Player needs Video Player Background Playback to keep the video playing after you leave the full player.</string>
+  <string name="pref_video_mini_player_dependency_message">Requires Video Player Background Playback.</string>
   <string name="pref_video_mini_player_dependency_confirm">Enable and continue</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Keep screen on when paused</string>
   <string name="pref_player_external_display_projection_title">External display projection</string>
-  <string name="pref_player_external_display_projection_summary">When an HDMI, USB-C, or wireless display is connected, play video on it and let the phone screen turn off</string>
+  <string name="pref_player_external_display_projection_summary">Play on HDMI, USB-C or wireless displays with the phone screen off.</string>
   <string name="pref_player_keep_screen_on_when_paused_summary">Screen stays awake while video is paused</string>
   <string name="pref_player_keep_screen_on_when_paused_summary_disabled">Screen can turn off while video is paused</string>
   <string name="pref_player_autoplay_after_screen_unlock_title">Autoplay after screen unlock</string>
@@ -276,7 +276,7 @@
   <string name="player_passthrough_failed">Passthrough not supported here, decoding instead</string>
   <string name="player_renderer_switch_failed">Renderer change applies when the player reopens</string>
   <string name="pref_resume_indicator_overlay_title">Resume playback indicator</string>
-  <string name="pref_resume_indicator_overlay_summary">Show resume/start-position feedback pills. Ask mode always shows its actionable resume pill</string>
+  <string name="pref_resume_indicator_overlay_summary">Show resume hints. Ask mode always keeps its resume prompt.</string>
   <string name="pref_player_double_tap_seek_duration">Tap seek duration</string>
   <string name="pref_player_custom_skip_duration_title">Custom skip duration</string>
   <string name="pref_player_custom_skip_duration_summary">Duration to skip forward on custom skip button</string>
@@ -304,7 +304,7 @@
   <string name="pref_gesture_summary">Single/double tap, media controls</string>
   <string name="pref_gesture_double_tap_title">Tap gestures</string>
   <string name="pref_gesture_require_double_tap_title">Require double tap for every seek</string>
-  <string name="pref_gesture_require_double_tap_summary">Require a fresh double tap for each seek in double-tap regions. Turn off to keep seeking with single taps while feedback is visible. Single-tap regions are unchanged.</string>
+  <string name="pref_gesture_require_double_tap_summary">Require a double tap for each seek. When off, single taps keep seeking while feedback is visible.</string>
   <string name="pref_gesture_double_tap_none">None</string>
   <string name="pref_gesture_double_tap_seek">Seek</string>
   <string name="pref_gesture_double_tap_play">Play/Pause</string>
@@ -319,18 +319,18 @@
   <string name="pref_gesture_use_single_tap_for_center_title">Single tap in center</string>
   <string name="pref_gesture_use_single_tap_for_right_title">Single tap on right</string>
   <string name="pref_gesture_use_single_tap_for_left_summary">Tap once instead of twice to run the left-side action.</string>
-  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">Tap once inside the center zone (30% wide by default, 30% tall). Other center taps toggle controls.</string>
+  <string name="pref_gesture_use_single_tap_for_center_summary" formatted="false">Single-tap within the center zone (30% wide, 30% tall). Other taps toggle controls.</string>
   <string name="pref_gesture_use_single_tap_for_right_summary">Tap once instead of twice to run the right-side action.</string>
   <string name="pref_gesture_center_vertical_subtitle_position_title">Hold and drag subtitles</string>
-  <string name="pref_gesture_center_vertical_subtitle_position_summary">Hold the center, then drag up or down to move primary subtitles. Add a second finger and pinch to resize when subtitle pinch-to-zoom is enabled. Hold directly on either subtitle to move that track independently. Normal swipes still open the playlist.</string>
-  <string name="pref_gesture_double_tap_custom_info">You can bind custom actions to these gestures in input.conf using the following key codes:\n\nLeft: MBTN_LEFT_DBL\nCenter: MBTN_MID_DBL\nRight: MBTN_RIGHT_DBL</string>
+  <string name="pref_gesture_center_vertical_subtitle_position_summary">Hold a subtitle to move it, or hold the center for the primary track. Pinch to resize if enabled.</string>
+  <string name="pref_gesture_double_tap_custom_info">input.conf keys:\nLeft: MBTN_LEFT_DBL\nCenter: MBTN_MID_DBL\nRight: MBTN_RIGHT_DBL</string>
   <string name="pref_gesture_media_title">Media controls</string>
   <string name="pref_gesture_media_previous">Previous</string>
   <string name="pref_gesture_media_play">Play/Pause</string>
   <string name="pref_gesture_media_next">Next</string>
-  <string name="pref_gesture_media_custom_info">You can bind custom actions to media controls in input.conf using the following key codes:\n\nPrevious: PREV\nPlay/Pause: PLAYPAUSE\nNext: NEXT</string>
+  <string name="pref_gesture_media_custom_info">input.conf keys:\nPrevious: PREV\nPlay/Pause: PLAYPAUSE\nNext: NEXT</string>
   <string name="pref_gesture_tap_thumbnail_to_select_title">Tap thumbnail to select</string>
-  <string name="pref_gesture_tap_thumbnail_to_select_summary">When enabled, tapping on thumbnails enters selection mode. When disabled, tapping thumbnails plays the video.</string>
+  <string name="pref_gesture_tap_thumbnail_to_select_summary">Tap thumbnails to select instead of play.</string>
   <string name="pref_decoder">Decoder</string>
   <string name="pref_decoder_summary">Hardware decoding, pixel format, debanding</string>
   <string name="pref_decoder_profile_title">MPV Profile</string>
@@ -355,7 +355,7 @@
   <string name="renderer_build_notice_supported_device">Using OpenGL; install the standard build for Vulkan.</string>
   <string name="renderer_build_notice_unsupported_device">Using OpenGL; this device lacks Vulkan 1.3.</string>
   <string name="pref_decoder_yuv420p_title">Use YUV420P pixel format</string>
-  <string name="pref_decoder_yuv420p_summary">May fix black screens on some video codecs, can also improve performance at the cost of quality</string>
+  <string name="pref_decoder_yuv420p_summary">May fix black screens or improve speed, with reduced quality.</string>
   <string name="pref_decoder_dolby_vision_direct_title">Dolby Vision passthrough</string>
   <string name="pref_decoder_dolby_vision_direct_summary">The phone decodes Dolby Vision itself</string>
   <string name="pref_decoder_dolby_vision_direct_needs_surface">Unavailable while Liquid Glass draws the video</string>
@@ -401,7 +401,7 @@
   <string name="pref_audio_summary">Ambient mode, visualizer style, audio channels, pitch correction</string>
   <string name="pref_audio_orientation_title">Audio player orientation</string>
   <string name="pref_audio_pitch_correction_title">Enable audio pitch correction</string>
-  <string name="pref_audio_pitch_correction_summary">Prevents the audio from becoming high-pitched at faster speeds and low-pitched at slower speeds</string>
+  <string name="pref_audio_pitch_correction_summary">Keep the original pitch when playback speed changes.</string>
   <string name="pref_audio_volume_normalization_title">Volume normalization</string>
   <string name="pref_audio_volume_normalization_summary">Automatically adjust audio volume to maintain consistent loudness levels</string>
   <string name="pref_audio_spatial_title">Spatial audio</string>
@@ -420,7 +420,7 @@
 
   <string name="pref_audio_visualizer_galaxy_credit">Inspired by Zain Raza on CodePen</string>
   <string name="pref_audio_ambient_mode_title">Ambient Mode</string>
-  <string name="pref_audio_ambient_mode_summary">Display dynamic color gradients derived from album cover art in music player (disabled when visualizer is active)</string>
+  <string name="pref_audio_ambient_mode_summary">Cover-based background colors. Hidden while the visualizer is active.</string>
   <string name="pref_audio_wavy_seekbar_title">Wavy seekbar</string>
   <string name="pref_audio_wavy_seekbar_summary">Display multi-layer fluid wavy visualizer animation above the seekbar</string>
   <string name="pref_audio_channels">Audio channels</string>
@@ -429,7 +429,7 @@
   <string name="pref_audio_channels_mono">Mono</string>
   <string name="pref_audio_channels_stereo">Stereo</string>
   <string name="pref_audio_channels_stereo_reversed">Reversed Stereo</string>
-  <string name="pref_audio_preferred_language">Audio language(s) to be selected by default on a video with multiple audio streams, Two- or three-letter languages codes work. Multiple values can be delimited by comma.</string>
+  <string name="pref_audio_preferred_language">Comma-separated language codes, e.g. en,eng,ja. Matched left to right.</string>
   <string name="pref_audio_volume_boost_cap">Volume boost cap</string>
   <string name="pref_audio_output_title">Audio output</string>
   <string name="pref_audio_output_auto">Auto</string>
@@ -437,7 +437,7 @@
   <string name="pref_audio_output_aaudio">AAudio (low latency)</string>
   <string name="pref_audio_output_opensles">OpenSL ES</string>
   <string name="pref_audio_passthrough_title">Passthrough</string>
-  <string name="pref_audio_passthrough_summary">Sends surround audio undecoded to a receiver or soundbar. Audio effects do not apply to it.</string>
+  <string name="pref_audio_passthrough_summary">Send surround audio to a receiver without decoding or effects.</string>
   <string name="pref_audio_passthrough_off">Off</string>
   <string name="pref_audio_passthrough_dolby">Dolby Digital (AC3, E-AC3)</string>
   <string name="pref_audio_passthrough_dolby_dts">Dolby Digital and DTS</string>
@@ -490,7 +490,7 @@
   <string name="pref_mpv_conf_override_osd">OSD safe area</string>
   <string name="pref_mpv_conf_override_osd_summary">Overrides the OSD font, margins, and safe areas.</string>
   <string name="mpv_config_owned_title">Controlled by mpv.conf</string>
-  <string name="mpv_config_owned_message">This app control is disabled because one or more options it requires are assigned to mpv.conf in Advanced settings.</string>
+  <string name="mpv_config_owned_message">Controlled by mpv.conf. Change option ownership in Advanced settings to use this control.</string>
   <string name="pref_advanced_dump_logs_title">Dump logs</string>
   <string name="pref_advanced_dump_logs_summary">Dumps and copies the logs to be shared with the developers</string>
   <string name="pref_advanced_verbose_logging_title">Verbose logging</string>
@@ -509,7 +509,7 @@
   <string name="pref_anime4k_title">Anime4K Upscaling</string>
   <string name="pref_anime4k_summary">Enable Anime4K upscaling filter</string>
   <string name="pref_anime4k_incompatibility">Anime4K Incompatibility</string>
-  <string name="pref_anime4k_gpu_next_error">Anime4K requires either legacy gpu, or gpu-next with Vulkan enabled. gpu-next on OpenGL will fall back to legacy gpu for shader compatibility.</string>
+  <string name="pref_anime4k_gpu_next_error">Anime4K needs legacy GPU or GPU Next with Vulkan. OpenGL uses legacy GPU.</string>
   <string name="anime4k_mode_title">Anime4K Presets</string>
   <string name="pref_anime4k_quality_title">Anime4K quality</string>
   <!-- Anime4K Modes (Renamed to Presets in UI) -->
@@ -525,7 +525,7 @@
   <string name="anime4k_quality_balanced">Balanced</string>
   <string name="anime4k_quality_high">High</string>
   <string name="pref_anime4k_in_4k_title">Enable in 4K Videos</string>
-  <string name="pref_anime4k_in_4k_summary">Allow Anime4K upscaling for 4K and 8K videos (may increase GPU load and thermal throttling)</string>
+  <string name="pref_anime4k_in_4k_summary">Enable for 4K/8K video. May increase GPU load and heat.</string>
   <string name="pref_anime4k_darken_title">Anime4K darken lines</string>
   <string name="pref_anime4k_darken_summary">Adds line darkening after the main upscaler.</string>
   <string name="pref_anime4k_thin_title">Anime4K thin lines</string>
@@ -629,7 +629,7 @@
   <string name="player_aspect_crop">Crop</string>
   <string name="player_aspect_stretch">Stretch</string>
   <string name="crash_screen_title">Unexpected error</string>
-  <string name="crash_screen_subtitle">Looks like %s experienced an unexpected error. Consider sharing the crash logs in a GitHub issue.</string>
+  <string name="crash_screen_subtitle">An unexpected error occurred in %s. Share the logs in a GitHub issue.</string>
   <string name="crash_screen_logs_title">Crash logs:</string>
   <string name="crash_screen_share">Share crash logs</string>
   <string name="crash_screen_restart">Restart the app</string>
@@ -672,7 +672,7 @@
   <string name="toast_audio_background_playback_off">Audio background playback off</string>
   <string name="pref_audio_background_playback_summary">Keep audio playing when leaving the audio player or turning off screen</string>
   <string name="pref_audio_mini_player_track_switching_title">Switch songs in mini player</string>
-  <string name="pref_audio_mini_player_track_switching_summary">When mini player or background playback is active, selecting another song updates the mini player without opening the full player</string>
+  <string name="pref_audio_mini_player_track_switching_summary">Change tracks in the mini player without opening the full player.</string>
   <string name="pref_video_background_playback_title">Video Player Background Playback</string>
   <string name="pref_video_background_playback_summary">Keep video audio playing when leaving the video player or turning off screen</string>
   <string name="deselect_all">Deselect All</string>
@@ -707,7 +707,7 @@
   <string name="selection_info_fps_value">%1$.2f FPS</string>
   <string name="selection_info_metadata_note">Summary uses available library metadata. Tap a file for full metadata.</string>
   <string name="selection_info_missing_metadata">Unavailable metadata</string>
-  <string name="selection_info_missing_metadata_value">Files with unknown size: %1$d; unknown duration: %2$d. Totals and averages use known values only.</string>
+  <string name="selection_info_missing_metadata_value">Unknown size: %1$d; duration: %2$d. Totals use known values only.</string>
   <string name="selection_info_no_media">No playable media found in the selected folders</string>
   <string name="selection_info_copy_summary">Copy summary</string>
   <string name="selection_info_open_media_info">Open full media info</string>
@@ -731,7 +731,7 @@
   <string name="got_it">Got it</string>
   <string name="general">General</string>
   <string name="not_set_video_default">Not set (will use video default)</string>
-  <string name="enter_subtitle_title_preferences">Enter subtitle-title keywords or language codes in priority order, separated by commas. Earlier matches take precedence.</string>
+  <string name="enter_subtitle_title_preferences">Comma-separated subtitle keywords or language codes, matched left to right.</string>
   <string name="subtitle_title_preferences_placeholder">Full,Dialogue,eng,en</string>
   <string name="fonts_loaded">%1$d fonts loaded</string>
   <string name="reload_fonts">Reload fonts</string>
@@ -984,7 +984,7 @@
     <string name="ui_recent_streams">Recent Stream Links</string>
   <string name="ui_play_now">Play</string>
   <string name="ui_no_saved_media_title">No Saved Links</string>
-  <string name="ui_no_saved_media_description">Paste a stream URL, magnet link, or save from recent links to build your media collection.</string>
+  <string name="ui_no_saved_media_description">Add a stream URL, magnet link or recent link.</string>
   <string name="pref_export_complete_title">Export Complete</string>
   <string name="pref_export_complete_text">Successfully exported %1$d items!</string>
   <string name="pref_import_complete_title">Import Complete</string>
@@ -1038,11 +1038,11 @@
   <string name="pref_ai_provider_section">Provider</string>
   <string name="pref_ai_provider_title">AI Provider</string>
   <string name="pref_custom_openai_base_url_title">Custom OpenAI-compatible Base URL</string>
-  <string name="pref_custom_openai_base_url_summary">Enter the HTTP(S) API base, such as https://example.com/v1. Chat Completions and optional model discovery are supported. Keep credentials out of the URL.</string>
+  <string name="pref_custom_openai_base_url_summary">Chat Completions base URL, e.g. https://example.com/v1. Do not include an API key.</string>
   <string name="pref_custom_openai_key_title">Custom provider API key</string>
-  <string name="pref_custom_openai_key_summary">Optional for servers that do not require authentication. Prefer HTTPS when using an API key.</string>
+  <string name="pref_custom_openai_key_summary">Optional for servers without authentication. Use HTTPS when sending a key.</string>
   <string name="pref_custom_openai_model_title">Custom model ID</string>
-  <string name="pref_custom_openai_model_summary">Enter a model ID manually or fetch models. If model discovery is unavailable, enter the ID and use Check Model Access.</string>
+  <string name="pref_custom_openai_model_summary">Enter a model ID or fetch the list, then check model access.</string>
   <string name="pref_custom_openai_check_endpoint">Check Endpoint</string>
   <string name="pref_ai_cached_models_invalid">The saved model list could not be read. Fetch models again.</string>
   <string name="pref_api_config_section">API Configuration</string>
@@ -1084,7 +1084,7 @@
   <string name="pref_custom_prompt_section">Custom Prompt</string>
   <string name="pref_override_instructions_title">Override Default Instructions</string>
   <string name="pref_custom_prompts_header">Custom Prompts</string>
-  <string name="pref_custom_prompts_description">Leave a field blank to use the built-in instruction for that task. If you have an older global prompt saved, it will be used as a fallback.</string>
+  <string name="pref_custom_prompts_description">Blank fields use built-in instructions or your saved global prompt.</string>
   <string name="pref_custom_rename_prompt_label">Custom rename prompt</string>
   <string name="pref_custom_translation_prompt_label">Custom subtitle translation prompt</string>
   <string name="pref_custom_format_prompt_label">Custom subtitle formatting prompt</string>
@@ -1342,7 +1342,7 @@
   <string name="pref_screenshots_section">Screenshots</string>
   <string name="lua_no_mpv_folder">No MPV folder selected</string>
   <string name="lua_no_scripts_found">No scripts found</string>
-  <string name="ambient_youtube_auto_hint">YouTube mode is fully automatic — the bars are lit by a soft blurred projection of the current frame, just like YouTube’s Ambient Mode.</string>
+  <string name="ambient_youtube_auto_hint">Automatically lights the bars with a blurred projection of the video.</string>
   <string name="ambient_cinema">Cinema</string>
   <string name="ambient_echo">Echo</string>
   <string name="ambient_mirror">Mirror</string>
@@ -1507,7 +1507,7 @@
   <string name="storage_permission_needed_desc">Grant storage access to browse and play your media.</string>
   <string name="storage_permission_grant">Grant access</string>
   <string name="pref_player_web_stream_links_title">Open streaming site links</string>
-  <string name="pref_player_web_stream_links_summary">Offer mpvRx for supported streaming-site links and shared text links. Media files and direct media URLs remain available when disabled.</string>
+  <string name="pref_player_web_stream_links_summary">Open supported website links in mpvRx. Direct media links remain available when off.</string>
   <string name="player_unknown_video">Unknown Video</string>
   <string name="media_widget_name">mpvRx playback</string>
   <string name="media_widget_description">Control audio and video playback</string>
@@ -1763,11 +1763,11 @@
   <string name="ui_mpvrx_needs_access_to_your_video_files_to_provide_its_core_funct">mpvRx needs access to your video files to provide its core functionality as a media player.</string>
   <string name="ui_the_permission_is_used_exclusively_for">The permission is used exclusively for:</string>
   <string name="ui_discovering_and_displaying_your_video_files_n_playing_media_cont">• Discovering and displaying your video files\n• Playing media content\n• Loading subtitle files</string>
-  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">mpvRx has always required storage access permission as it\'s essential for the app to find all media and subtitle files on your device, including the ones that are not supported by the system.</string>
-  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">However, due to a change in security policy, apps built for Android 11 and above now require additional permission to continue accessing the same.</string>
-  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">Please know that this permission is only used for the auto-discovery of media/subtitle files on your device and will not allow us to access the private data files stored by other apps in any way.</string>
-  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">mpvRx is an open source project. You can review the source code and verify how permissions are used by visiting our GitHub repository at:</string>
-  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">Be rest assured, your privacy is our utmost priority, and we neither access your files for other purposes nor transfer or store them to our servers. They remain safe on your device.</string>
+  <string name="ui_mpvrx_has_always_required_storage_access_permission_as_it_s_esse">Storage access lets mpvRx find media and subtitle files, including unindexed formats.</string>
+  <string name="ui_however_due_to_a_change_in_security_policy_apps_built_for_androi">Android 11 and later require extra permission for full storage access.</string>
+  <string name="ui_please_know_that_this_permission_is_only_used_for_the_auto_disco">Used only to find media and subtitles, not private app data.</string>
+  <string name="ui_mpvrx_is_an_open_source_project_you_can_review_the_source_code_a">Review how permissions are used in our open-source code:</string>
+  <string name="ui_be_rest_assured_your_privacy_is_our_utmost_priority_and_we_neith">Files stay on your device. We do not upload them to our servers.</string>
   <string name="ui_app_permissions">App Permissions</string>
   <string name="ui_permissions_setup_subtitle">Configure permissions to enable core features and media playback.</string>
   <string name="ui_file_permission_title">File &amp; Storage Access</string>
@@ -1777,7 +1777,7 @@
   <string name="ui_notification_permission_title">Notifications</string>
   <string name="ui_notification_permission_desc">Optional. Required for media playback controls, background status, and update alerts.</string>
   <string name="ui_audio_record_permission_title">Record Audio</string>
-  <string name="ui_audio_record_permission_desc">Optional. Required for audio visualizers to process real-time spectrum and frequency energy.</string>
+  <string name="ui_audio_record_permission_desc">Optional. Lets audio visualizers read live sound levels.</string>
   <string name="ui_permission_granted">Granted</string>
   <string name="ui_next">Next</string>
   <string name="ui_grant_permission_hint">Tap to grant permission</string>
@@ -1788,7 +1788,7 @@
   <string name="ui_no_results_found">No results found</string>
   <string name="ui_no_android">No Android</string>
   <string name="ui_script_runtime">Script runtime</string>
-  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Newly enabled scripts can load during playback. Scripts you turn off may need the video to be reopened before they fully stop running.</string>
+  <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Enabled scripts load now. Reopen the video to fully stop disabled scripts.</string>
   <string name="ui_media">Media</string>
   <string name="ui_saved_media">Saved Links</string>
   <string name="ui_media_info">Media Info</string>
@@ -1815,9 +1815,9 @@
   <string name="ui_filter_presets">Filter Presets</string>
   <string name="ui_yt_dlp_manager">yt-dlp Manager</string>
   <string name="ytdlp_auth_required_title">YouTube verification required</string>
-  <string name="ytdlp_auth_required_message">YouTube needs verification or fresh sign-in cookies. Import a Netscape cookies.txt file from a browser where this video plays; mpvRx will retry this video once automatically.</string>
+  <string name="ytdlp_auth_required_message">YouTube needs verification. Import fresh Netscape cookies.txt from a working browser to retry once.</string>
   <string name="ytdlp_cookies_title">YouTube cookies</string>
-  <string name="ytdlp_cookies_summary">Imported sign-in cookies are reused for future playback. Only YouTube cookies are kept, in private storage excluded from backups. Clear them here when no longer needed.</string>
+  <string name="ytdlp_cookies_summary">Reuse YouTube cookies from private storage excluded from backups. Clear them when no longer needed.</string>
   <string name="ytdlp_cookies_configured">Cookies configured</string>
   <string name="ytdlp_cookies_help">How to export YouTube cookies</string>
   <string name="ytdlp_cookies_help_failed">No browser is available to open the instructions.</string>
@@ -1900,7 +1900,7 @@
   <string name="ui_subtitle_translation_can_be_a_bit_messy">Subtitle translation can be a bit messy. </string>
   <string name="ui_real_time_model">Real-time Model</string>
   <string name="ui_auto_translate_target_languages">Auto-Translate Target Languages</string>
-  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">When translating subtitles, if 1 language is configured it translates directly. If 2+ are configured, a picker appears.</string>
+  <string name="ui_when_translating_subtitles_if_1_language_is_configured_it_transl">One language translates directly; multiple languages open a picker.</string>
   <string name="ui_no_target_languages_configured">No target languages configured</string>
   <string name="ui_search_languages">Search languages...</string>
   <string name="ui_refresh">Refresh</string>
@@ -2066,7 +2066,7 @@
   <string name="filter_preset_vibrant_neon_like_colors_with_edge">Vibrant neon-like colors with edge</string>
   <string name="filter_preset_enhanced_blacks_for_oled_displays">Enhanced blacks for OLED displays</string>
   <string name="filter_preset_custom_section">Custom presets</string>
-  <string name="filter_preset_custom_empty">Adjust brightness, contrast, gamma, saturation, hue and sharpness, then save the combination to reuse it later.</string>
+  <string name="filter_preset_custom_empty">Adjust the picture, then save your settings as a preset.</string>
   <string name="filter_preset_save_current">Save current</string>
   <string name="filter_preset_save_title">Save custom preset</string>
   <string name="filter_preset_rename_title">Rename preset</string>
@@ -2080,7 +2080,7 @@
   <string name="filter_preset_menu_description">Preset options</string>
   <string name="filter_preset_save">Save</string>
   <string name="syncplay_title">Syncplay</string>
-  <string name="syncplay_description">Watch videos in sync with friends. Connect to a Syncplay server to start watching together.</string>
+  <string name="syncplay_description">Watch together through a Syncplay server.</string>
   <string name="syncplay_connected_as">Connected as %1$s in room %2$s</string>
   <string name="syncplay_users_in_room">Users in room:</string>
   <string name="syncplay_disconnect">Disconnect</string>
@@ -2156,13 +2156,13 @@
   <string name="secure_folder_delete_confirm_title">Delete %1$d item(s) forever?</string>
   <string name="secure_folder_delete_confirm_subtitle">This can\'t be undone — the files will be permanently removed from your Secure Folder.</string>
   <string name="secure_folder_hide_entry_title">Hide Secure Folder Settings?</string>
-  <string name="secure_folder_hide_entry_subtitle">Secure Folder Settings will be removed from Settings. To access it again, double-tap the header at the top of the Home screen to open the Secure Folder PIN screen, then tap the settings icon at its top right.</string>
+  <string name="secure_folder_hide_entry_subtitle">Hides this page from Settings. To return: double-tap the Home title, enter your PIN, then tap Settings.</string>
   <string name="secure_folder_settings_title">Secure Folder Settings</string>
   <string name="secure_folder_settings_summary">Biometric unlock, PIN, privacy and reset options.</string>
   <string name="secure_folder_settings_security">Security</string>
   <string name="secure_folder_settings_danger_zone">Danger Zone</string>
   <string name="secure_folder_settings_help">Help</string>
-  <string name="secure_folder_settings_help_text">Double-tap or long-press the app name at the top of the Home screen to open the Secure Folder.</string>
+  <string name="secure_folder_settings_help_text">Open Secure Folder by double-tapping or holding the Home title.</string>
   <string name="secure_folder_settings_setup_first">Open the Secure Folder and set a PIN first.</string>
   <string name="secure_folder_biometric_title">Enable Biometric Unlock</string>
   <string name="secure_folder_biometric_summary">Use your fingerprint or face to unlock</string>
@@ -2193,7 +2193,7 @@
   <string name="secure_folder_move_to">Move to Secure Folder</string>
   <string name="secure_folder_moving_progress">Moving to Secure Folder…</string>
   <string name="secure_folder_move_folders_title">Move %1$d folder(s) to Secure Folder?</string>
-  <string name="secure_folder_move_folders_subtitle">Every video inside will disappear from this list and everywhere else in the app until restored.</string>
+  <string name="secure_folder_move_folders_subtitle">Hide all videos in these folders until restored.</string>
   <string name="secure_folder_move_items_title">Move %1$d item(s) to Secure Folder?</string>
   <string name="secure_folder_move_items_subtitle">They\'ll disappear from this list and everywhere else in the app until restored.</string>
   <string name="secure_folder_moved_success">Moved %1$d file(s) to Secure Folder</string>
@@ -2218,7 +2218,7 @@
   <string name="secure_folder_progress_format">%1$d of %2$d · %3$d%%</string>
   <string name="pref_codecs_decoders_summary">%1$d Hardware • %2$d Software Decoders</string>
   <string name="pref_codecs_banner_title">Hardware vs. Software Decoding</string>
-  <string name="pref_codecs_banner_desc">Hardware decoders decode video directly on dedicated VPU/GPU chips, using minimal power. Software decoders run on CPU cores, causing higher battery drain and heating during high-bitrate or 4K playback (e.g. AV1 without HW support).</string>
+  <string name="pref_codecs_banner_desc">Hardware decoding uses less power. Software decoding can increase heat and battery use.</string>
   <string name="pref_codecs_core_title">Core Video Codecs Status</string>
   <string name="pref_codecs_search_placeholder">Search codec name, format, or MIME...</string>
   <string name="pref_codecs_filter_all">All (%d)</string>
@@ -2293,7 +2293,9 @@
   <string name="lyrics_editor_saved">Lyric edits saved</string>
   <string name="lyrics_editor_restored">Original lyrics restored</string>
   <string name="pref_audio_immersive_artwork_title">Immersive artwork</string>
-  <string name="pref_audio_immersive_artwork_summary">Show edge-to-edge artwork fading into the portrait music player background. Off by default. Switch from the visualizer to the cover to see it.</string>
+  <string name="permission_video_access_summary">Allows access to videos in Downloads, Movies and DCIM.</string>
+  <string name="permission_media_access_summary">Allows access to stored video and audio files.</string>
+  <string name="pref_audio_immersive_artwork_summary">Edge-to-edge artwork in portrait and landscape.</string>
   <string name="lyrics_provider_auto">Auto</string>
   <string name="lyrics_provider_auto_with">Auto (%1$s)</string>
   <string name="lyrics_by">Lyrics by %1$s</string>
@@ -2305,7 +2307,7 @@
   <string name="pref_paxsenix_api_key_dialog_desc">Paste your PaxSenix API key. Leave it empty to use only the routes that need no key.</string>
   <string name="pref_lyrics_sources_category">Online Lyrics</string>
   <string name="pref_lyrics_auto_fetch_online">Automatically fetch online lyrics</string>
-  <string name="pref_lyrics_auto_fetch_online_summary">Search online providers only when no embedded or local lyrics are available. You can still search online manually.</string>
+  <string name="pref_lyrics_auto_fetch_online_summary">Find online lyrics when embedded or local lyrics are missing.</string>
   <string name="pref_lyrics_translation_category">Lyrics Translation &amp; Romanization</string>
   <string name="pref_lyrics_auto_translate">Auto-translate foreign lyrics</string>
   <string name="pref_lyrics_auto_translate_summary">Automatically translate foreign language lyrics</string>
@@ -2492,7 +2494,7 @@
   <string name="remote_settings_title_phone">TV remote</string>
   <string name="remote_settings_summary_phone">Control MPVRX on your TV and type links from this phone</string>
   <string name="remote_tv_enable">Allow phone remote</string>
-  <string name="remote_tv_enable_summary">Phones on the same network can ask to pair while MPVRX is open. You approve each phone here on the TV.</string>
+  <string name="remote_tv_enable_summary">Pair phones on the same network. Each request needs approval on this TV.</string>
   <string name="remote_tv_address">This TV: %1$s</string>
   <string name="remote_tv_address_unavailable">Connect this TV to a network to see its address.</string>
   <string name="remote_tv_how_to">On your phone, open MPVRX, go to Settings &gt; TV remote, and choose this TV. If it isn\'t listed, enter the address above.</string>
@@ -2555,9 +2557,9 @@
   <string name="pref_appearance_custom_wallpaper_preview_unlocked">Preview unlocked</string>
   <string name="wallpaper_save_failed">Could not save the wallpaper. Please choose the image again.</string>
   <string name="pref_haptic_feedback_title">Haptic feedback</string>
-  <string name="pref_haptic_feedback_summary">Tactile feedback for selection, dragging, and control adjustments. Respects system settings.</string>
+  <string name="pref_haptic_feedback_summary">Feedback for selections, dragging and adjustments. Follows system settings.</string>
   <string name="pref_nested_tab_swipes_title">Swipe between inner tabs</string>
-  <string name="pref_nested_tab_swipes_summary">Enable left/right swipes inside Music, Network and Recents. Main navigation and item swipe actions are unchanged.</string>
+  <string name="pref_nested_tab_swipes_summary">Swipe between sub-tabs in Music, Network and Recents.</string>
 
   <!-- Post-Processing Effects -->
   <string name="btn_label_post_processing">Post-Processing</string>
@@ -2716,7 +2718,7 @@
   <string name="pref_background_playback_remember">Always remember my choice</string>
   <string name="pref_background_playback_remember_summary">Keep the background playback choice for future videos.</string>
   <string name="pref_background_playback_per_video">Remember for each video</string>
-  <string name="pref_background_playback_per_video_summary">Save a separate background playback choice for each video. Other videos stay off until enabled.</string>
+  <string name="pref_background_playback_per_video_summary">Remember background playback separately for each video.</string>
   <string name="jellyfin_technical_details">Technical details</string>
 
   <!-- Snapshots (frame capture) -->
@@ -2727,7 +2729,7 @@
   <string name="profile_view_all">View all</string>
   <string name="profile_edit">Edit profile</string>
   <string name="profile_layout_title">Profile layout</string>
-  <string name="profile_layout_summary">Drag to reorder and use the switches to show or hide items. Statistics cards stay inside the statistics section.</string>
+  <string name="profile_layout_summary">Drag to reorder; toggle to show or hide. Statistics cards stay in their section.</string>
   <string name="profile_layout_hubs">Hub cards</string>
   <string name="profile_layout_sections">Profile sections</string>
   <string name="profile_layout_statistics">Statistics cards</string>
@@ -2790,7 +2792,7 @@
   <string name="snapshot_delete_folder_empty_message">This removes the folder from the app.</string>
 
   <string name="snapshot_folder_empty_title">This folder is empty</string>
-  <string name="snapshot_folder_empty_message">Long-press a snapshot in the Snapshots list and choose \"Move to folder\" to file it here.</string>
+  <string name="snapshot_folder_empty_message">Long-press a snapshot and choose \"Move to folder\".</string>
 
   <string name="snapshot_sort_folder_name">Folder name</string>
   <string name="snapshot_sort_created_at">Date created</string>
@@ -2811,7 +2813,7 @@
   <string name="oss_anime4k_description">Real-time upscaling and restoration shaders for animated video.</string>
   <string name="oss_hdr_toys_description">HDR tone-mapping, gamut-mapping, and transfer-function shaders.</string>
   <string name="pref_auto_backup_title">Automatic settings backup</string>
-  <string name="pref_auto_backup_summary">Save changed settings in Configuration/Backup when mpvRx moves to the background. The latest seven backups are kept.</string>
+  <string name="pref_auto_backup_summary">Back up when the app backgrounds. Keeps seven copies in Configuration/Backup.</string>
   <string name="pref_auto_backup_select_folder">Select a Configuration folder first</string>
   <string name="pref_auto_backup_last_backup">Last backup: %1$s</string>
   <string name="watch_stats_title">Watching statistics</string>
@@ -2830,9 +2832,9 @@
   <string name="pref_debug_log_size_title">Log size limit</string>
   <string name="pref_debug_log_size_summary">Keep up to %1$d MB in the log viewer and shared diagnostics.</string>
   <string name="onboarding_configuration_title">Set up mpvRx storage</string>
-  <string name="onboarding_configuration_desc">Choose the Configuration folder used for settings, backups, scripts, subtitles, and downloads.</string>
+  <string name="onboarding_configuration_desc">Choose a folder for settings, backups, scripts, subtitles and downloads.</string>
   <string name="onboarding_configuration_card_title">Configuration folder</string>
-  <string name="onboarding_configuration_card_desc">Select your mpvRx Configuration folder. Existing settings at its root or in Backup are restored automatically.</string>
+  <string name="onboarding_configuration_card_desc">Choose a Configuration folder. Restores settings from its root or Backup.</string>
   <string name="onboarding_configuration_restoring">Checking for settings backups…</string>
   <string name="onboarding_configuration_no_backup">Folder configured. Downloads will use Configuration/Downloads.</string>
   <string name="onboarding_configuration_restored">Restored settings from %1$s. Downloads will use Configuration/Downloads.</string>
@@ -2850,14 +2852,14 @@
   <string name="legacy_navigation_bar_title">Legacy navigation bar</string>
   <string name="legacy_navigation_bar_summary">Use a classic full-width navigation bar instead of the floating pill.</string>
   <string name="progressive_navigation_blur_title">Progressive navigation blur</string>
-  <string name="progressive_navigation_blur_summary">Use Haze progressive blur behind the floating navigation bar. Automatically disabled with legacy navigation.</string>
+  <string name="progressive_navigation_blur_summary">Blur behind the floating navigation bar. Unavailable with legacy navigation.</string>
   <string name="pref_seekbar_preview_skip_markers">Skip markers</string>
   <string name="debug_logs_save_to_config">Save logs to config folder</string>
   <string name="debug_logs_config_required">Select a configuration folder in Advanced Settings first.</string>
   <string name="debug_logs_config_saved">Logs saved to %1$s in your configuration folder.</string>
   <string name="debug_logs_config_save_failed">Could not save logs. Check access to your configuration folder or select it again.</string>
   <string name="pref_gesture_show_seekbar_horizontal_title">Show seekbar when controls are hidden</string>
-  <string name="pref_gesture_show_seekbar_horizontal_summary">During horizontal seeking, show the seekbar even when player controls are hidden. The time indicator is unaffected.</string>
+  <string name="pref_gesture_show_seekbar_horizontal_summary">Show the seekbar during swipe seeking, even with controls hidden.</string>
   <string name="network_server_no_matches">No matching addresses. You can still type one.</string>
   <string name="network_server_none_found">No advertised servers found. Check that both devices are on the same network, try again, or enter the address manually.</string>
   <string name="network_server_saved">Saved address</string>
@@ -2868,11 +2870,11 @@
   <string name="network_server_scan">Find nearby servers</string>
   <string name="network_server_scanning">Looking for nearby servers…</string>
   <string name="network_server_scan_unavailable">Discovery is unavailable or incomplete. Choose a saved address or type one.</string>
-  <string name="network_server_discovery_hint">Finds servers that advertise on your local network. Device addresses are shortcuts, not detected servers. Credentials are entered below.</string>
+  <string name="network_server_discovery_hint">Finds advertised LAN servers. Device addresses are shortcuts; enter credentials below.</string>
   <string name="network_smb_share_folder">Share / folder (optional)</string>
   <string name="network_dlna_description_path">Device description path</string>
   <string name="network_dlna_description_hint">Find a nearby DLNA server, or enter its device description URL and path.</string>
-  <string name="network_smb_share_hint">Leave empty or use / to browse all shared folders. Enter /Media or /Media/Movies to open a specific folder.</string>
+  <string name="network_smb_share_hint">Leave blank or use / for all shares, or enter a path such as /Media/Movies.</string>
   <string name="network_smb_username_hint">Use your username or DOMAIN\\username for a domain account.</string>
   <string name="player_zoom_overlays_follow">Zoom player OSD &amp; subtitles with video</string>
   <string name="player_zoom_overlays_follow_summary">Subtitles and statistics pages 1–6 scale with video zoom. Off keeps them at a fixed size.</string>
@@ -2999,7 +3001,7 @@
     <string name="color_picker_selected">Selected color</string>
     <string name="color_picker_quick_colors">Quick colors</string>
     <string name="app_icon_custom_background">Custom background</string>
-    <string name="app_icon_custom_background_hint">Choose a color. Android only allows built-in icons in the app drawer, so the closest one is used there. Applying also adds your exact color to the home screen, and Recents shows it too.</string>
+    <string name="app_icon_custom_background_hint">The app drawer uses the closest built-in icon; Home and Recents use your chosen color.</string>
     <string name="app_icon_custom_logo_hint">Choose any logo to overlay on your custom background.</string>
     <string name="app_icon_custom_requested">Your design</string>
     <string name="app_icon_custom_native_match">Actual launcher icon</string>
@@ -3034,8 +3036,8 @@
   <string name="pref_audio_spatial_mode">Spatial audio mode</string>
   <string name="pref_audio_spatial_stereo">Stereo widening</string>
   <string name="pref_audio_hrtf_title">Headphones - KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">Binaural HRTF processing for music using the bundled 96 kHz KU100 dataset. Requires an mpv build with sofalizer and libmysofa support.</string>
-  <string name="pref_audio_hrtf_unavailable">HRTF could not be activated for this track. Check that the mpv build includes sofalizer and libmysofa, or select stereo widening.</string>
+  <string name="pref_audio_hrtf_summary">KU100 binaural audio. Requires mpv with sofalizer and libmysofa.</string>
+  <string name="pref_audio_hrtf_unavailable">Requires mpv with sofalizer and libmysofa. Otherwise, use stereo widening.</string>
   <string name="audio_quality_hi_res">Hi-Res lossless</string>
   <string name="audio_quality_lossless">Lossless</string>
   <string name="audio_quality_lossy">Lossy</string>
@@ -3080,7 +3082,7 @@
   <string name="thumbnail_no">No</string>
   <string name="thumbnail_refresh">Refresh info</string>
   <string name="thumbnail_generate">Generate thumbnail</string>
-  <string name="thumbnail_quality_note">The preview is the actual cached image for the current settings. Browser tiles may cache a smaller image than the configured size limit. Opening this tab does not generate a new frame.</string>
+  <string name="thumbnail_quality_note">This is the cached preview, not a new frame. Its size may be below your chosen limit.</string>
   <string name="thumbnail_inspection_failed">Thumbnail information could not be read. Try refreshing.</string>
   <string name="thumbnail_generation_unavailable">The selected generator did not return a thumbnail for this file.</string>
 
@@ -3090,7 +3092,7 @@
   <string name="update_checking_download">Checking downloaded APK…</string>
   <string name="update_check_failed">Could not check for updates. Check your connection or try again later.</string>
   <string name="update_auto_install">Automatically download and install</string>
-  <string name="update_auto_install_summary">Download over unmetered networks and install when mpvRx is idle. Android may ask for approval.</string>
+  <string name="update_auto_install_summary">Download on unmetered networks; install when idle. Android may ask permission.</string>
   <string name="update_download_and_install">Download and install</string>
   <string name="update_background_downloading">Downloading app update…</string>
   <string name="update_installing">Installing update…</string>
@@ -3110,7 +3112,7 @@
   <string name="tv_player_quality">Video quality</string>
   <string name="tv_player_seek_bar">Seek bar</string>
   <string name="pref_audio_animated_artwork_title">Animated album artwork</string>
-  <string name="pref_audio_animated_artwork_summary">Fetch matching animated covers from Apple Music in the full-screen music player. Sends song title, artist and album to Apple and uses mobile data. Off by default; keeps the existing cover when unavailable. Switch from the visualizer to the cover to see it.</string>
+  <string name="pref_audio_animated_artwork_summary">Apple Music animated covers. Shares track metadata and uses data; keeps still art if unavailable.</string>
   <string name="jellyfin_featured">Featured</string>
   <string name="jellyfin_series">Series</string>
   <string name="jellyfin_movie">Movie</string>
@@ -3199,8 +3201,8 @@
   <string name="clip_track_auto_off">Automatic / Off</string>
   <string name="pref_blacklist_count">%1$d blacklisted folders</string>
   <string name="pref_whitelist_disabled">Whitelist disabled</string>
-  <string name="pref_blacklist_summary">Folders on this list are hidden from your media. Choose for each folder whether to hide its videos, its audio or both.</string>
-  <string name="pref_whitelist_summary">When the whitelist is on, only these folders and their subfolders are scanned. With no folders added, nothing is restricted.</string>
+  <string name="pref_blacklist_summary">Hide videos, audio or both in these folders.</string>
+  <string name="pref_whitelist_summary">Scan only these folders and subfolders. An empty list applies no restriction.</string>
   <string name="pref_whitelist_empty_message">Tap the button below to add folders you want to scan</string>
   <string name="clip_section_range">Range</string>
   <string name="clip_section_output">Output</string>
@@ -3214,7 +3216,7 @@
   <string name="clip_length_seconds">%1$ds</string>
   <string name="clip_crop_reset">Use full frame</string>
   <string name="pref_measure_enabled_title">Share diagnostics with Measure</string>
-  <string name="pref_measure_enabled_summary">Opt in to send crashes, ANRs, performance metrics and session activity to Measure. Disabled by default.</string>
+  <string name="pref_measure_enabled_summary">Send crash, ANR, performance and session data to Measure. Off by default.</string>
   <string name="pref_measure_not_configured">Diagnostics unavailable: this build has no Measure API key.</string>
   <string name="pref_layout_portrait_playback_position">Portrait playback controls</string>
   <string name="pref_layout_landscape_playback_position">Landscape playback controls</string>
