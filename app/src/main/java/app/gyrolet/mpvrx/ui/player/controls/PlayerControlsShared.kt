@@ -1807,15 +1807,16 @@ internal data class BatterySnapshot(
   val wattsText: String,
   val tempText: String,
   val temperatureCelsius: Float? = null,
+  val levelPercent: Double? = null,
 )
 
 internal fun readBatterySnapshot(context: Context): BatterySnapshot {
   val batteryIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
   val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
   val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-  val percentage =
+  val levelPercent =
     if (level >= 0 && scale > 0) {
-      ((level.toFloat() / scale.toFloat()) * 100f).roundToInt().coerceIn(0, 100)
+      (level.toDouble() * 100.0 / scale.toDouble()).coerceIn(0.0, 100.0)
     } else {
       null
     }
@@ -1882,11 +1883,12 @@ internal fun readBatterySnapshot(context: Context): BatterySnapshot {
     }
 
   return BatterySnapshot(
-    percentageText = percentage?.let { "$it%" } ?: "--%",
+    percentageText = levelPercent?.roundToInt()?.let { "$it%" } ?: "--%",
     rateText = rateText,
     wattsText = wattsText,
     tempText = tempText,
     temperatureCelsius = tempCelsius,
+    levelPercent = levelPercent,
   )
 }
 

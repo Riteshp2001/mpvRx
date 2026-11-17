@@ -915,6 +915,10 @@
   <string name="diagnostics_playback_decoder_header">播放与解码器</string>
   <string name="diagnostics_power_thermals_header">电源与温度</string>
   <string name="diagnostics_session_header">会话</string>
+  <string name="diagnostics_session_battery_used">本次会话耗电（净值）</string>
+  <string name="diagnostics_battery_live">当前电池状态</string>
+  <string name="diagnostics_session_battery_percent_value">约 %1$.0f 个百分点</string>
+  <string name="diagnostics_session_battery_unavailable">电池计数器不可用</string>
   <string name="diagnostics_torrent_header">种子下载</string>
   <string name="diagnostics_torrent_peer_status">节点状态</string>
   <string name="diagnostics_torrent_peers_value">%1$d 个节点 | %2$d 个种子</string>

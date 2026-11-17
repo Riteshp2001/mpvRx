@@ -214,6 +214,9 @@ object PlaybackSession : MPVLib.EventObserver {
     CoroutineScope(SupervisorJob() + Dispatchers.IO.limitedParallelism(1) + statisticsErrorHandler)
   private val statisticsDiagnostics = CoroutineScope(SupervisorJob() + Dispatchers.IO + statisticsErrorHandler)
   private var statisticsDiagnosticsJob: Job? = null
+  private var sessionBatteryGeneration = 0L
+  private var sessionBatteryBaseline: SessionBatteryReading? = null
+  private var sessionBatteryBaselineJob: Job? = null
   internal val scrollableStatisticsPages = setOf(2, 4, 5, 6, 7, 8)
   private val statisticsStateLock = Any()
   private var statisticsRevision = 0L
@@ -1047,6 +1050,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
 
   fun stop(clearQueue: Boolean = true) {
     withCore(Unit) {
+      clearSessionBatteryMeasurementLocked()
       AudiobookPlayback.capture()
       loadedPlaybackItem = null
       AudiobookPlayback.clearTimer()
@@ -1209,6 +1213,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   }
 
   private fun destroyLocked(nativeShutdown: Boolean = false) {
+    clearSessionBatteryMeasurementLocked()
     resetStatisticsState()
     val nextGeneration = _state.value.generation + 1L
     if (!nativeShutdown) AudiobookPlayback.capture()
@@ -1772,6 +1777,44 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     _visibleStatisticsPage.value = 0
   }
 
+  private fun beginSessionBatteryMeasurementLocked(generation: Long) {
+    if (sessionBatteryGeneration == generation) return
+    clearSessionBatteryMeasurementLocked()
+    sessionBatteryGeneration = generation
+    val context = checkNotNull(applicationContext) { "Battery measurement requires an initialized application context" }
+    val core = nativeObserver
+    sessionBatteryBaselineJob = statisticsDiagnostics.launch {
+      val reading =
+        try {
+          readSessionBatteryReading(context)
+        } catch (error: SecurityException) {
+          Log.w(TAG, "Battery measurement access was denied", error)
+          SessionBatteryReading(null, null, null)
+        }
+      nativeLock.withLock {
+        if (isActive && nativeObserver === core && _state.value.generation == generation &&
+          _state.value.phase != PlaybackPhase.STOPPING
+        ) {
+          sessionBatteryBaseline = reading
+        }
+      }
+    }
+  }
+
+  private fun clearSessionBatteryMeasurementLocked() {
+    sessionBatteryBaselineJob?.cancel()
+    sessionBatteryBaselineJob = null
+    sessionBatteryBaseline = null
+    sessionBatteryGeneration = 0L
+  }
+
+  internal fun readSessionBatteryBaseline(generation: Long): SessionBatteryReading? =
+    nativeLock.withLock {
+      sessionBatteryBaseline.takeIf {
+        generation == sessionBatteryGeneration && generation == _state.value.generation
+      }
+    }
+
   private fun onStatisticsState(value: String) {
     val parts = value.split(':', limit = 2)
     val revision = parts.getOrNull(0)?.toLongOrNull()
@@ -1815,7 +1858,8 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
           val state = _state.value
           val sample = diagnostics.sample(state).toString()
           withReadyCore(Unit) {
-            if (isActive && nativeObserver === core && _visibleStatisticsPage.value == 6 &&
+            if (isActive && nativeObserver === core && _state.value.generation == state.generation &&
+              _visibleStatisticsPage.value == 6 &&
               advancedPreferences.enabledStatisticsPage.get() == 6
             ) {
               MPVLib.setPropertyString(STATISTICS_ANDROID_PROPERTY, sample)
@@ -2571,6 +2615,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
             // attributed to the latest requested generation.
             if (_state.value.phase != PlaybackPhase.STOPPING) {
               updateState { it.copy(phase = PlaybackPhase.LOADING, activeGeneration = it.generation) }
+              beginSessionBatteryMeasurementLocked(_state.value.generation)
               applySpatialAudioLocked()
             }
             if (supersededStopGeneration != 0L && _state.value.generation > supersededStopGeneration) {

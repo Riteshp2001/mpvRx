@@ -931,6 +931,10 @@
   <string name="diagnostics_playback_decoder_header">التشغيل وفك الترميز</string>
   <string name="diagnostics_power_thermals_header">الطاقة ودرجة الحرارة</string>
   <string name="diagnostics_session_header">الجلسة</string>
+  <string name="diagnostics_session_battery_used">استهلاك بطارية الجلسة (الصافي)</string>
+  <string name="diagnostics_battery_live">البطارية الآن</string>
+  <string name="diagnostics_session_battery_percent_value">حوالي %1$.0f نقطة مئوية</string>
+  <string name="diagnostics_session_battery_unavailable">عدادات البطارية غير متاحة</string>
   <string name="diagnostics_torrent_header">التورنت</string>
   <string name="diagnostics_torrent_peer_status">حالة الأقران</string>
   <string name="diagnostics_torrent_peers_value">%1$d أقران | %2$d مصادر</string>

@@ -915,6 +915,10 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="diagnostics_playback_decoder_header">REPRODUCCIÓN Y DECODIFICADOR</string>
   <string name="diagnostics_power_thermals_header">ENERGÍA Y TEMPERATURA</string>
   <string name="diagnostics_session_header">SESIÓN</string>
+  <string name="diagnostics_session_battery_used">Consumo de batería de la sesión (neto)</string>
+  <string name="diagnostics_battery_live">Batería actual</string>
+  <string name="diagnostics_session_battery_percent_value">Aprox. %1$.0f puntos porcentuales</string>
+  <string name="diagnostics_session_battery_unavailable">Contadores de batería no disponibles</string>
   <string name="diagnostics_torrent_header">TORRENT</string>
   <string name="diagnostics_torrent_peer_status">Estado de pares</string>
   <string name="diagnostics_torrent_peers_value">%1$d pares | %2$d semillas</string>

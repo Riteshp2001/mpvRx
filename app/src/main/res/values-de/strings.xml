@@ -915,6 +915,10 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="diagnostics_playback_decoder_header">WIEDERGABE &amp; DECODER</string>
   <string name="diagnostics_power_thermals_header">ENERGIE &amp; TEMPERATUREN</string>
   <string name="diagnostics_session_header">SITZUNG</string>
+  <string name="diagnostics_session_battery_used">Akkuverbrauch der Sitzung (netto)</string>
+  <string name="diagnostics_battery_live">Akku aktuell</string>
+  <string name="diagnostics_session_battery_percent_value">Ca. %1$.0f Prozentpunkte</string>
+  <string name="diagnostics_session_battery_unavailable">Akkuzähler nicht verfügbar</string>
   <string name="diagnostics_torrent_header">TORRENT</string>
   <string name="diagnostics_torrent_peer_status">Peer-Status</string>
   <string name="diagnostics_torrent_peers_value">%1$d Peers | %2$d Seeder</string>

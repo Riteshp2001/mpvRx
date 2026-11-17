@@ -975,6 +975,10 @@
   <string name="diagnostics_playback_decoder_header">ВІДТВОРЕННЯ ТА ДЕКОДЕР</string>
   <string name="diagnostics_power_thermals_header">ЖИВЛЕННЯ ТА ТЕМПЕРАТУРА</string>
   <string name="diagnostics_session_header">СЕАНС</string>
+  <string name="diagnostics_session_battery_used">Витрата батареї за сеанс (чиста)</string>
+  <string name="diagnostics_battery_live">Батарея зараз</string>
+  <string name="diagnostics_session_battery_percent_value">Приблизно %1$.0f відсоткових пунктів</string>
+  <string name="diagnostics_session_battery_unavailable">Лічильники батареї недоступні</string>
   <string name="diagnostics_torrent_header">ТОРРЕНТ</string>
   <string name="diagnostics_torrent_peer_status">Стан пірів</string>
   <string name="diagnostics_torrent_peers_value">Пірів: %1$d | Сідів: %2$d</string>

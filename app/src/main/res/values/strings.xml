@@ -1231,6 +1231,12 @@
   <string name="diagnostics_playback_decoder_header">PLAYBACK &amp; DECODER</string>
   <string name="diagnostics_power_thermals_header">POWER &amp; THERMALS</string>
   <string name="diagnostics_session_header">SESSION</string>
+  <string name="diagnostics_session_battery_used">Session battery use (net)</string>
+  <string name="diagnostics_battery_live">Battery now</string>
+  <string name="diagnostics_session_battery_charge_value" translatable="false">%1$.1f mAh</string>
+  <string name="diagnostics_session_battery_energy_value" translatable="false">%1$.1f mWh</string>
+  <string name="diagnostics_session_battery_percent_value">Approx. %1$.0f percentage points</string>
+  <string name="diagnostics_session_battery_unavailable">Battery counters unavailable</string>
   <string name="diagnostics_torrent_header">TORRENT</string>
   <string name="diagnostics_torrent_peer_status">Peer status</string>
   <string name="diagnostics_torrent_peers_value">%1$d peers | %2$d seeds</string>

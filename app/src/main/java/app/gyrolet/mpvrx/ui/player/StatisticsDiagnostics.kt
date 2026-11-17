@@ -2,6 +2,7 @@
 package app.gyrolet.mpvrx.ui.player
 
 import android.content.Context
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Debug
 import android.os.PowerManager
@@ -15,6 +16,7 @@ import app.gyrolet.mpvrx.domain.torrent.formatTorrentSpeed
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.ui.player.controls.formatClock
+import app.gyrolet.mpvrx.ui.player.controls.BatterySnapshot
 import app.gyrolet.mpvrx.ui.player.controls.readBatterySnapshot
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -23,6 +25,28 @@ import kotlinx.serialization.json.put
 import org.koin.java.KoinJavaComponent
 import java.util.Locale
 import kotlin.math.roundToInt
+
+internal data class SessionBatteryReading(
+  val chargeMicroAh: Long?,
+  val energyNanoWh: Long?,
+  val levelPercent: Double?,
+)
+
+internal fun readSessionBatteryReading(
+  context: Context,
+  battery: BatterySnapshot = readBatterySnapshot(context),
+): SessionBatteryReading {
+  val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+  fun counter(property: Int): Long? =
+    manager?.getLongProperty(property)?.takeIf {
+      it > 0L || (it == 0L && battery.levelPercent == 0.0)
+    }
+  return SessionBatteryReading(
+    chargeMicroAh = counter(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER),
+    energyNanoWh = counter(BatteryManager.BATTERY_PROPERTY_ENERGY_COUNTER),
+    levelPercent = battery.levelPercent,
+  )
+}
 
 /** Supplies Android-only data; stats.lua owns Page 6's layout, native properties and scrolling. */
 internal class StatisticsDiagnostics(
@@ -163,7 +187,10 @@ internal class StatisticsDiagnostics(
             section(
               context.getString(R.string.diagnostics_power_thermals_header),
               listOf(
-                "Battery" to "${battery.percentageText} | ${battery.wattsText} | ${battery.rateText}",
+                context.getString(R.string.diagnostics_battery_live) to
+                  "${battery.percentageText} | ${battery.wattsText} | ${battery.rateText}",
+                context.getString(R.string.diagnostics_session_battery_used) to
+                  sessionBatteryUse(state.generation, battery),
                 "Temp" to "${battery.tempText} (Peak: $peakText | Rise: $riseText)",
                 "Thermal" to thermal,
               ),
@@ -196,6 +223,44 @@ internal class StatisticsDiagnostics(
           )
         },
       )
+    }
+  }
+
+  private fun sessionBatteryUse(generation: Long, battery: BatterySnapshot): String {
+    val baseline =
+      PlaybackSession.readSessionBatteryBaseline(generation)
+        ?: return "--"
+    val current = readSessionBatteryReading(context, battery)
+    val values =
+      buildList {
+        val initialCharge = baseline.chargeMicroAh
+        val currentCharge = current.chargeMicroAh
+        if (initialCharge != null && currentCharge != null) {
+          add(
+            context.getString(
+              R.string.diagnostics_session_battery_charge_value,
+              (initialCharge.toDouble() - currentCharge.toDouble()) / 1_000.0,
+            ),
+          )
+        }
+        val initialEnergy = baseline.energyNanoWh
+        val currentEnergy = current.energyNanoWh
+        if (initialEnergy != null && currentEnergy != null) {
+          add(
+            context.getString(
+              R.string.diagnostics_session_battery_energy_value,
+              (initialEnergy.toDouble() - currentEnergy.toDouble()) / 1_000_000.0,
+            ),
+          )
+        }
+      }
+    if (values.isNotEmpty()) return values.joinToString(" | ")
+    val initialLevel = baseline.levelPercent
+    val currentLevel = current.levelPercent
+    return if (initialLevel != null && currentLevel != null) {
+      context.getString(R.string.diagnostics_session_battery_percent_value, initialLevel - currentLevel)
+    } else {
+      context.getString(R.string.diagnostics_session_battery_unavailable)
     }
   }
 

@@ -829,6 +829,10 @@
   <string name="diagnostics_playback_decoder_header">प्लेबैक और डिकोडर</string>
   <string name="diagnostics_power_thermals_header">पावर और थर्मल्स</string>
   <string name="diagnostics_session_header">सेशन</string>
+  <string name="diagnostics_session_battery_used">सेशन में बैटरी उपयोग (शुद्ध)</string>
+  <string name="diagnostics_battery_live">अभी की बैटरी स्थिति</string>
+  <string name="diagnostics_session_battery_percent_value">लगभग %1$.0f प्रतिशत अंक</string>
+  <string name="diagnostics_session_battery_unavailable">बैटरी काउंटर उपलब्ध नहीं हैं</string>
   <string name="diagnostics_torrent_header">टॉरेंट</string>
   <string name="diagnostics_torrent_peer_status">पीयर स्थिति</string>
   <string name="diagnostics_torrent_peers_value">%1$d पीयर | %2$d सीड</string>
