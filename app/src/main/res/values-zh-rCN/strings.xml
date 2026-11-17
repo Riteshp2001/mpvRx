@@ -2249,6 +2249,8 @@
   <string name="profile_layout_sections">个人页面分区</string>
   <string name="profile_layout_statistics">统计卡片</string>
   <string name="profile_layout_reset">重置个人页面布局</string>
+  <string name="profile_recently_added">最近添加</string>
+  <string name="profile_recently_added_empty">添加到媒体库的视频会显示在这里。</string>
   <string name="profile_display_name">显示名称</string>
   <string name="profile_choose_photo">选择照片</string>
   <string name="profile_remove_photo">移除照片</string>

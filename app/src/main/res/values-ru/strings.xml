@@ -2281,6 +2281,8 @@
   <string name="profile_layout_sections">Разделы профиля</string>
   <string name="profile_layout_statistics">Карточки статистики</string>
   <string name="profile_layout_reset">Сбросить макет профиля</string>
+  <string name="profile_recently_added">Недавно добавленные</string>
+  <string name="profile_recently_added_empty">Здесь появляются видео, добавленные в медиатеку.</string>
   <string name="profile_display_name">Отображаемое имя</string>
   <string name="profile_choose_photo">Выбрать фото</string>
   <string name="profile_remove_photo">Удалить фото</string>

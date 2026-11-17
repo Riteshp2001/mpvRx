@@ -15,6 +15,7 @@ internal enum class ProfileHubCard(@StringRes val titleRes: Int) {
 
 internal enum class ProfileSection(@StringRes val titleRes: Int) {
   RECENTS(R.string.pref_advanced_enable_recently_played_title),
+  RECENTLY_ADDED(R.string.profile_recently_added),
   PLAYLISTS(R.string.ui_playlists),
   SNAPSHOTS(R.string.ui_snapshots),
   STATISTICS(R.string.watch_stats_title),

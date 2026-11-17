@@ -2732,6 +2732,8 @@
   <string name="profile_layout_sections">Profile sections</string>
   <string name="profile_layout_statistics">Statistics cards</string>
   <string name="profile_layout_reset">Reset Profile layout</string>
+  <string name="profile_recently_added">Recently added</string>
+  <string name="profile_recently_added_empty">Videos added to your library appear here.</string>
   <string name="profile_display_name">Display name</string>
   <string name="profile_choose_photo">Choose photo</string>
   <string name="profile_remove_photo">Remove photo</string>

@@ -2253,6 +2253,8 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="profile_layout_sections">Sections du profil</string>
   <string name="profile_layout_statistics">Cartes de statistiques</string>
   <string name="profile_layout_reset">Réinitialiser la disposition du profil</string>
+  <string name="profile_recently_added">Ajouts récents</string>
+  <string name="profile_recently_added_empty">Les vidéos ajoutées à votre bibliothèque apparaissent ici.</string>
   <string name="profile_display_name">Nom affiché</string>
   <string name="profile_choose_photo">Choisir une photo</string>
   <string name="profile_remove_photo">Supprimer la photo</string>

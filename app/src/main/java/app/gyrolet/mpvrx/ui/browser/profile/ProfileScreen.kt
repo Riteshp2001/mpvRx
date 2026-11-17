@@ -120,6 +120,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.framecapture.FrameCapture
@@ -140,6 +141,7 @@ import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.rememberSwipePlaybackInfo
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
 import app.gyrolet.mpvrx.ui.browser.networkstreaming.NetworkStreamingScreen
+import app.gyrolet.mpvrx.ui.browser.medialibrary.MediaLibraryViewModel
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistDetailScreen
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistScreen
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistViewModel
@@ -169,6 +171,8 @@ import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -235,6 +239,32 @@ object ProfileScreen : Screen {
     val recentsViewModel: RecentlyPlayedViewModel = viewModel(factory = RecentlyPlayedViewModel.factory(application))
     val playlistViewModel: PlaylistViewModel = viewModel(factory = PlaylistViewModel.factory(application))
     val snapshotViewModel: SnapshotLibraryViewModel = viewModel(factory = SnapshotLibraryViewModel.factory(application))
+    val recentlyAddedViewModel =
+      if (ProfileSection.RECENTLY_ADDED in visibleSections) {
+        viewModel<MediaLibraryViewModel>(factory = MediaLibraryViewModel.factory(application))
+      } else {
+        null
+      }
+    val recentlyAdded =
+      if (recentlyAddedViewModel != null) {
+        val latestVideos = remember(recentlyAddedViewModel) {
+          recentlyAddedViewModel.videos
+            .map { videos ->
+              videos.asSequence()
+                .filterNot { it.isAudio }
+                .sortedWith(compareByDescending<Video> { it.dateAdded }.thenBy { it.path })
+                .take(SHELF_LIMIT)
+                .toList()
+            }
+            .flowOn(Dispatchers.Default)
+        }
+        latestVideos.collectAsStateWithLifecycle(initialValue = emptyList()).value
+      } else {
+        emptyList()
+      }
+    val isRecentlyAddedLoading =
+      recentlyAddedViewModel?.isLoading?.collectAsStateWithLifecycle()?.value == true
+    val showAddedThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
 
     LifecycleResumeEffect(playlistViewModel) {
       playlistViewModel.startMonitoring()
@@ -249,7 +279,10 @@ object ProfileScreen : Screen {
     val recentShelf = remember(recentItems) { recentItems.take(SHELF_LIMIT) }
     val recentVideos =
       remember(recentShelf) { recentShelf.filterIsInstance<RecentlyPlayedItem.VideoItem>().map { it.video } }
-    val playbackInfo = rememberSwipePlaybackInfo(recentVideos)
+    val shelfVideos = remember(recentVideos, recentlyAdded) {
+      (recentVideos + recentlyAdded).distinctBy { it.path }
+    }
+    val playbackInfo = rememberSwipePlaybackInfo(shelfVideos)
     val snapshots = remember(snapshotLibrary.allCaptures) { snapshotLibrary.allCaptures.sortedByDescending { it.capturedAt } }
 
     var activeVideoItem by remember { mutableStateOf<RecentlyPlayedItem.VideoItem?>(null) }
@@ -355,6 +388,7 @@ object ProfileScreen : Screen {
         isRefreshing = isRefreshing,
         onRefresh = {
           recentsViewModel.refresh()
+          recentlyAddedViewModel?.refresh()
           playlistViewModel.refresh().join()
         },
         listState = listState,
@@ -461,6 +495,48 @@ object ProfileScreen : Screen {
                               )
                             }
                           }
+                        }
+                      }
+                  }
+                }
+              }
+
+              ProfileSection.RECENTLY_ADDED -> {
+                item(key = "recently_added_header") {
+                  SectionHeader(
+                    title = stringResource(R.string.profile_recently_added),
+                    count = recentlyAdded.size,
+                  )
+                }
+                item(key = "recently_added_shelf") {
+                  when {
+                    recentlyAdded.isEmpty() && isRecentlyAddedLoading -> {
+                      Box(
+                        modifier = Modifier.fillMaxWidth().padding(24.dp),
+                        contentAlignment = Alignment.Center,
+                      ) {
+                        CircularProgressIndicator()
+                      }
+                    }
+                    recentlyAdded.isEmpty() ->
+                      ShelfEmptyCard(
+                        icon = Icons.RoundedFilled.Movie,
+                        title = stringResource(R.string.ui_no_videos_found),
+                        message = stringResource(R.string.profile_recently_added_empty),
+                      )
+                    else ->
+                      LazyRow(
+                        contentPadding = PaddingValues(horizontal = horizontalShelfPadding),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                      ) {
+                        items(recentlyAdded, key = { it.path }) { video ->
+                          val info = playbackInfo[video.path]
+                          RecentVideoCard(
+                            video = video,
+                            progress = info?.progressPercentage?.takeUnless { info.isWatched },
+                            showThumbnail = showAddedThumbnails,
+                            onClick = { MediaUtils.playFile(video, context) },
+                          )
                         }
                       }
                   }
@@ -929,7 +1005,7 @@ private fun ProfileShortcutTile(
 private fun SectionHeader(
   title: String,
   count: Int? = null,
-  onViewAll: () -> Unit,
+  onViewAll: (() -> Unit)? = null,
 ) {
   val configuration = LocalConfiguration.current
   val isTablet = configuration.smallestScreenWidthDp >= 600
@@ -964,18 +1040,20 @@ private fun SectionHeader(
         }
       }
     }
-    TextButton(
-      onClick = onViewAll,
-      contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-      shape = CircleShape,
-    ) {
-      Text(
-        stringResource(R.string.profile_view_all),
-        style = MaterialTheme.typography.labelMedium,
-        fontWeight = FontWeight.SemiBold,
-      )
-      Spacer(Modifier.width(2.dp))
-      Icon(Icons.RoundedFilled.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp))
+    if (onViewAll != null) {
+      TextButton(
+        onClick = onViewAll,
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+        shape = CircleShape,
+      ) {
+        Text(
+          stringResource(R.string.profile_view_all),
+          style = MaterialTheme.typography.labelMedium,
+          fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.width(2.dp))
+        Icon(Icons.RoundedFilled.ChevronRight, contentDescription = null, modifier = Modifier.size(16.dp))
+      }
     }
   }
 }
@@ -1082,7 +1160,7 @@ private fun RecentVideoCard(
   progress: Float?,
   showThumbnail: Boolean,
   onClick: () -> Unit,
-  onLongClick: () -> Unit,
+  onLongClick: (() -> Unit)? = null,
 ) {
   val thumbnailRepository = koinInject<ThumbnailRepository>()
   val density = LocalDensity.current

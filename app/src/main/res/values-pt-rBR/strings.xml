@@ -2260,6 +2260,8 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="profile_layout_sections">Seções do perfil</string>
   <string name="profile_layout_statistics">Cartões de estatísticas</string>
   <string name="profile_layout_reset">Redefinir layout do perfil</string>
+  <string name="profile_recently_added">Adicionados recentemente</string>
+  <string name="profile_recently_added_empty">Os vídeos adicionados à sua biblioteca aparecem aqui.</string>
   <string name="profile_display_name">Nome de exibição</string>
   <string name="profile_choose_photo">Escolher foto</string>
   <string name="profile_remove_photo">Remover foto</string>

@@ -1662,6 +1662,7 @@ object SearchablePreferences {
         SearchEntrySpec(R.string.profile_layout_title, listOf("profile", "customize", "layout", "reorder", "hide", "cards")),
         SearchEntrySpec(R.string.profile_layout_hubs, listOf("profile", "hub", "recents", "playlists", "snapshots", "network")),
         SearchEntrySpec(R.string.profile_layout_sections, listOf("profile", "sections", "order", "visibility")),
+        SearchEntrySpec(R.string.profile_recently_added, listOf("profile", "recently added", "new", "videos", "shelf"), R.string.profile_layout_sections),
         SearchEntrySpec(R.string.profile_layout_statistics, listOf("profile", "statistics", "watch time", "most played", "weekly", "cards")),
         SearchEntrySpec(R.string.navbar_glow_title, listOf("glass", "glow", "navbar", "rim", "highlight", "liquid glass")),
         SearchEntrySpec(

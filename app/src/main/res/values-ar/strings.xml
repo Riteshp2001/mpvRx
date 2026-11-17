@@ -2311,6 +2311,8 @@
   <string name="profile_layout_sections">أقسام الملف الشخصي</string>
   <string name="profile_layout_statistics">بطاقات الإحصاءات</string>
   <string name="profile_layout_reset">إعادة ضبط تخطيط الملف الشخصي</string>
+  <string name="profile_recently_added">المضافة حديثًا</string>
+  <string name="profile_recently_added_empty">تظهر هنا الفيديوهات المضافة إلى مكتبتك.</string>
   <string name="profile_display_name">الاسم المعروض</string>
   <string name="profile_choose_photo">اختيار صورة</string>
   <string name="profile_remove_photo">إزالة الصورة</string>

@@ -2168,6 +2168,8 @@
   <string name="profile_layout_sections">प्रोफ़ाइल सेक्शन</string>
   <string name="profile_layout_statistics">आँकड़ों के कार्ड</string>
   <string name="profile_layout_reset">प्रोफ़ाइल लेआउट रीसेट करें</string>
+  <string name="profile_recently_added">हाल ही में जोड़े गए</string>
+  <string name="profile_recently_added_empty">आपकी लाइब्रेरी में जोड़े गए वीडियो यहाँ दिखते हैं।</string>
   <string name="profile_display_name">प्रदर्शित नाम</string>
   <string name="profile_choose_photo">फ़ोटो चुनें</string>
   <string name="profile_remove_photo">फ़ोटो हटाएं</string>

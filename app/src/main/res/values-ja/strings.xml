@@ -2239,6 +2239,8 @@
   <string name="profile_layout_sections">プロフィールのセクション</string>
   <string name="profile_layout_statistics">統計カード</string>
   <string name="profile_layout_reset">プロフィールのレイアウトをリセット</string>
+  <string name="profile_recently_added">最近追加した動画</string>
+  <string name="profile_recently_added_empty">ライブラリに追加した動画がここに表示されます。</string>
   <string name="profile_display_name">表示名</string>
   <string name="profile_choose_photo">写真を選択</string>
   <string name="profile_remove_photo">写真を削除</string>
