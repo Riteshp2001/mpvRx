@@ -2,6 +2,8 @@ package app.gyrolet.mpvrx.ui.components
 
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -62,7 +64,16 @@ internal fun SwipeDismissibleToast(
           val shouldDismiss = width > 0 && (abs(offset) >= width * 0.3f || fling)
           val target = if (shouldDismiss) offset.sign * width.coerceAtLeast(1) else 0f
           try {
-            animate(offset, target, animationSpec = tween(if (reducedMotion) 0 else 160)) { value, _ -> offset = value }
+            animate(
+              initialValue = offset,
+              targetValue = target,
+              initialVelocity = if (reducedMotion) 0f else velocity,
+              animationSpec = when {
+                reducedMotion -> snap()
+                shouldDismiss -> tween(160, easing = FastOutSlowInEasing)
+                else -> AppMotion.Spatial.Standard
+              },
+            ) { value, _ -> offset = value }
             if (shouldDismiss) dismissToast()
           } finally {
             interacting(false)

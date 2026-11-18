@@ -30,7 +30,7 @@
 ## Showcase
 
 <div align="center">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/tanjiro-playback.jpg" width="100%" alt="Video playback in mpvRx">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/itsmpv.jpg" width="100%" alt="Video playback in mpvRx">
 </div>
 
 <div align="center">

@@ -130,7 +130,6 @@ import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
-import app.gyrolet.mpvrx.preferences.ProfileHubCard
 import app.gyrolet.mpvrx.preferences.ProfileSection
 import app.gyrolet.mpvrx.preferences.visibleProfileItems
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -203,13 +202,8 @@ object ProfileScreen : Screen {
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
     val profileName by appearancePreferences.profileName.collectAsState()
     val profileImagePath by appearancePreferences.profileImagePath.collectAsState()
-    val hubOrder by appearancePreferences.profileHubOrder.collectAsState()
-    val hiddenHubs by appearancePreferences.profileHiddenHubs.collectAsState()
     val sectionOrder by appearancePreferences.profileSectionOrder.collectAsState()
     val hiddenSections by appearancePreferences.profileHiddenSections.collectAsState()
-    val visibleHubs = remember(hubOrder, hiddenHubs) {
-      visibleProfileItems(ProfileHubCard.entries, hubOrder, hiddenHubs)
-    }
     val visibleSections = remember(sectionOrder, hiddenSections) {
       visibleProfileItems(ProfileSection.entries, sectionOrder, hiddenSections)
     }
@@ -410,7 +404,6 @@ object ProfileScreen : Screen {
               recentCount = recentItems.size,
               playlistCount = playlists.size,
               snapshotCount = snapshots.size,
-              hubCards = visibleHubs,
               collapseProgress = heroCollapseProgress,
               onEditProfile = {
                 haptics.tick()
@@ -759,7 +752,6 @@ private fun ProfileOverviewCard(
   recentCount: Int,
   playlistCount: Int,
   snapshotCount: Int,
-  hubCards: List<ProfileHubCard>,
   collapseProgress: Float,
   onEditProfile: () -> Unit,
   onRecents: () -> Unit,
@@ -771,14 +763,7 @@ private fun ProfileOverviewCard(
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
   val editLabel = stringResource(R.string.profile_edit)
-  val totalItems = hubCards.sumOf { hub ->
-    when (hub) {
-      ProfileHubCard.RECENTS -> recentCount
-      ProfileHubCard.PLAYLISTS -> playlistCount
-      ProfileHubCard.SNAPSHOTS -> snapshotCount
-      ProfileHubCard.NETWORK -> 0
-    }
-  }
+  val totalItems = recentCount + playlistCount + snapshotCount
   val avatarScale = 1f - 0.25f * collapseProgress
   val avatarAlpha = (1f - collapseProgress * 1.5f).coerceIn(0f, 1f)
 
@@ -864,27 +849,25 @@ private fun ProfileOverviewCard(
 
     // Intentional Material 3 Expressive connected bento group; no large tinted backdrop.
     // The logical corner radii adapt automatically to 1, 2 or 4 columns and RTL direction.
-    val shortcuts = hubCards.map { hub ->
-      when (hub) {
-        ProfileHubCard.RECENTS -> ProfileShortcutDestination(
-          Icons.RoundedFilled.History, stringResource(R.string.ui_recents), recentCount,
-          MaterialTheme.colorScheme.primary, onRecents,
-        )
-        ProfileHubCard.PLAYLISTS -> ProfileShortcutDestination(
-          Icons.RoundedFilled.Subscriptions, stringResource(R.string.ui_playlists), playlistCount,
-          MaterialTheme.colorScheme.secondary, onPlaylists,
-        )
-        ProfileHubCard.SNAPSHOTS -> ProfileShortcutDestination(
-          Icons.RoundedFilled.Image, stringResource(R.string.ui_snapshots), snapshotCount,
-          MaterialTheme.colorScheme.tertiary, onSnapshots,
-        )
-        ProfileHubCard.NETWORK -> ProfileShortcutDestination(
-          Icons.RoundedFilled.BringYourOwnIp, stringResource(R.string.ui_network), null,
-          MaterialTheme.colorScheme.primary, onNetwork,
-        )
-      }
-    }
-    if (shortcuts.isNotEmpty()) BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+    val shortcuts = listOf(
+      ProfileShortcutDestination(
+        Icons.RoundedFilled.History, stringResource(R.string.ui_recents), recentCount,
+        MaterialTheme.colorScheme.primary, onRecents,
+      ),
+      ProfileShortcutDestination(
+        Icons.RoundedFilled.Subscriptions, stringResource(R.string.ui_playlists), playlistCount,
+        MaterialTheme.colorScheme.secondary, onPlaylists,
+      ),
+      ProfileShortcutDestination(
+        Icons.RoundedFilled.Image, stringResource(R.string.ui_snapshots), snapshotCount,
+        MaterialTheme.colorScheme.tertiary, onSnapshots,
+      ),
+      ProfileShortcutDestination(
+        Icons.RoundedFilled.BringYourOwnIp, stringResource(R.string.ui_network), null,
+        MaterialTheme.colorScheme.primary, onNetwork,
+      ),
+    )
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
       val columns = when {
         maxWidth < 300.dp -> 1
         maxWidth >= 680.dp -> 4
@@ -954,22 +937,22 @@ private fun ProfileShortcutTile(
     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
     modifier =
       modifier
-        .heightIn(min = 90.dp)
+        .heightIn(min = 64.dp)
         .tvFocusHighlight(shape),
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 12.dp, vertical = 16.dp),
+      modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(9.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       Surface(
         shape = CircleShape,
         color = contentColor.copy(alpha = 0.14f),
         contentColor = contentColor,
-        modifier = Modifier.size(40.dp),
+        modifier = Modifier.size(32.dp),
       ) {
         Box(contentAlignment = Alignment.Center) {
-          Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+          Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
         }
       }
       Column(
@@ -979,7 +962,7 @@ private fun ProfileShortcutTile(
         if (count != null) {
           Text(
             text = count.toString(),
-            style = MaterialTheme.typography.titleLargeEmphasized,
+            style = MaterialTheme.typography.titleMediumEmphasized,
             color = MaterialTheme.colorScheme.onSurface,
           )
         }
@@ -995,7 +978,7 @@ private fun ProfileShortcutTile(
         Icons.RoundedFilled.ChevronRight,
         contentDescription = null,
         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.size(18.dp),
+        modifier = Modifier.size(16.dp),
       )
     }
   }

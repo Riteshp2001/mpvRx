@@ -16,7 +16,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
-import android.widget.Toast
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import android.app.Activity
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback

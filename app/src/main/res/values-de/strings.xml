@@ -2240,11 +2240,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="profile_view_all">Alle anzeigen</string>
   <string name="profile_edit">Profil bearbeiten</string>
   <string name="profile_layout_title">Profil-Layout</string>
-  <string name="profile_layout_summary">Ziehen zum Sortieren, Schalter zum Ein-/Ausblenden. Statistikkarten bleiben in ihrem Bereich.</string>
-  <string name="profile_layout_hubs">Übersichtskarten</string>
   <string name="profile_layout_sections">Profilbereiche</string>
-  <string name="profile_layout_statistics">Statistikkarten</string>
-  <string name="profile_layout_reset">Profil-Layout zurücksetzen</string>
   <string name="profile_recently_added">Zuletzt hinzugefügt</string>
   <string name="profile_recently_added_empty">Zu deiner Bibliothek hinzugefügte Videos erscheinen hier.</string>
   <string name="profile_display_name">Anzeigename</string>

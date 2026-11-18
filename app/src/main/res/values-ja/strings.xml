@@ -2226,11 +2226,7 @@
   <string name="profile_view_all">すべて表示</string>
   <string name="profile_edit">プロフィールを編集</string>
   <string name="profile_layout_title">プロフィールのレイアウト</string>
-  <string name="profile_layout_summary">ドラッグで並べ替え、スイッチで表示切り替え。統計カードは統計セクション内に表示。</string>
-  <string name="profile_layout_hubs">ハブカード</string>
   <string name="profile_layout_sections">プロフィールのセクション</string>
-  <string name="profile_layout_statistics">統計カード</string>
-  <string name="profile_layout_reset">プロフィールのレイアウトをリセット</string>
   <string name="profile_recently_added">最近追加した動画</string>
   <string name="profile_recently_added_empty">ライブラリに追加した動画がここに表示されます。</string>
   <string name="profile_display_name">表示名</string>

@@ -2267,11 +2267,7 @@
   <string name="profile_view_all">Показати все</string>
   <string name="profile_edit">Редагувати профіль</string>
   <string name="profile_layout_title">Макет профілю</string>
-  <string name="profile_layout_summary">Перетягуйте для сортування, перемикайте видимість. Статистика лишається у своєму розділі.</string>
-  <string name="profile_layout_hubs">Картки розділів</string>
   <string name="profile_layout_sections">Розділи профілю</string>
-  <string name="profile_layout_statistics">Картки статистики</string>
-  <string name="profile_layout_reset">Скинути макет профілю</string>
   <string name="profile_recently_added">Нещодавно додані</string>
   <string name="profile_recently_added_empty">Тут з’являються відео, додані до медіатеки.</string>
   <string name="profile_display_name">Відображуване ім\'я</string>

@@ -2247,11 +2247,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="profile_view_all">Ver tudo</string>
   <string name="profile_edit">Editar perfil</string>
   <string name="profile_layout_title">Layout do perfil</string>
-  <string name="profile_layout_summary">Arraste para ordenar; use a chave para mostrar ou ocultar. Estatísticas ficam na própria seção.</string>
-  <string name="profile_layout_hubs">Cartões de atalhos</string>
   <string name="profile_layout_sections">Seções do perfil</string>
-  <string name="profile_layout_statistics">Cartões de estatísticas</string>
-  <string name="profile_layout_reset">Redefinir layout do perfil</string>
   <string name="profile_recently_added">Adicionados recentemente</string>
   <string name="profile_recently_added_empty">Os vídeos adicionados à sua biblioteca aparecem aqui.</string>
   <string name="profile_display_name">Nome de exibição</string>

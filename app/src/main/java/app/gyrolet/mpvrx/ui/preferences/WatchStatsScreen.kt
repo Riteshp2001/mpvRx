@@ -37,7 +37,6 @@ import androidx.compose.material3.Text
 import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -62,10 +61,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
-import app.gyrolet.mpvrx.preferences.AppearancePreferences
-import app.gyrolet.mpvrx.preferences.ProfileStatisticsCard
-import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.preferences.visibleProfileItems
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.repository.WatchMediaStats
 import app.gyrolet.mpvrx.repository.WatchStatsRepository
@@ -91,11 +86,6 @@ import org.koin.compose.koinInject
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ProfileWatchStatistics() {
-  val preferences = koinInject<AppearancePreferences>()
-  val order by preferences.profileStatisticsOrder.collectAsState()
-  val hidden by preferences.profileHiddenStatistics.collectAsState()
-  val cards = remember(order, hidden) { visibleProfileItems(ProfileStatisticsCard.entries, order, hidden) }
-  if (cards.isEmpty()) return
   val configuration = androidx.compose.ui.platform.LocalConfiguration.current
   val isTablet = configuration.smallestScreenWidthDp >= 600
   val repository = koinInject<WatchStatsRepository>()
@@ -140,6 +130,10 @@ internal fun ProfileWatchStatistics() {
       }
     }
 
+    WatchTimeBentoCard(stats)
+    WatchSplitBentoCard(stats)
+    WeeklyActivityBentoCard(stats.days)
+
     val topMedia =
       remember(stats.media, mediaFilter) {
         stats.media.entries
@@ -149,21 +143,11 @@ internal fun ProfileWatchStatistics() {
           .map { it.value }
       }
 
-    cards.forEach { card ->
-      key(card) {
-        when (card) {
-          ProfileStatisticsCard.TOTAL_TIME -> WatchTimeBentoCard(stats)
-          ProfileStatisticsCard.MEDIA_BREAKDOWN -> WatchSplitBentoCard(stats)
-          ProfileStatisticsCard.LAST_SEVEN_DAYS -> WeeklyActivityBentoCard(stats.days)
-          ProfileStatisticsCard.MOST_PLAYED ->
-            TopMediaLeaderboardBentoCard(
-              topMedia = topMedia,
-              mediaFilter = mediaFilter,
-              onFilterChange = { mediaFilter = it },
-            )
-        }
-      }
-    }
+    TopMediaLeaderboardBentoCard(
+      topMedia = topMedia,
+      mediaFilter = mediaFilter,
+      onFilterChange = { mediaFilter = it },
+    )
   }
 
   if (confirmReset) {

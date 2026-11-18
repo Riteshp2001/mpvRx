@@ -5,6 +5,7 @@ import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -12,7 +13,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -40,9 +40,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.onSizeChanged
@@ -68,6 +71,13 @@ import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -123,12 +133,13 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
   val browserBottomClearance = if (activity is MainActivity) NavigationBarState.bottomOverlayClearance else 0.dp
   val bottomPadding by animateDpAsState(
     targetValue = maxOf(32.dp, browserBottomClearance),
-    animationSpec = if (reducedMotion) snap() else tween(TOAST_ANIMATION_MS),
+    animationSpec = if (reducedMotion) snap() else AppMotion.Spatial.StandardDp,
     label = "toastBottomPadding",
   )
   var frontToastSize by remember { mutableStateOf(IntSize.Zero) }
-  val stackPeek = with(density) { 12.dp.toPx() }
-  val enterDistance = with(density) { 24.dp.toPx() }
+  val toastBackdrop = rememberHazeState()
+  val stackPeek = with(density) { 8.dp.toPx() }
+  val enterDistance = with(density) { 16.dp.toPx() }
   val sink = remember(lifecycle, activity, view, accessibility, reducedMotion) {
     object : AppToastHostSink {
       private var nextOrder = 0L
@@ -238,7 +249,13 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
   }
   CompositionLocalProvider(LocalAppToastHost provides true) {
     Box(Modifier.fillMaxSize()) {
-      content()
+      // Capture the app only while needed; toast surfaces must never sample their own stack.
+      Box(
+        Modifier.fillMaxSize()
+          .then(if (messages.isNotEmpty()) Modifier.hazeSource(toastBackdrop) else Modifier),
+      ) {
+        content()
+      }
       Box(
         modifier = Modifier.matchParentSize()
           .windowInsetsPadding(toastInsets)
@@ -247,7 +264,7 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
         contentAlignment = Alignment.BottomCenter,
       ) {
         Box(
-          modifier = Modifier.widthIn(max = 400.dp).fillMaxWidth(),
+          modifier = Modifier.widthIn(max = 360.dp).fillMaxWidth(),
           contentAlignment = Alignment.BottomCenter,
         ) {
           // Keep keyed entries composed even behind the visible stack. Revealing an older
@@ -258,25 +275,53 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
               val isFront = index == visibleToasts.lastIndex
               val targetDepth = visibleToasts.lastIndex - index
               var entered by remember { mutableStateOf(false) }
-              LaunchedEffect(Unit) { entered = true }
+              LaunchedEffect(Unit) {
+                withFrameNanos {}
+                entered = true
+              }
+              val shown = entered && !presentation.exiting && targetDepth < MAX_VISIBLE_TOASTS
               val visibility by animateFloatAsState(
-                targetValue = if (entered && !presentation.exiting && targetDepth < MAX_VISIBLE_TOASTS) 1f else 0f,
-                animationSpec = if (reducedMotion) snap() else tween(TOAST_ANIMATION_MS),
+                targetValue = if (shown) 1f else 0f,
+                animationSpec = if (reducedMotion) snap() else tween(TOAST_ANIMATION_MS, easing = FastOutSlowInEasing),
                 label = "toastVisibility",
+              )
+              val reveal by animateFloatAsState(
+                targetValue = if (shown) 1f else 0f,
+                animationSpec = when {
+                  reducedMotion -> snap()
+                  shown -> AppMotion.Spatial.Standard
+                  else -> tween(TOAST_ANIMATION_MS, easing = FastOutSlowInEasing)
+                },
+                label = "toastReveal",
+              )
+              val revealBlur by animateDpAsState(
+                targetValue = if (shown || reducedMotion) 0.dp else 8.dp,
+                animationSpec = if (reducedMotion) snap() else tween(TOAST_ANIMATION_MS, easing = FastOutSlowInEasing),
+                label = "toastRevealBlur",
               )
               val depth by animateFloatAsState(
                 targetValue = targetDepth.coerceAtMost(MAX_VISIBLE_TOASTS).toFloat(),
-                animationSpec = if (reducedMotion) snap() else tween(TOAST_ANIMATION_MS),
+                animationSpec = if (reducedMotion) snap() else AppMotion.Spatial.Standard,
                 label = "toastStackDepth",
               )
               Box(
                 modifier = Modifier.fillMaxWidth()
                   .zIndex(index.toFloat())
                   .graphicsLayer {
-                    translationY = -depth * stackPeek + (1f - visibility) * enterDistance
-                    scaleX = 1f - depth * 0.05f
+                    val revealProgress = reveal.coerceIn(0f, 1f)
+                    val stackDepth = depth.coerceIn(0f, MAX_VISIBLE_TOASTS.toFloat())
+                    translationY = -stackDepth * stackPeek + (1f - revealProgress) * enterDistance
+                    scaleX = (1f - stackDepth * 0.035f) * (0.97f + revealProgress * 0.03f)
+                    scaleY = 0.97f + revealProgress * 0.03f
                     alpha = visibility
                   }
+                  .then(
+                    if (revealBlur > 0.dp) {
+                      Modifier.blur(revealBlur, edgeTreatment = BlurredEdgeTreatment.Unbounded)
+                    } else {
+                      Modifier
+                    },
+                  )
                   .then(if (isFront && !presentation.exiting) Modifier else Modifier.clearAndSetSemantics {}),
                 contentAlignment = Alignment.BottomCenter,
               ) {
@@ -290,6 +335,7 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
                       reducedMotion,
                       onDismiss = { sink.dismiss(presentation.toast.id) },
                       modifier = Modifier.onSizeChanged { if (it != IntSize.Zero) frontToastSize = it },
+                      backdrop = toastBackdrop,
                     )
                   }
                 } else {
@@ -298,7 +344,7 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
                   ToastCardSurface(
                     message = presentation.toast,
                     modifier = Modifier.width(with(density) { frontToastSize.width.toDp() })
-                      .height(with(density) { frontToastSize.height.toDp() }.coerceAtLeast(48.dp)),
+                      .height(with(density) { frontToastSize.height.toDp() }.coerceAtLeast(44.dp)),
                   ) {}
                 }
               }
@@ -314,6 +360,7 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
 private fun ToastCardSurface(
   message: AppToastMessage,
   modifier: Modifier = Modifier,
+  backdrop: HazeState? = null,
   content: @Composable () -> Unit,
 ) {
   val colors = MaterialTheme.colorScheme
@@ -324,11 +371,27 @@ private fun ToastCardSurface(
     AppToastType.Error -> colors.error
     AppToastType.Normal -> colors.onSurfaceVariant
   }
-  val shape = RoundedCornerShape(24.dp)
+  val shape = RoundedCornerShape(18.dp)
+  val tint = lerp(colors.surfaceContainerHigh, tone, 0.06f)
+  val blurStyle = remember(tint, colors.surface) {
+    HazeBlurStyle {
+      blurRadius(12.dp)
+      noiseFactor(0f)
+      backgroundColor(colors.surface)
+      colorEffects(listOf(HazeColorEffect.tint(tint.copy(alpha = 0.72f))))
+      fallbackColorEffect(HazeColorEffect.tint(tint.copy(alpha = 0.92f)))
+    }
+  }
   Box(
     modifier.clip(shape)
-      .background(lerp(colors.surfaceContainerHigh, tone, 0.06f))
-      .border(1.dp, colors.outlineVariant.copy(alpha = 0.55f), shape),
+      .then(
+        if (backdrop != null) {
+          Modifier.hazeBlur(input = HazeInput.Sources(backdrop), style = blurStyle)
+        } else {
+          Modifier.background(tint.copy(alpha = 0.86f))
+        },
+      )
+      .border(1.dp, colors.outlineVariant.copy(alpha = 0.38f), shape),
   ) { content() }
 }
 
@@ -338,6 +401,7 @@ private fun AppToastContent(
   reducedMotion: Boolean,
   onDismiss: () -> Unit,
   modifier: Modifier = Modifier,
+  backdrop: HazeState,
 ) {
   val colors = MaterialTheme.colorScheme
   val tone = when (message.type) {
@@ -353,39 +417,42 @@ private fun AppToastContent(
     AppToastType.Error -> Icons.RoundedFilled.Warning
     AppToastType.Normal, AppToastType.Info, AppToastType.Loading -> Icons.RoundedFilled.Info
   }
-  ToastCardSurface(message, modifier) {
+  ToastCardSurface(message, modifier, backdrop) {
     Row(
       modifier = Modifier
         .animateContentSize(
-          animationSpec = if (reducedMotion) snap() else tween(TOAST_ANIMATION_MS),
+          animationSpec = if (reducedMotion) snap() else AppMotion.Spatial.StandardSize,
           alignment = Alignment.Center,
         )
-        .heightIn(min = 48.dp)
+        .heightIn(min = 44.dp)
         .semantics { liveRegion = LiveRegionMode.Polite }
-        .padding(horizontal = 12.dp, vertical = 4.dp),
+        .padding(horizontal = 10.dp, vertical = 2.dp),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(4.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       if (message.type == AppToastType.Loading && message.icon == null && !reducedMotion) {
-        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = tone, strokeWidth = 2.dp)
+        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = tone, strokeWidth = 2.dp)
       } else {
         when (val icon = message.icon) {
-          is AppToastIcon.Symbol -> Icon(icon.value, contentDescription = null, modifier = Modifier.size(20.dp), tint = tone)
-          is AppToastIcon.Emoji -> Text(icon.value, fontSize = 20.sp)
-          null -> Icon(defaultIcon, contentDescription = null, modifier = Modifier.size(20.dp), tint = tone)
+          is AppToastIcon.Symbol -> Icon(icon.value, contentDescription = null, modifier = Modifier.size(18.dp), tint = tone)
+          is AppToastIcon.Emoji -> Text(icon.value, fontSize = 18.sp)
+          null -> Icon(defaultIcon, contentDescription = null, modifier = Modifier.size(18.dp), tint = tone)
         }
       }
-      Spacer(Modifier.width(4.dp))
       Text(
         message.text,
         style = MaterialTheme.typography.bodyMedium,
         color = colors.onSurface,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.weight(1f, fill = false).padding(vertical = 6.dp),
+        modifier = Modifier.weight(1f, fill = false).padding(vertical = 4.dp),
       )
       message.action?.let { action ->
-        TextButton(onClick = { onDismiss(); action.onClick() }, modifier = Modifier.widthIn(max = 112.dp)) {
+        TextButton(
+          onClick = { onDismiss(); action.onClick() },
+          modifier = Modifier.widthIn(max = 112.dp),
+          contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+        ) {
           Text(action.label, color = tone, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
       }

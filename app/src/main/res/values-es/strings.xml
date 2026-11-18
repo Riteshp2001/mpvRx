@@ -2240,11 +2240,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="profile_view_all">Ver todo</string>
   <string name="profile_edit">Editar perfil</string>
   <string name="profile_layout_title">Diseño del perfil</string>
-  <string name="profile_layout_summary">Arrastra para ordenar y activa o desactiva para mostrar u ocultar. Las estadísticas conservan su sección.</string>
-  <string name="profile_layout_hubs">Tarjetas de acceso</string>
   <string name="profile_layout_sections">Secciones del perfil</string>
-  <string name="profile_layout_statistics">Tarjetas de estadísticas</string>
-  <string name="profile_layout_reset">Restablecer diseño del perfil</string>
   <string name="profile_recently_added">Añadidos recientemente</string>
   <string name="profile_recently_added_empty">Los vídeos añadidos a tu biblioteca aparecen aquí.</string>
   <string name="profile_display_name">Nombre visible</string>
