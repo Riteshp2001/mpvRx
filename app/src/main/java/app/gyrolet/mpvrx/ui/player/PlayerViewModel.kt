@@ -616,6 +616,7 @@ class PlayerViewModel(
   private val renderPrepDispatcher = Dispatchers.Default.limitedParallelism(1)
   private var autoCropJob: Job? = null
   private var autoCropReadinessJob: Job? = null
+  private var autoCropRetryJob: Job? = null
   private var autoCropAnalyzedGeneration = -1L
   private var autoCropApplied = false
   // Memory-only analysis cache. This is not playback history and does not enable auto-crop.
@@ -3697,6 +3698,7 @@ fun restartFromBeginning() {
     const val AUTO_CROP_MIN_VALID_SAMPLES = 3
     const val AUTO_CROP_THUMBNAIL_SIZE = 640
     const val AUTO_CROP_READY_TIMEOUT_MS = 15_000L
+    const val AUTO_CROP_RETRY_INTERVAL_MS = 10_000L
     const val AUTO_CROP_CACHE_CAPACITY = 20
     const val AUTO_CROP_FILTER_LABEL = "mpvrx_autocrop_detect"
     const val AUTO_CROP_DETECT_LIMIT = "24/255"
@@ -5986,6 +5988,7 @@ fun restartFromBeginning() {
               scheduleAutoCropAnalysis(force)
             } else if (PlaybackSession.isCurrentGeneration(expectedGeneration)) {
               _autoCropState.value = AutoCropState.ERROR
+              scheduleAutoCropRetry(expectedGeneration)
             }
           }
       }
@@ -6084,6 +6087,7 @@ fun restartFromBeginning() {
             Log.w(TAG, "Auto-crop could not inspect active video frames for generation=$generation")
             clearAutoCropProperty()
             _autoCropState.value = AutoCropState.ERROR
+            scheduleAutoCropRetry(generation)
             return@withContext
           }
           if (result == AutoCropAnalysisResult.NoBars) {
@@ -6360,7 +6364,22 @@ fun restartFromBeginning() {
     autoCropApplied = false
   }
 
+  private fun scheduleAutoCropRetry(generation: Long) {
+    autoCropRetryJob?.cancel()
+    autoCropRetryJob =
+      viewModelScope.launch {
+        delay(AUTO_CROP_RETRY_INTERVAL_MS)
+        autoCropRetryJob = null
+        if (PlaybackSession.isCurrentGeneration(generation) && playerPreferences.autoCropBlackBars.get()) {
+          Log.i(TAG, "Auto-crop retrying generation=$generation")
+          scheduleAutoCropAnalysis(force = true)
+        }
+      }
+  }
+
   private fun cancelAutoCropAnalysis() {
+    autoCropRetryJob?.cancel()
+    autoCropRetryJob = null
     autoCropJob?.cancel()
     autoCropJob = null
     autoCropReadinessJob?.cancel()
