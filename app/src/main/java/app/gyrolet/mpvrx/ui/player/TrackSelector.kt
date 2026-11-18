@@ -107,8 +107,11 @@ class TrackSelector(
       return@withContext true
     }
     val tracks = awaitTracks(expectedGeneration) ?: return@withContext false
-    val target = tracks.firstOrNull { it.id == manualId }
-    if (target == null || target.type != "audio") {
+    // mpv track ids are per type: the video, audio and subtitle lists each number from 1.
+    // The search must stay inside the audio tracks — searching the whole list finds the
+    // video track first whenever the saved id is 1 and rejects a usable audio track.
+    val target = tracks.firstOrNull { it.type == "audio" && it.id == manualId }
+    if (target == null) {
       Log.d(TAG, "Saved manual audio track $manualId not usable for this load; keeping the record")
       return@withContext false
     }
