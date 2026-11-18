@@ -5269,7 +5269,8 @@ class PlayerActivity :
         expectedGeneration = loadGeneration,
         savedSubtitlesOff = restored.subtitlesOff,
         audioAlreadyDecided =
-          restored.audioDecidedByRestore || ManualAudioSelectionTracker.hasMark(loadedMediaIdentifier),
+          restored.audioDecidedByRestore ||
+            ManualAudioSelectionTracker.hasMarkForGeneration(loadedMediaIdentifier, loadGeneration),
       )
     }
 

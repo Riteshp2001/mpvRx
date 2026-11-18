@@ -20,6 +20,14 @@ package app.gyrolet.mpvrx.ui.player
  * tell "the user chose this" apart from "this happened to be playing". The save path only
  * persists a mark when the track that is current at save time is still the marked one.
  *
+ * A mark also records which load the pick was made in (the PlaybackSession generation at
+ * pick time). What carries a pick across loads is the persisted record, applied by the
+ * restore; the in-process mark only closes the "already decided" gate for the load the
+ * pick was made in — a pick made while that load's restore and subtitle autoload were
+ * still running, which the automatic correction must not override. A pick from an
+ * earlier load in the same process must not close the gate: when this load's restore
+ * did not apply the saved record, the automatic rules decide this open.
+ *
  * A yt-dlp pick is the one case where the picked id cannot be marked directly: picking an
  * audio track reloads the item with a new format selector, and the reload renumbers the
  * tracks. Those picks are recorded as reload-pending instead; when the reloaded file has
@@ -27,21 +35,28 @@ package app.gyrolet.mpvrx.ui.player
  * selected, which is the track the user's selector asked for.
  */
 internal object ManualAudioSelectionTracker {
-  private val marks = mutableMapOf<String, Int>()
+  private data class Mark(val trackId: Int, val generation: Long)
+
+  private val marks = mutableMapOf<String, Mark>()
   private val reloadPending = mutableSetOf<String>()
 
   @Synchronized
   fun mark(identifier: String, trackId: Int) {
     if (identifier.isBlank()) return
-    marks[identifier] = trackId
+    marks[identifier] = Mark(trackId, PlaybackSession.state.value.generation)
     reloadPending.remove(identifier)
   }
 
   @Synchronized
-  fun markedTrackId(identifier: String): Int? = marks[identifier]
+  fun markedTrackId(identifier: String): Int? = marks[identifier]?.trackId
 
+  /**
+   * True only when a pick for [identifier] was made during load [generation] itself.
+   * Marks from earlier loads in this process do not count (see the class doc).
+   */
   @Synchronized
-  fun hasMark(identifier: String): Boolean = marks.containsKey(identifier)
+  fun hasMarkForGeneration(identifier: String, generation: Long): Boolean =
+    marks[identifier]?.generation == generation
 
   @Synchronized
   fun markReloadPending(identifier: String) {
@@ -59,7 +74,7 @@ internal object ManualAudioSelectionTracker {
   @Synchronized
   fun resolveReloadPending(identifier: String, currentTrackId: Int): Boolean {
     if (!reloadPending.remove(identifier)) return false
-    marks[identifier] = currentTrackId
+    marks[identifier] = Mark(currentTrackId, PlaybackSession.state.value.generation)
     return true
   }
 }
