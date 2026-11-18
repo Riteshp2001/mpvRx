@@ -2306,7 +2306,6 @@
   <string name="oss_backdrop_description">用于 Liquid Glass 表面的 Compose 模糊和折射。</string>
   <string name="oss_telephoto_description">图像查看器的缩放和平移手势。</string>
   <string name="oss_androidx_lifecycle_description">为 Compose 界面提供生命周期感知状态和 ViewModel 支持。</string>
-  <string name="oss_leakcanary_description">检测调试版本中的内存泄漏。</string>
   <string name="oss_ytdlp_description">用于受支持流媒体链接的在线媒体提取器。</string>
   <string name="oss_anime4k_description">用于动画视频的实时放大和修复着色器。</string>
   <string name="oss_hdr_toys_description">HDR 色调映射、色域映射和传递函数着色器。</string>
@@ -2844,9 +2843,6 @@
   <string name="player_layout_preset_title">播放布局</string>
   <string name="pref_audio_spatial_title">空间音频</string>
   <string name="pref_audio_spatial_summary">拓宽立体声音场，带来更沉浸的听觉体验</string>
-  <string name="pref_measure_enabled_title">与 Measure 共享诊断信息</string>
-  <string name="pref_measure_enabled_summary">向 Measure 发送崩溃、ANR、性能和会话数据。默认关闭。</string>
-  <string name="pref_measure_not_configured">诊断不可用：此版本未配置 Measure API 密钥。</string>
   <string name="pref_layout_portrait_playback_position">竖屏播放控件</string>
   <string name="pref_layout_landscape_playback_position">横屏播放控件</string>
   <string name="pref_layout_playback_center">屏幕中央</string>

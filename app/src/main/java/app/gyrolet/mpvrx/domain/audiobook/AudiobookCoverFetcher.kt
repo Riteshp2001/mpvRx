@@ -14,7 +14,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import app.gyrolet.mpvrx.network.awaitResponse
-import app.gyrolet.mpvrx.utils.telemetry.withMeasureTelemetry
 import java.io.File
 import java.net.URLEncoder
 import java.security.MessageDigest
@@ -44,7 +43,7 @@ object AudiobookCoverFetcher {
   private val json = Json { ignoreUnknownKeys = true }
 
   private fun getClient(): OkHttpClient {
-    return runCatching { GlobalContext.get().get<OkHttpClient>() }.getOrNull() ?: OkHttpClient.Builder().withMeasureTelemetry().build()
+    return runCatching { GlobalContext.get().get<OkHttpClient>() }.getOrNull() ?: OkHttpClient.Builder().build()
   }
 
   suspend fun search(

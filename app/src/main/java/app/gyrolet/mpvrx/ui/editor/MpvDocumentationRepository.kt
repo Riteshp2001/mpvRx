@@ -20,7 +20,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import app.gyrolet.mpvrx.utils.telemetry.withMeasureTelemetry
 import java.io.File
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -57,7 +56,7 @@ object MpvDocumentationRepository {
   private val json = Json { ignoreUnknownKeys = true }
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val busy = AtomicBoolean(false)
-  private val client = OkHttpClient.Builder().withMeasureTelemetry()
+  private val client = OkHttpClient.Builder()
     .connectTimeout(10, TimeUnit.SECONDS)
     .readTimeout(30, TimeUnit.SECONDS)
     .callTimeout(55, TimeUnit.SECONDS)

@@ -2330,7 +2330,6 @@
   <string name="oss_backdrop_description">Розмиття та заломлення світла Compose для поверхонь Рідкого скла.</string>
   <string name="oss_telephoto_description">Жести масштабування та панорамування для перегляду зображень.</string>
   <string name="oss_androidx_lifecycle_description">Підтримка життєвого циклу та ViewModel для екранів Compose.</string>
-  <string name="oss_leakcanary_description">Виявлення витоків пам\'яті у налагоджувальних збірках.</string>
   <string name="oss_ytdlp_description">Онлайн-екстрактор медіа для підтримуваних посилань трансляцій.</string>
   <string name="oss_anime4k_description">Шейдери апскейлінгу та відновлення анімації в реальному часі.</string>
   <string name="oss_hdr_toys_description">Шейдери тонального відображення, колірного охоплення та функцій передачі HDR.</string>
@@ -2841,9 +2840,6 @@
   <string name="pref_ignore_audio_focus_summary">Продовжувати відтворення аудіо й відео разом з іншими програмами без паузи та зниження гучності</string>
   <string name="pref_audio_spatial_title">Просторовий звук</string>
   <string name="pref_audio_spatial_summary">Розширює стереозвучання для глибшого занурення</string>
-  <string name="pref_measure_enabled_title">Надсилати діагностику до Measure</string>
-  <string name="pref_measure_enabled_summary">Надсилати дані збоїв, ANR, продуктивності й сеансів до Measure. Типово вимкнено.</string>
-  <string name="pref_measure_not_configured">Діагностика недоступна: у збірці немає ключа API Measure.</string>
   <string name="pref_layout_portrait_playback_position">Керування відтворенням у портретному режимі</string>
   <string name="pref_layout_landscape_playback_position">Керування відтворенням в альбомному режимі</string>
   <string name="pref_layout_playback_center">У центрі екрана</string>

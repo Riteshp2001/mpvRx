@@ -2317,7 +2317,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="oss_backdrop_description">Desfoque e refração no Compose para superfícies Liquid Glass.</string>
   <string name="oss_telephoto_description">Gestos de zoom e panorâmica para o visualizador de imagens.</string>
   <string name="oss_androidx_lifecycle_description">Estado e ViewModel conscientes do ciclo de vida para telas Compose.</string>
-  <string name="oss_leakcanary_description">Detecta vazamentos de memória em compilações de depuração.</string>
   <string name="oss_ytdlp_description">Extrator de mídia online para links de streaming compatíveis.</string>
   <string name="oss_anime4k_description">Shaders de ampliação e restauração em tempo real para vídeos animados.</string>
   <string name="oss_hdr_toys_description">Shaders de mapeamento de tons HDR, gama e funções de transferência.</string>
@@ -2875,9 +2874,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="pref_ignore_audio_focus_summary">Continuar reproduzindo áudio e vídeo com outros apps sem pausar nem reduzir o volume</string>
   <string name="pref_audio_spatial_title">Áudio espacial</string>
   <string name="pref_audio_spatial_summary">Amplia as faixas estéreo para uma experiência mais imersiva</string>
-  <string name="pref_measure_enabled_title">Compartilhar diagnósticos com Measure</string>
-  <string name="pref_measure_enabled_summary">Envia dados de falhas, ANR, desempenho e sessões ao Measure. Desativado por padrão.</string>
-  <string name="pref_measure_not_configured">Diagnóstico indisponível: esta compilação não tem chave da API Measure.</string>
   <string name="pref_layout_portrait_playback_position">Controles de reprodução em modo retrato</string>
   <string name="pref_layout_landscape_playback_position">Controles de reprodução em modo paisagem</string>
   <string name="pref_layout_playback_center">Centro da tela</string>

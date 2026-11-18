@@ -2310,7 +2310,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="oss_backdrop_description">Compose-Weichzeichnung und -Lichtbrechung für Liquid-Glass-Flächen.</string>
   <string name="oss_telephoto_description">Zoom- und Schwenkgesten für den Bildbetrachter.</string>
   <string name="oss_androidx_lifecycle_description">Lebenszyklusabhängiger Zustand und ViewModel-Unterstützung für Compose.</string>
-  <string name="oss_leakcanary_description">Erkennt Speicherlecks in Debug-Builds.</string>
   <string name="oss_ytdlp_description">Online-Medienextraktor für unterstützte Streaming-Links.</string>
   <string name="oss_anime4k_description">Echtzeit-Upscaling- und Restaurierungs-Shader für animierte Videos.</string>
   <string name="oss_hdr_toys_description">Shader für HDR-Tonemapping, Farbraumabbildung und Übertragungsfunktionen.</string>
@@ -2868,9 +2867,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_ignore_audio_focus_summary">Audio und Video zusammen mit anderen Apps weiter abspielen, ohne zu pausieren oder die Lautstärke zu senken</string>
   <string name="pref_audio_spatial_title">Räumliches Audio</string>
   <string name="pref_audio_spatial_summary">Verbreitert Stereospuren für ein immersiveres Klangerlebnis</string>
-  <string name="pref_measure_enabled_title">Diagnosedaten mit Measure teilen</string>
-  <string name="pref_measure_enabled_summary">Absturz-, ANR-, Leistungs- und Sitzungsdaten an Measure senden. Standardmäßig aus.</string>
-  <string name="pref_measure_not_configured">Diagnose nicht verfügbar: Dieser Build hat keinen Measure-API-Schlüssel.</string>
   <string name="pref_layout_portrait_playback_position">Wiedergabesteuerung im Hochformat</string>
   <string name="pref_layout_landscape_playback_position">Wiedergabesteuerung im Querformat</string>
   <string name="pref_layout_playback_center">Bildschirmmitte</string>

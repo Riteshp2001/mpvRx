@@ -2310,7 +2310,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="oss_backdrop_description">Flou et réfraction Compose pour les surfaces Liquid Glass.</string>
   <string name="oss_telephoto_description">Gestes de zoom et de déplacement pour la visionneuse d’images.</string>
   <string name="oss_androidx_lifecycle_description">État sensible au cycle de vie et prise en charge des ViewModel pour Compose.</string>
-  <string name="oss_leakcanary_description">Détecte les fuites de mémoire dans les versions de débogage.</string>
   <string name="oss_ytdlp_description">Extracteur multimédia en ligne pour les liens pris en charge.</string>
   <string name="oss_anime4k_description">Shaders d’agrandissement et de restauration en temps réel pour les vidéos animées.</string>
   <string name="oss_hdr_toys_description">Shaders de tone mapping HDR, de gamut mapping et de fonctions de transfert.</string>
@@ -2868,9 +2867,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_ignore_audio_focus_summary">Continuer à lire les contenus audio et vidéo avec les autres applications sans pause ni baisse du volume</string>
   <string name="pref_audio_spatial_title">Audio spatial</string>
   <string name="pref_audio_spatial_summary">Élargit les pistes stéréo pour une expérience plus immersive</string>
-  <string name="pref_measure_enabled_title">Partager les diagnostics avec Measure</string>
-  <string name="pref_measure_enabled_summary">Envoie les données de plantage, ANR, performances et sessions à Measure. Désactivé par défaut.</string>
-  <string name="pref_measure_not_configured">Diagnostics indisponibles : cette version ne contient pas de clé Measure.</string>
   <string name="pref_layout_portrait_playback_position">Commandes de lecture en mode portrait</string>
   <string name="pref_layout_landscape_playback_position">Commandes de lecture en mode paysage</string>
   <string name="pref_layout_playback_center">Centre de l\'écran</string>

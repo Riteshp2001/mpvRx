@@ -12,9 +12,7 @@ package app.gyrolet.mpvrx.ui.preferences
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.domain.fonts.MpvFontConfig
-import app.gyrolet.mpvrx.utils.telemetry.MeasureTelemetry
 import android.os.Build
 import android.os.Environment
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
@@ -1078,29 +1076,6 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
               val activity = LocalActivity.current!!
               val verboseLogging by preferences.verboseLogging.collectAsState()
               val debugLogSizeMb by preferences.debugLogSizeMb.collectAsState()
-
-              val measureEnabled by preferences.measureEnabled.collectAsState()
-
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_measure_enabled_title),
-                value = measureEnabled && BuildConfig.MEASURE_CONFIGURED,
-                enabled = BuildConfig.MEASURE_CONFIGURED,
-                onValueChange = { enabled ->
-                  if (MeasureTelemetry.setEnabled(enabled)) preferences.measureEnabled.set(enabled)
-                },
-                title = { Text(stringResource(R.string.pref_measure_enabled_title)) },
-                summary = {
-                  Text(
-                    stringResource(
-                      if (BuildConfig.MEASURE_CONFIGURED) R.string.pref_measure_enabled_summary
-                      else R.string.pref_measure_not_configured,
-                    ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
 
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_verbose_logging_title),

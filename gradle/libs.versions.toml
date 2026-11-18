@@ -44,12 +44,10 @@ fsaf = "1.1.3"
 materialSymbols = "2.2.1"
 seeker = "2.0.1"
 markdownRenderer = "0.45.0"
-kotlinTest = "2.4.20"
 mediainfo = "v1.0.0-fix"
 mpvlib = "1.1.8.4"
 googleCast = "22.3.1"
 androidxBiometric = "1.4.0-alpha07"
-leakcanary = "2.14"
 kmpVibrate = "1.1.0"
 libtorrent4j = "2.1.0-39"
 libarchiveAndroid = "1.1.6"
@@ -91,7 +89,6 @@ androidx-documentfile = { group = "androidx.documentfile", name = "documentfile"
 androidx-palette = { group = "androidx.palette", name = "palette-ktx", version.ref = "androidxPalette" }
 seeker = { module = "com.github.abdallahmehiz:seeker", version.ref = "seeker" }
 markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
-kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlinTest" }
 mediainfo-lib = { module = "com.github.marlboro-advance:mediainfoAndroid", version.ref = "mediainfo" }
 mpvlib-standard = { module = "app.gyrolet.mpvlib:mpvlib", version.ref = "mpvlib" }
 mpvlib-no-vulkan = { module = "app.gyrolet.mpvlib:mpvlib-no-vulkan", version.ref = "mpvlib" }
@@ -137,7 +134,6 @@ google-cast-framework = { module = "com.google.android.gms:play-services-cast-fr
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "androidxBiometric" }
-leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version.ref = "leakcanary" }
 kmp-vibrate = { module = "io.github.jmseb3:vibrate", version.ref = "kmpVibrate" }
 libtorrent4j = { module = "org.libtorrent4j:libtorrent4j", version.ref = "libtorrent4j" }
 libtorrent4j-android-arm64 = { module = "org.libtorrent4j:libtorrent4j-android-arm64", version.ref = "libtorrent4j" }

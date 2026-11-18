@@ -73,6 +73,7 @@ class SettingsManager(
     private const val TYPE_STRING_SET = "stringSet"
     private const val STRING_SET_SEPARATOR = "|||"
     private const val AUTO_BACKUP_STATE = "settings_auto_backup_state"
+    private const val LEGACY_MEASURE_ENABLED_KEY = "measure_diagnostics_opt_in"
     private const val LAST_BACKUP_SIGNATURE = "last_signature"
     private const val LAST_BACKUP_TIME = "last_time"
     private const val AUTO_BACKUP_RETENTION = 7
@@ -269,7 +270,7 @@ class SettingsManager(
       if (key != BrowserPreferences.ONBOARDING_COMPLETED_KEY &&
         key != AdvancedPreferences.AUTO_BACKUP_ENABLED_KEY &&
         key != AdvancedPreferences.AUTO_BACKUP_FOLDER_URI_KEY &&
-        key != AdvancedPreferences.MEASURE_ENABLED_KEY &&
+        key != LEGACY_MEASURE_ENABLED_KEY &&
         value != null
       ) {
         writePreference(serializer, key, value)
@@ -429,7 +430,7 @@ class SettingsManager(
                   key != BrowserPreferences.ONBOARDING_COMPLETED_KEY &&
                   key != AdvancedPreferences.AUTO_BACKUP_ENABLED_KEY &&
                   key != AdvancedPreferences.AUTO_BACKUP_FOLDER_URI_KEY &&
-                    key != AdvancedPreferences.MEASURE_ENABLED_KEY
+                  key != LEGACY_MEASURE_ENABLED_KEY
                 ) {
                   try {
                     val (validKey, value) = readPreference(parser)

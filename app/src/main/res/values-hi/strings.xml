@@ -2233,7 +2233,6 @@
   <string name="oss_backdrop_description">Liquid Glass सतहों के लिए Compose धुंधलापन और अपवर्तन।</string>
   <string name="oss_telephoto_description">चित्र दर्शक के लिए ज़ूम और पैन जेस्चर।</string>
   <string name="oss_androidx_lifecycle_description">Compose स्क्रीन के लिए लाइफ़साइकल-जागरूक स्थिति और ViewModel समर्थन।</string>
-  <string name="oss_leakcanary_description">डिबग बिल्ड में मेमोरी लीक का पता लगाता है।</string>
   <string name="oss_ytdlp_description">समर्थित स्ट्रीमिंग लिंक के लिए ऑनलाइन मीडिया एक्सट्रैक्टर।</string>
   <string name="oss_anime4k_description">एनिमेटेड वीडियो के लिए रियल-टाइम अपस्केलिंग और पुनर्स्थापन शेडर।</string>
   <string name="oss_hdr_toys_description">HDR टोन मैपिंग, गैमट मैपिंग और ट्रांसफ़र फ़ंक्शन शेडर।</string>
@@ -2787,9 +2786,6 @@
   <string name="pref_ignore_audio_focus_summary">दूसरे ऐप्लिकेशन के साथ ऑडियो और वीडियो चलाते रहें, बिना रुके या आवाज़ कम किए</string>
   <string name="pref_audio_spatial_title">स्थानिक ऑडियो</string>
   <string name="pref_audio_spatial_summary">ज़्यादा इमर्सिव अनुभव के लिए स्टीरियो ट्रैक का ध्वनि विस्तार बढ़ाता है</string>
-  <string name="pref_measure_enabled_title">Measure के साथ निदान साझा करें</string>
-  <string name="pref_measure_enabled_summary">क्रैश, ANR, प्रदर्शन और सेशन डेटा Measure को भेजें। डिफ़ॉल्ट रूप से बंद।</string>
-  <string name="pref_measure_not_configured">निदान उपलब्ध नहीं: इस बिल्ड में Measure API कुंजी नहीं है।</string>
   <string name="pref_layout_portrait_playback_position">पोर्ट्रेट प्लेबैक नियंत्रण</string>
   <string name="pref_layout_landscape_playback_position">लैंडस्केप प्लेबैक नियंत्रण</string>
   <string name="pref_layout_playback_center">स्क्रीन के बीच में</string>

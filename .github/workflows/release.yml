@@ -134,7 +134,6 @@ jobs:
             asset: playstore
             package: aab
     env:
-      MEASURE_API_KEY: ${{ secrets.MEASURE_API_KEY }}
       VERSION_TAG: ${{ needs.prepare.outputs.version_tag }}
       GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
       APK_DIR: ${{ matrix.distribution.dir }}

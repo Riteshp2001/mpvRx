@@ -2803,7 +2803,6 @@
   <string name="oss_backdrop_description">Compose blur and refraction for Liquid Glass surfaces.</string>
   <string name="oss_telephoto_description">Zoom and pan gestures for the image viewer.</string>
   <string name="oss_androidx_lifecycle_description">Lifecycle-aware state and ViewModel support for Compose screens.</string>
-  <string name="oss_leakcanary_description">Detects memory leaks in debug builds.</string>
   <string name="oss_python_description">Embedded Python runtime for online media extraction.</string>
   <string name="oss_ytdlp_description">Online media extractor used for supported streaming links.</string>
   <string name="oss_anime4k_description">Real-time upscaling and restoration shaders for animated video.</string>
@@ -3211,9 +3210,6 @@
   <string name="clip_quick_length">Quick length</string>
   <string name="clip_length_seconds">%1$ds</string>
   <string name="clip_crop_reset">Use full frame</string>
-  <string name="pref_measure_enabled_title">Share diagnostics with Measure</string>
-  <string name="pref_measure_enabled_summary">Send crash, ANR, performance and session data to Measure. Off by default.</string>
-  <string name="pref_measure_not_configured">Diagnostics unavailable: this build has no Measure API key.</string>
   <string name="pref_layout_portrait_playback_position">Portrait playback controls</string>
   <string name="pref_layout_landscape_playback_position">Landscape playback controls</string>
   <string name="pref_layout_playback_center">Center of screen</string>

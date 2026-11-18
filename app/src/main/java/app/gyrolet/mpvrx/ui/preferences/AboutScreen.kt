@@ -1079,13 +1079,6 @@ internal val OPEN_SOURCE_LIBRARIES =
       url = "https://developer.android.com/jetpack/androidx/releases/lifecycle",
     ),
     OpenSourceLibrary(
-      name = "LeakCanary",
-      artifact = "com.squareup.leakcanary:leakcanary-android",
-      descriptionRes = R.string.oss_leakcanary_description,
-      license = "Apache-2.0",
-      url = "https://github.com/square/leakcanary",
-    ),
-    OpenSourceLibrary(
       name = "Python",
       artifact = "libpython / python313.zip",
       descriptionRes = R.string.oss_python_description,

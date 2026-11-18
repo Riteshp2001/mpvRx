@@ -2338,7 +2338,6 @@
   <string name="oss_backdrop_description">Размытие и преломление Compose для поверхностей Liquid Glass.</string>
   <string name="oss_telephoto_description">Жесты масштабирования и панорамирования в просмотрщике изображений.</string>
   <string name="oss_androidx_lifecycle_description">Состояние с учётом жизненного цикла и ViewModel для экранов Compose.</string>
-  <string name="oss_leakcanary_description">Обнаруживает утечки памяти в отладочных сборках.</string>
   <string name="oss_ytdlp_description">Онлайн-экстрактор мультимедиа для поддерживаемых ссылок.</string>
   <string name="oss_anime4k_description">Шейдеры повышения разрешения и восстановления анимационного видео в реальном времени.</string>
   <string name="oss_hdr_toys_description">Шейдеры тонального и цветового отображения HDR и передаточных функций.</string>
@@ -2916,9 +2915,6 @@
   <string name="pref_ignore_audio_focus_summary">Продолжать воспроизведение аудио и видео вместе с другими приложениями без паузы и снижения громкости</string>
   <string name="pref_audio_spatial_title">Пространственный звук</string>
   <string name="pref_audio_spatial_summary">Расширяет стереозвучание для более полного погружения</string>
-  <string name="pref_measure_enabled_title">Отправлять диагностику в Measure</string>
-  <string name="pref_measure_enabled_summary">Отправлять данные сбоев, ANR, производительности и сеансов в Measure. По умолчанию выключено.</string>
-  <string name="pref_measure_not_configured">Диагностика недоступна: в сборке нет ключа API Measure.</string>
   <string name="pref_layout_portrait_playback_position">Элементы управления в портретном режиме</string>
   <string name="pref_layout_landscape_playback_position">Элементы управления в альбомном режиме</string>
   <string name="pref_layout_playback_center">По центру экрана</string>
