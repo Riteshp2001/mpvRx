@@ -436,8 +436,9 @@
   <string name="pref_audio_output_audiotrack">AudioTrack</string>
   <string name="pref_audio_output_aaudio">AAudio (low latency)</string>
   <string name="pref_audio_output_opensles">OpenSL ES</string>
+  <string name="pref_audio_output_passthrough">AudioTrack while passthrough is on</string>
   <string name="pref_audio_passthrough_title">Passthrough</string>
-  <string name="pref_audio_passthrough_summary">Send surround audio to a receiver without decoding or effects.</string>
+  <string name="pref_audio_passthrough_summary">Send surround audio over HDMI or optical to a receiver.</string>
   <string name="pref_audio_passthrough_off">Off</string>
   <string name="pref_audio_passthrough_dolby">Dolby Digital (AC3, E-AC3)</string>
   <string name="pref_audio_passthrough_dolby_dts">Dolby Digital and DTS</string>

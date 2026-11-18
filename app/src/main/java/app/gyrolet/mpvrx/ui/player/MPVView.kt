@@ -1032,7 +1032,7 @@ class MPVView(
       add("volume-max" to (audioPreferences.volumeBoostCap.get() + 100).toString())
       // Prevent automatic volume normalization when downmixing multi-channel audio
       add("audio-normalize-downmix" to "no")
-      audioPreferences.audioOutput.get().mpvValue.takeIf { it.isNotEmpty() }?.let { add("ao" to it) }
+      audioPreferences.mpvAudioOutput().takeIf { it.isNotEmpty() }?.let { add("ao" to it) }
       audioPreferences.audioPassthrough.get().codecs.takeIf { it.isNotEmpty() }?.let { add("audio-spdif" to it) }
     }
 

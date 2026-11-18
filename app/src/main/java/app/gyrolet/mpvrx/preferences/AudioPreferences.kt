@@ -121,6 +121,13 @@ class AudioPreferences(
   ): Boolean =
     if (behavior == BackgroundPlaybackBehavior.Remember) globalChoice else mediaId != null && mediaId in enabledVideos
 
+  /** mpv's ao list: AudioTrack while this app's passthrough setting is in effect. */
+  fun mpvAudioOutput(): String {
+    val passthrough =
+      if (MpvConfigOverridePolicy.isOwnedByMpvConf("audio-spdif")) AudioPassthrough.Off else audioPassthrough.get()
+    return passthrough.audioOutput(audioOutput.get())
+  }
+
   init {
     if (preferenceStore.getString("background_playback_behavior").get() == "ResetAfterVideo") {
       backgroundPlaybackBehavior.set(BackgroundPlaybackBehavior.PerVideo)
@@ -197,6 +204,15 @@ enum class AudioPassthrough(
   DolbyDigital(R.string.pref_audio_passthrough_dolby, "ac3,eac3"),
   DolbyDigitalAndDts(R.string.pref_audio_passthrough_dolby_dts, "ac3,eac3,dts"),
   All(R.string.pref_audio_passthrough_all, "ac3,eac3,dts,dts-hd,truehd"),
+  ;
+
+  /**
+   * mpv's ao list while this passthrough mode is set. Only AudioTrack bitstreams: AAudio before
+   * Android 14 and OpenSL ES open a passthrough format as PCM, so mpv would decode instead of
+   * trying AudioTrack.
+   */
+  fun audioOutput(output: AudioOutput): String =
+    if (this == Off) output.mpvValue else AudioOutput.AudioTrack.mpvValue
 }
 
 enum class AudioChannels(

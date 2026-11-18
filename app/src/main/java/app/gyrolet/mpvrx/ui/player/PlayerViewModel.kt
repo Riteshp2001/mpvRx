@@ -2877,7 +2877,11 @@ fun restartFromBeginning() {
     viewModelScope.launch(playbackStateDispatcher) {
       audioPreferences.audioPassthrough.changes().distinctUntilChanged().drop(1).collect { passthrough ->
         // mpv reopens the audio decoder and falls back to PCM if the output rejects the format.
-        if (_isMpvCoreReady.value) PlaybackSession.setPropertyString("audio-spdif", passthrough.codecs)
+        // Set the output first, so that reopening uses AudioTrack while passthrough is on.
+        if (_isMpvCoreReady.value) {
+          PlaybackSession.setPropertyString("ao", audioPreferences.mpvAudioOutput())
+          PlaybackSession.setPropertyString("audio-spdif", passthrough.codecs)
+        }
       }
     }
     // FongMi's mpv reports that fallback. Say so once per setting, not on every file of a playlist.
@@ -2896,7 +2900,10 @@ fun restartFromBeginning() {
     }
     viewModelScope.launch(playbackStateDispatcher) {
       audioPreferences.audioOutput.changes().distinctUntilChanged().drop(1).collect { output ->
-        if (_isMpvCoreReady.value && !MpvConfigOverridePolicy.isOwnedByMpvConf("ao")) {
+        // Passthrough keeps AudioTrack; the choice applies once passthrough is off again.
+        if (_isMpvCoreReady.value && audioPreferences.mpvAudioOutput() == output.mpvValue &&
+          !MpvConfigOverridePolicy.isOwnedByMpvConf("ao")
+        ) {
           PlaybackSession.setPropertyString("ao", output.mpvValue)
           PlaybackSession.command("ao-reload")
         }

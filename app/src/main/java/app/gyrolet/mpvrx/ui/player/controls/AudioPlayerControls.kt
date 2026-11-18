@@ -57,6 +57,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -203,6 +204,7 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.AnimatedIcon
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.Panels
@@ -1381,6 +1383,16 @@ fun AudioPlayerControls(
   val showImmersiveArtwork = !isTablet && immersiveArtworkEnabled && !showVisualizer && !showInPlaceLyrics &&
     (albumArtBitmap != null || !currentArtworkUri.isNullOrBlank() ||
       currentAudioPresentation?.motionArtwork != null || motionQuery != null)
+  // PlayerActivity uses light status-bar icons; the in-app player follows the app's bar style.
+  val useLightImmersiveHeaderContent =
+    if (showImmersiveArtwork && inAppSheet != null) {
+      val darkMode by appearancePreferences.darkMode.collectAsState()
+      val systemDark = isSystemInDarkTheme()
+      darkMode == DarkMode.Dark || (darkMode == DarkMode.System && systemDark)
+    } else {
+      true
+    }
+  val immersiveHeaderContentColor = if (useLightImmersiveHeaderContent) Color.White else Color.Black
   val immersiveSurface by animateColorAsState(
     targetValue = if (showImmersiveArtwork) {
       Color(ColorUtils.blendARGB(colorScheme.surface.toArgb(), artworkPalette.primary, 0.10f))
@@ -1458,7 +1470,22 @@ fun AudioPlayerControls(
         hasNext = nextItem != null,
       )
     }
-    if (!showVisualizer && !showInPlaceLyrics) {
+    if (showImmersiveArtwork) {
+      val topInset = with(LocalDensity.current) { stableInsets.getTop(this).toDp() }
+      val protectedHeight = topInset + 54.dp
+      val vignetteHeight = protectedHeight + if (isPortrait) 112.dp else 72.dp
+      val fadeStart = protectedHeight / vignetteHeight
+      val shadeColor = if (useLightImmersiveHeaderContent) Color.Black else Color.White
+      val vignette = remember(shadeColor, fadeStart) {
+        Brush.verticalGradient(
+          0f to shadeColor.copy(alpha = 0.78f),
+          fadeStart to shadeColor.copy(alpha = 0.68f),
+          (fadeStart + (1f - fadeStart) * 0.5f) to shadeColor.copy(alpha = 0.24f),
+          1f to shadeColor.copy(alpha = 0f),
+        )
+      }
+      Box(Modifier.fillMaxWidth().height(vignetteHeight).background(vignette))
+    } else if (!showVisualizer && !showInPlaceLyrics) {
       val headerFadeHeight = with(LocalDensity.current) { stableInsets.getTop(this).toDp() } + 144.dp
       Box(
         Modifier.fillMaxWidth().height(headerFadeHeight)
@@ -1538,7 +1565,7 @@ fun AudioPlayerControls(
             Icon(
               imageVector = if (showInPlaceLyrics || isLyricsFullscreen) Icons.RoundedFilled.ArrowBack else Icons.RoundedFilled.ExpandMore,
               contentDescription = stringResource(if (showInPlaceLyrics || isLyricsFullscreen) R.string.back else R.string.ui_close),
-              tint = MaterialTheme.colorScheme.onSurface,
+              tint = if (showImmersiveArtwork) immersiveHeaderContentColor else MaterialTheme.colorScheme.onSurface,
               modifier = Modifier.size(if (showInPlaceLyrics || isLyricsFullscreen) 28.dp else 32.dp),
             )
           }
@@ -1548,7 +1575,12 @@ fun AudioPlayerControls(
               "${audioFormatInfo.codecLabel} · $qualityLabel"
             } else stringResource(R.string.ui_now_playing),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color =
+              if (showImmersiveArtwork) {
+                immersiveHeaderContentColor.copy(alpha = 0.92f)
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              },
             letterSpacing = 2.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1564,7 +1596,7 @@ fun AudioPlayerControls(
               Icon(
                 imageVector = Icons.RoundedFilled.Info,
                 contentDescription = stringResource(R.string.player_sheets_more_title),
-                tint = MaterialTheme.colorScheme.onSurface,
+                tint = if (showImmersiveArtwork) immersiveHeaderContentColor else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(28.dp),
               )
             }

@@ -682,18 +682,28 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
 
               PreferenceDivider()
               val audioOutput by preferences.audioOutput.collectAsState()
+              val audioPassthrough by preferences.audioPassthrough.collectAsState()
+              // Passthrough needs AudioTrack, so it overrides this choice while it's on.
+              val passthroughOwnsOutput = audioPassthrough != AudioPassthrough.Off &&
+                "audio-spdif" !in configOwnedOptions
               ExpressivePreferenceItem {
               ListPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_output_title),
                 value = audioOutput,
                 onValueChange = { preferences.audioOutput.set(it) },
                 values = AudioOutput.entries,
-                enabled = "ao" !in configOwnedOptions,
+                enabled = "ao" !in configOwnedOptions && !passthroughOwnsOutput,
                 valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
                 title = { Text(stringResource(R.string.pref_audio_output_title)) },
                 summary = {
                   Text(
-                    text = stringResource(audioOutput.titleRes),
+                    text = stringResource(
+                      if (passthroughOwnsOutput && "ao" !in configOwnedOptions) {
+                        R.string.pref_audio_output_passthrough
+                      } else {
+                        audioOutput.titleRes
+                      },
+                    ),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
@@ -701,7 +711,6 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
               }
 
               PreferenceDivider()
-              val audioPassthrough by preferences.audioPassthrough.collectAsState()
               ExpressivePreferenceItem {
               ListPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_passthrough_title),
