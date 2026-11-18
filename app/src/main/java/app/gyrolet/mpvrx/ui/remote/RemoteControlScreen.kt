@@ -53,7 +53,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.ui.preferences.ScrollableSettingsScreen
+import app.gyrolet.mpvrx.ui.preferences.settingsContentPadding
 import app.gyrolet.mpvrx.remote.REMOTE_MAX_TEXT_LENGTH
 import app.gyrolet.mpvrx.remote.RemoteControlStore
 import app.gyrolet.mpvrx.remote.RemoteKey
@@ -72,7 +73,7 @@ import kotlinx.serialization.Serializable
 
 /** On a TV: lets phones pair with it. On a phone: finds MPVRX TVs and controls them. */
 @Serializable
-object RemoteControlScreen : Screen {
+object RemoteControlScreen : ScrollableSettingsScreen {
   @Composable
   override fun Content() {
     if (isTelevision()) TvRemoteSettings() else PhoneRemoteController()
@@ -97,7 +98,7 @@ private fun TvRemoteSettings() {
   ) { padding ->
     LazyColumn(
       modifier = Modifier.fillMaxSize().padding(padding),
-      contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+      contentPadding = settingsContentPadding(PaddingValues(horizontal = 24.dp, vertical = 16.dp)),
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       item {
@@ -198,14 +199,14 @@ private fun PhoneRemoteController() {
           message = stringResource(R.string.remote_phone_confirm_code, state.name),
           code = state.code,
           onCancel = viewModel::disconnect,
-          modifier = contentModifier,
+          modifier = contentModifier.padding(settingsContentPadding()),
         )
       is RemoteConnection.Connecting ->
         WaitingPanel(
           message = stringResource(R.string.remote_phone_connecting, state.name),
           code = null,
           onCancel = viewModel::disconnect,
-          modifier = contentModifier,
+          modifier = contentModifier.padding(settingsContentPadding()),
         )
       is RemoteConnection.Failed -> TvPicker(viewModel, state.reason, contentModifier)
       RemoteConnection.Idle -> TvPicker(viewModel, null, contentModifier)
@@ -237,7 +238,7 @@ private fun TvPicker(
 
   LazyColumn(
     modifier = modifier,
-    contentPadding = PaddingValues(16.dp),
+    contentPadding = settingsContentPadding(PaddingValues(16.dp)),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     if (failure != null) {
@@ -368,7 +369,8 @@ private fun RemotePad(
   }
 
   Column(
-    modifier = modifier.verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
+    modifier = modifier.verticalScroll(rememberScrollState())
+      .padding(settingsContentPadding(PaddingValues(horizontal = 24.dp, vertical = 16.dp))),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(20.dp),
   ) {

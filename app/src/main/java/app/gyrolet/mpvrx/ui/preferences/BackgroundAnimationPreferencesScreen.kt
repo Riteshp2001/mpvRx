@@ -58,7 +58,6 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.background.*
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
@@ -90,7 +89,7 @@ private val SkyBackgrounds = listOf(
 
 /** One live preview, static illustrated choices, and the same connected controls as Settings. */
 @Serializable
-object BackgroundAnimationPreferencesScreen : Screen {
+object BackgroundAnimationPreferencesScreen : ScrollableSettingsScreen {
   @Composable
   override fun Content() {
     val backstack = LocalBackStack.current
@@ -139,7 +138,7 @@ object BackgroundAnimationPreferencesScreen : Screen {
         ) {
           LazyColumn(
             state = listState,
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+            contentPadding = settingsContentPadding(PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp)),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.widthIn(max = 760.dp).fillMaxSize().then(searchHighlight),
           ) {

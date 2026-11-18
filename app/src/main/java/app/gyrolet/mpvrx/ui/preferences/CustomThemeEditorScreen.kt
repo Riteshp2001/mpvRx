@@ -58,7 +58,6 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.AppComboBox
 import app.gyrolet.mpvrx.ui.components.ExpressiveColorPicker
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -83,7 +82,7 @@ import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextFie
 @Serializable
 data class CustomThemeEditorScreen(
   val themeName: String? = null,
-) : Screen {
+) : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -222,7 +221,7 @@ data class CustomThemeEditorScreen(
         LazyColumn(
           state = listState,
           modifier = Modifier.fillMaxHeight().widthIn(max = 640.dp).fillMaxWidth().tvFocusGroup(),
-          contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+          contentPadding = settingsContentPadding(PaddingValues(horizontal = 16.dp, vertical = 16.dp)),
           verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
           item(key = "theme") {

@@ -144,7 +144,7 @@ data class CustomButtonSlots(
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Serializable
-object CustomButtonScreen : Screen {
+object CustomButtonScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -312,7 +312,7 @@ object CustomButtonScreen : Screen {
     ) { padding ->
       LazyColumn(
         state = lazyListState,
-        contentPadding = padding,
+        contentPadding = settingsContentPadding(padding),
         modifier =
           Modifier
             .fillMaxSize()

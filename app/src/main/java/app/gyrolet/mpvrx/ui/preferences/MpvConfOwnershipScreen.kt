@@ -59,7 +59,6 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigOverride
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.ExpandableCard
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -74,7 +73,7 @@ import org.koin.compose.koinInject
  * page stays scannable; expanding reveals the individual options.
  */
 @Serializable
-object MpvConfOwnershipScreen : Screen {
+object MpvConfOwnershipScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -101,7 +100,7 @@ object MpvConfOwnershipScreen : Screen {
           .fillMaxSize()
             .tvContentFocus()
           .padding(padding),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
+        contentPadding = settingsContentPadding(PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)),
         verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
       ) {
         item(key = "header") {

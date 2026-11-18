@@ -68,7 +68,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.repository.GitHubCommunityMember
 import app.gyrolet.mpvrx.repository.GitHubContributor
@@ -93,7 +92,7 @@ import java.util.Locale
 private const val AVATAR_CACHE_TTL_MS = 72L * 60L * 60L * 1000L
 
 @Serializable
-object HallOfFameScreen : Screen {
+object HallOfFameScreen : ScrollableSettingsScreen {
   @Composable
   override fun Content() {
     val repository = koinInject<GitHubContributorsRepository>()
@@ -171,7 +170,7 @@ object HallOfFameScreen : Screen {
             state = gridState,
             columns = GridCells.Adaptive(148.dp),
             modifier = Modifier.widthIn(max = 960.dp).fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
+            contentPadding = settingsContentPadding(PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp)),
             horizontalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
             verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
           ) {

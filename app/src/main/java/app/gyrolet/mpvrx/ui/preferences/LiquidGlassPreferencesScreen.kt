@@ -43,7 +43,6 @@ import androidx.compose.ui.unit.Dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -67,7 +66,7 @@ import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
 @Serializable
-object LiquidGlassPreferencesScreen : Screen {
+object LiquidGlassPreferencesScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -117,7 +116,7 @@ object LiquidGlassPreferencesScreen : Screen {
             LazyColumn(
               state = listState,
               modifier = Modifier.weight(1f).fillMaxWidth().then(highlight),
-              contentPadding = PaddingValues(bottom = 28.dp),
+              contentPadding = settingsContentPadding(PaddingValues(bottom = 28.dp)),
             ) {
               item {
                 Row(

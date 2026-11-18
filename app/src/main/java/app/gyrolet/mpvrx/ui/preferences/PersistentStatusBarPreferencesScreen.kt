@@ -32,7 +32,6 @@ import app.gyrolet.mpvrx.preferences.PersistentStatusPosition
 import app.gyrolet.mpvrx.preferences.PersistentStatusSlot
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.player.controls.PersistentPlaybackProgressLine
 import app.gyrolet.mpvrx.ui.player.controls.PersistentStatusHudRow
 import app.gyrolet.mpvrx.ui.player.controls.rememberHudClock
@@ -50,7 +49,7 @@ import org.koin.compose.koinInject
  * Connected groups and dialogs use the same UI primitives as the remaining settings.
  */
 @Serializable
-object PersistentStatusBarPreferencesScreen : Screen {
+object PersistentStatusBarPreferencesScreen : ScrollableSettingsScreen {
   @Composable
   override fun Content() {
     val backstack = LocalBackStack.current
@@ -81,6 +80,7 @@ object PersistentStatusBarPreferencesScreen : Screen {
       ProvideExpressivePreferenceLocals {
         LazyColumn(
           modifier = Modifier.fillMaxSize().padding(padding).tvContentFocus(),
+          contentPadding = settingsContentPadding(),
         ) {
           if (!embeddedInPlayer) item {
             Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {

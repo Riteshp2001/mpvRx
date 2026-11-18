@@ -68,7 +68,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -527,7 +526,7 @@ object CodecInspector {
 }
 
 @Serializable
-object CodecCapabilitiesScreen : Screen {
+object CodecCapabilitiesScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
   @Composable
   override fun Content() {
@@ -653,6 +652,7 @@ object CodecCapabilitiesScreen : Screen {
         rememberSettingsSearchList(CodecCapabilitiesScreen, MaterialTheme.colorScheme.primary)
       LazyColumn(
         state = settingsListState,
+        contentPadding = settingsContentPadding(),
         modifier = Modifier
           .fillMaxSize()
           .padding(innerPadding)

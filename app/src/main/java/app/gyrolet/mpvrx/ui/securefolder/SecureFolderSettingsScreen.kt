@@ -42,7 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.ui.preferences.ScrollableSettingsScreen
+import app.gyrolet.mpvrx.ui.preferences.settingsContentPadding
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
 import app.gyrolet.mpvrx.ui.preferences.settingsSearchTarget
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
@@ -64,7 +65,7 @@ import kotlinx.serialization.Serializable
  * Reachable from Preferences, or — once hidden — from the settings icon on the PIN gate.
  */
 @Serializable
-data object SecureFolderSettingsScreen : Screen {
+data object SecureFolderSettingsScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -134,7 +135,8 @@ data object SecureFolderSettingsScreen : Screen {
             .fillMaxSize()
             .tvContentFocus()
             .padding(padding)
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(rememberScrollState())
+            .padding(settingsContentPadding()),
       ) {
         PreferenceSectionHeader(
           modifier = Modifier.settingsSearchTarget(R.string.secure_folder_settings_title),

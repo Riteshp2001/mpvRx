@@ -53,7 +53,6 @@ import app.gyrolet.mpvrx.domain.audiobookshelf.AudiobookshelfServer
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.domain.navidrome.NavidromeServer
 import app.gyrolet.mpvrx.domain.seerr.JellyseerrUser
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import org.koin.compose.koinInject
@@ -73,7 +72,7 @@ import kotlinx.serialization.Serializable
 import app.gyrolet.mpvrx.ui.preferences.components.AppPreference as Preference
 
 @Serializable
-object MediaServersPreferencesScreen : Screen {
+object MediaServersPreferencesScreen : ScrollableSettingsScreen {
 
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
@@ -120,6 +119,7 @@ object MediaServersPreferencesScreen : Screen {
 
         LazyColumn(
           state = settingsListState,
+          contentPadding = settingsContentPadding(),
           modifier =
             Modifier
               .fillMaxSize()

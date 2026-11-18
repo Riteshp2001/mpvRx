@@ -86,7 +86,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.AppAlertDialog
 import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton
 import app.gyrolet.mpvrx.ui.icons.AppIcon
@@ -120,7 +119,7 @@ import org.koin.compose.koinInject
 @Serializable
 data class WallpaperEditorScreen(
   val sourceUri: String = "",
-) : Screen {
+) : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -318,7 +317,7 @@ data class WallpaperEditorScreen(
     ) { padding ->
       LazyColumn(
         modifier = Modifier.fillMaxSize().padding(padding).tvFocusGroup(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = settingsContentPadding(PaddingValues(16.dp)),
         verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
         item {

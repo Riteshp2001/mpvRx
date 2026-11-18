@@ -51,6 +51,7 @@ import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.browser.fab.LocalFabHostInsetsApplied
 import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
 import app.gyrolet.mpvrx.ui.player.LocalInAppMusicSheet
+import app.gyrolet.mpvrx.ui.preferences.ScrollableSettingsScreen
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.LocalAppWallpaperActive
 import app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor
@@ -207,10 +208,10 @@ internal fun ScreenNavDisplay(
           }
         val entryColor =
           if (entryOpaque) MaterialTheme.colorScheme.background else wallpaperAwareBackgroundColor()
-        // The Preferences list handles its own bottom scroll clearance. Insetting its
-        // whole NavEntry instead leaves a large blank strip above the mini-player.
+        // Settings lists reserve clearance in their scroll content so the page can continue
+        // behind the floating mini-player instead of exposing an empty host-background strip.
         val scrollHandlesOverlay =
-          route == app.gyrolet.mpvrx.ui.preferences.PreferencesScreen ||
+          route is ScrollableSettingsScreen ||
             route is app.gyrolet.mpvrx.ui.preferences.LuaScriptEditorScreen
         val insetByHost = bottomOverlayExempt != null && route != bottomOverlayExempt &&
           !NavigationBarState.isInSelectionMode && !scrollHandlesOverlay

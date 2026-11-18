@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.lua.LuaRuntimeStatusCard
@@ -60,7 +59,7 @@ import org.koin.compose.koinInject
 import java.io.File
 
 @Serializable
-object LuaScriptsScreen : Screen {
+object LuaScriptsScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -172,12 +171,14 @@ object LuaScriptsScreen : Screen {
             .tvContentFocus()
             .padding(padding),
         contentPadding =
-          PaddingValues(
-            start = MaterialTheme.spacing.medium,
-            top = MaterialTheme.spacing.medium,
-            end = MaterialTheme.spacing.medium,
-            // Extra clearance so the FAB doesn't overlap the last item
-            bottom = MaterialTheme.spacing.medium + 80.dp,
+          settingsContentPadding(
+            PaddingValues(
+              start = MaterialTheme.spacing.medium,
+              top = MaterialTheme.spacing.medium,
+              end = MaterialTheme.spacing.medium,
+              // Extra clearance so the FAB doesn't overlap the last item
+              bottom = MaterialTheme.spacing.medium + 80.dp,
+            ),
           ),
         verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
       ) {

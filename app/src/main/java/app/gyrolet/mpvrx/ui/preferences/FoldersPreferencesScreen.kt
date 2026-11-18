@@ -152,7 +152,7 @@ private enum class ScanFilterDialog { VideoDuration, FileSize }
 
 
 @Serializable
-object FoldersPreferencesScreen : Screen {
+object FoldersPreferencesScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -306,7 +306,7 @@ object FoldersPreferencesScreen : Screen {
         LazyColumn(
           state = settingsListState,
           modifier = Modifier.fillMaxSize().padding(padding).then(settingsHighlight),
-          contentPadding = PaddingValues(bottom = 24.dp),
+          contentPadding = settingsContentPadding(PaddingValues(bottom = 24.dp)),
         ) {
           item(key = "media-settings") {
             Column {

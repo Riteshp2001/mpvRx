@@ -88,7 +88,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.components.ExpressiveColorPicker
 import app.gyrolet.mpvrx.ui.components.ColorPickerMode
 import app.gyrolet.mpvrx.ui.theme.AppMotion
@@ -111,7 +110,7 @@ import kotlin.math.abs
  * the chosen background. Nothing changes on the launcher until the pick is applied and confirmed.
  */
 @Serializable
-object AppIconPreferencesScreen : Screen {
+object AppIconPreferencesScreen : ScrollableSettingsScreen {
   @Composable
   override fun Content() {
     val context = LocalContext.current
@@ -157,6 +156,7 @@ object AppIconPreferencesScreen : Screen {
             .widthIn(max = 600.dp)
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
+            .padding(settingsContentPadding())
             .padding(
               start = 16.dp,
               end = 16.dp,

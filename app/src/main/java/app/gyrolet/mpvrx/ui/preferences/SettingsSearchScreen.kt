@@ -60,7 +60,6 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.components.InlineSearchBar
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -75,7 +74,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import kotlinx.serialization.Serializable
 
 @Serializable
-object SettingsSearchScreen : Screen {
+object SettingsSearchScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -194,7 +193,7 @@ object SettingsSearchScreen : Screen {
         if (searchQuery.isBlank()) {
           LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            contentPadding = settingsContentPadding(PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp)),
           ) {
             if (searchHistory.isNotEmpty()) {
               item {
@@ -345,7 +344,7 @@ object SettingsSearchScreen : Screen {
         } else {
           LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            contentPadding = settingsContentPadding(PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp)),
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
             itemsIndexed(

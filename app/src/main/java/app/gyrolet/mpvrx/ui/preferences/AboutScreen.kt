@@ -71,7 +71,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.update.AppUpdateChannel
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.crash.CrashActivity.Companion.collectDeviceInfo
 import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.components.themedSegmentedButtonColors
@@ -86,7 +85,7 @@ import java.util.Locale
 import kotlinx.serialization.Serializable
 
 @Serializable
-object AboutScreen : Screen {
+object AboutScreen : ScrollableSettingsScreen {
   @Suppress("DEPRECATION")
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
@@ -141,7 +140,8 @@ object AboutScreen : Screen {
         modifier =
           Modifier
             .padding(paddingValues)
-            .verticalScroll(settingsScrollState),
+            .verticalScroll(settingsScrollState)
+            .padding(settingsContentPadding()),
       ) {
         PreferenceCard {
           Box(

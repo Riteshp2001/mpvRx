@@ -31,7 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
@@ -43,7 +42,7 @@ import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
 @Serializable
-object NetworkConfigurationPreferencesScreen : Screen {
+object NetworkConfigurationPreferencesScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -86,6 +85,7 @@ object NetworkConfigurationPreferencesScreen : Screen {
             .tvContentFocus()
               .padding(padding)
               .verticalScroll(scrollState)
+              .padding(settingsContentPadding())
               .padding(bottom = MaterialTheme.spacing.extraLarge),
           verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {

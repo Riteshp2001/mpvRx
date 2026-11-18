@@ -60,7 +60,6 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AiPreferences
 import app.gyrolet.mpvrx.preferences.AiProvider
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.repository.ai.AiModelInfo
 import app.gyrolet.mpvrx.repository.ai.AiService
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -129,7 +128,7 @@ private val allLanguages =
   )
 
 @Serializable
-object AiIntegrationScreen : Screen {
+object AiIntegrationScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -294,6 +293,7 @@ object AiIntegrationScreen : Screen {
           rememberSettingsSearchList(AiIntegrationScreen, MaterialTheme.colorScheme.primary)
         LazyColumn(
           state = settingsListState,
+          contentPadding = settingsContentPadding(),
           modifier =
             Modifier
               .fillMaxSize()
