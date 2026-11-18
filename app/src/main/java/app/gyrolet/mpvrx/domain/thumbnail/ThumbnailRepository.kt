@@ -821,16 +821,18 @@ class ThumbnailRepository(
           }
         }
       }.getOrNull()
-    return (
-      retrieverArtwork
-        ?: EmbeddedArtworkResolver.decodeContainerOrSidecar(
-          videoPath = canonicalPath,
-          context = context,
-          videoUri = video.uri,
-          displayName = video.displayName,
-          maxSize = maxSize,
-        )
-      )?.scaleToThumbnailMax(maxSize)
+    val sidecarArtwork = if (isAudioArtwork(video)) {
+      EmbeddedArtworkResolver.decodeAudioSidecar(canonicalPath, maxSize)
+    } else {
+      EmbeddedArtworkResolver.decodeContainerOrSidecar(
+        videoPath = canonicalPath,
+        context = context,
+        videoUri = video.uri,
+        displayName = video.displayName,
+        maxSize = maxSize,
+      )
+    }
+    return (retrieverArtwork ?: sidecarArtwork)?.scaleToThumbnailMax(maxSize)
   }
 
   private suspend fun generateWithFastThumbnails(

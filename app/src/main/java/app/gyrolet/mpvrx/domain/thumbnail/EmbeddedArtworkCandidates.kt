@@ -21,6 +21,19 @@ object EmbeddedArtworkCandidates {
   private val artworkExtensions = listOf("jpg", "jpeg", "png", "webp")
   private val genericArtworkNames = listOf("cover", "folder", "poster", "thumbnail")
 
+  /** Local audio folder cover.mp4; opaque and remote URIs are not guessed. */
+  fun audioFolderMotionPath(path: String?): String? {
+    if (path.isNullOrBlank() || path.isRemoteOrOpaqueUri()) return null
+    val parsed = Uri.parse(path)
+    val localPath = when (parsed.scheme?.lowercase()) {
+      null, "" -> path
+      "file" -> parsed.path
+      else -> null
+    } ?: return null
+    val folder = File(localPath).parentFile ?: return null
+    return File(folder, "cover.mp4").takeIf { it.isFile && it.canRead() }?.let { Uri.fromFile(it).toString() }
+  }
+
   fun forVideoPath(path: String): List<String> {
     if (path.isBlank() || path.isRemoteOrOpaqueUri()) return emptyList()
     val normalizedPath = path.replace('\\', '/')
@@ -128,21 +141,36 @@ internal object EmbeddedArtworkResolver {
       ?.let(EmbeddedArtworkCandidates::forVideoPath)
       ?.asSequence()
       ?.map(::File)
-      ?.firstNotNullOfOrNull { candidate ->
-        candidate
-          .takeIf { it.isFile && it.canRead() }
-          ?.let { file ->
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeFile(file.path, bounds)
-            BitmapFactory.decodeFile(
-              file.path,
-              BitmapFactory.Options().apply {
-                inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight, maxSize)
-                inPreferredConfig = Bitmap.Config.ARGB_8888
-              },
-            )
-          }
-      }
+      ?.firstNotNullOfOrNull { decodeArtworkFile(it, maxSize) }
+
+  /** Audio-folder cover.jpg is preferred after embedded artwork. */
+  fun decodeAudioSidecar(audioPath: String?, maxSize: Int = MAX_THUMBNAIL_SIZE): Bitmap? {
+    if (audioPath.isNullOrBlank()) return null
+    val parsed = Uri.parse(audioPath)
+    val localPath = when (parsed.scheme?.lowercase()) {
+      null, "" -> audioPath
+      "file" -> parsed.path
+      else -> null
+    } ?: return decodeSidecar(audioPath, maxSize)
+    val cover = File(localPath).parentFile?.let { File(it, "cover.jpg") }
+    return decodeArtworkFile(cover, maxSize) ?: decodeSidecar(audioPath, maxSize)
+  }
+
+  private fun decodeArtworkFile(file: File?, maxSize: Int): Bitmap? =
+    file?.takeIf { it.isFile && it.canRead() }?.let {
+      runCatching {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(it.path, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
+        BitmapFactory.decodeFile(
+          it.path,
+          BitmapFactory.Options().apply {
+            inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight, maxSize)
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+          },
+        )
+      }.getOrNull()
+    }
 
   fun decodeRetrieverArtwork(
     retriever: MediaMetadataRetriever,

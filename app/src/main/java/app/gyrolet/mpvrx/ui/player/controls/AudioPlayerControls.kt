@@ -247,6 +247,7 @@ private data class AudioPresentationMetadata(
   val artwork: Bitmap?,
   val artist: String?,
   val motionArtwork: ByteArray? = null,
+  val folderMotionArtworkUri: String? = null,
 )
 
 /**
@@ -301,8 +302,19 @@ private object AudioPresentationMetadataCache {
       synchronized(cache) { cache.get(key) }?.let { return@withContext it }
 
       // An old native retriever may still be unwinding; Android artwork must not wait for it.
-      if (isLocalArtworkSource(pathOrUri) && generator != app.gyrolet.mpvrx.preferences.ThumbnailGenerator.Native) {
-        return@withContext AudioPresentationMetadata(artwork = repository.getArtwork(pathOrUri), artist = null)
+      val localFolderMotion = app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkCandidates
+        .audioFolderMotionPath(pathOrUri)
+      if (
+        isLocalArtworkSource(pathOrUri) &&
+        generator != app.gyrolet.mpvrx.preferences.ThumbnailGenerator.Native &&
+        generator != app.gyrolet.mpvrx.preferences.ThumbnailGenerator.MediaStore &&
+        !pathOrUri.startsWith("content://", ignoreCase = true) &&
+        localFolderMotion == null
+      ) {
+        return@withContext AudioPresentationMetadata(
+          artwork = repository.getArtwork(pathOrUri),
+          artist = null,
+        )
       }
       loadMutex.withLock {
         synchronized(cache) { cache.get(key) }?.let { return@withLock it }
@@ -340,9 +352,21 @@ private object AudioPresentationMetadataCache {
               }
             }
 
-            val pictureBytes = if (explicitArtwork == null) retriever?.embeddedPicture else null
+            // Priority: embedded artwork, folder cover.jpg, then animated folder cover.mp4.
+            val pictureBytes = retriever?.embeddedPicture
+            val embeddedArtwork = retriever?.let {
+              EmbeddedArtworkResolver.decodeRetrieverArtwork(it, pictureBytes)
+            }
+            val sidecarArtwork = if (embeddedArtwork == null) {
+              EmbeddedArtworkResolver.decodeAudioSidecar(cleanPath ?: pathOrUri)
+            } else null
+            // Keep a still image underneath while a selected motion cover buffers.
+            val folderMotion = if (embeddedArtwork == null && sidecarArtwork == null) {
+              app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkCandidates
+                .audioFolderMotionPath(cleanPath ?: pathOrUri)
+            } else null
             AudioPresentationMetadata(
-              artwork = explicitArtwork ?: retriever?.let { EmbeddedArtworkResolver.decodeEmbeddedArtwork(cleanPath ?: pathOrUri, it, pictureBytes) },
+              artwork = embeddedArtwork ?: sidecarArtwork ?: explicitArtwork,
               artist = retriever?.let {
                 it.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                   ?: it.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
@@ -350,12 +374,20 @@ private object AudioPresentationMetadataCache {
                   ?: it.extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER)
               },
               motionArtwork = EmbeddedMotionArtwork.animatedBytes(pictureBytes),
+              folderMotionArtworkUri = folderMotion,
             )
           } catch (_: Exception) {
             val fallbackArtwork = explicitArtwork ?: if (cleanPath != null && !isNetworkStream) {
               EmbeddedArtworkResolver.decodeSidecar(cleanPath)
             } else null
-            AudioPresentationMetadata(artwork = fallbackArtwork, artist = null)
+            AudioPresentationMetadata(
+              artwork = fallbackArtwork,
+              artist = null,
+              folderMotionArtworkUri = if (fallbackArtwork == null) {
+                localFolderMotion
+                  ?: app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkCandidates.audioFolderMotionPath(cleanPath ?: pathOrUri)
+              } else null,
+            )
           } finally {
             runCatching { retriever?.release() }
           }
@@ -663,6 +695,7 @@ private fun CoverArtCardImage(
   artworkUrl: String? = null,
   contentScale: ContentScale = ContentScale.Crop,
   motionArtwork: ByteArray? = null,
+  localMotionArtworkUri: String? = null,
   isPlaying: Boolean = false,
   remoteMotionQuery: MotionArtworkQuery? = null,
   remoteMotionSurface: MotionArtworkSurface = MotionArtworkSurface.COVER,
@@ -694,21 +727,14 @@ private fun CoverArtCardImage(
   val animatedDrawable = rememberMotionArtworkDrawable(motionArtwork)
 
   Box(modifier.fillMaxSize()) {
-    if (animatedDrawable != null) {
-      MotionArtworkImage(
-        drawable = animatedDrawable,
-        isPlaying = isPlaying,
-        fit = contentScale == ContentScale.Fit,
-        modifier = Modifier.fillMaxSize(),
-      )
-    } else if (imageBitmap != null) {
+    if (imageBitmap != null) {
       Image(
         bitmap = imageBitmap,
         contentDescription = null,
         contentScale = contentScale,
         modifier = Modifier.fillMaxSize(),
       )
-    } else {
+    } else if (animatedDrawable == null && localMotionArtworkUri == null) {
       Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -720,6 +746,22 @@ private fun CoverArtCardImage(
           modifier = Modifier.size(64.dp),
         )
       }
+    }
+    // Motion layers sit above the still cover; until the first decoded frame, the
+    // embedded/folder artwork underneath remains visible.
+    if (animatedDrawable != null) {
+      MotionArtworkImage(
+        drawable = animatedDrawable,
+        isPlaying = isPlaying,
+        fit = contentScale == ContentScale.Fit,
+        modifier = Modifier.fillMaxSize(),
+      )
+    } else if (localMotionArtworkUri != null) {
+      LocalFolderMotionArtworkVideo(
+        uri = localMotionArtworkUri,
+        isPlaying = isPlaying,
+        modifier = Modifier.fillMaxSize(),
+      )
     }
     if (remoteMotionQuery != null && animatedDrawable == null) {
       RemoteMotionArtwork(
@@ -753,6 +795,7 @@ private fun ImmersiveArtworkBackground(
   bitmap: Bitmap?,
   artworkUrl: String?,
   motionArtwork: ByteArray?,
+  localMotionArtworkUri: String?,
   remoteMotionQuery: MotionArtworkQuery?,
   isPlaying: Boolean,
   landscape: Boolean,
@@ -834,6 +877,7 @@ private fun ImmersiveArtworkBackground(
           bitmap = bitmap,
           artworkUrl = artworkUrl,
           motionArtwork = motionArtwork.takeUnless { reducedMotion },
+          localMotionArtworkUri = localMotionArtworkUri.takeUnless { reducedMotion },
           remoteMotionQuery = remoteMotionQuery.takeUnless { reducedMotion },
           // Landscape keeps the square side-by-side cover, where a portrait Canvas would be cropped away.
           remoteMotionSurface = if (landscape) MotionArtworkSurface.COVER else MotionArtworkSurface.BACKGROUND,
@@ -1387,7 +1431,8 @@ fun AudioPlayerControls(
   val stableInsets = WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout)
   val showImmersiveArtwork = !isTablet && immersiveArtworkEnabled && !showVisualizer && !showInPlaceLyrics &&
     (albumArtBitmap != null || !currentArtworkUri.isNullOrBlank() ||
-      currentAudioPresentation?.motionArtwork != null || motionQuery != null)
+      currentAudioPresentation?.motionArtwork != null ||
+      currentAudioPresentation?.folderMotionArtworkUri != null || motionQuery != null)
   // PlayerActivity uses light status-bar icons; the in-app player follows the app's bar style.
   val useLightImmersiveHeaderContent =
     if (showImmersiveArtwork && inAppSheet != null) {
@@ -1459,6 +1504,7 @@ fun AudioPlayerControls(
         bitmap = activeCoverOverride ?: albumArtBitmap,
         artworkUrl = currentArtworkUri?.takeUnless { isLocalArtworkSource(currentMediaSource) },
         motionArtwork = currentAudioPresentation?.motionArtwork?.takeIf { activeCoverOverride == null },
+        localMotionArtworkUri = currentAudioPresentation?.folderMotionArtworkUri?.takeIf { activeCoverOverride == null },
         remoteMotionQuery = motionQuery?.takeIf { activeCoverOverride == null },
         isPlaying = isPlaying,
         landscape = !isPortrait,
@@ -1828,6 +1874,7 @@ fun AudioPlayerControls(
                       artworkUrl = currentArtworkUri?.takeUnless { isLocalArtworkSource(currentMediaSource) },
                       contentScale = if (isAudiobook) ContentScale.Fit else ContentScale.Crop,
                       motionArtwork = currentAudioPresentation?.motionArtwork?.takeIf { activeCoverOverride == null },
+                      localMotionArtworkUri = currentAudioPresentation?.folderMotionArtworkUri?.takeIf { activeCoverOverride == null },
                       isPlaying = isPlaying,
                       remoteMotionQuery = motionQuery?.takeIf {
                         activeCoverOverride == null && !showVisualizer && !showInPlaceLyrics

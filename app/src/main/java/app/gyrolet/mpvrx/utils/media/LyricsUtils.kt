@@ -37,7 +37,13 @@ object LyricsUtils {
     var isSynced = false
 
     lyricsText.lines().forEach { rawLine ->
-      val line = rawLine.trim()
+      // Embedded tags sometimes prefix each lyric with a vocalist channel (for example "v1:").
+      // Treat that as metadata, and leave online/user-edited lyrics untouched.
+      val line = if (sourceType == LyricsSourceType.EMBEDDED) {
+        stripEmbeddedVocalistPrefix(rawLine.trim())
+      } else {
+        rawLine.trim()
+      }
       if (line.isEmpty() || LRC_METADATA_PATTERN.matcher(line).matches()) return@forEach
 
       val lineMatcher = LRC_LINE_REGEX.matcher(line)
@@ -46,7 +52,9 @@ object LyricsUtils {
         val minutes = lineMatcher.group(1)?.toLong() ?: 0
         val seconds = lineMatcher.group(2)?.toLong() ?: 0
         val fraction = fractionToMillis(lineMatcher.group(3))
-        val rawText = lineMatcher.group(4)?.trim() ?: ""
+        val rawText = (lineMatcher.group(4) ?: "").let { text ->
+          if (sourceType == LyricsSourceType.EMBEDDED) stripEmbeddedVocalistPrefix(text) else text.trim()
+        }
 
         val lineTimestamp = (minutes * 60 * 1000 + seconds * 1000 + fraction).toInt()
 
@@ -143,6 +151,14 @@ object LyricsUtils {
       )
     }
   }
+
+  /**
+   * Removes leading embedded vocal-track labels such as "v1:", "V2 :" or
+   * repeated channel labels. Only a numeric v-channel token at line start is
+   * accepted, so ordinary lyric text and mid-line occurrences are preserved.
+   */
+  private fun stripEmbeddedVocalistPrefix(text: String): String =
+    text.replace(Regex("^(?:v\\d+\\s*:\\s*)+", RegexOption.IGNORE_CASE), "").trim()
 
   /** Converts LRC tenths, centiseconds, or milliseconds to milliseconds. */
   private fun fractionToMillis(fraction: String?): Long =

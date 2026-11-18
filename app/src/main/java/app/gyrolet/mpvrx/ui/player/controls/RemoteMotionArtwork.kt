@@ -32,6 +32,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
@@ -162,12 +163,46 @@ private fun MotionArtworkVideo(
   }
 }
 
+/** Local folder cover.mp4, looped silently and scoped to the visible player lifecycle. */
+@Composable
+internal fun LocalFolderMotionArtworkVideo(
+  uri: String,
+  isPlaying: Boolean,
+  modifier: Modifier = Modifier,
+) {
+  val lifecycleOwner = LocalLifecycleOwner.current
+  val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
+  if (lifecycleState.isAtLeast(Lifecycle.State.STARTED)) {
+    key(uri) {
+      var firstFrame by remember { mutableStateOf(false) }
+      AndroidView(
+        modifier = modifier,
+        factory = { context ->
+          MotionArtworkTextureView(
+            context = context,
+            rendition = MotionArtworkRendition(uri, hls = false),
+            source = null,
+            portrait = false,
+            onFrameReady = { firstFrame = it },
+            onFailure = { Log.w("MotionArtworkVideo", "Local folder cover.mp4 could not be played") },
+          )
+        },
+        update = { view ->
+          view.alpha = if (firstFrame) 1f else 0f
+          view.setPlaying(isPlaying)
+        },
+        onRelease = { view -> view.releasePlayer() },
+      )
+    }
+  }
+}
+
 /** HLS/MP4 artwork with audio tracks disabled; no audio focus, media session or video disk cache. */
 @OptIn(UnstableApi::class)
 private class MotionArtworkTextureView(
   context: Context,
   private val rendition: MotionArtworkRendition,
-  private val source: MotionArtworkSource,
+  private val source: MotionArtworkSource?,
   private val portrait: Boolean,
   private val onFrameReady: (Boolean) -> Unit,
   private val onFailure: () -> Unit,
@@ -202,7 +237,7 @@ private class MotionArtworkTextureView(
         http.setDefaultRequestProperties(mapOf("Referer" to "https://music.apple.com/", "Origin" to "https://music.apple.com"))
       }
       val current = ExoPlayer.Builder(context.applicationContext)
-        .setMediaSourceFactory(DefaultMediaSourceFactory(http))
+        .setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(context.applicationContext, http)))
         .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(2_000, 8_000, 500, 1_000).build())
         .setAudioAttributes(AudioAttributes.DEFAULT, false)
         .setHandleAudioBecomingNoisy(false)
