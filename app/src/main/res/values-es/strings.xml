@@ -2745,7 +2745,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_thumbnail_generator_native_summary">Extrae miniaturas y carátulas de archivos locales. Cambiar borra la caché.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Usa miniaturas y portadas de Android. Cambiar borra la caché. Las vistas de red usan Nativo.</string>
   <string name="ui_update_channels_summary">Versiones estables, versiones preliminares nocturnas o compilaciones experimentales de CI.</string>
-  <string name="update_experimental_build_format">Exp. r%1$d</string>
   <string name="tv_nav_settings">Ajustes</string>
   <string name="tv_move_up">Mover arriba</string>
   <string name="tv_move_down">Mover abajo</string>

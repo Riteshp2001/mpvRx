@@ -8,12 +8,10 @@ on:
 permissions:
   contents: read
   actions: read
-  deployments: read
   pages: write
   id-token: write
 
-# Preview runs queue behind each other. Only the publish job takes the shared Pages lock, so a long
-# preview build never parks an experimental deploy in a queue where the next scheduled run cancels it.
+# Preview runs queue behind each other so scheduled builds cannot cancel a pending publication.
 concurrency:
   group: mpvrx-preview
   cancel-in-progress: false
@@ -253,8 +251,7 @@ jobs:
     if: needs.check.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Staging and deployment share one lock with the experimental feed, so neither can overwrite the
-    # other's freshly deployed feed with the copy it staged earlier.
+    # Keep staging and deployment serialized.
     concurrency:
       group: mpvrx-pages
       cancel-in-progress: false
@@ -279,17 +276,6 @@ jobs:
     steps:
       - name: Checkout preview source
         uses: actions/checkout@v7
-
-      - name: Restore live GitHub Pages site
-        env:
-          GH_REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          # Pages deploys replace the whole site, so carry over exactly what is live (including the experimental feed).
-          bash scripts/fetch-live-pages-site.sh site
-          rm -rf site/downloads site/latest.json
 
       - name: Download preview APKs
         uses: actions/download-artifact@v7

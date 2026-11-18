@@ -2723,7 +2723,6 @@
   <string name="pref_thumbnail_generator_native_summary">从本地文件提取缩略图和封面。切换会清空缓存。</string>
   <string name="pref_thumbnail_generator_mediastore_summary">使用 Android 缩略图和封面。切换会清空缓存；网络预览使用原生提取。</string>
   <string name="ui_update_channels_summary">稳定版本、每夜预览版或实验性 CI 构建。</string>
-  <string name="update_experimental_build_format">实验版 r%1$d</string>
   <string name="tv_nav_settings">设置</string>
   <string name="tv_move_up">上移</string>
   <string name="tv_move_down">下移</string>

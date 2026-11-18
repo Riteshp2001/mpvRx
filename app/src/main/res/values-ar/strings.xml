@@ -2843,7 +2843,6 @@
   <string name="pref_thumbnail_generator_native_summary">استخرج الصور المصغرة والأغلفة من الملفات المحلية. التبديل يمسح التخزين المؤقت.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">استخدم صور Android المصغرة والأغلفة. التبديل يمسح التخزين المؤقت. معاينات الشبكة تستخدم Native.</string>
   <string name="ui_update_channels_summary">إصدارات مستقرة أو معاينات ليلية أو إصدارات تجريبية من التكامل المستمر.</string>
-  <string name="update_experimental_build_format">تجريبي r%1$d</string>
   <string name="tv_nav_settings">الإعدادات</string>
   <string name="tv_move_up">نقل لأعلى</string>
   <string name="tv_move_down">نقل لأسفل</string>

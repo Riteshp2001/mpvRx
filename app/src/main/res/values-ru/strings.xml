@@ -2793,7 +2793,6 @@
   <string name="pref_thumbnail_generator_native_summary">Извлекать миниатюры и обложки из локальных файлов. Смена очищает кэш.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Миниатюры и обложки Android. Смена очищает кэш. Для сетевых превью используется Native.</string>
   <string name="ui_update_channels_summary">Стабильные версии, ночные предварительные версии или экспериментальные сборки CI.</string>
-  <string name="update_experimental_build_format">Эксп. r%1$d</string>
   <string name="tv_nav_settings">Настройки</string>
   <string name="tv_move_up">Переместить вверх</string>
   <string name="tv_move_down">Переместить вниз</string>

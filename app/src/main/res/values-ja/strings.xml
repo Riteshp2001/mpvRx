@@ -2721,7 +2721,6 @@
   <string name="pref_thumbnail_generator_native_summary">ローカルファイルからサムネイルとカバーを抽出。切り替えるとキャッシュを消去。</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Androidのサムネイルとカバーを使用。切り替えるとキャッシュを消去。ネットワークはネイティブ抽出です。</string>
   <string name="ui_update_channels_summary">安定版、ナイトリープレビュー、実験的な CI ビルド。</string>
-  <string name="update_experimental_build_format">実験版 r%1$d</string>
   <string name="tv_nav_settings">設定</string>
   <string name="tv_move_up">上へ移動</string>
   <string name="tv_move_down">下へ移動</string>

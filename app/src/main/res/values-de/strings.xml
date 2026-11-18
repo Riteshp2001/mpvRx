@@ -2745,7 +2745,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_thumbnail_generator_native_summary">Vorschaubilder und Cover aus lokalen Dateien extrahieren. Wechsel leert den Cache.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Android-Vorschaubilder und Cover nutzen. Wechsel leert den Cache. Netzwerkvorschauen nutzen Native.</string>
   <string name="ui_update_channels_summary">Stabile Versionen, nächtliche Vorschauversionen oder experimentelle CI-Builds.</string>
-  <string name="update_experimental_build_format">Experimentell r%1$d</string>
   <string name="tv_nav_settings">Einstellungen</string>
   <string name="tv_move_up">Nach oben verschieben</string>
   <string name="tv_move_down">Nach unten verschieben</string>

@@ -131,7 +131,7 @@ fun UpdateSheet(
           VersionTransitionRow(currentVersion, releaseVersion(release))
           Spacer(Modifier.height(8.dp))
           ReleaseMetaRow(
-            publishedAt = if (release.isExperimental) release.updatedAt ?: release.publishedAt else release.publishedAt,
+            publishedAt = release.publishedAt,
             sizeBytes = asset.size,
           )
           Spacer(Modifier.height(8.dp))
@@ -210,8 +210,7 @@ fun UpdateSheet(
 
 @Composable
 private fun releaseVersion(release: Release): String =
-  release.experimentalBuildNumber?.let { stringResource(R.string.update_experimental_build_format, it) }
-    ?: release.previewBuildNumber?.let { stringResource(R.string.update_beta_build_format, it) }
+  release.previewBuildNumber?.let { stringResource(R.string.update_beta_build_format, it) }
     ?: release.tagName.removePrefix("v")
 
 @Composable

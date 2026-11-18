@@ -97,7 +97,7 @@ object AboutScreen : ScrollableSettingsScreen {
     val versionName =
       packageInfo.versionName
         ?.let { value ->
-          if (BuildConfig.IS_PREVIEW_BUILD || BuildConfig.IS_EXPERIMENTAL_BUILD) value else value.substringBefore('-')
+          if (BuildConfig.IS_PREVIEW_BUILD) value else value.substringBefore('-')
         }
         ?: BuildConfig.VERSION_NAME
     val buildType = BuildConfig.BUILD_TYPE
@@ -581,7 +581,6 @@ object AboutScreen : ScrollableSettingsScreen {
                             when (channel) {
                               AppUpdateChannel.STABLE -> R.string.ui_update_channel_stable_short
                               AppUpdateChannel.PREVIEW -> R.string.ui_update_channel_preview_short
-                              AppUpdateChannel.EXPERIMENTAL -> R.string.ui_update_channel_experimental_short
                             },
                           ),
                           maxLines = 1,

@@ -2718,7 +2718,6 @@
   <string name="pref_thumbnail_generator_native_summary">Видобувати мініатюри й обкладинки з локальних файлів. Зміна очищує кеш.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Мініатюри й обкладинки Android. Зміна очищує кеш. Мережеві перегляди використовують Native.</string>
   <string name="ui_update_channels_summary">Стабільні версії, нічні попередні версії або експериментальні збірки CI.</string>
-  <string name="update_experimental_build_format">Експ. r%1$d</string>
   <string name="tv_nav_settings">Налаштування</string>
   <string name="tv_move_up">Перемістити вгору</string>
   <string name="tv_move_down">Перемістити вниз</string>

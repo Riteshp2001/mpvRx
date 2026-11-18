@@ -688,7 +688,6 @@ open class MainActivity : AppCompatActivity() {
     val context = LocalContext.current
     val currentVersion =
       when {
-        BuildConfig.IS_EXPERIMENTAL_BUILD -> stringResource(R.string.update_experimental_build_format, BuildConfig.GIT_COUNT)
         BuildConfig.IS_PREVIEW_BUILD -> stringResource(R.string.update_beta_build_format, BuildConfig.GIT_COUNT)
         else -> BuildConfig.VERSION_NAME.substringBefore('-')
       }

@@ -37,7 +37,6 @@ val localProperties =
 
 val targetAbiProp = project.findProperty("targetAbi")?.toString() ?: localProperties.getProperty("targetAbi")
 val enableX86 = project.findProperty("enableX86") != "false"
-val isExperimentalBuild = project.findProperty("experimentalBuild")?.toString()?.toBoolean() == true
 val x86Abis = if (enableX86) listOf("x86", "x86_64") else emptyList()
 val activeAbis =
   if (!targetAbiProp.isNullOrBlank()) {
@@ -86,7 +85,6 @@ android {
     applicationId = "app.gyrolet.mpvrx"
     minSdk = 26
     targetSdk = 36
-    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // Stable occupies the top of its version band. Preview uses the next band's commit-count
     // offset, so Stable -> Preview -> newer Preview -> next Stable is always an Android upgrade.
     versionCode = stableVersionCode
@@ -236,8 +234,6 @@ android {
   buildTypes {
     named("release") {
       buildConfigField("boolean", "IS_PREVIEW_BUILD", "false")
-      buildConfigField("boolean", "IS_EXPERIMENTAL_BUILD", isExperimentalBuild.toString())
-      if (isExperimentalBuild) versionNameSuffix = "-exp.r${getCommitCount()}"
       isMinifyEnabled = true
       isShrinkResources = true
       proguardFiles(
@@ -255,13 +251,11 @@ android {
       initWith(getByName("release"))
       signingConfig = signingConfigs.getByName("debug")
       buildConfigField("boolean", "IS_PREVIEW_BUILD", "true")
-      buildConfigField("boolean", "IS_EXPERIMENTAL_BUILD", "false")
       versionNameSuffix = "-beta.r${getCommitCount()}"
     }
 
     named("debug") {
       buildConfigField("boolean", "IS_PREVIEW_BUILD", "false")
-      buildConfigField("boolean", "IS_EXPERIMENTAL_BUILD", "false")
       applicationIdSuffix = ".debug"
       versionNameSuffix = "-${getCommitCount()}"
       resValue("string", "app_name", "mpvRx-Debug")
@@ -328,7 +322,6 @@ androidComponents {
     // use the same history-derived code; rebuilding a commit keeps its identity stable.
     val isPlayStoreRelease =
       variant.buildType == "release" &&
-        !isExperimentalBuild &&
         variant.productFlavors.any { (dimension, flavor) ->
           dimension == "distribution" && flavor == "playstore"
         }
@@ -344,7 +337,7 @@ androidComponents {
       }
 
       val channelVersionCode =
-        if (variant.buildType == "preview" || (variant.buildType == "release" && isExperimentalBuild)) {
+        if (variant.buildType == "preview") {
           previewVersionCode
         } else {
           output.versionCode.orNull ?: stableVersionCode
@@ -401,8 +394,6 @@ configurations.configureEach {
 }
 
 dependencies {
-  androidTestImplementation(libs.androidx.test.runner)
-  androidTestImplementation(libs.androidx.test.ext.junit)
   implementation(libs.androidx.activity.compose)
   implementation(platform(libs.androidx.compose.bom))
   implementation(libs.androidx.ui)
@@ -410,7 +401,6 @@ dependencies {
   implementation(libs.androidsvg)
   implementation(libs.androidx.material3.android)
   implementation(libs.google.material)
-  implementation(libs.androidx.ui.tooling.preview)
   debugImplementation(libs.androidx.ui.tooling)
   implementation(libs.bundles.compose.navigation3)
   implementation(libs.androidx.appcompat)
@@ -437,7 +427,6 @@ dependencies {
 
   implementation(libs.room.runtime)
   ksp(libs.room.compiler)
-  implementation(libs.room.ktx)
 
   implementation(libs.kotlinx.immutable.collections)
   implementation(libs.kotlinx.serialization.json)

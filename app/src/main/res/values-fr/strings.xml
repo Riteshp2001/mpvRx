@@ -2745,7 +2745,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_thumbnail_generator_native_summary">Extrait miniatures et pochettes des fichiers locaux. Changer vide le cache.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Utilise les miniatures et pochettes Android. Changer vide le cache. Les aperçus réseau utilisent Natif.</string>
   <string name="ui_update_channels_summary">Versions stables, aperçus nocturnes ou compilations expérimentales issues de l’intégration continue.</string>
-  <string name="update_experimental_build_format">Exp. r%1$d</string>
   <string name="tv_nav_settings">Paramètres</string>
   <string name="tv_move_up">Déplacer vers le haut</string>
   <string name="tv_move_down">Déplacer vers le bas</string>

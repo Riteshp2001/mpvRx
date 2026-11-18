@@ -1875,9 +1875,7 @@
   <string name="ui_update_channel">Update Channel</string>
   <string name="ui_update_channel_stable_short" translatable="false">Stable</string>
   <string name="ui_update_channel_preview_short" translatable="false">Nightly</string>
-  <string name="ui_update_channel_experimental_short" translatable="false">Exp.</string>
   <string name="ui_update_channels_summary">Stable releases, nightly previews, or experimental CI builds.</string>
-  <string name="update_experimental_build_format">Exp. r%1$d</string>
   <string name="update_whats_new">What’s New</string>
   <string name="update_no_release_notes">No release notes provided.</string>
   <string name="update_ready_to_install">Ready to Install</string>

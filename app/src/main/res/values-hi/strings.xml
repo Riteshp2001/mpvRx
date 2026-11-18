@@ -2664,7 +2664,6 @@
   <string name="pref_thumbnail_generator_native_summary">स्थानीय फ़ाइल से थंबनेल और कवर निकालें। बदलने पर कैश मिटता है।</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Android थंबनेल और कवर इस्तेमाल करें। बदलने पर कैश मिटता है। नेटवर्क पूर्वावलोकन Native इस्तेमाल करते हैं।</string>
   <string name="ui_update_channels_summary">स्थिर संस्करण, हर रात के पूर्वावलोकन या प्रायोगिक CI बिल्ड।</string>
-  <string name="update_experimental_build_format">प्रायोगिक r%1$d</string>
   <string name="tv_nav_settings">सेटिंग्स</string>
   <string name="tv_move_up">ऊपर ले जाएँ</string>
   <string name="tv_move_down">नीचे ले जाएँ</string>
