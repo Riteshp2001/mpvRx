@@ -5268,6 +5268,8 @@ class PlayerActivity :
         hasState = restored.hasSavedTracks,
         expectedGeneration = loadGeneration,
         savedSubtitlesOff = restored.subtitlesOff,
+        audioAlreadyDecided =
+          restored.audioDecidedByRestore || ManualAudioSelectionTracker.hasMark(loadedMediaIdentifier),
       )
     }
 
@@ -5618,8 +5620,25 @@ class PlayerActivity :
         aid = player.aid,
         audioDelayMs = ((PlaybackSession.getPropertyDouble("audio-delay") ?: 0.0) * MILLISECONDS_TO_SECONDS).toInt(),
         externalSubtitles = viewModel.externalSubtitles.joinToString("|"),
+        sessionManualAudioId = captureSessionManualAudioId(saveIdentifier),
+        externalAudio = viewModel.externalAudioTracks.joinToString("|"),
       )
     }
+  }
+
+  /**
+   * The manual audio decision to persist with this save, or null when this session holds
+   * none. A decision exists only when the user picked a track by hand for this file and
+   * the track current now is still that pick — an automatic change after the pick (for
+   * example the audio track paired with a video-quality change) must not be stored as the
+   * user's choice, and the previously stored record is then kept instead (see
+   * PlaybackStatePersistence.buildEntity). While mpv.conf owns audio selection the app
+   * does not record picks either: it does not intervene in that mode at all.
+   */
+  private fun captureSessionManualAudioId(identifier: String): Int? {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)) return null
+    val marked = ManualAudioSelectionTracker.markedTrackId(identifier) ?: return null
+    return marked.takeIf { it == getTrackSelectionId("aid") }
   }
 
   private fun readMpvIntSeconds(
@@ -5664,6 +5683,10 @@ class PlayerActivity :
     val hasState: Boolean = false,
     val hasSavedTracks: Boolean = false,
     val subtitlesOff: Boolean = false,
+    // True when the audio track for this load was already decided during the restore —
+    // a saved manual selection applied, or a yt-dlp pick resolved after its reload — so
+    // TrackSelector's automatic correction must not run for this load.
+    val audioDecidedByRestore: Boolean = false,
   )
 
   private suspend fun loadVideoPlaybackState(
@@ -5703,7 +5726,15 @@ class PlayerActivity :
           }
         }
       }
-      applyPlaybackState(state, restoreAudioTrack = positionRestoreOverride == null, loadGeneration = loadGeneration)
+      // A yt-dlp audio pick reloads the item (which is why this load can carry a position
+      // override) and the reload renumbers the tracks; the pick was recorded as pending
+      // and is resolved here to the track the reload actually selected. That track is the
+      // user's choice, so this load's audio is decided and no automatic step may touch it.
+      var audioDecided =
+        ManualAudioSelectionTracker.resolveReloadPending(identifier, getTrackSelectionId("aid"))
+
+      val manualAudioApplied = applyPlaybackState(state, loadGeneration = loadGeneration)
+      audioDecided = audioDecided || manualAudioApplied
 
       if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@runCatching LoadedPlaybackState()
 
@@ -5716,6 +5747,7 @@ class PlayerActivity :
         hasState = state != null || positionRestoreOverride != null,
         hasSavedTracks = state != null,
         subtitlesOff = state != null && state.sid <= 0,
+        audioDecidedByRestore = audioDecided,
       )
     }.onFailure { e ->
       Log.e(TAG, "Error loading playback state", e)
@@ -5731,10 +5763,9 @@ class PlayerActivity :
    */
   private suspend fun applyPlaybackState(
     state: PlaybackStateEntity?,
-    restoreAudioTrack: Boolean,
     loadGeneration: Long,
-  ) {
-    if (state == null) return
+  ): Boolean {
+    if (state == null) return false
 
     val subDelay = state.subDelay / DELAY_DIVISOR
     val audioDelay = state.audioDelay / DELAY_DIVISOR
@@ -5745,11 +5776,25 @@ class PlayerActivity :
       Log.d(TAG, "Restoring ${externalSubUris.size} external subtitle(s)")
 
       for (subUri in externalSubUris) {
-        if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return
+        if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return false
         viewModel.addSubtitleSuspend(Uri.parse(subUri), select = false, silent = true)
       }
     }
-    if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return
+    if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return false
+
+    // Restore external audio tracks next, before the saved selection: a saved manual
+    // pick can point at one of these tracks, and it only exists again once re-added.
+    // They are loaded unselected ("auto"); the manual restore below is what decides.
+    if (state.externalAudio.isNotBlank()) {
+      val externalAudioUris = state.externalAudio.split("|").filter { it.isNotBlank() }
+      Log.d(TAG, "Restoring ${externalAudioUris.size} external audio track(s)")
+
+      for (audioUri in externalAudioUris) {
+        if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return false
+        viewModel.addAudioSuspend(Uri.parse(audioUri), silent = true, forRestore = true)
+      }
+    }
+    if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return false
 
     if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.SUBTITLE_TRACK_SELECTION)) {
       val restoredSid = state.sid.takeIf { it > 0 }?.toString() ?: "no"
@@ -5767,12 +5812,13 @@ class PlayerActivity :
       forceAssOverride = subtitlesPreferences.overrideAssSubs.get(),
     )
 
-    if (restoreAudioTrack && state.aid > 0 && player.aid != state.aid &&
-      !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)
-    ) {
-      PlaybackSession.commandForGeneration(loadGeneration, "set", "aid", state.aid.toString())
-      Log.d(TAG, "Restored audio track: ${state.aid} (user selection)")
-    }
+    // The saved manual audio selection is applied here, inside the restore — ahead of the
+    // saved position taking effect and ahead of TrackSelector's automatic correction —
+    // and it applies on every load, including loads that carry a starting position (the
+    // old code skipped the audio restore exactly for those). A manual record that is not
+    // usable for this load leaves the record stored and lets the automatic rules decide
+    // this open; applySavedAudioSelection reports which of the two happened.
+    val manualAudioApplied = trackSelector.applySavedAudioSelection(state, loadGeneration)
 
     PlaybackSession.setPropertyDouble("sub-delay", subDelay)
     // The secondary track has its own delay property and is otherwise left on the startup
@@ -5786,6 +5832,8 @@ class PlayerActivity :
 
     // Restore video zoom from saved state
     viewModel.setVideoZoom(state.videoZoom)
+
+    return manualAudioApplied
   }
 
 private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGeneration: Long) {

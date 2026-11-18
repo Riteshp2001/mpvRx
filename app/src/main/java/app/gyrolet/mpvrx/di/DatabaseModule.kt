@@ -968,6 +968,57 @@ val MIGRATION_30_31 =
     }
   }
 
+/**
+ * Audio selection fix, schema side. PlaybackStateEntity gains three columns:
+ * hasManualAudioSelection/manualAudioId record a hand-made audio choice (see the entity),
+ * and externalAudio stores hand-added external audio tracks for re-adding on the next open.
+ * Existing rows default to "no manual record": a saved aid from before this fix was whatever
+ * track happened to be playing at exit, with manual and automatic picks indistinguishable,
+ * so it must not be promoted to a manual selection.
+ *
+ * The version jumps straight to 34 because two reverted builds already shipped versions 32
+ * and 33 with different meanings; staying above them keeps those devices on a migration
+ * path instead of a downgrade failure. Devices on 31 take this direct step.
+ */
+val MIGRATION_31_34 =
+  object : Migration(31, 34) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `hasManualAudioSelection` INTEGER NOT NULL DEFAULT 0")
+      db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `manualAudioId` INTEGER NOT NULL DEFAULT -1")
+      db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `externalAudio` TEXT NOT NULL DEFAULT ''")
+    }
+  }
+
+/**
+ * Version 32 existed only in the first reverted build, whose 31 -> 32 migration marked every
+ * existing row as a manual selection. Those flags say nothing about what the user actually
+ * picked, so they are cleared here rather than carried into [manualAudioId]; affected files
+ * fall back to the automatic rules until the user picks a track by hand again.
+ */
+val MIGRATION_32_34 =
+  object : Migration(32, 34) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `manualAudioId` INTEGER NOT NULL DEFAULT -1")
+      db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `externalAudio` TEXT NOT NULL DEFAULT ''")
+      db.execSQL("UPDATE `PlaybackStateEntity` SET `hasManualAudioSelection` = 0")
+    }
+  }
+
+/**
+ * Version 33 was the second reverted build. It stored the manual pick in `aid` itself
+ * (>0 = track id, 0 = audio off) with trustworthy flags, so flagged rows are carried into
+ * [manualAudioId] unchanged; unflagged rows keep the -1 default. A flagged row whose aid is
+ * negative holds no usable pick and is unflagged for consistency.
+ */
+val MIGRATION_33_34 =
+  object : Migration(33, 34) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `manualAudioId` INTEGER NOT NULL DEFAULT -1")
+      db.execSQL("UPDATE `PlaybackStateEntity` SET `manualAudioId` = `aid` WHERE `hasManualAudioSelection` != 0 AND `aid` >= 0")
+      db.execSQL("UPDATE `PlaybackStateEntity` SET `hasManualAudioSelection` = 0 WHERE `hasManualAudioSelection` != 0 AND `aid` < 0")
+    }
+  }
+
 val MIGRATION_24_25 =
   object : Migration(24, 25) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -1037,6 +1088,9 @@ val DatabaseModule =
           MIGRATION_28_29,
           MIGRATION_29_30,
           MIGRATION_30_31,
+          MIGRATION_31_34,
+          MIGRATION_32_34,
+          MIGRATION_33_34,
         ).build()
     }
 
