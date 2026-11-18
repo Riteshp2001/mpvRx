@@ -38,6 +38,7 @@ import app.gyrolet.mpvrx.utils.storage.TreeViewScanner
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -52,6 +53,7 @@ import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
+import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -490,10 +492,9 @@ class FileSystemBrowserViewModel(
   }
 
   /**
-   * Delete folders (and their contents)
-   * Based on Fossify's deleteFiles() logic with folder support
+   * Delete all contents or recursively remove media while preserving other files.
    */
-  private fun deleteFolders(folders: List<FileSystemItem.Folder>, request: Map<String, Long>): Pair<Int, Int> {
+  private suspend fun deleteFolders(folders: List<FileSystemItem.Folder>, request: Map<String, Long>): Pair<Int, Int> {
     if (folders.isEmpty()) return 0 to 0
     if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
       Log.w(TAG, "Folder deletion is unavailable with scoped storage")
@@ -501,67 +502,100 @@ class FileSystemBrowserViewModel(
     }
     var successCount = 0
     var failureCount = 0
+    var storageChanged = false
     val deleteAll = browserPreferences.deleteFolderAllContents.get()
     val includeAudio = browserPreferences.includeAudioBrowser.get()
+    val deletionContext = currentCoroutineContext()
 
     Log.d(TAG, "Deleting ${folders.size} folders (deleteAll=$deleteAll, includeAudio=$includeAudio)")
 
-    folders.forEach { folder ->
-      try {
-        val dir = File(folder.path)
-        if (!dir.exists()) {
-          failureCount++
-          Log.w(TAG, "Folder does not exist: ${folder.path}")
-          return@forEach
-        }
-
-        if (deleteAll) {
-          if (dir.deleteRecursively()) {
-            successCount++
-            confirmItemChanges(request, listOf(folder.path))
-            Log.d(TAG, "Successfully deleted folder (all contents): ${folder.path}")
-          } else {
+    try {
+      folders.forEach { folder ->
+        deletionContext.ensureActive()
+        try {
+          val dir = File(folder.path)
+          if (!dir.isDirectory) {
             failureCount++
-            Log.w(TAG, "Failed to delete folder: ${folder.path}")
+            Log.w(TAG, "Folder is unavailable: ${folder.path}")
+            return@forEach
           }
-        } else {
-          var deletedAny = false
-          dir.listFiles()?.forEach { file ->
-            if (file.isFile) {
-              val ext = file.extension.lowercase()
-              val isVideo = ext in FileTypeUtils.VIDEO_EXTENSIONS
-              val isAudio = includeAudio && ext in FileTypeUtils.AUDIO_EXTENSIONS
-              if (isVideo || isAudio) {
-                if (file.delete()) deletedAny = true
+
+          if (deleteAll) {
+            if (dir.deleteRecursively()) {
+              storageChanged = true
+              successCount++
+              confirmItemChanges(request, listOf(folder.path))
+              Log.d(TAG, "Successfully deleted folder (all contents): ${folder.path}")
+            } else {
+              failureCount++
+              Log.w(TAG, "Failed to delete folder: ${folder.path}")
+            }
+          } else {
+            var deletedAny = false
+            var deletionFailed = false
+            dir.walkBottomUp()
+              // Never follow a child link outside the selected tree or back into an ancestor.
+              .onEnter { directory -> !Files.isSymbolicLink(directory.toPath()) }
+              .onFail { directory, error ->
+                deletionFailed = true
+                Log.w(TAG, "Cannot read folder while deleting media: ${directory.path}", error)
               }
+              .forEach { file ->
+                deletionContext.ensureActive()
+                if (!Files.isSymbolicLink(file.toPath())) {
+                  if (file.isFile) {
+                    val ext = file.extension.lowercase()
+                    val isVideo = ext in FileTypeUtils.VIDEO_EXTENSIONS
+                    val isAudio = includeAudio && ext in FileTypeUtils.AUDIO_EXTENSIONS
+                    if (isVideo || isAudio) {
+                      if (file.delete()) {
+                        deletedAny = true
+                        storageChanged = true
+                      } else {
+                        deletionFailed = true
+                        Log.w(TAG, "Failed to delete media file: ${file.path}")
+                      }
+                    }
+                  } else if (file.isDirectory && file != dir) {
+                    val remaining = file.list()
+                    when {
+                      remaining == null -> {
+                        deletionFailed = true
+                        Log.w(TAG, "Cannot check folder after deleting media: ${file.path}")
+                      }
+                      remaining.isEmpty() -> {
+                        if (file.delete()) {
+                          storageChanged = true
+                        } else {
+                          deletionFailed = true
+                          Log.w(TAG, "Failed to remove empty folder: ${file.path}")
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            if (deletedAny && !deletionFailed) {
+              successCount++
+              confirmItemChanges(request, listOf(folder.path))
+              Log.d(TAG, "Deleted media recursively from folder: ${folder.path}")
+            } else {
+              failureCount++
+              Log.w(TAG, "Folder media deletion incomplete: ${folder.path} (deletedAny=$deletedAny)")
             }
           }
-          // Remove empty subdirectories
-          dir.listFiles()?.forEach { file ->
-            if (file.isDirectory) file.delete()
-          }
-          if (deletedAny) {
-            successCount++
-            val hasRemainingMedia = dir.walkTopDown().any { file ->
-              file.isFile && (file.extension.lowercase() in FileTypeUtils.VIDEO_EXTENSIONS ||
-                (includeAudio && file.extension.lowercase() in FileTypeUtils.AUDIO_EXTENSIONS))
-            }
-            if (!hasRemainingMedia) confirmItemChanges(request, listOf(folder.path))
-            Log.d(TAG, "Deleted media files from folder: ${folder.path}")
-          } else {
-            failureCount++
-            Log.w(TAG, "No media files found in folder: ${folder.path}")
-          }
+        } catch (cancellation: CancellationException) {
+          throw cancellation
+        } catch (e: Exception) {
+          Log.e(TAG, "Exception deleting folder: ${folder.path}", e)
+          failureCount++
         }
-      } catch (e: Exception) {
-        Log.e(TAG, "Exception deleting folder: ${folder.path}", e)
-        failureCount++
       }
-    }
-
-    if (successCount > 0) {
-      _itemsWereDeletedOrMoved.value = true
-      MediaLibraryEvents.notifyChanged()
+    } finally {
+      if (storageChanged) {
+        _itemsWereDeletedOrMoved.value = true
+        MediaLibraryEvents.notifyChanged()
+      }
     }
 
     Log.d(TAG, "Folder deletion complete: $successCount success, $failureCount failed")
