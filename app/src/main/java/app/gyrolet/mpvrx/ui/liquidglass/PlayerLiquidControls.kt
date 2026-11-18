@@ -16,9 +16,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.AnimatedIcon
 import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonAlpha
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
 import com.kyant.backdrop.Backdrop
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 
 object PlayerLiquidTokens {
   val ButtonSize: Dp = 44.dp
@@ -57,6 +59,7 @@ fun LiquidIconButton(
   spacing: Dp = 8.dp,
   useGlass: Boolean = true,
   backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
+  active: Boolean? = null,
 ) {
   LiquidPillButton(
     onClick = onClick,
@@ -69,13 +72,24 @@ fun LiquidIconButton(
     horizontalPadding = 0.dp,
     useGlass = useGlass,
     backdrop = backdrop,
+    active = active,
   ) {
-    Icon(
-      imageVector = icon,
-      contentDescription = title,
-      tint = LocalContentColor.current,
-      modifier = Modifier.size(iconSize),
-    )
+    if (active != null) {
+      AnimatedIcon(
+        imageVector = icon,
+        contentDescription = title,
+        tint = LocalContentColor.current,
+        modifier = Modifier.size(iconSize),
+        reduceMotion = AppMotion.playerReducedMotion(),
+      )
+    } else {
+      Icon(
+        imageVector = icon,
+        contentDescription = title,
+        tint = LocalContentColor.current,
+        modifier = Modifier.size(iconSize),
+      )
+    }
   }
 }
 
@@ -93,6 +107,7 @@ fun LiquidPillButton(
   useGlass: Boolean = true,
   backdrop: Backdrop? = LocalKyantPlayerBackdrop.current,
   onLongClickLabel: String? = null,
+  active: Boolean? = null,
   content: @Composable RowScope.() -> Unit,
 ) {
   AdaptiveControlsContainer(
@@ -108,6 +123,7 @@ fun LiquidPillButton(
     horizontalPadding = horizontalPadding,
     backdrop = backdrop,
     onLongClickLabel = onLongClickLabel,
+    active = active,
     content = content,
   )
 }

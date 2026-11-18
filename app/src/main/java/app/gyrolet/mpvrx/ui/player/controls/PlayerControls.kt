@@ -1767,10 +1767,11 @@ fun PlayerControls(
           ) {
             PlayerButtonTheme {
               ControlsButton(
-                icon = Icons.RoundedFilled.LockOpen,
+                icon = Icons.RoundedFilled.Lock,
                 onClick = viewModel::unlockControls,
                 title = stringResource(R.string.ui_unlock_controls),
-                color = playerButtonContentColor(),
+                color = MaterialTheme.colorScheme.primary,
+                active = true,
                 modifier = Modifier.size(48.dp),
               )
             }

@@ -24,13 +24,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
@@ -73,6 +74,7 @@ fun LiquidButton(
   spacing: Dp = 8.dp,
   onLongClickLabel: String? = null,
   backgroundAlpha: Float = 1f,
+  shape: Shape = Capsule(),
   content: @Composable RowScope.() -> Unit,
 ) {
   val glassSettings = rememberLiquidGlassSettings()
@@ -122,7 +124,7 @@ fun LiquidButton(
     if (backdrop != null) {
       Modifier.drawBackdrop(
         backdrop = backdrop,
-        shape = { Capsule() },
+        shape = { shape },
         effects = {
           liquidGlassEffects(
             glassSettings,
@@ -138,16 +140,14 @@ fun LiquidButton(
         innerShadow = { rememberedInnerShadow },
         layerBlock = if (animatePress) pressTransform else null,
         onDrawSurface = {
-          // The backdrop API samples a rectangular offscreen layer, but the visible
-          // surface must be painted only inside its capsule. A full drawRect leaked a
-          // thin rectangular box around LUA/speed/seek pills with Liquid Glass enabled.
-          val capsuleCorner = CornerRadius(size.height / 2f)
+          // Keep the tint inside the animated outline, including during active-state morphs.
+          val outline = shape.createOutline(size, layoutDirection, this)
           if (tint.isSpecified) {
-            drawRoundRect(tint, cornerRadius = capsuleCorner, blendMode = BlendMode.Hue)
-            drawRoundRect(glassSettings.surfaceColor(tint.copy(alpha = 0.75f)), cornerRadius = capsuleCorner)
+            drawOutline(outline, tint, blendMode = BlendMode.Hue)
+            drawOutline(outline, glassSettings.surfaceColor(tint.copy(alpha = 0.75f)))
           }
           if (surfaceColor.isSpecified) {
-            drawRoundRect(glassSettings.surfaceColor(surfaceColor), cornerRadius = capsuleCorner)
+            drawOutline(outline, glassSettings.surfaceColor(surfaceColor))
           }
         },
       )
@@ -173,11 +173,11 @@ fun LiquidButton(
       )
       Modifier
         .graphicsLayer(pressTransform)
-        .outsideShadow(Capsule(), radius = 6.dp)
-        .clip(Capsule())
-        .background(fill, Capsule())
+        .outsideShadow(shape, radius = 6.dp)
+        .clip(shape)
+        .background(fill, shape)
         .then(
-          if (glassSettings.highlightWidth > 0f) Modifier.border(1.dp * glassSettings.highlightWidth, rim, Capsule())
+          if (glassSettings.highlightWidth > 0f) Modifier.border(1.dp * glassSettings.highlightWidth, rim, shape)
           else Modifier,
         )
     }

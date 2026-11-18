@@ -82,6 +82,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -228,7 +231,7 @@ fun LyricsView(
         modifier = Modifier
           .fillMaxSize()
           .onSizeChanged { lyricsViewportPx = it.height }
-          .then(if (hasLyrics) Modifier.hazeSource(lyricsBackdrop) else Modifier),
+          .then(if (hasLyrics) Modifier.hazeSource(lyricsBackdrop).lyricsEdgeFade() else Modifier),
         contentAlignment = Alignment.Center,
       ) {
         val activeLyrics = state.lyrics
@@ -921,11 +924,10 @@ private fun LyricsEdgeVignette(
       )
       mask(
         Brush.verticalGradient(
-          colors = if (atTop) {
-            listOf(Color.White, Color.White.copy(alpha = 0.35f), Color.Transparent)
-          } else {
-            listOf(Color.Transparent, Color.White.copy(alpha = 0.35f), Color.White)
-          },
+          0f to Color.Transparent,
+          (if (atTop) 0.18f else 0.5f) to Color.White.copy(alpha = if (atTop) 0.55f else 0.35f),
+          (if (atTop) 0.5f else 0.82f) to Color.White.copy(alpha = if (atTop) 0.35f else 0.55f),
+          1f to Color.Transparent,
         ),
       )
     }
@@ -935,6 +937,29 @@ private fun LyricsEdgeVignette(
       .hazeBlur(input = HazeInput.Sources(backdrop), style = style),
   )
 }
+
+private fun Modifier.lyricsEdgeFade(): Modifier =
+  graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithCache {
+      val edge = minOf(0.22f, 96.dp.toPx() / size.height)
+      // Smoothstep samples soften the start and end of each fade.
+      val mask = Brush.verticalGradient(
+        0f to Color.Transparent,
+        edge * 0.25f to Color.White.copy(alpha = 0.15625f),
+        edge * 0.5f to Color.White.copy(alpha = 0.5f),
+        edge * 0.75f to Color.White.copy(alpha = 0.84375f),
+        edge to Color.White,
+        1f - edge to Color.White,
+        1f - edge * 0.75f to Color.White.copy(alpha = 0.84375f),
+        1f - edge * 0.5f to Color.White.copy(alpha = 0.5f),
+        1f - edge * 0.25f to Color.White.copy(alpha = 0.15625f),
+        1f to Color.Transparent,
+      )
+      onDrawWithContent {
+        drawContent()
+        drawRect(mask, blendMode = BlendMode.DstIn)
+      }
+    }
 
 /**
  * The backing voice of a line: smaller and dimmer than the lead, swept word by

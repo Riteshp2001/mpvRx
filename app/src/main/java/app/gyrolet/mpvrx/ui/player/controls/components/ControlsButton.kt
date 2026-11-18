@@ -76,6 +76,7 @@ fun ControlsButton(
   color: Color? = null,
   enabled: Boolean = true,
   onLongClickLabel: String? = null,
+  active: Boolean? = null,
 ) {
   AdaptiveControlsButton(
     onClick = onClick,
@@ -89,6 +90,7 @@ fun ControlsButton(
     borderless = LocalBorderlessPlayerControls.current,
     useGlass = true,
     buttonSize = PlayerLiquidTokens.ButtonSize,
+    active = active,
   )
 }
 

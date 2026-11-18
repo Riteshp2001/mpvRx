@@ -662,6 +662,7 @@ private fun CoverArtCardImage(
   motionArtwork: ByteArray? = null,
   isPlaying: Boolean = false,
   remoteMotionQuery: MotionArtworkQuery? = null,
+  modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current
   val client = org.koin.compose.koinInject<okhttp3.OkHttpClient>()
@@ -688,7 +689,7 @@ private fun CoverArtCardImage(
   val imageBitmap = remember(finalBitmap) { finalBitmap?.asImageBitmap() }
   val animatedDrawable = rememberMotionArtworkDrawable(motionArtwork)
 
-  Box(Modifier.fillMaxSize()) {
+  Box(modifier.fillMaxSize()) {
     if (animatedDrawable != null) {
       MotionArtworkImage(
         drawable = animatedDrawable,
@@ -726,6 +727,22 @@ private fun CoverArtCardImage(
   }
 }
 
+private fun Modifier.artworkHeaderVignette(surfaceColor: Color, height: Dp): Modifier =
+  drawWithCache {
+    val shade = Brush.verticalGradient(
+      0f to surfaceColor.copy(alpha = 0.26f),
+      0.25f to surfaceColor.copy(alpha = 0.22f),
+      0.5f to surfaceColor.copy(alpha = 0.13f),
+      0.75f to surfaceColor.copy(alpha = 0.04f),
+      1f to surfaceColor.copy(alpha = 0f),
+      endY = height.toPx().coerceAtMost(size.height),
+    )
+    onDrawWithContent {
+      drawContent()
+      drawRect(shade)
+    }
+  }
+
 @Composable
 private fun ImmersiveArtworkBackground(
   bitmap: Bitmap?,
@@ -733,8 +750,6 @@ private fun ImmersiveArtworkBackground(
   motionArtwork: ByteArray?,
   remoteMotionQuery: MotionArtworkQuery?,
   isPlaying: Boolean,
-  surfaceColor: Color,
-  headerFadeHeight: Dp,
   landscape: Boolean,
   swipeOffset: androidx.compose.runtime.State<Float>,
   previousBitmap: Bitmap?,
@@ -778,15 +793,8 @@ private fun ImmersiveArtworkBackground(
               1f to Color.Transparent,
             )
           }
-          val headerScrim = Brush.verticalGradient(
-            0f to surfaceColor.copy(alpha = 0.24f),
-            0.45f to surfaceColor.copy(alpha = 0.10f),
-            1f to Color.Transparent,
-            endY = headerFadeHeight.toPx(),
-          )
           onDrawWithContent {
             drawContent()
-            drawRect(headerScrim)
             drawRect(artworkMask, blendMode = BlendMode.DstIn)
           }
         },
@@ -1436,8 +1444,6 @@ fun AudioPlayerControls(
         motionArtwork = currentAudioPresentation?.motionArtwork?.takeIf { activeCoverOverride == null },
         remoteMotionQuery = motionQuery?.takeIf { activeCoverOverride == null },
         isPlaying = isPlaying,
-        surfaceColor = immersiveSurface,
-        headerFadeHeight = with(LocalDensity.current) { stableInsets.getTop(this).toDp() } + 96.dp,
         landscape = !isPortrait,
         swipeOffset = animatableOffsetX.asState(),
         previousBitmap = swipePrevCoverBitmap,
@@ -1450,6 +1456,13 @@ fun AudioPlayerControls(
         },
         hasPrevious = prevItem != null,
         hasNext = nextItem != null,
+      )
+    }
+    if (!showVisualizer && !showInPlaceLyrics) {
+      val headerFadeHeight = with(LocalDensity.current) { stableInsets.getTop(this).toDp() } + 144.dp
+      Box(
+        Modifier.fillMaxWidth().height(headerFadeHeight)
+          .artworkHeaderVignette(immersiveSurface, headerFadeHeight),
       )
     }
     BoxWithConstraints(
@@ -1737,6 +1750,7 @@ fun AudioPlayerControls(
                         it.isNotBlank() && !isLocalArtworkSource(prevItem.originalUri)
                       },
                       contentScale = if (isAudiobook) ContentScale.Fit else ContentScale.Crop,
+                      modifier = Modifier.artworkHeaderVignette(immersiveSurface, 120.dp),
                     )
                   }
                 }
@@ -1757,6 +1771,7 @@ fun AudioPlayerControls(
                         it.isNotBlank() && !isLocalArtworkSource(nextItem.originalUri)
                       },
                       contentScale = if (isAudiobook) ContentScale.Fit else ContentScale.Crop,
+                      modifier = Modifier.artworkHeaderVignette(immersiveSurface, 120.dp),
                     )
                   }
                 }
@@ -1780,6 +1795,7 @@ fun AudioPlayerControls(
                       remoteMotionQuery = motionQuery?.takeIf {
                         activeCoverOverride == null && !showVisualizer && !showInPlaceLyrics
                       },
+                      modifier = Modifier.artworkHeaderVignette(immersiveSurface, 120.dp),
                     )
 
                     if (isAudioOnly && !isAudiobook && activeCoverOverride == null) {
@@ -2485,9 +2501,22 @@ fun AudioPlayerControls(
             else -> 60.dp
           }
         val sideIconSize = if (isCompactLandscape || isAudiobook) 24.dp else 28.dp
+        val controlSpacing = if (isCompactLandscape || isAudiobook) 10.dp else 18.dp
+        val controlPadding = if (isPortrait || isTablet) 8.dp else 0.dp
+        val halfWidth = !isPortrait && !isAudiobook
         Row(
-          modifier = Modifier.fillMaxWidth().padding(horizontal = if (isPortrait || isTablet) 8.dp else 0.dp),
-          horizontalArrangement = Arrangement.spacedBy(if (isCompactLandscape || isAudiobook) 10.dp else 18.dp),
+          modifier = Modifier
+            .then(
+              // Preserve usable touch targets when a narrow pane cannot fit the half-width row.
+              if (halfWidth) {
+                Modifier.widthIn(min = maxOf(sideSize, 48.dp) * 2 + 48.dp + controlSpacing * 2 + controlPadding * 2)
+              } else {
+                Modifier
+              },
+            )
+            .fillMaxWidth(if (halfWidth) 0.5f else 1f)
+            .padding(horizontal = controlPadding),
+          horizontalArrangement = Arrangement.spacedBy(controlSpacing),
           verticalAlignment = Alignment.CenterVertically,
         ) {
           ExpressiveTransportSideButton(

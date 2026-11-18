@@ -14,7 +14,9 @@ import android.graphics.drawable.ColorDrawable
 import android.view.View
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,13 +44,15 @@ fun CastPlayerButton(
     androidx.compose.ui.res
       .stringResource(app.gyrolet.mpvrx.R.string.ui_cast)
   var routeButton by remember { mutableStateOf<MediaRouteButton?>(null) }
+  val castState = CastPlaybackController.instance?.castState?.collectAsState()?.value
   Box(modifier = Modifier.size(buttonSize), contentAlignment = Alignment.Center) {
     AdaptiveControlsButton(
       onClick = { routeButton?.performClick() },
       modifier = Modifier.size(buttonSize),
       icon = PlayerButton.CAST.icon,
       title = castContentDescription,
-      color = contentColor,
+      color = if (castState?.isConnected == true) MaterialTheme.colorScheme.primary else contentColor,
+      active = castState?.isConnected,
       buttonSize = buttonSize,
       borderless = borderless,
     )
