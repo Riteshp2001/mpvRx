@@ -11,9 +11,7 @@ package app.gyrolet.mpvrx.data.artwork
 import android.util.Log
 import app.gyrolet.mpvrx.network.awaitResponse
 import java.io.IOException
-import java.text.Normalizer
 import java.util.Base64
-import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -37,11 +35,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
 
-internal data class MotionArtworkQuery(val title: String, val artist: String, val album: String?)
-
-internal data class RemoteMotionArtwork(val urls: List<String>)
-
-internal class AppleMusicArtworkRepository(client: OkHttpClient) {
+internal class AppleMusicArtworkRepository(client: OkHttpClient) : MotionArtworkProvider {
   private val http = client.newBuilder()
     .cookieJar(CookieJar.NO_COOKIES)
     .callTimeout(20, TimeUnit.SECONDS)
@@ -59,14 +53,13 @@ internal class AppleMusicArtworkRepository(client: OkHttpClient) {
   private var nextTokenAttempt = 0L
   private val rejectedTokens = mutableSetOf<String>()
 
-  suspend fun find(query: MotionArtworkQuery): RemoteMotionArtwork? = withContext(Dispatchers.IO) {
+  override suspend fun find(query: MotionArtworkQuery): RemoteMotionArtwork? = withContext(Dispatchers.IO) {
     mutex.withLock {
       val now = System.currentTimeMillis()
       cache[query]?.takeIf { it.expiresAt > now }?.let { return@withLock it.artwork }
       try {
         val result = withTimeoutOrNull(30_000L) {
-          val storefront = Locale.getDefault().country.lowercase(Locale.ROOT)
-            .takeIf { it.matches(Regex("[a-z]{2}")) } ?: "us"
+          val storefront = MotionArtworkMatching.storefront()
           Lookup(search(query, storefront) ?: if (storefront != "us") search(query, "us") else null)
         }
         val artwork = result?.artwork
@@ -93,7 +86,7 @@ internal class AppleMusicArtworkRepository(client: OkHttpClient) {
   }
 
   private suspend fun search(query: MotionArtworkQuery, storefront: String): RemoteMotionArtwork? {
-    val term = "${query.artist} ${query.title.replace(TITLE_DECORATION, "").trim()}"
+    val term = "${query.artist} ${MotionArtworkMatching.cleanTitle(query.title)}"
     val url = "$CATALOG/$storefront/search".toHttpUrl().newBuilder()
       .addQueryParameter("term", term)
       .addQueryParameter("types", "songs")
@@ -240,34 +233,14 @@ internal class AppleMusicArtworkRepository(client: OkHttpClient) {
     private const val CATALOG = "https://amp-api.music.apple.com/v1/catalog"
     private const val USER_AGENT = "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36"
     private val JWT = Regex("""ey[A-Za-z0-9_-]+\.ey[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+""")
-    private val ARTIST_SEPARATOR = Regex("""\s+(?:feat\.?|ft\.?|featuring|with|&|and|x)\s+|[,;]""", RegexOption.IGNORE_CASE)
-    private val FEATURED_CREDIT = Regex("""[\[(](?:feat\.?|ft\.?|featuring)\s+([^)\]]+)[\])]""", RegexOption.IGNORE_CASE)
-    private val TITLE_DECORATION = Regex(
-      """\s*[\[(](?:official\s+(?:music\s+)?(?:video|audio|visuali[sz]er)|lyric(?:s|\s+video)?|audio|video|visuali[sz]er|(?:feat\.?|ft\.?|featuring)\s+[^)\]]+)[\])]""",
-      RegexOption.IGNORE_CASE,
-    )
-
-    private fun normalize(value: String): String =
-      Normalizer.normalize(value, Normalizer.Form.NFKD)
-        .lowercase(Locale.ROOT).replace(Regex("\\p{M}+"), "")
-        .replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
 
     private fun matchScore(query: MotionArtworkQuery, attributes: JsonObject): Int? {
       val title = attributes.text("name") ?: return null
       val artist = attributes.text("artistName") ?: return null
-      val wantedTitle = normalize(query.title.replace(TITLE_DECORATION, ""))
-      if (wantedTitle.isBlank() || normalize(title.replace(TITLE_DECORATION, "")) != wantedTitle) return null
-      val wantedArtists = artistCredits(query.artist, query.title)
-      val creditedArtists = artistCredits(artist, title)
-      if (wantedArtists.isEmpty() || !wantedArtists.all { it in creditedArtists }) return null
-      // Album tags improve the ranking; different release/edition labels must not veto a song.
-      val album = query.album?.let(::normalize)?.takeIf(String::isNotBlank)
-      return if (album != null && album == attributes.text("albumName")?.let(::normalize)) 2 else 1
+      if (!MotionArtworkMatching.titleMatches(query, title)) return null
+      if (!MotionArtworkMatching.artistsMatch(query, artist, title)) return null
+      return MotionArtworkMatching.score(query, attributes.text("albumName"))
     }
-
-    private fun artistCredits(artist: String, title: String): Set<String> =
-      (sequenceOf(artist) + FEATURED_CREDIT.findAll(title).map { it.groupValues[1] })
-        .flatMap { ARTIST_SEPARATOR.split(it).asSequence() }.map(::normalize).filter(String::isNotBlank).toSet()
 
     private fun albumIds(song: JsonObject): List<String> {
       val albums = song.obj("relationships")?.obj("albums")?.get("data") as? JsonArray
@@ -283,7 +256,7 @@ internal class AppleMusicArtworkRepository(client: OkHttpClient) {
 
     private fun motionArtwork(attributes: JsonObject): RemoteMotionArtwork? {
       val video = attributes.obj("editorialVideo") ?: return null
-      val urls = listOf("motionDetailSquare", "motionSquareVideo1x1", "motionDetailRaw", "motionDetailTall", "motionTallVideo3x4")
+      val renditions = listOf("motionDetailSquare", "motionSquareVideo1x1", "motionDetailRaw", "motionDetailTall", "motionTallVideo3x4")
         .mapNotNull { key ->
           val asset = video.obj(key) ?: return@mapNotNull null
           sequenceOf("video", "videoUrl", "hlsUrl", "url").mapNotNull { asset.text(it) }
@@ -293,7 +266,8 @@ internal class AppleMusicArtworkRepository(client: OkHttpClient) {
                 (url.encodedPath.endsWith(".m3u8", ignoreCase = true) || url.encodedPath.endsWith(".mp4", ignoreCase = true))
             }
         }.distinct()
-      return urls.takeIf { it.isNotEmpty() }?.let(::RemoteMotionArtwork)
+        .map { MotionArtworkRendition(it, hls = !it.substringBefore('?').endsWith(".mp4", ignoreCase = true)) }
+      return renditions.takeIf { it.isNotEmpty() }?.let { RemoteMotionArtwork(MotionArtworkSource.APPLE_MUSIC, it) }
     }
 
     private fun JsonObject.obj(key: String): JsonObject? = get(key) as? JsonObject

@@ -65,6 +65,11 @@ class AudioPreferences(
   val audioAmbientMode = preferenceStore.getBoolean("audio_ambient_mode", true)
   val immersiveArtwork = preferenceStore.getBoolean("audio_immersive_artwork", false)
   val animatedAlbumArtwork = preferenceStore.getBoolean("audio_animated_album_artwork", false)
+  val animatedArtworkAppleMusic = preferenceStore.getBoolean("audio_animated_artwork_apple_music", true)
+  val animatedArtworkTidal = preferenceStore.getBoolean("audio_animated_artwork_tidal", true)
+  val animatedArtworkSpotifyCanvas = preferenceStore.getBoolean("audio_animated_artwork_spotify_canvas", true)
+  val tidalClientId = preferenceStore.getString("tidal_client_id", "")
+  val tidalClientSecret = preferenceStore.getString("tidal_client_secret", "")
   val audioWavySeekbar = preferenceStore.getBoolean("audio_wavy_seekbar", true)
   val enabledMusicTabs = preferenceStore.getStringSet(
     "enabled_music_tabs",

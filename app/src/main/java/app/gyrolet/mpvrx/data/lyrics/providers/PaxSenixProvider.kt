@@ -82,6 +82,62 @@ internal object PaxSenixApi {
     return genericLyrics(query)
   }
 
+  /**
+   * Spotify search results narrowed to tracks. The response nests albums and
+   * artists that also carry ids and names, so only track-shaped objects with a
+   * Spotify track id are returned. Null means the request itself failed.
+   */
+  suspend fun spotifyTracks(term: String): List<SpotifyTrack>? {
+    val body = apiBody(apiUrl("spotify/search").addQueryParameter("q", term).build()) ?: return null
+    val root = runCatching { lyricsJson.parseToJsonElement(body) }.getOrNull() ?: return null
+    return buildList { root.collectSpotifyTracks(this) }.distinctBy { it.id }
+  }
+
+  /** The Canvas response for a Spotify track, parsed but otherwise untouched. */
+  suspend fun spotifyCanvas(trackId: String): JsonElement? {
+    if (!SPOTIFY_ID.matches(trackId)) return null
+    val body = apiBody(apiUrl("spotify/canvas").addQueryParameter("id", trackId).build()) ?: return null
+    return runCatching { lyricsJson.parseToJsonElement(body) }.getOrNull()
+  }
+
+  private fun JsonElement.collectSpotifyTracks(into: MutableList<SpotifyTrack>) {
+    when (this) {
+      is JsonArray -> forEach { it.collectSpotifyTracks(into) }
+      is JsonObject -> {
+        toSpotifyTrack()?.let(into::add)
+        values.forEach { it.collectSpotifyTracks(into) }
+      }
+      else -> Unit
+    }
+  }
+
+  private fun JsonObject.toSpotifyTrack(): SpotifyTrack? {
+    val details = this["attributes"] as? JsonObject ?: this
+    val type = details.string("type") ?: string("type")
+    val uri = details.string("uri") ?: string("uri")
+    val uriId = uri?.takeIf { it.startsWith("spotify:track:") }?.substringAfterLast(':')
+    val trackShaped = type.equals("track", ignoreCase = true) || uriId != null ||
+      (type == null && details.firstLong(DURATION_KEYS) != null)
+    if (!trackShaped) return null
+    val id = (uriId ?: firstString(ID_KEYS) ?: details.firstString(ID_KEYS))?.takeIf(SPOTIFY_ID::matches) ?: return null
+    val title = details.firstString(TITLE_KEYS) ?: return null
+    val artist = details.firstString(ARTIST_KEYS) ?: details.artistNames() ?: return null
+    val album = when (val value = details["album"]) {
+      is JsonObject -> value.firstString(listOf("name", "title"))
+      is JsonPrimitive -> value.contentOrNull
+      else -> null
+    }
+    return SpotifyTrack(id, title, artist, album, details.firstLong(DURATION_KEYS).toDurationMs())
+  }
+
+  internal data class SpotifyTrack(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val album: String?,
+    val durationMs: Long,
+  )
+
   /** The general route answers with candidates rather than a single document. */
   private suspend fun genericLyrics(query: LyricsFetchQuery): Lyrics? {
     if (apiKey.isBlank()) return null
@@ -376,6 +432,7 @@ internal object PaxSenixApi {
   private val TITLE_KEYS = listOf("name", "title", "trackName", "track_name")
   private val ARTIST_KEYS = listOf("artistName", "artist_name")
   private val DURATION_KEYS = listOf("durationInMillis", "durationMs", "duration_ms", "duration")
+  private val SPOTIFY_ID = Regex("[0-9A-Za-z]{22}")
 
   private val APPLE_INDEX_SCRIPT = Regex("""/assets/index~[^"]+\.js""")
   private val APPLE_TOKEN = Regex("""eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+""")

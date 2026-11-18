@@ -50,6 +50,25 @@ The existing **Animated album artwork** switch remains separate. Reduced motion
 keeps immersive artwork still, and unavailable motion artwork retains the
 ordinary cover.
 
+### Animated album artwork
+
+Enable **Audio settings → Appearance → Animated album artwork** to stream a
+motion cover over the still artwork. It is off by default, shares the track's
+title, artist, and album with the selected services, and uses mobile data. The
+sources are tried in this order; each can be turned off on its own:
+
+1. **Apple Music motion covers**: square album loops; no account needed.
+2. **TIDAL video covers**: album-level video covers from the official TIDAL
+   API. Create an app at [developer.tidal.com](https://developer.tidal.com) and
+   enter its **TIDAL client ID** and **TIDAL client secret**.
+3. **Spotify Canvas**: a portrait loop used only for the immersive background
+   in portrait. It needs a PaxSenix API key, which is set in the lyrics
+   settings, and is not available in Play Store builds.
+
+If a source has no match or its video cannot be played, the next one is tried.
+When none succeed, the embedded or still cover stays visible. Animated artwork
+embedded in the file always takes precedence over online sources.
+
 Album artwork does not seek or toggle play/pause on single or double taps.
 Horizontal swipes still switch tracks, and a long press opens the visualizer
 selector. Use the transport buttons and seekbar for playback control.
