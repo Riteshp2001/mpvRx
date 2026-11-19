@@ -69,6 +69,7 @@ import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference
 import app.gyrolet.mpvrx.ui.preferences.components.PlayerButtonChip
 import app.gyrolet.mpvrx.ui.preferences.components.PlayerLayoutPreview
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.LocalTwoPaneSettings
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -136,8 +137,11 @@ data class ControlLayoutEditorScreen(
     var previewPlaylist by rememberSaveable(region) { mutableStateOf(true) }
     var portraitPreviewExpanded by rememberSaveable(region) { mutableStateOf(true) }
     val configuration = LocalConfiguration.current
-    val portraitPreviewRatio = minOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1).toFloat() /
-      maxOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1)
+    val isTablet = configuration.smallestScreenWidthDp >= 600
+    val portraitPreviewRatio =
+      if (isTablet) (9f / 16f)
+      else minOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1).toFloat() /
+        maxOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1)
     val embeddedInPlayer = LocalPlayerSettingsPanel.current
     val title = stringResource(region.titleRes)
     var showResetDialog by rememberSaveable(region) { mutableStateOf(false) }
@@ -485,8 +489,12 @@ data class ControlLayoutEditorScreen(
           }
         }
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
-          val sideBySide = maxWidth >= 560.dp || (maxWidth >= 400.dp && maxHeight < 360.dp)
-          val previewHeight = (maxHeight * 0.36f).coerceIn(96.dp, 260.dp).coerceAtMost(maxHeight / 2)
+          val isTablet = configuration.smallestScreenWidthDp >= 600
+          val inTwoPaneSettings = LocalTwoPaneSettings.current
+          val sideBySide =
+            !isTablet && !inTwoPaneSettings && (maxWidth >= 560.dp || (maxWidth >= 400.dp && maxHeight < 360.dp))
+          val maxPreviewHeight = if (isTablet) 340.dp else 260.dp
+          val previewHeight = (maxHeight * 0.38f).coerceIn(96.dp, maxPreviewHeight).coerceAtMost(maxHeight / 2)
           if (sideBySide) {
             Row(Modifier.fillMaxSize()) {
               previewContent(Modifier.weight(0.45f).fillMaxHeight().padding(start = 12.dp, top = 8.dp, bottom = 8.dp), false)
@@ -494,9 +502,12 @@ data class ControlLayoutEditorScreen(
             }
           } else if (region.isPortrait) {
             // A phone-shaped scene cannot remain readable in a short, fixed-height thumbnail.
-            // Give it the full editor width and let the same page scroll to the controls below.
+            // On phones, let it scroll; on tablets, keep it at a compact, balanced height.
+            val expandedHeight =
+              if (isTablet) 350.dp
+              else (maxWidth - 52.dp).coerceAtLeast(1.dp) / portraitPreviewRatio + 84.dp
             val portraitPreviewHeight =
-              if (portraitPreviewExpanded) (maxWidth - 52.dp).coerceAtLeast(1.dp) / portraitPreviewRatio + 84.dp
+              if (portraitPreviewExpanded) expandedHeight
               else 84.dp
             editorContent(Modifier.fillMaxSize(), portraitPreviewHeight)
           } else {

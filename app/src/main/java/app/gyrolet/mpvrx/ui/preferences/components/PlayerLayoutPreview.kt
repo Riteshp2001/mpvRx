@@ -103,8 +103,17 @@ internal fun PlayerLayoutPreview(
   val configuration = LocalConfiguration.current
   val shortSide = minOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1).dp
   val longSide = maxOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1).dp
-  val sceneWidth = if (region.isPortrait) shortSide else longSide
-  val sceneHeight = if (region.isPortrait) longSide else shortSide
+  val isTablet = configuration.smallestScreenWidthDp >= 600
+  val sceneWidth = if (region.isPortrait) {
+    if (isTablet) 360.dp else shortSide
+  } else {
+    if (isTablet) 720.dp else longSide
+  }
+  val sceneHeight = if (region.isPortrait) {
+    if (isTablet) (sceneWidth * (16f / 9f)) else longSide
+  } else {
+    if (isTablet) (sceneWidth / (16f / 9f)) else shortSide
+  }
   Surface(modifier, shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerLow) {
     Column(Modifier.fillMaxSize().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
