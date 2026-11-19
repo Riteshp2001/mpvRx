@@ -749,13 +749,21 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
               val activated = runCatching {
                 MPVLib.setPropertyString("vo", videoOutput)
                 MPVLib.setPropertyString("force-window", "yes")
-                // Read back the actual output, not just the requested option. Video selection
-                // must be the final step, after JNI's window and the new output are usable.
-                if (MPVLib.getPropertyString("current-vo") != videoOutput) return@withLock false
+                // Readiness is "Surface bound and wid applied", not "a video output object
+                // exists". mpv creates the output itself once a load or a video-track
+                // selection gives it something to configure. When the previous output was
+                // destroyed (video_out == null), no idle event creates one, and re-setting
+                // the same vo / force-window values is a no-op in mpv's option layer, so a
+                // current-vo readback gate could only pass after a load — while the load
+                // path waits for this flag. That circular wait was the 5 s reopen stall.
+                // Video selection stays the final step, after JNI's window is observable
+                // and the output is requested; the selection is what makes mpv build the
+                // output. current-vo is logged only as a diagnostic for that distinction.
                 rendererOutputReady = true
                 restoreSuspendedVideoTrackLocked()
                 applyDeferredVideoSelectionLocked()
-                Log.d(TAG, "Android renderer ready: generation=${_state.value.generation}, wid=$windowId")
+                Log.d(TAG, "Android renderer ready: generation=${_state.value.generation}, wid=$windowId, " +
+                  "current-vo=${MPVLib.getPropertyString("current-vo")}")
               }.onFailure {
                 rendererOutputReady = false
                 Log.e(TAG, "Could not activate video output after Surface attachment", it)
@@ -2624,8 +2632,9 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
             // new file audio-only until a renderer exists; never reuse the outgoing file's id.
             if (!rendererOutputReady || !current.surfaceAttached) suspendVideoTrackLocked()
             // FILE_LOADED and native renderer activation can arrive in either order. JNI surface
-            // attachment alone is not readiness: selecting video before wid/vo are active can
-            // make MediaCodec drop the track. Also cover a Surface lost during an in-flight load.
+            // attachment alone is not readiness: selecting video before wid is applied and the
+            // output is requested can make MediaCodec drop the track. Also cover a Surface lost
+            // during an in-flight load.
             if (current.currentItem?.videoSelection() == PlaybackVideoSelection.IMMEDIATE &&
               suspendedVideoTrack == null
             ) {
