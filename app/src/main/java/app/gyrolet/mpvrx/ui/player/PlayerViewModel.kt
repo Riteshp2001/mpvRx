@@ -910,8 +910,14 @@ class PlayerViewModel(
   }
 
   fun selectAudioTrack(track: TrackNode) {
+    // This is the one place a user picks an audio track by hand, so this is the one place
+    // a manual-selection mark is created. The mark is keyed by the item's stable id (the
+    // playback-state key) and binds the exact track id picked; toggling the current track
+    // off is a manual pick of "no audio" and is marked as 0.
+    val identifier = PlaybackSession.state.value.currentItem?.stableId.orEmpty()
     if (getTrackSelectionId("aid") == track.id) {
       setTrackSelectionId("aid", null)
+      ManualAudioSelectionTracker.mark(identifier, 0)
       return
     }
 
@@ -922,10 +928,16 @@ class PlayerViewModel(
       val selectedVideo = pairedYtdlTrack(track, TrackNode::isVideo)
         ?: allTracks.value.firstOrNull { candidate -> candidate.isVideo && candidate.isSelected }
       val selector = buildYtdlFormatSelector(videoTrack = selectedVideo, audioTrack = track)
-      if (selector != null && host?.reloadCurrentYtdlFormat(selector) == true) return
+      if (selector != null && host?.reloadCurrentYtdlFormat(selector) == true) {
+        // The reload renumbers the tracks, so the picked id cannot be marked yet. The
+        // restore path resolves this pending mark to the track the reload selected.
+        ManualAudioSelectionTracker.markReloadPending(identifier)
+        return
+      }
     }
 
     setTrackSelectionId("aid", track.id)
+    ManualAudioSelectionTracker.mark(identifier, track.id)
   }
 
   private fun currentItemRequiresYtdlp(): Boolean {
@@ -2348,6 +2360,33 @@ fun restartFromBeginning() {
   // External subtitle tracking
   private val _externalSubtitles = mutableListOf<String>()
   val externalSubtitles: List<String> get() = _externalSubtitles.toList()
+
+  // External audio tracking, mirroring the subtitle list above but scoped by load
+  // generation instead of by media title: a title can repeat across different files (and
+  // stay the same across a reload), which would leave a previous file's URIs in the list —
+  // the next file would then skip re-adding its own tracks and could even persist the
+  // previous file's URIs under its own record. The generation changes on every load, so
+  // the list is reset the first time it is touched under a new generation.
+  private val _externalAudioTracks = mutableListOf<String>()
+  val externalAudioTracks: List<String>
+    get() {
+      syncExternalAudioScope()
+      return _externalAudioTracks.toList()
+    }
+
+  @Volatile
+  private var externalAudioGeneration: Long = -1L
+
+  private fun syncExternalAudioScope() {
+    val generation = PlaybackSession.state.value.generation
+    if (externalAudioGeneration != generation) {
+      externalAudioGeneration = generation
+      _externalAudioTracks.clear()
+    }
+  }
+
+  // Mutex for external audio adds, same purpose as subtitleAddMutex below.
+  private val audioAddMutex = Mutex()
 
   // Mutex to prevent race-condition duplicates when scan adds multiple subtitle URIs concurrently
   private val subtitleAddMutex = Mutex()
@@ -3827,6 +3866,25 @@ fun restartFromBeginning() {
 
   fun addAudio(uri: Uri) {
     viewModelScope.launch(Dispatchers.IO) {
+      addAudioSuspend(uri)
+    }
+  }
+
+  /**
+   * Adds an external audio track and records its URI for persistence, mirroring
+   * [addSubtitleSuspend]. With [forRestore] the track is loaded with mpv's "auto" flag —
+   * present but not force-selected — because the saved manual selection is applied right
+   * after the re-adds and must be the step that decides; a track mpv already loaded for
+   * this file (matched by its external filename) is not added twice.
+   */
+  suspend fun addAudioSuspend(
+    uri: Uri,
+    silent: Boolean = false,
+    forRestore: Boolean = false,
+  ) {
+    audioAddMutex.withLock {
+      syncExternalAudioScope()
+      val uriString = uri.toString()
       runCatching {
         if (uri.scheme == "content") {
           try {
@@ -3844,23 +3902,41 @@ fun restartFromBeginning() {
 
         val path =
           uri.resolveUri(appContext)
-            ?: return@launch withContext(Dispatchers.Main) {
-              showToast("Failed to load audio file: Invalid URI")
+            ?: run {
+              if (!silent) {
+                withContext(Dispatchers.Main) {
+                  showToast("Failed to load audio file: Invalid URI")
+                }
+              }
+              return@withLock
             }
 
+        // Track the URI even when mpv already loaded the file, like addSubtitleSuspend.
+        if (!_externalAudioTracks.contains(uriString)) {
+          _externalAudioTracks.add(uriString)
+        }
+
+        if (audioTracks.value.any { it.externalFilename == path }) {
+          android.util.Log.d("PlayerViewModel", "Audio already loaded by MPV, skipping audio-add: $path")
+          return@withLock
+        }
+
         val title = getFileNameFromUri(uri)?.substringBeforeLast(".")?.ifBlank { null }
+        val flag = if (forRestore) "auto" else "cached"
 
         withContext(Dispatchers.Main) {
           if (title != null) {
-            PlaybackSession.command("audio-add", path, "cached", title)
+            PlaybackSession.command("audio-add", path, flag, title)
           } else {
-            PlaybackSession.command("audio-add", path, "cached")
+            PlaybackSession.command("audio-add", path, flag)
           }
-          showToast("Audio track added")
+          if (!silent) showToast("Audio track added")
         }
       }.onFailure { e ->
-        withContext(Dispatchers.Main) {
-          showToast("Failed to load audio: ${e.message}")
+        if (!silent) {
+          withContext(Dispatchers.Main) {
+            showToast("Failed to load audio: ${e.message}")
+          }
         }
         android.util.Log.e("PlayerViewModel", "Error adding audio", e)
       }

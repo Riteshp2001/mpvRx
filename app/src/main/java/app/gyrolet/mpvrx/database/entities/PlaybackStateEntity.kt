@@ -28,4 +28,15 @@ data class PlaybackStateEntity(
   val externalSubtitles: String = "", // Comma-separated list of external subtitle URIs
   val hasBeenWatched: Boolean = false, // Persistent flag: true if video has ever reached the watched threshold
   val newLabelOverride: Boolean? = null,
+  // True only when [manualAudioId] holds a choice the user made by hand for this file.
+  // Selections mpv or the automatic correction produced are never stored as manual: on the
+  // next open they are decided again by the preferred-language rules. Rows written before
+  // this column existed keep the default false, so old saved [aid] values are not manual.
+  val hasManualAudioSelection: Boolean = false,
+  // The hand-picked audio track: >0 is an mpv track id, 0 is audio turned off by hand,
+  // -1 is no manual record (only meaningful while [hasManualAudioSelection] is true).
+  val manualAudioId: Int = -1,
+  // Separator-joined ("|") URIs of external audio tracks added by hand, re-added on the
+  // next open before the manual selection is restored, mirroring [externalSubtitles].
+  val externalAudio: String = "",
 )

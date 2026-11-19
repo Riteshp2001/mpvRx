@@ -26,6 +26,7 @@ import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -55,7 +56,10 @@ import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
+import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
@@ -280,6 +284,17 @@ class MediaPlaybackService :
   private val playlistRepository: PlaylistRepository by inject()
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val torrentStreamingEngine: TorrentStreamingEngine by inject()
+  private val subtitlesPreferences: SubtitlesPreferences by inject()
+
+  // Audio decision for loads this service drives on its own (detached playback), using the
+  // same TrackSelector rules as the Activity path.
+  private val detachedTrackSelector: TrackSelector by lazy {
+    TrackSelector(audioPreferences, subtitlesPreferences)
+  }
+
+  @Volatile
+  private var detachedRestoreGeneration: Long = 0L
+  private var detachedRestoreJob: Job? = null
 
   private var mediaIdentifier = ""
   private var mediaTitle = ""
@@ -536,6 +551,29 @@ class MediaPlaybackService :
 
     serviceScope.launch {
       PlaybackSession.queue.collect(::syncQueueState)
+    }
+
+    serviceScope.launch {
+      // Detached loads (queue playback with no foreground Activity) have no Activity
+      // restore path: without this collector nothing would re-add the file's external
+      // audio, restore its saved manual selection, or correct mpv's automatic pick.
+      // One restore runs per load generation, and only while this service — not an
+      // Activity — owns playback, so the two paths never fight over the same load.
+      PlaybackSession.state.collect { session ->
+        if (session.phase != PlaybackPhase.READY && session.phase != PlaybackPhase.BACKGROUND) {
+          return@collect
+        }
+        val generation = session.generation
+        if (generation <= 0L || generation == detachedRestoreGeneration) return@collect
+        if (!canHandleDetachedTransport()) return@collect
+        val item = session.currentItem ?: return@collect
+        detachedRestoreGeneration = generation
+        detachedRestoreJob?.cancel()
+        detachedRestoreJob =
+          serviceScope.launch(Dispatchers.IO) {
+            restoreDetachedAudioSelection(item.stableId, generation)
+          }
+      }
     }
 
     serviceScope.launch {
@@ -1998,6 +2036,34 @@ class MediaPlaybackService :
     }
   }
 
+  /**
+   * The detached counterpart of PlayerActivity's restore, audio side only: re-add the
+   * file's stored external audio tracks, apply its saved manual selection, and — only
+   * when no manual selection applied — run the automatic correction, in the same order
+   * and under the same mpv.conf ownership rule as the foreground path.
+   */
+  private suspend fun restoreDetachedAudioSelection(identifier: String, generation: Long) {
+    if (identifier.isBlank()) return
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)) return
+
+    val state = runCatching { playbackStateRepository.getVideoDataByTitle(identifier) }.getOrNull()
+    if (!PlaybackSession.isCurrentGeneration(generation) || !canHandleDetachedTransport()) return
+
+    if (state != null && state.externalAudio.isNotBlank()) {
+      for (audioUri in state.externalAudio.split("|").filter { it.isNotBlank() }) {
+        if (!PlaybackSession.isCurrentGeneration(generation)) return
+        val uri = Uri.parse(audioUri)
+        val path = runCatching { uri.resolveUri(this@MediaPlaybackService) }.getOrNull() ?: audioUri
+        // "auto": present but not force-selected; the manual restore below decides.
+        PlaybackSession.command("audio-add", path, "auto")
+      }
+    }
+    if (!PlaybackSession.isCurrentGeneration(generation)) return
+
+    if (state != null && detachedTrackSelector.applySavedAudioSelection(state, generation)) return
+    detachedTrackSelector.applyAutomaticAudioSelection(generation)
+  }
+
   private fun schedulePlaybackStateSave(force: Boolean = false) {
     val identifier = mediaIdentifier
     if (identifier.isBlank()) return
@@ -2104,6 +2170,7 @@ class MediaPlaybackService :
           ).toInt(),
         subSpeed = readMpvDouble("sub-speed", oldState?.subSpeed ?: DEFAULT_PLAYBACK_STATE_SUB_SPEED),
         aid = readMpvTrackId("aid", oldState?.aid ?: -1),
+        sessionManualAudioId = captureSessionManualAudioId(identifier),
         audioDelayMs =
           (
             readMpvDouble(
@@ -2114,6 +2181,21 @@ class MediaPlaybackService :
         externalSubtitles = oldState?.externalSubtitles.orEmpty(),
       )
     }
+  }
+
+  /**
+   * Same rule as PlayerActivity's capture: a manual decision is persisted only when the
+   * user picked a track by hand for this file and the current track is still that pick
+   * (readMpvTrackId reports "no" as -1; the manual convention uses 0 for audio off).
+   * External audio needs no field here: the snapshot leaves it blank and buildEntity
+   * keeps the stored list, exactly like externalSubtitles on this path.
+   */
+  private fun captureSessionManualAudioId(identifier: String): Int? {
+    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)) return null
+    val marked = ManualAudioSelectionTracker.markedTrackId(identifier) ?: return null
+    val current = readMpvTrackId("aid", -1)
+    val currentSelectionId = if (current < 0) 0 else current
+    return marked.takeIf { it == currentSelectionId }
   }
 
   private fun readMpvDouble(

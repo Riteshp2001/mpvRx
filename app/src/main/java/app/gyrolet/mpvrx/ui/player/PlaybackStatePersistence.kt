@@ -29,6 +29,14 @@ internal data class PlaybackStateSnapshot(
   val aid: Int,
   val audioDelayMs: Int,
   val externalSubtitles: String,
+  // Non-null only when the user picked the audio track by hand during this session and the
+  // track current at capture time is still that pick (0 = audio off by hand). Null means
+  // "no manual decision in this snapshot": buildEntity then keeps the stored manual record
+  // untouched, so an automatic track change can never overwrite or erase it.
+  val sessionManualAudioId: Int? = null,
+  // Separator-joined ("|") external audio URIs known to the capturing side. Blank keeps
+  // the stored list, mirroring how the service treats externalSubtitles.
+  val externalAudio: String = "",
   val isPositionRestorePending: Boolean = false,
   /** A live stream's position is a moment in a broadcast that will be gone on the next visit. */
   val isLive: Boolean = false,
@@ -56,6 +64,18 @@ internal object PlaybackStatePersistence {
     val duration = snapshot.duration
     val timeRemaining = if (duration > lastPosition) duration - lastPosition else 0
 
+    // A manual record is written only from an explicit in-session pick. Without one, the
+    // stored record is carried over as-is: this save's aid is an automatic result and must
+    // neither replace the user's pick nor clear it.
+    val hasManualAudioSelection =
+      snapshot.sessionManualAudioId != null || oldState?.hasManualAudioSelection == true
+    val manualAudioId =
+      if (hasManualAudioSelection) {
+        snapshot.sessionManualAudioId ?: oldState?.manualAudioId ?: -1
+      } else {
+        -1
+      }
+
     return PlaybackStateEntity(
       mediaTitle = snapshot.mediaIdentifier,
       lastPosition = lastPosition,
@@ -69,6 +89,9 @@ internal object PlaybackStatePersistence {
       audioDelay = snapshot.audioDelayMs,
       timeRemaining = timeRemaining,
       externalSubtitles = snapshot.externalSubtitles,
+      hasManualAudioSelection = hasManualAudioSelection,
+      manualAudioId = manualAudioId,
+      externalAudio = snapshot.externalAudio.ifBlank { oldState?.externalAudio.orEmpty() },
       hasBeenWatched =
         isWatched(
           oldState = oldState,
