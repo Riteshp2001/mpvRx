@@ -150,6 +150,7 @@ class InAppMusicSheetState internal constructor(
 
   private val visibleState = derivedStateOf { isOpen || isDragging || expansion > 0f }
   private val settledOpenState = derivedStateOf { isOpen && !isDragging && expansion >= 1f }
+  private val fullCoverageState = derivedStateOf { expansion >= 1f }
   private val miniHiddenState = derivedStateOf { isDragging || expansion > 0f }
 
   /** The sheet is on screen. */
@@ -159,6 +160,10 @@ class InAppMusicSheetState internal constructor(
   /** The sheet rests full screen and nothing under it can be seen or reached. */
   val isSettledOpen: Boolean
     get() = settledOpenState.value
+
+  /** Holding a pointer at the full-screen boundary does not uncover the browser. */
+  internal val coversWindow: Boolean
+    get() = fullCoverageState.value
 
   /** The mini player is drawn by the sheet, riding its top edge. */
   internal val isMiniHidden: Boolean
@@ -365,7 +370,7 @@ fun Modifier.coveredByInAppMusicSheet(state: InAppMusicSheetState?): Modifier =
     this
   } else {
     this
-      .graphicsLayer { alpha = if (state.isSettledOpen) 0f else 1f }
+      .graphicsLayer { alpha = if (state.coversWindow) 0f else 1f }
       .then(InAppMusicSheetCoverElement(state))
   }
 
@@ -407,7 +412,7 @@ private class InAppMusicSheetCoverNode(
 
   private fun observeCover() {
     var next = false
-    observeReads { next = state.isSettledOpen }
+    observeReads { next = state.coversWindow }
     if (next != covered) {
       covered = next
       invalidateSemantics()
@@ -443,7 +448,8 @@ internal fun Modifier.inAppMusicSheetDrag(
         val slopChange =
           awaitVerticalTouchSlopOrCancellation(down.id) { change, over ->
             val towardTarget = if (collapsing) over > 0f else over < 0f
-            if (allowBothDirections || towardTarget) {
+            val hasRoom = if (over > 0f) state.expansion > 0f else state.expansion < 1f
+            if ((allowBothDirections || towardTarget) && hasRoom) {
               change.consume()
               overSlop = over
             }
@@ -517,7 +523,7 @@ fun InAppMusicPlayerSheet(
     MediaPlaybackService.setInAppPlayerVisible(shownInApp)
     onDispose { MediaPlaybackService.setInAppPlayerVisible(false) }
   }
-  val covering = state.isSettledOpen
+  val covering = state.coversWindow
   DisposableEffect(covering) {
     if (covering) BackdropGate.covers++
     onDispose { if (covering) BackdropGate.covers-- }
