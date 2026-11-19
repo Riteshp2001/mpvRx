@@ -820,7 +820,7 @@ internal val OPEN_SOURCE_LIBRARIES =
     ),
     OpenSourceLibrary(
       name = "MediaInfo Android",
-      artifact = "com.github.marlboro-advance:mediainfoAndroid",
+      artifact = "io.github.marlboro-advance:mediainfo-android",
       descriptionRes = R.string.oss_mediainfo_android_description,
       license = "BSD-2-Clause",
       url = "https://github.com/marlboro-advance/mediainfoAndroid",
