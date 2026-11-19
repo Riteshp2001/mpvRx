@@ -73,6 +73,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -103,6 +104,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.jellyfin.JellyfinDynamicSection
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinSearchCategory
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
@@ -427,8 +429,8 @@ fun JellyfinContent(
       }
     }
 
-  val solidAlpha by remember {
-    derivedStateOf {
+  val getSolidAlpha = remember(isWallpaperActive, isMusicOnlyMode, uiState.openLibrary, uiState.searchQuery, uiState.heroItems.isEmpty(), density) {
+    {
       if (isWallpaperActive) {
         0f
       } else if (!isMusicOnlyMode && uiState.openLibrary == null && uiState.searchQuery.isBlank() && uiState.heroItems.isNotEmpty()) {
@@ -518,10 +520,11 @@ fun JellyfinContent(
                 ) {
                   // 1. Hero Featured Carousel Banner
                   if (uiState.heroItems.isNotEmpty()) {
-                    item {
+                    item(key = "hero_banner", contentType = "hero_banner") {
                       JellyfinHeroBanner(
                         autoAdvance = uiState.detailItem == null && !selectionManager.isInSelectionMode &&
-                          !isSearching && !isAddDialogOpen && !isManageServersOpen && !isSortDialogOpen && !isSeerrRequestsOpen,
+                          !isSearching && !isAddDialogOpen && !isManageServersOpen && !isSortDialogOpen && !isSeerrRequestsOpen &&
+                          !homeListState.isScrollInProgress,
                         items = uiState.heroItems,
                         server = server,
                         onPlay = { item ->
@@ -540,10 +543,11 @@ fun JellyfinContent(
                   val homeLibraries = uiState.libraries.filter { library ->
                     library.collectionType?.equals("playlists", ignoreCase = true) != true &&
                       !library.name.equals("playlists", ignoreCase = true) &&
-                      library.type != "PlaylistsFolder"
+                      library.type != "PlaylistsFolder" &&
+                      !JellyfinViewModel.isBookLibrary(library)
                   }
                   if (homeLibraries.isNotEmpty()) {
-                    item {
+                    item(key = "libraries_section", contentType = "libraries_section") {
                       Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(JellyfinSpacing.HeaderGap),
@@ -563,7 +567,7 @@ fun JellyfinContent(
 
                   // 3. Continue Watching Section
                   if (uiState.resumeItems.isNotEmpty()) {
-                    item {
+                    item(key = "continue_watching", contentType = "continue_watching") {
                       JellyfinHorizontalSection(
                         title = stringResource(R.string.jellyfin_continue_watching),
                         items = uiState.resumeItems,
@@ -577,7 +581,7 @@ fun JellyfinContent(
 
                   // 4. Per-Library Latest Sections (e.g. Latest Movies, Latest Shows, etc.)
                   if (uiState.librarySections.isNotEmpty()) {
-                    items(uiState.librarySections, key = { "lib_section_${it.library.id}" }) { section ->
+                    items(uiState.librarySections, key = { "lib_section_${it.library.id}" }, contentType = { "lib_section" }) { section ->
                       JellyfinHorizontalSection(
                         title = section.title,
                         subtitle = section.subtitle,
@@ -593,7 +597,7 @@ fun JellyfinContent(
                   } else {
                     // Fallback: Legacy Latest Movies Section
                     if (uiState.latestMovies.isNotEmpty()) {
-                      item {
+                      item(key = "latest_movies", contentType = "legacy_section") {
                         JellyfinHorizontalSection(
                           title = stringResource(R.string.jellyfin_latest_movies),
                           subtitle = stringResource(R.string.seerr_recently_added),
@@ -611,7 +615,7 @@ fun JellyfinContent(
 
                     // Fallback: Legacy Latest TV Shows Section
                     if (uiState.latestShows.isNotEmpty()) {
-                      item {
+                      item(key = "latest_shows", contentType = "legacy_section") {
                         JellyfinHorizontalSection(
                           title = stringResource(R.string.jellyfin_latest_series),
                           items = uiState.latestShows,
@@ -627,9 +631,82 @@ fun JellyfinContent(
                     }
                   }
 
-                  // 6. Recommended For You Section
+                  // 5. Critics' Choice Section
+                  if (uiState.criticsChoice.isNotEmpty()) {
+                    item(key = "critics_choice", contentType = "critics_choice") {
+                      JellyfinHorizontalSection(
+                        title = stringResource(R.string.home_critics_choice),
+                        subtitle = stringResource(R.string.home_critics_choice_subtitle),
+                        items = uiState.criticsChoice,
+                        server = server,
+                        showRankBadges = true,
+                        onItemClick = { item -> viewModel.openDetail(item) },
+                        onItemLongClick = { item -> viewModel.playItem(context, item) },
+                      )
+                    }
+                  }
+
+                  // 6. Popular Studios Section (placed under Critics' Choice)
+                  if (uiState.popularStudios.isNotEmpty()) {
+                    item(key = "popular_studios", contentType = "popular_studios") {
+                      JellyfinPopularStudiosSection(
+                        studios = uiState.popularStudios,
+                        server = server,
+                        onStudioClick = { viewModel.openStudio(it) },
+                      )
+                    }
+                  }
+
+                  // 7. Dynamic Discovery Sections (AFinity-style)
+                  if (uiState.dynamicSections.isNotEmpty()) {
+                    items(
+                      uiState.dynamicSections,
+                      key = { "dyn_sec_${it.key}" },
+                      contentType = { if (it.isSpotlight) "dyn_spotlight" else "dyn_horizontal" }
+                    ) { section ->
+                      when (section) {
+                        is JellyfinDynamicSection.Pending -> {
+                          DisposableEffect(section.key) {
+                            viewModel.onDynamicSectionVisible(section.key)
+                            onDispose { }
+                          }
+                          JellyfinRowSkeleton(
+                            title = section.title,
+                            subtitle = section.subtitle,
+                            isSpotlight = section.isSpotlight,
+                          )
+                        }
+
+                        is JellyfinDynamicSection.Loaded -> {
+                          if (section.isSpotlight) {
+                            JellyfinSpotlightSection(
+                              title = section.title,
+                              subtitle = section.subtitle,
+                              items = section.items,
+                              server = server,
+                              onItemClick = { item -> viewModel.openDetail(item) },
+                              onItemLongClick = { item -> viewModel.playItem(context, item) },
+                            )
+                          } else {
+                            JellyfinHorizontalSection(
+                              title = section.title,
+                              subtitle = section.subtitle,
+                              items = section.items,
+                              server = server,
+                              showRankBadges = section.isRanked,
+                              personAvatar = section.person,
+                              onItemClick = { item -> viewModel.openDetail(item) },
+                              onItemLongClick = { item -> viewModel.playItem(context, item) },
+                            )
+                          }
+                        }
+                      }
+                    }
+                  }
+
+                  // 8. Recommended For You Section
                   if (uiState.recommendations.isNotEmpty()) {
-                    item {
+                    item(key = "recommendations", contentType = "recommendations") {
                       JellyfinHorizontalSection(
                         title = stringResource(R.string.jellyfin_top_picks),
                         subtitle = stringResource(R.string.jellyfin_top_picks_subtitle),
@@ -641,9 +718,9 @@ fun JellyfinContent(
                     }
                   }
 
-                  // 7. Music Section
+                  // 9. Music Section
                   if (uiState.latestMusic.isNotEmpty()) {
-                    item {
+                    item(key = "music_section", contentType = "music_section") {
                       Column(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(JellyfinSpacing.HeaderGap),
@@ -959,11 +1036,12 @@ fun JellyfinContent(
         .align(Alignment.TopCenter)
         .drawBehind {
           if (!isWallpaperActive) {
-            if (solidAlpha < 1f) {
-              drawRect(brush = headerGradient, alpha = 1f - solidAlpha)
+            val alpha = getSolidAlpha()
+            if (alpha < 1f) {
+              drawRect(brush = headerGradient, alpha = 1f - alpha)
             }
-            if (solidAlpha > 0f) {
-              drawRect(color = headerContainerColor, alpha = solidAlpha)
+            if (alpha > 0f) {
+              drawRect(color = headerContainerColor, alpha = alpha)
             }
           }
         }
