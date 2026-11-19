@@ -83,6 +83,9 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      - name: Install compile SDK
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.2"'
+
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 

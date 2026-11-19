@@ -389,7 +389,7 @@ For help, reproducible bug reports, or feature suggestions, start with the [supp
 ### Requirements
 
 - JDK 17
-- Android SDK with modern build tools installed
+- Android SDK Platform 37.2 with current command-line and build tools
 - Git
 
 ### Debug Build

@@ -78,7 +78,11 @@ androidComponents {
 
 android {
   namespace = "app.gyrolet.mpvrx"
-  compileSdk = 37
+  compileSdk {
+    version = release(37) {
+      minorApiLevel = 2
+    }
+  }
   ndkVersion = "27.3.13750724"
 
   defaultConfig {
