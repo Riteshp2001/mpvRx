@@ -89,9 +89,10 @@ import app.gyrolet.mpvrx.ui.remote.RemoteControlScreen
 import app.gyrolet.mpvrx.ui.theme.LocalEmphasizedTypography
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
-import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
+import app.gyrolet.mpvrx.ui.utils.LocalTwoPaneSettings
 import app.gyrolet.mpvrx.ui.utils.ScreenNavDisplay
+import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -191,7 +192,10 @@ object PreferencesScreen : ScrollableSettingsScreen {
           detailPaneFocused = focus.hasFocus
           if (focus.hasFocus) detailPaneActivated = true
         }.tvFocusGroup()) {
-          CompositionLocalProvider(LocalBackStack provides detailBackstack) {
+          CompositionLocalProvider(
+            LocalBackStack provides detailBackstack,
+            LocalTwoPaneSettings provides true,
+          ) {
             ScreenNavDisplay(
               backStack = detailBackstack,
               modifier = Modifier.fillMaxSize(),

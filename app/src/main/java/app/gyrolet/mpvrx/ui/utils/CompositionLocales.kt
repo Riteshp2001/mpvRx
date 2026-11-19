@@ -22,3 +22,6 @@ val LocalRootBackStack: ProvidableCompositionLocal<NavBackStack<Screen>?> =
 
 val LocalShowSettingsBackArrow: ProvidableCompositionLocal<Boolean> =
   compositionLocalOf { true }
+
+val LocalTwoPaneSettings: ProvidableCompositionLocal<Boolean> =
+  compositionLocalOf { false }
