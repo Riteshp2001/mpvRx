@@ -491,6 +491,105 @@ local function keyname_cells(k)
     return klen
 end
 
+local gesture_reference = {
+    {"Video player", {
+        {"Tap", "Show/hide controls; mapped tap zones take priority."},
+        {"Left / center / right tap zones", "Configured seek, play/pause, custom or no action."},
+        {"Center single-tap action", "Only the middle 30% of the screen's height."},
+        {"Double-tap seek / repeat taps", "Extend a seek burst unless strict pairs are enabled."},
+        {"Swipe left / right", "Seek backward / forward when enabled."},
+        {"Tap / drag the seekbar", "Seek to the selected playback position."},
+        {"Left-side swipe up / down", "Brightness; volume/brightness sides can be swapped."},
+        {"Right-side swipe up / down", "Volume and configured boost; sides can be swapped."},
+        {"Center swipe up", "Open the playlist when a queue is available."},
+        {"Center swipe down", "Minimize when the video mini-player is enabled."},
+        {"Pinch video", "Zoom when pinch-to-zoom is enabled."},
+        {"Two-finger drag", "Pan video when pan-and-zoom is enabled."},
+        {"Locked player", "Tap reveals controls; playback gestures are blocked."},
+    }},
+    {"Hold-speed gestures", {
+        {"Hold video while playing", "Use the configured temporary speed preset."},
+        {"Hold + drag left / right", "Choose another configured speed preset."},
+        {"Hold + swipe up", "Lock the gesture speed after release."},
+        {"Hold + swipe down after locking", "Unlock and restore the default speed."},
+        {"Release without locking", "Restore the speed used before the hold."},
+    }},
+    {"Subtitles", {
+        {"Hold a subtitle + drag up / down", "Move the touched primary or secondary subtitle."},
+        {"Hold center + drag up / down", "Move the primary subtitle when enabled."},
+        {"Pinch on a subtitle", "Resize that track; linked mode resizes both."},
+        {"Hold subtitle + second-finger pinch", "Resize the held track without changing the target."},
+        {"Swipe primary subtitle left / right", "Previous / next dialog; direction can be inverted."},
+        {"Subtitle settings / delay open", "Playback gestures work on the uncovered video."},
+    }},
+    {"Music and lyrics", {
+        {"Swipe artwork left / right", "Next / previous song; not visualizer or audiobook."},
+        {"Hold artwork / visualizer", "Open visualizer styles."},
+        {"Tap visualizer", "Show / hide the visualizer."},
+        {"Visualizer double-tap zones", "Run the configured playback action."},
+        {"Album artwork double-tap", "Playback and seeking are intentionally disabled."},
+        {"Tap a synchronized lyric line", "Seek to the line outside fullscreen lyrics."},
+        {"Hold the codec chip", "Open audio information."},
+    }},
+    {"Mini-player and messages", {
+        {"Tap mini-player / swipe up", "Expand the player."},
+        {"Drag the expanded music sheet down", "Return to the mini-player."},
+        {"Swipe mini-player sideways", "Dismiss the mini-player."},
+        {"Swipe statistics up / down", "Scroll this statistics page."},
+        {"Swipe an app toast sideways", "Dismiss the toast."},
+    }},
+    {"Control long-press shortcuts", {
+        {"Hold chapter / bookmark control", "Add a playback bookmark."},
+        {"Hold HDR / motion control", "Open HDR output / motion settings."},
+        {"Hold zoom control", "Reset video zoom."},
+        {"Hold aspect ratio control", "Open aspect ratio options."},
+        {"Hold audio / subtitle control", "Open audio delay / subtitle delay."},
+        {"Hold More", "Open video filters."},
+        {"Hold frame / snapshot control", "Open frame navigation."},
+        {"Hold ambient / post-processing", "Open the matching effect settings."},
+        {"Hold a custom button", "Run its configured long-press action."},
+    }},
+}
+
+local gesture_group_icons = {
+    ["Video player"] = "\238\132\129",
+    ["Hold-speed gestures"] = "\238\128\134",
+    ["Subtitles"] = "\238\132\135",
+    ["Music and lyrics"] = "\238\132\134",
+    ["Mini-player and messages"] = "\238\132\146",
+    ["Control long-press shortcuts"] = "\238\132\130",
+}
+
+local function get_gesture_info_lines()
+    local lines = {}
+    for _, group in ipairs(gesture_reference) do
+        local matches = {}
+        for _, gesture in ipairs(group[2]) do
+            local search = ("gestures " .. group[1] .. " " .. gesture[1] .. " " .. gesture[2]):lower()
+            if searched_text == nil or search:find(searched_text, 1, true) then
+                matches[#matches + 1] = gesture
+            end
+        end
+        if #matches > 0 then
+            if #lines == 0 then
+                append(lines, "", {prefix="Gestures", indent=""})
+                append(lines, "Availability and tap actions follow Settings.", {indent=""})
+            end
+            local title = bold(group[1])
+            if o.use_ass then
+                title = format("{\\fnmpv-osd-symbols}%s{\\fn%s}%s%s",
+                               gesture_group_icons[group[1]], o.font, o.prefix_sep, title)
+            end
+            append(lines, "", {prefix=title, no_prefix_markup=true, indent="", nl=o.nl .. o.nl})
+            for _, gesture in ipairs(matches) do
+                append(lines, "", {prefix=gesture[1], prefix_sep=""})
+                append(lines, gesture[2], {indent=o.indent .. o.indent})
+            end
+        end
+    end
+    return lines
+end
+
 local function get_kbinfo_lines()
     -- active keys: only highest priority of each key, and not our (stats) keys
     local bindings = mp.get_property_native("input-bindings", {})
@@ -561,7 +660,10 @@ local function get_kbinfo_lines()
     local spost = term and "" or format("{\\u0\\fs%d}%s", font_size, text_style())
 
     -- create the display lines
-    local info_lines = {}
+    local info_lines = get_gesture_info_lines()
+    if #ordered > 0 then
+        append(info_lines, "", {prefix="Active Key Bindings", indent="", nl=o.nl .. o.nl})
+    end
     local subject = nil
     for _, bind in ipairs(ordered) do
         if bind.subject ~= subject then  -- new subject (title)
@@ -1580,7 +1682,7 @@ pages = {
     [o.key_page_1] = { idx = 1, f = default_stats, desc = "Default" },
     [o.key_page_2] = { idx = 2, f = vo_stats, desc = "Extended Frame Timings", scroll = true },
     [o.key_page_3] = { idx = 3, f = cache_stats, desc = "Cache Statistics" },
-    [o.key_page_4] = { idx = 4, f = keybinding_info, desc = "Active Key Bindings", scroll = true },
+    [o.key_page_4] = { idx = 4, f = keybinding_info, desc = "Gestures & Key Bindings", scroll = true },
     [o.key_page_5] = { idx = 5, f = track_info, desc = "Tracks Info", scroll = true },
     [o.key_page_6] = { idx = 6, f = app_stats, desc = "Time, Network & System", scroll = true },
     [o.key_page_0] = { idx = 0, f = perf_stats, desc = "Internal Performance Info", scroll = true },
@@ -1635,6 +1737,63 @@ local function print_page(page, after_scroll)
     stats_visible = true
 end
 
+local console_style = {font_size=24, border_size=1.65, scale_with_window="auto"}
+local console_base_sizes = {}
+local console_applied_sizes = {}
+
+do
+    local path = mp.find_config_file("script-opts/console.conf")
+    if path then
+        local file, err = io.open(path, "r")
+        if file then
+            for line in file:lines() do
+                local key, value = line:gsub("\r$", ""):match("^([^#=]+)=(.*)$")
+                if key and console_style[key] ~= nil then
+                    if key == "scale_with_window" then
+                        console_style[key] = value
+                    elseif tonumber(value) then
+                        console_style[key] = tonumber(value)
+                    else
+                        mp.msg.error("Invalid console " .. key .. ": " .. value)
+                    end
+                end
+            end
+            file:close()
+        else
+            mp.msg.error("Could not read console style: " .. tostring(err))
+        end
+    end
+end
+
+local function update_console_scale()
+    local options = mp.get_property_native("options/script-opts", {})
+    local mode = options["console-scale_with_window"] or console_style.scale_with_window
+    local scaled = mode == "yes" or (mode == "auto" and mp.get_property_native("osd-scale-by-window"))
+    local width = mp.get_property_native("osd-width", 0)
+    local height = mp.get_property_native("osd-height", 0)
+    local scale = scaled and width > 0 and height > width and width / height or 1
+    local changes = {}
+    for _, key in ipairs({"font_size", "border_size"}) do
+        local configured = tonumber(options["console-" .. key]) or console_style[key]
+        if console_applied_sizes[key] == nil or configured ~= console_applied_sizes[key] then
+            console_base_sizes[key] = configured
+        end
+        local target = tonumber(format("%.6f", console_base_sizes[key] * scale))
+        console_applied_sizes[key] = target
+        if configured ~= target then
+            changes[#changes + 1] = "console-" .. key .. "=" .. format("%.6f", target)
+        end
+    end
+    if #changes > 0 then
+        -- "add" parses pairs; "append" treats commas as part of a single value.
+        local ok, err = mp.commandv("change-list", "script-opts", "add", table.concat(changes, ","))
+        if not ok then
+            console_applied_sizes = {}
+            mp.msg.error("Could not resize the console: " .. tostring(err))
+        end
+    end
+end
+
 update_scale = function ()
     local scale_with_video
     if o.vidscale == "auto" then
@@ -1657,6 +1816,7 @@ update_scale = function ()
     shadow_x_offset = o.shadow_x_offset * scale
     shadow_y_offset = o.shadow_y_offset * scale
     plot_bg_border_width = o.plot_bg_border_width * scale
+    update_console_scale()
     if display_timer:is_enabled() then
         print_page(curr_page)
     end
@@ -1704,7 +1864,7 @@ local remove_page_bindings
 local function filter_bindings()
     statistics_search_active = true
     input.get({
-        prompt = "Filter bindings:",
+        prompt = "Filter gestures / bindings:",
         opened = function ()
             -- This is necessary to close the console if the oneshot
             -- display_timer expires without typing anything.
@@ -2119,6 +2279,7 @@ end
 mp.observe_property("osd-width", "native", update_scale)
 mp.observe_property("osd-height", "native", update_scale)
 mp.observe_property("osd-scale-by-window", "native", update_scale)
+mp.observe_property("options/script-opts", "native", update_console_scale)
 
 local function update_property_cache(name, value)
     property_cache[name] = value

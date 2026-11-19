@@ -13,18 +13,18 @@ enum class AudioQuality {
 
 internal enum class AudioFormatLogo(
   val asset: String,
-  val aspectRatio: Float,
+  val isMonochrome: Boolean = false,
 ) {
-  HiRes("HiResAudiologo.svg", 1f),
-  Lossless("AppleLosslesslogo.svg", 15f / 9f),
-  Lossy("LossyAudiologo.svg", 1f),
-  Cd("CdAudiologo.svg", 1f),
-  Dsd("DSDlogo.svg", 384f / 195f),
-  DolbyAtmos("DolbyAtmoslogo.svg", 308.25f / 76.25f),
-  DolbyDigital("DolbyDigitallogo.svg", 384f / 95f),
-  Dts("DtsLogo.svg", 384f / 154f),
-  Mpegh("MpeghLogo.svg", 2f),
-  Mqa("MqaLogo.svg", 384f / 168f),
+  HiRes("HiResAudiologo.svg"),
+  Lossless("AppleLosslesslogo.svg", isMonochrome = true),
+  Lossy("LossyAudiologo.svg"),
+  Cd("CdAudiologo.svg"),
+  Dsd("DSDlogo.svg", isMonochrome = true),
+  DolbyAtmos("DolbyAtmoslogo.svg", isMonochrome = true),
+  DolbyDigital("DolbyDigitallogo.svg", isMonochrome = true),
+  Dts("DtsLogo.svg", isMonochrome = true),
+  Mpegh("MpeghLogo.svg"),
+  Mqa("MqaLogo.svg"),
 }
 
 data class AudioFormatInfo(

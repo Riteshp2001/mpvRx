@@ -2310,11 +2310,14 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       MPVLib.getPropertyString("audio-out-params/format")?.startsWith("spdif") != true
   }
 
+  private fun desiredSpatialFilterLocked(): String? =
+    SPATIAL_AUDIO_FILTER.takeIf { shouldApplySpatialAudioLocked() }
+
   private fun applySpatialAudioLocked() {
     if (!nativeCoreReady || MpvConfigOverridePolicy.isOwnedByMpvConf("af")) return
     var changed = false
     runCatching {
-      val desired = SPATIAL_AUDIO_FILTER.takeIf { shouldApplySpatialAudioLocked() }
+      val desired = desiredSpatialFilterLocked()
       val filters = MPVLib.getPropertyNode("af")?.toObject<List<JsonObject>>(Json).orEmpty()
       val present = filters.any { (it["label"] as? JsonPrimitive)?.content == SPATIAL_AUDIO_LABEL }
       if (desired == null && present) {
