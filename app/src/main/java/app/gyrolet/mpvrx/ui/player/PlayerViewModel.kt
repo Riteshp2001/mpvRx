@@ -60,6 +60,7 @@ import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
+import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.repository.IntroDbLookupOutcome
 import app.gyrolet.mpvrx.repository.IntroDbLookupRequest
 import app.gyrolet.mpvrx.repository.IntroDbRepository
@@ -88,6 +89,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerState
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.activeFilters
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.recommendedPreampDb
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
+import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpOptionSettings
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSaver
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSettings
 import app.gyrolet.mpvrx.ui.preferences.CustomButton
@@ -226,6 +228,7 @@ class PlayerViewModel(
   private val gesturePreferences: GesturePreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
+  private val ytdlPreferences: YtdlPreferences by inject()
   private val aiPreferences: app.gyrolet.mpvrx.preferences.AiPreferences by inject()
   private val advancedPreferences: AdvancedPreferences by inject()
   private val decoderPreferences: DecoderPreferences by inject()
@@ -2865,6 +2868,22 @@ fun restartFromBeginning() {
         .collect {
           if (!_isMpvCoreReady.value) return@collect
           applyEqualizerMpvFilters(immediate = true)
+        }
+    }
+
+    if (!hostedInBrowser) viewModelScope.launch {
+      combine(
+        ytdlPreferences.writeSubs.changes(),
+        ytdlPreferences.writeAutoSubs.changes(),
+        ytdlPreferences.subtitleLanguages.changes(),
+        subtitlesPreferences.preferredLanguages.changes(),
+      ) { _, _, _, _ -> YtdlpOptionSettings.fromPreferences(ytdlPreferences, subtitlesPreferences) }
+        .distinctUntilChanged()
+        .drop(1)
+        .collect {
+          if (_isMpvCoreReady.value && !MpvConfigOverridePolicy.isOwnedByMpvConf("ytdl-raw-options")) {
+            host?.reloadCurrentYtdlSubtitles()
+          }
         }
     }
 

@@ -9,34 +9,26 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import app.gyrolet.mpvrx.ui.tv.tvContentFocus
-
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.ui.icons.Icon
-import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
-import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.tv.tvContentFocus
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
-import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -46,7 +38,7 @@ object NetworkConfigurationPreferencesScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
-    if (!app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP && !app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) {
+    if (!BuildConfig.ENABLE_YTDLP && !BuildConfig.ENABLE_TORRENT) {
       // Old saved navigation stacks may still contain this former settings destination.
       PreferencesScreen.Content()
       return
@@ -56,55 +48,54 @@ object NetworkConfigurationPreferencesScreen : ScrollableSettingsScreen {
     val enableP2pStreaming by preferences.enableP2pStreaming.collectAsState()
 
     Scaffold(
+      contentWindowInsets = settingsContentWindowInsets(),
       topBar = {
-        TopAppBar(
-          title = {
-            Text(
-              text = stringResource(R.string.ui_network),
-              style = MaterialTheme.typography.headlineSmall,
-              fontWeight = FontWeight.ExtraBold,
-              color = MaterialTheme.colorScheme.primary,
-            )
-          },
-          navigationIcon = {
-            if (LocalShowSettingsBackArrow.current) {
-              IconButton(onClick = { backStack.popSafely() }) {
-                Icon(Icons.RoundedFilled.ArrowBack, contentDescription = null)
-              }
-            }
-          },
+        SettingsTopAppBar(
+          title = stringResource(R.string.ui_network),
+          onBack = { backStack.popSafely() },
         )
       },
     ) { padding ->
       ProvideExpressivePreferenceLocals {
-        val scrollState = rememberScrollState()
-        Column(
+        val (settingsListState, settingsHighlight) =
+          rememberSettingsSearchList(NetworkConfigurationPreferencesScreen, MaterialTheme.colorScheme.primary)
+        LazyColumn(
+          state = settingsListState,
+          contentPadding = settingsContentPadding(PaddingValues(bottom = 24.dp)),
           modifier =
             Modifier
               .fillMaxSize()
-            .tvContentFocus()
+              .tvContentFocus()
               .padding(padding)
-              .verticalScroll(scrollState)
-              .padding(settingsContentPadding())
-              .padding(bottom = MaterialTheme.spacing.extraLarge),
-          verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+              .then(settingsHighlight),
         ) {
-          // Streaming tools live directly on Network. YT-DLP intentionally comes first,
-          // followed by P2P, matching the order in which users choose a stream source.
-          if (app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP) YtdlpManagerSections()
+          if (BuildConfig.ENABLE_YTDLP) {
+            item(key = "ytdlp") { YtdlpManagerSections() }
+          }
 
-          if (app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) {
-            PreferenceSectionHeader(title = stringResource(R.string.pref_section_p2p_streaming))
-            ExpressivePreferenceGroup {
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_enable_p2p_streaming_title),
-                value = enableP2pStreaming,
-                onValueChange = preferences.enableP2pStreaming::set,
-                title = { Text(stringResource(R.string.pref_enable_p2p_streaming_title)) },
-                summary = { Text(stringResource(R.string.pref_enable_p2p_streaming_summary), color = MaterialTheme.colorScheme.outline) },
-                groupIndex = 0,
-                groupSize = 1,
+          if (BuildConfig.ENABLE_TORRENT) {
+            item(key = "p2p_header") {
+              PreferenceSectionHeader(
+                position = if (BuildConfig.ENABLE_YTDLP) PreferenceSectionPosition.Middle else PreferenceSectionPosition.First,
+                title = stringResource(R.string.pref_section_p2p_streaming),
+                modifier = Modifier.settingsSearchTarget(R.string.pref_section_p2p_streaming),
               )
+            }
+            item(key = "p2p_settings") {
+              PreferenceCard {
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_enable_p2p_streaming_title),
+                  value = enableP2pStreaming,
+                  onValueChange = preferences.enableP2pStreaming::set,
+                  title = { Text(stringResource(R.string.pref_enable_p2p_streaming_title)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_enable_p2p_streaming_summary),
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                  },
+                )
+              }
             }
           }
         }

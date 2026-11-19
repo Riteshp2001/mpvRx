@@ -158,15 +158,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_appearance_unlimited_name_lines_title,
-          summaryRes = R.string.pref_appearance_unlimited_name_lines_summary,
-          keywords = listOf("name", "full", "truncate", "lines", "display"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_appearance_show_unplayed_old_video_label_title,
           summaryRes = R.string.pref_appearance_show_unplayed_old_video_label_summary,
           keywords = listOf("unplayed", "old", "label", "video", "new", "indicator"),
@@ -1232,15 +1223,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_audio_mini_player_track_switching_title,
-          summaryRes = R.string.pref_audio_mini_player_track_switching_summary,
-          keywords = listOf("mini player", "background", "switch", "song", "audio", "music", "change"),
-          category = "Audio",
-          screen = AudioPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_autoplay_next_audio_title,
           summaryRes = R.string.pref_autoplay_next_audio_summary,
           keywords = listOf("autoplay", "next", "audio", "music", "advance", "continuous"),
@@ -1789,6 +1771,7 @@ object SearchablePreferences {
         category = "Player",
         screen = PlayerPreferencesScreen,
         anchorItemIndex = 9,
+        SearchEntrySpec(R.string.pref_app_toasts_title, listOf("toast", "popup", "message", "notification", "overlay")),
         SearchEntrySpec(R.string.pref_volume_overlay_title, listOf("overlay", "volume", "gesture", "slider")),
         SearchEntrySpec(R.string.pref_brightness_overlay_title, listOf("overlay", "brightness", "gesture", "slider")),
         SearchEntrySpec(R.string.pref_hold_speed_overlay_pref_title, listOf("overlay", "hold", "speed", "feedback")),
@@ -1852,12 +1835,11 @@ object SearchablePreferences {
         SearchEntrySpec(R.string.pref_audio_ambient_mode_title, listOf("audio", "ambient", "background", "visualizer")),
         SearchEntrySpec(R.string.pref_audio_immersive_artwork_title, listOf("audio", "music", "immersive", "artwork", "album", "cover", "background")),
         SearchEntrySpec(R.string.pref_audio_wavy_seekbar_title, listOf("audio", "wavy", "seekbar", "visualizer", "animation", "wave")),
-        SearchEntrySpec(R.string.pref_audio_animated_artwork_title, listOf("audio", "music", "animated", "artwork", "album", "cover", "apple", "tidal", "spotify", "canvas", "motion")),
+        SearchEntrySpec(R.string.pref_audio_animated_artwork_title, listOf("audio", "music", "animated", "artwork", "album", "cover", "apple", "tidal", "motion")),
         SearchEntrySpec(R.string.pref_audio_animated_artwork_apple_music_title, listOf("audio", "music", "animated", "artwork", "apple", "motion", "cover")),
         SearchEntrySpec(R.string.pref_audio_animated_artwork_tidal_title, listOf("audio", "music", "animated", "artwork", "tidal", "video", "cover")),
         SearchEntrySpec(R.string.pref_tidal_client_id, listOf("tidal", "client", "id", "developer", "credentials", "artwork")),
         SearchEntrySpec(R.string.pref_tidal_client_secret, listOf("tidal", "client", "secret", "developer", "credentials", "artwork")),
-        SearchEntrySpec(R.string.pref_audio_animated_artwork_spotify_canvas_title, listOf("audio", "music", "animated", "artwork", "spotify", "canvas", "background", "paxsenix")),
       )
       addSearchEntries(
         category = "Audio",
@@ -2085,7 +2067,6 @@ object SearchablePreferences {
         anchorItemIndex = 1,
         SearchEntrySpec(R.string.pref_music_player_switch_title, listOf("music", "player", "source", "local", "jellyfin", "navidrome", "audiobooks")),
         SearchEntrySpec(R.string.pref_lyrics_auto_fetch_online, listOf("lyrics", "online", "automatic", "fetch", "local")),
-        SearchEntrySpec(R.string.pref_paxsenix_api_key, listOf("lyrics", "paxsenix", "api", "key", "translation")),
       )
       addSearchEntries(
         category = "AI",
@@ -2393,8 +2374,6 @@ object SearchablePreferences {
       R.string.pref_lyrics_auto_translate,
       R.string.pref_lyrics_target_language,
       R.string.pref_lyrics_display_mode,
-      R.string.pref_paxsenix_api_key,
-      R.string.pref_audio_animated_artwork_spotify_canvas_title,
     )
 
   // Play builds omit AI, P2P and lyrics translation, so their settings must not surface.

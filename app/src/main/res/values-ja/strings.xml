@@ -54,8 +54,6 @@
   <string name="pref_appearance_ui_scale_restart_title">再起動が必要です</string>
   <string name="pref_appearance_ui_scale_restart_message">新しいアプリUIの拡大率%1$d%%を適用するには、mpvRxを再起動してください。</string>
   <string name="pref_appearance_ui_scale_restart_now">今すぐ再起動</string>
-  <string name="pref_appearance_unlimited_name_lines_title">名前をすべて表示</string>
-  <string name="pref_appearance_unlimited_name_lines_summary">フォルダー名と動画名を省略せずにすべて表示します</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">プレーヤーボタンの背景を常に暗くする</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">ライト、ダーク、自動の各テーマでプレーヤー操作ボタンの背景を暗く保ちます</string>
   <string name="pref_appearance_category_file_browser">ファイルブラウザー</string>
@@ -491,8 +489,6 @@
   <string name="toast_audio_background_playback_on">音声のバックグラウンド再生をオンにしました</string>
   <string name="toast_audio_background_playback_off">音声のバックグラウンド再生をオフにしました</string>
   <string name="pref_audio_background_playback_summary">オーディオプレイヤーを離れたり画面をオフにしても音声を再生し続ける</string>
-  <string name="pref_audio_mini_player_track_switching_title">ミニプレイヤーで曲を切り替える</string>
-  <string name="pref_audio_mini_player_track_switching_summary">全画面プレーヤーを開かず、ミニプレーヤーで曲を切り替えます。</string>
   <string name="pref_video_background_playback_title">バックグラウンド再生（ビデオプレイヤー）</string>
   <string name="pref_video_background_playback_summary">ビデオプレイヤーを離れたり画面をオフにしても動画の音声を再生し続ける</string>
   <string name="deselect_all">すべて選択解除</string>
@@ -635,6 +631,8 @@
 
   <!-- Player - Gesture & Action Overlays Section                 -->
   <string name="pref_section_overlays">ジェスチャーと操作のオーバーレイ</string>
+  <string name="pref_app_toasts_title">アプリのトースト</string>
+  <string name="pref_app_toasts_summary">アプリ全体でポップアップメッセージを表示</string>
   <string name="pref_volume_overlay_title">音量スライダーのオーバーレイ</string>
   <string name="pref_volume_overlay_summary">音量操作のスワイプ中に縦型の音量表示を出します</string>
   <string name="pref_brightness_overlay_title">明るさスライダーのオーバーレイ</string>
@@ -1777,7 +1775,6 @@
   <string name="pref_mpv_conf_override_osd_summary">OSD のフォント、マージン、セーフエリア設定を上書きします。</string>
   <string name="mpv_config_owned_title">mpv.conf が制御中</string>
   <string name="mpv_config_owned_message">mpv.confが管理しています。操作するには詳細設定でオプションの管理元を変更してください。</string>
-  <string name="pref_lyrics_translation_category">歌詞の翻訳・ローマ字変換</string>
   <string name="pref_lyrics_auto_translate">外国語の歌詞を自動翻訳</string>
   <string name="pref_lyrics_auto_translate_summary">外国語の歌詞を自動的に優先言語に翻訳</string>
   <string name="pref_lyrics_target_language">デフォルトの翻訳先言語</string>
@@ -2479,10 +2476,7 @@
   <string name="lyrics_provider_not_found">この曲の歌詞は %1$s にありません</string>
   <string name="lyrics_provider_sheet_title">歌詞の提供元</string>
   <string name="lyrics_search_online">オンラインで検索</string>
-  <string name="pref_paxsenix_api_key">PaxSenix API キー</string>
-  <string name="pref_paxsenix_api_key_summary">Spotify と Musixmatch の取得経路を利用可能にします</string>
-  <string name="pref_paxsenix_api_key_dialog_desc">PaxSenix API キーを貼り付けてください。空欄にすると、キーが不要な取得経路のみを使用します。</string>
-  <string name="pref_lyrics_sources_category">オンラインの歌詞</string>
+  <string name="pref_lyrics_sources_category">歌詞</string>
   <string name="pref_lyrics_auto_fetch_online">オンラインの歌詞を自動取得</string>
   <string name="pref_lyrics_auto_fetch_online_summary">埋め込み・ローカル歌詞がない場合にオンライン検索します。</string>
   <string name="lyrics_translation_off_summary">翻訳せずに原文を表示</string>
@@ -3066,11 +3060,6 @@
   <string name="autoeq_reference_target">Harman 基準ターゲット</string>
   <string name="autoeq_harman_in_ear">インイヤー 2019</string>
   <string name="autoeq_harman_over_ear">オーバーイヤー 2018</string>
-  <string name="pref_audio_spatial_mode">空間オーディオモード</string>
-  <string name="pref_audio_spatial_stereo">ステレオ音場の拡張</string>
-  <string name="pref_audio_hrtf_title">ヘッドホン - KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">KU100バイノーラル音声。sofalizerとlibmysofa対応のmpvが必要です。</string>
-  <string name="pref_audio_hrtf_unavailable">sofalizerとlibmysofa対応mpvが必要です。なければステレオ拡張を使用してください。</string>
   <string name="pref_layout_playback_with_buttons">ボタン列と同じ位置</string>
   <string name="pref_action_open_page">ページを開く</string>
   <string name="pref_action_open_dialog">ダイアログを開く</string>

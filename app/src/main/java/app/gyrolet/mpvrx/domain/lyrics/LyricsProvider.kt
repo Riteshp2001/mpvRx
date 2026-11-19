@@ -43,21 +43,6 @@ enum class LyricsProvider(
     detail = "QQ Music karaoke timings through BetterLyrics",
     wordSynced = true,
   ),
-  PAXSENIX(
-    label = "PaxSenix",
-    detail = "Apple Music timings through a keyless proxy",
-    wordSynced = true,
-  ),
-  PAXSENIX_SPOTIFY(
-    label = "PaxSenix: Spotify",
-    detail = "Spotify lyrics through PaxSenix; your PaxSenix API key is required",
-    wordSynced = false,
-  ),
-  PAXSENIX_MUSIXMATCH(
-    label = "PaxSenix: Musixmatch",
-    detail = "Musixmatch lyrics through PaxSenix; your PaxSenix API key is required",
-    wordSynced = true,
-  ),
   LYRICS_PLUS(
     label = "LyricsPlus",
     detail = "Word, line or plain lyrics from community mirrors; availability varies",

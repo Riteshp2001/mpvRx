@@ -67,6 +67,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gyrolet.mpvrx.MainActivity
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -81,6 +83,7 @@ import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
 private val LocalAppToastHost = staticCompositionLocalOf { false }
 private const val MAX_QUEUED_TOASTS = 6
@@ -119,6 +122,8 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
     content()
     return
   }
+  val preferences = koinInject<PlayerPreferences>()
+  val enabled by preferences.showAppToasts.collectAsState()
   val lifecycle = LocalLifecycleOwner.current.lifecycle
   val activity = LocalActivity.current
   val view = LocalView.current
@@ -219,28 +224,32 @@ internal fun AppToastHost(content: @Composable () -> Unit) {
       }
     }
   }
-  DisposableEffect(owner, lifecycle, sink) {
+  DisposableEffect(owner, lifecycle, sink, enabled) {
+    fun activate() {
+      if (enabled) AppToastRouter.register(owner, sink)
+    }
     fun deactivate() {
       AppToastRouter.unregister(owner)
       sink.clear()
     }
+    if (!enabled) AppToastRouter.clearPending()
     val observer = LifecycleEventObserver { _, event ->
       when (event) {
-        Lifecycle.Event.ON_START, Lifecycle.Event.ON_RESUME -> AppToastRouter.register(owner, sink)
+        Lifecycle.Event.ON_START, Lifecycle.Event.ON_RESUME -> activate()
         Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP, Lifecycle.Event.ON_DESTROY -> deactivate()
         else -> Unit
       }
     }
     val attachment = object : View.OnAttachStateChangeListener {
       override fun onViewAttachedToWindow(view: View) {
-        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) AppToastRouter.register(owner, sink)
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) activate()
       }
 
       override fun onViewDetachedFromWindow(view: View) = deactivate()
     }
     lifecycle.addObserver(observer)
     view.addOnAttachStateChangeListener(attachment)
-    if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) AppToastRouter.register(owner, sink)
+    if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) activate()
     onDispose {
       lifecycle.removeObserver(observer)
       view.removeOnAttachStateChangeListener(attachment)

@@ -42,10 +42,6 @@ internal class LyricsProviderRegistry(
         BetterLyricsProvider(LyricsProvider.BETTER_LYRICS, BetterLyricsProvider.APPLE),
       LyricsProvider.BETTER_LYRICS_PORTATO to
         BetterLyricsProvider(LyricsProvider.BETTER_LYRICS_PORTATO, BetterLyricsProvider.PORTATO),
-      LyricsProvider.PAXSENIX to PaxSenixProvider(LyricsProvider.PAXSENIX, PaxSenixRoute.APPLE),
-      LyricsProvider.PAXSENIX_SPOTIFY to PaxSenixProvider(LyricsProvider.PAXSENIX_SPOTIFY, PaxSenixRoute.SPOTIFY),
-      LyricsProvider.PAXSENIX_MUSIXMATCH to
-        PaxSenixProvider(LyricsProvider.PAXSENIX_MUSIXMATCH, PaxSenixRoute.MUSIXMATCH),
       LyricsProvider.LYRICS_PLUS to LyricsPlusProvider,
       LyricsProvider.SIMP_MUSIC to SimpMusicProvider,
       LyricsProvider.UNISON to UnisonProvider,
@@ -95,9 +91,6 @@ internal class LyricsProviderRegistry(
     when (provider) {
       LyricsProvider.BETTER_LYRICS,
       LyricsProvider.BETTER_LYRICS_PORTATO,
-      LyricsProvider.PAXSENIX,
-      LyricsProvider.PAXSENIX_SPOTIFY,
-      LyricsProvider.PAXSENIX_MUSIXMATCH,
       LyricsProvider.MUSIXMATCH,
       -> PATIENT_BUDGET_MS
       else -> BUDGET_MS

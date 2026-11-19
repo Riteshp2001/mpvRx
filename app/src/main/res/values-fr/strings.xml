@@ -54,8 +54,6 @@
   <string name="pref_appearance_ui_scale_restart_title">Redémarrage requis</string>
   <string name="pref_appearance_ui_scale_restart_message">Redémarrez mpvRx pour appliquer la nouvelle échelle de l’interface de %1$d%%.</string>
   <string name="pref_appearance_ui_scale_restart_now">Redémarrer maintenant</string>
-  <string name="pref_appearance_unlimited_name_lines_title">Afficher les noms complets</string>
-  <string name="pref_appearance_unlimited_name_lines_summary">Afficher les noms complets des dossiers et vidéos sans troncature</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">Fond des boutons toujours sombre</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">Garder les arrière-plans des boutons du lecteur sombres avec les thèmes clair, sombre et automatique</string>
   <string name="pref_appearance_category_file_browser">Explorateur de fichiers</string>
@@ -492,8 +490,6 @@
   <string name="toast_audio_background_playback_on">Lecture audio en arrière-plan activée</string>
   <string name="toast_audio_background_playback_off">Lecture audio en arrière-plan désactivée</string>
   <string name="pref_audio_background_playback_summary">Continuer la lecture audio en quittant le lecteur audio ou en éteignant l\’écran</string>
-  <string name="pref_audio_mini_player_track_switching_title">Changer de morceau dans le mini-lecteur</string>
-  <string name="pref_audio_mini_player_track_switching_summary">Change de piste dans le mini-lecteur sans ouvrir le lecteur complet.</string>
   <string name="pref_video_background_playback_title">Lecture en arrière-plan (Lecteur Vidéo)</string>
   <string name="pref_video_background_playback_summary">Continuer la lecture du son de la vidéo en quittant le lecteur vidéo ou en éteignant l\’écran</string>
   <string name="deselect_all">Tout désélectionner</string>
@@ -636,6 +632,8 @@
 
   <!-- Player - Gesture & Action Overlays Section                 -->
   <string name="pref_section_overlays">Superpositions de gestes et d’actions</string>
+  <string name="pref_app_toasts_title">Messages éphémères</string>
+  <string name="pref_app_toasts_summary">Afficher des messages brefs dans toute l’application</string>
   <string name="pref_volume_overlay_title">Superposition du curseur de volume</string>
   <string name="pref_volume_overlay_summary">Afficher l’indicateur vertical de volume lors d’un glissement</string>
   <string name="pref_brightness_overlay_title">Superposition du curseur de luminosité</string>
@@ -1789,7 +1787,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_mpv_conf_override_osd_summary">Remplace la police, les marges et les zones sûres de l’OSD.</string>
   <string name="mpv_config_owned_title">Contrôlé par mpv.conf</string>
   <string name="mpv_config_owned_message">Géré par mpv.conf. Modifiez l’attribution de l’option dans les réglages avancés pour utiliser ce contrôle.</string>
-  <string name="pref_lyrics_translation_category">Traduction et romanisation des paroles</string>
   <string name="pref_lyrics_auto_translate">Traduire automatiquement les paroles étrangères</string>
   <string name="pref_lyrics_auto_translate_summary">Traduit automatiquement les paroles en langue étrangère vers la langue préférée</string>
   <string name="pref_lyrics_target_language">Langue cible par défaut</string>
@@ -2499,10 +2496,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="lyrics_provider_not_found">Aucune parole de %1$s pour ce titre</string>
   <string name="lyrics_provider_sheet_title">Source des paroles</string>
   <string name="lyrics_search_online">Rechercher en ligne</string>
-  <string name="pref_paxsenix_api_key">Clé API PaxSenix</string>
-  <string name="pref_paxsenix_api_key_summary">Débloque les accès à Spotify et Musixmatch</string>
-  <string name="pref_paxsenix_api_key_dialog_desc">Collez votre clé API PaxSenix. Laissez le champ vide pour utiliser uniquement les accès sans clé.</string>
-  <string name="pref_lyrics_sources_category">Paroles en ligne</string>
+  <string name="pref_lyrics_sources_category">Paroles</string>
   <string name="pref_lyrics_auto_fetch_online">Récupérer automatiquement les paroles en ligne</string>
   <string name="pref_lyrics_auto_fetch_online_summary">Recherche des paroles en ligne si aucune parole locale ou intégrée ne convient.</string>
   <string name="lyrics_translation_off_summary">Afficher la langue originale sans traduction</string>
@@ -3104,11 +3098,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="autoeq_reference_target">Courbe cible de référence Harman</string>
   <string name="autoeq_harman_in_ear">Intra-auriculaire 2019</string>
   <string name="autoeq_harman_over_ear">Circum-auriculaire 2018</string>
-  <string name="pref_audio_spatial_mode">Mode audio spatial</string>
-  <string name="pref_audio_spatial_stereo">Élargissement stéréo</string>
-  <string name="pref_audio_hrtf_title">Casque - KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">Audio binaural KU100. Nécessite mpv avec sofalizer et libmysofa.</string>
-  <string name="pref_audio_hrtf_unavailable">Nécessite mpv avec sofalizer et libmysofa. Sinon, utilisez l’élargissement stéréo.</string>
 
   <!-- Actions et disposition -->
   <string name="pref_layout_playback_with_buttons">Avec la rangée de boutons</string>

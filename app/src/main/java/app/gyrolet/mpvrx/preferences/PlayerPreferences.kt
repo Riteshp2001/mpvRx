@@ -337,6 +337,8 @@ class PlayerPreferences(
   val ppCrtBleed = preferenceStore.getFloat("pp_crt_bleed", 1.0f)
 
 
+  val showAppToasts = preferenceStore.getBoolean("show_app_toasts", true)
+
   /** Show the vertical volume pill while swiping for volume. */
   val showVolumeGestureOverlay = preferenceStore.getBoolean("show_volume_gesture_overlay", true)
 

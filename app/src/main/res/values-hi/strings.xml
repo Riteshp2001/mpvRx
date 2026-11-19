@@ -53,8 +53,6 @@
   <string name="pref_appearance_ui_scale_restart_title">रीस्टार्ट ज़रूरी है</string>
   <string name="pref_appearance_ui_scale_restart_message">%1$d%% का नया ऐप UI स्केल लागू करने के लिए mpvRx को रीस्टार्ट करें।</string>
   <string name="pref_appearance_ui_scale_restart_now">अभी रीस्टार्ट करें</string>
-  <string name="pref_appearance_unlimited_name_lines_title">पूरे नाम दिखाएं</string>
-  <string name="pref_appearance_unlimited_name_lines_summary">फोल्डर और वीडियो के पूरे नाम बिना काटे दिखाएं</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">प्लेयर बटन की पृष्ठभूमि हमेशा गहरी रखें</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">हल्की, गहरी और स्वचालित थीम में प्लेयर नियंत्रण बटन की पृष्ठभूमि गहरी रखें</string>
   <string name="pref_appearance_category_file_browser">फाइल ब्राउज़र</string>
@@ -486,8 +484,6 @@
   <string name="toast_audio_background_playback_on">ऑडियो का बैकग्राउंड प्लेबैक चालू है</string>
   <string name="toast_audio_background_playback_off">ऑडियो का बैकग्राउंड प्लेबैक बंद है</string>
   <string name="pref_audio_background_playback_summary">ऑडियो प्लेयर से बाहर जाने या स्क्रीन बंद करने पर ऑडियो चलता रखें</string>
-  <string name="pref_audio_mini_player_track_switching_title">मिनी प्लेयर में गाने बदलें</string>
-  <string name="pref_audio_mini_player_track_switching_summary">पूरा प्लेयर खोले बिना मिनी प्लेयर में ट्रैक बदलें।</string>
   <string name="pref_video_background_playback_title">वीडियो प्लेयर बैकग्राउंड प्लेबैक</string>
   <string name="pref_video_background_playback_summary">वीडियो प्लेयर से बाहर जाने या स्क्रीन बंद करने पर वीडियो का ऑडियो चलता रखें</string>
   <string name="deselect_all">सभी अनसिलेक्ट करें</string>
@@ -607,6 +603,8 @@
   <string name="pref_nav_bar_title">कंट्रोल्स के साथ नेविगेशन बार दिखाएं</string>
   <string name="pref_nav_bar_summary">प्लेयर कंट्रोल्स के ऊपर Android सिस्टम नेविगेशन बार दिखाएं</string>
   <string name="pref_section_overlays">जेस्चर और एक्शन ओवरले</string>
+  <string name="pref_app_toasts_title">ऐप टोस्ट</string>
+  <string name="pref_app_toasts_summary">पूरे ऐप में पॉप-अप संदेश दिखाएँ</string>
   <string name="pref_volume_overlay_title">वॉल्यूम स्लाइडर ओवरले</string>
   <string name="pref_volume_overlay_summary">वॉल्यूम के लिए स्वाइप करते समय वर्टिकल वॉल्यूम पिल दिखाएं</string>
   <string name="pref_brightness_overlay_title">ब्राइटनेस स्लाइडर ओवरले</string>
@@ -1705,7 +1703,6 @@
   <string name="pref_mpv_conf_override_osd_summary">OSD फ़ॉन्ट, मार्जिन और सुरक्षित क्षेत्र ओवरराइड करता है।</string>
   <string name="mpv_config_owned_title">mpv.conf द्वारा नियंत्रित</string>
   <string name="mpv_config_owned_message">mpv.conf द्वारा नियंत्रित। यह नियंत्रण इस्तेमाल करने के लिए उन्नत सेटिंग में विकल्प का नियंत्रण बदलें।</string>
-  <string name="pref_lyrics_translation_category">गीत अनुवाद एवं लिप्यंतरण</string>
   <string name="pref_lyrics_auto_translate">विदेशी गीतों का स्वतः अनुवाद करें</string>
   <string name="pref_lyrics_auto_translate_summary">विदेशी भाषा के बोलों का स्वचालित रूप से अनुवाद करें</string>
   <string name="pref_lyrics_target_language">डिफ़ॉल्ट लक्षित भाषा</string>
@@ -2418,10 +2415,7 @@
   <string name="lyrics_provider_not_found">इस ट्रैक के बोल %1$s पर नहीं मिले</string>
   <string name="lyrics_provider_sheet_title">गीत के बोल का स्रोत</string>
   <string name="lyrics_search_online">ऑनलाइन खोजें</string>
-  <string name="pref_paxsenix_api_key">PaxSenix API कुंजी</string>
-  <string name="pref_paxsenix_api_key_summary">Spotify और Musixmatch के स्रोत उपलब्ध करता है</string>
-  <string name="pref_paxsenix_api_key_dialog_desc">अपनी PaxSenix API कुंजी पेस्ट करें। केवल बिना कुंजी वाले स्रोतों के लिए इसे खाली छोड़ें।</string>
-  <string name="pref_lyrics_sources_category">ऑनलाइन गीत के बोल</string>
+  <string name="pref_lyrics_sources_category">गीत के बोल</string>
   <string name="pref_lyrics_auto_fetch_online">गीत के बोल ऑनलाइन स्वचालित रूप से पाएँ</string>
   <string name="pref_lyrics_auto_fetch_online_summary">एम्बेडेड या स्थानीय बोल न मिलने पर ऑनलाइन बोल खोजें।</string>
   <string name="lyrics_translation_off_summary">बिना अनुवाद के मूल भाषा दिखाएँ</string>
@@ -3007,11 +3001,6 @@
   <string name="autoeq_reference_target">Harman संदर्भ लक्ष्य</string>
   <string name="autoeq_harman_in_ear">कान के अंदर वाले 2019</string>
   <string name="autoeq_harman_over_ear">कान को ढकने वाले 2018</string>
-  <string name="pref_audio_spatial_mode">स्थानिक ऑडियो मोड</string>
-  <string name="pref_audio_spatial_stereo">स्टीरियो विस्तार</string>
-  <string name="pref_audio_hrtf_title">हेडफ़ोन - KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">KU100 बाइनॉरल ऑडियो। sofalizer और libmysofa वाला mpv चाहिए।</string>
-  <string name="pref_audio_hrtf_unavailable">sofalizer और libmysofa वाला mpv चाहिए। अन्यथा स्टीरियो वाइडनिंग चुनें।</string>
   <string name="pref_layout_playback_with_buttons">बटनों की पंक्ति के साथ</string>
   <string name="pref_action_open_page">पेज खोलें</string>
   <string name="pref_action_open_dialog">संवाद खोलें</string>

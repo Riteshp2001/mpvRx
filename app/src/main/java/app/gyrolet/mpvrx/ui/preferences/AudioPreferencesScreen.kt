@@ -31,7 +31,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import app.gyrolet.mpvrx.presentation.components.AppTextField as TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -47,9 +46,6 @@ import app.gyrolet.mpvrx.preferences.AudioOutput
 import app.gyrolet.mpvrx.preferences.AudioPassthrough
 import app.gyrolet.mpvrx.preferences.AudioPlayerOrientation
 import app.gyrolet.mpvrx.preferences.AudioPreferences
-import app.gyrolet.mpvrx.preferences.SpatialAudioMode
-import app.gyrolet.mpvrx.ui.player.HrtfStatus
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.preferences.LyricsTranslationDisplayMode
 import app.gyrolet.mpvrx.preferences.MediaServerPreferences
 import app.gyrolet.mpvrx.preferences.MusicSourceProvider
@@ -527,30 +523,6 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
                 )
               }
 
-              if (!app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD) {
-                PreferenceDivider()
-                val animatedArtworkSpotifyCanvas by preferences.animatedArtworkSpotifyCanvas.collectAsState()
-                val canvasApiKey by preferences.paxsenixApiKey.collectAsState()
-                SwitchPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_audio_animated_artwork_spotify_canvas_title),
-                  value = animatedArtworkSpotifyCanvas,
-                  onValueChange = { preferences.animatedArtworkSpotifyCanvas.set(it) },
-                  enabled = animatedAlbumArtwork,
-                  title = { Text(stringResource(R.string.pref_audio_animated_artwork_spotify_canvas_title)) },
-                  summary = {
-                    Text(
-                      stringResource(
-                        if (canvasApiKey.isNotBlank()) {
-                          R.string.pref_audio_animated_artwork_spotify_canvas_summary
-                        } else {
-                          R.string.pref_audio_animated_artwork_spotify_canvas_needs_key
-                        },
-                      ),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
-              }
             }
           }
 
@@ -652,31 +624,6 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
 
               PreferenceDivider()
               val drcEnabled by preferences.drcEnabled.collectAsState()
-              if (spatialAudio) {
-                val spatialMode by preferences.spatialAudioMode.collectAsState()
-                ListPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_audio_spatial_mode),
-                  value = spatialMode,
-                  onValueChange = { preferences.spatialAudioMode.set(it) },
-                  values = SpatialAudioMode.entries,
-                  enabled = "af" !in configOwnedOptions,
-                  valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
-                  title = { Text(stringResource(R.string.pref_audio_spatial_mode)) },
-                  summary = { Text(stringResource(spatialMode.summaryRes), color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                )
-                if (spatialMode == SpatialAudioMode.Hrtf) {
-                  val hrtfStatus by PlaybackSession.hrtfStatus.collectAsState()
-                  if (hrtfStatus == HrtfStatus.Unavailable) {
-                    Text(
-                      stringResource(R.string.pref_audio_hrtf_unavailable),
-                      color = MaterialTheme.colorScheme.error,
-                      style = MaterialTheme.typography.bodySmall,
-                      modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                  }
-                }
-                PreferenceDivider()
-              }
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_drc_title),
                 value = drcEnabled,
@@ -725,21 +672,6 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
                 summary = {
                   Text(
                     stringResource(R.string.pref_audio_background_playback_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-              val miniPlayerTrackSwitching by preferences.miniPlayerTrackSwitching.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_mini_player_track_switching_title),
-                value = miniPlayerTrackSwitching,
-                onValueChange = preferences.miniPlayerTrackSwitching::set,
-                title = { Text(stringResource(R.string.pref_audio_mini_player_track_switching_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_audio_mini_player_track_switching_summary),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
@@ -891,98 +823,59 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
                 },
               )
 
-            }
-          }
-
-          if (!app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD) {
-            item {
-              PreferenceSectionHeader(
-                position = PreferenceSectionPosition.Middle,
-                title = stringResource(R.string.pref_lyrics_translation_category),
-              )
-            }
-            item {
-              PreferenceCard {
+              if (!app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD) {
+                PreferenceDivider()
                 val lyricsAutoTranslate by preferences.lyricsAutoTranslate.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_lyrics_auto_translate),
-                value = lyricsAutoTranslate,
-                onValueChange = { preferences.lyricsAutoTranslate.set(it) },
-                title = { Text(stringResource(R.string.pref_lyrics_auto_translate)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_lyrics_auto_translate_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-              val lyricsTargetLanguage by preferences.lyricsTargetLanguage.collectAsState()
-              ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_lyrics_target_language),
-                value = lyricsTargetLanguage,
-                onValueChange = { preferences.lyricsTargetLanguage.set(it) },
-                values = LyricsLanguageOptions.ALL_LANGUAGES.map { it.code },
-                valueToText = { AnnotatedString(LyricsLanguageOptions.getDisplayName(it)) },
-                title = { Text(stringResource(R.string.pref_lyrics_target_language)) },
-                summary = {
-                  Text(
-                    text = LyricsLanguageOptions.getDisplayName(lyricsTargetLanguage),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-              }
-
-              PreferenceDivider()
-              val lyricsDisplayMode by preferences.lyricsTranslationDisplayMode.collectAsState()
-              ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_lyrics_display_mode),
-                value = lyricsDisplayMode,
-                onValueChange = { preferences.lyricsTranslationDisplayMode.set(it) },
-                values = LyricsTranslationDisplayMode.entries,
-                valueToText = { AnnotatedString(resources.getString(it.title)) },
-                title = { Text(stringResource(R.string.pref_lyrics_display_mode)) },
-                summary = {
-                  Text(
-                    text = stringResource(lyricsDisplayMode.title),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-              }
-
-              PreferenceDivider()
-              val paxsenixApiKey by preferences.paxsenixApiKey.collectAsState()
-              ExpressivePreferenceItem {
-              TextFieldPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_paxsenix_api_key),
-                value = paxsenixApiKey,
-                onValueChange = { preferences.paxsenixApiKey.set(it) },
-                textToValue = { it.trim() },
-                title = { Text(stringResource(R.string.pref_paxsenix_api_key)) },
-                summary = {
-                  Text(
-                    text = paxsenixApiKey.ifBlank { stringResource(R.string.pref_paxsenix_api_key_summary) },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                textField = { value, onValueChange, _ ->
-                  Column {
-                    Text(stringResource(R.string.pref_paxsenix_api_key_dialog_desc))
-                    TextField(
-                      value = value,
-                      onValueChange = onValueChange,
-                      modifier = Modifier.fillMaxWidth(),
-                      singleLine = true,
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_lyrics_auto_translate),
+                  value = lyricsAutoTranslate,
+                  onValueChange = { preferences.lyricsAutoTranslate.set(it) },
+                  title = { Text(stringResource(R.string.pref_lyrics_auto_translate)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_lyrics_auto_translate_summary),
+                      color = MaterialTheme.colorScheme.outline,
                     )
-                  }
-                },
-              )
-              }
+                  },
+                )
+
+                PreferenceDivider()
+                val lyricsTargetLanguage by preferences.lyricsTargetLanguage.collectAsState()
+                ExpressivePreferenceItem {
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_lyrics_target_language),
+                    value = lyricsTargetLanguage,
+                    onValueChange = { preferences.lyricsTargetLanguage.set(it) },
+                    values = LyricsLanguageOptions.ALL_LANGUAGES.map { it.code },
+                    valueToText = { AnnotatedString(LyricsLanguageOptions.getDisplayName(it)) },
+                    title = { Text(stringResource(R.string.pref_lyrics_target_language)) },
+                    summary = {
+                      Text(
+                        text = LyricsLanguageOptions.getDisplayName(lyricsTargetLanguage),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
+                }
+
+                PreferenceDivider()
+                val lyricsDisplayMode by preferences.lyricsTranslationDisplayMode.collectAsState()
+                ExpressivePreferenceItem {
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_lyrics_display_mode),
+                    value = lyricsDisplayMode,
+                    onValueChange = { preferences.lyricsTranslationDisplayMode.set(it) },
+                    values = LyricsTranslationDisplayMode.entries,
+                    valueToText = { AnnotatedString(resources.getString(it.title)) },
+                    title = { Text(stringResource(R.string.pref_lyrics_display_mode)) },
+                    summary = {
+                      Text(
+                        text = stringResource(lyricsDisplayMode.title),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
+                }
               }
             }
           }

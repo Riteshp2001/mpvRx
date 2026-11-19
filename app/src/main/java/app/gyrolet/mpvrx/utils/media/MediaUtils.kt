@@ -67,18 +67,14 @@ data class PlaybackSubtitleTrack(
  */
 object MediaUtils {
   fun shouldPlayInMiniPlayerOnly(isAudio: Boolean): Boolean {
-    if (!isAudio) return false
+    if (!isAudio || !NavigationBarState.isMiniPlayerVisible) return false
     if (userScriptRuntimeNeedsReload()) return false
-    val audioPreferences =
-      runCatching { org.koin.core.context.GlobalContext.get().get<app.gyrolet.mpvrx.preferences.AudioPreferences>() }.getOrNull()
-    if (audioPreferences?.miniPlayerTrackSwitching?.get() != true) return false
     val sessionState = PlaybackSession.state.value
     val isServiceActive = MediaPlaybackService.isForegroundActive()
-    val isMiniPlayerVisible = NavigationBarState.isMiniPlayerVisible
     val isSessionActive =
       sessionState.phase == PlaybackPhase.READY ||
         sessionState.phase == PlaybackPhase.BACKGROUND
-    return isServiceActive || isMiniPlayerVisible || isSessionActive
+    return isServiceActive || isSessionActive
   }
 
   fun playInMiniPlayer(

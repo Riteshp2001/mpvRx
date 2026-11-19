@@ -10,18 +10,13 @@ import java.util.Locale
 internal data class MotionArtworkQuery(val title: String, val artist: String, val album: String?)
 
 /** Online providers, in the order they are asked. Still artwork stays underneath as the final fallback. */
-internal enum class MotionArtworkSource { APPLE_MUSIC, TIDAL, SPOTIFY_CANVAS }
-
-/** Where the motion artwork is drawn: the square cover card, or the tall immersive background. */
-internal enum class MotionArtworkSurface { COVER, BACKGROUND }
+internal enum class MotionArtworkSource { APPLE_MUSIC, TIDAL }
 
 internal data class MotionArtworkRendition(val url: String, val hls: Boolean)
 
 internal data class RemoteMotionArtwork(
   val source: MotionArtworkSource,
   val renditions: List<MotionArtworkRendition>,
-  /** True for 9:16 loops, which are cropped rather than letterboxed and decoded at portrait size. */
-  val portrait: Boolean = false,
 )
 
 internal interface MotionArtworkProvider {
@@ -31,7 +26,6 @@ internal interface MotionArtworkProvider {
 internal class MotionArtworkResolver(
   private val appleMusic: AppleMusicArtworkRepository,
   private val tidal: TidalArtworkRepository,
-  private val spotifyCanvas: SpotifyCanvasRepository,
 ) {
   /** First provider in [sources] order with artwork for [query]; null keeps the still cover. */
   suspend fun find(query: MotionArtworkQuery, sources: List<MotionArtworkSource>): RemoteMotionArtwork? {
@@ -39,7 +33,6 @@ internal class MotionArtworkResolver(
       val provider = when (source) {
         MotionArtworkSource.APPLE_MUSIC -> appleMusic
         MotionArtworkSource.TIDAL -> tidal
-        MotionArtworkSource.SPOTIFY_CANVAS -> spotifyCanvas
       }
       provider.find(query)?.let { return it }
     }
@@ -48,15 +41,11 @@ internal class MotionArtworkResolver(
 
   companion object {
     fun sources(
-      surface: MotionArtworkSurface,
       appleMusic: Boolean,
       tidal: Boolean,
-      spotifyCanvas: Boolean,
     ): List<MotionArtworkSource> = buildList {
       if (appleMusic) add(MotionArtworkSource.APPLE_MUSIC)
       if (tidal) add(MotionArtworkSource.TIDAL)
-      // Canvas is a portrait, per-track loop; cropping it into the square cover loses most of it.
-      if (spotifyCanvas && surface == MotionArtworkSurface.BACKGROUND) add(MotionArtworkSource.SPOTIFY_CANVAS)
     }
   }
 }

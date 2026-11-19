@@ -33,10 +33,8 @@ class AudioPreferences(
   private val videoBackgroundPlaybackLock = Any()
   /** Audio-player-only background playback; video retains [backgroundPlayback]. */
   val audioBackgroundPlayback = preferenceStore.getBoolean("audio_player_background_playback", true)
-  val miniPlayerTrackSwitching = preferenceStore.getBoolean("audio_mini_player_track_switching", false)
   val volumeNormalization = preferenceStore.getBoolean("audio_volume_normalization", false)
   val spatialAudio = preferenceStore.getBoolean("audio_spatial_audio", false)
-  val spatialAudioMode = preferenceStore.getEnum("audio_spatial_audio_mode", SpatialAudioMode.StereoWidening)
   val drcEnabled = preferenceStore.getBoolean("audio_drc_enabled", false)
   val audioOutput = preferenceStore.getEnum("audio_output", AudioOutput.Auto)
   val audioPassthrough = preferenceStore.getEnum("audio_passthrough", AudioPassthrough.Off)
@@ -67,7 +65,6 @@ class AudioPreferences(
   val animatedAlbumArtwork = preferenceStore.getBoolean("audio_animated_album_artwork", false)
   val animatedArtworkAppleMusic = preferenceStore.getBoolean("audio_animated_artwork_apple_music", true)
   val animatedArtworkTidal = preferenceStore.getBoolean("audio_animated_artwork_tidal", true)
-  val animatedArtworkSpotifyCanvas = preferenceStore.getBoolean("audio_animated_artwork_spotify_canvas", true)
   val tidalClientId = preferenceStore.getString("tidal_client_id", "")
   val tidalClientSecret = preferenceStore.getString("tidal_client_secret", "")
   val audioWavySeekbar = preferenceStore.getBoolean("audio_wavy_seekbar", true)
@@ -91,7 +88,6 @@ class AudioPreferences(
   val lyricsAutoTranslate = preferenceStore.getBoolean("lyrics_auto_translate", false)
   val lyricsTargetLanguage = preferenceStore.getString("lyrics_target_language", "en")
   val lyricsTranslationDisplayMode = preferenceStore.getEnum("lyrics_translation_display_mode", LyricsTranslationDisplayMode.DualLine)
-  val paxsenixApiKey = preferenceStore.getString("paxsenix_api_key", "")
 
   fun getVideoBackgroundPlayback(mediaId: String?): Boolean =
     resolveVideoBackgroundPlayback(backgroundPlaybackBehavior.get(), backgroundPlayback.get(), videoBackgroundPlaybackIds.get(), mediaId)
@@ -142,14 +138,6 @@ class AudioPreferences(
     if (legacyScreenLockPlayback.get()) backgroundPlayback.set(true)
     if (legacyScreenLockPlayback.isSet()) legacyScreenLockPlayback.delete()
   }
-}
-
-enum class SpatialAudioMode(
-  @StringRes val titleRes: Int,
-  @StringRes val summaryRes: Int,
-) {
-  StereoWidening(R.string.pref_audio_spatial_stereo, R.string.pref_audio_spatial_summary),
-  Hrtf(R.string.pref_audio_hrtf_title, R.string.pref_audio_hrtf_summary),
 }
 
 enum class BackgroundPlaybackBehavior(

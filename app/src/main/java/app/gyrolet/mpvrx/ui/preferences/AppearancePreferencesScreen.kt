@@ -498,30 +498,7 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
 
           item {
             ExpressivePreferenceGroup {
-              val itemCount = 7
-              val unlimitedNameLines by preferences.unlimitedNameLines.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_unlimited_name_lines_title),
-                value = unlimitedNameLines,
-                onValueChange = { preferences.unlimitedNameLines.set(it) },
-                title = {
-                  Text(
-                    text = stringResource(id = R.string.pref_appearance_unlimited_name_lines_title),
-                  )
-                },
-                summary = {
-                  Text(
-                    text =
-                      stringResource(
-                        id = R.string.pref_appearance_unlimited_name_lines_summary,
-                      ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                groupIndex = 0,
-                groupSize = itemCount,
-              )
-
+              val itemCount = 6
               val showUnplayedOldVideoLabel by preferences.showUnplayedOldVideoLabel.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_show_unplayed_old_video_label_title),
@@ -544,12 +521,12 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
-                groupIndex = 1,
+                groupIndex = 0,
                 groupSize = itemCount,
               )
 
               val unplayedOldVideoDays by preferences.unplayedOldVideoDays.collectAsState()
-              ExpressivePreferenceTile(index = 2, itemCount = itemCount) {
+              ExpressivePreferenceTile(index = 1, itemCount = itemCount) {
                 SliderPreference(
                   modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_unplayed_old_video_days_title),
                   value = unplayedOldVideoDays.toFloat(),
@@ -595,11 +572,11 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
-                groupIndex = 3,
+                groupIndex = 2,
                 groupSize = itemCount,
               )
 
-              ExpressivePreferenceTile(index = 4, itemCount = itemCount) {
+              ExpressivePreferenceTile(index = 3, itemCount = itemCount) {
                 ListPreference(
                   modifier = Modifier.settingsSearchTarget(R.string.pref_tree_flatten_depth_title),
                   value = treeFlattenDepth,
@@ -640,7 +617,7 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
-                groupIndex = 5,
+                groupIndex = 4,
                 groupSize = itemCount,
               )
 
@@ -667,7 +644,7 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
-                groupIndex = 6,
+                groupIndex = 5,
                 groupSize = itemCount,
               )
             }

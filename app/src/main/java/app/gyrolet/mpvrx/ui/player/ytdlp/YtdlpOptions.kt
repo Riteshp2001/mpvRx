@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.ui.player.ytdlp
 
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
+import app.gyrolet.mpvrx.utils.media.normalizePlaybackLanguageTag
 
 enum class YtdlCodecPreference(
   val title: String,
@@ -111,8 +112,11 @@ data class YtdlpOptionSettings(
         subtitlesPreferences.preferredLanguages
           .get()
           .split(",")
-          .map(String::trim)
-          .filter { it.isLanguageCode() }
+          .mapNotNull(::normalizePlaybackLanguageTag)
+          .map { it.substringBefore('-') }
+          .distinct()
+          // yt-dlp uses full-match regexes; include en-US and the ASR source tag en-orig.
+          .map { "$it(?:-.*)?" }
           .joinToString(",")
       return YtdlpOptionSettings(
         writeSubs = ytdlPreferences.writeSubs.get(),
@@ -132,8 +136,6 @@ data class YtdlpOptionSettings(
       )
     }
 
-    private fun String.isLanguageCode(): Boolean =
-      length in 2..3 && all { character -> character in 'a'..'z' || character in 'A'..'Z' }
   }
 }
 
@@ -166,7 +168,7 @@ object YtdlpOptionsBuilder {
     add("extractor-retries", "3")
     add("socket-timeout", "15")
     if (settings.writeSubs) add("write-subs")
-    if (settings.writeAutoSubs) add("write-auto-subs")
+    add(if (settings.writeAutoSubs) "write-auto-subs" else "no-write-auto-subs")
     settings.subtitleLanguages.ifBlank { "all" }.let { add("sub-langs", it) }
     settings.referer.ifNotBlank { add("referer", it) }
     settings.cookiesFile.ifNotBlank { add("cookies", it) }

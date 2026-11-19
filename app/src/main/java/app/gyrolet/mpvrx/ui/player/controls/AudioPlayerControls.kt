@@ -122,7 +122,6 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
 import androidx.palette.graphics.Palette
 import app.gyrolet.mpvrx.data.artwork.MotionArtworkQuery
-import app.gyrolet.mpvrx.data.artwork.MotionArtworkSurface
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.repository.JellyfinRepository
 import app.gyrolet.mpvrx.repository.NavidromeRepository
@@ -698,7 +697,6 @@ private fun CoverArtCardImage(
   localMotionArtworkUri: String? = null,
   isPlaying: Boolean = false,
   remoteMotionQuery: MotionArtworkQuery? = null,
-  remoteMotionSurface: MotionArtworkSurface = MotionArtworkSurface.COVER,
   modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current
@@ -766,7 +764,6 @@ private fun CoverArtCardImage(
     if (remoteMotionQuery != null && animatedDrawable == null) {
       RemoteMotionArtwork(
         query = remoteMotionQuery,
-        surface = remoteMotionSurface,
         isPlaying = isPlaying,
         modifier = Modifier.fillMaxSize(),
       )
@@ -879,8 +876,6 @@ private fun ImmersiveArtworkBackground(
           motionArtwork = motionArtwork.takeUnless { reducedMotion },
           localMotionArtworkUri = localMotionArtworkUri.takeUnless { reducedMotion },
           remoteMotionQuery = remoteMotionQuery.takeUnless { reducedMotion },
-          // Landscape keeps the square side-by-side cover, where a portrait Canvas would be cropped away.
-          remoteMotionSurface = if (landscape) MotionArtworkSurface.COVER else MotionArtworkSurface.BACKGROUND,
           isPlaying = isPlaying && !reducedMotion,
         )
       }

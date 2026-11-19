@@ -55,6 +55,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -119,6 +120,7 @@ import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
 import app.gyrolet.mpvrx.ui.player.LocalInAppMusicSheet
 import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
+import app.gyrolet.mpvrx.ui.player.PlaybackQueueReducer
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerSheetDestination
@@ -300,6 +302,8 @@ private fun MiniPlayerContent(
 ) {
   val sessionState by PlaybackSession.state.collectAsStateWithLifecycle()
   val queueState by PlaybackSession.queue.collectAsStateWithLifecycle()
+  val previousAvailable = PlaybackQueueReducer.hasPrevious(queueState)
+  val nextAvailable = PlaybackQueueReducer.hasNext(queueState)
   val currentItem = sessionState.currentItem
   val paused by PlaybackSession.propBoolean["pause"].collectAsStateWithLifecycle()
   val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsStateWithLifecycle()
@@ -704,6 +708,7 @@ private fun MiniPlayerContent(
       Row(
         modifier = Modifier
           .fillMaxWidth()
+          .height(64.dp)
           .drawBehind {
             val progressFraction = progressFraction()
             if (progressFraction > 0f) {
@@ -727,13 +732,13 @@ private fun MiniPlayerContent(
               )
             }
           }
-          .padding(horizontal = 12.dp, vertical = 8.dp),
+          .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
       ) {
         // Music Cover Art
         Box(
           modifier = Modifier
-            .size(48.dp)
+            .size(40.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant),
           contentAlignment = Alignment.Center,
@@ -763,7 +768,7 @@ private fun MiniPlayerContent(
           }
         }
 
-        Spacer(modifier = Modifier.width(12.dp))
+        Spacer(modifier = Modifier.width(8.dp))
 
         // Title & Track Status
         Column(
@@ -814,45 +819,65 @@ private fun MiniPlayerContent(
           }
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.width(4.dp))
 
-        // Play / Pause Action Button
         IconButton(
           onClick = {
+            actionHaptics.tick()
+            context.startService(
+              Intent(context, MediaPlaybackService::class.java).setAction(
+                MediaPlaybackService.ACTION_NOTIFICATION_PREVIOUS,
+              ),
+            )
+          },
+          enabled = previousAvailable && !tossed,
+          modifier = Modifier.size(48.dp),
+        ) {
+          Icon(
+            imageVector = Icons.RoundedFilled.SkipPrevious,
+            contentDescription = stringResource(R.string.pref_gesture_media_previous),
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (previousAvailable) 1f else 0.38f),
+            modifier = Modifier.size(24.dp),
+          )
+        }
+
+        FilledTonalIconButton(
+          onClick = {
             actionHaptics.selection(true)
-             context.startService(
+            context.startService(
               Intent(context, MediaPlaybackService::class.java).setAction(
                 MediaPlaybackService.ACTION_NOTIFICATION_PLAY_PAUSE,
               ),
             )
           },
+          enabled = !tossed,
           modifier = Modifier.size(48.dp),
         ) {
           AnimatedIcon(
             imageVector = if (isPlaying) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
             contentDescription = stringResource(if (isPlaying) R.string.audiobook_pause else R.string.ui_play),
-            tint = MaterialTheme.colorScheme.onSurface,
+            tint = MaterialTheme.colorScheme.onSecondaryContainer,
             modifier = Modifier.size(26.dp),
             reduceMotion = reduceMotion,
           )
         }
 
-        // Next Track Action Button
         IconButton(
           onClick = {
             actionHaptics.tick()
-             context.startService(
+            context.startService(
               Intent(context, MediaPlaybackService::class.java).setAction(
                 MediaPlaybackService.ACTION_NOTIFICATION_NEXT,
               ),
             )
           },
+          enabled = nextAvailable && !tossed,
           modifier = Modifier.size(48.dp),
         ) {
           Icon(
             imageVector = Icons.RoundedFilled.SkipNext,
             contentDescription = stringResource(R.string.pref_gesture_media_next),
-            tint = MaterialTheme.colorScheme.onSurface,
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (nextAvailable) 1f else 0.38f),
             modifier = Modifier.size(24.dp),
           )
         }

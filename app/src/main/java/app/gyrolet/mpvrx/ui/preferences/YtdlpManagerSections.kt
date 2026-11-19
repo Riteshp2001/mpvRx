@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.*
@@ -17,12 +16,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
-import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlPlaylistMode
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpInstallationStatus
@@ -30,8 +29,7 @@ import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpReleaseChannel
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpCookieControls
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
-import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
-import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.spacing
@@ -42,7 +40,6 @@ import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
 /** Complete manager UI, shared by the Network page and the legacy deep-link screen. */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun YtdlpManagerSections(modifier: Modifier = Modifier) {
     if (!app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP) return
@@ -137,55 +134,32 @@ internal fun YtdlpManagerSections(modifier: Modifier = Modifier) {
           )
 
           ExpressivePreferenceGroup {
-            Column(
-              modifier = Modifier.fillMaxWidth(),
-              verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
-            ) {
-              Button(
-                onClick = {
-                  runOperation { onLog ->
-                    if (installationInfo?.channel == YtdlpReleaseChannel.STABLE) {
-                      YtdlpManager.runUpdate(context, onLog)
-                    } else {
-                      YtdlpManager.runInstall(context, onLog)
-                    }
+            SettingsNavigationRow(
+              title = stableActionLabel,
+              icon = Icons.RoundedFilled.Download,
+              onClick = {
+                runOperation { onLog ->
+                  if (installationInfo?.channel == YtdlpReleaseChannel.STABLE) {
+                    YtdlpManager.runUpdate(context, onLog)
+                  } else {
+                    YtdlpManager.runInstall(context, onLog)
                   }
-                },
-                enabled = !isRunning,
-                modifier = Modifier.fillMaxWidth(),
-                shape =
-                  rememberConnectedShape(
-                    index = 0,
-                    itemCount = 2,
-                    layout = ConnectedLayout.Vertical,
-                    tokens = AppConnectedControlShapeTokens,
-                  ),
-              ) {
-                Icon(Icons.RoundedFilled.Download, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(stableActionLabel)
-              }
-
-              OutlinedButton(
-                onClick = {
-                  runOperation { onLog -> YtdlpManager.runUpdateToNightly(context, onLog) }
-                },
-                enabled = !isRunning && isInstalled,
-                modifier = Modifier.fillMaxWidth(),
-                shape =
-                  rememberConnectedShape(
-                    index = 1,
-                    itemCount = 2,
-                    layout = ConnectedLayout.Vertical,
-                    tokens = AppConnectedControlShapeTokens,
-                  ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-              ) {
-                Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(nightlyActionLabel)
-              }
-            }
+                }
+              },
+              enabled = !isRunning,
+              showChevron = false,
+              shape = rememberConnectedShape(index = 0, itemCount = 2, layout = ConnectedLayout.Vertical),
+            )
+            SettingsNavigationRow(
+              title = nightlyActionLabel,
+              icon = Icons.RoundedFilled.Update,
+              onClick = {
+                runOperation { onLog -> YtdlpManager.runUpdateToNightly(context, onLog) }
+              },
+              enabled = !isRunning && isInstalled,
+              showChevron = false,
+              shape = rememberConnectedShape(index = 1, itemCount = 2, layout = ConnectedLayout.Vertical),
+            )
           }
 
           PreferenceSectionHeader(
@@ -194,31 +168,28 @@ internal fun YtdlpManagerSections(modifier: Modifier = Modifier) {
             modifier = Modifier.settingsSearchTarget(R.string.ytdlp_subtitles_language),
           )
 
-          ExpressivePreferenceGroup {
+          PreferenceCard {
             SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_download_media_subtitles),
-                value = writeSubs,
-                enabled = playbackOptionsEnabled,
-                onValueChange = { ytdlPreferences.writeSubs.set(it) },
-                title = { Text(stringResource(R.string.ui_download_media_subtitles)) },
-                summary = {
-                  Text(stringResource(R.string.ui_automatically_extract_and_load_physical_subtitle_tracks_from_sup))
-                },
-                groupIndex = 0,
-                groupSize = 2,
-              )
+              modifier = Modifier.settingsSearchTarget(R.string.ui_download_media_subtitles),
+              value = writeSubs,
+              enabled = playbackOptionsEnabled,
+              onValueChange = { ytdlPreferences.writeSubs.set(it) },
+              title = { Text(stringResource(R.string.ui_download_media_subtitles)) },
+              summary = {
+                Text(stringResource(R.string.ui_automatically_extract_and_load_physical_subtitle_tracks_from_sup))
+              },
+            )
+            PreferenceDivider()
             SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_include_auto_generated_subtitles),
-                value = writeAutoSubs,
-                enabled = playbackOptionsEnabled,
-                onValueChange = { ytdlPreferences.writeAutoSubs.set(it) },
-                title = { Text(stringResource(R.string.ui_include_auto_generated_subtitles)) },
-                summary = {
-                  Text(stringResource(R.string.ui_fetch_auto_caption_tracks_e_g_youtube_speech_to_text_when_regula))
-                },
-                groupIndex = 1,
-                groupSize = 2,
-              )
+              modifier = Modifier.settingsSearchTarget(R.string.ui_include_auto_generated_subtitles),
+              value = writeAutoSubs,
+              enabled = playbackOptionsEnabled,
+              onValueChange = { ytdlPreferences.writeAutoSubs.set(it) },
+              title = { Text(stringResource(R.string.ui_include_auto_generated_subtitles)) },
+              summary = {
+                Text(stringResource(R.string.ui_fetch_auto_caption_tracks_e_g_youtube_speech_to_text_when_regula))
+              },
+            )
           }
 
           PreferenceSectionHeader(
@@ -226,33 +197,24 @@ internal fun YtdlpManagerSections(modifier: Modifier = Modifier) {
             title = stringResource(R.string.ytdlp_cookies_title),
             modifier = Modifier.settingsSearchTarget(R.string.ytdlp_cookies_title),
           )
-          YtdlpCookieControls(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+          ExpressivePreferenceGroup {
+            ExpressivePreferenceTile(index = 0, itemCount = 1) {
+              YtdlpCookieControls(modifier = Modifier.fillMaxWidth().padding(16.dp))
+            }
+          }
 
-          PreferenceSectionHeader(position = PreferenceSectionPosition.Last,
-            title = stringResource(R.string.ytdlp_playlist_behavior),
-            modifier = Modifier.settingsSearchTarget(R.string.ytdlp_playlist_behavior),
-          )
-
-          SingleChoiceSegmentedButtonRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-          ) {
-            YtdlPlaylistMode.entries.forEachIndexed { index, mode ->
-              SegmentedButton(
-                selected = playlistMode == mode,
+          PreferenceCard {
+            ExpressivePreferenceItem {
+              ListPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.ytdlp_playlist_behavior),
+                value = playlistMode,
+                values = YtdlPlaylistMode.entries,
+                onValueChange = ytdlPreferences.playlistMode::set,
                 enabled = playbackOptionsEnabled,
-                onClick = { ytdlPreferences.playlistMode.set(mode) },
-                shape = SegmentedButtonDefaults.itemShape(
-                  index = index,
-                  count = YtdlPlaylistMode.entries.size,
-                ),
-                icon = { SegmentedButtonDefaults.Icon(active = playlistMode == mode) },
-              ) {
-                Text(
-                  text = mode.title,
-                  style = MaterialTheme.typography.labelMedium,
-                  maxLines = 2,
-                )
-              }
+                valueToText = { AnnotatedString(it.title) },
+                title = { Text(stringResource(R.string.ytdlp_playlist_behavior)) },
+                summary = { Text(playlistMode.title, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+              )
             }
           }
         }

@@ -54,8 +54,6 @@
   <string name="pref_appearance_ui_scale_restart_title">需要重启</string>
   <string name="pref_appearance_ui_scale_restart_message">重启 mpvRx 以应用新的 %1$d%% 应用界面缩放。</string>
   <string name="pref_appearance_ui_scale_restart_now">立即重启</string>
-  <string name="pref_appearance_unlimited_name_lines_title">显示完整名称</string>
-  <string name="pref_appearance_unlimited_name_lines_summary">完整显示文件夹和视频名称，不截断</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">始终使用深色播放器按钮背景</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">在浅色、深色和自动主题下始终保持播放器控制按钮为深色背景</string>
   <string name="pref_appearance_category_file_browser">文件浏览器</string>
@@ -493,8 +491,6 @@
   <string name="toast_audio_background_playback_on">音频后台播放已开启</string>
   <string name="toast_audio_background_playback_off">音频后台播放已关闭</string>
   <string name="pref_audio_background_playback_summary">在离开音频播放器或关闭屏幕时保持音频播放</string>
-  <string name="pref_audio_mini_player_track_switching_title">在迷你播放器中切歌</string>
-  <string name="pref_audio_mini_player_track_switching_summary">在迷你播放器中切歌，不打开完整播放器。</string>
   <string name="pref_video_background_playback_title">后台播放（视频播放器）</string>
   <string name="pref_video_background_playback_summary">在离开视频播放器或关闭屏幕时保持视频音频播放</string>
   <string name="deselect_all">取消全选</string>
@@ -639,6 +635,8 @@
 
   <!-- Player - Gesture & Action Overlays Section                 -->
   <string name="pref_section_overlays">手势和操作叠加层</string>
+  <string name="pref_app_toasts_title">应用提示</string>
+  <string name="pref_app_toasts_summary">在整个应用中显示短暂的弹出消息</string>
   <string name="pref_volume_overlay_title">音量滑块叠加层</string>
   <string name="pref_volume_overlay_summary">滑动调节音量时显示垂直音量指示条</string>
   <string name="pref_brightness_overlay_title">亮度滑块叠加层</string>
@@ -1804,7 +1802,6 @@
   <string name="pref_mpv_conf_override_osd_summary">覆盖 OSD 字体、边距和安全区域设置。</string>
   <string name="mpv_config_owned_title">由 mpv.conf 控制</string>
   <string name="mpv_config_owned_message">由 mpv.conf 控制。请在高级设置中更改选项归属后再使用此控件。</string>
-  <string name="pref_lyrics_translation_category">歌词翻译与注音</string>
   <string name="pref_lyrics_auto_translate">自动翻译外语歌词</string>
   <string name="pref_lyrics_auto_translate_summary">自动将外语歌词翻译为首选语言</string>
   <string name="pref_lyrics_target_language">默认目标语言</string>
@@ -2481,10 +2478,7 @@
   <string name="lyrics_provider_not_found">%1$s 没有这首歌曲的歌词</string>
   <string name="lyrics_provider_sheet_title">歌词来源</string>
   <string name="lyrics_search_online">在线搜索</string>
-  <string name="pref_paxsenix_api_key">PaxSenix API 密钥</string>
-  <string name="pref_paxsenix_api_key_summary">启用 Spotify 和 Musixmatch 获取通道</string>
-  <string name="pref_paxsenix_api_key_dialog_desc">粘贴您的 PaxSenix API 密钥。留空则仅使用不需要密钥的获取通道。</string>
-  <string name="pref_lyrics_sources_category">在线歌词</string>
+  <string name="pref_lyrics_sources_category">歌词</string>
   <string name="pref_lyrics_auto_fetch_online">自动获取在线歌词</string>
   <string name="pref_lyrics_auto_fetch_online_summary">无内嵌或本地歌词时，在线查找歌词。</string>
   <string name="lyrics_translation_off_summary">显示原文，不进行翻译</string>
@@ -3066,11 +3060,6 @@
   <string name="autoeq_reference_target">Harman 参考目标曲线</string>
   <string name="autoeq_harman_in_ear">入耳式 2019</string>
   <string name="autoeq_harman_over_ear">包耳式 2018</string>
-  <string name="pref_audio_spatial_mode">空间音频模式</string>
-  <string name="pref_audio_spatial_stereo">立体声拓宽</string>
-  <string name="pref_audio_hrtf_title">耳机 - KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">KU100 双耳音效。需要支持 sofalizer 和 libmysofa 的 mpv。</string>
-  <string name="pref_audio_hrtf_unavailable">需要支持 sofalizer 和 libmysofa 的 mpv，否则请使用立体声扩展。</string>
   <string name="pref_layout_playback_with_buttons">与按钮行放在一起</string>
   <string name="pref_action_open_page">打开页面</string>
   <string name="pref_action_open_dialog">打开对话框</string>

@@ -14,6 +14,7 @@ import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
+import app.gyrolet.mpvrx.utils.media.normalizePlaybackLanguageTag as languageTag
 import java.util.Locale
 import java.util.MissingResourceException
 import kotlinx.coroutines.Dispatchers
@@ -245,12 +246,6 @@ class TrackSelector(
   private fun preferences(value: String): List<String> =
     value.split(',').map { it.trim().lowercase(Locale.ROOT) }.filter(String::isNotEmpty).distinct()
 
-  private fun languageTag(value: String): String? {
-    val tag = value.trim().lowercase(Locale.ROOT).replace('_', '-')
-    val base = languageCodes[tag.substringBefore('-')] ?: return null
-    return base + tag.substringAfter('-', "").takeIf(String::isNotEmpty)?.let { "-$it" }.orEmpty()
-  }
-
   private companion object {
     const val TAG = "TrackSelector"
     val ignoredAudioTitles = listOf("commentary", "description", "adh", "comment", "extra")
@@ -258,28 +253,5 @@ class TrackSelector(
     val dialogueTitleKeywords = listOf(
       "subtitle", "dialogue", "dialog", "translation", "english", "main", "script", "full", "caption",
     )
-    val languageCodes: Map<String, String> by lazy {
-      buildMap {
-        for (code in Locale.getISOLanguages()) {
-          val locale = Locale.forLanguageTag(code)
-          put(code, code)
-          put(locale.getDisplayLanguage(Locale.ENGLISH).lowercase(Locale.ROOT), code)
-          try {
-            put(locale.isO3Language.lowercase(Locale.ROOT), code)
-          } catch (_: MissingResourceException) {
-            // Some Android locales do not expose an ISO 639-2 code.
-          }
-        }
-        putAll(
-          mapOf(
-            "alb" to "sq", "arm" to "hy", "baq" to "eu", "bur" to "my", "chi" to "zh",
-            "cze" to "cs", "dut" to "nl", "fre" to "fr", "geo" to "ka", "ger" to "de",
-            "gre" to "el", "ice" to "is", "mac" to "mk", "mao" to "mi", "may" to "ms",
-            "per" to "fa", "rum" to "ro", "slo" to "sk", "tib" to "bo", "wel" to "cy",
-            "jp" to "ja", "iw" to "he", "in" to "id", "ji" to "yi",
-          ),
-        )
-      }
-    }
   }
 }

@@ -63,8 +63,6 @@
   <string name="pref_appearance_ui_scale_restart_title">Потрібно перезапустити</string>
   <string name="pref_appearance_ui_scale_restart_message">Перезапустіть mpvRx, щоб застосувати новий масштаб інтерфейсу %1$d%%.</string>
   <string name="pref_appearance_ui_scale_restart_now">Перезапустити зараз</string>
-  <string name="pref_appearance_unlimited_name_lines_title">Показувати повні назви</string>
-  <string name="pref_appearance_unlimited_name_lines_summary">Показувати повні назви папок і відео без скорочення</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">Завжди темний фон кнопок плеєра</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">Зберігати темний фон кнопок керування плеєром у світлій, темній та автоматичній темах</string>
   <string name="pref_appearance_category_file_browser">Файловий менеджер</string>
@@ -571,8 +569,6 @@
   <string name="toast_audio_background_playback_on">Фонове відтворення аудіо ввімкнено</string>
   <string name="toast_audio_background_playback_off">Фонове відтворення аудіо вимкнено</string>
   <string name="pref_audio_background_playback_summary">Продовжувати відтворення аудіо під час виходу з аудіоплеєра або вимкнення екрана</string>
-  <string name="pref_audio_mini_player_track_switching_title">Перемикання треків у мініплеєрі</string>
-  <string name="pref_audio_mini_player_track_switching_summary">Змінювати треки в мініпрогравачі без відкриття повного програвача.</string>
   <string name="pref_video_background_playback_title">Фонове відтворення відеоплеєра</string>
   <string name="pref_video_background_playback_summary">Продовжувати відтворення звуку відео під час виходу з відеоплеєра або вимкнення екрана</string>
   <string name="deselect_all">Зняти виділення з усіх</string>
@@ -709,6 +705,8 @@
   <string name="pref_nav_bar_title">Показувати панель навігації з елементами керування</string>
   <string name="pref_nav_bar_summary">Відображати системну панель навігації Android поверх елементів керування плеєра</string>
   <string name="pref_section_overlays">Оверлеї жестів і дій</string>
+  <string name="pref_app_toasts_title">Спливні повідомлення</string>
+  <string name="pref_app_toasts_summary">Показувати короткі повідомлення в усьому застосунку</string>
   <string name="pref_volume_overlay_title">Оверлей повзунка гучності</string>
   <string name="pref_volume_overlay_summary">Показувати вертикальну плашку гучності під час проведення пальцем</string>
   <string name="pref_brightness_overlay_title">Оверлей повзунка яскравості</string>
@@ -1913,10 +1911,6 @@
   <string name="lyrics_provider_not_found">Немає слів від %1$s для цього треку</string>
   <string name="lyrics_provider_sheet_title">Джерело тексту пісні</string>
   <string name="lyrics_search_online">Шукати онлайн</string>
-  <string name="pref_paxsenix_api_key">Ключ API PaxSenix</string>
-  <string name="pref_paxsenix_api_key_summary">Розблоковує доступ до джерел Spotify та Musixmatch</string>
-  <string name="pref_paxsenix_api_key_dialog_desc">Вставте ваш ключ API PaxSenix. Залиште порожнім, щоб використовувати лише джерела без ключа.</string>
-  <string name="pref_lyrics_translation_category">Переклад тексту та транслітерація</string>
   <string name="pref_lyrics_auto_translate">Автопереклад іншомовних текстів</string>
   <string name="pref_lyrics_auto_translate_summary">Автоматично перекладати тексти пісень іноземними мовами</string>
   <string name="pref_lyrics_target_language">Цільова мова за замовчуванням</string>
@@ -2477,7 +2471,7 @@
   <string name="secure_folder_error_pin_incomplete">Введіть PIN повністю</string>
   <string name="secure_folder_pin_length">Довжина PIN</string>
   <string name="secure_folder_pin_length_option">%1$d цифр</string>
-  <string name="pref_lyrics_sources_category">Тексти пісень з інтернету</string>
+  <string name="pref_lyrics_sources_category">Тексти пісень</string>
   <string name="pref_lyrics_auto_fetch_online">Автоматично отримувати тексти пісень з інтернету</string>
   <string name="pref_lyrics_auto_fetch_online_summary">Шукати текст онлайн, якщо немає вбудованого чи локального.</string>
   <string name="oss_python_description">Вбудоване середовище Python для отримання медіа з інтернету.</string>
@@ -3069,11 +3063,6 @@
   <string name="autoeq_reference_target">Еталонна крива Harman</string>
   <string name="autoeq_harman_in_ear">Внутрішньоканальні 2019</string>
   <string name="autoeq_harman_over_ear">Повнорозмірні 2018</string>
-  <string name="pref_audio_spatial_mode">Режим просторового звуку</string>
-  <string name="pref_audio_spatial_stereo">Розширення стереозвучання</string>
-  <string name="pref_audio_hrtf_title">Навушники — KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">Бінауральний звук KU100. Потрібен mpv із sofalizer і libmysofa.</string>
-  <string name="pref_audio_hrtf_unavailable">Потрібен mpv із sofalizer і libmysofa. Інакше використовуйте розширення стерео.</string>
 
   <string name="pref_layout_playback_with_buttons">Разом із рядом кнопок</string>
   <string name="pref_action_open_page">Відкрити сторінку</string>

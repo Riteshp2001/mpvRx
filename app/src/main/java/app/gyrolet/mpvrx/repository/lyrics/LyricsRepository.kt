@@ -11,7 +11,6 @@ import app.gyrolet.mpvrx.data.lyrics.LrcLibApiService
 import app.gyrolet.mpvrx.data.lyrics.providers.BiniLyricsProvider
 import app.gyrolet.mpvrx.data.lyrics.providers.LyricsFetchQuery
 import app.gyrolet.mpvrx.data.lyrics.providers.LyricsProviderRegistry
-import app.gyrolet.mpvrx.data.lyrics.providers.PaxSenixApi
 import app.gyrolet.mpvrx.data.lyrics.providers.ProviderOutcome
 import app.gyrolet.mpvrx.data.lyrics.providers.TrackRef
 import app.gyrolet.mpvrx.data.lyrics.providers.withBackgroundVocals
@@ -432,8 +431,6 @@ class LyricsRepository(
           isrc = isrc,
         )
       if (query.refs.isEmpty()) return@withContext OnlineLyricsResult()
-
-      PaxSenixApi.setApiKey(audioPreferences.paxsenixApiKey.get())
 
       val resolved = withRecording(query)
 

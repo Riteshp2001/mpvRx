@@ -4532,6 +4532,15 @@ class PlayerActivity :
 
   override fun reloadCurrentYtdlFormat(format: String): Boolean {
     if (MpvConfigOverridePolicy.isOwnedByMpvConf("ytdl-format")) return false
+    return reloadCurrentYtdlPlayback(format)
+  }
+
+  override fun reloadCurrentYtdlSubtitles(): Boolean {
+    if (MpvConfigOverridePolicy.isOwnedByMpvConf("ytdl-raw-options")) return false
+    return reloadCurrentYtdlPlayback()
+  }
+
+  private fun reloadCurrentYtdlPlayback(format: String? = null): Boolean {
     val session = PlaybackSession.state.value
     val item = session.currentItem ?: return false
     if (session.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND) ||
@@ -4539,6 +4548,7 @@ class PlayerActivity :
     ) {
       return false
     }
+    val selectedFormat = format ?: PlaybackSession.getPropertyString("ytdl-format")
 
     val duration =
       PlaybackSession.getPropertyDouble("duration")
@@ -4569,13 +4579,13 @@ class PlayerActivity :
             attempt = 0,
             requestGeneration = requestGeneration,
             legacyMediaIdentifier = legacyMediaIdentifier,
-            ytdlFormat = format,
+            ytdlFormat = selectedFormat,
             positionRestoreOverride = restoreOverride,
           )
         } catch (cancellation: CancellationException) {
           throw cancellation
         } catch (error: Exception) {
-          Log.e(TAG, "Unable to reload yt-dlp format: $format", error)
+          Log.e(TAG, "Unable to reload yt-dlp playback options", error)
           withContext(Dispatchers.Main) {
             if (!isCurrentMediaRequest(requestGeneration)) return@withContext
             playWhenFileLoaded = false

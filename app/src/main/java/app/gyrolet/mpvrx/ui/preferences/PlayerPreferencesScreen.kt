@@ -1083,6 +1083,22 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           item { PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_overlays)) }
           item {
             PreferenceCard {
+              val showAppToasts by preferences.showAppToasts.collectAsState()
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_app_toasts_title),
+                value = showAppToasts,
+                onValueChange = preferences.showAppToasts::set,
+                title = { Text(stringResource(R.string.pref_app_toasts_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_app_toasts_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
               val showVolumeGestureOverlay by preferences.showVolumeGestureOverlay.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_volume_overlay_title),

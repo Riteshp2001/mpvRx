@@ -540,12 +540,13 @@ object AboutScreen : ScrollableSettingsScreen {
                   verticalAlignment = Alignment.CenterVertically,
                   horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                  Column(modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.update_auto_install), style = MaterialTheme.typography.titleMedium,
-                      fontWeight = FontWeight.SemiBold, color = cs.onSurface)
-                    Spacer(Modifier.height(2.dp))
-                    Text(stringResource(R.string.update_auto_install_summary), style = MaterialTheme.typography.bodyMedium, color = cs.outline)
-                  }
+                  Text(
+                    text = stringResource(R.string.update_auto_install),
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = cs.onSurface,
+                  )
                   IconSwitch(checked = isAutoInstallEnabled, onCheckedChange = { updateViewModel.toggleAutoInstall(it) })
                 }
               }

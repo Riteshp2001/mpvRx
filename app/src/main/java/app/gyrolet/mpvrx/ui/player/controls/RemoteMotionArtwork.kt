@@ -37,12 +37,10 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.data.artwork.MotionArtworkQuery
 import app.gyrolet.mpvrx.data.artwork.MotionArtworkRendition
 import app.gyrolet.mpvrx.data.artwork.MotionArtworkResolver
 import app.gyrolet.mpvrx.data.artwork.MotionArtworkSource
-import app.gyrolet.mpvrx.data.artwork.MotionArtworkSurface
 import app.gyrolet.mpvrx.data.artwork.RemoteMotionArtwork
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -57,7 +55,6 @@ import org.koin.compose.koinInject
 @Composable
 internal fun RemoteMotionArtwork(
   query: MotionArtworkQuery,
-  surface: MotionArtworkSurface,
   isPlaying: Boolean,
   modifier: Modifier = Modifier,
 ) {
@@ -65,16 +62,12 @@ internal fun RemoteMotionArtwork(
   val preferences = koinInject<AudioPreferences>()
   val appleMusic by preferences.animatedArtworkAppleMusic.collectAsState()
   val tidal by preferences.animatedArtworkTidal.collectAsState()
-  val spotifyCanvas by preferences.animatedArtworkSpotifyCanvas.collectAsState()
   val tidalClientId by preferences.tidalClientId.collectAsState()
   val tidalClientSecret by preferences.tidalClientSecret.collectAsState()
-  val paxsenixApiKey by preferences.paxsenixApiKey.collectAsState()
-  val sources = remember(surface, appleMusic, tidal, spotifyCanvas, tidalClientId, tidalClientSecret, paxsenixApiKey) {
+  val sources = remember(appleMusic, tidal, tidalClientId, tidalClientSecret) {
     MotionArtworkResolver.sources(
-      surface = surface,
       appleMusic = appleMusic,
       tidal = tidal && tidalClientId.isNotBlank() && tidalClientSecret.isNotBlank(),
-      spotifyCanvas = spotifyCanvas && !BuildConfig.IS_PLAY_STORE_BUILD && paxsenixApiKey.isNotBlank(),
     )
   }
   val lifecycleOwner = LocalLifecycleOwner.current
@@ -147,7 +140,6 @@ private fun MotionArtworkVideo(
           context = context,
           rendition = artwork.renditions[sourceIndex],
           source = artwork.source,
-          portrait = artwork.portrait,
           onFrameReady = { firstFrame = it },
           onFailure = retryOrFallBack,
         )
@@ -182,7 +174,6 @@ internal fun LocalFolderMotionArtworkVideo(
             context = context,
             rendition = MotionArtworkRendition(uri, hls = false),
             source = null,
-            portrait = false,
             onFrameReady = { firstFrame = it },
             onFailure = { Log.w("MotionArtworkVideo", "Local folder cover.mp4 could not be played") },
           )
@@ -203,7 +194,6 @@ private class MotionArtworkTextureView(
   context: Context,
   private val rendition: MotionArtworkRendition,
   private val source: MotionArtworkSource?,
-  private val portrait: Boolean,
   private val onFrameReady: (Boolean) -> Unit,
   private val onFailure: () -> Unit,
 ) : TextureView(context) {
@@ -249,7 +239,7 @@ private class MotionArtworkTextureView(
         .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
         .setPreferredVideoMimeTypes(MimeTypes.VIDEO_H264)
-        .setMaxVideoSize(720, if (portrait) 1280 else 720)
+        .setMaxVideoSize(720, 720)
         .setMaxVideoFrameRate(30)
         .setMaxVideoBitrate(1_500_000)
         .build()

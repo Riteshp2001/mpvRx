@@ -54,8 +54,6 @@
   <string name="pref_appearance_ui_scale_restart_title">إعادة التشغيل مطلوبة</string>
   <string name="pref_appearance_ui_scale_restart_message">أعد تشغيل mpvRx لتطبيق مقياس واجهة التطبيق الجديد %1$d٪.</string>
   <string name="pref_appearance_ui_scale_restart_now">إعادة التشغيل الآن</string>
-  <string name="pref_appearance_unlimited_name_lines_title">إظهار الأسماء كاملة</string>
-  <string name="pref_appearance_unlimited_name_lines_summary">إظهار أسماء المجلدات ومقاطع الفيديو كاملة دون اقتطاع</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">استخدام خلفيات داكنة لأزرار المشغّل دائمًا</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">إبقاء خلفيات أزرار التحكم في المشغّل داكنة في السمات الفاتحة والداكنة والتلقائية</string>
   <string name="pref_appearance_category_file_browser">متصفح الملفات</string>
@@ -496,8 +494,6 @@
   <string name="toast_audio_background_playback_on">تم تفعيل تشغيل الصوت في الخلفية</string>
   <string name="toast_audio_background_playback_off">تم تعطيل تشغيل الصوت في الخلفية</string>
   <string name="pref_audio_background_playback_summary">مواصلة تشغيل الصوت عند مغادرة مشغل الصوت أو إيقاف الشاشة</string>
-  <string name="pref_audio_mini_player_track_switching_title">تغيير الأغاني في المشغل المصغر</string>
-  <string name="pref_audio_mini_player_track_switching_summary">بدّل المقاطع في المشغل المصغر دون فتح المشغل الكامل.</string>
   <string name="pref_video_background_playback_title">التشغيل في الخلفية (مشغل الفيديو)</string>
   <string name="pref_video_background_playback_summary">مواصلة تشغيل صوت الفيديو عند مغادرة مشغل الفيديو أو إيقاف الشاشة</string>
   <string name="deselect_all">إلغاء تحديد الكل</string>
@@ -640,6 +636,8 @@
 
   <!-- Player - Gesture & Action Overlays Section                 -->
   <string name="pref_section_overlays">تراكبات الإيماءات والإجراءات</string>
+  <string name="pref_app_toasts_title">رسائل التطبيق المنبثقة</string>
+  <string name="pref_app_toasts_summary">إظهار الرسائل المنبثقة في جميع أنحاء التطبيق</string>
   <string name="pref_volume_overlay_title">تراكب شريط مستوى الصوت</string>
   <string name="pref_volume_overlay_summary">إظهار شريط مستوى الصوت العمودي أثناء السحب لضبط الصوت</string>
   <string name="pref_brightness_overlay_title">تراكب شريط السطوع</string>
@@ -1839,7 +1837,6 @@
   <string name="pref_mpv_conf_override_osd_summary">يتجاوز خط OSD وهوامشه ومناطقه الآمنة.</string>
   <string name="mpv_config_owned_title">يتحكم به mpv.conf</string>
   <string name="mpv_config_owned_message">يتحكم به mpv.conf. غيّر ملكية الخيار في الإعدادات المتقدمة لاستخدام هذا التحكم.</string>
-  <string name="pref_lyrics_translation_category">ترجمة كلمات الأغاني ونقلها حرفياً</string>
   <string name="pref_lyrics_auto_translate">ترجمة كلمات الأغاني الأجنبية تلقائياً</string>
   <string name="pref_lyrics_auto_translate_summary">ترجمة كلمات الأغاني بلغات أجنبية تلقائياً إلى اللغة المفضلة</string>
   <string name="pref_lyrics_target_language">اللغة المستهدفة الافتراضية</string>
@@ -2581,10 +2578,7 @@
   <string name="lyrics_provider_not_found">لا توجد كلمات لهذه الأغنية لدى %1$s</string>
   <string name="lyrics_provider_sheet_title">مصدر كلمات الأغاني</string>
   <string name="lyrics_search_online">بحث عبر الإنترنت</string>
-  <string name="pref_paxsenix_api_key">مفتاح API لـ PaxSenix</string>
-  <string name="pref_paxsenix_api_key_summary">يتيح مسارات Spotify وMusixmatch</string>
-  <string name="pref_paxsenix_api_key_dialog_desc">الصق مفتاح API لـ PaxSenix. اتركه فارغًا لاستخدام المسارات التي لا تتطلب مفتاحًا فقط.</string>
-  <string name="pref_lyrics_sources_category">كلمات الأغاني عبر الإنترنت</string>
+  <string name="pref_lyrics_sources_category">كلمات الأغاني</string>
   <string name="pref_lyrics_auto_fetch_online">جلب كلمات الأغاني من الإنترنت تلقائيًا</string>
   <string name="pref_lyrics_auto_fetch_online_summary">ابحث عن كلمات عبر الإنترنت عند غياب الكلمات المحلية أو المضمّنة.</string>
   <string name="lyrics_translation_off_summary">عرض اللغة الأصلية دون ترجمة</string>
@@ -3190,11 +3184,6 @@
   <string name="autoeq_reference_target">المنحنى المرجعي المستهدف من Harman</string>
   <string name="autoeq_harman_in_ear">داخل الأذن 2019</string>
   <string name="autoeq_harman_over_ear">حول الأذن 2018</string>
-  <string name="pref_audio_spatial_mode">وضع الصوت المكاني</string>
-  <string name="pref_audio_spatial_stereo">توسيع الستيريو</string>
-  <string name="pref_audio_hrtf_title">سماعات الرأس - KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">صوت ثنائي الأذن KU100. يتطلب mpv مع sofalizer وlibmysofa.</string>
-  <string name="pref_audio_hrtf_unavailable">يتطلب mpv مع sofalizer وlibmysofa. وإلا، استخدم توسيع الاستريو.</string>
   <string name="pref_layout_playback_with_buttons">مع صف أزرار</string>
   <string name="pref_action_open_page">فتح الصفحة</string>
   <string name="pref_action_open_dialog">فتح مربع الحوار</string>

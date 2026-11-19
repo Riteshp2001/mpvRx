@@ -74,7 +74,6 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.legacy_navigation_bar_title, itemIndex = 9),
         SettingsSearchListAnchor(titleRes = R.string.progressive_navigation_blur_title, itemIndex = 9),
         SettingsSearchListAnchor(titleRes = R.string.connected_mini_player_navigation_title, itemIndex = 9),
-        SettingsSearchListAnchor(titleRes = R.string.pref_appearance_unlimited_name_lines_title, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_appearance_show_unplayed_old_video_label_title, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_appearance_unplayed_old_video_days_title, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_appearance_auto_scroll_title, itemIndex = 3),
@@ -150,6 +149,7 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_player_controls_show_loading_circle, itemIndex = 5),
         SettingsSearchListAnchor(titleRes = R.string.pref_player_controls_allow_gestures_in_panels, itemIndex = 5),
         SettingsSearchListAnchor(titleRes = R.string.swap_the_volume_and_brightness_slider, itemIndex = 5),
+        SettingsSearchListAnchor(titleRes = R.string.pref_app_toasts_title, itemIndex = 9),
       ),
     GesturePreferencesScreen to
       listOf(
@@ -205,7 +205,6 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_audio_animated_artwork_tidal_title, itemIndex = 5),
         SettingsSearchListAnchor(titleRes = R.string.pref_tidal_client_id, itemIndex = 5),
         SettingsSearchListAnchor(titleRes = R.string.pref_tidal_client_secret, itemIndex = 5),
-        SettingsSearchListAnchor(titleRes = R.string.pref_audio_animated_artwork_spotify_canvas_title, itemIndex = 5),
         SettingsSearchListAnchor(titleRes = R.string.pref_preferred_languages, itemIndex = 7),
         SettingsSearchListAnchor(titleRes = R.string.pref_audio_pitch_correction_title, itemIndex = 7),
         SettingsSearchListAnchor(titleRes = R.string.pref_audio_volume_normalization_title, itemIndex = 7),
@@ -216,10 +215,9 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_audio_channels, itemIndex = 7),
         SettingsSearchListAnchor(titleRes = R.string.pref_audio_volume_boost_cap, itemIndex = 7),
         SettingsSearchListAnchor(titleRes = R.string.pref_lyrics_auto_fetch_online, itemIndex = 9),
-        SettingsSearchListAnchor(titleRes = R.string.pref_lyrics_auto_translate, itemIndex = 11),
-        SettingsSearchListAnchor(titleRes = R.string.pref_lyrics_target_language, itemIndex = 11),
-        SettingsSearchListAnchor(titleRes = R.string.pref_lyrics_display_mode, itemIndex = 11),
-        SettingsSearchListAnchor(titleRes = R.string.pref_paxsenix_api_key, itemIndex = 11),
+        SettingsSearchListAnchor(titleRes = R.string.pref_lyrics_auto_translate, itemIndex = 9),
+        SettingsSearchListAnchor(titleRes = R.string.pref_lyrics_target_language, itemIndex = 9),
+        SettingsSearchListAnchor(titleRes = R.string.pref_lyrics_display_mode, itemIndex = 9),
       ),
     SubtitlesPreferencesScreen to
       listOf(
@@ -294,9 +292,18 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.ui_yt_dlp_manager, itemIndex = 0),
         SettingsSearchListAnchor(titleRes = R.string.ui_release_channel, itemIndex = 0),
         SettingsSearchListAnchor(titleRes = R.string.ytdlp_subtitles_language, itemIndex = 0),
+        SettingsSearchListAnchor(titleRes = R.string.ui_download_media_subtitles, itemIndex = 0),
+        SettingsSearchListAnchor(titleRes = R.string.ui_include_auto_generated_subtitles, itemIndex = 0),
+        SettingsSearchListAnchor(titleRes = R.string.ytdlp_cookies_title, itemIndex = 0),
         SettingsSearchListAnchor(titleRes = R.string.ytdlp_playlist_behavior, itemIndex = 0),
-        SettingsSearchListAnchor(titleRes = R.string.pref_section_p2p_streaming, itemIndex = 0),
-        SettingsSearchListAnchor(titleRes = R.string.pref_enable_p2p_streaming_title, itemIndex = 0),
+        SettingsSearchListAnchor(
+          titleRes = R.string.pref_section_p2p_streaming,
+          itemIndex = if (app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP) 1 else 0,
+        ),
+        SettingsSearchListAnchor(
+          titleRes = R.string.pref_enable_p2p_streaming_title,
+          itemIndex = if (app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP) 2 else 1,
+        ),
       ),
   )
 

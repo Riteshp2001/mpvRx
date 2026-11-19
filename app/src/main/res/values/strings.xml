@@ -84,8 +84,6 @@
   <string name="pref_appearance_ui_scale_restart_title">Restart required</string>
   <string name="pref_appearance_ui_scale_restart_message">Restart mpvRx to apply the new app UI scale of %1$d%%.</string>
   <string name="pref_appearance_ui_scale_restart_now">Restart now</string>
-  <string name="pref_appearance_unlimited_name_lines_title">Show full names</string>
-  <string name="pref_appearance_unlimited_name_lines_summary">Show full folder and video names without truncation</string>
   <string name="pref_appearance_force_dark_player_buttons_background_title">Always use dark button backgrounds</string>
   <string name="pref_appearance_force_dark_player_buttons_background_summary">Keep player control button backgrounds dark in light, dark, and automatic themes</string>
   <string name="pref_appearance_category_file_browser">File Browser</string>
@@ -672,8 +670,6 @@
   <string name="toast_audio_background_playback_on">Audio background playback on</string>
   <string name="toast_audio_background_playback_off">Audio background playback off</string>
   <string name="pref_audio_background_playback_summary">Keep audio playing when leaving the audio player or turning off screen</string>
-  <string name="pref_audio_mini_player_track_switching_title">Switch songs in mini player</string>
-  <string name="pref_audio_mini_player_track_switching_summary">Change tracks in the mini player without opening the full player.</string>
   <string name="pref_video_background_playback_title">Video Player Background Playback</string>
   <string name="pref_video_background_playback_summary">Keep video audio playing when leaving the video player or turning off screen</string>
   <string name="deselect_all">Deselect All</string>
@@ -894,6 +890,8 @@
 
   <!-- Player - Gesture & Action Overlays Section                 -->
   <string name="pref_section_overlays">Gesture &amp; Action Overlays</string>
+  <string name="pref_app_toasts_title">App toasts</string>
+  <string name="pref_app_toasts_summary">Show pop-up messages across the app</string>
   <string name="pref_volume_overlay_title">Volume slider overlay</string>
   <string name="pref_volume_overlay_summary">Show the vertical volume pill while swiping for volume</string>
   <string name="pref_brightness_overlay_title">Brightness slider overlay</string>
@@ -2301,13 +2299,9 @@
   <string name="lyrics_provider_not_found">No lyrics from %1$s for this track</string>
   <string name="lyrics_provider_sheet_title">Lyrics source</string>
   <string name="lyrics_search_online">Search Online</string>
-  <string name="pref_paxsenix_api_key">PaxSenix API key</string>
-  <string name="pref_paxsenix_api_key_summary">Unlocks the Spotify and Musixmatch routes</string>
-  <string name="pref_paxsenix_api_key_dialog_desc">Paste your PaxSenix API key. Leave it empty to use only the routes that need no key.</string>
-  <string name="pref_lyrics_sources_category">Online Lyrics</string>
+  <string name="pref_lyrics_sources_category">Lyrics</string>
   <string name="pref_lyrics_auto_fetch_online">Automatically fetch online lyrics</string>
   <string name="pref_lyrics_auto_fetch_online_summary">Find online lyrics when embedded or local lyrics are missing.</string>
-  <string name="pref_lyrics_translation_category">Lyrics Translation &amp; Romanization</string>
   <string name="pref_lyrics_auto_translate">Auto-translate foreign lyrics</string>
   <string name="pref_lyrics_auto_translate_summary">Automatically translate foreign language lyrics</string>
   <string name="pref_lyrics_target_language">Default target language</string>
@@ -3027,11 +3021,6 @@
   <string name="autoeq_reference_target">Harman reference target</string>
   <string name="autoeq_harman_in_ear">In-ear 2019</string>
   <string name="autoeq_harman_over_ear">Over-ear 2018</string>
-  <string name="pref_audio_spatial_mode">Spatial audio mode</string>
-  <string name="pref_audio_spatial_stereo">Stereo widening</string>
-  <string name="pref_audio_hrtf_title">Headphones - KU100 SOFA</string>
-  <string name="pref_audio_hrtf_summary">KU100 binaural audio. Requires mpv with sofalizer and libmysofa.</string>
-  <string name="pref_audio_hrtf_unavailable">Requires mpv with sofalizer and libmysofa. Otherwise, use stereo widening.</string>
   <string name="audio_quality_hi_res">Hi-Res lossless</string>
   <string name="audio_quality_lossless">Lossless</string>
   <string name="audio_quality_lossy">Lossy</string>
@@ -3117,9 +3106,6 @@
   <string name="pref_tidal_credentials_not_set">Not set</string>
   <string name="pref_tidal_client_secret_set">Saved</string>
   <string name="pref_tidal_credentials_dialog_desc">Create an app at developer.tidal.com and paste its client credentials. They are stored on this device and sent only to TIDAL.</string>
-  <string name="pref_audio_animated_artwork_spotify_canvas_title">Spotify Canvas</string>
-  <string name="pref_audio_animated_artwork_spotify_canvas_summary">Last resort for the portrait immersive background. Uses your PaxSenix API key.</string>
-  <string name="pref_audio_animated_artwork_spotify_canvas_needs_key">Needs a PaxSenix API key (Lyrics settings) and Immersive artwork.</string>
   <string name="jellyfin_featured">Featured</string>
   <string name="jellyfin_series">Series</string>
   <string name="jellyfin_movie">Movie</string>

@@ -8,9 +8,11 @@ import android.os.Looper
 import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.App
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicLong
+import org.koin.core.context.GlobalContext
 import android.widget.Toast as NativeToast
 
 enum class AppToastType { Normal, Success, Info, Warning, Error, Loading }
@@ -79,14 +81,18 @@ class AppToast private constructor(
       if (text.isBlank()) return@post
       nativeToast?.cancel()
       nativeToast = null
+      if (!AppToastRouter.enabled) {
+        AppToastRouter.dismiss(id)
+        return@post
+      }
+      val isCurrent = { revision.get() == token && AppToastRouter.enabled }
       val fallback = {
-        if (revision.get() == token) {
+        if (isCurrent()) {
           nativeToast = NativeToast.makeText(context, text, duration).also { it.show() }
         }
       }
       val owner = activity.get()
       val waitForHost = owner != null && !owner.isFinishing && !owner.isDestroyed && !owner.isInPictureInPictureMode
-      val isCurrent = { revision.get() == token }
       val toastMessage = AppToastMessage(id, text, duration, type, icon, action)
       if (!AppToastRouter.show(toastMessage, waitForHost, isCurrent, fallback)) {
         fallback()
@@ -155,8 +161,12 @@ internal object AppToastRouter {
   )
 
   val mainHandler = Handler(Looper.getMainLooper())
+  private val preferences by lazy { GlobalContext.get().get<PlayerPreferences>() }
   private val sinks = linkedMapOf<Any, WeakReference<AppToastSink>>()
   private val pending = linkedMapOf<Long, PendingToast>()
+
+  val enabled: Boolean
+    get() = preferences.showAppToasts.get()
 
   fun register(owner: Any, sink: AppToastSink) {
     sinks.remove(owner)
@@ -191,6 +201,10 @@ internal object AppToastRouter {
   fun dismiss(id: Long) {
     removePending(id)
     sinks.values.forEach { it.get()?.dismiss(id) }
+  }
+
+  fun clearPending() {
+    pending.keys.toList().forEach(::removePending)
   }
 
   private fun removePending(id: Long) {

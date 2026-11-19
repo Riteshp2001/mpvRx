@@ -55,6 +55,8 @@ interface PlayerHost {
 
   fun reloadCurrentYtdlFormat(format: String): Boolean = false
 
+  fun reloadCurrentYtdlSubtitles(): Boolean = false
+
   fun playQueueItem(index: Int)
 
   fun reorderQueueItem(
