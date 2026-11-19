@@ -148,7 +148,10 @@ fun GestureHandler(
   val anyPanelShown = panelShown != Panels.None || externalPanelShown
   val allowPanelGesturesPreference by playerPreferences.allowGesturesInPanels.collectAsState()
   val settingsPanelShown = panelShown == Panels.PlayerSettings
-  val allowGesturesInPanels = allowPanelGesturesPreference && !settingsPanelShown
+  val subtitlePanelShown = panelShown == Panels.SubtitleDelay || panelShown == Panels.SubtitleSettings
+  // Subtitle tuning leaves the uncovered video interactive; panel controls own their hit region.
+  val allowGesturesInPanels = !settingsPanelShown &&
+    (allowPanelGesturesPreference || (subtitlePanelShown && !externalPanelShown))
   val playlistSwipeBlocked by rememberUpdatedState(anyPanelShown && !allowGesturesInPanels)
   val currentExternalPanelShown by rememberUpdatedState(externalPanelShown)
   val currentOnDismissExternalPanel by rememberUpdatedState(onDismissExternalPanel)
@@ -1506,6 +1509,7 @@ fun GestureHandler(
           swipeSubtitlesToSeekDialog,
           isSwipeSubtitlesInverted,
           anyPanelShown,
+          allowGesturesInPanels,
         ) {
           if ((!horizontalSwipeToSeek && !swipeSubtitlesToSeekDialog) ||
             areControlsLocked ||
@@ -1589,8 +1593,8 @@ fun GestureHandler(
                         // Don't conflict with long press
                         !isDynamicSpeedControlActive &&
                         // Don't conflict with speed control
-                        !anyPanelShown
-                      ) { // Only when no panels are shown
+                        (!anyPanelShown || allowGesturesInPanels)
+                      ) {
                         if (claimGesture(GestureOwner.HORIZONTAL_SEEK)) {
                           gestureType = "horizontal_seek"
                           hasStartedSeeking = true

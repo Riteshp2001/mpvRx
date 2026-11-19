@@ -80,6 +80,16 @@ internal fun mediaPathKey(path: String?): String? {
   return storagePathKey(canonicalPath ?: normalizedPath)
 }
 
+/** A volume root, its aliases, and paths outside mounted volumes lead back to storage selection. */
+internal fun storagePickerParentPath(path: String?, storageRoots: Collection<String>): String? {
+  val pathKey = mediaPathKey(path) ?: return null
+  val rootKeys = storageRoots.mapNotNull(::mediaPathKey)
+  if (rootKeys.none { root -> pathKey != root && isMediaPathInFolder(pathKey, root) }) return null
+  val parent = parentStoragePath(path) ?: return null
+  val parentKey = mediaPathKey(parent) ?: return null
+  return parent.takeIf { rootKeys.any { root -> isMediaPathInFolder(parentKey, root) } }
+}
+
 internal fun isMediaPathInFolder(path: String, folderPath: String): Boolean {
   if (!path.startsWith("content://") || !folderPath.startsWith("content://")) {
     return path.equals(folderPath, ignoreCase = true) ||

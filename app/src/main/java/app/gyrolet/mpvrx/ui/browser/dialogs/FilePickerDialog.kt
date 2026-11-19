@@ -19,8 +19,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -60,6 +60,9 @@ import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import app.gyrolet.mpvrx.utils.storage.StorageVolumeUtils
+import app.gyrolet.mpvrx.utils.storage.mediaPathKey
+import app.gyrolet.mpvrx.utils.storage.normalizeStoragePath
+import app.gyrolet.mpvrx.utils.storage.storagePickerParentPath
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -159,15 +162,14 @@ fun FilePickerDialog(
   // Determine what to show based on selectedPath
   val showStorageRoot = selectedPath == null
 
-  val currentDir =
-    remember(selectedPath) {
-      selectedPath?.let { File(it) }
-    }
   val storageRoots = remember(storageVolumes) {
-    storageVolumes.mapNotNull(StorageVolumeUtils::getVolumePath).toSet() +
-      Environment.getExternalStorageDirectory().absolutePath
+    (storageVolumes.mapNotNull(StorageVolumeUtils::getVolumePath) +
+      Environment.getExternalStorageDirectory().absolutePath)
+      .mapNotNull(::normalizeStoragePath).distinctBy(::mediaPathKey).toSet()
   }
-  val parentPath = if (selectedPath in storageRoots) null else currentDir?.parent
+  val parentPath = remember(selectedPath, storageRoots) {
+    storagePickerParentPath(selectedPath, storageRoots)
+  }
 
   // One deduplicated snapshot supplies both keys and rows. Classify each path once and
   // namespace its key so it cannot collide with a file, folder or volume row.
@@ -222,11 +224,12 @@ fun FilePickerDialog(
     subtitle = selectedPath
       ?: androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_select_storage_location),
     scrollContent = false,
+    fixedHeight = true,
     headerActions = {
       NavigationButtons(
         selectedPath = selectedPath,
         onBack = { selectedPath = parentPath },
-        onHome = { selectedPath = Environment.getExternalStorageDirectory().absolutePath },
+        onHome = { selectedPath = storageRoots.singleOrNull() },
         onSystemPicker = onSystemPickerRequest,
         initialFocusRequester = initialFocusRequester,
         buttonSize = 40.dp,
@@ -252,7 +255,7 @@ fun FilePickerDialog(
       selectedPath = parentPath
     }
     Column(
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier.fillMaxSize(),
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       if (!showStorageRoot) {
@@ -264,7 +267,7 @@ fun FilePickerDialog(
       }
 
       LazyColumn(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+        modifier = Modifier.fillMaxWidth().weight(1f),
         verticalArrangement = Arrangement.spacedBy(4.dp),
       ) {
         if (showStorageRoot) {

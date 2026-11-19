@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -57,6 +58,8 @@ import app.gyrolet.mpvrx.ui.theme.MotionPolicy
  * that is much smaller in landscape — where the height is the scarce axis and
  * a half-screen body would leave nothing for the actions.
  *
+ * Storage browsers use [fixedHeight] to keep navigation and footer actions stationary as paths change.
+ *
  * Player callers can opt into [PlayerSheet] to share its glass material and backdrop window.
  *
  * Only ever fully open or gone: a half-expanded detent is a second thing to
@@ -75,6 +78,7 @@ fun AppPickerSheet(
   headerActions: @Composable RowScope.() -> Unit = {},
   actions: @Composable RowScope.() -> Unit = {},
   usePlayerSheet: Boolean = false,
+  fixedHeight: Boolean = false,
   content: @Composable () -> Unit,
 ) {
   val configuration = LocalConfiguration.current
@@ -91,6 +95,7 @@ fun AppPickerSheet(
         modifier =
           Modifier
             .fillMaxWidth()
+            .then(if (fixedHeight) Modifier.fillMaxHeight(0.85f) else Modifier)
             .then(if (usePlayerSheet) Modifier else Modifier.navigationBarsPadding().imePadding())
             .padding(horizontal = 20.dp)
             .padding(bottom = if (usePlayerSheet) 0.dp else 12.dp),
@@ -147,8 +152,8 @@ fun AppPickerSheet(
           modifier =
             Modifier
               .fillMaxWidth()
-              .weight(1f, fill = false)
-              .heightIn(max = bodyMaxHeight)
+              .weight(1f, fill = fixedHeight)
+              .then(if (fixedHeight) Modifier else Modifier.heightIn(max = bodyMaxHeight))
               .then(if (scrollContent) Modifier.verticalScroll(rememberScrollState()) else Modifier),
         ) {
           content()

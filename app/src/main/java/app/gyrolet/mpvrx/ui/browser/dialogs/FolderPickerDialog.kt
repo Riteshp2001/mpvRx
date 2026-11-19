@@ -18,8 +18,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -67,6 +67,9 @@ import app.gyrolet.mpvrx.utils.media.CopyPasteOps
 import app.gyrolet.mpvrx.utils.media.OpenDocumentTreeContract
 import app.gyrolet.mpvrx.utils.media.isPathBasedDocumentAuthority
 import app.gyrolet.mpvrx.utils.storage.StorageVolumeUtils
+import app.gyrolet.mpvrx.utils.storage.mediaPathKey
+import app.gyrolet.mpvrx.utils.storage.normalizeStoragePath
+import app.gyrolet.mpvrx.utils.storage.storagePickerParentPath
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -125,15 +128,14 @@ fun FolderPickerDialog(
   // Determine what to show based on selectedPath
   val showStorageRoot = selectedPath == null
 
-  val currentDir =
-    remember(selectedPath) {
-      selectedPath?.let { File(it) }
-    }
   val storageRoots = remember(storageVolumes) {
-    storageVolumes.mapNotNull(StorageVolumeUtils::getVolumePath).toSet() +
-      Environment.getExternalStorageDirectory().absolutePath
+    (storageVolumes.mapNotNull(StorageVolumeUtils::getVolumePath) +
+      Environment.getExternalStorageDirectory().absolutePath)
+      .mapNotNull(::normalizeStoragePath).distinctBy(::mediaPathKey).toSet()
   }
-  val parentPath = if (selectedPath in storageRoots) null else currentDir?.parent
+  val parentPath = remember(selectedPath, storageRoots) {
+    storagePickerParentPath(selectedPath, storageRoots)
+  }
 
   LaunchedEffect(selectedPath) {
     query = ""
@@ -218,6 +220,7 @@ fun FolderPickerDialog(
         null
       },
     scrollContent = false,
+    fixedHeight = true,
     headerActions = {
       if (selectedPath != null) {
         FilledTonalIconButton(
@@ -239,7 +242,7 @@ fun FolderPickerDialog(
         }
       }
       FilledTonalIconButton(
-        onClick = { selectedPath = Environment.getExternalStorageDirectory().absolutePath },
+        onClick = { selectedPath = storageRoots.singleOrNull() },
         modifier = Modifier.size(40.dp).tvInitialFocus(initialFocusRequester),
         colors =
           IconButtonDefaults.filledTonalIconButtonColors(
@@ -252,7 +255,7 @@ fun FolderPickerDialog(
           imageVector = Icons.RoundedFilled.Home,
           contentDescription =
             androidx.compose.ui.res.stringResource(
-              app.gyrolet.mpvrx.R.string.ui_go_to_internal_storage,
+              app.gyrolet.mpvrx.R.string.generic_home,
             ),
         )
       }
@@ -308,7 +311,7 @@ fun FolderPickerDialog(
       selectedPath = parentPath
     }
     Column(
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier.fillMaxSize(),
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (!showStorageRoot && currentSpace != null) {
@@ -328,7 +331,7 @@ fun FolderPickerDialog(
           modifier =
             Modifier
               .fillMaxWidth()
-              .heightIn(min = 120.dp, max = 360.dp),
+              .weight(1f),
           verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
           if (showStorageRoot) {
