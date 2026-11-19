@@ -52,6 +52,47 @@ enum class JellyfinSearchCategory(val displayName: String) {
   EPISODES("Episodes"),
 }
 
+enum class JellyfinDynamicSectionType {
+  BECAUSE_YOU_WATCHED,
+  BECAUSE_YOU_LIKED,
+  STARRING,
+  DIRECTED_BY,
+  WRITTEN_BY,
+  ACTOR_FROM_WATCHED,
+  WATCH_AGAIN,
+  CRITICS_CHOICE,
+  GENRE_SPOTLIGHT,
+}
+
+sealed interface JellyfinDynamicSection {
+  val key: String
+  val title: String
+  val subtitle: String?
+  val isSpotlight: Boolean
+  val isRanked: Boolean
+
+  data class Pending(
+    override val key: String,
+    override val title: String,
+    override val subtitle: String? = null,
+    val type: JellyfinDynamicSectionType,
+    override val isSpotlight: Boolean = false,
+    override val isRanked: Boolean = false,
+  ) : JellyfinDynamicSection
+
+  data class Loaded(
+    override val key: String,
+    override val title: String,
+    override val subtitle: String? = null,
+    val type: JellyfinDynamicSectionType,
+    val items: List<JellyfinItem>,
+    val person: JellyfinPerson? = null,
+    val referenceItem: JellyfinItem? = null,
+    override val isSpotlight: Boolean = false,
+    override val isRanked: Boolean = false,
+  ) : JellyfinDynamicSection
+}
+
 @Immutable
 data class JellyfinQueryResult(
   val items: List<JellyfinItem>,
@@ -95,6 +136,7 @@ data class JellyfinItem(
   val genres: List<String> = emptyList(),
   val isFolder: Boolean = false,
   val primaryImageTag: String? = null,
+  val thumbImageTag: String? = null,
   val backdropImageTag: String? = null,
   val logoImageTag: String? = null,
   val parentLogoImageTag: String? = null,

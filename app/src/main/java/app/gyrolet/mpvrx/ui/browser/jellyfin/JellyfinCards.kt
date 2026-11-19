@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -736,6 +737,8 @@ fun JellyfinSectionHeader(
   modifier: Modifier = Modifier,
   subtitle: String? = null,
   onSeeAll: (() -> Unit)? = null,
+  personAvatar: app.gyrolet.mpvrx.domain.jellyfin.JellyfinPerson? = null,
+  server: JellyfinServer? = null,
 ) {
   Row(
     modifier =
@@ -746,6 +749,43 @@ fun JellyfinSectionHeader(
     horizontalArrangement = Arrangement.spacedBy(12.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
+    if (personAvatar != null && server != null) {
+      val avatarUrl =
+        remember(server.serverUrl, personAvatar.id, personAvatar.primaryImageTag, server.accessToken) {
+          JellyfinClient.getImageUrl(
+            serverUrl = server.serverUrl,
+            itemId = personAvatar.id,
+            imageTag = personAvatar.primaryImageTag,
+            maxWidth = 150,
+            token = server.accessToken,
+          )
+        }
+      Box(
+        modifier =
+          Modifier
+            .size(42.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        contentAlignment = Alignment.Center,
+      ) {
+        if (!personAvatar.primaryImageTag.isNullOrBlank()) {
+          RemoteImage(
+            url = avatarUrl,
+            contentDescription = personAvatar.name,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+          )
+        } else {
+          Icon(
+            imageVector = Icons.RoundedFilled.Person,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(24.dp),
+          )
+        }
+      }
+    }
+
     // The title starts on the same edge as the cards below it.
     Column(Modifier.weight(1f).semantics { heading() }) {
       Text(
@@ -803,6 +843,8 @@ fun JellyfinHorizontalSection(
   onSeeAll: (() -> Unit)? = null,
   subtitle: String? = null,
   isContinueWatching: Boolean = false,
+  showRankBadges: Boolean = false,
+  personAvatar: app.gyrolet.mpvrx.domain.jellyfin.JellyfinPerson? = null,
 ) {
   if (items.isEmpty()) return
 
@@ -814,6 +856,8 @@ fun JellyfinHorizontalSection(
       title = title,
       subtitle = subtitle,
       onSeeAll = onSeeAll,
+      personAvatar = personAvatar,
+      server = server,
     )
 
     // Rows scroll edge to edge; the content padding lines the first card up with the title.
@@ -823,7 +867,11 @@ fun JellyfinHorizontalSection(
       horizontalArrangement = Arrangement.spacedBy(JellyfinSpacing.RowItemGap),
       contentPadding = PaddingValues(horizontal = gutter, vertical = 4.dp),
     ) {
-      items(items, key = { it.id }) { item ->
+      itemsIndexed(
+        items = items,
+        key = { _, item -> item.id },
+        contentType = { _, _ -> if (isContinueWatching) "resume_card" else "poster_card" },
+      ) { index, item ->
         if (isContinueWatching) {
           JellyfinResumeCard(
             item = item,
@@ -839,6 +887,244 @@ fun JellyfinHorizontalSection(
             onClick = { onItemClick(item) },
             onLongClick = onItemLongClick?.let { { it(item) } },
             cardWidth = 156.dp,
+            rankIndex = if (showRankBadges) index + 1 else null,
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+fun JellyfinSpotlightSection(
+  title: String,
+  items: List<JellyfinItem>,
+  server: JellyfinServer,
+  onItemClick: (JellyfinItem) -> Unit,
+  onItemLongClick: ((JellyfinItem) -> Unit)? = null,
+  modifier: Modifier = Modifier,
+  subtitle: String? = null,
+) {
+  if (items.isEmpty()) return
+
+  Column(
+    modifier = modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(JellyfinSpacing.HeaderGap),
+  ) {
+    JellyfinSectionHeader(
+      title = title,
+      subtitle = subtitle,
+    )
+
+    val gutter = jellyfinGutter()
+    LazyRow(
+      modifier = Modifier.tvFocusGroup(),
+      horizontalArrangement = Arrangement.spacedBy(JellyfinSpacing.RowItemGap),
+      contentPadding = PaddingValues(horizontal = gutter, vertical = 4.dp),
+    ) {
+      items(
+        items = items,
+        key = { it.id },
+        contentType = { "spotlight_card" },
+      ) { item ->
+        JellyfinResumeCard(
+          item = item,
+          server = server,
+          onClick = { onItemClick(item) },
+          onLongClick = onItemLongClick?.let { { it(item) } },
+        )
+      }
+    }
+  }
+}
+
+@Composable
+fun JellyfinPopularStudiosSection(
+  studios: List<JellyfinItem>,
+  server: JellyfinServer,
+  onStudioClick: (JellyfinItem) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  if (studios.isEmpty()) return
+
+  Column(
+    modifier = modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(JellyfinSpacing.HeaderGap),
+  ) {
+    JellyfinSectionHeader(
+      title = stringResource(R.string.home_popular_studios),
+      subtitle = stringResource(R.string.home_popular_studios_subtitle),
+    )
+
+    val gutter = jellyfinGutter()
+    LazyRow(
+      modifier = Modifier.tvFocusGroup(),
+      horizontalArrangement = Arrangement.spacedBy(JellyfinSpacing.RowItemGap),
+      contentPadding = PaddingValues(horizontal = gutter, vertical = 4.dp),
+    ) {
+      items(
+        items = studios,
+        key = { it.id },
+        contentType = { "studio_card" },
+      ) { studio ->
+        JellyfinStudioCard(
+          studio = studio,
+          server = server,
+          onClick = { onStudioClick(studio) },
+        )
+      }
+    }
+  }
+}
+
+@Composable
+fun JellyfinStudioCard(
+  studio: JellyfinItem,
+  server: JellyfinServer,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val shape = RoundedCornerShape(12.dp)
+  val isThumb = studio.thumbImageTag != null
+  val imageTag = studio.thumbImageTag ?: studio.primaryImageTag
+  val imageType = if (isThumb) "Thumb" else "Primary"
+  val imageUrl =
+    remember(server.serverUrl, studio.id, imageTag, imageType, server.accessToken) {
+      JellyfinClient.getImageUrl(
+        serverUrl = server.serverUrl,
+        itemId = studio.id,
+        imageTag = imageTag,
+        imageType = imageType,
+        maxWidth = 480,
+        token = server.accessToken,
+      )
+    }
+
+  Column(
+    modifier = modifier
+      .width(230.dp)
+      .tvFocusMemory(listOf("JellyfinStudioCard", server.id, studio.id))
+      .tvFocusHighlight(shape, focusedScale = 1.03f)
+      .mediaCardClickable(onClick = onClick),
+  ) {
+    Surface(
+      shape = shape,
+      color = MaterialTheme.colorScheme.surfaceVariant,
+      tonalElevation = 4.dp,
+      modifier = Modifier
+        .fillMaxWidth()
+        .aspectRatio(16f / 9f),
+    ) {
+      Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+      ) {
+        if (!imageTag.isNullOrBlank()) {
+          RemoteImage(
+            url = imageUrl,
+            contentDescription = studio.name,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            maxDimensionPx = 640,
+          )
+        } else {
+          Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(12.dp),
+          ) {
+            Icon(
+              imageVector = Icons.RoundedFilled.Movie,
+              contentDescription = null,
+              tint = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.size(28.dp),
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+              text = studio.name,
+              style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+              color = MaterialTheme.colorScheme.onSurface,
+              textAlign = TextAlign.Center,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+fun JellyfinRowSkeleton(
+  title: String,
+  modifier: Modifier = Modifier,
+  subtitle: String? = null,
+  isSpotlight: Boolean = false,
+) {
+  val infiniteTransition = rememberInfiniteTransition(label = "jellyfin_shimmer")
+  val shimmerTranslate = infiniteTransition.animateFloat(
+    initialValue = 0f,
+    targetValue = 1000f,
+    animationSpec = infiniteRepeatable(
+      animation = tween(durationMillis = 1200, easing = LinearEasing),
+      repeatMode = RepeatMode.Restart,
+    ),
+    label = "jellyfin_shimmer",
+  )
+
+  val baseColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
+  val shimmerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f)
+  val shimmerBrush = Brush.linearGradient(
+    colors = listOf(baseColor, shimmerColor, baseColor),
+    start = Offset(shimmerTranslate.value - 300f, 0f),
+    end = Offset(shimmerTranslate.value, 0f),
+  )
+
+  Column(
+    modifier = modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(JellyfinSpacing.HeaderGap),
+  ) {
+    JellyfinSectionHeader(
+      title = title,
+      subtitle = subtitle,
+    )
+
+    val gutter = jellyfinGutter()
+    val cardWidth = if (isSpotlight) 260.dp else 156.dp
+    val aspectRatio = if (isSpotlight) 16f / 9f else 2f / 3f
+
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState(), enabled = false)
+        .padding(horizontal = gutter),
+      horizontalArrangement = Arrangement.spacedBy(JellyfinSpacing.RowItemGap),
+    ) {
+      repeat(5) {
+        Column(modifier = Modifier.width(cardWidth)) {
+          Box(
+            modifier = Modifier
+              .fillMaxWidth()
+              .aspectRatio(aspectRatio)
+              .clip(RoundedCornerShape(8.dp))
+              .background(shimmerBrush),
+          )
+          Spacer(Modifier.height(8.dp))
+          Box(
+            modifier = Modifier
+              .fillMaxWidth(0.7f)
+              .height(14.dp)
+              .clip(RoundedCornerShape(4.dp))
+              .background(shimmerBrush),
+          )
+          Spacer(Modifier.height(4.dp))
+          Box(
+            modifier = Modifier
+              .fillMaxWidth(0.4f)
+              .height(12.dp)
+              .clip(RoundedCornerShape(4.dp))
+              .background(shimmerBrush),
           )
         }
       }
@@ -914,6 +1200,7 @@ fun JellyfinResumeCard(
         contentDescription = item.name,
         contentScale = ContentScale.Crop,
         modifier = Modifier.fillMaxSize(),
+        maxDimensionPx = 640,
       )
 
       // Gradient at bottom of thumbnail for progress legibility
@@ -1068,6 +1355,7 @@ fun JellyfinPosterCard(
   isDownloaded: Boolean = false,
   selectionNeighbors: MediaSelectionNeighbors = MediaSelectionNeighbors(),
   focusKey: Any = item.id,
+  rankIndex: Int? = null,
 ) {
   val posterImageTag = if (item.type == "Episode" && !item.seriesPrimaryImageTag.isNullOrBlank()) {
     item.seriesPrimaryImageTag
@@ -1126,6 +1414,7 @@ fun JellyfinPosterCard(
           contentDescription = item.name,
           contentScale = ContentScale.Crop,
           modifier = Modifier.fillMaxSize(),
+          maxDimensionPx = 480,
         )
       } else {
         Box(
@@ -1181,6 +1470,21 @@ fun JellyfinPosterCard(
               .fillMaxWidth()
               .align(Alignment.BottomCenter),
         )
+      }
+
+      if (rankIndex != null) {
+        Surface(
+          shape = RoundedCornerShape(topEnd = 8.dp),
+          color = MaterialTheme.colorScheme.primary.copy(alpha = 0.92f),
+          modifier = Modifier.align(Alignment.BottomStart),
+        ) {
+          Text(
+            text = "#$rankIndex",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Black, fontSize = 11.sp),
+            color = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+          )
+        }
       }
 
       // Selection / Played Check badge
@@ -1330,6 +1634,7 @@ fun JellyfinMusicCard(
           contentDescription = item.name,
           contentScale = ContentScale.Crop,
           modifier = Modifier.fillMaxSize(),
+          maxDimensionPx = 480,
         )
       } else {
         Box(

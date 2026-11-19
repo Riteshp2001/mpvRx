@@ -105,8 +105,15 @@ class JellyfinRepository(
     personId: String? = null,
     personName: String? = null,
     limit: Int = 100,
+    personTypes: String? = null,
   ): Result<List<JellyfinItem>> =
-    client.getPersonMedia(server.serverUrl, server.userId, personId, personName, server.accessToken, limit)
+    client.getPersonMedia(server.serverUrl, server.userId, personId, personName, server.accessToken, limit, personTypes)
+
+  suspend fun getStudios(
+    server: JellyfinServer,
+    limit: Int = 100,
+  ): Result<List<JellyfinItem>> =
+    client.getStudios(server.serverUrl, server.userId, server.accessToken, limit)
 
   suspend fun getItems(
     server: JellyfinServer,
@@ -121,6 +128,7 @@ class JellyfinRepository(
     includeItemTypes: String? = null,
     startIndex: Int = 0,
     limit: Int = 100,
+    studioIds: String? = null,
   ): Result<app.gyrolet.mpvrx.domain.jellyfin.JellyfinQueryResult> =
     client.getItems(
       serverUrl = server.serverUrl,
@@ -137,6 +145,7 @@ class JellyfinRepository(
       startIndex = startIndex,
       limit = limit,
       token = server.accessToken,
+      studioIds = studioIds,
     )
 
   suspend fun getArtists(

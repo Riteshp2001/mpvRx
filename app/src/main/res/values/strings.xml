@@ -1,6 +1,10 @@
 <resources>
 
   <string name="app_icon_create_custom_shortcut">Add exact custom icon to home screen</string>
+  <string name="home_critics_choice">Critics\' Choice</string>
+  <string name="home_critics_choice_subtitle">Top-rated by community reviews</string>
+  <string name="home_popular_studios">Popular Studios</string>
+  <string name="home_popular_studios_subtitle">Explore films by production house</string>
   <string name="pref_experimental_badge">Experimental</string>
   <string name="pref_liquid_glass_experimental_note">Liquid glass effects are experimental and may vary by device.</string>
   <string name="pref_liquid_glass_material">Glass material</string>
