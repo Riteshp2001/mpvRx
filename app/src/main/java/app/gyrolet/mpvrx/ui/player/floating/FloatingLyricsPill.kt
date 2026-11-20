@@ -747,9 +747,13 @@ private fun pillScript(model: FloatingLyricsModel, mode: LyricsTranslationDispla
         endMs = it.endTime?.toLong()?.takeIf { stop -> stop > it.time } ?: end, ownerMs = start,
       )
     }
-    if (mode == LyricsTranslationDisplayMode.DualLine) line.translation?.takeIf { it.isNotBlank() }?.let {
-      rows += PillRow(it, small = true, startMs = start, endMs = end)
-      slots = 3
+    if (mode == LyricsTranslationDisplayMode.DualLine) {
+      line.translation
+        ?.takeIf { it.isNotBlank() && !it.trim().equals(line.line.trim(), ignoreCase = true) }
+        ?.let {
+          rows += PillRow(it, small = true, startMs = start, endMs = end)
+          slots = 3
+        }
     }
     val time = (start - 300L).coerceAtLeast(0)
     while (stops.size > 1 && stops.last().timeMs >= time) stops.removeAt(stops.lastIndex)
