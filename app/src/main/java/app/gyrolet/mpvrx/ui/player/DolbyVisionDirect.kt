@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player
 
+import android.media.MediaCodecList
+import android.media.MediaFormat
 import android.view.Surface
 import app.gyrolet.mpvrx.BuildConfig
 import `is`.xyz.mpv.MPVLib
@@ -26,6 +28,22 @@ internal object DolbyVisionDirect {
 
   val isBuildSupported: Boolean
     get() = BuildConfig.MPV_SUPPORTS_DOLBY_VISION_DIRECT && attachMethod != null && detachMethod != null
+
+  /**
+   * Whether the device has a MediaCodec decoder for Dolby Vision streams. Probed once per
+   * process: enumerating MediaCodecList is comparatively expensive, and the answer cannot
+   * change while the app runs. False when the probe itself fails.
+   */
+  val hasDolbyVisionDecoder: Boolean by lazy {
+    runCatching {
+      MediaCodecList(MediaCodecList.ALL_CODECS).codecInfos.any { info ->
+        !info.isEncoder &&
+          info.supportedTypes.any { type ->
+            type.equals(MediaFormat.MIMETYPE_VIDEO_DOLBY_VISION, ignoreCase = true)
+          }
+      }
+    }.getOrDefault(false)
+  }
 
   /** The overlay carries subtitles for direct Dolby Vision tracks and for MediaCodec embed. */
   fun wantsOsdOverlay(
