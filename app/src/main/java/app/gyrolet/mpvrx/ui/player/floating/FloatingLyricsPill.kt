@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.Stable
@@ -133,7 +134,8 @@ import kotlinx.coroutines.withContext
 
 internal enum class FloatingPillShape { COVER, PILL, OPEN }
 
-internal class FloatingPillMetrics(
+@Immutable
+internal data class FloatingPillMetrics(
   val bubbleWidth: Dp = 188.dp,
   val rowPitch: Dp = 21.dp,
   val baseHeight: Dp = 58.dp,

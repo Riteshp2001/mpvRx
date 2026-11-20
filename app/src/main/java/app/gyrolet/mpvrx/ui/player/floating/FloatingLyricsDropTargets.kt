@@ -66,12 +66,13 @@ internal class FloatingLyricsDropTargets(
   private val bounds = RectF()
   private var hovered: FloatingPillDrop? = null
 
-  fun layoutParams(bottomInset: Int): FrameLayout.LayoutParams =
-    FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(220f) + bottomInset, Gravity.BOTTOM)
+  /** Screen position of [view], the root of its own non-touchable overlay window. */
+  var origin = Offset.Zero
+
+  fun windowHeight(bottomInset: Int): Int = px(220f) + bottomInset
 
   fun show(bottomInset: Int) {
     view.animate().cancel()
-    view.layoutParams = layoutParams(bottomInset)
     val layout = row.layoutParams
     check(layout is FrameLayout.LayoutParams)
     layout.bottomMargin = px(28f) + bottomInset
@@ -151,8 +152,8 @@ internal class FloatingLyricsDropTargets(
 
   private fun boundsOf(target: Target): Boolean {
     if (view.visibility != View.VISIBLE || !view.isLaidOut || !target.view.isLaidOut) return false
-    val left = view.left + row.left + target.view.left.toFloat()
-    val top = view.top + row.top + target.view.top.toFloat()
+    val left = origin.x + view.left + row.left + target.view.left
+    val top = origin.y + view.top + row.top + target.view.top
     bounds.set(left, top, left + target.view.width, top + target.view.height)
     return true
   }

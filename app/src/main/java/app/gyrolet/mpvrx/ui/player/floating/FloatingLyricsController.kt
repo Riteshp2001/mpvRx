@@ -103,6 +103,10 @@ internal class FloatingLyricsController(
   private data class Track(val generation: Long, val item: PlaybackItem)
   private data class Clock(val positionMs: Long?, val durationMs: Long?, val seekable: Boolean, val speed: Float)
   private data class Metadata(val title: String, val artist: String, val duration: Int, val album: String?, val isrc: String?)
+  private sealed interface Presence
+  private data class Showing(val track: Track) : Presence
+  private data object Waiting : Presence
+  private data object Hidden : Presence
 
   private val dismissed = MutableStateFlow(false)
   private val screenAvailable = MutableStateFlow(false)
@@ -167,30 +171,27 @@ internal class FloatingLyricsController(
           val playback = combine(PlaybackSession.state, playbackKindChanges) { state, _ -> state }
           combine(enabled, App.foregroundState, screenAvailable, dismissed, playback) { on, visible, screenOn, hidden, state ->
             val item = state.currentItem
-            if (on && !visible && screenOn && !hidden && item != null && item.audiobook == null &&
-              state.generation > 0L && isAudio(item) &&
-              state.phase in setOf(PlaybackPhase.LOADING, PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
-            ) Track(state.generation, item) else null
-          }.distinctUntilChanged().collectLatest { track ->
-            if (track == null || App.isInForeground || !canShowOnScreen() ||
-              !preferences.floatingLyricsEnabled.get() || !preferences.audioBackgroundPlayback.get() || !isCurrent(track)
-            ) {
-              closeWindow()
-            } else if (!Settings.canDrawOverlays(context)) {
-              permissionLost()
-            } else {
-              val pill = window ?: createWindow()?.also { window = it } ?: return@collectLatest
-              pill.update { current ->
-                FloatingLyricsModel(
-                  generation = track.generation,
-                  title = track.item.title.orEmpty().ifBlank { context.getString(R.string.app_name) },
-                  artist = track.item.artist.orEmpty(),
-                  artworkAccent = current.artworkAccent,
-                  paused = PlaybackSession.state.value.paused,
-                  durationMs = (track.item.durationSeconds?.toLong() ?: 0L).coerceAtLeast(0L) * 1_000,
-                )
+            val presence: Presence = when {
+              !on || visible || !screenOn || hidden -> Hidden
+              item != null && (item.audiobook != null || !isAudio(item)) -> Hidden
+              item != null && state.generation > 0L &&
+                state.phase in setOf(PlaybackPhase.LOADING, PlaybackPhase.READY, PlaybackPhase.BACKGROUND) ->
+                Showing(Track(state.generation, item))
+              else -> Waiting
+            }
+            presence
+          }.distinctUntilChanged().collectLatest { presence ->
+            when (presence) {
+              Hidden -> closeWindow()
+              // A finished song passes through IDLE before the next loads; keep the same pill meanwhile.
+              Waiting -> {
+                window?.update {
+                  it.copy(paused = true, canControl = false, canSeek = false, canPrevious = false, canNext = false)
+                }
+                delay(PLAYBACK_GAP_MS)
+                closeWindow()
               }
-              if (pill.show()) followTrack(track, pill)
+              is Showing -> showTrack(presence.track)
             }
           }
         }
@@ -298,6 +299,33 @@ internal class FloatingLyricsController(
   private fun isCurrent(track: Track): Boolean =
     !stopped && PlaybackSession.isCurrentGeneration(track.generation) &&
       PlaybackSession.state.value.currentItem?.originalUri == track.item.originalUri
+
+  private suspend fun showTrack(track: Track) {
+    if (App.isInForeground || !canShowOnScreen() ||
+      !preferences.floatingLyricsEnabled.get() || !preferences.audioBackgroundPlayback.get()
+    ) {
+      closeWindow()
+      return
+    }
+    // A newer playback state is already queued behind this one.
+    if (!isCurrent(track)) return
+    if (!Settings.canDrawOverlays(context)) {
+      permissionLost()
+      return
+    }
+    val pill = window ?: createWindow()?.also { window = it } ?: return
+    pill.update { current ->
+      FloatingLyricsModel(
+        generation = track.generation,
+        title = track.item.title.orEmpty().ifBlank { context.getString(R.string.app_name) },
+        artist = track.item.artist.orEmpty(),
+        artworkAccent = current.artworkAccent,
+        paused = PlaybackSession.state.value.paused,
+        durationMs = (track.item.durationSeconds?.toLong() ?: 0L).coerceAtLeast(0L) * 1_000,
+      )
+    }
+    if (pill.show()) followTrack(track, pill)
+  }
 
   private suspend fun followTrack(track: Track, pill: FloatingLyricsWindow): Nothing = coroutineScope {
     launch {
@@ -483,5 +511,6 @@ internal class FloatingLyricsController(
 
   private companion object {
     const val TAG = "FloatingLyrics"
+    const val PLAYBACK_GAP_MS = 2_000L
   }
 }

@@ -21,7 +21,10 @@ import android.view.Display
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.VelocityTracker
+import android.view.View
 import android.view.ViewConfiguration
+import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.animation.AccelerateInterpolator
@@ -33,8 +36,6 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -92,23 +93,30 @@ internal class FloatingLyricsWindow(
   private val targets = FloatingLyricsDropTargets(windowContext) { reducedMotion() }
   private var removed = false
   private var added = false
+  private var targetsAdded = false
   private var callbacksRegistered = false
-  private var insetRefreshPosted = false
-  private var roaming = false
   private var landing = false
   private var dropping = false
   private var coverPosition = Offset.Zero
+  /** Fixed for given metrics: the open pill fits on either side of the cover's centre. */
   private var frameWidth = 0
   private var frameHeight = 0
+  private val pillWidth get() = state.metrics.width(FloatingPillShape.OPEN).pixels()
   private var slots = 2
-  private var pendingSettle: Velocity? = null
-  private val flight = FloatingPillFlight(::moveCover)
-  private val settleAnyway = Runnable {
-    val velocity = pendingSettle ?: return@Runnable
-    pendingSettle = null
-    resize(state.metrics.width(FloatingPillShape.COVER).pixels(), state.metrics.height(FloatingPillShape.COVER, slots).pixels())
-    settle(velocity)
+  private var sentSize = false
+  private var sentPosition = false
+  private val flushFrame = Runnable { place() }
+  private val relayoutDone = ViewTreeObserver.OnPreDrawListener {
+    // The last WindowManager change is laid out now, so one that had to wait can follow.
+    if (sentSize || sentPosition) {
+      sentSize = false
+      sentPosition = false
+      root.removeCallbacks(flushFrame)
+      root.postOnAnimation(flushFrame)
+    }
+    true
   }
+  private val flight = FloatingPillFlight(::moveCover)
   private val params = WindowManager.LayoutParams(
     1, 1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
@@ -120,26 +128,27 @@ internal class FloatingLyricsWindow(
     title = windowContext.getString(R.string.pref_floating_lyrics_title)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) setFitInsetsTypes(0)
   }
+  private val targetParams = WindowManager.LayoutParams(
+    1, 1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+      WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+      WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+    PixelFormat.TRANSLUCENT,
+  ).apply {
+    gravity = Gravity.TOP or Gravity.LEFT
+    title = windowContext.getString(R.string.pref_floating_lyrics_title)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) setFitInsetsTypes(0)
+  }
   private val configuration = object : ComponentCallbacks {
     override fun onConfigurationChanged(newConfig: Configuration) {
-      if (removed) return
-      flight.stop()
-      root.release()
-      root.removeCallbacks(settleAnyway)
-      pendingSettle = null
-      landing = false
-      state.lifted = false
-      state.tucked = false
-      targets.hideNow()
-      roaming = false
-      refreshSafely(reset = true)
+      if (!removed) refreshSafely()
     }
     override fun onLowMemory() = Unit
   }
 
   init {
     state.dockEnd = preferences.floatingLyricsDockEnd.get()
-    refreshGeometry(reset = true)
+    refreshGeometry(initial = true)
   }
 
   fun update(transform: (FloatingLyricsModel) -> FloatingLyricsModel) {
@@ -151,24 +160,24 @@ internal class FloatingLyricsWindow(
     if (added) return true
     root.setViewTreeLifecycleOwner(owner)
     root.setViewTreeSavedStateRegistryOwner(owner)
+    root.viewTreeObserver.addOnPreDrawListener(relayoutDone)
     compose.setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-    compose.setOnApplyWindowInsetsListener { _, insets ->
-      if (!insetRefreshPosted) {
-        insetRefreshPosted = true
-        compose.post { insetRefreshPosted = false; refreshSafely(reset = false) }
-      }
-      insets
-    }
     compose.setContent {
       MpvrxTheme(hostToasts = false) {
         val displayMode by preferences.lyricsTranslationDisplayMode.collectAsState()
         FloatingLyricsPill(state, displayMode, this@FloatingLyricsWindow)
       }
     }
-    root.addView(targets.view, targets.layoutParams(bottomInset))
-    root.addView(compose, FrameLayout.LayoutParams(frameWidth, frameHeight, Gravity.TOP or Gravity.LEFT))
+    root.addView(
+      compose,
+      FrameLayout.LayoutParams(pillWidth, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP or Gravity.LEFT)
+        .apply { leftMargin = pillLeft() },
+    )
     return try {
       owner.resume()
+      // Added first, so the pill's window stays above the drop targets.
+      windows.addView(targets.view, targetParams)
+      targetsAdded = true
       windows.addView(root, params)
       added = true
       windowContext.registerComponentCallbacks(configuration)
@@ -191,26 +200,35 @@ internal class FloatingLyricsWindow(
     if (removed) return
     removed = true
     flight.stop()
-    root.removeCallbacks(settleAnyway)
+    root.removeCallbacks(flushFrame)
     root.release()
     targets.hideNow()
     compose.animate().cancel()
+    root.viewTreeObserver.takeIf { it.isAlive }?.removeOnPreDrawListener(relayoutDone)
     if (callbacksRegistered) {
       callbacksRegistered = false
       windowContext.unregisterComponentCallbacks(configuration)
     }
     if (added) {
       added = false
-      try {
-        windows.removeViewImmediate(root)
-      } catch (error: IllegalArgumentException) {
-        android.util.Log.w(TAG, "Floating lyrics window was already removed", error)
-      } catch (error: SecurityException) {
-        android.util.Log.w(TAG, "Could not remove floating lyrics window", error)
-      }
+      removeWindow(root)
+    }
+    if (targetsAdded) {
+      targetsAdded = false
+      removeWindow(targets.view)
     }
     compose.disposeComposition()
     owner.destroy()
+  }
+
+  private fun removeWindow(view: View) {
+    try {
+      windows.removeViewImmediate(view)
+    } catch (error: IllegalArgumentException) {
+      android.util.Log.w(TAG, "Floating lyrics window was already removed", error)
+    } catch (error: SecurityException) {
+      android.util.Log.w(TAG, "Could not remove floating lyrics window", error)
+    }
   }
 
   private fun failWindow(error: RuntimeException) {
@@ -222,10 +240,10 @@ internal class FloatingLyricsWindow(
   private fun reducedMotion(): Boolean =
     playerPreferences.reduceMotion.get() || !ValueAnimator.areAnimatorsEnabled()
 
-  private fun refreshSafely(reset: Boolean) {
+  private fun refreshSafely() {
     if (removed) return
     try {
-      refreshGeometry(reset)
+      refreshGeometry(initial = false)
     } catch (error: WindowManager.InvalidDisplayException) {
       failWindow(error)
     } catch (error: SecurityException) {
@@ -237,7 +255,10 @@ internal class FloatingLyricsWindow(
     }
   }
 
-  private fun refreshGeometry(reset: Boolean) {
+  private fun refreshGeometry(initial: Boolean) {
+    val previousWidth = screenWidth
+    val previousHeight = screenHeight
+    val previousBounds = Rect(safeBounds)
     val left: Int
     val top: Int
     val right: Int
@@ -253,16 +274,14 @@ internal class FloatingLyricsWindow(
       right = insets.right
       bottomInset = insets.bottom
     } else {
+      // Before API 30 an overlay only sees insets relative to wherever it currently sits.
       val metrics = windowContext.resources.displayMetrics
-      val insets = ViewCompat.getRootWindowInsets(root)?.getInsetsIgnoringVisibility(
-        WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
-      )
       screenWidth = metrics.widthPixels
       screenHeight = metrics.heightPixels
-      left = insets?.left ?: 0
-      top = insets?.top ?: 24.dp.pixels()
-      right = insets?.right ?: 0
-      bottomInset = insets?.bottom ?: 0
+      left = 0
+      top = 24.dp.pixels()
+      right = 0
+      bottomInset = 48.dp.pixels()
     }
     safeBounds.set(left + 8.dp.pixels(), top + 6.dp.pixels(), screenWidth - right - 8.dp.pixels(), screenHeight - bottomInset - 6.dp.pixels())
     val displayWidth = (screenWidth - left - right) / density
@@ -272,27 +291,40 @@ internal class FloatingLyricsWindow(
     check(displayHeight >= maxOf(62f, pitch + 18f) + 40f) { "Display cannot fit floating lyrics at the current font scale" }
     val base = maxOf(58f, pitch * 2f + 16f)
     val maxSlots = ((displayHeight - 40f - 2f - 16f) / pitch).toInt().coerceIn(1, 3)
-    state.metrics = FloatingPillMetrics(
+    val metrics = FloatingPillMetrics(
       bubbleWidth = (displayWidth - 172f).coerceIn(40f, 226f).dp,
       rowPitch = pitch.dp,
       baseHeight = base.dp,
       maxSlots = maxSlots,
     )
+    val screenChanged = previousWidth != screenWidth || previousHeight != screenHeight
+    val metricsChanged = metrics != state.metrics
+    // Theme changes and this overlay's own relayouts also deliver configuration callbacks.
+    if (!initial && !screenChanged && previousBounds == safeBounds && !metricsChanged) return
+    val resetGeometry = initial || screenChanged || metricsChanged
+    if (resetGeometry) {
+      flight.stop()
+      root.release()
+      landing = false
+      state.lifted = false
+      state.tucked = false
+      targets.hideNow()
+    }
+    state.metrics = metrics
     slots = slots.coerceAtMost(maxSlots)
-    val shape = currentShape()
-    frameWidth = state.metrics.width(shape).pixels()
-    frameHeight = state.metrics.height(shape, slots).pixels()
-    if (reset) {
+    frameWidth = 2 * (pillWidth - margin) - cover
+    val height = metrics.height(currentShape(), slots).pixels()
+    // A bounds-only update must not shrink a frame while the controls are still closing.
+    frameHeight = if (resetGeometry) height else maxOf(frameHeight, height)
+    if (resetGeometry) {
       val y = if (preferences.floatingLyricsY.isSet()) {
         safeBounds.top + (safeBounds.height() - (frameHeight - margin * 2)).coerceAtLeast(0) *
           (preferences.floatingLyricsY.get().coerceIn(0, 1_000) / 1_000f)
       } else screenHeight / 6f + margin
-      coverPosition = Offset(
-        restX(state.dockEnd),
-        y,
-      )
+      coverPosition = Offset(restX(state.dockEnd), y)
     }
     if (!root.dragging && !flight.running) coverPosition = coverPosition.copy(y = clampY(coverPosition.y, frameHeight))
+    placeTargets()
     place()
   }
 
@@ -305,24 +337,18 @@ internal class FloatingLyricsWindow(
   override fun reserveFrame(shape: FloatingPillShape, slots: Int) {
     if (removed) return
     this.slots = slots.coerceIn(1, state.metrics.maxSlots)
-    resize(maxOf(frameWidth, state.metrics.width(shape).pixels()), maxOf(frameHeight, state.metrics.height(shape, this.slots).pixels()))
+    resize(maxOf(frameHeight, state.metrics.height(shape, this.slots).pixels()))
     if (!root.dragging && !flight.running && !dropping) makeRoom()
   }
 
   override fun fitFrame(shape: FloatingPillShape, slots: Int) {
     if (removed || shape != currentShape()) return
     this.slots = slots.coerceIn(1, state.metrics.maxSlots)
-    resize(state.metrics.width(shape).pixels(), state.metrics.height(shape, this.slots).pixels())
-    if (shape == FloatingPillShape.COVER) pendingSettle?.let {
-      pendingSettle = null
-      root.removeCallbacks(settleAnyway)
-      settle(it)
-    }
+    resize(state.metrics.height(shape, this.slots).pixels())
   }
 
-  private fun resize(width: Int, height: Int) {
-    if (removed || frameWidth == width && frameHeight == height) return
-    frameWidth = width
+  private fun resize(height: Int) {
+    if (removed || frameHeight == height) return
     frameHeight = height
     place()
   }
@@ -333,33 +359,56 @@ internal class FloatingLyricsWindow(
     place()
   }
 
+  /** The pill's left edge in the frame; on either side its cover sits on the frame's centre. */
+  private fun pillLeft(): Int = if (state.dockEnd) 0 else frameWidth - pillWidth
+
   private fun place() {
     if (removed) return
-    val left = if (state.dockEnd) coverPosition.x + cover + margin - frameWidth else coverPosition.x - margin
-    val top = coverPosition.y - margin
-    val layout = compose.layoutParams
-    if (layout != null && (layout.width != frameWidth || layout.height != frameHeight)) {
-      layout.width = frameWidth
-      layout.height = frameHeight
+    val layout = compose.layoutParams as? FrameLayout.LayoutParams
+    val left = pillLeft()
+    if (layout != null && (layout.width != pillWidth || layout.leftMargin != left)) {
+      layout.width = pillWidth
+      layout.leftMargin = left
       compose.layoutParams = layout
     }
-    if (roaming) {
-      compose.translationX = left
-      compose.translationY = top
-      return
-    }
-    compose.translationX = 0f
-    compose.translationY = 0f
-    updateWindow(frameWidth, frameHeight, left.roundToInt(), top.roundToInt())
+    updateWindow(
+      frameWidth,
+      frameHeight,
+      coverPosition.x.roundToInt() - (pillWidth - margin - cover),
+      coverPosition.y.roundToInt() - margin,
+    )
   }
 
+  /**
+   * Android runs a 400 ms system move animation for an overlay relayout that changes both its size
+   * and its position (WindowState.handleWindowMovedIfNeeded), which the content cannot offset.
+   * Only one kind of change goes into a relayout; the other follows once that one is laid out.
+   */
   private fun updateWindow(width: Int, height: Int, x: Int, y: Int) {
-    if (removed || params.width == width && params.height == height && params.x == x && params.y == y) return
-    params.width = width
-    params.height = height
-    params.x = x
-    params.y = y
-    if (!added) return
+    if (removed) return
+    if (!added) {
+      params.width = width
+      params.height = height
+      params.x = x
+      params.y = y
+      return
+    }
+    val resize = params.width != width || params.height != height
+    val move = params.x != x || params.y != y
+    var changed = false
+    if (resize && !sentPosition) {
+      params.width = width
+      params.height = height
+      sentSize = true
+      changed = true
+    }
+    if (move && !sentSize) {
+      params.x = x
+      params.y = y
+      sentPosition = true
+      changed = true
+    }
+    if (!changed) return
     try {
       windows.updateViewLayout(root, params)
     } catch (error: SecurityException) {
@@ -373,48 +422,51 @@ internal class FloatingLyricsWindow(
     }
   }
 
-  private fun roam() {
-    if (removed || roaming) return
-    roaming = true
-    // One full-screen window carries the pill by translation, without binder calls on every frame.
-    updateWindow(screenWidth, screenHeight, 0, 0)
-    place()
-  }
-
-  private fun land() {
-    if (removed || !roaming) return
-    roaming = false
-    targets.hideNow()
-    place()
+  private fun placeTargets() {
+    val height = targets.windowHeight(bottomInset)
+    val y = screenHeight - height
+    targets.origin = Offset(0f, y.toFloat())
+    if (targetParams.width == screenWidth && targetParams.height == height && targetParams.y == y) return
+    targetParams.width = screenWidth
+    targetParams.height = height
+    targetParams.x = 0
+    targetParams.y = y
+    if (!targetsAdded) return
+    try {
+      windows.updateViewLayout(targets.view, targetParams)
+    } catch (error: SecurityException) {
+      failWindow(error)
+    } catch (error: WindowManager.BadTokenException) {
+      failWindow(error)
+    } catch (error: WindowManager.InvalidDisplayException) {
+      failWindow(error)
+    } catch (error: IllegalArgumentException) {
+      failWindow(error)
+    }
   }
 
   private fun makeRoom() {
     val y = clampY(coverPosition.y, frameHeight)
     if (y == coverPosition.y) return
-    roam()
-    fly(Offset(coverPosition.x, y), 700f, 1f, onLanded = { land(); savePosition() })
+    // The frame already has its new height, so only its position is animated here.
+    fly(Offset(coverPosition.x, y), 700f, 1f, onLanded = ::savePosition)
   }
 
   private fun settle(velocity: Velocity) {
     if (removed) return
-    if (frameWidth != state.metrics.width(FloatingPillShape.COVER).pixels()) {
-      pendingSettle = velocity
-      root.removeCallbacks(settleAnyway)
-      root.postDelayed(settleAnyway, 350)
-      return
-    }
     state.dockEnd = coverPosition.x + cover / 2 + velocity.x * 0.14f > screenWidth / 2f
     val target = Offset(
       restX(state.dockEnd),
       clampY(coverPosition.y + velocity.y * 0.14f, state.metrics.height(FloatingPillShape.PILL, slots).pixels()),
     )
     landing = true
+    // Switching sides only mirrors the pill inside the frame; the window stays where it is.
     place()
     fly(
       target, 420f, 0.74f, velocity,
       wall = target.x + if (state.dockEnd) 5.dp.pixels() else -5.dp.pixels(),
       onHit = ::popOut,
-      onLanded = { popOut(); savePosition(); land() },
+      onLanded = { popOut(); savePosition() },
     )
   }
 
@@ -452,7 +504,7 @@ internal class FloatingLyricsWindow(
       return
     }
     targets.center(drop)?.let { fly(it - Offset(cover / 2f, cover / 2f), 1_100f, 1f) }
-    compose.pivotX = if (state.dockEnd) frameWidth - margin - cover / 2f else margin + cover / 2f
+    compose.pivotX = if (state.dockEnd) pillWidth - margin - cover / 2f else margin + cover / 2f
     compose.pivotY = margin + cover / 2f
     compose.animate().scaleX(0.2f).scaleY(0.2f).alpha(0f).setDuration(220)
       .setInterpolator(AccelerateInterpolator())
@@ -522,7 +574,6 @@ internal class FloatingLyricsWindow(
     flight.stop()
     state.dockEnd = right
     coverPosition = Offset(restX(right), clampY(coverPosition.y, frameHeight))
-    land()
     place()
     touch()
     savePosition()
@@ -549,13 +600,17 @@ internal class FloatingLyricsWindow(
       if (removed || dropping) return false
       if (event.actionMasked == MotionEvent.ACTION_OUTSIDE) { collapse(); return false }
       if (event.actionMasked == MotionEvent.ACTION_DOWN) {
-        val x = event.x - compose.translationX
-        val y = event.y - compose.translationY
-        if (roaming && (x !in 0f..frameWidth.toFloat() || y !in 0f..frameHeight.toFloat())) return false
-        fingerStart = Offset(event.rawX, event.rawY)
-        cancelled = false
+        val x = event.x - compose.left - compose.translationX
+        val y = event.y - compose.top - compose.translationY
         dragging = false
         magnet = null
+        // Only the pill is interactive; the rest of the frame is shadow margin or off-screen.
+        if (x !in 0f..compose.width.toFloat() || y !in 0f..compose.height.toFloat()) {
+          cancelled = true
+          return false
+        }
+        fingerStart = Offset(event.rawX, event.rawY)
+        cancelled = false
         seeking = state.expanded && state.model.canSeek &&
           abs(y - state.metrics.barY(slots.toFloat()).pixels()) <= FloatingPillMetrics.SeekReach.pixels()
         tracker?.recycle()
@@ -583,13 +638,10 @@ internal class FloatingLyricsWindow(
         val cancel = MotionEvent.obtain(event).apply { action = MotionEvent.ACTION_CANCEL }
         super.dispatchTouchEvent(cancel)
         cancel.recycle()
-        pendingSettle = null
         landing = false
-        root.removeCallbacks(settleAnyway)
         state.expanded = false
         state.tucked = true
         state.lifted = true
-        roam()
         if (!removed) targets.show(bottomInset)
       }
       if (!dragging) {
