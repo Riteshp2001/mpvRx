@@ -3884,6 +3884,7 @@ fun restartFromBeginning() {
   ) {
     audioAddMutex.withLock {
       syncExternalAudioScope()
+      val restoreGeneration = externalAudioGeneration
       val uriString = uri.toString()
       runCatching {
         if (uri.scheme == "content") {
@@ -3911,27 +3912,33 @@ fun restartFromBeginning() {
               return@withLock
             }
 
+        if (forRestore && !PlaybackSession.isCurrentGeneration(restoreGeneration)) return@withLock
         // Track the URI even when mpv already loaded the file, like addSubtitleSuspend.
         if (!_externalAudioTracks.contains(uriString)) {
           _externalAudioTracks.add(uriString)
         }
 
-        if (audioTracks.value.any { it.externalFilename == path }) {
+        if (!forRestore && audioTracks.value.any { it.externalFilename == path }) {
           android.util.Log.d("PlayerViewModel", "Audio already loaded by MPV, skipping audio-add: $path")
           return@withLock
         }
 
         val title = getFileNameFromUri(uri)?.substringBeforeLast(".")?.ifBlank { null }
-        val flag = if (forRestore) "auto" else "cached"
-
-        withContext(Dispatchers.Main) {
-          if (title != null) {
-            PlaybackSession.command("audio-add", path, flag, title)
-          } else {
-            PlaybackSession.command("audio-add", path, flag)
+        if (forRestore) {
+          val added = withContext(Dispatchers.IO) {
+            ExternalAudioDiscovery.addIfAbsent(path, restoreGeneration, title)
           }
-          if (!silent) showToast("Audio track added")
+          if (!added) return@withLock
+        } else {
+          withContext(Dispatchers.Main) {
+            if (title != null) {
+              PlaybackSession.command("audio-add", path, "cached", title)
+            } else {
+              PlaybackSession.command("audio-add", path, "cached")
+            }
+          }
         }
+        if (!silent) withContext(Dispatchers.Main) { showToast("Audio track added") }
       }.onFailure { e ->
         if (!silent) {
           withContext(Dispatchers.Main) {

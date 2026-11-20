@@ -113,6 +113,8 @@ enum class MpvConfigOverride(
     optionNames =
       setOf(
         "alang",
+        "audio-file-auto",
+        "cover-art-auto",
         "audio-display",
         "audio-delay",
         "audio-normalize-downmix",

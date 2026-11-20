@@ -214,7 +214,6 @@ fun OutlinedNumericChooser(
       Icon(increaseIcon, stringResource(R.string.generic_increase))
     }
   }
-
 }
 
 private fun normalizeNumericInput(text: String, symbols: DecimalFormatSymbols): String =

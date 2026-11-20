@@ -2044,6 +2044,9 @@ class MediaPlaybackService :
    */
   private suspend fun restoreDetachedAudioSelection(identifier: String, generation: Long) {
     if (identifier.isBlank()) return
+    if (!PlaybackSession.isCurrentGeneration(generation) || !canHandleDetachedTransport()) return
+    ExternalAudioDiscovery.autoload(this@MediaPlaybackService, generation)
+    if (!PlaybackSession.isCurrentGeneration(generation) || !canHandleDetachedTransport()) return
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)) return
 
     val state = runCatching { playbackStateRepository.getVideoDataByTitle(identifier) }.getOrNull()
@@ -2055,7 +2058,7 @@ class MediaPlaybackService :
         val uri = Uri.parse(audioUri)
         val path = runCatching { uri.resolveUri(this@MediaPlaybackService) }.getOrNull() ?: audioUri
         // "auto": present but not force-selected; the manual restore below decides.
-        PlaybackSession.command("audio-add", path, "auto")
+        ExternalAudioDiscovery.addIfAbsent(path, generation)
       }
     }
     if (!PlaybackSession.isCurrentGeneration(generation)) return

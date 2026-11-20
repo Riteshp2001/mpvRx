@@ -1026,6 +1026,10 @@ class MPVView(
       // Let mpv resolve the common case during demuxer initialization. TrackSelector still applies
       // title-based commentary/description filtering after load when mpv's choice needs correction.
       add("alang" to audioPreferences.preferredLanguages.get().toMpvLanguageList())
+      // Together with sub-auto=no, these skip mpv's full-folder scan on every load.
+      // Companion audio uses exact filename checks; the app resolves artwork separately.
+      add("audio-file-auto" to "no")
+      add("cover-art-auto" to "no")
       add("audio-display" to "embedded-first")
       add("audio-delay" to (audioPreferences.defaultAudioDelay.get() / 1000.0).toString())
       add("audio-pitch-correction" to audioPreferences.audioPitchCorrection.get().toString())

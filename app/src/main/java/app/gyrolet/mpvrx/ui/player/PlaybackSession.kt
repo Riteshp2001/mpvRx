@@ -1769,6 +1769,32 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       true
     }
 
+  /** Restored/discovered audio is deduplicated and attached under the same native lock. */
+  internal fun addExternalAudioForGeneration(
+    expectedGeneration: Long,
+    path: String,
+    title: String?,
+    matchesExisting: (String) -> Boolean,
+  ): Boolean = withReadyCore(false) {
+    val current = _state.value
+    val loadedItem = loadedPlaybackItem ?: return@withReadyCore false
+    if (expectedGeneration <= 0L || loadedGeneration != expectedGeneration ||
+      current.generation != expectedGeneration || current.currentItem?.queueEntryId != loadedItem.queueEntryId ||
+      current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+    ) return@withReadyCore false
+    for (index in 0 until (MPVLib.getPropertyInt("track-list/count") ?: 0)) {
+      if (MPVLib.getPropertyString("track-list/$index/type") != "audio") continue
+      val existing = MPVLib.getPropertyString("track-list/$index/external-filename") ?: continue
+      if (matchesExisting(existing)) return@withReadyCore true
+    }
+    if (title == null) {
+      MPVLib.command("audio-add", path, "auto")
+    } else {
+      MPVLib.command("audio-add", path, "auto", title)
+    }
+    true
+  }
+
   fun commandNode(vararg command: String): MPVNode? = withCore(null) { MPVLib.commandNode(*command) }
 
   /** 0 = Off, 1..6 = stats.lua pages, 7 = Console, 8 = mpv's keyboard-only page 0. */
