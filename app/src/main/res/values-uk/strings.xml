@@ -525,6 +525,7 @@
   <string name="player_sheets_decoder_formatted" formatted="false">%s (%s)</string>
   <string name="numeric_chooser_value_too_big">Значення занадто велике</string>
   <string name="numeric_chooser_value_too_small">Значення занадто мале</string>
+  <string name="numeric_chooser_invalid_value">Введіть коректне число</string>
   <string name="player_sheets_more_title">Більше</string>
   <string name="player_sheets_stats_page_title">Сторінка статистики за замовчуванням</string>
   <string name="player_sheets_stats_page_chip">Сторінка %d</string>

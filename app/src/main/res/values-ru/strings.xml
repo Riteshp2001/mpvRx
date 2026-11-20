@@ -446,6 +446,7 @@
   <string name="player_sheets_decoder_formatted" formatted="false">%s (%s)</string>
   <string name="numeric_chooser_value_too_big">Значение слишком большое</string>
   <string name="numeric_chooser_value_too_small">Значение слишком маленькое</string>
+  <string name="numeric_chooser_invalid_value">Введите корректное число</string>
   <string name="player_sheets_more_title">Ещё</string>
   <string name="player_sheets_stats_page_title">Страница статистики по умолчанию</string>
   <string name="player_sheets_stats_page_chip">Страница %d</string>

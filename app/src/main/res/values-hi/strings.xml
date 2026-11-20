@@ -442,6 +442,7 @@
   <string name="player_sheets_decoder_formatted" formatted="false">%s (%s)</string>
   <string name="numeric_chooser_value_too_big">वैल्यू बहुत बड़ी है</string>
   <string name="numeric_chooser_value_too_small">वैल्यू बहुत छोटी है</string>
+  <string name="numeric_chooser_invalid_value">मान्य संख्या दर्ज करें</string>
   <string name="player_sheets_more_title">और</string>
   <string name="player_sheets_stats_page_title">डिफ़ॉल्ट स्टैटिस्टिक्स पेज</string>
   <string name="player_sheets_stats_page_chip">पेज %d</string>

@@ -446,6 +446,7 @@
   <string name="player_sheets_decoder_formatted" formatted="false">%s（%s）</string>
   <string name="numeric_chooser_value_too_big">数值过大</string>
   <string name="numeric_chooser_value_too_small">数值过小</string>
+  <string name="numeric_chooser_invalid_value">请输入有效数字</string>
   <string name="player_sheets_more_title">更多</string>
   <string name="player_sheets_stats_page_title">默认统计页面</string>
   <string name="player_sheets_stats_page_chip">第 %d 页</string>

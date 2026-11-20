@@ -446,6 +446,7 @@
   <string name="player_sheets_decoder_formatted" formatted="false">%s（%s）</string>
   <string name="numeric_chooser_value_too_big">値が大きすぎます</string>
   <string name="numeric_chooser_value_too_small">値が小さすぎます</string>
+  <string name="numeric_chooser_invalid_value">有効な数値を入力してください</string>
   <string name="player_sheets_more_title">その他</string>
   <string name="player_sheets_stats_page_title">デフォルトの統計ページ</string>
   <string name="player_sheets_stats_page_chip">ページ%d</string>

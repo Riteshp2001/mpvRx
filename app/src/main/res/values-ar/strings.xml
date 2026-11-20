@@ -446,6 +446,7 @@
   <string name="player_sheets_decoder_formatted" formatted="false">%s (%s)</string>
   <string name="numeric_chooser_value_too_big">القيمة كبيرة جدًا</string>
   <string name="numeric_chooser_value_too_small">القيمة صغيرة جدًا</string>
+  <string name="numeric_chooser_invalid_value">أدخل رقمًا صالحًا</string>
   <string name="player_sheets_more_title">المزيد</string>
   <string name="player_sheets_stats_page_title">صفحة الإحصاءات الافتراضية</string>
   <string name="player_sheets_stats_page_chip">الصفحة %d</string>
