@@ -3065,4 +3065,16 @@
   <string name="permission_video_access_summary">Downloads, Movies और DCIM के वीडियो तक पहुँच देता है।</string>
   <string name="permission_media_access_summary">सहेजी गई वीडियो और ऑडियो फ़ाइल तक पहुँच देता है।</string>
   <string name="pref_audio_passthrough_summary">सराउंड ऑडियो बिना डिकोडिंग या इफ़ेक्ट के रिसीवर को भेजें।</string>
+  <string name="pref_floating_lyrics_title">फ़्लोटिंग बोल</string>
+  <string name="pref_floating_lyrics_summary">दूसरे ऐप्स के ऊपर गीत के बोल की खिसकने वाली पट्टी दिखाएँ</string>
+  <string name="floating_lyrics_permission">फ़्लोटिंग बोल के लिए दूसरे ऐप्स के ऊपर दिखाने की अनुमति दें</string>
+  <string name="floating_lyrics_unavailable">फ़्लोटिंग बोल शुरू नहीं हो सके</string>
+  <string name="floating_lyrics_background_required">पहले बैकग्राउंड ऑडियो चालू करें</string>
+  <string name="floating_lyrics_open_player">प्लेयर खोलें</string>
+  <string name="floating_lyrics_dock_left">फ़्लोटिंग बोल बाईं ओर ले जाएँ</string>
+  <string name="floating_lyrics_dock_right">फ़्लोटिंग बोल दाईं ओर ले जाएँ</string>
+  <string name="floating_lyrics_dismiss">mpvRx दोबारा खुलने तक छिपाएँ</string>
+  <string name="floating_lyrics_turn_off">फ़्लोटिंग बोल बंद करें</string>
+  <string name="floating_lyrics_never">कभी नहीं</string>
+  <string name="floating_lyrics_no_lyrics">गीत के बोल उपलब्ध नहीं हैं</string>
 </resources>

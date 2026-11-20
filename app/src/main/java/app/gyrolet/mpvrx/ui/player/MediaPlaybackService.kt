@@ -46,6 +46,7 @@ import androidx.media.MediaBrowserServiceCompat
 import androidx.media.session.MediaButtonReceiver
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.data.lyrics.LyricsTranslationService
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
@@ -60,7 +61,10 @@ import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
+import app.gyrolet.mpvrx.repository.lyrics.LyricsRepository
+import app.gyrolet.mpvrx.ui.components.AppToast
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.floating.FloatingLyricsController
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import `is`.xyz.mpv.MPVLib
@@ -285,6 +289,9 @@ class MediaPlaybackService :
   private val playbackStateRepository: PlaybackStateRepository by inject()
   private val torrentStreamingEngine: TorrentStreamingEngine by inject()
   private val subtitlesPreferences: SubtitlesPreferences by inject()
+  private val lyricsRepository: LyricsRepository by inject()
+  private val lyricsTranslationService: LyricsTranslationService by inject()
+  private var floatingLyrics: FloatingLyricsController? = null
 
   // Audio decision for loads this service drives on its own (detached playback), using the
   // same TrackSelector rules as the Activity path.
@@ -345,6 +352,12 @@ class MediaPlaybackService :
   @Volatile private var mpvAccessReleased = false
   @Volatile private var isCurrentFavorite = false
   private var usesAudioBackgroundPlayback = false
+    set(value) {
+      if (field != value) {
+        field = value
+        floatingLyrics?.onPlaybackKindChanged()
+      }
+    }
   private var externalDisplayWakeLock: PowerManager.WakeLock? = null
   private var playbackWakeLock: PowerManager.WakeLock? = null
   private val audioManager by lazy { getSystemService(AUDIO_SERVICE) as AudioManager }
@@ -496,6 +509,52 @@ class MediaPlaybackService :
   private fun startPlaybackObservers() {
     if (playbackObserversStarted) return
     playbackObserversStarted = true
+    serviceScope.launch {
+      audioPreferences.floatingLyricsEnabled.changes().distinctUntilChanged().collect { wanted ->
+        if (!wanted || app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(this@MediaPlaybackService)) {
+          stopFloatingLyrics()
+          return@collect
+        }
+        if (floatingLyrics != null) return@collect
+        val controller = FloatingLyricsController(
+          context = this@MediaPlaybackService,
+          preferences = audioPreferences,
+          playerPreferences = playerPreferences,
+          lyricsRepository = lyricsRepository,
+          translations = lyricsTranslationService,
+          thumbnails = thumbnailRepository,
+          scope = serviceScope,
+          isAudio = { resolveNotificationIsAudio(it, usesAudioBackgroundPlayback) },
+          openPlayer = {
+            if (!mpvAccessReleased) {
+              try {
+                buildContentIntent().send()
+              } catch (error: PendingIntent.CanceledException) {
+                Log.e(TAG, "Could not open the player from floating lyrics", error)
+                AppToast.makeText(this@MediaPlaybackService, R.string.floating_lyrics_unavailable, AppToast.LENGTH_LONG).show()
+              }
+            }
+          },
+          togglePlay = {
+            if (!mpvAccessReleased && ::mediaSession.isInitialized) {
+              if (PlaybackSession.state.value.paused) mediaSession.controller.transportControls.play()
+              else mediaSession.controller.transportControls.pause()
+            }
+          },
+          previous = {
+            if (!mpvAccessReleased && ::mediaSession.isInitialized) mediaSession.controller.transportControls.skipToPrevious()
+          },
+          next = {
+            if (!mpvAccessReleased && ::mediaSession.isInitialized) mediaSession.controller.transportControls.skipToNext()
+          },
+          seek = {
+            if (!mpvAccessReleased && ::mediaSession.isInitialized) mediaSession.controller.transportControls.seekTo(it)
+          },
+        )
+        floatingLyrics = controller
+        controller.start()
+      }
+    }
 
     ContextCompat.registerReceiver(
       this,
@@ -2228,6 +2287,7 @@ class MediaPlaybackService :
    */
   private fun releaseMpvAccessBeforeShutdown() {
     if (mpvAccessReleased) return
+    stopFloatingLyrics()
     mpvAccessReleased = true
     updatePlaybackWakeLock()
 
@@ -2245,6 +2305,11 @@ class MediaPlaybackService :
         Log.e(TAG, "Error disabling MediaSession callbacks", error)
       }
     }
+  }
+
+  private fun stopFloatingLyrics() {
+    floatingLyrics?.stop()
+    floatingLyrics = null
   }
 
   override fun onDestroy() {

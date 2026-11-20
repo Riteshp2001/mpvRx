@@ -3124,4 +3124,16 @@
   <string name="permission_video_access_summary">允许访问 Downloads、Movies 和 DCIM 中的视频。</string>
   <string name="permission_media_access_summary">允许访问已存储的视频和音频文件。</string>
   <string name="pref_audio_passthrough_summary">将环绕声音频直接传至接收器，不解码、不加音效。</string>
+  <string name="pref_floating_lyrics_title">悬浮歌词</string>
+  <string name="pref_floating_lyrics_summary">在其他应用上方显示可移动的歌词悬浮窗</string>
+  <string name="floating_lyrics_permission">请允许在其他应用上层显示以使用悬浮歌词</string>
+  <string name="floating_lyrics_unavailable">无法启动悬浮歌词</string>
+  <string name="floating_lyrics_background_required">请先启用音频后台播放</string>
+  <string name="floating_lyrics_open_player">打开播放器</string>
+  <string name="floating_lyrics_dock_left">将悬浮歌词移至左侧</string>
+  <string name="floating_lyrics_dock_right">将悬浮歌词移至右侧</string>
+  <string name="floating_lyrics_dismiss">隐藏到下次打开 mpvRx</string>
+  <string name="floating_lyrics_turn_off">关闭悬浮歌词</string>
+  <string name="floating_lyrics_never">不再显示</string>
+  <string name="floating_lyrics_no_lyrics">暂无歌词</string>
 </resources>

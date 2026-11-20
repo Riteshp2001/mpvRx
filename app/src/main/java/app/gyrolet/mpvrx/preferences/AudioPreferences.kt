@@ -88,6 +88,9 @@ class AudioPreferences(
   val lyricsAutoTranslate = preferenceStore.getBoolean("lyrics_auto_translate", false)
   val lyricsTargetLanguage = preferenceStore.getString("lyrics_target_language", "en")
   val lyricsTranslationDisplayMode = preferenceStore.getEnum("lyrics_translation_display_mode", LyricsTranslationDisplayMode.DualLine)
+  val floatingLyricsEnabled = preferenceStore.getBoolean("floating_lyrics_enabled", false)
+  val floatingLyricsDockEnd = preferenceStore.getBoolean("floating_lyrics_dock_end", true)
+  val floatingLyricsY = preferenceStore.getInt("floating_lyrics_y", 350)
 
   fun getVideoBackgroundPlayback(mediaId: String?): Boolean =
     resolveVideoBackgroundPlayback(backgroundPlaybackBehavior.get(), backgroundPlayback.get(), videoBackgroundPlaybackIds.get(), mediaId)

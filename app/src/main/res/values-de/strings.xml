@@ -3146,4 +3146,16 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="permission_video_access_summary">Erlaubt Videozugriff in Downloads, Movies und DCIM.</string>
   <string name="permission_media_access_summary">Erlaubt Zugriff auf gespeicherte Video- und Audiodateien.</string>
   <string name="pref_audio_passthrough_summary">Surround-Ton ohne Decodierung oder Effekte an einen Receiver senden.</string>
+  <string name="pref_floating_lyrics_title">Schwebende Liedtexte</string>
+  <string name="pref_floating_lyrics_summary">Bewegliche Liedtextblase über anderen Apps anzeigen</string>
+  <string name="floating_lyrics_permission">Erlaube die Anzeige über anderen Apps für schwebende Liedtexte</string>
+  <string name="floating_lyrics_unavailable">Schwebende Liedtexte konnten nicht gestartet werden</string>
+  <string name="floating_lyrics_background_required">Zuerst die Audiowiedergabe im Hintergrund aktivieren</string>
+  <string name="floating_lyrics_open_player">Player öffnen</string>
+  <string name="floating_lyrics_dock_left">Schwebende Liedtexte nach links verschieben</string>
+  <string name="floating_lyrics_dock_right">Schwebende Liedtexte nach rechts verschieben</string>
+  <string name="floating_lyrics_dismiss">Bis zum nächsten Öffnen von mpvRx ausblenden</string>
+  <string name="floating_lyrics_turn_off">Schwebende Liedtexte ausschalten</string>
+  <string name="floating_lyrics_never">Nie</string>
+  <string name="floating_lyrics_no_lyrics">Keine Liedtexte verfügbar</string>
 </resources>

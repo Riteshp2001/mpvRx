@@ -2069,6 +2069,12 @@ object SearchablePreferences {
         SearchEntrySpec(R.string.pref_lyrics_auto_fetch_online, listOf("lyrics", "online", "automatic", "fetch", "local")),
       )
       addSearchEntries(
+        category = "Audio",
+        screen = AudioPreferencesScreen,
+        anchorItemIndex = 9,
+        SearchEntrySpec(R.string.pref_floating_lyrics_title, listOf("floating", "lyrics", "overlay", "pill", "background")),
+      )
+      addSearchEntries(
         category = "AI",
         screen = AiIntegrationScreen,
         anchorItemIndex = 15,

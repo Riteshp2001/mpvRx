@@ -54,6 +54,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
@@ -100,8 +102,13 @@ class App :
   )
 
   companion object {
+    private val _foregroundState = MutableStateFlow(false)
+    val foregroundState = _foregroundState.asStateFlow()
     @Volatile var isInForeground: Boolean = false
-      private set
+      private set(value) {
+        field = value
+        _foregroundState.value = value
+      }
     private const val TAG = "App"
     private const val POST_START_MAINTENANCE_DELAY_MS = 10_000L
     private const val THUMBNAIL_WARMUP_DELAY_MS = 1_500L

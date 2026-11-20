@@ -215,6 +215,7 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_audio_channels, itemIndex = 7),
         SettingsSearchListAnchor(titleRes = R.string.pref_audio_volume_boost_cap, itemIndex = 7),
         SettingsSearchListAnchor(titleRes = R.string.pref_lyrics_auto_fetch_online, itemIndex = 9),
+        SettingsSearchListAnchor(titleRes = R.string.pref_floating_lyrics_title, itemIndex = 9),
         SettingsSearchListAnchor(titleRes = R.string.pref_lyrics_auto_translate, itemIndex = 9),
         SettingsSearchListAnchor(titleRes = R.string.pref_lyrics_target_language, itemIndex = 9),
         SettingsSearchListAnchor(titleRes = R.string.pref_lyrics_display_mode, itemIndex = 9),

@@ -36,6 +36,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.repository.lyrics.PlaybackLyricsSnapshot
 import app.gyrolet.mpvrx.domain.lyrics.LyricsDraft
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem
 import app.gyrolet.mpvrx.data.network.client.NetworkMimeTypes
@@ -1211,6 +1212,15 @@ class PlayerViewModel(
   )
 
   val lyricsUiState = MutableStateFlow(LyricsUiState())
+  private val lyricsPublisher = Any()
+  private var lyricsPublisherActive = false
+
+  private fun releaseLyricsPublisher() {
+    if (lyricsPublisherActive) {
+      lyricsRepository.releasePlaybackLyrics(lyricsPublisher)
+      lyricsPublisherActive = false
+    }
+  }
 
   data class LyricsEditTarget(
     val mediaPath: String,
@@ -1382,6 +1392,7 @@ class PlayerViewModel(
 
   /** The file the lyrics state on screen belongs to, so a track change nobody saw is noticed. */
   private var lyricsStatePath: String? = null
+  private var lyricsStateGeneration = 0L
 
   /**
    * Brings the lyrics back in line with what is actually playing.
@@ -1511,6 +1522,7 @@ class PlayerViewModel(
     lastLyricsLoadRequest = request
     val isNewTrack = lyricsStatePath != path
     lyricsStatePath = path
+    lyricsStateGeneration = generation
 
     lyricsUiState.value = if (isNewTrack) {
       LyricsUiState(isLoading = true, onlineEnabled = allowOnline)
@@ -2627,6 +2639,40 @@ fun restartFromBeginning() {
 
   init {
     syncAmbientParamsForStyle(_ambientStyle.value)
+    viewModelScope.launch {
+      audioPreferences.floatingLyricsEnabled.changes().distinctUntilChanged().collectLatest { enabled ->
+        if (!enabled) return@collectLatest
+        try {
+          combine(lyricsUiState, _isMpvCoreReady, isAudioOnly, PlaybackSession.state) { lyrics, ready, audio, session ->
+            val item = session.currentItem
+            val path = item?.originalUri
+            if (ready && audio && item != null && item.audiobook == null && !path.isNullOrBlank() &&
+              session.generation > 0L && lyricsStateGeneration == session.generation && lyricsStatePath == path
+            ) {
+              PlaybackLyricsSnapshot(
+                mediaPath = path,
+                generation = session.generation,
+                lyrics = lyrics.lyrics,
+                offsetMs = lyrics.syncOffsetMs,
+                isLoading = lyrics.isLoading,
+                errorMessage = lyrics.errorMessage,
+              )
+            } else {
+              null
+            }
+          }.distinctUntilChanged().collect { snapshot ->
+            if (snapshot == null) {
+              releaseLyricsPublisher()
+            } else {
+              lyricsRepository.publishPlaybackLyrics(lyricsPublisher, snapshot)
+              lyricsPublisherActive = true
+            }
+          }
+        } finally {
+          releaseLyricsPublisher()
+        }
+      }
+    }
     // Clean up any stale ambient shader files left in cacheDir from previous abnormal exits
     appContext.cacheDir.listFiles { _, name -> name.startsWith("ambient_") && name.endsWith(".glsl") }
       ?.forEach { runCatching { it.delete() } }
@@ -2642,6 +2688,7 @@ fun restartFromBeginning() {
           lyricsTranslateJob?.cancel()
           lastLyricsLoadRequest = null
           lyricsStatePath = null
+          lyricsStateGeneration = 0L
           lyricsUiState.value = LyricsUiState()
           delay(1_000)
           syncLyricsWithPlayback()
@@ -8809,6 +8856,7 @@ fun restartFromBeginning() {
   }
 
   override fun onCleared() {
+    releaseLyricsPublisher()
     if (hostedInBrowser) {
       // The core, its shaders, subtitle styling and Syncplay bindings belong to the playback owner.
       runCatching { metadataCache.evictAll() }

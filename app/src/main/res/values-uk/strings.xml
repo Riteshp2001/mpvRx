@@ -3127,4 +3127,16 @@
   <string name="permission_video_access_summary">Доступ до відео в Downloads, Movies і DCIM.</string>
   <string name="permission_media_access_summary">Доступ до збережених відео- й аудіофайлів.</string>
   <string name="pref_audio_passthrough_summary">Передавати об’ємний звук на ресивер без декодування й ефектів.</string>
+  <string name="pref_floating_lyrics_title">Плаваючі тексти</string>
+  <string name="pref_floating_lyrics_summary">Показувати рухому панель тексту поверх інших застосунків</string>
+  <string name="floating_lyrics_permission">Дозвольте показ поверх інших застосунків для плаваючих текстів</string>
+  <string name="floating_lyrics_unavailable">Не вдалося запустити плаваючі тексти</string>
+  <string name="floating_lyrics_background_required">Спочатку ввімкніть фонове відтворення аудіо</string>
+  <string name="floating_lyrics_open_player">Відкрити програвач</string>
+  <string name="floating_lyrics_dock_left">Перемістити панель тексту ліворуч</string>
+  <string name="floating_lyrics_dock_right">Перемістити панель тексту праворуч</string>
+  <string name="floating_lyrics_dismiss">Приховати до повторного відкриття mpvRx</string>
+  <string name="floating_lyrics_turn_off">Вимкнути плаваючі тексти</string>
+  <string name="floating_lyrics_never">Ніколи</string>
+  <string name="floating_lyrics_no_lyrics">Текст пісні недоступний</string>
 </resources>

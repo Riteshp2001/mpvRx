@@ -823,6 +823,11 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
                 },
               )
 
+              DevicePreference(R.string.pref_floating_lyrics_title) {
+                PreferenceDivider()
+                FloatingLyricsPreference(preferences)
+              }
+
               if (!app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD) {
                 PreferenceDivider()
                 val lyricsAutoTranslate by preferences.lyricsAutoTranslate.collectAsState()

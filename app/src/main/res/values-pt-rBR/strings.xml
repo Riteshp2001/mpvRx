@@ -3146,4 +3146,16 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="permission_video_access_summary">Permite acesso a vídeos em Downloads, Movies e DCIM.</string>
   <string name="permission_media_access_summary">Permite acesso a arquivos de vídeo e áudio salvos.</string>
   <string name="pref_audio_passthrough_summary">Envia áudio surround ao receptor sem decodificação ou efeitos.</string>
+  <string name="pref_floating_lyrics_title">Letras flutuantes</string>
+  <string name="pref_floating_lyrics_summary">Mostrar uma cápsula móvel de letras sobre outros apps</string>
+  <string name="floating_lyrics_permission">Permita a exibição sobre outros apps para usar letras flutuantes</string>
+  <string name="floating_lyrics_unavailable">Não foi possível iniciar as letras flutuantes</string>
+  <string name="floating_lyrics_background_required">Ative primeiro o áudio em segundo plano</string>
+  <string name="floating_lyrics_open_player">Abrir player</string>
+  <string name="floating_lyrics_dock_left">Mover letras flutuantes para a esquerda</string>
+  <string name="floating_lyrics_dock_right">Mover letras flutuantes para a direita</string>
+  <string name="floating_lyrics_dismiss">Ocultar até reabrir o mpvRx</string>
+  <string name="floating_lyrics_turn_off">Desativar letras flutuantes</string>
+  <string name="floating_lyrics_never">Nunca</string>
+  <string name="floating_lyrics_no_lyrics">Nenhuma letra disponível</string>
 </resources>

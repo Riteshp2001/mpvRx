@@ -3288,4 +3288,16 @@
   <string name="lua_editor_exit_fullscreen">Exit fullscreen</string>
   <string name="lua_editor_discard_title">Discard unsaved changes?</string>
   <string name="lua_editor_discard_message">Your edits to \"%1$s\" have not been saved.</string>
+  <string name="pref_floating_lyrics_title">Floating lyrics</string>
+  <string name="pref_floating_lyrics_summary">Show a movable lyrics pill over other apps</string>
+  <string name="floating_lyrics_permission">Allow Display over other apps to use floating lyrics</string>
+  <string name="floating_lyrics_unavailable">Could not start floating lyrics</string>
+  <string name="floating_lyrics_background_required">Enable audio background playback first</string>
+  <string name="floating_lyrics_open_player">Open player</string>
+  <string name="floating_lyrics_dock_left">Move floating lyrics to the left</string>
+  <string name="floating_lyrics_dock_right">Move floating lyrics to the right</string>
+  <string name="floating_lyrics_dismiss">Hide until mpvRx is reopened</string>
+  <string name="floating_lyrics_turn_off">Turn off floating lyrics</string>
+  <string name="floating_lyrics_never">Never</string>
+  <string name="floating_lyrics_no_lyrics">No lyrics available</string>
 </resources>

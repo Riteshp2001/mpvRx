@@ -16,6 +16,7 @@ internal object TvSettingsPolicy {
   private val mobileTitles = setOf(
     R.string.pref_player_orientation,
     R.string.pref_audio_orientation_title,
+    R.string.pref_floating_lyrics_title,
     R.string.pref_player_remember_brightness,
     R.string.pref_auto_pip_home_only_title,
     R.string.pref_auto_pip_title,

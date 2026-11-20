@@ -3248,4 +3248,16 @@
   <string name="permission_video_access_summary">يسمح بالوصول إلى الفيديوهات في Downloads وMovies وDCIM.</string>
   <string name="permission_media_access_summary">يسمح بالوصول إلى ملفات الفيديو والصوت المخزنة.</string>
   <string name="pref_audio_passthrough_summary">أرسل الصوت المحيطي إلى جهاز الاستقبال دون فك ترميز أو مؤثرات.</string>
+  <string name="pref_floating_lyrics_title">كلمات عائمة</string>
+  <string name="pref_floating_lyrics_summary">عرض فقاعة كلمات قابلة للتحريك فوق التطبيقات الأخرى</string>
+  <string name="floating_lyrics_permission">اسمح بالظهور فوق التطبيقات الأخرى لاستخدام الكلمات العائمة</string>
+  <string name="floating_lyrics_unavailable">تعذّر بدء الكلمات العائمة</string>
+  <string name="floating_lyrics_background_required">فعّل تشغيل الصوت في الخلفية أولاً</string>
+  <string name="floating_lyrics_open_player">فتح المشغل</string>
+  <string name="floating_lyrics_dock_left">نقل الكلمات العائمة إلى اليسار</string>
+  <string name="floating_lyrics_dock_right">نقل الكلمات العائمة إلى اليمين</string>
+  <string name="floating_lyrics_dismiss">إخفاء حتى إعادة فتح mpvRx</string>
+  <string name="floating_lyrics_turn_off">إيقاف الكلمات العائمة</string>
+  <string name="floating_lyrics_never">أبداً</string>
+  <string name="floating_lyrics_no_lyrics">لا توجد كلمات متاحة</string>
 </resources>

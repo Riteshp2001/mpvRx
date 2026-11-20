@@ -3165,4 +3165,16 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="permission_video_access_summary">Autorise l’accès aux vidéos dans Downloads, Movies et DCIM.</string>
   <string name="permission_media_access_summary">Autorise l’accès aux fichiers vidéo et audio stockés.</string>
   <string name="pref_audio_passthrough_summary">Transmet le son surround au récepteur sans décodage ni effets.</string>
+  <string name="pref_floating_lyrics_title">Paroles flottantes</string>
+  <string name="pref_floating_lyrics_summary">Afficher une bulle de paroles déplaçable sur les autres applications</string>
+  <string name="floating_lyrics_permission">Autorisez l’affichage sur les autres applications pour les paroles flottantes</string>
+  <string name="floating_lyrics_unavailable">Impossible de démarrer les paroles flottantes</string>
+  <string name="floating_lyrics_background_required">Activez d’abord l’audio en arrière-plan</string>
+  <string name="floating_lyrics_open_player">Ouvrir le lecteur</string>
+  <string name="floating_lyrics_dock_left">Déplacer les paroles flottantes à gauche</string>
+  <string name="floating_lyrics_dock_right">Déplacer les paroles flottantes à droite</string>
+  <string name="floating_lyrics_dismiss">Masquer jusqu’à la réouverture de mpvRx</string>
+  <string name="floating_lyrics_turn_off">Désactiver les paroles flottantes</string>
+  <string name="floating_lyrics_never">Jamais</string>
+  <string name="floating_lyrics_no_lyrics">Aucune parole disponible</string>
 </resources>

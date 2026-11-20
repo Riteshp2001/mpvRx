@@ -28,6 +28,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -75,6 +77,16 @@ data class OnlineLyricsResult(
   val byProvider: Map<LyricsProvider, Lyrics> = emptyMap(),
   val missing: Set<LyricsProvider> = emptySet(),
   val failed: Set<LyricsProvider> = emptySet(),
+)
+
+internal data class PlaybackLyricsSnapshot(
+  val mediaPath: String,
+  val generation: Long,
+  val lyrics: Lyrics?,
+  val offsetMs: Int,
+  val isLoading: Boolean,
+  val errorMessage: String?,
+  val publisherActive: Boolean = true,
 )
 
 /**
@@ -149,6 +161,26 @@ class LyricsRepository(
   }
 
   private val registry = LyricsProviderRegistry(lrcLibApiService)
+  private val playbackLyricsLock = Any()
+  private var playbackLyricsOwner: Any? = null
+  private val _playbackLyrics = MutableStateFlow<PlaybackLyricsSnapshot?>(null)
+  internal val playbackLyrics = _playbackLyrics.asStateFlow()
+
+  internal fun publishPlaybackLyrics(owner: Any, snapshot: PlaybackLyricsSnapshot) {
+    synchronized(playbackLyricsLock) {
+      playbackLyricsOwner = owner
+      _playbackLyrics.value = snapshot
+    }
+  }
+
+  internal fun releasePlaybackLyrics(owner: Any) {
+    synchronized(playbackLyricsLock) {
+      if (playbackLyricsOwner === owner) {
+        playbackLyricsOwner = null
+        _playbackLyrics.value = _playbackLyrics.value?.copy(publisherActive = false)
+      }
+    }
+  }
 
   /**
    * The online provider to try first for this listening session. Null is the

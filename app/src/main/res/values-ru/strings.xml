@@ -3189,4 +3189,16 @@
   <string name="permission_video_access_summary">Доступ к видео в Downloads, Movies и DCIM.</string>
   <string name="permission_media_access_summary">Доступ к сохранённым видео- и аудиофайлам.</string>
   <string name="pref_audio_passthrough_summary">Передавать объёмный звук на ресивер без декодирования и эффектов.</string>
+  <string name="pref_floating_lyrics_title">Плавающие тексты</string>
+  <string name="pref_floating_lyrics_summary">Показывать перемещаемую панель текста поверх других приложений</string>
+  <string name="floating_lyrics_permission">Разрешите показ поверх других приложений для плавающих текстов</string>
+  <string name="floating_lyrics_unavailable">Не удалось запустить плавающие тексты</string>
+  <string name="floating_lyrics_background_required">Сначала включите фоновое воспроизведение аудио</string>
+  <string name="floating_lyrics_open_player">Открыть проигрыватель</string>
+  <string name="floating_lyrics_dock_left">Переместить панель текста влево</string>
+  <string name="floating_lyrics_dock_right">Переместить панель текста вправо</string>
+  <string name="floating_lyrics_dismiss">Скрыть до следующего открытия mpvRx</string>
+  <string name="floating_lyrics_turn_off">Выключить плавающие тексты</string>
+  <string name="floating_lyrics_never">Никогда</string>
+  <string name="floating_lyrics_no_lyrics">Текст песни недоступен</string>
 </resources>

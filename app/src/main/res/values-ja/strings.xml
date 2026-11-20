@@ -3124,4 +3124,16 @@
   <string name="permission_video_access_summary">Downloads・Movies・DCIMの動画へのアクセスを許可します。</string>
   <string name="permission_media_access_summary">保存済みの動画・音声ファイルへのアクセスを許可します。</string>
   <string name="pref_audio_passthrough_summary">サラウンド音声をデコードやエフェクト処理なしで受信機に送ります。</string>
+  <string name="pref_floating_lyrics_title">フローティング歌詞</string>
+  <string name="pref_floating_lyrics_summary">他のアプリの上に移動できる歌詞パネルを表示</string>
+  <string name="floating_lyrics_permission">フローティング歌詞を使うには他のアプリの上への表示を許可してください</string>
+  <string name="floating_lyrics_unavailable">フローティング歌詞を開始できませんでした</string>
+  <string name="floating_lyrics_background_required">先に音声のバックグラウンド再生を有効にしてください</string>
+  <string name="floating_lyrics_open_player">プレーヤーを開く</string>
+  <string name="floating_lyrics_dock_left">歌詞パネルを左側へ移動</string>
+  <string name="floating_lyrics_dock_right">歌詞パネルを右側へ移動</string>
+  <string name="floating_lyrics_dismiss">mpvRxを再び開くまで非表示</string>
+  <string name="floating_lyrics_turn_off">フローティング歌詞をオフ</string>
+  <string name="floating_lyrics_never">今後表示しない</string>
+  <string name="floating_lyrics_no_lyrics">歌詞がありません</string>
 </resources>
