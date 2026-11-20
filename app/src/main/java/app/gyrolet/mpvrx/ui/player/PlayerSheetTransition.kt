@@ -18,7 +18,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitVerticalTouchSlopOrCancellation
+import androidx.compose.foundation.gestures.verticalDrag
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -858,47 +861,28 @@ private fun Modifier.swipePlayerSheet(
       activeDrag = null
     }
   }
-  return pointerInput(source, mediaId, enabled, animateSheet, directionThreshold, fallbackThreshold) {
+  return pointerInput(source, mediaId, enabled, animateSheet, directionThreshold, fallbackThreshold, reducedMotion) {
     if (!enabled) return@pointerInput
-    val tracker = VelocityTracker()
-    var accumulated = 0f
-    detectVerticalDragGestures(
-      onDragStart = {
-        restoreJob?.cancel()
-        accumulated = 0f
-        tracker.resetTracking()
-        activeDrag = if (animateSheet && !reducedMotion) PlayerSheetTransitions.startDrag(source, mediaId) else null
-      },
-      onDragCancel = { restore() },
-      onDragEnd = {
-        val active = activeDrag
-        val velocity = tracker.calculateVelocity().y
-        val towardTarget = if (source == PlayerSheetDestination.FULL) accumulated else -accumulated
-        val targetVelocity = if (source == PlayerSheetDestination.FULL) velocity else -velocity
-        val shouldToggle = if (active != null) {
-          when {
-            source == PlayerSheetDestination.FULL && accumulated <= 0f -> false
-            abs(accumulated) > directionThreshold -> towardTarget > 0f
-            abs(velocity) > 150f -> targetVelocity > 0f
-            else -> if (source == PlayerSheetDestination.FULL) active.expansion < 0.5f else active.expansion > 0.5f
-          }
-        } else {
-          towardTarget > fallbackThreshold
+    awaitEachGesture {
+      val down = awaitFirstDown(requireUnconsumed = false)
+      var overSlop = 0f
+      val first = awaitVerticalTouchSlopOrCancellation(down.id) { change, over ->
+        val towardTarget = if (source == PlayerSheetDestination.FULL) over > 0f else over < 0f
+        if (towardTarget) {
+          change.consume()
+          overSlop = over
         }
-        if (active != null) active.velocity = velocity
-        if (!shouldToggle || !toggle()) {
-          restore()
-        } else if (active != null && PlayerSheetTransitions.drag === active) {
-          restoreJob = scope.launch {
-            kotlinx.coroutines.delay(1_000L)
-            if (PlayerSheetTransitions.drag === active) restore()
-          }
-        } else {
-          activeDrag = null
-        }
-      },
-      onVerticalDrag = { change, amount ->
-        change.consume()
+      } ?: return@awaitEachGesture
+
+      // Do not hide the live player for a drag away from the other sheet anchor.
+      val previousExpansion = activeDrag?.takeIf { PlayerSheetTransitions.drag === it }?.expansion
+      restoreJob?.cancel()
+      activeDrag = if (animateSheet && !reducedMotion) PlayerSheetTransitions.startDrag(source, mediaId) else null
+      if (previousExpansion != null) activeDrag?.expansion = previousExpansion
+      val tracker = VelocityTracker()
+      tracker.addPosition(down.uptimeMillis, down.position)
+      var accumulated = 0f
+      fun dragBy(amount: Float) {
         accumulated += amount
         if (activeDrag == null) {
           accumulated = if (source == PlayerSheetDestination.FULL) {
@@ -906,14 +890,57 @@ private fun Modifier.swipePlayerSheet(
           } else {
             accumulated.coerceAtMost(0f)
           }
+          if (accumulated != 0f && animateSheet && !reducedMotion) {
+            activeDrag = PlayerSheetTransitions.startDrag(source, mediaId)
+          }
         }
-        tracker.addPosition(change.uptimeMillis, change.position)
-        // The sheet stops on its anchors, so dragging past full screen or the mini player does nothing.
-        activeDrag?.let {
-          it.expansion = (it.expansion - amount / it.endpoints.travel).coerceIn(0f, 1f)
+        activeDrag?.let { active ->
+          active.expansion = (active.expansion - amount / active.endpoints.travel).coerceIn(0f, 1f)
+          if (active.expansion == source.expansion) {
+            PlayerSheetTransitions.cancelDrag(active)
+            if (activeDrag === active) activeDrag = null
+          }
         }
-      },
-    )
+      }
+      var released = false
+      try {
+        dragBy(overSlop)
+        tracker.addPosition(first.uptimeMillis, first.position)
+        released = verticalDrag(first.id) { change ->
+          dragBy(change.position.y - change.previousPosition.y)
+          tracker.addPosition(change.uptimeMillis, change.position)
+          change.consume()
+        }
+      } finally {
+        if (!released) restore()
+      }
+      if (!released) return@awaitEachGesture
+      val active = activeDrag
+      val velocity = tracker.calculateVelocity().y
+      val towardTarget = if (source == PlayerSheetDestination.FULL) accumulated else -accumulated
+      val targetVelocity = if (source == PlayerSheetDestination.FULL) velocity else -velocity
+      val shouldToggle = if (active != null) {
+        when {
+          source == PlayerSheetDestination.FULL && accumulated <= 0f -> false
+          abs(accumulated) > directionThreshold -> towardTarget > 0f
+          abs(velocity) > 150f -> targetVelocity > 0f
+          else -> if (source == PlayerSheetDestination.FULL) active.expansion < 0.5f else active.expansion > 0.5f
+        }
+      } else {
+        towardTarget > fallbackThreshold
+      }
+      if (active != null) active.velocity = velocity
+      if (!shouldToggle || !toggle()) {
+        restore()
+      } else if (active != null && PlayerSheetTransitions.drag === active) {
+        restoreJob = scope.launch {
+          kotlinx.coroutines.delay(1_000L)
+          if (PlayerSheetTransitions.drag === active) restore()
+        }
+      } else {
+        activeDrag = null
+      }
+    }
   }
 }
 

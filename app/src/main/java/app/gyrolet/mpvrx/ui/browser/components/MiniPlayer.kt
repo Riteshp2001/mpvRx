@@ -55,7 +55,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -841,7 +840,7 @@ private fun MiniPlayerContent(
           )
         }
 
-        FilledTonalIconButton(
+        IconButton(
           onClick = {
             actionHaptics.selection(true)
             context.startService(
@@ -856,7 +855,7 @@ private fun MiniPlayerContent(
           AnimatedIcon(
             imageVector = if (isPlaying) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
             contentDescription = stringResource(if (isPlaying) R.string.audiobook_pause else R.string.ui_play),
-            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+            tint = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.size(26.dp),
             reduceMotion = reduceMotion,
           )
