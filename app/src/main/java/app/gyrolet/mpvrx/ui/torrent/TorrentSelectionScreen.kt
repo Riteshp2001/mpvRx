@@ -322,6 +322,17 @@ private fun TorrentReadyScreen(
                 enabled = state.launchingFileIndex == null,
                 launching = state.launchingFileIndex == file.index,
                 viewed = file.index in viewedFileIndices,
+                trailingContent = {
+                  TorrentDownloadButton(
+                    source = state.catalog.source,
+                    fileIndex = file.index,
+                    fileName = file.name,
+                    fileSize = file.size,
+                    title = artwork.title,
+                    posterUrl = artwork.posterUrl,
+                    showLabel = state.catalog.playableFiles.size == 1,
+                  )
+                },
                 onClick = {
                   val updatedViewedFiles = viewedFileIndices + file.index
                   viewedFileIndices = updatedViewedFiles
@@ -492,6 +503,7 @@ private fun TorrentFileRow(
   enabled: Boolean,
   launching: Boolean,
   viewed: Boolean,
+  trailingContent: @Composable () -> Unit,
   onClick: () -> Unit,
 ) {
   val episode = parseEpisode(file.name) ?: parseEpisode(file.path)
@@ -581,7 +593,14 @@ private fun TorrentFileRow(
             tint = MaterialTheme.colorScheme.primary,
           )
         }
+        else -> Icon(
+          imageVector = Icons.RoundedFilled.PlayArrow,
+          contentDescription = stringResource(R.string.downloads_play),
+          modifier = Modifier.size(22.dp),
+          tint = MaterialTheme.colorScheme.primary,
+        )
       }
+      trailingContent()
     }
   }
 }

@@ -8,6 +8,7 @@ import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 
 /** Shared playback code can observe an idle engine; this distribution contains no P2P runtime. */
 @Suppress("UNUSED_PARAMETER")
@@ -18,6 +19,13 @@ class TorrentStreamingEngine(context: Context) {
   suspend fun prepareTorrent(source: String): TorrentCatalog = unavailable()
 
   suspend fun startStream(request: TorrentStreamRequest): TorrentStreamResult = unavailable()
+
+  suspend fun downloadFile(
+    source: String,
+    fileIndex: Int,
+    destination: File,
+    onProgress: suspend (Long, Long, Long) -> Unit,
+  ): Long = unavailable()
 
   fun stopStream() = Unit
 

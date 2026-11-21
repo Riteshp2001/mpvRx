@@ -403,6 +403,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private var ambientVideoTransform: MutableMap<String, Double>? = null
   @Volatile var isAmbientShaderActive: Boolean = false
     private set
+  private var youTubeAmbientSubtitleMargins: Pair<Long, String>? = null
   private val ambientTransformProperties = setOf("video-zoom", "video-pan-x", "video-pan-y")
   private var streamingOptionsApplied = false
   private var appliedUserAgent: String? = null
@@ -2465,6 +2466,10 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       val spatialLabel = spatialFilter?.substringBefore(':')
       val valueWithSpatial = when {
         property == "blend-subtitles" && isAmbientShaderActive -> "no"
+        property == "sub-use-margins" && youTubeAmbientSubtitleMargins != null -> {
+          youTubeAmbientSubtitleMargins = youTubeAmbientSubtitleMargins?.first?.let { it to value }
+          "no"
+        }
         spatialFilter != null && !value.contains("$spatialLabel:") ->
           listOf(value, spatialFilter).filter { it.isNotBlank() }.joinToString(",")
         else -> value
@@ -3000,6 +3005,21 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
+  internal fun keepYouTubeAmbientSubtitlesInsidePicture(owner: Long, active: Boolean) = withCore(Unit) {
+    val saved = youTubeAmbientSubtitleMargins
+    if (active) {
+      if (MpvConfigOverridePolicy.isOwnedByMpvConf("sub-use-margins")) return@withCore
+      val original = saved?.second ?: MPVLib.getPropertyString("sub-use-margins") ?: return@withCore
+      youTubeAmbientSubtitleMargins = owner to original
+      if (saved == null && original != "no") MPVLib.setPropertyString("sub-use-margins", "no")
+    } else if (saved != null && saved.first == owner) {
+      youTubeAmbientSubtitleMargins = null
+      if (MPVLib.getPropertyString("sub-use-margins") == "no" && saved.second != "no") {
+        MPVLib.setPropertyString("sub-use-margins", saved.second)
+      }
+    }
+  }
+
   /** Read one coherent geometry snapshot; never guess a 16:9 frame during a file transition. */
   internal fun ambientGeometry(): AmbientGeometry? = withReadyCore(null) {
     if ((MPVLib.getPropertyInt("video-params/w") ?: 0) <= 0) return@withReadyCore null
@@ -3145,6 +3165,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   }
 
   private fun resetAmbientShaderTrackingLocked() {
+    youTubeAmbientSubtitleMargins = null
     ambientVideoTransform = null
     isAmbientShaderActive = false
     activeAmbientShaderPaths.clear()

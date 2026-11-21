@@ -25,22 +25,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.material3.TimeInput
@@ -54,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.presentation.components.AppAlertDialog
@@ -67,7 +61,6 @@ import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.anime4k.Anime4KUiState
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.spacing
 import org.koin.compose.koinInject
 
@@ -244,15 +237,18 @@ fun MoreSheet(
         color = MaterialTheme.colorScheme.primary,
       )
       LazyRow(
-        modifier = Modifier.fillMaxWidth().selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
       ) {
         items(9, key = { it }) { page ->
-          MoreSheetOptionChip(
-            label = when (page) {
-              0 -> stringResource(R.string.player_sheets_tracks_off)
-              8 -> stringResource(R.string.player_sheets_stats_page_console)
-              else -> stringResource(R.string.player_sheets_stats_page_chip, page)
+          FilterChip(
+            label = {
+              Text(
+                when (page) {
+                  0 -> stringResource(R.string.player_sheets_tracks_off)
+                  8 -> stringResource(R.string.player_sheets_stats_page_console)
+                  else -> stringResource(R.string.player_sheets_stats_page_chip, page)
+                },
+              )
             },
             selected = statisticsPage == page,
             onClick = {
@@ -260,6 +256,11 @@ fun MoreSheet(
               // closes the console itself and keeps the overlay from being blind-toggled.
               PlaybackSession.setStatisticsPage(page)
             },
+            colors = FilterChipDefaults.filterChipColors(
+              containerColor = playerSheetSelectionColor(false),
+              selectedContainerColor = playerSheetSelectionColor(true),
+              selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
           )
         }
       }
@@ -285,49 +286,23 @@ fun MoreSheet(
         }
 
         LazyRow(
-          modifier = Modifier.fillMaxWidth().selectableGroup(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
         ) {
           items(Anime4KManager.Mode.entries, key = { it.name }) { mode ->
-            MoreSheetOptionChip(
-              label = stringResource(mode.titleRes),
+            FilterChip(
+              label = { Text(stringResource(mode.titleRes)) },
               selected = anime4KUiState.selectedMode == mode.name,
               enabled = anime4KEnabled && (anime4KUiState.allowHighRes || mode == Anime4KManager.Mode.OFF),
+              colors = FilterChipDefaults.filterChipColors(
+                containerColor = playerSheetSelectionColor(false),
+                selectedContainerColor = playerSheetSelectionColor(true),
+                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+              ),
               onClick = { onAnime4KModeSelected(mode) },
             )
           }
         }
       }
-    }
-  }
-}
-
-@Composable
-private fun MoreSheetOptionChip(
-  label: String,
-  selected: Boolean,
-  onClick: () -> Unit,
-  enabled: Boolean = true,
-) {
-  val colors = MaterialTheme.colorScheme
-  val containerColor = playerSheetSelectionColor(selected)
-  val textColor = if (selected) colors.onSecondaryContainer else colors.onSurface
-  Surface(
-    modifier = Modifier
-      .sizeIn(minWidth = 72.dp, minHeight = 56.dp)
-      .tvFocusHighlight(CircleShape, enabled = enabled)
-      .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick),
-    shape = CircleShape,
-    color = if (enabled) containerColor else containerColor.copy(alpha = containerColor.alpha * 0.5f),
-    contentColor = if (enabled) textColor else textColor.copy(alpha = 0.38f),
-  ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-      horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      RadioButton(selected = selected, onClick = null, enabled = enabled)
-      Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
     }
   }
 }
@@ -402,7 +377,7 @@ fun TimePickerDialog(
                 },
                 label = { Text(stringResource(R.string.generic_minutes_short, minutes)) },
                 leadingIcon = null,
-                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                colors = FilterChipDefaults.filterChipColors(
                   containerColor = playerSheetSelectionColor(false),
                   selectedContainerColor = playerSheetSelectionColor(true),
                   selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,

@@ -29,6 +29,7 @@ enum class AppDownloadStatus {
 object DownloadSources {
   const val LINK = "link"
   const val JELLYFIN = "jellyfin"
+  const val TORRENT = "torrent"
 }
 
 /** Metadata captured when queueing, persisted onto the registry row. */

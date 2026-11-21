@@ -2309,8 +2309,6 @@ fun restartFromBeginning() {
   private val blackBarScanRequestedFor = MutableStateFlow<Long?>(null)
   private var blackBarSource: BlackBarSource? = null
   private var detectedBlackBars: Pair<BlackBarSource, VideoBlackBars>? = null
-  private val _ambientCropSettledGeneration = MutableStateFlow<Long?>(null)
-  internal val ambientCropSettledGeneration = _ambientCropSettledGeneration.asStateFlow()
   @Volatile private var isBlackBarScanInProgress = false
 
   // Timer
@@ -5972,17 +5970,11 @@ fun restartFromBeginning() {
       Triple(source, demand, crop.isNullOrEmpty())
     }.distinctUntilChanged().collectLatest { (source, demand, uncropped) ->
       val (requestedGeneration, shouldCrop) = demand
-      if (!shouldCrop || (source != null && source != blackBarSource)) _ambientCropSettledGeneration.value = null
       blackBarSource = source
       if (!shouldCrop) PlaybackSession.clearBlackBarCrop()
       if (source == null) return@collectLatest
       if (shouldCrop) PlaybackSession.clearBlackBarCrop(unlessSource = source)
-      if (!uncropped || MpvConfigOverridePolicy.isOwnedByMpvConf("video-crop")) {
-        if (shouldCrop && !PlaybackSession.getPropertyString("video-crop").isNullOrEmpty()) {
-          _ambientCropSettledGeneration.value = source.generation
-        }
-        return@collectLatest
-      }
+      if (!uncropped || MpvConfigOverridePolicy.isOwnedByMpvConf("video-crop")) return@collectLatest
       if (!shouldCrop && requestedGeneration != source.generation) return@collectLatest
       if (detectedBlackBars?.first != source) {
         val state = PlaybackSession.state.first { !it.paused || it.generation != source.generation }
@@ -6000,7 +5992,6 @@ fun restartFromBeginning() {
       } else if (shouldCrop) {
         applyDetectedBlackBars()
       }
-      if (shouldCrop) _ambientCropSettledGeneration.value = source.generation
     }
   }
 
@@ -6009,10 +6000,6 @@ fun restartFromBeginning() {
       !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT) &&
       !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ASPECT) &&
       !MpvConfigOverridePolicy.isOwnedByMpvConf("video-crop")
-
-  internal fun isAwaitingAmbientCrop(): Boolean =
-    _currentAspectRatio.value <= 0 && wantsBlackBarCrop(_videoAspect.value) &&
-      _ambientCropSettledGeneration.value != PlaybackSession.state.value.generation
 
   private fun applyDetectedBlackBars() {
     if (isAudioOnly.value || _currentAspectRatio.value > 0 ||

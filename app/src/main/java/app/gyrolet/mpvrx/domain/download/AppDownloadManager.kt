@@ -15,8 +15,12 @@ import android.os.Looper
 import android.util.Log
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.database.dao.DownloadItemDao
 import app.gyrolet.mpvrx.database.entities.DownloadItemEntity
+import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
+import app.gyrolet.mpvrx.domain.torrent.magnetWithoutFileSelection
+import app.gyrolet.mpvrx.domain.torrent.parseMagnet
 import app.gyrolet.mpvrx.network.SharedHttpClient
 import app.gyrolet.mpvrx.network.awaitResponse
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
@@ -26,7 +30,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,6 +42,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import java.io.File
@@ -84,6 +93,7 @@ class AppDownloadManager(
     }
 
   private val cancelledIds: MutableSet<Long> = Collections.synchronizedSet(mutableSetOf<Long>())
+  private val torrentEnqueueMutex = Mutex()
 
   private val _activeSnapshot = MutableStateFlow<ActiveSnapshot?>(null)
 
@@ -165,6 +175,61 @@ class AppDownloadManager(
     }
   }
 
+  fun enqueueTorrent(
+    source: String,
+    fileIndex: Int,
+    fileName: String,
+    size: Long,
+    title: String,
+    posterUrl: String?,
+  ) {
+    scope.launch {
+      try {
+        val magnet = parseMagnet(source)
+        check(BuildConfig.ENABLE_TORRENT && magnet != null && fileIndex >= 0 && size > 0L) {
+          context.getString(R.string.torrent_picker_download_unavailable)
+        }
+        val key = torrentDownloadKey(magnet.infoHash, fileIndex)
+        val queued = torrentEnqueueMutex.withLock {
+          val existing = dao.getAll().map(::AppDownload).firstOrNull {
+            it.entity.source == DownloadSources.TORRENT && it.entity.sourceUrl == key && (it.isActive || it.isPlayable)
+          }
+          if (existing != null) return@withLock false
+          val directory = locations.torrentsDir(title)
+          val reservation = outputReservations.reserve(directory, fileName)
+          try {
+            dao.insert(
+              DownloadItemEntity(
+                url = "${magnetWithoutFileSelection(magnet.cleanMagnetUri)}&so=$fileIndex",
+                dirPath = directory.absolutePath,
+                fileName = reservation.fileName,
+                totalBytes = size,
+                source = DownloadSources.TORRENT,
+                sourceUrl = key,
+                title = fileName,
+                posterUrl = posterUrl,
+                isAudio = fileName.substringAfterLast('.', "").lowercase() in FileTypeUtils.AUDIO_EXTENSIONS,
+              ),
+            )
+          } finally {
+            withContext(NonCancellable) { outputReservations.release(reservation) }
+          }
+          true
+        }
+        if (queued) DirectDownloadService.start(context)
+        val message = if (queued) R.string.downloads_started else R.string.downloads_already_downloaded
+        mainHandler.post { Toast.makeText(context, context.getString(message), Toast.LENGTH_SHORT).show() }
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Exception) {
+        Log.e(TAG, "Could not queue torrent file", error)
+        mainHandler.post {
+          Toast.makeText(context, context.getString(R.string.downloads_failed), Toast.LENGTH_LONG).show()
+        }
+      }
+    }
+  }
+
   /** Runs queued rows sequentially until the queue drains. Called from the service. */
   suspend fun drainQueue(onUpdate: (ActiveSnapshot) -> Unit) {
     try {
@@ -203,6 +268,12 @@ class AppDownloadManager(
     val result =
       runCatching {
         if (!directory.exists()) directory.mkdirs()
+        if (entity.source == DownloadSources.TORRENT) {
+          val total = transferTorrent(entity, partFile, onUpdate)
+          if (id in cancelledIds || dao.findById(id) == null) throw CancelledDownloadException()
+          DownloadOutputReservations.publish(partFile, finalFile)
+          return@runCatching total
+        }
         val legacyPart = File(directory, entity.fileName + PART_SUFFIX)
         if (!partFile.exists() && legacyPart.isFile) {
           val owners = dao.getAll().count {
@@ -310,7 +381,7 @@ class AppDownloadManager(
             dao.findById(id)?.let { dao.update(it.copy(status = AppDownloadStatus.CANCELLED.name)) }
           }
           else -> {
-            Log.e(TAG, "Download failed for ${entity.url}", error)
+            Log.e(TAG, "Download failed for item $id (${entity.source})", error)
             // Keep the .part file so retry resumes from where it stopped.
             dao.findById(id)?.let {
               dao.update(
@@ -324,6 +395,37 @@ class AppDownloadManager(
         }
       }
     cancelledIds.remove(id)
+  }
+
+  private suspend fun transferTorrent(
+    entity: DownloadItemEntity,
+    partFile: File,
+    onUpdate: (ActiveSnapshot) -> Unit,
+  ): Long = coroutineScope {
+    val request = requireNotNull(parseMagnet(entity.url))
+    val index = requireNotNull(request.fileIdx)
+    val title = entity.title.ifBlank { entity.fileName }
+    val initial = ActiveSnapshot(entity.id, title, 0, 0, entity.totalBytes, 0)
+    _activeSnapshot.value = initial
+    onUpdate(initial)
+    var lastProgress = -1
+    val transfer = async {
+      TorrentStreamingEngine(context).downloadFile(request.cleanMagnetUri, index, partFile) { bytes, total, speed ->
+        val progress = (bytes.toDouble() / total * 100).toInt().coerceIn(0, 99)
+        val snapshot = ActiveSnapshot(entity.id, title, progress, bytes, total, speed)
+        _activeSnapshot.value = snapshot
+        onUpdate(snapshot)
+        if (progress != lastProgress) {
+          lastProgress = progress
+          dao.findById(entity.id)?.let { dao.update(it.copy(progress = progress, totalBytes = total)) }
+        }
+      }
+    }
+    while (!transfer.isCompleted) {
+      if (entity.id in cancelledIds) throw CancelledDownloadException()
+      delay(400L)
+    }
+    transfer.await()
   }
 
   /**
@@ -476,6 +578,9 @@ class AppDownloadManager(
 
   companion object {
     private const val TAG = "AppDownloadManager"
+
+    internal fun torrentDownloadKey(infoHash: String, fileIndex: Int): String =
+      "magnet:?xt=urn:btih:${infoHash.lowercase()}&so=$fileIndex"
 
     internal fun notifyCompletedMedia(context: Context, file: File) {
       fun notifyLibraryChanged() {

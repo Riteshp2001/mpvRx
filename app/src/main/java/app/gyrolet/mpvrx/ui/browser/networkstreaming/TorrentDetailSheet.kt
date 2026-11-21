@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.database.entities.NetworkStreamEntryEntity
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.ui.torrent.TorrentDownloadButton
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
@@ -445,6 +446,18 @@ fun TorrentDetailSheet(
               )
             }
           }
+          group.files.singleOrNull()?.let { file ->
+            TorrentDownloadButton(
+              source = file.canonicalSourceUri,
+              fileIndex = file.fileIndex,
+              fileName = file.fileName,
+              fileSize = file.fileSize,
+              title = group.title,
+              posterUrl = posterUrl,
+              modifier = Modifier.fillMaxWidth(),
+              showLabel = true,
+            )
+          }
 
           // Play from beginning button if resume available
           if (viewedFileIndices.isNotEmpty() && group.files.size > 1) {
@@ -683,6 +696,17 @@ fun TorrentDetailSheet(
                   contentDescription = "Play",
                   modifier = Modifier.size(20.dp),
                   tint = MaterialTheme.colorScheme.primary,
+                )
+              }
+
+              if (group.files.size > 1) {
+                TorrentDownloadButton(
+                  source = file.canonicalSourceUri,
+                  fileIndex = file.fileIndex,
+                  fileName = file.fileName,
+                  fileSize = file.fileSize,
+                  title = group.title,
+                  posterUrl = posterUrl,
                 )
               }
 

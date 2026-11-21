@@ -6,10 +6,14 @@ package app.gyrolet.mpvrx.domain.torrent
 
 import android.content.Context
 import android.net.Uri
+import android.os.SystemClock
+import android.util.AtomicFile
 import android.util.Log
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -43,8 +47,10 @@ import org.libtorrent4j.alerts.TorrentErrorAlert
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.security.MessageDigest
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
@@ -59,6 +65,7 @@ class TorrentStreamingEngine(
     private const val MAX_METADATA_BYTES = 16L * 1024L * 1024L
     private const val MAX_TORRENT_FILES = 100_000
     private const val STATUS_INTERVAL_MS = 1_000L
+    private const val DOWNLOAD_IDLE_TIMEOUT_MS = 120_000L
 
     private val playableMimeTypes =
       mapOf(
@@ -306,6 +313,77 @@ class TorrentStreamingEngine(
       }
     }
 
+  /** Uses a short-lived engine owned by the download worker, not the playback engine. */
+  suspend fun downloadFile(
+    source: String,
+    fileIndex: Int,
+    destination: File,
+    onProgress: suspend (Long, Long, Long) -> Unit,
+  ): Long = withContext(Dispatchers.IO) {
+    val hash = parseMagnet(source)?.infoHash ?: throw streamError("Invalid torrent download source.")
+    val storedMetadata = metadataFile(magnetWithoutFileSelection(source))
+    val input = if (storedMetadata.isFile) Uri.fromFile(storedMetadata).toString() else source
+    val prepared = createPreparedSession(input, fileIndex, generation.get())
+    try {
+      if (!prepared.infoHash.equals(hash, ignoreCase = true)) throw streamError("Torrent metadata changed.")
+      val selected = prepared.playableFiles.firstOrNull { it.index == fileIndex && it.size > 0 }
+        ?: throw streamError("The selected torrent file is not playable.")
+      val file = safeCacheFile(prepared.cacheDir, selected.path)
+      val handle = prepared.handle
+      monitorTorrentErrors(prepared.session) { failure ->
+        val storage = prepared.info.files()
+        val pieceLength = prepared.info.pieceLength().toLong()
+        val offset = storage.fileOffset(selected.index)
+        val firstPiece = (offset / pieceLength).toInt()
+        val lastPiece = ((offset + selected.size - 1L) / pieceLength).toInt()
+        val priorities = Array(storage.numFiles()) { Priority.IGNORE }
+        priorities[selected.index] = Priority.TOP_PRIORITY
+        handle.prioritizeFiles(priorities)
+        handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
+        handle.unsetFlags(TorrentFlags.UPLOAD_MODE)
+        handle.resume()
+
+        var lastBytes = -1L
+        var lastProgressAt = SystemClock.elapsedRealtime()
+        while (true) {
+          currentCoroutineContext().ensureActive()
+          failure.get()?.let { throw it }
+          if (!handle.isValid) throw streamError("The torrent session stopped before the download finished.")
+          val bytes = handle.fileProgress().getOrNull(fileIndex)?.coerceIn(0, selected.size) ?: 0L
+          val now = SystemClock.elapsedRealtime()
+          if (bytes > lastBytes) {
+            lastBytes = bytes
+            lastProgressAt = now
+          } else if (now - lastProgressAt >= DOWNLOAD_IDLE_TIMEOUT_MS) {
+            throw streamError("No torrent data received for two minutes. Check that peers are available and try again.")
+          }
+          onProgress(bytes, selected.size, handle.status().downloadPayloadRate().toLong())
+          if (bytes == selected.size && (firstPiece..lastPiece).all(handle::havePiece)) break
+          delay(STATUS_INTERVAL_MS)
+        }
+      }
+
+      // Finish native writes before copying the verified payload to the app worker's .part file.
+      prepared.session.stop()
+      if (!file.isFile || file.length() != selected.size) throw streamError("The downloaded file is incomplete.")
+      val coroutine = currentCoroutineContext()
+      file.inputStream().use { inputStream ->
+        FileOutputStream(destination).use { output ->
+          val buffer = ByteArray(128 * 1024)
+          while (true) {
+            coroutine.ensureActive()
+            val read = inputStream.read(buffer)
+            if (read < 0) break
+            output.write(buffer, 0, read)
+          }
+        }
+      }
+      selected.size
+    } finally {
+      cleanupPreparedSession(prepared)
+    }
+  }
+
   private suspend fun createPreparedSession(
     sourceValue: String,
     requestedFileIndex: Int?,
@@ -507,7 +585,33 @@ class TorrentStreamingEngine(
           displayName = safeDisplayName(info.name(), hashHex),
           webSeeds = endpoints.webSeeds,
         )
+      rememberMetadata(durableSource, payload)
       PreparedTorrent(handle, info, requestedFileIndex, durableSource, hashHex)
+    }
+  }
+
+  private fun metadataFile(source: String): File {
+    val key = MessageDigest.getInstance("SHA-256").digest(source.toByteArray()).joinToString("") { "%02x".format(it) }
+    return File(appContext.filesDir, "torrent_metadata/$key.torrent")
+  }
+
+  private fun rememberMetadata(source: String, payload: ByteArray) {
+    val destination = metadataFile(source)
+    if (destination.isFile) return
+    try {
+      // A .torrent can be opened using a temporary content grant or only have HTTP web seeds.
+      // Keep its verified metainfo so background downloads don't have to resolve a new magnet.
+      val atomic = AtomicFile(destination)
+      val output = atomic.startWrite()
+      try {
+        output.write(payload)
+        atomic.finishWrite(output)
+      } catch (error: IOException) {
+        atomic.failWrite(output)
+        throw error
+      }
+    } catch (error: IOException) {
+      Log.w(TAG, "Could not retain torrent metadata for offline downloads", error)
     }
   }
 

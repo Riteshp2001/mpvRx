@@ -34,6 +34,7 @@ import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import `is`.xyz.mpv.MPVNode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -76,6 +77,18 @@ internal data class MpvVideoRect(
   companion object {
     // Far beyond any usable zoom, but inside View's measurable size.
     private const val MAX_COORD = 1L shl 22
+
+    fun fromOsdDimensions(node: MPVNode?): MpvVideoRect? {
+      val dimensions = node?.asMap() ?: return null
+      fun dimension(name: String) = dimensions[name]?.asInt()?.coerceIn(-MAX_COORD, MAX_COORD)?.toInt()
+      val width = dimension("w")?.takeIf { it > 0 } ?: return null
+      val height = dimension("h")?.takeIf { it > 0 } ?: return null
+      val left = dimension("ml") ?: return null
+      val top = dimension("mt") ?: return null
+      val right = width - (dimension("mr") ?: return null)
+      val bottom = height - (dimension("mb") ?: return null)
+      return MpvVideoRect(width, height, left, top, right, bottom).takeIf { right > left && bottom > top }
+    }
 
     fun parse(value: String?): MpvVideoRect? {
       val parts = value?.split(':')?.map { it.toIntOrNull() ?: return null } ?: return null
@@ -153,6 +166,16 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
     val rect = videoRect ?: return null
     if (measuredWidth <= 0 || measuredHeight <= 0) return null
     return rect.scaledTo(measuredWidth, measuredHeight).takeIf { it.width() > 0 && it.height() > 0 }
+  }
+
+  internal fun ambientCaptureBounds(picture: MpvVideoRect): Rect? {
+    if (width <= 0 || height <= 0) return null
+    val directPicture = videoBounds()
+    val region = directPicture?.let { Rect(it) } ?: picture.scaledTo(width, height)
+    if (!region.intersect(0, 0, width, height)) return null
+    // Direct MediaCodec has a separate surface fitted to the picture, not the viewport.
+    if (directPicture != null) region.offset(-directPicture.left, -directPicture.top)
+    return region
   }
 
   override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

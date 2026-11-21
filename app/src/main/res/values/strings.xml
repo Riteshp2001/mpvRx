@@ -1012,7 +1012,9 @@
   <string name="player_opening_stream">Opening stream…</string>
   <string name="player_buffering_percent">Buffering %1$d%%</string>
   <string name="player_buffering_seconds">Buffering · %1$s s ready</string>
-  <string name="torrent_picker_choose_title">Choose what to play</string>
+  <string name="torrent_picker_choose_title">Choose a torrent file</string>
+  <string name="torrent_picker_download_unavailable">This torrent file cannot be downloaded.</string>
+  <string name="torrent_picker_download_progress">Downloading: %1$d%%</string>
   <plurals name="torrent_picker_playable_count">
     <item quantity="one">%1$d playable file</item>
     <item quantity="other">%1$d playable files</item>
@@ -2378,7 +2380,7 @@
   <string name="downloads_notification_channel_description">Shows file download progress</string>
   <string name="downloads_preparing">Preparing download…</string>
   <string name="downloads_empty">No downloads yet</string>
-  <string name="downloads_empty_hint">Downloads from links and Jellyfin appear here</string>
+  <string name="downloads_empty_hint">Files you download appear here</string>
   <string name="downloads_active_section">Active</string>
   <string name="downloads_completed_section">Completed</string>
   <string name="downloads_retry">Retry</string>

@@ -143,9 +143,7 @@ class TorrentSelectionViewModel(
               isLookingUpArtwork = needsArtworkLookup && catalog.playableFiles.size > 1,
             )
 
-          if (catalog.playableFiles.size == 1) {
-            launch(catalog, catalog.playableFiles.single())
-          } else if (needsArtworkLookup) {
+          if (catalog.playableFiles.size > 1 && needsArtworkLookup) {
             launchArtworkLookup(catalog, initialArtwork)
           }
         } catch (cancellation: CancellationException) {

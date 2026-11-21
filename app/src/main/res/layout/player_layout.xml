@@ -25,6 +25,17 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <View
+        android:id="@+id/video_presentation_cover"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@android:color/black"
+        android:importantForAccessibility="no"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <View
         android:id="@+id/external_display_overlay"
         android:layout_width="0dp"
         android:layout_height="0dp"

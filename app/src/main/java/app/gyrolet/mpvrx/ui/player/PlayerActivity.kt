@@ -42,7 +42,6 @@ import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
-import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.animation.PathInterpolator
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
@@ -51,20 +50,25 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.compose.ui.unit.IntSize
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.pm.PackageInfoCompat
@@ -111,6 +115,7 @@ import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.VideoSortType
+import app.gyrolet.mpvrx.preferences.preference.collectAsState as collectPreferenceAsState
 import app.gyrolet.mpvrx.ui.browser.playlist.ALL_VIDEOS_PLAYLIST_ID
 import app.gyrolet.mpvrx.ui.browser.playlist.buildAllVideosPlaylistEntity
 import app.gyrolet.mpvrx.ui.browser.playlist.isAllVideosPlaylist
@@ -123,6 +128,7 @@ import app.gyrolet.mpvrx.ui.player.components.rememberVideoAmbientFrame
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.player.ytdlp.YouTubeAuthenticationRecovery
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.remote.RemotePairingPrompt
 import app.gyrolet.mpvrx.ui.torrent.torrentSelectionActivityClass
 import app.gyrolet.mpvrx.ui.tv.startForResultOrToast
@@ -154,6 +160,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
@@ -171,7 +178,6 @@ import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.roundToInt
 
 private enum class BackgroundPlaybackStartResult {
   Started,
@@ -450,8 +456,7 @@ class PlayerActivity :
   private var startedBackgroundForPip = false
   private var wasInPipMode = false
   private var isAmbientPipMode by mutableStateOf(false)
-  private var isVideoAmbientPresentationActive = false
-  private var videoAmbientBounds by mutableStateOf(Rect.Zero)
+  private val videoHiddenForGeneration = MutableStateFlow<Long?>(null)
   private var handledPipDismissal = false
   private var pendingPipExitResolution = false
   private var pendingBackgroundTransition = false
@@ -740,6 +745,7 @@ class PlayerActivity :
     // change session state, then overlap MPVLib.init() with the remaining Android window setup.
     releaseDetachedBackgroundPlaybackBeforeFreshLaunch()
     startMpvCorePreparation()
+    if (isKnownAudioLaunch(intent)) coverVideoForAudioLoad()
     setContentView(binding.root)
     setupPipHelper()
 
@@ -1392,20 +1398,13 @@ class PlayerActivity :
   }
 
   private fun setupVideoAmbientBackground() {
-    binding.player.addOnLayoutChangeListener { _, left, top, right, bottom, _, _, _, _ ->
-      videoAmbientBounds = Rect(left.toFloat(), top.toFloat(), right.toFloat(), bottom.toFloat())
-    }
     binding.ambientBackground.setViewCompositionStrategy(
       ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
     )
     // Pre-Android 11 stops inset dispatch at a consuming sibling, which would starve the controls of IME insets.
     binding.ambientBackground.consumeWindowInsets = false
 
-    // The ambient tree subscribes to eleven sources and registers its own MPV observer. With the
-    // effect off — the default, and every offline open — that whole composition would render
-    // nothing, because `presentationActive` requires `isAmbientEnabled`. So mount it only once the
-    // preference says it can produce output, and keep a single cheap watcher to mount it later if
-    // the user turns it on.
+    // Don't mount the capture overlay until Ambient has been enabled at least once.
     if (viewModel.isAmbientEnabled.value) {
       setVideoAmbientBackgroundContent()
     } else {
@@ -1426,22 +1425,45 @@ class PlayerActivity :
       val lifecycleActive by viewModel.isAmbientLifecycleActive.collectAsState()
       val isAudioOnly by viewModel.isAudioOnly.collectAsState()
       val playbackState by PlaybackSession.state.collectAsState()
-      val videoCrop by PlaybackSession.propString["video-crop"].collectAsState()
-      val cropSettledGeneration by viewModel.ambientCropSettledGeneration.collectAsState()
-      val aspectOverride by PlaybackSession.propString["video-aspect-override"].collectAsState()
-      val panscan by PlaybackSession.propFloat["panscan"].collectAsState()
+      val osdDimensions by PlaybackSession.propNode["osd-dimensions"].collectAsState()
+      val directRect by PlaybackSession.propString[ANDROID_VIDEO_RECT].collectAsState()
+      val statisticsPage by PlaybackSession.visibleStatisticsPage.collectAsState()
       val hdrScreenMode by viewModel.hdrScreenMode.collectAsState()
       val orientation = LocalConfiguration.current.orientation
+      val followZoom by playerPreferences.overlaysFollowVideoZoom.collectPreferenceAsState()
+      val zoom by viewModel.videoZoom.collectAsState()
+      val panX by viewModel.videoPanX.collectAsState()
+      val panY by viewModel.videoPanY.collectAsState()
+      var viewport by remember { mutableStateOf(IntSize.Zero) }
+      val picture = remember(osdDimensions, directRect) {
+        MpvVideoRect.parse(directRect) ?: MpvVideoRect.fromOsdDimensions(osdDimensions)
+      }
+      val pictureBounds = picture?.let {
+        youtubeAmbientPictureBounds(
+          it,
+          viewport,
+          if (followZoom) videoZoomMultiplier(zoom) else 1f,
+          if (followZoom) panX else 0f,
+          if (followZoom) panY else 0f,
+        )
+      } ?: Rect.Zero
+      val hasMargins = !pictureBounds.isEmpty && (
+        pictureBounds.left > 0f || pictureBounds.top > 0f ||
+          pictureBounds.right < viewport.width || pictureBounds.bottom < viewport.height
+        )
       val playbackReady =
         playbackState.phase == PlaybackPhase.READY || playbackState.phase == PlaybackPhase.BACKGROUND
-      val active =
-        enabled &&
-          lifecycleActive &&
+      val canShowAmbient =
+        lifecycleActive &&
           style == AmbientStyle.YouTube &&
           !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT) &&
           !isAudioOnly &&
           !isAmbientPipMode &&
-          playbackReady
+          playbackReady &&
+          playbackState.surfaceAttached &&
+          statisticsPage == 0
+      val active = enabled && canShowAmbient && hasMargins
+      val fadeMillis = if (AppMotion.playerReducedMotion()) 0 else 200
       val ambientFrame =
         rememberVideoAmbientFrame(
           surfaceView = binding.player,
@@ -1454,114 +1476,62 @@ class PlayerActivity :
             state.surfaceAttached &&
               (state.phase == PlaybackPhase.READY || state.phase == PlaybackPhase.BACKGROUND) &&
               binding.player.isSurfaceReady &&
-              !binding.player.isLayoutRequested &&
-              !viewModel.isAwaitingAmbientCrop()
+              !binding.player.isLayoutRequested
           },
           isPlayingProvider = {
             !PlaybackSession.state.value.paused
           },
+          captureBoundsProvider = { picture?.let(binding.player::ambientCaptureBounds) },
+          fadeOutMillis = fadeMillis.toLong(),
           fallbackFrameProvider = { dimension ->
             withContext(Dispatchers.IO) {
               runCatching { PlaybackSession.grabThumbnail(dimension) }.getOrNull()
             }
           },
         )
-      // Keep the player Surface geometry stable for the entire Ambient presentation. A captured
-      // frame can be temporarily unavailable while ImageReader swaps buffers; treating that as an
-      // Ambient-off transition made the Surface bounce between fitted and MATCH_PARENT sizes,
-      // forcing BLAST/libmpv reconfiguration and visible black flashes.
-      val presentationActive = active && ambientFrame.supported
-
-      // Coalesce crop and aspect notifications before changing the actual video surface size.
-      LaunchedEffect(presentationActive, playbackState.generation, cropSettledGeneration, videoCrop, aspectOverride, panscan) {
-        withFrameNanos { }
-        setVideoAmbientPresentationActive(presentationActive)
-      }
-
       MpvrxTheme {
-        if (presentationActive && ambientFrame.frame != null) {
-          VideoAmbientBackground(
-            frame = ambientFrame.frame,
-            baseColor = ambientFrame.base,
-            accentColor = ambientFrame.accent,
-            videoBounds = videoAmbientBounds,
-            edgeBlend = edgeBlend,
-            modifier = Modifier.fillMaxSize(),
-          )
+        val opacity = animateFloatAsState(
+          targetValue = if (active && ambientFrame.frame != null) 1f else 0f,
+          animationSpec = tween(fadeMillis),
+          label = "youtubeAmbientOpacity",
+        )
+        val showOverlay = canShowAmbient && hasMargins && ambientFrame.frame != null && (active || opacity.value > 0f)
+        Box(Modifier.fillMaxSize().onSizeChanged { viewport = it }) {
+          if (showOverlay) {
+            // mpv composites subtitles into the Surface. Keep text out of the painted margins.
+            DisposableEffect(playbackState.generation) {
+              val owner = playbackOwnerToken
+              PlaybackSession.keepYouTubeAmbientSubtitlesInsidePicture(owner, true)
+              onDispose { PlaybackSession.keepYouTubeAmbientSubtitlesInsidePicture(owner, false) }
+            }
+            // Use mpv's rendered picture as the cutout; toggling Ambient must not resize its surface.
+            VideoAmbientBackground(
+              frame = ambientFrame.frame,
+              baseColor = ambientFrame.base,
+              accentColor = ambientFrame.accent,
+              videoBounds = pictureBounds,
+              edgeBlend = edgeBlend,
+              modifier = Modifier.graphicsLayer { alpha = opacity.value },
+            )
+          }
         }
       }
     }
   }
 
-  private fun setVideoAmbientPresentationActive(active: Boolean) {
-    isVideoAmbientPresentationActive = active
-    binding.ambientBackground.visibility = if (active) View.VISIBLE else View.GONE
-    if (active) {
-      updateVideoAmbientPlayerBounds()
-    } else {
-      restoreFullSizePlayerBounds()
-    }
-  }
-
-  private fun updateVideoAmbientPlayerBounds() {
-    if (!isVideoAmbientPresentationActive || binding.player.visibility != View.VISIBLE ||
-      viewModel.isAwaitingAmbientCrop()
-    ) return
-    val containerWidth = binding.root.width
-    val containerHeight = binding.root.height
-    val videoAspect = VideoAspectGeometry.currentEffectiveDisplayAspect(fallbackWidth = 0.0, fallbackHeight = 0.0)
-    if (containerWidth <= 0 || containerHeight <= 0 || videoAspect == null || videoAspect <= 0.0) return
-
-    val geometry = AmbientGeometry.calculate(
-      containerWidth, containerHeight, videoAspect,
-      panscan = PlaybackSession.getPropertyDouble("panscan") ?: 0.0,
-    ) ?: return
-    if (!geometry.hasBars) {
-      restoreFullSizePlayerBounds()
-      return
-    }
-    val containerAspect = containerWidth.toDouble() / containerHeight.toDouble()
-    val videoWidth: Int
-    val videoHeight: Int
-    if (containerAspect > videoAspect) {
-      videoHeight = containerHeight
-      videoWidth = centeredFittedDimension((videoHeight * videoAspect).roundToInt(), containerWidth)
-    } else {
-      videoWidth = containerWidth
-      videoHeight = centeredFittedDimension((videoWidth / videoAspect).roundToInt(), containerHeight)
-    }
-
-    val params = binding.player.layoutParams as ConstraintLayout.LayoutParams
-    if (params.width == videoWidth && params.height == videoHeight) return
-    params.width = videoWidth
-    params.height = videoHeight
-    params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID
-    params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID
-    params.topToTop = ConstraintLayout.LayoutParams.PARENT_ID
-    params.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID
-    binding.player.layoutParams = params
-  }
-
-  private fun centeredFittedDimension(
-    requested: Int,
-    container: Int,
-  ): Int {
-    val fitted = requested.coerceIn(1, container)
-    // An odd remainder cannot be split equally by ConstraintLayout. Prefer one pixel less video
-    // over visibly placing the extra ambient/letterbox pixel on only one side.
-    return if (fitted > 1 && (container - fitted) % 2 != 0) fitted - 1 else fitted
-  }
-
-  private fun restoreFullSizePlayerBounds() {
-    val params = binding.player.layoutParams as ConstraintLayout.LayoutParams
-    if (params.width == ViewGroup.LayoutParams.MATCH_PARENT &&
-      params.height == ViewGroup.LayoutParams.MATCH_PARENT
-    ) {
-      return
-    }
-    params.width = ViewGroup.LayoutParams.MATCH_PARENT
-    params.height = ViewGroup.LayoutParams.MATCH_PARENT
-    binding.player.layoutParams = params
+  private fun youtubeAmbientPictureBounds(
+    picture: MpvVideoRect,
+    viewport: IntSize,
+    scale: Float,
+    panX: Float,
+    panY: Float,
+  ): Rect {
+    if (viewport.width <= 0 || viewport.height <= 0) return Rect.Zero
+    val bounds = picture.scaledTo(viewport.width, viewport.height)
+    if (!bounds.intersect(0, 0, viewport.width, viewport.height)) return Rect.Zero
+    val dx = (1f - scale) * viewport.width / 2f + panX
+    val dy = (1f - scale) * viewport.height / 2f + panY
+    return Rect(bounds.left * scale + dx, bounds.top * scale + dy, bounds.right * scale + dx, bounds.bottom * scale + dy)
   }
 
   private fun setupVideoTransformObserver() {
@@ -1655,6 +1625,31 @@ class PlayerActivity :
   private fun setupAudioPlayerViewObserver() {
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
+        combine(
+          PlaybackSession.state.map { it.generation to it.phase }.distinctUntilChanged(),
+          viewModel.isAudioOnly,
+          PlaybackSession.propString["vid"],
+          PlaybackSession.propBoolean["vo-configured"],
+          videoHiddenForGeneration,
+        ) { (generation, phase), audioOnly, _, voConfigured, hiddenGeneration ->
+          !audioOnly && generation != hiddenGeneration && voConfigured == true &&
+            (phase == PlaybackPhase.READY || phase == PlaybackPhase.BACKGROUND) &&
+            PlaybackSession.state.value.currentItem?.isDefinitelyAudioOnly() == false &&
+            PlaybackSession.readLoadedMedia(generation) { reader ->
+              reader.int("current-tracks/video/id") != null &&
+                reader.string("current-tracks/video/albumart") != "yes" &&
+                (reader.string("current-tracks/video/image") != "yes" || reader.int("current-tracks/audio/id") == null)
+            } == true
+        }.distinctUntilChanged().collect { showVideo ->
+          // Keep the native Surface available to initialize a real video. The cover is above
+          // the Surface but below the player UI and its album art.
+          binding.videoPresentationCover.visibility = if (showVideo) View.INVISIBLE else View.VISIBLE
+        }
+      }
+
+    }
+    lifecycleScope.launch {
+      repeatOnLifecycle(Lifecycle.State.STARTED) {
         viewModel.isAudioOnly.collect { isAudioOnly ->
           if (isAudioOnly) {
             applyPlaybackBrightnessPolicy(isAudio = true)
@@ -1674,16 +1669,17 @@ class PlayerActivity :
           } else {
             binding.player.clipToOutline = false
             binding.player.visibility = View.VISIBLE
-            if (isVideoAmbientPresentationActive) {
-              binding.root.post(::updateVideoAmbientPlayerBounds)
-            } else {
-              restoreFullSizePlayerBounds()
-            }
           }
           updateStatusBarProtection()
         }
       }
     }
+  }
+
+  private fun coverVideoForAudioLoad() {
+    // Never uncover the outgoing file's last frame while an incoming audio file is being resolved.
+    videoHiddenForGeneration.value = PlaybackSession.state.value.generation
+    binding.videoPresentationCover.visibility = View.VISIBLE
   }
 
   /**
@@ -2390,7 +2386,6 @@ class PlayerActivity :
       return
     }
     if (viewModelHostAttached) viewModel.setAmbientLifecycleActive(false)
-    if (isVideoAmbientPresentationActive) setVideoAmbientPresentationActive(false)
     if (!ownsPlaybackSession() || isChangingConfigurations) {
       cleanupReceivers()
       if (::pipHelper.isInitialized) runCatching { pipHelper.onStop() }
@@ -3090,7 +3085,6 @@ class PlayerActivity :
       }
       viewModel.restartPostProcessingIfActive()
       viewModel.restartAmbientIfActive()
-      binding.root.post(::updateVideoAmbientPlayerBounds)
     }
 
     // SurfaceHolder and View callbacks stay on the main thread even though the native core was
@@ -4684,7 +4678,6 @@ class PlayerActivity :
     updateOrientationForWindow()
     viewModel.onOrientationChanged()
     applySubtitleWindowing(newConfig.orientation == Configuration.ORIENTATION_PORTRAIT)
-    binding.root.post(::updateVideoAmbientPlayerBounds)
     if (isReady) {
       handleConfigurationChange()
     }
@@ -5186,7 +5179,6 @@ class PlayerActivity :
     applySubtitlePreferences()
     applyVideoFilterPreferences()
     viewModel.restoreSavedVideoAspect(showUpdate = false)
-    binding.root.post(::updateVideoAmbientPlayerBounds)
 
     if (shouldForceCurrentMediaTitle()) {
       val preferredTitle = getPreferredCurrentTitle()
@@ -6062,6 +6054,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
    */
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
+    if (isKnownAudioLaunch(intent)) coverVideoForAudioLoad()
     val creation = playerCreationJob
     if (creation?.isActive == true) {
       lifecycleScope.launch {
@@ -6666,6 +6659,16 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     if (requiresYtdlp) {
       player.setupYtdlpOptions()
     }
+    // An incoming video needs its Surface before loadfile, even if music hid the player View.
+    withContext(Dispatchers.Main.immediate) {
+      ensureCurrentMediaRequest(requestGeneration)
+      if (item.isDefinitelyAudioOnly()) {
+        coverVideoForAudioLoad()
+      } else if (binding.player.visibility != View.VISIBLE) {
+        binding.videoPresentationCover.visibility = View.VISIBLE
+        binding.player.visibility = View.VISIBLE
+      }
+    }
     // Keep the built-in hook loaded across media changes, as in 2.7.2. It ignores local
     // files and excluded direct URLs itself; toggling ytdl unloads/reloads the Lua script.
     // Attach the video Surface before loadfile so MediaCodec is created against it. A late
@@ -6977,7 +6980,6 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
 
     isAmbientPipMode = isInPictureInPictureMode
     viewModel.setAmbientPipActive(isInPictureInPictureMode)
-    if (isInPictureInPictureMode) setVideoAmbientPresentationActive(false)
     pipHelper.onPictureInPictureModeChanged(isInPictureInPictureMode)
     if (isInPictureInPictureMode) {
       pendingPipExitResolution = false

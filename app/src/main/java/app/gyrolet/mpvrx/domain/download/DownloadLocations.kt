@@ -87,6 +87,8 @@ class DownloadLocations(
 
   fun linksDir(): File = subDir(root(), "Links")
 
+  fun torrentsDir(title: String): File = subDir(subDir(root(), "Torrents"), sanitizeName(title))
+
   fun jellyfinMovieDir(title: String): File = subDir(subDir(root(), "Jellyfin"), sanitizeName(title))
 
   fun jellyfinSeasonDir(

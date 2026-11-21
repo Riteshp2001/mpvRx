@@ -283,7 +283,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 
 | Feature | Description |
 |---|---|
-| **Sequential Torrent Engine** | Powered by high-speed native Go bridge (`anacrolix/torrent`) with sequential piece prioritization |
+| **Torrent Streaming & Downloads** | On torrent-enabled builds, open a magnet or `.torrent` file, then play or download individual media files. Downloads run in the background, appear on the **Downloads** screen, and save to the `Torrents` subfolder of your configured download location. |
 | **Instant Streaming** | Stream magnet links, `.torrent` files, direct web streams (HLS, MP4), and YouTube URLs |
 | **Cinematic Discovery** | Hero banner carousel, Continue Watching row, and 2:3 vertical poster cards for saved media |
 | **Automated TMDB Enrichment** | Fetches posters, backdrops, storyline synopsis, release years, and media types via Wyzie/TMDB |
