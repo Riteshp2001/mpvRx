@@ -40,6 +40,7 @@ fun PlayerSheetSearchField(
   onQueryChange: (String) -> Unit,
   modifier: Modifier = Modifier,
   placeholder: String = stringResource(R.string.generic_search),
+  inputFieldModifier: Modifier = Modifier,
   onSubmit: (() -> Unit)? = null,
 ) {
   val focusManager = LocalFocusManager.current
@@ -55,6 +56,7 @@ fun PlayerSheetSearchField(
     onQueryChange = onQueryChange,
     onSearch = { submit() },
     modifier = modifier.fillMaxWidth(),
+    inputFieldModifier = inputFieldModifier,
     placeholder = { Text(placeholder) },
     containerColor = if (frosted) MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.35f) else null,
     tonalElevation = if (frosted) 0.dp else SearchBarDefaults.TonalElevation,

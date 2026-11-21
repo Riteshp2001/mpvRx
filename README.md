@@ -208,7 +208,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 | Feature | Description |
 |---|---|
 | **Dual Browser Modes** | Album View (folder grid) and Tree View (file manager hierarchy) |
-| **Android TV File Picker** | **Open file** uses a remote-friendly browser for internal storage and readable USB drives. Use **Grant access** if needed, or **System file picker** when your TV has one. Android storage restrictions still apply. |
+| **Android TV File Picker** | **Open file** browses internal storage and readable USB drives with the D-pad. **Back** goes up one level and returns focus to the folder you left. Select **Search** to filter the current folder. Use **Grant access** if needed, or **System file picker** when your TV has one. |
 | **Folder Pinning** | Pin frequently accessed folders to top |
 | **Single-Child Auto-Flatten** | Folders with one subfolder auto-flatten for faster browsing |
 | **Auto-Scroll to Last Played** | Opens to the last played video position |

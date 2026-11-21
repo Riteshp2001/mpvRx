@@ -18,14 +18,19 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -39,15 +44,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -62,6 +72,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusReq
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.tv.TvPickerStorage
+import app.gyrolet.mpvrx.ui.tv.tryRequestFocus
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import app.gyrolet.mpvrx.utils.storage.StorageVolumeUtils
 import app.gyrolet.mpvrx.utils.storage.mediaPathKey
@@ -70,6 +81,7 @@ import app.gyrolet.mpvrx.utils.storage.storagePickerParentPath
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 internal val subtitlePickerExtensions =
@@ -116,7 +128,7 @@ internal val subtitlePickerExtensions =
     "txt",
   )
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun FilePickerDialog(
   modifier: Modifier = Modifier,
@@ -163,11 +175,30 @@ internal fun FilePickerDialog(
   }
   var query by rememberSaveable(isOpen) { mutableStateOf("") }
   var selectedPaths by rememberSaveable(isOpen) { mutableStateOf(emptyList<String>()) }
+  var tvLocationEntryPath by rememberSaveable { mutableStateOf<String?>(null) }
+  var returnFocusPath by rememberSaveable { mutableStateOf<String?>(null) }
+  var tvSearchOpen by rememberSaveable { mutableStateOf(false) }
+  var tvSearchSubmission by remember { mutableIntStateOf(0) }
+
+  fun closeTvSearch() {
+    tvSearchOpen = false
+    tvSearchSubmission = 0
+    query = ""
+  }
+
+  fun openPath(path: String) {
+    if (embeddedTvPicker) {
+      if (selectedPath == null) tvLocationEntryPath = path
+      returnFocusPath = null
+      closeTvSearch()
+    }
+    selectedPath = path
+  }
 
   // Notify parent when path changes for state persistence
   LaunchedEffect(selectedPath) {
     onPathChanged?.invoke(selectedPath)
-    query = ""
+    if (!embeddedTvPicker) query = ""
   }
 
   // Determine what to show based on selectedPath
@@ -178,12 +209,23 @@ internal fun FilePickerDialog(
       Environment.getExternalStorageDirectory().absolutePath)
       .mapNotNull(::normalizeStoragePath).distinctBy(::mediaPathKey).toSet()
   }
-  val parentPath = remember(selectedPath, storageRoots) {
-    storagePickerParentPath(selectedPath, storageRoots)
+  val parentPath = remember(selectedPath, storageRoots, tvLocationEntryPath) {
+    if (embeddedTvPicker && selectedPath == tvLocationEntryPath) null
+    else storagePickerParentPath(selectedPath, storageRoots)
   }
   val navigateUp: () -> Unit = {
+    if (embeddedTvPicker) {
+      returnFocusPath = selectedPath
+      closeTvSearch()
+    }
     selectedPath = parentPath
     if (parentPath == null) onReturnToStorageLocations?.invoke()
+  }
+  val navigateToStorage: () -> Unit = {
+    returnFocusPath = tvLocationEntryPath ?: selectedPath
+    closeTvSearch()
+    selectedPath = null
+    onReturnToStorageLocations?.invoke()
   }
 
   // One deduplicated snapshot supplies both keys and rows. Classify each path once and
@@ -232,16 +274,24 @@ internal fun FilePickerDialog(
       normalizedQuery.isEmpty() || it.file.name.contains(normalizedQuery, ignoreCase = true)
     }
   }
-  val canGrantAccess = onStorageAccessRequest != null
-  val initialFocusRequester = rememberTvInitialFocusRequester(
-    enabled = !embeddedTvPicker || showStorageRoot || currentListing != null,
-    requestKey = if (embeddedTvPicker) selectedPath to canGrantAccess else isOpen,
-  )
-  val focusFirstRow = embeddedTvPicker && if (showStorageRoot) {
-    !tvStorage?.locations.isNullOrEmpty()
-  } else {
-    entries.isNotEmpty()
+  val phoneHeaderFocus = rememberTvInitialFocusRequester(enabled = !embeddedTvPicker, requestKey = isOpen)
+  val rowFocus = remember { FocusRequester() }
+  val actionFocus = remember { FocusRequester() }
+  val searchFocus = rememberTvInitialFocusRequester(enabled = embeddedTvPicker && tvSearchOpen, requestKey = tvSearchOpen)
+  val tvLocations = tvStorage?.locations.orEmpty()
+  val rowCount = if (showStorageRoot) tvLocations.size else entries.size
+  val returnRowIndex = remember(returnFocusPath, showStorageRoot, tvLocations, entries) {
+    val path = returnFocusPath
+    when {
+      path == null -> 0
+      showStorageRoot -> tvLocations.indexOfFirst { it.directory.absolutePath == path }.coerceAtLeast(0)
+      else -> entries.indexOfFirst { it.isDirectory && it.file.absolutePath == path }.coerceAtLeast(0)
+    }
   }
+  val focusGrant = embeddedTvPicker && onStorageAccessRequest != null &&
+    (showStorageRoot || currentListing?.accessible == false)
+  val focusUp = embeddedTvPicker && !showStorageRoot && !focusGrant
+  val focusSystem = embeddedTvPicker && showStorageRoot && !focusGrant && onSystemPickerRequest != null
   val shape = RoundedCornerShape(12.dp)
 
   AppPickerSheet(
@@ -253,45 +303,43 @@ internal fun FilePickerDialog(
     fixedHeight = true,
     embeddedTvPicker = embeddedTvPicker,
     headerActions = {
-      NavigationButtons(
-        selectedPath = selectedPath,
-        onBack = navigateUp,
-        onHome = when {
-          !embeddedTvPicker -> ({ selectedPath = storageRoots.singleOrNull() })
-          showStorageRoot -> null
-          else -> ({
-            selectedPath = null
-            onReturnToStorageLocations?.invoke()
-          })
-        },
-        onSystemPicker = if (embeddedTvPicker) null else onSystemPickerRequest,
-        initialFocusRequester = if (embeddedTvPicker) null else initialFocusRequester,
-        buttonSize = 40.dp,
-        iconSize = 24.dp,
-      )
+      if (!embeddedTvPicker) {
+        NavigationButtons(
+          selectedPath = selectedPath,
+          onBack = navigateUp,
+          onHome = { selectedPath = storageRoots.singleOrNull() },
+          onSystemPicker = onSystemPickerRequest,
+          initialFocusRequester = phoneHeaderFocus,
+          buttonSize = 40.dp,
+          iconSize = 24.dp,
+        )
+      }
     },
     actions = {
       if (embeddedTvPicker && onStorageAccessRequest != null) {
         TextButton(
           onClick = onStorageAccessRequest,
-          modifier = Modifier.tvFocusHighlight(shape).then(
-            if (focusFirstRow) Modifier else Modifier.tvInitialFocus(initialFocusRequester),
-          ),
+          modifier = Modifier.then(if (focusGrant) Modifier.tvInitialFocus(actionFocus) else Modifier)
+            .tvFocusHighlight(shape),
         ) {
-          Text(androidx.compose.ui.res.stringResource(R.string.storage_permission_grant))
+          Text(stringResource(R.string.storage_permission_grant))
         }
       }
       if (embeddedTvPicker && onSystemPickerRequest != null) {
-        TextButton(onClick = onSystemPickerRequest, modifier = Modifier.tvFocusHighlight(shape)) {
-          Text(androidx.compose.ui.res.stringResource(R.string.ui_system_picker))
+        TextButton(
+          onClick = onSystemPickerRequest,
+          modifier = Modifier.then(if (focusSystem) Modifier.tvInitialFocus(actionFocus) else Modifier)
+            .tvFocusHighlight(shape),
+        ) {
+          Text(stringResource(R.string.ui_system_picker))
         }
       }
       TextButton(
         onClick = onDismiss,
         modifier = if (embeddedTvPicker) {
-          Modifier.tvFocusHighlight(shape).then(
-            if (focusFirstRow || canGrantAccess) Modifier else Modifier.tvInitialFocus(initialFocusRequester),
-          )
+          Modifier.then(
+            if (focusGrant || focusUp || focusSystem) Modifier else Modifier.tvInitialFocus(actionFocus),
+          ).tvFocusHighlight(shape)
         } else {
           Modifier
         },
@@ -314,27 +362,79 @@ internal fun FilePickerDialog(
     modifier = modifier,
   ) {
     BackHandler(enabled = embeddedTvPicker || selectedPath != null) {
-      if (showStorageRoot) onDismiss() else navigateUp()
+      when {
+        embeddedTvPicker && tvSearchOpen -> closeTvSearch()
+        showStorageRoot -> onDismiss()
+        else -> navigateUp()
+      }
     }
     Column(
       modifier = Modifier.fillMaxSize(),
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      if (!showStorageRoot) {
+      if (embeddedTvPicker && !showStorageRoot) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          TextButton(
+            onClick = navigateUp,
+            modifier = Modifier.then(if (focusUp) Modifier.tvInitialFocus(actionFocus) else Modifier)
+              .tvFocusHighlight(shape),
+          ) {
+            Text(stringResource(if (parentPath == null) R.string.tv_picker_storage_locations else R.string.tv_picker_up_one_level))
+          }
+          if (parentPath != null) {
+            TextButton(onClick = navigateToStorage, modifier = Modifier.tvFocusHighlight(shape)) {
+              Text(stringResource(R.string.tv_picker_storage_locations))
+            }
+          }
+          if (currentListing?.accessible == true) {
+            TextButton(
+              onClick = { if (tvSearchOpen) closeTvSearch() else tvSearchOpen = true },
+              modifier = Modifier.tvFocusHighlight(shape),
+            ) {
+              Text(stringResource(if (tvSearchOpen) R.string.tv_picker_close_search else R.string.generic_search))
+            }
+          }
+        }
+      }
+      if (!showStorageRoot && (!embeddedTvPicker || tvSearchOpen)) {
         PlayerSheetSearchField(
           query = query,
-          onQueryChange = { query = it },
+          onQueryChange = {
+            tvSearchSubmission = 0
+            query = it
+          },
+          inputFieldModifier = if (embeddedTvPicker) Modifier.tvInitialFocus(searchFocus) else Modifier,
           placeholder = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_search_files),
+          onSubmit = if (embeddedTvPicker) ({ tvSearchSubmission++ }) else null,
         )
       }
 
       key(if (embeddedTvPicker) selectedPath else Unit) {
+        val listState = rememberLazyListState()
+        val listingReady = showStorageRoot || currentListing != null
+        val hasRows = rowCount > 0
+        val focusFallbackTo = if (hasRows) null else Triple(focusGrant, focusUp, focusSystem)
+        LaunchedEffect(
+          embeddedTvPicker, listingReady, hasRows, returnRowIndex, tvSearchOpen, tvSearchSubmission, focusFallbackTo,
+        ) {
+          if (!embeddedTvPicker || !listingReady || (tvSearchOpen && tvSearchSubmission == 0)) return@LaunchedEffect
+          if (hasRows && listState.layoutInfo.visibleItemsInfo.none { it.index == returnRowIndex }) {
+            listState.scrollToItem(returnRowIndex)
+          }
+          val target = if (hasRows) rowFocus else actionFocus
+          withFrameNanos { }
+          repeat(10) {
+            if (target.tryRequestFocus()) return@LaunchedEffect
+            delay(50L)
+          }
+        }
         LazyColumn(
+          state = listState,
           modifier = Modifier.fillMaxWidth().weight(1f),
           verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
           if (showStorageRoot && tvStorage != null) {
-            itemsIndexed(tvStorage.locations, key = { _, item -> item.directory.absolutePath }) { index, location ->
+            itemsIndexed(tvLocations, key = { _, item -> item.directory.absolutePath }) { index, location ->
               StorageLocationItem(
                 label = location.label,
                 path = location.directory.absolutePath,
@@ -343,9 +443,12 @@ internal fun FilePickerDialog(
                   null -> Icons.RoundedFilled.Folder
                   else -> Icons.RoundedFilled.Usb
                 },
-                onClick = { selectedPath = location.directory.absolutePath },
-                modifier = if (index == 0) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
+                onClick = { openPath(location.directory.absolutePath) },
+                modifier = if (index == returnRowIndex) Modifier.tvInitialFocus(rowFocus) else Modifier,
               )
+            }
+            if (tvLocations.isEmpty()) {
+              item { Text(stringResource(R.string.ui_no_storage_devices_found), modifier = Modifier.padding(16.dp)) }
             }
           } else if (showStorageRoot) {
             items(storageVolumes, key = { "volume:${StorageVolumeUtils.getVolumePath(it) ?: it.toString()}" }) { volume ->
@@ -373,32 +476,26 @@ internal fun FilePickerDialog(
               key = { _, entry -> entry.key },
               contentType = { _, entry -> entry.isDirectory },
             ) { index, entry ->
-              val rowModifier = if (embeddedTvPicker && index == 0) {
-                Modifier.tvInitialFocus(initialFocusRequester)
+              val rowModifier = if (embeddedTvPicker && index == returnRowIndex) {
+                Modifier.tvInitialFocus(rowFocus)
               } else {
                 Modifier
               }
-              if (entry.isDirectory) {
-                FolderItem(
-                  folder = entry.file,
-                  onClick = { selectedPath = entry.file.absolutePath },
-                  modifier = rowModifier,
-                )
-              } else {
-                val path = entry.file.absolutePath
-                FileItem(
-                  file = entry.file,
-                  modifier = rowModifier,
-                  checked = if (onFilesSelected != null) path in selectedPaths else null,
-                  onClick = {
-                    if (onFilesSelected == null) {
-                      onFileSelected(path)
-                    } else {
-                      selectedPaths = if (path in selectedPaths) selectedPaths - path else selectedPaths + path
-                    }
-                  },
-                )
-              }
+              val path = entry.file.absolutePath
+              PickerEntryItem(
+                entry = entry,
+                modifier = rowModifier,
+                remote = embeddedTvPicker,
+                checked = if (!entry.isDirectory && onFilesSelected != null) path in selectedPaths else null,
+                onClick = {
+                  when {
+                    entry.isDirectory -> openPath(path)
+                    onFilesSelected == null -> onFileSelected(path)
+                    path in selectedPaths -> selectedPaths = selectedPaths - path
+                    else -> selectedPaths = selectedPaths + path
+                  }
+                },
+              )
             }
             if (currentListing == null) {
               item(key = "loading") {
@@ -498,75 +595,48 @@ private fun StorageLocationItem(
 }
 
 @Composable
-private fun FolderItem(
-  folder: File,
+private fun PickerEntryItem(
+  entry: FilePickerEntry,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
-) {
-  Row(
-    modifier =
-      modifier
-        .fillMaxWidth()
-        .tvFocusHighlight(RoundedCornerShape(12.dp))
-        .clickable(onClick = onClick)
-        .padding(horizontal = 12.dp, vertical = 8.dp),
-    horizontalArrangement = Arrangement.spacedBy(12.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    Icon(
-      imageVector = Icons.RoundedFilled.Folder,
-      contentDescription = null,
-      tint = MaterialTheme.colorScheme.primary,
-      modifier = Modifier.size(28.dp),
-    )
-    Text(
-      text = folder.name,
-      style = MaterialTheme.typography.bodyLarge,
-      fontWeight = FontWeight.Medium,
-      maxLines = 1,
-      overflow = TextOverflow.Ellipsis,
-      modifier =
-        Modifier.basicMarquee(
-          animationMode = MarqueeAnimationMode.Immediately,
-          repeatDelayMillis = 2000,
-        ),
-    )
-  }
-}
-
-@Composable
-private fun FileItem(
-  file: File,
-  onClick: () -> Unit,
-  modifier: Modifier = Modifier,
+  remote: Boolean = false,
   checked: Boolean? = null,
 ) {
+  var focused by remember { mutableStateOf(false) }
   Row(
     modifier =
       modifier
         .fillMaxWidth()
+        .then(
+          if (remote) Modifier.heightIn(min = 56.dp).onFocusChanged { focused = it.isFocused } else Modifier,
+        )
         .tvFocusHighlight(RoundedCornerShape(12.dp))
-        .clickable(onClick = onClick)
+        .then(
+          if (checked == null) Modifier.clickable(onClick = onClick)
+          else Modifier.toggleable(checked, role = Role.Checkbox, onValueChange = { onClick() }),
+        )
         .padding(horizontal = 12.dp, vertical = 8.dp),
     horizontalArrangement = Arrangement.spacedBy(12.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Icon(
-      imageVector = Icons.RoundedFilled.InsertDriveFile,
+      imageVector = if (entry.isDirectory) Icons.RoundedFilled.Folder else Icons.RoundedFilled.InsertDriveFile,
       contentDescription = null,
-      tint = MaterialTheme.colorScheme.secondary,
+      tint = if (entry.isDirectory) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
       modifier = Modifier.size(28.dp),
     )
     Text(
-      text = file.name,
+      text = entry.file.name,
       style = MaterialTheme.typography.bodyLarge,
-      fontWeight = FontWeight.Normal,
+      fontWeight = if (entry.isDirectory || focused) FontWeight.Medium else FontWeight.Normal,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
       modifier =
-        Modifier.weight(1f).basicMarquee(
-          animationMode = MarqueeAnimationMode.Immediately,
-          repeatDelayMillis = 2000,
+        Modifier.weight(1f).then(
+          if (!remote || focused) Modifier.basicMarquee(
+            animationMode = MarqueeAnimationMode.Immediately,
+            repeatDelayMillis = 2000,
+          ) else Modifier,
         ),
     )
     if (checked != null) Checkbox(checked = checked, onCheckedChange = null)
