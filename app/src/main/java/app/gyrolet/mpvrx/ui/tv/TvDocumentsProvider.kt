@@ -5,44 +5,40 @@ import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
 import android.os.CancellationSignal
-import android.os.Environment
 import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import android.provider.DocumentsProvider
 import android.webkit.MimeTypeMap
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
-import app.gyrolet.mpvrx.utils.storage.StorageVolumeUtils
 import java.io.File
 import java.io.FileNotFoundException
 import java.util.Locale
 
 internal object TvDocumentUris {
-  private data class StorageRoot(val id: String, val directory: File)
-
   fun authority(context: Context): String = "${context.packageName}.tvdocuments"
 
   fun documentUri(context: Context, file: File): Uri =
     DocumentsContract.buildDocumentUri(authority(context), documentId(context, file))
 
   fun documentUris(context: Context, files: List<File>): List<Uri> {
-    val storageRoots = roots(context)
+    val storageRoots = tvStorageRoots(context)
     return files.map { file -> DocumentsContract.buildDocumentUri(authority(context), documentId(file, storageRoots)) }
   }
 
   fun treeUri(context: Context, directory: File): Uri =
     DocumentsContract.buildTreeDocumentUri(authority(context), documentId(context, directory))
 
-  fun documentId(context: Context, file: File): String = documentId(file, roots(context))
+  fun documentId(context: Context, file: File): String = documentId(file, tvStorageRoots(context))
 
   fun forEachDocument(context: Context, files: Array<File>, block: (File, String) -> Unit) {
-    val storageRoots = roots(context)
+    val storageRoots = tvStorageRoots(context)
     files.forEach { file ->
       val id = runCatching { documentId(file, storageRoots) }.getOrNull() ?: return@forEach
       block(file, id)
     }
   }
 
-  private fun documentId(file: File, storageRoots: List<StorageRoot>): String {
+  private fun documentId(file: File, storageRoots: List<TvStorageRoot>): String {
     val target = file.canonicalFile
     val root = storageRoots.sortedByDescending { it.directory.path.length }
       .firstOrNull { contains(it.directory, target) }
@@ -54,7 +50,7 @@ internal object TvDocumentUris {
   fun file(context: Context, documentId: String): File {
     val separator = documentId.indexOf(':')
     if (separator <= 0) throw FileNotFoundException("Invalid document ID")
-    val root = roots(context).firstOrNull { it.id.equals(documentId.substring(0, separator), true) }
+    val root = tvStorageRoots(context).firstOrNull { it.id.equals(documentId.substring(0, separator), true) }
       ?: throw FileNotFoundException("Storage is unavailable")
     val target = File(root.directory, documentId.substring(separator + 1)).canonicalFile
     if (!contains(root.directory, target)) throw FileNotFoundException("Invalid document path")
@@ -63,21 +59,6 @@ internal object TvDocumentUris {
 
   private fun contains(root: File, target: File): Boolean =
     target == root || target.path.startsWith(root.path.trimEnd(File.separatorChar) + File.separator)
-
-  private fun roots(context: Context): List<StorageRoot> {
-    val primary = Environment.getExternalStorageDirectory().canonicalFile
-    return buildList {
-      add(StorageRoot("primary", primary))
-      StorageVolumeUtils.getAllStorageVolumes(context).forEach { volume ->
-        if (!volume.isPrimary) {
-          val path = StorageVolumeUtils.getVolumePath(volume) ?: return@forEach
-          val root = runCatching { File(path).canonicalFile }.getOrNull() ?: return@forEach
-          val id = volume.uuid?.takeIf(String::isNotBlank) ?: root.name
-          if (id.isNotBlank() && ':' !in id) add(StorageRoot(id, root))
-        }
-      }
-    }.distinctBy { it.id.lowercase(Locale.ROOT) }
-  }
 }
 
 class TvDocumentsProvider : DocumentsProvider() {
@@ -88,7 +69,7 @@ class TvDocumentsProvider : DocumentsProvider() {
 
   override fun queryDocument(documentId: String, projection: Array<out String>?): Cursor {
     val file = existingFile(documentId)
-    return MatrixCursor(projection ?: DOCUMENT_COLUMNS).apply { addDocument(this, file) }
+    return MatrixCursor(projection ?: DOCUMENT_COLUMNS).apply { addDocument(this, file, documentId) }
   }
 
   override fun queryChildDocuments(
@@ -161,7 +142,7 @@ class TvDocumentsProvider : DocumentsProvider() {
   private fun addDocument(
     cursor: MatrixCursor,
     file: File,
-    documentId: String = TvDocumentUris.documentId(requireProviderContext(), file),
+    documentId: String,
   ) {
     val writable = file.canWrite()
     val flags =

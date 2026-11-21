@@ -41,20 +41,9 @@ internal fun <I> ActivityResultLauncher<I>.canLaunch(
 ): Boolean = runCatching { contract.createIntent(context, input).resolveActivity(context.packageManager) != null }
   .getOrDefault(false)
 
-/** TVs open the system picker when they have one; phones, and TVs without one, use mpvRx's own. */
-internal fun <I> ActivityResultLauncher<I>.launchOrInApp(
-  context: Context,
-  input: I,
-  isTelevision: Boolean,
-  inAppAvailable: Boolean,
-  inApp: () -> Unit,
-) {
-  if (inAppAvailable && (!isTelevision || !canLaunch(context, input))) return inApp()
-  launch(input)
-}
-
 internal fun shouldOfferTvPickerFallback(isTelevision: Boolean, requestCode: Int, intent: Intent): Boolean =
-  isTelevision && requestCode >= 0 && intent.component == null && intent.action in TvPickerActivity.SUPPORTED_ACTIONS
+  isTelevision && requestCode >= 0 && intent.component == null && intent.`package` == null &&
+    intent.action in TvPickerActivity.SUPPORTED_ACTIONS
 
 internal inline fun Activity.startForResultOrToast(
   intent: Intent,
@@ -62,17 +51,18 @@ internal inline fun Activity.startForResultOrToast(
   start: (Intent) -> Unit,
 ) {
   val fallback =
-    if (requestCode >= 0 && shouldOfferTvPickerFallback(DeviceFormFactor.isTelevision(this), requestCode, intent)) {
+    if (shouldOfferTvPickerFallback(DeviceFormFactor.isTelevision(this), requestCode, intent)) {
       Intent(intent).setClass(this, TvPickerActivity::class.java)
     } else {
       null
     }
-  val target =
-    if (fallback != null && !runCatching { intent.resolveActivity(packageManager) != null }.getOrDefault(false)) {
-      fallback
-    } else {
-      intent
-    }
+  // Open files in the remote-friendly browser even if the system has a phone-style picker.
+  val target = when {
+    fallback == null -> intent
+    intent.action in TvPickerActivity.FILE_ACTIONS -> fallback
+    intent.resolveActivity(packageManager) == null -> fallback
+    else -> intent
+  }
   try {
     start(target)
   } catch (error: RuntimeException) {

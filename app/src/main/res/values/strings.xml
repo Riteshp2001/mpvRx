@@ -3113,6 +3113,10 @@
   <string name="no_app_for_action">No app on this device can open this.</string>
   <string name="tv_picker_file_exists">A file with this name already exists.</string>
   <string name="tv_picker_no_access">This location is not accessible to mpvRx.</string>
+  <string name="tv_picker_select_file">Select a file</string>
+  <string name="tv_picker_internal_storage">Internal storage</string>
+  <string name="tv_picker_removable_storage">USB / removable storage (%1$s)</string>
+  <string name="tv_picker_app_storage">mpvRx app storage</string>
   <string name="jellyfin_libraries">Libraries</string>
   <string name="jellyfin_continue_watching">Continue watching</string>
   <string name="jellyfin_latest_movies">Latest movies</string>

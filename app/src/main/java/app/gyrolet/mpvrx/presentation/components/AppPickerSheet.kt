@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,6 +32,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
@@ -46,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.LocalMotionPolicy
 import app.gyrolet.mpvrx.ui.theme.MotionPolicy
+import app.gyrolet.mpvrx.ui.tv.TvSafeArea
 
 /**
  * The sheet the app's pickers sit in: a heading, an optional path and warning,
@@ -79,6 +82,7 @@ fun AppPickerSheet(
   actions: @Composable RowScope.() -> Unit = {},
   usePlayerSheet: Boolean = false,
   fixedHeight: Boolean = false,
+  embeddedTvPicker: Boolean = false,
   content: @Composable () -> Unit,
 ) {
   val configuration = LocalConfiguration.current
@@ -95,7 +99,13 @@ fun AppPickerSheet(
         modifier =
           Modifier
             .fillMaxWidth()
-            .then(if (fixedHeight) Modifier.fillMaxHeight(0.85f) else Modifier)
+            .then(
+              when {
+                embeddedTvPicker -> Modifier.fillMaxHeight()
+                fixedHeight -> Modifier.fillMaxHeight(0.85f)
+                else -> Modifier
+              },
+            )
             .then(if (usePlayerSheet) Modifier else Modifier.navigationBarsPadding().imePadding())
             .padding(horizontal = 20.dp)
             .padding(bottom = if (usePlayerSheet) 0.dp else 12.dp),
@@ -169,6 +179,15 @@ fun AppPickerSheet(
         )
       }
     }
+  }
+
+  if (embeddedTvPicker) {
+    Surface(modifier = modifier.fillMaxSize()) {
+      Column(modifier = Modifier.fillMaxSize().padding(TvSafeArea.Padding)) {
+        sheetContent()
+      }
+    }
+    return
   }
 
   if (usePlayerSheet) {
