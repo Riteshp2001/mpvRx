@@ -105,6 +105,7 @@ enum class MpvConfigOverride(
         "video-pan-x",
         "video-pan-y",
         "video-aspect-override",
+        "video-crop",
         "panscan",
       ),
   ),

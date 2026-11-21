@@ -56,6 +56,7 @@ import app.gyrolet.mpvrx.ui.player.findSubtitleGestureTarget
 import app.gyrolet.mpvrx.ui.player.draggedSubtitlePosition
 import app.gyrolet.mpvrx.ui.player.getTrackSelectionId
 import app.gyrolet.mpvrx.ui.player.isSecondarySubtitleActive
+import app.gyrolet.mpvrx.ui.player.nearestVideoZoomStop
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -1307,6 +1308,8 @@ fun GestureHandler(
 
           awaitEachGesture {
             var zoom = 0f
+            var zoomStops: List<Float>? = null
+            var snappedZoom: Float? = null
             var gestureStarted = false
             var prevDist = 0f
             var prevMidX = 0f
@@ -1438,16 +1441,25 @@ fun GestureHandler(
 
                       if (gestureStarted) {
                         val previousScale = 2f.pow(viewModel.videoZoom.value)
+                        var justSnapped = false
                         if (pinchToZoomGesture && prevDist > 0f && distDelta > 0.5f) {
                           // Per-frame zoom: ratio of current distance to previous distance
                           val zoomRatio = dist / prevDist
                           val zoomDelta = ln(zoomRatio.toDouble()).toFloat() * 1.2f
                           zoom = (zoom + zoomDelta).coerceIn(-1f, 3f)
-                          viewModel.setVideoZoom(zoom)
+                          val stops = zoomStops ?: viewModel.videoZoomSnapTargets(sw, sh).also { zoomStops = it }
+                          val stop = nearestVideoZoomStop(zoom, stops, snappedZoom)
+                          justSnapped = stop != null && stop != snappedZoom
+                          snappedZoom = stop
+                          viewModel.setVideoZoom(stop ?: zoom)
                         }
 
                         // Simultaneous pan while pinching or moving two fingers
-                        if (panAndZoomEnabled && sw > 0f && sh > 0f) {
+                        if (justSnapped) {
+                          currentPanX = 0f
+                          currentPanY = 0f
+                          viewModel.resetVideoPan()
+                        } else if (snappedZoom == null && panAndZoomEnabled && sw > 0f && sh > 0f) {
                           val currentZoom = viewModel.videoZoom.value
                           val scale = 2f.pow(currentZoom)
                           val extraWidth = (scale - 1f) * sw

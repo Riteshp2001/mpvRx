@@ -632,6 +632,7 @@
   <string name="player_aspect_fit">Fit Screen</string>
   <string name="player_aspect_crop">Crop</string>
   <string name="player_aspect_stretch">Stretch</string>
+  <string name="player_aspect_display_mode">Display mode</string>
   <string name="crash_screen_title">Unexpected error</string>
   <string name="crash_screen_subtitle">An unexpected error occurred in %s. Share the logs in a GitHub issue.</string>
   <string name="crash_screen_logs_title">Crash logs:</string>

@@ -73,7 +73,6 @@ private const val FRAME_CHANGE_THRESHOLD = 2
 private const val CHANGE_SAMPLE_STEP = 7
 private const val MAX_BACKOFF_MULTIPLIER = 4L
 private const val FAILURES_BEFORE_FALLBACK = 2
-private const val FAILURES_BEFORE_CLEAR = 3
 
 private const val CAPTURE_OK = 0
 private const val CAPTURE_RETRY = 1
@@ -167,7 +166,6 @@ fun rememberVideoAmbientFrame(
               isSurfaceReady = currentIsSurfaceReadyProvider,
               isPlaying = currentIsPlayingProvider,
               fallbackFrame = { currentFallbackFrameProvider(SAMPLE_WIDTH) },
-              onCaptureLost = { state = VideoAmbientFrame() },
               onUnsupported = {
                 unsupported = true
                 state = VideoAmbientFrame(supported = false)
@@ -228,7 +226,6 @@ private class VideoAmbientPipeline : AutoCloseable {
     isSurfaceReady: () -> Boolean,
     isPlaying: () -> Boolean,
     fallbackFrame: suspend () -> Bitmap?,
-    onCaptureLost: () -> Unit,
     onUnsupported: () -> Unit,
   ) {
     if (!supported) {
@@ -239,7 +236,20 @@ private class VideoAmbientPipeline : AutoCloseable {
     while (currentCoroutineContext().isActive && supported && !closed) {
       var cadence = IDLE_INTERVAL_MS
       if (isSurfaceReady() && surfaceView.width > 0 && surfaceView.height > 0) {
-        when (captureSurface(surfaceView, sample, pixelCopyHandler)) {
+        val surface = surfaceView.renderSurface
+        val width = surfaceView.width
+        val height = surfaceView.height
+        fun captureStillCurrent() =
+          isSurfaceReady() && surfaceView.renderSurface === surface &&
+            surfaceView.width == width && surfaceView.height == height
+
+        val result = captureSurface(surfaceView, sample, pixelCopyHandler)
+        if (!captureStillCurrent()) {
+          // Keep displaying the last good sample while a crop or renderer change resizes the surface.
+          delay(CAPTURE_INTERVAL_MS)
+          continue
+        }
+        when (result) {
           CAPTURE_OK -> {
             consecutiveFailures = 0
             cadence = if (isPlaying()) CAPTURE_INTERVAL_MS else IDLE_INTERVAL_MS
@@ -255,7 +265,7 @@ private class VideoAmbientPipeline : AutoCloseable {
             consecutiveFailures++
             val fallbackApplied =
               if (consecutiveFailures >= FAILURES_BEFORE_FALLBACK) {
-                applyFallbackFrame(fallbackFrame)
+                applyFallbackFrame(fallbackFrame, ::captureStillCurrent)
               } else {
                 false
               }
@@ -263,10 +273,6 @@ private class VideoAmbientPipeline : AutoCloseable {
               consecutiveFailures = FAILURES_BEFORE_FALLBACK - 1
               cadence = if (isPlaying()) CAPTURE_INTERVAL_MS * 2 else IDLE_INTERVAL_MS
             } else {
-              if (consecutiveFailures == FAILURES_BEFORE_CLEAR) {
-                resetScene()
-                onCaptureLost()
-              }
               val multiplier =
                 (1L shl consecutiveFailures.coerceAtMost(3))
                   .coerceAtMost(MAX_BACKOFF_MULTIPLIER)
@@ -307,10 +313,13 @@ private class VideoAmbientPipeline : AutoCloseable {
     hasTarget = true
   }
 
-  private suspend fun applyFallbackFrame(provider: suspend () -> Bitmap?): Boolean {
+  private suspend fun applyFallbackFrame(
+    provider: suspend () -> Bitmap?,
+    captureStillCurrent: () -> Boolean,
+  ): Boolean {
     val frame = provider() ?: return false
     return try {
-      if (frame.isRecycled || closed) return false
+      if (frame.isRecycled || closed || !captureStillCurrent()) return false
       fallbackCanvas.drawBitmap(frame, null, sampleBounds, fallbackPaint)
       processSample()
       true

@@ -3,8 +3,42 @@
 package app.gyrolet.mpvrx.ui.player
 
 import kotlin.math.pow
+import kotlin.math.abs
+import kotlin.math.log2
 
 fun videoZoomMultiplier(zoom: Float): Float = 2f.pow(zoom.coerceIn(-1f, 3f))
+
+private const val ZOOM_SNAP_ENTER = 0.045f
+private const val ZOOM_SNAP_RELEASE = 0.075f
+
+/** Fit, screen fill, and the point where the last baked-in bar moves outside the centered viewport. */
+internal fun videoZoomStops(
+  viewportAspect: Double,
+  videoAspect: Double,
+  panscan: Double,
+  bars: VideoBlackBars?,
+): List<Float> {
+  if (!viewportAspect.isFinite() || viewportAspect <= 0 || !videoAspect.isFinite() || videoAspect <= 0) return emptyList()
+  val widthScale = maxOf(1.0, viewportAspect / videoAspect)
+  val heightScale = maxOf(1.0, videoAspect / viewportAspect)
+  val fillScale = maxOf(widthScale, heightScale)
+  val baseScale = 1 + (fillScale - 1) * panscan.coerceIn(0.0, 1.0)
+  val scales = mutableListOf(1.0, fillScale)
+  if (bars != null && !bars.isEmpty) {
+    val side = maxOf(bars.left, bars.right)
+    val vertical = maxOf(bars.top, bars.bottom)
+    scales += maxOf(
+      if (side > 0f) widthScale / (1 - 2 * side) else 1.0,
+      if (vertical > 0f) heightScale / (1 - 2 * vertical) else 1.0,
+    )
+  }
+  return scales.map { log2(it / baseScale).toFloat() }.filter { it in -1f..3f }.distinct()
+}
+
+internal fun nearestVideoZoomStop(zoom: Float, stops: List<Float>, heldStop: Float? = null): Float? {
+  if (heldStop != null && abs(zoom - heldStop) <= ZOOM_SNAP_RELEASE) return heldStop
+  return stops.minByOrNull { abs(zoom - it) }?.takeIf { abs(zoom - it) <= ZOOM_SNAP_ENTER }
+}
 
 /** mpv pan values are fractions of the scaled video, while touch gestures use pixels. */
 fun videoPanFractions(

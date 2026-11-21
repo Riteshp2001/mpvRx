@@ -33,14 +33,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSectionHeader
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.VideoAspect
+import app.gyrolet.mpvrx.ui.player.controls.icon
 import app.gyrolet.mpvrx.ui.theme.spacing
 
 data class AspectRatio(
@@ -52,8 +56,10 @@ data class AspectRatio(
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun AspectRatioSheet(
+  currentMode: VideoAspect,
   currentRatio: Double?,
   customRatios: List<AspectRatio>,
+  onSelectMode: (VideoAspect) -> Unit,
   onSelectRatio: (Double) -> Unit,
   onAddCustomRatio: (String, Double) -> Unit,
   onDeleteCustomRatio: (AspectRatio) -> Unit,
@@ -62,7 +68,6 @@ fun AspectRatioSheet(
 ) {
   val presetRatios =
     listOf(
-      AspectRatio("Default", -1.0),
       AspectRatio("4:3", 4.0 / 3.0),
       AspectRatio("16:9", 16.0 / 9.0),
       AspectRatio("16:10", 16.0 / 10.0),
@@ -81,6 +86,26 @@ fun AspectRatioSheet(
           .verticalScroll(rememberScrollState())
           .padding(bottom = 8.dp),
     ) {
+      PlayerSheetSectionHeader(stringResource(R.string.player_aspect_display_mode))
+      androidx.compose.foundation.layout.FlowRow(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        VideoAspect.entries.forEach { mode ->
+          InputChip(
+            selected = (currentRatio ?: -1.0) <= 0 && currentMode == mode,
+            onClick = { onSelectMode(mode) },
+            label = { Text(stringResource(mode.titleRes)) },
+            leadingIcon = { Icon(mode.icon(), contentDescription = null) },
+            colors = androidx.compose.material3.InputChipDefaults.inputChipColors(
+              containerColor = playerSheetSelectionColor(false),
+              selectedContainerColor = playerSheetSelectionColor(true),
+              selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ),
+          )
+        }
+      }
+
       // Preset ratios
       PlayerSheetSectionHeader(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_presets))
 
@@ -90,7 +115,7 @@ fun AspectRatioSheet(
       ) {
         presetRatios.forEach { ratio ->
           InputChip(
-            selected = currentRatio?.let { abs(it - ratio.ratio) < 0.01 } ?: (ratio.ratio == -1.0),
+            selected = currentRatio?.let { abs(it - ratio.ratio) < 0.01 } ?: false,
             onClick = { onSelectRatio(ratio.ratio) },
             label = { Text(ratio.label) },
             leadingIcon = null,

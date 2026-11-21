@@ -488,6 +488,7 @@ fun PlayerSheets(
       VideoZoomSheet(
         videoZoom = videoZoom,
         onSetVideoZoom = viewModel::setVideoZoom,
+        snapVideoZoom = viewModel::snapVideoZoom,
         onResetVideoPan = viewModel::resetVideoPan,
         onDismissRequest = onDismissRequest,
         zoomControlEnabled = "video-zoom" !in configOwnedOptions,
@@ -499,6 +500,7 @@ fun PlayerSheets(
       val playerPreferences = koinInject<app.gyrolet.mpvrx.preferences.PlayerPreferences>()
       val customRatiosSet by playerPreferences.customAspectRatios.collectAsState()
       val currentRatio by viewModel.currentAspectRatio.composeCollectAsState()
+      val currentMode by viewModel.videoAspect.composeCollectAsState()
       val customRatios =
         customRatiosSet.mapNotNull { str ->
           val parts = str.split("|")
@@ -514,17 +516,11 @@ fun PlayerSheets(
         }
 
       AspectRatioSheet(
+        currentMode = currentMode,
         currentRatio = currentRatio,
         customRatios = customRatios,
-        onSelectRatio = { ratio ->
-          if (ratio < 0) {
-            // Default selected - apply Fit mode
-            viewModel.changeVideoAspect(app.gyrolet.mpvrx.ui.player.VideoAspect.Fit)
-          } else {
-            // Custom ratio selected
-            viewModel.setCustomAspectRatio(ratio)
-          }
-        },
+        onSelectMode = { viewModel.changeVideoAspect(it) },
+        onSelectRatio = { viewModel.setCustomAspectRatio(it) },
         onAddCustomRatio = { label, ratio ->
           playerPreferences.customAspectRatios.set(customRatiosSet + "$label|$ratio")
           viewModel.setCustomAspectRatio(ratio)

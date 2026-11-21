@@ -83,7 +83,9 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 | **Long-Press Dynamic Speed** | Long-press activates configurable speed boost; swipe left/right to adjust across 8 presets |
 | **Subtitle Drag Gesture** | Hold the center to move primary subtitles; hold either subtitle directly to move that track independently |
 | **Subtitle Zoom & Dialogue Seek** | Pinch subtitle text to resize it and swipe across subtitles to seek between dialogue lines |
-| **Pinch-to-Zoom with Pan** | Pinch to zoom (-1x to 3x) with simultaneous pan and single-finger pan after zoom |
+| **Pinch-to-Zoom with Pan** | Pinch near Fit, the detected black-bar boundary, or screen fill to snap to that zoom level. You can pinch past each stop and pan as usual. |
+| **Aspect Ratio** | Modes cycle through **Fit Screen** (default), **Stretch**, and **Crop**. |
+| **Ambient in Fit Screen** | Ambient checks the top, bottom, left, and right edges for baked-in black bars, trims confirmed bars, and fills the space around the picture. Turning Ambient off restores the original frame. Stretch, Crop, and fixed or custom ratios do not auto-trim. |
 | **Volume Boost via Gesture** | Vertical swipe volume can exceed 100% into configurable boost range |
 | **Swap Volume/Brightness Sides** | Option to swap which screen side controls volume vs brightness |
 

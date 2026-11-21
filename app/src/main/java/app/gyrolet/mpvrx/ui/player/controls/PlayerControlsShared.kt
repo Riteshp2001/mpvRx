@@ -713,20 +713,12 @@ fun RenderPlayerButton(
     PlayerButton.ASPECT_RATIO -> {
       val configOwned = isAnyMpvOptionOwnedByConfig(MpvConfigControlledFeatures.VIDEO_ASPECT)
       ControlsButton(
-        icon =
-          when (aspect) {
-            VideoAspect.Fit -> Icons.RoundedFilled.AspectRatio
-            VideoAspect.Stretch -> Icons.RoundedFilled.ZoomOutMap
-            VideoAspect.Crop -> Icons.RoundedFilled.FitScreen
-          },
+        icon = aspect.icon(),
         onClick = {
-          when (aspect) {
-            VideoAspect.Fit -> viewModel.changeVideoAspect(VideoAspect.Stretch)
-            VideoAspect.Stretch -> viewModel.changeVideoAspect(VideoAspect.Crop)
-            VideoAspect.Crop -> viewModel.changeVideoAspect(VideoAspect.Fit)
-          }
+          viewModel.changeVideoAspect(VideoAspect.entries[(aspect.ordinal + 1) % VideoAspect.entries.size])
         },
         onLongClick = { onOpenSheet(Sheets.AspectRatios) },
+        title = stringResource(aspect.titleRes),
         active = aspect != VideoAspect.Fit,
         color = if (borderless) controlColor else buttonContentColor,
         enabled = !configOwned,

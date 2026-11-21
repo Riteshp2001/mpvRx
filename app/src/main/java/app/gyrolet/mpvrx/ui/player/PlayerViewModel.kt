@@ -2306,6 +2306,12 @@ fun restartFromBeginning() {
   // Current aspect ratio value (for custom ratios and tracking)
   private val _currentAspectRatio = MutableStateFlow(-1.0)
   val currentAspectRatio: StateFlow<Double> = _currentAspectRatio.asStateFlow()
+  private val blackBarScanRequestedFor = MutableStateFlow<Long?>(null)
+  private var blackBarSource: BlackBarSource? = null
+  private var detectedBlackBars: Pair<BlackBarSource, VideoBlackBars>? = null
+  private val _ambientCropSettledGeneration = MutableStateFlow<Long?>(null)
+  internal val ambientCropSettledGeneration = _ambientCropSettledGeneration.asStateFlow()
+  @Volatile private var isBlackBarScanInProgress = false
 
   // Timer
   private var timerJob: Job? = null
@@ -2797,6 +2803,8 @@ fun restartFromBeginning() {
     }
 
     // Crop, aspect and ambient work belongs to the video player's surface, never to the in-app sheet.
+    if (!hostedInBrowser) viewModelScope.launch { watchBlackBars() }
+
     if (!hostedInBrowser) viewModelScope.launch {
       val activeGeneration =
         PlaybackSession.state
@@ -5923,15 +5931,108 @@ fun restartFromBeginning() {
 
   // ==================== Video Aspect ====================
 
+  private suspend fun watchBlackBars() {
+    val activeGeneration = PlaybackSession.state.map { state ->
+      state.generation.takeIf {
+        state.surfaceAttached && state.activeGeneration == it &&
+          state.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+      }
+    }.distinctUntilChanged()
+    val sources = combine(
+      activeGeneration,
+      PlaybackSession.propString["vid"],
+      PlaybackSession.propInt["video-out-params/w"],
+      PlaybackSession.propInt["video-out-params/h"],
+      PlaybackSession.propInt["video-out-params/rotate"],
+    ) { generation, vid, width, height, rotation ->
+      val id = vid?.toIntOrNull()
+      if (generation != null && id != null && width != null && width >= 8 && height != null && height >= 8) {
+        BlackBarSource(generation, id, width, height, rotation ?: 0)
+      } else {
+        null
+      }
+    }.distinctUntilChanged()
+    val cropWanted = combine(
+      _videoAspect,
+      _currentAspectRatio,
+      _isAmbientEnabled,
+    ) { aspect, customRatio, ambientEnabled ->
+      customRatio <= 0 && wantsBlackBarCrop(aspect, ambientEnabled)
+    }
+    val detectionWanted = combine(
+      blackBarScanRequestedFor,
+      cropWanted,
+      isAudioOnly,
+    ) { requestedGeneration, cropEnabled, audioOnly ->
+      val shouldCrop = !audioOnly && cropEnabled
+      requestedGeneration.takeUnless { audioOnly || shouldCrop } to shouldCrop
+    }
+
+    combine(sources, detectionWanted, PlaybackSession.propString["video-crop"]) { source, demand, crop ->
+      Triple(source, demand, crop.isNullOrEmpty())
+    }.distinctUntilChanged().collectLatest { (source, demand, uncropped) ->
+      val (requestedGeneration, shouldCrop) = demand
+      if (!shouldCrop || (source != null && source != blackBarSource)) _ambientCropSettledGeneration.value = null
+      blackBarSource = source
+      if (!shouldCrop) PlaybackSession.clearBlackBarCrop()
+      if (source == null) return@collectLatest
+      if (shouldCrop) PlaybackSession.clearBlackBarCrop(unlessSource = source)
+      if (!uncropped || MpvConfigOverridePolicy.isOwnedByMpvConf("video-crop")) {
+        if (shouldCrop && !PlaybackSession.getPropertyString("video-crop").isNullOrEmpty()) {
+          _ambientCropSettledGeneration.value = source.generation
+        }
+        return@collectLatest
+      }
+      if (!shouldCrop && requestedGeneration != source.generation) return@collectLatest
+      if (detectedBlackBars?.first != source) {
+        val state = PlaybackSession.state.first { !it.paused || it.generation != source.generation }
+        if (state.generation != source.generation) return@collectLatest
+        // Shader Ambient composites its picture in the OUTPUT pass, including in video screenshots.
+        isBlackBarScanInProgress = true
+        try {
+          if (_isAmbientEnabled.value && _ambientStyle.value != AmbientStyle.YouTube) disableAmbientShader()
+          detectBlackBars(source, appContext.cacheDir)?.let { bars -> detectedBlackBars = source to bars }
+          if (shouldCrop) applyDetectedBlackBars()
+        } finally {
+          isBlackBarScanInProgress = false
+          scheduleAmbientUpdate(0)
+        }
+      } else if (shouldCrop) {
+        applyDetectedBlackBars()
+      }
+      if (shouldCrop) _ambientCropSettledGeneration.value = source.generation
+    }
+  }
+
+  private fun wantsBlackBarCrop(aspect: VideoAspect, ambientEnabled: Boolean = _isAmbientEnabled.value): Boolean =
+    aspect == VideoAspect.Fit && ambientEnabled &&
+      !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT) &&
+      !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ASPECT) &&
+      !MpvConfigOverridePolicy.isOwnedByMpvConf("video-crop")
+
+  internal fun isAwaitingAmbientCrop(): Boolean =
+    _currentAspectRatio.value <= 0 && wantsBlackBarCrop(_videoAspect.value) &&
+      _ambientCropSettledGeneration.value != PlaybackSession.state.value.generation
+
+  private fun applyDetectedBlackBars() {
+    if (isAudioOnly.value || _currentAspectRatio.value > 0 ||
+      !wantsBlackBarCrop(_videoAspect.value)
+    ) return
+    val (source, bars) = detectedBlackBars ?: return
+    if (blackBarSource == source) PlaybackSession.applyBlackBarCrop(source, bars)
+  }
+
   fun changeVideoAspect(
     aspect: VideoAspect,
     showUpdate: Boolean = true,
     resetZoom: Boolean = true,
   ) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ASPECT)) return
+    val shouldCrop = wantsBlackBarCrop(aspect)
+    if (!shouldCrop) PlaybackSession.clearBlackBarCrop()
     when (aspect) {
       VideoAspect.Fit -> {
-        // To FIT: Reset both properties to their defaults.
+        // Fit the frame; a confirmed matte is removed from the source rectangle separately.
         PlaybackSession.setPropertyDouble("panscan", 0.0)
         PlaybackSession.setPropertyString("video-aspect-override", "no")
       }
@@ -5981,6 +6082,7 @@ fun restartFromBeginning() {
     _videoAspect.value = aspect
     _currentAspectRatio.value = -1.0 // Reset custom ratio when using standard modes
 
+    if (shouldCrop) applyDetectedBlackBars()
     onAmbientGeometryChanged()
     // Notify the UI
     if (showUpdate) {
@@ -5994,6 +6096,7 @@ fun restartFromBeginning() {
     resetZoom: Boolean = true,
   ) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ASPECT)) return
+    PlaybackSession.clearBlackBarCrop()
     PlaybackSession.setPropertyDouble("panscan", 0.0)
     PlaybackSession.setPropertyDouble("video-aspect-override", ratio)
     if (resetZoom) resetVideoZoom()
@@ -6218,6 +6321,32 @@ fun restartFromBeginning() {
   }
 
   // ==================== Video Zoom ====================
+
+  internal fun videoZoomSnapTargets(width: Float, height: Float): List<Float> {
+    if (isAudioOnly.value || width <= 0f || height <= 0f ||
+      MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ZOOM) ||
+      PlaybackSession.getPropertyBoolean("keepaspect") == false
+    ) return emptyList()
+    val videoWidth = PlaybackSession.getPropertyInt("video-out-params/w") ?: return emptyList()
+    val videoHeight = PlaybackSession.getPropertyInt("video-out-params/h") ?: return emptyList()
+    val aspect = VideoAspectGeometry.currentEffectiveDisplayAspect(videoWidth.toDouble(), videoHeight.toDouble())
+      ?: return emptyList()
+    val uncropped = PlaybackSession.getPropertyString("video-crop").isNullOrEmpty()
+    if (uncropped) blackBarScanRequestedFor.value = PlaybackSession.state.value.generation
+    val bars = detectedBlackBars?.takeIf {
+      uncropped && it.first == blackBarSource && it.first.generation == PlaybackSession.state.value.generation
+    }?.second
+    val panscan = PlaybackSession.getPropertyDouble("panscan") ?: 0.0
+    return videoZoomStops(width / height.toDouble(), aspect, panscan, bars)
+  }
+
+  internal fun snapVideoZoom(zoom: Float): Float {
+    val width = PlaybackSession.getPropertyInt("osd-width") ?: return zoom
+    val height = PlaybackSession.getPropertyInt("osd-height") ?: return zoom
+    return nearestVideoZoomStop(zoom, videoZoomSnapTargets(width.toFloat(), height.toFloat()))?.also {
+      resetVideoPan()
+    } ?: zoom
+  }
 
   fun setVideoZoom(zoom: Float) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ZOOM)) {
@@ -7316,7 +7445,7 @@ fun restartFromBeginning() {
 
   /** All shader styles share the same renderer and lifecycle. YouTube retains its capture renderer. */
   private fun isAmbientShaderRuntimeActive(): Boolean =
-    isAmbientRuntimeActive() && _ambientStyle.value != AmbientStyle.YouTube
+    !isBlackBarScanInProgress && isAmbientRuntimeActive() && _ambientStyle.value != AmbientStyle.YouTube
 
   fun setAmbientPipActive(active: Boolean) {
     isAmbientPipActive = active

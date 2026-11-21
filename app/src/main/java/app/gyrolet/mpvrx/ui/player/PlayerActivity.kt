@@ -59,6 +59,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.LocalConfiguration
@@ -1426,6 +1427,7 @@ class PlayerActivity :
       val isAudioOnly by viewModel.isAudioOnly.collectAsState()
       val playbackState by PlaybackSession.state.collectAsState()
       val videoCrop by PlaybackSession.propString["video-crop"].collectAsState()
+      val cropSettledGeneration by viewModel.ambientCropSettledGeneration.collectAsState()
       val aspectOverride by PlaybackSession.propString["video-aspect-override"].collectAsState()
       val panscan by PlaybackSession.propFloat["panscan"].collectAsState()
       val hdrScreenMode by viewModel.hdrScreenMode.collectAsState()
@@ -1439,8 +1441,7 @@ class PlayerActivity :
           !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT) &&
           !isAudioOnly &&
           !isAmbientPipMode &&
-          playbackReady &&
-          playbackState.surfaceAttached
+          playbackReady
       val ambientFrame =
         rememberVideoAmbientFrame(
           surfaceView = binding.player,
@@ -1452,7 +1453,9 @@ class PlayerActivity :
             val state = PlaybackSession.state.value
             state.surfaceAttached &&
               (state.phase == PlaybackPhase.READY || state.phase == PlaybackPhase.BACKGROUND) &&
-              binding.player.isSurfaceReady
+              binding.player.isSurfaceReady &&
+              !binding.player.isLayoutRequested &&
+              !viewModel.isAwaitingAmbientCrop()
           },
           isPlayingProvider = {
             !PlaybackSession.state.value.paused
@@ -1469,9 +1472,9 @@ class PlayerActivity :
       // forcing BLAST/libmpv reconfiguration and visible black flashes.
       val presentationActive = active && ambientFrame.supported
 
-      // video-crop can change after playback becomes ready. Refreshing on the property itself keeps
-      // YouTube Ambient's SurfaceView aligned with the newly cropped content rectangle.
-      LaunchedEffect(presentationActive, videoCrop, aspectOverride, panscan) {
+      // Coalesce crop and aspect notifications before changing the actual video surface size.
+      LaunchedEffect(presentationActive, playbackState.generation, cropSettledGeneration, videoCrop, aspectOverride, panscan) {
+        withFrameNanos { }
         setVideoAmbientPresentationActive(presentationActive)
       }
 
@@ -1501,10 +1504,12 @@ class PlayerActivity :
   }
 
   private fun updateVideoAmbientPlayerBounds() {
-    if (!isVideoAmbientPresentationActive || binding.player.visibility != View.VISIBLE) return
+    if (!isVideoAmbientPresentationActive || binding.player.visibility != View.VISIBLE ||
+      viewModel.isAwaitingAmbientCrop()
+    ) return
     val containerWidth = binding.root.width
     val containerHeight = binding.root.height
-    val videoAspect = VideoAspectGeometry.currentEffectiveDisplayAspect()
+    val videoAspect = VideoAspectGeometry.currentEffectiveDisplayAspect(fallbackWidth = 0.0, fallbackHeight = 0.0)
     if (containerWidth <= 0 || containerHeight <= 0 || videoAspect == null || videoAspect <= 0.0) return
 
     val geometry = AmbientGeometry.calculate(
@@ -1589,7 +1594,10 @@ class PlayerActivity :
     val (mpvPanX, mpvPanY) = if (followVideo) {
       0f to 0f
     } else {
-      val aspect = (PlaybackSession.getPropertyDouble("video-out-params/aspect")
+      val croppedAspect = PlaybackSession.propString["video-crop"].value
+        ?.takeIf { it.isNotEmpty() }
+        ?.let { VideoAspectGeometry.currentEffectiveDisplayAspect() }
+      val aspect = (croppedAspect ?: PlaybackSession.getPropertyDouble("video-out-params/aspect")
         ?: PlaybackSession.getPropertyDouble("video-params/aspect") ?: 0.0).toFloat()
       videoPanFractions(player.width.toFloat(), player.height.toFloat(), aspect, zoom, panX, panY)
     }

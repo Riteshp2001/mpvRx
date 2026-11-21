@@ -63,6 +63,7 @@ import org.koin.compose.koinInject
 fun VideoZoomSheet(
   videoZoom: Float,
   onSetVideoZoom: (Float) -> Unit,
+  snapVideoZoom: (Float) -> Float,
   onResetVideoPan: () -> Unit,
   onDismissRequest: () -> Unit,
   zoomControlEnabled: Boolean = true,
@@ -116,6 +117,7 @@ fun VideoZoomSheet(
       zoom = zoom,
       panAndZoomEnabled = panAndZoomEnabled,
       onZoomChange = { newZoom -> zoom = newZoom },
+      onZoomChangeFinished = { zoom = snapVideoZoom(zoom) },
       onPanAndZoomToggle = { enabled ->
         playerPreferences.panAndZoomEnabled.set(enabled)
         if (!enabled) {
@@ -134,6 +136,7 @@ private fun ZoomVideoSheet(
   zoom: Float,
   panAndZoomEnabled: Boolean,
   onZoomChange: (Float) -> Unit,
+  onZoomChangeFinished: () -> Unit,
   onPanAndZoomToggle: (Boolean) -> Unit,
   zoomControlEnabled: Boolean,
   panControlEnabled: Boolean,
@@ -195,6 +198,7 @@ private fun ZoomVideoSheet(
             zoomHaptics.move(zoom, newZoom)
           }
         },
+        onValueChangeFinished = onZoomChangeFinished,
         valueRange = -1f..3f,
         enabled = zoomControlEnabled,
         modifier = Modifier.weight(1f)
