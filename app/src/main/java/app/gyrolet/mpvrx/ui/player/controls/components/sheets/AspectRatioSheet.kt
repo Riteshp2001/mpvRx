@@ -39,8 +39,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSectionHeader
-import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
-import app.gyrolet.mpvrx.ui.player.AutoCropState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.spacing
@@ -56,10 +54,6 @@ data class AspectRatio(
 fun AspectRatioSheet(
   currentRatio: Double?,
   customRatios: List<AspectRatio>,
-  autoCropEnabled: Boolean,
-  autoCropState: AutoCropState,
-  autoCropControlEnabled: Boolean,
-  onAutoCropChanged: (Boolean) -> Unit,
   onSelectRatio: (Double) -> Unit,
   onAddCustomRatio: (String, Double) -> Unit,
   onDeleteCustomRatio: (AspectRatio) -> Unit,
@@ -87,28 +81,6 @@ fun AspectRatioSheet(
           .verticalScroll(rememberScrollState())
           .padding(bottom = 8.dp),
     ) {
-      val autoCropSummary =
-        when {
-          !autoCropControlEnabled -> app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars_managed
-          !autoCropEnabled -> app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars_summary
-          autoCropState == AutoCropState.ANALYZING -> app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars_analyzing
-          autoCropState == AutoCropState.APPLIED -> app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars_applied
-          autoCropState == AutoCropState.NO_BARS -> app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars_none
-          autoCropState == AutoCropState.UNSUPPORTED -> app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars_unsupported
-          autoCropState == AutoCropState.ERROR -> app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars_failed
-          else -> app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars_summary
-        }
-      SwitchPreference(
-        value = autoCropEnabled,
-        onValueChange = onAutoCropChanged,
-        enabled = autoCropControlEnabled,
-        title = {
-          Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_auto_crop_black_bars))
-        },
-        summary = { Text(androidx.compose.ui.res.stringResource(autoCropSummary)) },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-      )
-
       // Preset ratios
       PlayerSheetSectionHeader(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_presets))
 

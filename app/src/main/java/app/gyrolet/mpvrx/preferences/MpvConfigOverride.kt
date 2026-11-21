@@ -309,8 +309,6 @@ object MpvConfigControlledFeatures {
 
   val VIDEO_ASPECT = setOf("video-aspect-override", "panscan")
 
-  val AUTO_CROP = setOf("video-crop")
-
   val HARDWARE_DECODER = setOf("hwdec", "gpu-api", "gpu-context")
 }
 

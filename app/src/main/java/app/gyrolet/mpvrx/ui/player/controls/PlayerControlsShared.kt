@@ -1522,12 +1522,12 @@ fun RenderPlayerButton(
     PlayerButton.TIME_NETWORK -> {
       val clockFormat by playerPreferences.clockFormat.collectAsState()
       val statisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
-      val statisticsActive = statisticsPage == 6
+      val statisticsActive = statisticsPage == 7
       val statisticsShape = rememberPlayerControlShape(statisticsActive)
       val stat by rememberTimeAndNetworkStat(clockFormat)
       val toggleTimeAndNetwork = {
         // setStatisticsPage owns the preference, the console and mpv's stats overlay together.
-        val nextPage = if (advancedPreferences.enabledStatisticsPage.get() == 6) 0 else 6
+        val nextPage = if (advancedPreferences.enabledStatisticsPage.get() == 7) 0 else 7
         PlaybackSession.setStatisticsPage(nextPage)
         onOpenSheet(Sheets.None)
       }

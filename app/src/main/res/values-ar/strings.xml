@@ -1395,14 +1395,6 @@
   <string name="ytdlp_cookies_import_failed">تعذر تحديث ملفات الارتباط. تحقق من صلاحية الوصول للملف وحاول مجددًا.</string>
   <string name="ytdlp_cookies_config_owned">يتحكم mpv.conf أو خيارات yt-dlp المخصصة في ملفات الارتباط. حدّث تلك الخيارات قبل إعادة المحاولة.</string>
   <string name="ui_aspect_ratio">نسبة العرض إلى الارتفاع</string>
-  <string name="ui_auto_crop_black_bars">قص الحواف السوداء تلقائيًا</string>
-  <string name="ui_auto_crop_black_bars_summary">أخذ عينات من عدة إطارات في الخلفية وقص الحواف السوداء الثابتة المضمّنة في الفيديو.</string>
-  <string name="ui_auto_crop_black_bars_analyzing">جارٍ تحليل إطارات الفيديو…</string>
-  <string name="ui_auto_crop_black_bars_applied">تمت إزالة الحواف السوداء من هذا الفيديو.</string>
-  <string name="ui_auto_crop_black_bars_none">لم يتم اكتشاف حواف سوداء ثابتة.</string>
-  <string name="ui_auto_crop_black_bars_unsupported">تعذّر تحليل مصدر الفيديو هذا.</string>
-  <string name="ui_auto_crop_black_bars_failed">فشل تحليل الحواف السوداء.</string>
-  <string name="ui_auto_crop_black_bars_managed">تتم إدارة video-crop بواسطة mpv.conf.</string>
   <string name="ui_presets">الإعدادات المسبقة</string>
   <string name="ui_add_custom_ratio_e_g_16_9">إضافة نسبة مخصّصة (مثل 16:9)</string>
   <string name="ui_width">العرض</string>
@@ -2440,7 +2432,7 @@
   <string name="pref_gesture_show_seekbar_horizontal_title">إظهار شريط التقدم عند إخفاء عناصر التحكم</string>
   <string name="pref_gesture_show_seekbar_horizontal_summary">أظهر شريط التقديم أثناء السحب حتى مع إخفاء عناصر التحكم.</string>
   <string name="player_zoom_overlays_follow">تكبير واجهة المشغل والترجمة مع الفيديو</string>
-  <string name="player_zoom_overlays_follow_summary">تتغير الترجمة وصفحات الإحصاءات 1–6 مع تكبير الفيديو. عند إيقافه يبقى حجمها ثابتاً.</string>
+  <string name="player_zoom_overlays_follow_summary">تتغير الترجمة وصفحات الإحصاءات 1–7 مع تكبير الفيديو. عند إيقافه يبقى حجمها ثابتاً.</string>
   <string name="network_smb_share_folder">المشاركة / المجلد (اختياري)</string>
   <string name="network_smb_share_hint">اتركه فارغًا أو استخدم / لكل المشاركات، أو أدخل مسارًا مثل /Media/Movies.</string>
   <string name="pref_app_icon_title">أيقونة التطبيق</string>

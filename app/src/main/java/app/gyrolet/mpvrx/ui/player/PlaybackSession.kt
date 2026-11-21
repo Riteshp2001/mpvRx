@@ -231,7 +231,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private var sessionBatteryGeneration = 0L
   private var sessionBatteryBaseline: SessionBatteryReading? = null
   private var sessionBatteryBaselineJob: Job? = null
-  internal val scrollableStatisticsPages = setOf(2, 4, 5, 6, 7, 8)
+  internal val scrollableStatisticsPages = setOf(2, 4, 5, 7, 8, 9)
   private val statisticsStateLock = Any()
   private var statisticsRevision = 0L
   private var statisticsSelectionRequested = false
@@ -1797,9 +1797,9 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
 
   fun commandNode(vararg command: String): MPVNode? = withCore(null) { MPVLib.commandNode(*command) }
 
-  /** 0 = Off, 1..6 = stats.lua pages, 7 = Console, 8 = mpv's keyboard-only page 0. */
+  /** 0 = Off, 1..7 = stats.lua pages, 8 = Console, 9 = mpv's keyboard-only page 0. */
   fun setStatisticsPage(page: Int) {
-    require(page in 0..8) { "Invalid statistics page: $page" }
+    require(page in 0..9) { "Invalid statistics page: $page" }
     val revision =
       synchronized(statisticsStateLock) {
         statisticsSelectionRequested = true
@@ -1820,8 +1820,8 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   fun restoreStatisticsPage() = synchronized(statisticsStateLock) {
     if (!statisticsSelectionRequested) {
       val saved = advancedPreferences.enabledStatisticsPage.get()
-      if (saved !in 0..8) Log.w(TAG, "Discarding invalid saved statistics page: $saved")
-      setStatisticsPage(if (saved in 1..6 || saved == 8) saved else 0)
+      if (saved !in 0..9) Log.w(TAG, "Discarding invalid saved statistics page: $saved")
+      setStatisticsPage(if (saved in 1..7 || saved == 9) saved else 0)
     }
   }
 
@@ -1875,7 +1875,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     val parts = value.split(':', limit = 2)
     val revision = parts.getOrNull(0)?.toLongOrNull()
     val page = parts.getOrNull(1)?.toIntOrNull()
-    if (revision == null || page == null || page !in 0..8) {
+    if (revision == null || page == null || page !in 0..9) {
       Log.w(TAG, "Invalid statistics state from mpv: $value")
       return
     }
@@ -1902,7 +1902,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   }
 
   private fun updateStatisticsDiagnostics(page: Int) {
-    if (page != 6) {
+    if (page != 7) {
       statisticsDiagnosticsJob?.cancel()
       statisticsDiagnosticsJob = null
     } else if (statisticsDiagnosticsJob?.isActive != true) {
@@ -1910,13 +1910,13 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       val core = nativeObserver
       statisticsDiagnosticsJob = statisticsDiagnostics.launch {
         val diagnostics = StatisticsDiagnostics(context, playerPreferences, decoderPreferences)
-        while (isActive && _visibleStatisticsPage.value == 6 && advancedPreferences.enabledStatisticsPage.get() == 6) {
+        while (isActive && _visibleStatisticsPage.value == 7 && advancedPreferences.enabledStatisticsPage.get() == 7) {
           val state = _state.value
           val sample = diagnostics.sample(state).toString()
           withReadyCore(Unit) {
             if (isActive && nativeObserver === core && _state.value.generation == state.generation &&
-              _visibleStatisticsPage.value == 6 &&
-              advancedPreferences.enabledStatisticsPage.get() == 6
+              _visibleStatisticsPage.value == 7 &&
+              advancedPreferences.enabledStatisticsPage.get() == 7
             ) {
               MPVLib.setPropertyString(STATISTICS_ANDROID_PROPERTY, sample)
             }

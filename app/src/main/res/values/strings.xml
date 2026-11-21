@@ -1831,14 +1831,6 @@
   <string name="ytdlp_cookies_import_failed">Could not update cookies. Check file access and try again.</string>
   <string name="ytdlp_cookies_config_owned">mpv.conf or custom yt-dlp options control cookies. Update those options before retrying.</string>
   <string name="ui_aspect_ratio">Aspect Ratio</string>
-  <string name="ui_auto_crop_black_bars">Auto crop black bars</string>
-  <string name="ui_auto_crop_black_bars_summary">Sample several frames in the background and crop persistent encoded black bars.</string>
-  <string name="ui_auto_crop_black_bars_analyzing">Analyzing frames…</string>
-  <string name="ui_auto_crop_black_bars_applied">Black bars removed for this video.</string>
-  <string name="ui_auto_crop_black_bars_none">No persistent black bars detected.</string>
-  <string name="ui_auto_crop_black_bars_unsupported">This video source could not be analyzed.</string>
-  <string name="ui_auto_crop_black_bars_failed">Black bar analysis failed.</string>
-  <string name="ui_auto_crop_black_bars_managed">video-crop is managed by mpv.conf.</string>
   <string name="ui_presets">Presets</string>
   <string name="ui_add_custom_ratio_e_g_16_9">Add Custom Ratio (e.g. 16:9)</string>
   <string name="ui_width">Width</string>
@@ -2870,7 +2862,7 @@
   <string name="network_smb_share_hint">Leave blank or use / for all shares, or enter a path such as /Media/Movies.</string>
   <string name="network_smb_username_hint">Use your username or DOMAIN\\username for a domain account.</string>
   <string name="player_zoom_overlays_follow">Zoom player OSD &amp; subtitles with video</string>
-  <string name="player_zoom_overlays_follow_summary">Subtitles and statistics pages 1–6 scale with video zoom. Off keeps them at a fixed size.</string>
+  <string name="player_zoom_overlays_follow_summary">Subtitles and statistics pages 1–7 scale with video zoom. Off keeps them at a fixed size.</string>
   <string name="pref_app_icon_title">App icon</string>
   <string name="pref_app_icon_summary">Choose the icon shown by your launcher</string>
   <string name="app_icon_change_failed">Unable to change the launcher icon.</string>

@@ -1351,14 +1351,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ytdlp_cookies_import_failed">Impossible de mettre à jour les cookies. Vérifiez l’accès au fichier et réessayez.</string>
   <string name="ytdlp_cookies_config_owned">mpv.conf ou les options yt-dlp personnalisées contrôlent les cookies. Modifiez ces options avant de réessayer.</string>
   <string name="ui_aspect_ratio">Format d’image</string>
-  <string name="ui_auto_crop_black_bars">Rogner automatiquement les bandes noires</string>
-  <string name="ui_auto_crop_black_bars_summary">Analyse plusieurs images en arrière-plan et rogne les bandes noires intégrées persistantes.</string>
-  <string name="ui_auto_crop_black_bars_analyzing">Analyse des images…</string>
-  <string name="ui_auto_crop_black_bars_applied">Bandes noires supprimées pour cette vidéo.</string>
-  <string name="ui_auto_crop_black_bars_none">Aucune bande noire persistante détectée.</string>
-  <string name="ui_auto_crop_black_bars_unsupported">Impossible d’analyser cette source vidéo.</string>
-  <string name="ui_auto_crop_black_bars_failed">Échec de l’analyse des bandes noires.</string>
-  <string name="ui_auto_crop_black_bars_managed">video-crop est géré par mpv.conf.</string>
   <string name="ui_presets">Préréglages</string>
   <string name="ui_add_custom_ratio_e_g_16_9">Ajouter un format personnalisé (p. ex. 16:9)</string>
   <string name="ui_width">Largeur</string>
@@ -2374,7 +2366,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_gesture_show_seekbar_horizontal_title">Afficher la barre de lecture quand les commandes sont masquées</string>
   <string name="pref_gesture_show_seekbar_horizontal_summary">Affiche la barre pendant le déplacement par geste, même si les commandes sont masquées.</string>
   <string name="player_zoom_overlays_follow">Zoomer OSD et sous-titres avec la vidéo</string>
-  <string name="player_zoom_overlays_follow_summary">Les sous-titres et les pages de statistiques 1 à 6 suivent le zoom vidéo. Désactivé, leur taille reste fixe.</string>
+  <string name="player_zoom_overlays_follow_summary">Les sous-titres et les pages de statistiques 1 à 7 suivent le zoom vidéo. Désactivé, leur taille reste fixe.</string>
   <string name="network_smb_share_folder">Partage / dossier (facultatif)</string>
   <string name="network_smb_share_hint">Vide ou / pour tous les partages, ou un chemin tel que /Media/Movies.</string>
   <string name="pref_app_icon_title">Icône de l’application</string>

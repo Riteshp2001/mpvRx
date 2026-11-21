@@ -1469,7 +1469,7 @@ class PlayerActivity :
       // forcing BLAST/libmpv reconfiguration and visible black flashes.
       val presentationActive = active && ambientFrame.supported
 
-      // Auto-crop changes after playback becomes ready. Refreshing on the property itself keeps
+      // video-crop can change after playback becomes ready. Refreshing on the property itself keeps
       // YouTube Ambient's SurfaceView aligned with the newly cropped content rectangle.
       LaunchedEffect(presentationActive, videoCrop, aspectOverride, panscan) {
         setVideoAmbientPresentationActive(presentationActive)

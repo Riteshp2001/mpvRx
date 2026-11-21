@@ -1351,14 +1351,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ytdlp_cookies_import_failed">Cookies konnten nicht aktualisiert werden. Prüfe den Dateizugriff und versuche es erneut.</string>
   <string name="ytdlp_cookies_config_owned">mpv.conf oder eigene yt-dlp-Optionen steuern die Cookies. Aktualisiere diese Optionen vor einem erneuten Versuch.</string>
   <string name="ui_aspect_ratio">Seitenverhältnis</string>
-  <string name="ui_auto_crop_black_bars">Schwarze Balken automatisch entfernen</string>
-  <string name="ui_auto_crop_black_bars_summary">Analysiert mehrere Einzelbilder im Hintergrund und entfernt dauerhaft eingebettete schwarze Balken.</string>
-  <string name="ui_auto_crop_black_bars_analyzing">Videobilder werden analysiert…</string>
-  <string name="ui_auto_crop_black_bars_applied">Schwarze Balken wurden für dieses Video entfernt.</string>
-  <string name="ui_auto_crop_black_bars_none">Keine dauerhaften schwarzen Balken erkannt.</string>
-  <string name="ui_auto_crop_black_bars_unsupported">Diese Videoquelle konnte nicht analysiert werden.</string>
-  <string name="ui_auto_crop_black_bars_failed">Analyse der schwarzen Balken fehlgeschlagen.</string>
-  <string name="ui_auto_crop_black_bars_managed">video-crop wird von mpv.conf verwaltet.</string>
   <string name="ui_presets">Voreinstellungen</string>
   <string name="ui_add_custom_ratio_e_g_16_9">Benutzerdefiniertes Verhältnis hinzufügen (z. B. 16:9)</string>
   <string name="ui_width">Breite</string>
@@ -2374,7 +2366,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_gesture_show_seekbar_horizontal_title">Suchleiste bei ausgeblendeten Bedienelementen anzeigen</string>
   <string name="pref_gesture_show_seekbar_horizontal_summary">Suchleiste beim Wischen zeigen, auch bei ausgeblendeten Bedienelementen.</string>
   <string name="player_zoom_overlays_follow">Player-OSD &amp; Untertitel mit Video zoomen</string>
-  <string name="player_zoom_overlays_follow_summary">Untertitel und Statistikseiten 1–6 folgen dem Videozoom. Aus: Die Größe bleibt unverändert.</string>
+  <string name="player_zoom_overlays_follow_summary">Untertitel und Statistikseiten 1–7 folgen dem Videozoom. Aus: Die Größe bleibt unverändert.</string>
   <string name="network_smb_share_folder">Freigabe / Ordner (optional)</string>
   <string name="network_smb_share_hint">Leer oder / für alle Freigaben; sonst einen Pfad wie /Media/Movies eingeben.</string>
   <string name="pref_app_icon_title">App-Symbol</string>

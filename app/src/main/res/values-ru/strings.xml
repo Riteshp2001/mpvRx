@@ -1373,14 +1373,6 @@
   <string name="ytdlp_cookies_import_failed">Не удалось обновить cookie. Проверьте доступ к файлу и повторите попытку.</string>
   <string name="ytdlp_cookies_config_owned">Файлами cookie управляет mpv.conf или пользовательские параметры yt-dlp. Обновите эти параметры перед повторной попыткой.</string>
   <string name="ui_aspect_ratio">Соотношение сторон</string>
-  <string name="ui_auto_crop_black_bars">Автоматически обрезать чёрные полосы</string>
-  <string name="ui_auto_crop_black_bars_summary">Анализирует несколько кадров в фоновом режиме и обрезает постоянные чёрные полосы, встроенные в видео.</string>
-  <string name="ui_auto_crop_black_bars_analyzing">Анализ кадров видео…</string>
-  <string name="ui_auto_crop_black_bars_applied">Чёрные полосы удалены для этого видео.</string>
-  <string name="ui_auto_crop_black_bars_none">Постоянные чёрные полосы не обнаружены.</string>
-  <string name="ui_auto_crop_black_bars_unsupported">Не удалось проанализировать этот источник видео.</string>
-  <string name="ui_auto_crop_black_bars_failed">Не удалось проанализировать чёрные полосы.</string>
-  <string name="ui_auto_crop_black_bars_managed">Параметр video-crop управляется через mpv.conf.</string>
   <string name="ui_presets">Предустановки</string>
   <string name="ui_add_custom_ratio_e_g_16_9">Добавить своё соотношение (например, 16:9)</string>
   <string name="ui_width">Ширина</string>
@@ -2406,7 +2398,7 @@
   <string name="pref_gesture_show_seekbar_horizontal_title">Показывать полосу перемотки при скрытых элементах управления</string>
   <string name="pref_gesture_show_seekbar_horizontal_summary">Показывать полосу при перемотке свайпом, даже когда управление скрыто.</string>
   <string name="player_zoom_overlays_follow">Масштабировать OSD и субтитры с видео</string>
-  <string name="player_zoom_overlays_follow_summary">Субтитры и страницы статистики 1–6 масштабируются вместе с видео. Если выключено, размер остаётся постоянным.</string>
+  <string name="player_zoom_overlays_follow_summary">Субтитры и страницы статистики 1–7 масштабируются вместе с видео. Если выключено, размер остаётся постоянным.</string>
   <string name="network_smb_share_folder">Общий ресурс / папка (необязательно)</string>
   <string name="network_smb_share_hint">Пусто или / для всех ресурсов; либо путь, например /Media/Movies.</string>
   <string name="pref_app_icon_title">Значок приложения</string>

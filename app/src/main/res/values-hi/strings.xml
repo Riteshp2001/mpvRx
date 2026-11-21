@@ -1271,14 +1271,6 @@
   <string name="ytdlp_cookies_import_failed">कुकी अपडेट नहीं हो सकीं। फ़ाइल की अनुमति जाँचें और फिर कोशिश करें।</string>
   <string name="ytdlp_cookies_config_owned">कुकी mpv.conf या कस्टम yt-dlp विकल्पों से नियंत्रित हैं। फिर कोशिश करने से पहले उन विकल्पों को बदलें।</string>
   <string name="ui_aspect_ratio">आस्पेक्ट रेशियो</string>
-  <string name="ui_auto_crop_black_bars">काली पट्टियाँ अपने आप काटें</string>
-  <string name="ui_auto_crop_black_bars_summary">बैकग्राउंड में कई फ़्रेम का नमूना लेकर वीडियो में स्थायी रूप से जुड़ी काली पट्टियाँ काटता है।</string>
-  <string name="ui_auto_crop_black_bars_analyzing">वीडियो फ़्रेम का विश्लेषण हो रहा है…</string>
-  <string name="ui_auto_crop_black_bars_applied">इस वीडियो से काली पट्टियाँ हटा दी गई हैं।</string>
-  <string name="ui_auto_crop_black_bars_none">कोई स्थायी काली पट्टी नहीं मिली।</string>
-  <string name="ui_auto_crop_black_bars_unsupported">इस वीडियो स्रोत का विश्लेषण नहीं किया जा सका।</string>
-  <string name="ui_auto_crop_black_bars_failed">काली पट्टियों का विश्लेषण विफल रहा।</string>
-  <string name="ui_auto_crop_black_bars_managed">video-crop को mpv.conf द्वारा प्रबंधित किया जाता है।</string>
   <string name="ui_presets">प्रीसेट</string>
   <string name="ui_add_custom_ratio_e_g_16_9">कस्टम रेशियो जोड़ें (जैसे 16:9)</string>
   <string name="ui_width">चौड़ाई</string>
@@ -2297,7 +2289,7 @@
   <string name="pref_gesture_show_seekbar_horizontal_title">कंट्रोल छिपे होने पर सीक बार दिखाएँ</string>
   <string name="pref_gesture_show_seekbar_horizontal_summary">नियंत्रण छिपे होने पर भी स्वाइप सीकिंग में सीकबार दिखाएँ।</string>
   <string name="player_zoom_overlays_follow">वीडियो के साथ प्लेयर OSD और उपशीर्षक ज़ूम करें</string>
-  <string name="player_zoom_overlays_follow_summary">उपशीर्षक और आँकड़ों के पृष्ठ 1–6 वीडियो ज़ूम के साथ बदलते हैं। बंद होने पर आकार स्थिर रहेगा।</string>
+  <string name="player_zoom_overlays_follow_summary">उपशीर्षक और आँकड़ों के पृष्ठ 1–7 वीडियो ज़ूम के साथ बदलते हैं। बंद होने पर आकार स्थिर रहेगा।</string>
   <string name="network_smb_share_folder">शेयर / फ़ोल्डर (वैकल्पिक)</string>
   <string name="network_smb_share_hint">सभी शेयर के लिए खाली छोड़ें या / दें; किसी फ़ोल्डर के लिए /Media/Movies जैसा पथ दें।</string>
   <string name="pref_app_icon_title">ऐप आइकन</string>

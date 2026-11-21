@@ -238,11 +238,11 @@ fun MoreSheet(
       LazyRow(
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
       ) {
-        items(8, key = { it }) { page ->
+        items(9, key = { it }) { page ->
           FilterChip(
             label = {
               Text(
-                if (page == 7) {
+                if (page == 8) {
                   "Console"
                 } else {
                   stringResource(

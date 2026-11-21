@@ -36,7 +36,6 @@ Anime4K is most useful for compatible animated sources at lower resolutions. It 
 - GPU debanding exposes iterations, threshold, range, and grain.
 - Video filter presets include Vivid, Cinematic, Dramatic, Ghibli Style, Neon Pop, and Deep Black.
 - Ambient GLOW and FRAME_EXTEND modes render around the video with configurable blur, color, warmth, vignette, and noise controls.
-- Automatic cropping can analyze supported videos for encoded black borders.
 
 ### Tune GPU debanding
 
@@ -66,16 +65,6 @@ Presets are creative starting points rather than calibration profiles. Preview
 them on representative bright, dark, animated, and skin-tone scenes before
 applying one broadly. Deep Black can crush shadow detail on an already dark
 master; vivid or neon looks can clip saturated colors.
-
-## Automatic crop
-
-Auto Crop samples several frames and looks for persistent encoded borders. It
-is conservative around dark scenes, short files, rotation, and changing aspect
-ratios, then caches a successful result for repeat playback.
-
-Disable it for intentional letterboxing, rapidly changing aspect ratios, or
-content where edge darkness is part of the image. Crop, stretch, pan, zoom, and
-ambient output share the final video geometry.
 
 ## Watch thermal behavior
 

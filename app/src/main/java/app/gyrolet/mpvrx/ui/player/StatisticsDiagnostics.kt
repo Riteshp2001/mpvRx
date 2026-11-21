@@ -48,7 +48,7 @@ internal fun readSessionBatteryReading(
   )
 }
 
-/** Supplies Android-only data; stats.lua owns Page 6's layout, native properties and scrolling. */
+/** Supplies Android-only data; stats.lua owns Page 7's layout, native properties and scrolling. */
 internal class StatisticsDiagnostics(
   private val context: Context,
   private val playerPreferences: PlayerPreferences,

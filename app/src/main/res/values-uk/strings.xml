@@ -1531,14 +1531,6 @@
   <string name="ytdlp_cookies_import_failed">Не вдалося оновити cookie. Перевірте доступ до файлу й повторіть спробу.</string>
   <string name="ytdlp_cookies_config_owned">Файлами cookie керує mpv.conf або власні параметри yt-dlp. Оновіть ці параметри перед повторною спробою.</string>
   <string name="ui_aspect_ratio">Співвідношення сторін</string>
-  <string name="ui_auto_crop_black_bars">Автообрізання чорних смуг</string>
-  <string name="ui_auto_crop_black_bars_summary">Аналізує кілька кадрів у фоні та обрізає постійні закодовані чорні смуги.</string>
-  <string name="ui_auto_crop_black_bars_analyzing">Аналіз кадрів…</string>
-  <string name="ui_auto_crop_black_bars_applied">Чорні смуги видалено для цього відео.</string>
-  <string name="ui_auto_crop_black_bars_none">Постійних чорних смуг не виявлено.</string>
-  <string name="ui_auto_crop_black_bars_unsupported">Це джерело відео не вдалося проаналізувати.</string>
-  <string name="ui_auto_crop_black_bars_failed">Помилка аналізу чорних смуг.</string>
-  <string name="ui_auto_crop_black_bars_managed">video-crop керується файлом mpv.conf.</string>
   <string name="ui_presets">Пресети</string>
   <string name="ui_add_custom_ratio_e_g_16_9">Додати власне співвідношення (наприклад 16:9)</string>
   <string name="ui_width">Ширина</string>
@@ -2395,7 +2387,7 @@
   <string name="pref_gesture_show_seekbar_horizontal_title">Показувати смугу перемотування за прихованих елементів керування</string>
   <string name="pref_gesture_show_seekbar_horizontal_summary">Показувати шкалу при перемотуванні свайпом, навіть коли керування приховане.</string>
   <string name="player_zoom_overlays_follow">Масштабувати OSD і субтитри з відео</string>
-  <string name="player_zoom_overlays_follow_summary">Субтитри та сторінки статистики 1–6 масштабуються разом із відео. Якщо вимкнено, розмір залишається сталим.</string>
+  <string name="player_zoom_overlays_follow_summary">Субтитри та сторінки статистики 1–7 масштабуються разом із відео. Якщо вимкнено, розмір залишається сталим.</string>
   <string name="network_smb_share_folder">Спільний ресурс / папка (необов’язково)</string>
   <string name="network_smb_share_hint">Порожньо або / для всіх ресурсів; або шлях, наприклад /Media/Movies.</string>
   <string name="pref_app_icon_title">Значок застосунку</string>

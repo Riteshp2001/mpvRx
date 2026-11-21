@@ -1340,14 +1340,6 @@
   <string name="ytdlp_cookies_import_failed">Cookieを更新できませんでした。ファイルへのアクセスを確認して再試行してください。</string>
   <string name="ytdlp_cookies_config_owned">Cookieはmpv.confまたはカスタムyt-dlpオプションで管理されています。再試行する前にそれらを更新してください。</string>
   <string name="ui_aspect_ratio">アスペクト比</string>
-  <string name="ui_auto_crop_black_bars">黒帯を自動クロップ</string>
-  <string name="ui_auto_crop_black_bars_summary">バックグラウンドで複数のフレームを解析し、映像に常時含まれる黒帯をクロップします。</string>
-  <string name="ui_auto_crop_black_bars_analyzing">映像フレームを解析中…</string>
-  <string name="ui_auto_crop_black_bars_applied">この動画の黒帯を除去しました。</string>
-  <string name="ui_auto_crop_black_bars_none">常時表示される黒帯は検出されませんでした。</string>
-  <string name="ui_auto_crop_black_bars_unsupported">この動画ソースは解析できません。</string>
-  <string name="ui_auto_crop_black_bars_failed">黒帯の解析に失敗しました。</string>
-  <string name="ui_auto_crop_black_bars_managed">video-crop は mpv.conf で管理されています。</string>
   <string name="ui_presets">プリセット</string>
   <string name="ui_add_custom_ratio_e_g_16_9">カスタム比率を追加（例: 16:9）</string>
   <string name="ui_width">幅</string>
@@ -2358,7 +2350,7 @@
   <string name="pref_gesture_show_seekbar_horizontal_title">操作ボタンが非表示でもシークバーを表示</string>
   <string name="pref_gesture_show_seekbar_horizontal_summary">操作ボタンを隠していても、スワイプシーク中はバーを表示します。</string>
   <string name="player_zoom_overlays_follow">動画と一緒にプレーヤーOSDと字幕を拡大</string>
-  <string name="player_zoom_overlays_follow_summary">字幕と統計ページ1〜6が動画のズームに合わせて拡大します。オフにするとサイズは固定されます。</string>
+  <string name="player_zoom_overlays_follow_summary">字幕と統計ページ1〜7が動画のズームに合わせて拡大します。オフにするとサイズは固定されます。</string>
   <string name="network_smb_share_folder">共有 / フォルダー（任意）</string>
   <string name="network_smb_share_hint">全共有を表示するには空欄か /。特定の場所は /Media/Movies のように指定します。</string>
   <string name="pref_app_icon_title">アプリアイコン</string>

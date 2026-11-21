@@ -2442,7 +2442,7 @@ fun PlayerControls(
           if (isPostProcessingEnabled) add(PlayerButton.POST_PROCESSING)
           if (isMotionInterpolationEnabled) add(PlayerButton.MOTION_INTERPOLATION)
           if (backgroundPlaybackEnabled) add(PlayerButton.BACKGROUND_PLAYBACK)
-          if (statisticsPage == 6) add(PlayerButton.TIME_NETWORK)
+          if (statisticsPage == 7) add(PlayerButton.TIME_NETWORK)
           if (mediaScopesState.overlayVisible) add(PlayerButton.SCOPES)
         }
       }

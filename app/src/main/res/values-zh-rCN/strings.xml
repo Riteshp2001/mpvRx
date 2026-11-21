@@ -1367,14 +1367,6 @@
   <string name="ytdlp_cookies_import_failed">无法更新 Cookie。请检查文件访问权限后重试。</string>
   <string name="ytdlp_cookies_config_owned">Cookie 由 mpv.conf 或自定义 yt-dlp 选项控制。请先更新这些选项再重试。</string>
   <string name="ui_aspect_ratio">宽高比</string>
-  <string name="ui_auto_crop_black_bars">自动去除黑边</string>
-  <string name="ui_auto_crop_black_bars_summary">后台抽取多帧，自动裁掉视频文件中持续存在的黑边。</string>
-  <string name="ui_auto_crop_black_bars_analyzing">正在分析视频帧…</string>
-  <string name="ui_auto_crop_black_bars_applied">已去除当前视频的黑边。</string>
-  <string name="ui_auto_crop_black_bars_none">未检测到持续存在的黑边。</string>
-  <string name="ui_auto_crop_black_bars_unsupported">无法分析当前视频来源。</string>
-  <string name="ui_auto_crop_black_bars_failed">黑边分析失败。</string>
-  <string name="ui_auto_crop_black_bars_managed">video-crop 已由 mpv.conf 接管。</string>
   <string name="ui_presets">预设</string>
   <string name="ui_add_custom_ratio_e_g_16_9">添加自定义比例（例如 16:9）</string>
   <string name="ui_width">宽度</string>
@@ -2368,7 +2360,7 @@
   <string name="pref_gesture_show_seekbar_horizontal_title">控制栏隐藏时显示进度条</string>
   <string name="pref_gesture_show_seekbar_horizontal_summary">滑动快进或快退时显示进度条，即使控件已隐藏。</string>
   <string name="player_zoom_overlays_follow">播放器 OSD 和字幕随视频缩放</string>
-  <string name="player_zoom_overlays_follow_summary">字幕和统计页面 1–6 随视频缩放。关闭时保持固定大小。</string>
+  <string name="player_zoom_overlays_follow_summary">字幕和统计页面 1–7 随视频缩放。关闭时保持固定大小。</string>
   <string name="network_smb_share_folder">共享 / 文件夹（可选）</string>
   <string name="network_smb_share_hint">留空或填 / 浏览所有共享，也可填写 /Media/Movies 等路径。</string>
   <string name="pref_app_icon_title">应用图标</string>

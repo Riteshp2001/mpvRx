@@ -1351,14 +1351,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ytdlp_cookies_import_failed">No se pudieron actualizar las cookies. Comprueba el acceso al archivo e inténtalo de nuevo.</string>
   <string name="ytdlp_cookies_config_owned">mpv.conf o las opciones personalizadas de yt-dlp controlan las cookies. Actualiza esas opciones antes de reintentar.</string>
   <string name="ui_aspect_ratio">Relación de aspecto</string>
-  <string name="ui_auto_crop_black_bars">Recortar barras negras automáticamente</string>
-  <string name="ui_auto_crop_black_bars_summary">Analiza varios fotogramas en segundo plano y recorta las barras negras integradas que persisten.</string>
-  <string name="ui_auto_crop_black_bars_analyzing">Analizando fotogramas…</string>
-  <string name="ui_auto_crop_black_bars_applied">Se eliminaron las barras negras de este vídeo.</string>
-  <string name="ui_auto_crop_black_bars_none">No se detectaron barras negras persistentes.</string>
-  <string name="ui_auto_crop_black_bars_unsupported">No se pudo analizar esta fuente de vídeo.</string>
-  <string name="ui_auto_crop_black_bars_failed">Error al analizar las barras negras.</string>
-  <string name="ui_auto_crop_black_bars_managed">video-crop está gestionado por mpv.conf.</string>
   <string name="ui_presets">Preajustes</string>
   <string name="ui_add_custom_ratio_e_g_16_9">Añadir relación personalizada (p. ej., 16:9)</string>
   <string name="ui_width">Ancho</string>
@@ -2374,7 +2366,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_gesture_show_seekbar_horizontal_title">Mostrar la barra de progreso con los controles ocultos</string>
   <string name="pref_gesture_show_seekbar_horizontal_summary">Muestra la barra al buscar deslizando, aunque los controles estén ocultos.</string>
   <string name="player_zoom_overlays_follow">Ampliar OSD y subtítulos con el vídeo</string>
-  <string name="player_zoom_overlays_follow_summary">Los subtítulos y las páginas de estadísticas 1–6 siguen el zoom del vídeo. Desactivado, mantienen un tamaño fijo.</string>
+  <string name="player_zoom_overlays_follow_summary">Los subtítulos y las páginas de estadísticas 1–7 siguen el zoom del vídeo. Desactivado, mantienen un tamaño fijo.</string>
   <string name="network_smb_share_folder">Recurso compartido / carpeta (opcional)</string>
   <string name="network_smb_share_hint">Vacío o / para todos los recursos, o una ruta como /Media/Movies.</string>
   <string name="pref_app_icon_title">Icono de la aplicación</string>

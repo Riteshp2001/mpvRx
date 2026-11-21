@@ -7,7 +7,7 @@ These notes are written in plain English and focus on what changed for real use.
 - **Customizable Profile layout:** Appearance settings now offer the same draggable on/off panels as Navigation for Profile hub cards, content sections, and individual statistics cards. Order and visibility are saved, statistics cards stay inside their section, and Reset Profile layout restores the original arrangement without deleting history or statistics. Mixed audio/video rankings are labeled "Most played" instead of "Most watched" (#993).
 - **YouTube sign-in recovery:** Detect yt-dlp sign-in/verification failures instead of repeating an unchanged playback request. A recovery dialog can import Netscape `cookies.txt` and retry that video once; the same controls are available under Network > YouTube cookies for replacement or removal. Imports keep only unexpired YouTube cookies in private storage excluded from backups, reuse the existing yt-dlp cookie option, and respect mpv.conf/custom overrides. Verification must still be completed in a browser; no browser-cookie scraping or automatic CAPTCHA handling is performed.
 - **Statistics and Console switching:** Statistics use an app-managed, FongMi-compatible Lua renderer with explicit show/hide control instead of blind toggles. FongMi's MEMC, passthrough diagnostics, and text-export binding are retained. Page changes redraw immediately, Off cancels one-shot displays, and delayed Console events no longer replace a newer selection.
-- **Native Page 6 and touch scrolling:** Time, network, battery, thermals, CPU, memory, cache, and torrent information now share stats.lua instead of a separate Compose overlay. Android-only readings are sampled in the background only while Page 6 is visible. Vertical swipes scroll long statistics pages and Console logs without changing volume, brightness, or command history; keyboard scrolling remains available.
+- **Native Page 7 and touch scrolling:** Time, network, battery, thermals, CPU, memory, cache, and torrent information now share stats.lua instead of a separate Compose overlay. Android-only readings are sampled in the background only while Page 7 is visible. Vertical swipes scroll long statistics pages and Console logs without changing volume, brightness, or command history; keyboard scrolling remains available.
 - **External script filenames:** Save As keeps the original filename and extension for Lua scripts and configuration files instead of asking Android to save them as plain-text `.txt` documents.
 - **Ordered audio and subtitle preferences:** Preferred languages and subtitle-title choices use left-to-right fallback order, including two-/three-letter language aliases and regional tags. Saved choices remain fallback options, saved subtitles-off stays off, and sidecar discovery no longer unconditionally selects its first result over the preferred language.
 - **Hold-speed freeze fixed:** Playback-speed ramps and swipe adjustments no longer wait for mpv on the UI thread. New gestures supersede pending speed updates, and updates for a replaced track are discarded.
@@ -1610,7 +1610,7 @@ Thanks to [@ThisisWyatt](https://github.com/ThisisWyatt), [@Arnab11](https://git
 ## 1.5.0-preview.1 — Preview Release
 
 ### 📦 MpvLib Update
-- Updated mpv library and its dependencies 
+- Updated mpv library and its dependencies
 
 ### ⚡ Performance & Stability
 - **Startup optimization**: Deferred cold-start DB initialization, grammar pre-load, and auto-update check to cut first-frame time significantly
@@ -1688,7 +1688,7 @@ Thanks to [@ThisisWyatt](https://github.com/ThisisWyatt), [@Arnab11](https://git
 ### Network & Connections
 - Added support for sending your playback progress to Jellyfin when playing videos externally.
 
-- Many More Small QOL Fixes and Optimizations 
+- Many More Small QOL Fixes and Optimizations
 
 ## 1.4.0
 
@@ -1724,11 +1724,11 @@ Thanks to [@ThisisWyatt](https://github.com/ThisisWyatt), [@Arnab11](https://git
 - Removed Avif / Jpeg-Xl type images from the settings selection
 - Added Font selection in the Subtitle Settings section.
 - Fixed issue of Lua script when copying specific part Copied whole Lua script.
-- added Expressive Scrollbar like in Pixel player 
+- added Expressive Scrollbar like in Pixel player
 
 ## 1.3.9
 
-> # 🚀 **CURL IS NOW SUPPORTED!** 
+> # 🚀 **CURL IS NOW SUPPORTED!**
 > ### ⚠️ **EXPERIMENTAL** — This is brand new and may or may not work properly on your device. ⚠️
 > Lua and JavaScript scripts can now make HTTP requests through the new native libcurl bridge via JNI.
 > Use it, break it, and report issues so we can make it stable!, see `MPVRX_CUSTOM_COMMANDS.d` for tutorial on how to use in Lua and JS.
@@ -1757,14 +1757,14 @@ Thanks to [@ThisisWyatt](https://github.com/ThisisWyatt), [@Arnab11](https://git
 - **Updated Wyzie subtitle API integration** — Synced with latest Wyzie API changes: added `ai` field for AI-translated subtitle detection, updated provider sources list (removed `subdl`, `podnapisi`, `ajatttools`; added `tvsubtitles`), and fixed TMDB endpoints to include API key authentication.
 - **Material 3 Expressive Design** — Complete visual overhaul using Material 3 Expressive design system for a more modern, fluid, and engaging experience
 - **Smoother Animations** — Replaced rigid linear transitions with spring-based physics animations throughout the app (navigation, controls, browser, dialogs)
-- Added Voltage Battery Temperature And improved the style of Page 6 
+- Added Voltage Battery Temperature And improved the style of Page 6
 - Added Optimized Ambient Mode with Eco Battery Saver Mode who want to take feel of Ambient without much Battery Impact
 - Removed Dead Code and also Optimized some File Handling / Ui Rendering Operations
 - **Settings export now stores app version**  exported XML files include the app version, so import dialogs show the correct version instead of "unknown".
 - **HEVC 10bit thumbnails**  added a software-decoder fallback using Android's MediaCodec API. When the system can't decode a video frame (e.g. HEVC 10bit on devices without hardware support), the app now tries Google's software decoder before giving up. This means more thumbnails will show up on devices with limited codec support ( To be tested Propelry on unsupported device).
 - **Fixed app icon on Android 16**  changed the adaptive icon background from transparent to opaque black so the icon doesn't disappear on launchers that don't handle transparency well.
 - **User mpv.conf now has highest priority**  during player startup, your mpv.conf settings are re-applied after all app defaults so they always take precedence. but some of the Hardcoded things doesnt change like for example `sid, aid`.
-- 
+-
 
 ## 1.3.6
 
@@ -1805,7 +1805,7 @@ Thanks to [@ThisisWyatt](https://github.com/ThisisWyatt), [@Arnab11](https://git
 
 ## 1.3.3
 
-- Fixed Background Playback and Pip issues 
+- Fixed Background Playback and Pip issues
 - Anime4K should feel much smoother now. The player now uses the clean six-preset Anime4K flow from the reference app and avoids piling old shader work on top of the new preset when you switch modes.
 - Anime4K is still off by default, but when you turn it on the picker is simpler: Off, A, B, C, A+, B+, and C+.
 - Moved the Fast / Balanced / High Anime4K choice into Decoder settings, with Balanced as the default.

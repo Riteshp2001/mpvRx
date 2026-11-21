@@ -17,7 +17,7 @@ internal object VideoAspectGeometry {
    * Returns the post-crop display aspect used by both Glow and YouTube Ambient.
    *
    * `video-params/aspect` describes the uncropped source, so it cannot size the YouTube Ambient
-   * surface after auto-crop removes encoded black bars. Deriving the aspect from the effective
+   * surface once `video-crop` trims the frame. Deriving the aspect from the effective
    * dimensions keeps both Ambient styles on the same geometry path.
    */
   fun currentEffectiveDisplayAspect(

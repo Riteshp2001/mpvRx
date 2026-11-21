@@ -13,21 +13,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
-import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.media.AudioManager
 import android.net.Uri
 import android.os.BatteryManager
-import android.os.Build
 import android.os.PowerManager
-import android.os.SystemClock
 import `is`.xyz.mpv.MPVNode
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import android.util.Log
-import android.util.LruCache
 import android.view.inputmethod.InputMethodManager
 import android.webkit.MimeTypeMap
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
@@ -42,8 +38,6 @@ import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem
 import app.gyrolet.mpvrx.data.network.client.NetworkMimeTypes
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
-import app.gyrolet.mpvrx.domain.autocrop.AutoCropAnalyzer
-import app.gyrolet.mpvrx.domain.autocrop.AutoCropEdges
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.domain.network.XtreamPlaybackUri
@@ -152,7 +146,6 @@ import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.properties.ReadOnlyProperty
-import kotlin.random.Random
 import kotlin.reflect.KProperty
 
 // ~45% opaque charcoal (#AARRGGBB): visible on bright scenes without hiding the video like solid black.
@@ -164,15 +157,6 @@ private data class SubtitleGestureBoxStyle(
   val backgroundColor: String?,
   val shadowOffset: String?,
 )
-
-enum class AutoCropState {
-  IDLE,
-  ANALYZING,
-  APPLIED,
-  NO_BARS,
-  UNSUPPORTED,
-  ERROR,
-}
 
 /**
  * @param hostedInBrowser the in-app music sheet adopts a core owned by [MediaPlaybackService]. It
@@ -618,37 +602,6 @@ class PlayerViewModel(
   private val metadataCache = object : android.util.LruCache<String, Pair<String, String>>(100) {}
   private val playbackStateDispatcher = Dispatchers.Default.limitedParallelism(1)
   private val renderPrepDispatcher = Dispatchers.Default.limitedParallelism(1)
-  private var autoCropJob: Job? = null
-  private var autoCropReadinessJob: Job? = null
-  private var autoCropRetryJob: Job? = null
-  private var autoCropAnalyzedGeneration = -1L
-  private var autoCropApplied = false
-  // Memory-only analysis cache. This is not playback history and does not enable auto-crop.
-  private val autoCropResultCache = LruCache<String, AutoCropEdges>(AUTO_CROP_CACHE_CAPACITY)
-  private val _autoCropState = MutableStateFlow(AutoCropState.IDLE)
-  val autoCropState: StateFlow<AutoCropState> = _autoCropState.asStateFlow()
-
-  private data class AutoCropSamples(
-    val edges: List<AutoCropEdges>,
-    val framesWereRotated: Boolean,
-  )
-
-  private sealed interface AutoCropAnalysisResult {
-    data class Detected(
-      val edges: AutoCropEdges,
-    ) : AutoCropAnalysisResult
-
-    data object NoBars : AutoCropAnalysisResult
-
-    data object Unavailable : AutoCropAnalysisResult
-  }
-
-  private data class AutoCropMetadata(
-    val width: Int,
-    val height: Int,
-    val x: Int,
-    val y: Int,
-  )
 
   private fun updateMetadataCache(
     key: String,
@@ -3102,7 +3055,6 @@ fun restartFromBeginning() {
   /** Stops every ViewModel path that can read or write libmpv during native teardown. */
   fun onMpvCoreStopping() {
     stopRealtimeSubtitles(showToastMessage = false)
-    cancelAutoCropAnalysis()
     disableAmbientShader()
     _isMpvCoreReady.value = false
     isMpvReadyForCustomButtons = false
@@ -3337,12 +3289,6 @@ fun restartFromBeginning() {
     lyricsUiState.value = LyricsUiState()
     stopRealtimeSubtitles(showToastMessage = false)
     introLookupJob?.cancel()
-    cancelAutoCropAnalysis()
-    autoCropAnalyzedGeneration = -1L
-    if (autoCropApplied || playerPreferences.autoCropBlackBars.get()) {
-      clearAutoCropProperty()
-    }
-    _autoCropState.value = AutoCropState.IDLE
     // PlaybackSession is process-wide, while this ViewModel can be recreated. Clear both halves of
     // the timeline so a stopped file's last position cannot be rendered beside the incoming file's
     // reset 00:00 duration while mpv is still opening it.
@@ -3377,7 +3323,6 @@ fun restartFromBeginning() {
     syncplayManager.updateFileInfo(currentSyncplayFileInfo())
     applyEqualizerMpvFilters()
     if (isAudioOnly.value) loadLyricsForCurrentTrack()
-    scheduleAutoCropAnalysis()
   }
 
   fun updateTorrentState(state: TorrentStreamingState) {
@@ -3799,21 +3744,6 @@ fun restartFromBeginning() {
 
   private companion object {
     const val TAG = "PlayerViewModel"
-    const val AUTO_CROP_SAMPLE_COUNT = 7
-    const val AUTO_CROP_MIN_VALID_SAMPLES = 3
-    const val AUTO_CROP_THUMBNAIL_SIZE = 640
-    const val AUTO_CROP_READY_TIMEOUT_MS = 15_000L
-    const val AUTO_CROP_RETRY_INTERVAL_MS = 10_000L
-    const val AUTO_CROP_CACHE_CAPACITY = 20
-    const val AUTO_CROP_FILTER_LABEL = "mpvrx_autocrop_detect"
-    const val AUTO_CROP_DETECT_LIMIT = "24/255"
-    const val AUTO_CROP_DETECT_ROUND = 2
-    const val AUTO_CROP_ACTIVE_DETECT_TIMEOUT_MS = 1_600L
-    const val AUTO_CROP_ACTIVE_SETTLE_MS = 1_000L
-    const val AUTO_CROP_METADATA_POLL_MS = 100L
-    const val AUTO_CROP_HWDEC_TIMEOUT_MS = 1_500L
-    const val AUTO_CROP_ACTIVE_FRAME_TIMEOUT_MS = 2_500L
-    const val AUTO_CROP_ACTIVE_FRAME_INTERVAL_MS = 300L
     const val AUTO_SHOW_SKIP_CHIP_DURATION = 10.0
     // mpv-android's seekbar step (SEEK_BAR_PRECISION = 2). Finer moves only re-decode the same frame.
     const val SCRUB_SEEK_STEP_SECONDS = 0.5
@@ -6083,457 +6013,6 @@ fun restartFromBeginning() {
     }
 
     changeVideoAspect(playerPreferences.lastVideoAspect.get(), showUpdate, resetZoom = false)
-  }
-
-  fun setAutoCropBlackBars(enabled: Boolean) {
-    playerPreferences.autoCropBlackBars.set(enabled)
-    cancelAutoCropAnalysis()
-    autoCropAnalyzedGeneration = -1L
-    if (!enabled) {
-      clearAutoCropProperty()
-      _autoCropState.value = AutoCropState.IDLE
-      return
-    }
-    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUTO_CROP)) {
-      _autoCropState.value = AutoCropState.UNSUPPORTED
-      return
-    }
-    clearAutoCropProperty()
-    scheduleAutoCropAnalysis(force = true)
-  }
-
-  private fun scheduleAutoCropAnalysis(force: Boolean = false) {
-    if (!playerPreferences.autoCropBlackBars.get()) return
-    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUTO_CROP)) {
-      _autoCropState.value = AutoCropState.UNSUPPORTED
-      return
-    }
-
-    val session = PlaybackSession.state.value
-    if (session.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) {
-      if (session.phase == PlaybackPhase.LOADING && autoCropReadinessJob?.isActive != true) {
-        val expectedGeneration = session.generation
-        _autoCropState.value = AutoCropState.ANALYZING
-        autoCropReadinessJob =
-          viewModelScope.launch {
-            val readyState =
-              withTimeoutOrNull(AUTO_CROP_READY_TIMEOUT_MS) {
-                PlaybackSession.state.first { state ->
-                  state.generation != expectedGeneration ||
-                    state.phase in
-                    setOf(
-                      PlaybackPhase.READY,
-                      PlaybackPhase.BACKGROUND,
-                      PlaybackPhase.ERROR,
-                      PlaybackPhase.IDLE,
-                    )
-                }
-              }
-            autoCropReadinessJob = null
-            if (
-              readyState?.generation == expectedGeneration &&
-              readyState.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
-            ) {
-              scheduleAutoCropAnalysis(force)
-            } else if (PlaybackSession.isCurrentGeneration(expectedGeneration)) {
-              _autoCropState.value = AutoCropState.ERROR
-              scheduleAutoCropRetry(expectedGeneration)
-            }
-          }
-      }
-      return
-    }
-    val generation = session.generation
-    if (!force && autoCropAnalyzedGeneration == generation) return
-    val source = host?.currentThumbnailSource()?.takeIf(String::isNotBlank)
-    val durationSeconds =
-      sequenceOf(
-        PlaybackSession.getPropertyDouble("duration"),
-        preciseDuration.value.toDouble(),
-      ).filterNotNull().firstOrNull { it.isFinite() && it > 0.0 }
-    val sourceWidth = PlaybackSession.getPropertyInt("video-params/w") ?: 0
-    val sourceHeight = PlaybackSession.getPropertyInt("video-params/h") ?: 0
-    val rotation = (PlaybackSession.getPropertyInt("video-params/rotate") ?: 0).mod(360)
-    if (sourceWidth <= 0 || sourceHeight <= 0) {
-      if (autoCropReadinessJob?.isActive != true) {
-        _autoCropState.value = AutoCropState.ANALYZING
-        autoCropReadinessJob =
-          viewModelScope.launch {
-            val dimensionsReady =
-              withTimeoutOrNull(AUTO_CROP_READY_TIMEOUT_MS) {
-                while (currentCoroutineContext().isActive && PlaybackSession.isCurrentGeneration(generation)) {
-                  val width = PlaybackSession.getPropertyInt("video-params/w") ?: 0
-                  val height = PlaybackSession.getPropertyInt("video-params/h") ?: 0
-                  if (width > 0 && height > 0) return@withTimeoutOrNull true
-                  delay(AUTO_CROP_METADATA_POLL_MS)
-                }
-                false
-              } == true
-            autoCropReadinessJob = null
-            if (!PlaybackSession.isCurrentGeneration(generation) || !playerPreferences.autoCropBlackBars.get()) {
-              return@launch
-            }
-            if (dimensionsReady) {
-              scheduleAutoCropAnalysis(force)
-            } else {
-              autoCropAnalyzedGeneration = generation
-              _autoCropState.value = AutoCropState.UNSUPPORTED
-            }
-          }
-      }
-      return
-    }
-
-    autoCropAnalyzedGeneration = generation
-    autoCropJob?.cancel()
-    _autoCropState.value = AutoCropState.ANALYZING
-    val sourceIdentity = source ?: session.currentItem?.stableId ?: "generation:$generation"
-    val androidReadableSource = source?.let(::isAndroidReadableMediaSource) == true
-    // A URL can identify a changing live channel, so only cache results for local/Android media.
-    val cacheKey =
-      durationSeconds?.takeIf { androidReadableSource }?.let { duration ->
-        "$sourceIdentity|$sourceWidth|$sourceHeight|${duration.toLong()}"
-      }
-    autoCropJob =
-      viewModelScope.launch(Dispatchers.IO) {
-        Log.i(TAG, "Auto-crop analyzing generation=$generation source=$sourceIdentity")
-        val result =
-          try {
-            val cached = cacheKey?.let(autoCropResultCache::get)
-            if (cached != null) {
-              AutoCropAnalysisResult.Detected(cached)
-            } else if (source != null && durationSeconds != null && androidReadableSource) {
-              val positions = autoCropSamplePositions(source, durationSeconds)
-              val combined = extractAutoCropSamples(source, positions)
-              when {
-                combined == null -> detectAutoCropFromActivePlayback(generation, sourceWidth, sourceHeight)
-                else -> {
-                  val detected = AutoCropAnalyzer.combine(combined.edges)
-                  if (detected == null) {
-                    AutoCropAnalysisResult.NoBars
-                  } else {
-                    val sourceEdges =
-                      if (combined.framesWereRotated) mapRotatedEdgesToSource(detected, rotation) else detected
-                    AutoCropAnalysisResult.Detected(sourceEdges)
-                  }
-                }
-              }
-            } else {
-              detectAutoCropFromActivePlayback(generation, sourceWidth, sourceHeight)
-            }
-          } catch (cancellation: kotlinx.coroutines.CancellationException) {
-            throw cancellation
-          } catch (error: Exception) {
-            Log.w(TAG, "Auto-crop analysis failed for generation=$generation", error)
-            AutoCropAnalysisResult.Unavailable
-          }
-
-        withContext(Dispatchers.Main) {
-          if (!PlaybackSession.isCurrentGeneration(generation) || !playerPreferences.autoCropBlackBars.get()) {
-            return@withContext
-          }
-          if (result == AutoCropAnalysisResult.Unavailable) {
-            Log.w(TAG, "Auto-crop could not inspect active video frames for generation=$generation")
-            clearAutoCropProperty()
-            _autoCropState.value = AutoCropState.ERROR
-            scheduleAutoCropRetry(generation)
-            return@withContext
-          }
-          if (result == AutoCropAnalysisResult.NoBars) {
-            Log.i(TAG, "Auto-crop found no persistent black bars for generation=$generation")
-            clearAutoCropProperty()
-            _autoCropState.value = AutoCropState.NO_BARS
-            return@withContext
-          }
-
-          val sourceEdges = (result as AutoCropAnalysisResult.Detected).edges
-          val cropValue = buildAutoCropValue(sourceEdges, sourceWidth, sourceHeight)
-          if (cropValue == null) {
-            Log.i(TAG, "Auto-crop result was too small or unsafe for generation=$generation edges=$sourceEdges")
-            clearAutoCropProperty()
-            _autoCropState.value = AutoCropState.NO_BARS
-            return@withContext
-          }
-
-          cacheKey?.let { autoCropResultCache.put(it, sourceEdges) }
-          PlaybackSession.setPropertyString("video-crop", cropValue)
-          Log.i(TAG, "Auto-crop applied generation=$generation crop=$cropValue edges=$sourceEdges")
-          autoCropApplied = true
-          _autoCropState.value = AutoCropState.APPLIED
-        }
-      }
-  }
-
-  private suspend fun detectAutoCropFromActivePlayback(
-    generation: Long,
-    sourceWidth: Int,
-    sourceHeight: Int,
-  ): AutoCropAnalysisResult {
-    if (MpvConfigOverridePolicy.isOwnedByMpvConf("vf")) return detectAutoCropFromCurrentFrames(generation)
-    // Software decoding for cropdetect would leave MediaCodec embed without any frames to show.
-    if (MediaCodecEmbed.isActive()) return detectAutoCropFromCurrentFrames(generation)
-    if (PlaybackSession.getPropertyBoolean("current-tracks/video/image") == true) {
-      return AutoCropAnalysisResult.Unavailable
-    }
-
-    var hwdecBackup: String? = null
-    try {
-      PlaybackSession.removeVideoFilter(AUTO_CROP_FILTER_LABEL)
-      val activeHwdec = PlaybackSession.getPropertyString("hwdec-current").orEmpty()
-      val needsSoftwareFrames =
-        activeHwdec.isNotBlank() &&
-          activeHwdec != "no" &&
-          !activeHwdec.endsWith("-copy") &&
-          activeHwdec !in setOf("crystalhd", "rkmpp")
-      if (needsSoftwareFrames) {
-        if (MpvConfigOverridePolicy.isOwnedByMpvConf("hwdec")) {
-          return detectAutoCropFromCurrentFrames(generation)
-        }
-        hwdecBackup = PlaybackSession.getPropertyString("hwdec")?.takeIf(String::isNotBlank)
-        PlaybackSession.setPropertyString("hwdec", "no")
-        withTimeoutOrNull(AUTO_CROP_HWDEC_TIMEOUT_MS) {
-          while (currentCoroutineContext().isActive && PlaybackSession.isCurrentGeneration(generation)) {
-            if (PlaybackSession.getPropertyString("hwdec-current").orEmpty() in setOf("", "no")) return@withTimeoutOrNull
-            delay(AUTO_CROP_METADATA_POLL_MS)
-          }
-        }
-      }
-
-      if (!PlaybackSession.isCurrentGeneration(generation)) return AutoCropAnalysisResult.Unavailable
-      PlaybackSession.command(
-        "vf",
-        "pre",
-        "@$AUTO_CROP_FILTER_LABEL:cropdetect=limit=$AUTO_CROP_DETECT_LIMIT:round=$AUTO_CROP_DETECT_ROUND:reset=0",
-      )
-
-      val startedAt = SystemClock.elapsedRealtime()
-      val deadline = startedAt + AUTO_CROP_ACTIVE_DETECT_TIMEOUT_MS
-      var metadata: AutoCropMetadata? = null
-      while (
-        currentCoroutineContext().isActive &&
-        PlaybackSession.isCurrentGeneration(generation) &&
-        SystemClock.elapsedRealtime() < deadline
-      ) {
-        delay(AUTO_CROP_METADATA_POLL_MS)
-        metadata = readAutoCropMetadata()
-        if (metadata != null && SystemClock.elapsedRealtime() - startedAt >= AUTO_CROP_ACTIVE_SETTLE_MS) break
-      }
-
-      if (!PlaybackSession.isCurrentGeneration(generation)) return AutoCropAnalysisResult.Unavailable
-      return metadata?.toAutoCropResult(sourceWidth, sourceHeight) ?: detectAutoCropFromCurrentFrames(generation)
-    } finally {
-      PlaybackSession.removeVideoFilter(AUTO_CROP_FILTER_LABEL)
-      val backup = hwdecBackup
-      if (backup != null && PlaybackSession.getPropertyString("hwdec") == "no") {
-        PlaybackSession.setPropertyString("hwdec", backup)
-      }
-    }
-  }
-
-  private suspend fun detectAutoCropFromCurrentFrames(generation: Long): AutoCropAnalysisResult {
-    val samples = mutableListOf<AutoCropEdges>()
-    val deadline = SystemClock.elapsedRealtime() + AUTO_CROP_ACTIVE_FRAME_TIMEOUT_MS
-    while (
-      samples.size < AUTO_CROP_MIN_VALID_SAMPLES &&
-      currentCoroutineContext().isActive &&
-      PlaybackSession.isCurrentGeneration(generation) &&
-      SystemClock.elapsedRealtime() < deadline
-    ) {
-      PlaybackSession.grabThumbnail(AUTO_CROP_THUMBNAIL_SIZE)?.analyzeAndRecycle()?.let(samples::add)
-      if (samples.size < AUTO_CROP_MIN_VALID_SAMPLES) delay(AUTO_CROP_ACTIVE_FRAME_INTERVAL_MS)
-    }
-    if (!PlaybackSession.isCurrentGeneration(generation)) return AutoCropAnalysisResult.Unavailable
-    if (samples.size < AUTO_CROP_MIN_VALID_SAMPLES) return AutoCropAnalysisResult.Unavailable
-    return AutoCropAnalyzer.combine(samples)
-      ?.let(AutoCropAnalysisResult::Detected)
-      ?: AutoCropAnalysisResult.NoBars
-  }
-
-  private fun readAutoCropMetadata(): AutoCropMetadata? {
-    fun value(key: String): Int? =
-      PlaybackSession
-        .getPropertyString("vf-metadata/$AUTO_CROP_FILTER_LABEL/lavfi.cropdetect.$key")
-        ?.toIntOrNull()
-
-    return AutoCropMetadata(
-      width = value("w") ?: return null,
-      height = value("h") ?: return null,
-      x = value("x") ?: return null,
-      y = value("y") ?: return null,
-    )
-  }
-
-  private fun AutoCropMetadata.toAutoCropResult(
-    sourceWidth: Int,
-    sourceHeight: Int,
-  ): AutoCropAnalysisResult {
-    if (width <= 0 || height <= 0 || x < 0 || y < 0) return AutoCropAnalysisResult.Unavailable
-    if (x + width > sourceWidth + AUTO_CROP_DETECT_ROUND || y + height > sourceHeight + AUTO_CROP_DETECT_ROUND) {
-      return AutoCropAnalysisResult.Unavailable
-    }
-    if (width < sourceWidth / 2 || height < sourceHeight / 2) return AutoCropAnalysisResult.NoBars
-
-    val right = (sourceWidth - width - x).coerceAtLeast(0)
-    val bottom = (sourceHeight - height - y).coerceAtLeast(0)
-    if (x < 2 && y < 2 && right < 2 && bottom < 2) return AutoCropAnalysisResult.NoBars
-    return AutoCropAnalysisResult.Detected(
-      AutoCropEdges(
-        left = x.toFloat() / sourceWidth,
-        top = y.toFloat() / sourceHeight,
-        right = right.toFloat() / sourceWidth,
-        bottom = bottom.toFloat() / sourceHeight,
-      ),
-    )
-  }
-
-  private fun autoCropSamplePositions(
-    source: String,
-    durationSeconds: Double,
-  ): List<Double> {
-    val random = Random(source.hashCode())
-    val start = durationSeconds * 0.05
-    val span = durationSeconds * 0.90
-    val segment = span / AUTO_CROP_SAMPLE_COUNT
-    return List(AUTO_CROP_SAMPLE_COUNT) { index ->
-      start + segment * (index + random.nextDouble(0.2, 0.8))
-    }
-  }
-
-  private suspend fun extractAutoCropSamples(
-    source: String,
-    positionsSeconds: List<Double>,
-  ): AutoCropSamples? {
-    if (isAndroidReadableMediaSource(source)) {
-      extractAutoCropWithRetriever(source, positionsSeconds)?.let { samples ->
-        if (samples.size >= AUTO_CROP_MIN_VALID_SAMPLES) {
-          return AutoCropSamples(samples, framesWereRotated = false)
-        }
-      }
-    }
-
-    val samples =
-      positionsSeconds.mapNotNull { position ->
-        currentCoroutineContext().ensureActive()
-        val bitmap = PlaybackSession.grabThumbnailFast(source, position, AUTO_CROP_THUMBNAIL_SIZE, true)
-        bitmap?.analyzeAndRecycle()
-      }
-    return samples.takeIf { it.size >= AUTO_CROP_MIN_VALID_SAMPLES }?.let {
-      AutoCropSamples(it, framesWereRotated = true)
-    }
-  }
-
-  private suspend fun extractAutoCropWithRetriever(
-    source: String,
-    positionsSeconds: List<Double>,
-  ): List<AutoCropEdges>? =
-    runCatching {
-      val retriever = MediaMetadataRetriever()
-      try {
-        val uri = Uri.parse(source)
-        when (uri.scheme?.lowercase()) {
-          null, "" -> retriever.setDataSource(source)
-          "file" -> retriever.setDataSource(uri.path ?: source)
-          "content", "android.resource" -> retriever.setDataSource(appContext, uri)
-          else -> return@runCatching null
-        }
-        val sourceWidth =
-          retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
-            ?: AUTO_CROP_THUMBNAIL_SIZE
-        val sourceHeight =
-          retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
-            ?: AUTO_CROP_THUMBNAIL_SIZE
-        val scale = AUTO_CROP_THUMBNAIL_SIZE.toDouble() / maxOf(sourceWidth, sourceHeight).coerceAtLeast(1)
-        val targetWidth = (sourceWidth * scale).roundToInt().coerceAtLeast(2)
-        val targetHeight = (sourceHeight * scale).roundToInt().coerceAtLeast(2)
-        positionsSeconds.mapNotNull { position ->
-          currentCoroutineContext().ensureActive()
-          val timeUs = (position * 1_000_000.0).toLong()
-          val bitmap =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-              retriever.getScaledFrameAtTime(
-                timeUs,
-                MediaMetadataRetriever.OPTION_CLOSEST_SYNC,
-                targetWidth,
-                targetHeight,
-              )
-            } else {
-              retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-            }
-          bitmap?.analyzeAndRecycle()
-        }
-      } finally {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) retriever.close() else retriever.release()
-      }
-    }.getOrNull()
-
-  private fun Bitmap.analyzeAndRecycle(): AutoCropEdges? =
-    try {
-      AutoCropAnalyzer.analyzeFrame(this)
-    } finally {
-      recycle()
-    }
-
-  private fun isAndroidReadableMediaSource(source: String): Boolean {
-    val scheme = Uri.parse(source).scheme?.lowercase()
-    return scheme.isNullOrBlank() || scheme in setOf("file", "content", "android.resource")
-  }
-
-  private fun mapRotatedEdgesToSource(
-    edges: AutoCropEdges,
-    rotation: Int,
-  ): AutoCropEdges =
-    when (rotation) {
-      90 -> AutoCropEdges(left = edges.top, top = edges.right, right = edges.bottom, bottom = edges.left)
-      180 -> AutoCropEdges(left = edges.right, top = edges.bottom, right = edges.left, bottom = edges.top)
-      270 -> AutoCropEdges(left = edges.bottom, top = edges.left, right = edges.top, bottom = edges.right)
-      else -> edges
-    }
-
-  private fun buildAutoCropValue(
-    edges: AutoCropEdges,
-    sourceWidth: Int,
-    sourceHeight: Int,
-  ): String? {
-    fun evenFloor(value: Float): Int = (value.toInt().coerceAtLeast(0) / 2) * 2
-
-    val left = evenFloor(edges.left * sourceWidth)
-    val top = evenFloor(edges.top * sourceHeight)
-    val right = evenFloor(edges.right * sourceWidth)
-    val bottom = evenFloor(edges.bottom * sourceHeight)
-    val width = evenFloor((sourceWidth - left - right).toFloat())
-    val height = evenFloor((sourceHeight - top - bottom).toFloat())
-    if (width < sourceWidth / 2 || height < sourceHeight / 2) return null
-    if (sourceWidth - width < 4 && sourceHeight - height < 4) return null
-    return "${width}x$height+$left+$top"
-  }
-
-  private fun clearAutoCropProperty() {
-    PlaybackSession.removeVideoFilter(AUTO_CROP_FILTER_LABEL)
-    PlaybackSession.setPropertyString("video-crop", "")
-    autoCropApplied = false
-  }
-
-  private fun scheduleAutoCropRetry(generation: Long) {
-    autoCropRetryJob?.cancel()
-    autoCropRetryJob =
-      viewModelScope.launch {
-        delay(AUTO_CROP_RETRY_INTERVAL_MS)
-        autoCropRetryJob = null
-        if (PlaybackSession.isCurrentGeneration(generation) && playerPreferences.autoCropBlackBars.get()) {
-          Log.i(TAG, "Auto-crop retrying generation=$generation")
-          scheduleAutoCropAnalysis(force = true)
-        }
-      }
-  }
-
-  private fun cancelAutoCropAnalysis() {
-    autoCropRetryJob?.cancel()
-    autoCropRetryJob = null
-    autoCropJob?.cancel()
-    autoCropJob = null
-    autoCropReadinessJob?.cancel()
-    autoCropReadinessJob = null
-    PlaybackSession.removeVideoFilter(AUTO_CROP_FILTER_LABEL)
   }
 
   private fun refreshStretchAspectAfterCropChange() {
@@ -8874,8 +8353,6 @@ fun restartFromBeginning() {
     // Without this the file lingers in cacheDir until the system reclaims
     // it, and the service may keep an active session open.
     runCatching { stopRealtimeSubtitles(showToastMessage = false) }
-    runCatching { cancelAutoCropAnalysis() }
-
 
     // The metadataCache (Pair<String, String> entries) is small and
     // bounded at 100 entries, so it is not urgent to clear, but clearing
