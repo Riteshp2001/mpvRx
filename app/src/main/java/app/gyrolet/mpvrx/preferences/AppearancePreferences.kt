@@ -108,6 +108,7 @@ class AppearancePreferences(
   val unlimitedNameLines = preferenceStore.getBoolean("unlimited_name_lines", false)
   val forceDarkPlayerButtonsBackground = preferenceStore.getBoolean("force_dark_player_buttons_background", false)
   val showMediaFormatBadges = preferenceStore.getBoolean("show_media_format_badges", true)
+  val colorizeMediaFormatBadges = preferenceStore.getBoolean("colorize_media_format_badges", true)
   val showUnplayedOldVideoLabel = preferenceStore.getBoolean("show_unplayed_old_video_label", true)
   val unplayedOldVideoDays = preferenceStore.getInt("unplayed_old_video_days", 7)
   val showNetworkThumbnails = preferenceStore.getBoolean("show_network_thumbnails", false)

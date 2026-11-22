@@ -59,9 +59,15 @@ internal data class SheetWindow(val width: Dp, val height: Dp, val television: B
     else -> preferredWidth ?: Dp.Unspecified
   }
 
-  fun initialHeight(availableHeight: Dp, keyboardVisible: Boolean): Dp = when {
-    television || landscape || keyboardVisible || availableHeight <= 440.dp -> availableHeight
-    else -> (availableHeight * (if (large) 0.66f else 0.62f)).coerceAtLeast(320.dp)
+  fun maxHeight(availableHeight: Dp, keyboardVisible: Boolean): Dp =
+    if (!television && landscape && !keyboardVisible) availableHeight * 0.85f else availableHeight
+
+  fun initialHeight(availableHeight: Dp, keyboardVisible: Boolean): Dp {
+    val capped = maxHeight(availableHeight, keyboardVisible)
+    return when {
+      television || landscape || keyboardVisible || availableHeight <= 440.dp -> capped
+      else -> (capped * (if (large) 0.66f else 0.62f)).coerceAtLeast(320.dp)
+    }
   }
 }
 
@@ -88,14 +94,15 @@ internal fun ResponsiveSheetContent(
 
   BoxWithConstraints(modifier.fillMaxWidth()) {
     val availableHeight = if (constraints.hasBoundedHeight) maxHeight else window.height
+    val maxContentHeight = window.maxHeight(availableHeight, keyboardVisible)
     val initialHeight = window.initialHeight(availableHeight, keyboardVisible)
     val isAtInitialLimit = contentHeightPx >= with(density) { initialHeight.roundToPx() }
-    val resize = if (availableHeight > initialHeight && (expanded || isAtInitialLimit)) {
+    val resize = if (maxContentHeight > initialHeight && (expanded || isAtInitialLimit)) {
       SheetResize(expanded) { expanded = !expanded }
     } else null
     Column(
       Modifier.fillMaxWidth()
-        .heightIn(max = if (expanded) availableHeight else initialHeight)
+        .heightIn(max = if (expanded) maxContentHeight else initialHeight)
         .onSizeChanged { contentHeightPx = it.height },
     ) {
       content(resize)

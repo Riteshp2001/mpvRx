@@ -59,6 +59,7 @@ internal fun PlaybackFormatBadgeRow(
   val preferences = koinInject<AppearancePreferences>()
   val showBadges by preferences.showMediaFormatBadges.collectAsState()
   if (!showBadges) return
+  val colorizeBadges by preferences.colorizeMediaFormatBadges.collectAsState()
 
   val formatFlow = remember { observePlaybackFormatBadges() }
   val badges by formatFlow.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -78,6 +79,7 @@ internal fun PlaybackFormatBadgeRow(
       foreground = foreground,
       background = surfaceColor,
       inkEdge = inkEdge,
+      colorize = colorizeBadges,
     )
   }
 }
@@ -91,6 +93,7 @@ internal fun MediaFormatBadges(
   foreground: Color = MaterialTheme.colorScheme.onSurface,
   background: Color = MaterialTheme.colorScheme.surface,
   inkEdge: Color = Color.Unspecified,
+  colorize: Boolean = true,
 ) {
   if (badges.isEmpty()) return
   FlowRow(
@@ -105,6 +108,7 @@ internal fun MediaFormatBadges(
         foreground = foreground,
         inkEdge = inkEdge,
         darkBackground = background.luminance() < 0.45f,
+        colorize = colorize,
         modifier = Modifier.align(Alignment.CenterVertically),
       )
     }
@@ -118,6 +122,7 @@ private fun FormatBadge(
   foreground: Color,
   inkEdge: Color,
   darkBackground: Boolean,
+  colorize: Boolean,
   modifier: Modifier = Modifier,
 ) {
   val description = if (badge.isChannelLayout) {
@@ -125,7 +130,9 @@ private fun FormatBadge(
   } else {
     badge.detail
   }
-  val tintArgb = if (darkBackground) badge.darkTintArgb else badge.lightTintArgb
+  val tintArgb = if (colorize) {
+    if (darkBackground) badge.darkTintArgb else badge.lightTintArgb
+  } else null
   val badgeForeground = tintArgb?.let(::Color) ?: foreground
   val path = badge.asset
   val painter = if (path == null) null else rememberAssetLogoPainter("media_format_logos/$path")

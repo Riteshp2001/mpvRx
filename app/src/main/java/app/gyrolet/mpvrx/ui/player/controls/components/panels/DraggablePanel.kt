@@ -47,7 +47,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
@@ -158,7 +157,7 @@ fun DraggablePanel(
         },
     ) {
       Column(Modifier.fillMaxWidth()) {
-        if (header != null || canDrag) {
+        if (header != null) {
           // Drag the header itself, so a separate handle row doesn't take space from settings.
           val dragModifier = if (canDrag) {
             Modifier.pointerInput(minOffset, maxOffset) {
@@ -172,15 +171,7 @@ fun DraggablePanel(
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).then(dragModifier),
             verticalAlignment = Alignment.CenterVertically,
           ) {
-            if (canDrag) {
-              Icon(
-                Icons.RoundedFilled.DragHandle,
-                contentDescription = null,
-                tint = colors.contentColor.copy(alpha = 0.65f),
-                modifier = Modifier.padding(start = 8.dp).size(16.dp).rotate(90f),
-              )
-            }
-            if (header != null) Box(Modifier.weight(1f)) { header() }
+            Box(Modifier.weight(1f)) { header() }
           }
         }
 

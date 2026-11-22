@@ -164,7 +164,7 @@ fun PlayerSheet(
     }
   }
   val isImeVisible = WindowInsets.ime.getBottom(density) > 0
-  val screenHeightPx = with(density) { window.height.toPx() }
+  val sheetTravelPx = with(density) { window.maxHeight(window.height, isImeVisible).toPx() }
   val decayAnimationSpec = rememberSplineBasedDecay<Float>()
   val anchoredDraggableState =
     remember {
@@ -186,7 +186,7 @@ fun PlayerSheet(
     ) {
       anchoredDraggableState.anchors.positionOf(1)
     } else {
-      screenHeightPx
+      sheetTravelPx
     }
   val swipeProgress = if (height > 0) (-scaledSwipeOffset / height).coerceIn(0f, 1f) else 0f
   val targetAlpha =
@@ -234,7 +234,7 @@ fun PlayerSheet(
           val anchors =
             DraggableAnchors {
               0 at 0f
-              1 at it.height.toFloat()
+              1 at minOf(it.height.toFloat(), sheetTravelPx)
             }
           anchoredDraggableState.updateAnchors(anchors)
         },
@@ -253,7 +253,7 @@ fun PlayerSheet(
           .tvFocusGroup()
           .tvInitialFocus(sheetInitialFocus)
           .offset {
-            val baseOffset = anchoredDraggableState.offset.takeIf { it.isFinite() } ?: screenHeightPx
+            val baseOffset = anchoredDraggableState.offset.takeIf { it.isFinite() } ?: sheetTravelPx
             IntOffset(0, baseOffset.roundToInt())
           }
           .graphicsLayer { this.alpha = if (anchoredDraggableState.anchors.size > 0) 1f else 0f }
@@ -312,7 +312,7 @@ fun PlayerSheet(
       }
     }
 
-    LaunchedEffect(anchoredDraggableState, screenHeightPx) {
+    LaunchedEffect(anchoredDraggableState, sheetTravelPx) {
       snapshotFlow {
         Triple(
           currentIsSwipeActive,

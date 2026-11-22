@@ -244,6 +244,8 @@
   <string name="pref_layout_title">Player Layout</string>
   <string name="pref_layout_media_format_badges_title">Media format badges</string>
   <string name="pref_layout_media_format_badges_summary">Show resolution, codecs, HDR, and audio information below the video title.</string>
+  <string name="pref_layout_colorize_media_format_badges_title">Colorize media format badges</string>
+  <string name="pref_layout_colorize_media_format_badges_summary">Use format colors in the player badge row. Turn off for a plain single-color look.</string>
   <string name="pref_layout_summary">Customize player button layout</string>
   <string name="pref_layout_reset_default">Reset to default</string>
   <string name="pref_layout_top_right_controls">Top Right Controls</string>

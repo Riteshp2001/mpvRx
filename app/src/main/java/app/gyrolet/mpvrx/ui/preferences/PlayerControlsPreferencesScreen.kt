@@ -293,6 +293,7 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
           item {
             val forceDarkPlayerButtonsBackground by appearancePrefs.forceDarkPlayerButtonsBackground.collectAsState()
             val showMediaFormatBadges by appearancePrefs.showMediaFormatBadges.collectAsState()
+            val colorizeMediaFormatBadges by appearancePrefs.colorizeMediaFormatBadges.collectAsState()
             val playerButtonsBackgroundOpacity by appearancePrefs.playerButtonsBackgroundOpacity.collectAsState()
             val storedPlayerTimeToDisappear by playerPrefs.playerTimeToDisappear.collectAsState()
             val playerTimeToDisappear =
@@ -309,12 +310,23 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
             PreferenceCard {
               SwitchPreference(
                 groupIndex = 0,
-                groupSize = 1,
+                groupSize = 2,
                 modifier = Modifier.settingsSearchTarget(R.string.pref_layout_media_format_badges_title),
                 value = showMediaFormatBadges,
                 onValueChange = { appearancePrefs.showMediaFormatBadges.set(it) },
                 title = { Text(stringResource(R.string.pref_layout_media_format_badges_title)) },
                 summary = { Text(stringResource(R.string.pref_layout_media_format_badges_summary)) },
+              )
+
+              SwitchPreference(
+                groupIndex = 1,
+                groupSize = 2,
+                enabled = showMediaFormatBadges,
+                modifier = Modifier.settingsSearchTarget(R.string.pref_layout_colorize_media_format_badges_title),
+                value = colorizeMediaFormatBadges,
+                onValueChange = { appearancePrefs.colorizeMediaFormatBadges.set(it) },
+                title = { Text(stringResource(R.string.pref_layout_colorize_media_format_badges_title)) },
+                summary = { Text(stringResource(R.string.pref_layout_colorize_media_format_badges_summary)) },
               )
 
               PreferenceDivider()
