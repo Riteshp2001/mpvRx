@@ -13,20 +13,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -35,43 +40,73 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.rememberAssetLogoPainter
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.player.BadgeArtwork
 import app.gyrolet.mpvrx.ui.player.PlaybackFormatBadge
+import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonAlpha
 import app.gyrolet.mpvrx.ui.player.observePlaybackFormatBadges
 import org.koin.compose.koinInject
 
-@OptIn(ExperimentalLayoutApi::class)
+private val BadgeRailShape = RoundedCornerShape(12.dp)
+private val BrandBackingShape = RoundedCornerShape(5.dp)
+
 @Composable
-internal fun PlaybackFormatBadgeRow(modifier: Modifier = Modifier, logoHeight: Dp = 18.dp) {
-  val showBadges by koinInject<AppearancePreferences>().showMediaFormatBadges.collectAsState()
+internal fun PlaybackFormatBadgeRow(
+  modifier: Modifier = Modifier,
+  logoHeight: Dp = 20.dp,
+  tvButtonBackground: Color? = null,
+) {
+  val preferences = koinInject<AppearancePreferences>()
+  val showBadges by preferences.showMediaFormatBadges.collectAsState()
   if (!showBadges) return
 
   val formatFlow = remember { observePlaybackFormatBadges() }
   val badges by formatFlow.collectAsStateWithLifecycle(initialValue = emptyList())
   if (badges.isEmpty()) return
-  val colors = MaterialTheme.colorScheme
-  val background = colors.surfaceContainerHigh
-  Surface(
+
+  val backgroundLevel = LocalPlayerButtonsOpacity.current
+  val foreground = if (tvButtonBackground == null) playerButtonContentColor() else Color.White
+  val surfaceColor = if (tvButtonBackground == null) playerButtonColorScheme().surfaceContainerHigh else Color(0xFF232323)
+  val inkEdge = if (liquidGlassActive() || backgroundLevel < 0.45f) {
+    (if (foreground.luminance() < 0.45f) Color.White else Color.Black).copy(alpha = 0.7f)
+  } else Color.Unspecified
+  PlayerControlSurface(BadgeRailShape, modifier, baseColor = tvButtonBackground) {
+    MediaFormatBadges(
+      badges = badges,
+      modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+      logoHeight = logoHeight,
+      foreground = foreground,
+      background = surfaceColor,
+      inkEdge = inkEdge,
+    )
+  }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun MediaFormatBadges(
+  badges: List<PlaybackFormatBadge>,
+  modifier: Modifier = Modifier,
+  logoHeight: Dp = 20.dp,
+  foreground: Color = MaterialTheme.colorScheme.onSurface,
+  background: Color = MaterialTheme.colorScheme.surface,
+  inkEdge: Color = Color.Unspecified,
+) {
+  if (badges.isEmpty()) return
+  FlowRow(
     modifier = modifier,
-    color = background,
-    contentColor = colors.onSurface,
-    shape = MaterialTheme.shapes.small,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
-    FlowRow(
-      modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-      verticalArrangement = Arrangement.spacedBy(4.dp),
-      maxLines = 2,
-    ) {
-      badges.forEach { badge ->
-        FormatBadge(
-          badge,
-          logoHeight,
-          colors.onSurface,
-          darkBackground = background.luminance() < 0.4f,
-          modifier = Modifier.align(Alignment.CenterVertically),
-        )
-      }
+    badges.forEach { badge ->
+      FormatBadge(
+        badge = badge,
+        logoHeight = logoHeight,
+        foreground = foreground,
+        inkEdge = inkEdge,
+        darkBackground = background.luminance() < 0.45f,
+        modifier = Modifier.align(Alignment.CenterVertically),
+      )
     }
   }
 }
@@ -81,6 +116,7 @@ private fun FormatBadge(
   badge: PlaybackFormatBadge,
   logoHeight: Dp,
   foreground: Color,
+  inkEdge: Color,
   darkBackground: Boolean,
   modifier: Modifier = Modifier,
 ) {
@@ -91,12 +127,15 @@ private fun FormatBadge(
   }
   val path = badge.asset
   val painter = if (path == null) null else rememberAssetLogoPainter("media_format_logos/$path")
-  Box(modifier.heightIn(min = logoHeight), contentAlignment = Alignment.Center) {
+  Box(modifier.heightIn(min = logoHeight + 4.dp), contentAlignment = Alignment.Center) {
     if (painter == null) {
+      val shadow = if (inkEdge.isSpecified) {
+        Shadow(color = inkEdge, blurRadius = with(LocalDensity.current) { 2.dp.toPx() })
+      } else null
       Text(
         badge.label,
         color = foreground,
-        style = MaterialTheme.typography.labelMedium,
+        style = MaterialTheme.typography.labelMedium.copy(shadow = shadow),
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
         modifier = Modifier.clearAndSetSemantics { contentDescription = description },
@@ -108,16 +147,39 @@ private fun FormatBadge(
         BadgeArtwork.OnLight -> Color(0xFFF6F4F8).takeIf { darkBackground }
         BadgeArtwork.ThemeInk, BadgeArtwork.Original -> null
       }
-      val backing = contrast?.let {
-        Modifier.background(it, RoundedCornerShape(3.dp)).padding(horizontal = 3.dp, vertical = 2.dp)
-      } ?: Modifier
+      val needsBacking = badge.artwork == BadgeArtwork.OnDark || badge.artwork == BadgeArtwork.OnLight
+      val backing =
+        if (contrast == null) Modifier else Modifier.background(contrast, BrandBackingShape)
+      val useThemeInk = badge.artwork == BadgeArtwork.ThemeInk
+      val edge = if (useThemeInk && inkEdge.isSpecified) Modifier.logoInkEdge(painter, inkEdge) else Modifier
       Image(
         painter = painter,
         contentDescription = description,
-        colorFilter = if (badge.artwork == BadgeArtwork.ThemeInk) ColorFilter.tint(foreground) else null,
+        colorFilter = if (useThemeInk) ColorFilter.tint(foreground) else null,
         contentScale = ContentScale.Fit,
-        modifier = backing.size(width = minOf(logoHeight * aspect, logoHeight * 4.5f), height = logoHeight),
+        modifier = backing
+          .then(if (needsBacking) Modifier.padding(horizontal = 3.dp, vertical = 2.dp) else Modifier)
+          .size(width = logoHeight * aspect, height = logoHeight)
+          .then(edge),
       )
     }
+  }
+}
+
+// Keep monochrome artwork readable over video without adding an opaque plate at low opacity.
+private fun Modifier.logoInkEdge(painter: Painter, color: Color): Modifier = drawWithCache {
+  val intrinsic = painter.intrinsicSize
+  val scale = minOf(size.width / intrinsic.width, size.height / intrinsic.height)
+  val fitted = intrinsic * scale
+  val left = (size.width - fitted.width) / 2f
+  val top = (size.height - fitted.height) / 2f
+  val edge = 0.65.dp.toPx()
+  val tint = ColorFilter.tint(color)
+  val offsets = listOf(-edge to 0f, edge to 0f, 0f to -edge, 0f to edge)
+  onDrawWithContent {
+    for ((x, y) in offsets) {
+      translate(left + x, top + y) { with(painter) { draw(fitted, colorFilter = tint) } }
+    }
+    drawContent()
   }
 }

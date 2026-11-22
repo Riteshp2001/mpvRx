@@ -749,6 +749,22 @@ fun PlayerControls(
     label = "controls_edge_vignette",
   )
 
+  val glassSource = rememberVideoGlassSource(videoSurface)
+  val videoSurfaceReady = videoSurface?.surfaceReady?.collectAsState()?.value == true
+  val videoFrameReady = videoSurface?.textureFrameReadyState?.collectAsState()?.value == true
+  // Recreate the recorder when the source or color space changes so it cannot replay stale frames.
+  val videoBackdrop = key(glassSource, isHdrOutputEnabled, liquidGlassInHdr) {
+    rememberLayerBackdrop(onDraw = { with(glassSource) { drawVideo() } })
+  }
+  val playerKyantBackdrop = videoBackdrop.takeIf {
+    enableLiquidGlass &&
+      (!isHdrOutputEnabled || liquidGlassInHdr) &&
+      videoSurface?.isTextureSurface == true &&
+      videoSurfaceReady &&
+      videoFrameReady &&
+      glassSource.scene != null
+  }
+
   if (isTelevision) {
     val tvSheetShown by viewModel.sheetShown.collectAsState()
     val tvPanelShown by viewModel.panelShown.collectAsState()
@@ -808,6 +824,9 @@ fun PlayerControls(
               .clipToBounds()
               .onSizeChanged { playerBounds = it },
         ) {
+          if (playerKyantBackdrop != null) {
+            VideoGlassBackdropSource(glassSource, playerKyantBackdrop)
+          }
           VideoOpenAnimationOverlay(
             style = videoOpenAnim,
             speedMultiplier = animSpeed,
@@ -838,27 +857,29 @@ fun PlayerControls(
             modifier = Modifier.fillMaxSize(),
           )
 
-          TvPlayerControls(
-            viewModel = viewModel,
-            controlsShown = controlsShown,
-            overlayOpen = tvSheetShown != Sheets.None || tvPanelShown != Panels.None,
-            paused = paused == true,
-            mediaTitle = mediaTitle,
-            chapterTitle = currentChapter?.let(chapters::getOrNull)?.name,
-            durationSeconds = seekbarDuration,
-            chapterStarts = if (showChapterIndicators) tvChapterStarts else emptyList(),
-            showBufferedRange = showBufferedRange,
-            hasSubtitles = true,
-            hasAudioTracks = tvAudioTracks.isNotEmpty(),
-            hasChapters = chapters.isNotEmpty(),
-            showQualityButton = showVideoQualitySelector,
-            playbackSpeed = playbackSpeed ?: 1f,
-            decoder = decoder,
-            skipSegmentLabel = currentSkippableSegment?.type?.labelRes?.let { stringResource(it) },
-            showBuffering = showBufferingIndicator,
-            autoHideMillis = playerTimeToDisappear.toLong(),
-            onOpenSheet = onOpenSheet,
-          )
+          CompositionLocalProvider(LocalKyantPlayerBackdrop provides playerKyantBackdrop) {
+            TvPlayerControls(
+              viewModel = viewModel,
+              controlsShown = controlsShown,
+              overlayOpen = tvSheetShown != Sheets.None || tvPanelShown != Panels.None,
+              paused = paused == true,
+              mediaTitle = mediaTitle,
+              chapterTitle = currentChapter?.let(chapters::getOrNull)?.name,
+              durationSeconds = seekbarDuration,
+              chapterStarts = if (showChapterIndicators) tvChapterStarts else emptyList(),
+              showBufferedRange = showBufferedRange,
+              hasSubtitles = true,
+              hasAudioTracks = tvAudioTracks.isNotEmpty(),
+              hasChapters = chapters.isNotEmpty(),
+              showQualityButton = showVideoQualitySelector,
+              playbackSpeed = playbackSpeed ?: 1f,
+              decoder = decoder,
+              skipSegmentLabel = currentSkippableSegment?.type?.labelRes?.let { stringResource(it) },
+              showBuffering = showBufferingIndicator,
+              autoHideMillis = playerTimeToDisappear.toLong(),
+              onOpenSheet = onOpenSheet,
+            )
+          }
 
           PlayerSheets(
             viewModel = viewModel,
@@ -956,27 +977,6 @@ fun PlayerControls(
       // Compact rendering belongs to drawer tiles; player controls retain live labels and expansion.
       compact = false,
     )
-  }
-
-  val glassSource = rememberVideoGlassSource(videoSurface)
-  val videoSurfaceReady = videoSurface?.surfaceReady?.collectAsState()?.value == true
-  val videoFrameReady = videoSurface?.textureFrameReadyState?.collectAsState()?.value == true
-  // Recreate the recorder with the actual source scene. The old persistent recorder could
-  // keep painting a released TextureView's pixels after an HDR/native-surface handoff.
-  val videoBackdrop = key(glassSource, isHdrOutputEnabled, liquidGlassInHdr) {
-    // HDR output changes the captured colorspace even when the TextureView stays mounted.
-    // A new recorder must not replay pre-HDR pixels or filters over the new output.
-    rememberLayerBackdrop(onDraw = { with(glassSource) { drawVideo() } })
-  }
-  // Native HDR output is a separate SurfaceView: Kyaant cannot sample it from Compose.
-  // Hide the live sampler during mode changes and use the non-sampling frosted treatment.
-  val playerKyantBackdrop = videoBackdrop.takeIf {
-    enableLiquidGlass &&
-      (!isHdrOutputEnabled || liquidGlassInHdr) &&
-      videoSurface?.isTextureSurface == true &&
-      videoSurfaceReady &&
-      videoFrameReady &&
-      glassSource.scene != null
   }
 
   CompositionLocalProvider(
@@ -2296,11 +2296,11 @@ fun PlayerControls(
                 )
               }
               AnimatedVisibility(
-                visible = controlsShown && !areControlsLocked && !areSlidersShown && !mediaTitle.isNullOrBlank(),
+                visible = controlsShown && !areControlsLocked && !areSlidersShown,
                 enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { -it },
                 exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { -it },
               ) {
-                PlaybackFormatBadgeRow(Modifier.padding(start = 48.dp + spacing.extraSmall, top = 3.dp))
+                PlaybackFormatBadgeRow(Modifier.padding(top = 5.dp))
               }
             }
           }

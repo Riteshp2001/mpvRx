@@ -1217,6 +1217,8 @@
   <string name="ui_script_runtime">स्क्रिप्ट रनटाइम</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">सक्षम स्क्रिप्ट अभी लोड होंगी। बंद स्क्रिप्ट पूरी तरह रोकने के लिए वीडियो फिर खोलें।</string>
   <string name="ui_media_info">मीडिया जानकारी</string>
+  <string name="media_info_playback_snapshot">वह जानकारी दिखाई जा रही है जिसे प्लेयर इस स्ट्रीम से पढ़ सकता है। फ़ाइल के कुछ विवरण उपलब्ध नहीं हो सकते हैं।</string>
+  <string name="media_info_unavailable">इस स्रोत की मीडिया जानकारी उपलब्ध नहीं है।</string>
   <string name="ui_analyzing_media_file">मीडिया फाइल का विश्लेषण हो रहा है...</string>
   <string name="ui_media_tracks_summary">मीडिया ट्रैक सारांश</string>
   <string name="ui_container_metadata">कंटेनर मेटाडेटा</string>

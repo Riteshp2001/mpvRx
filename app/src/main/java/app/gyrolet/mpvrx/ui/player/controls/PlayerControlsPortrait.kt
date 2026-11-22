@@ -9,28 +9,21 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
-import androidx.compose.foundation.BorderStroke
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -41,7 +34,6 @@ import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.liquidglass.LiquidPillButton
 import app.gyrolet.mpvrx.ui.player.Panels
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
@@ -50,8 +42,7 @@ import app.gyrolet.mpvrx.ui.player.VideoAspect
 import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
 import app.gyrolet.mpvrx.ui.player.controls.components.ControlsGroup
 import app.gyrolet.mpvrx.ui.player.controls.components.fadingHorizontalScroll
-import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonBorderColor
-import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContainerColor
+import app.gyrolet.mpvrx.ui.player.controls.components.PlayerTitlePill
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
 import app.gyrolet.mpvrx.ui.theme.spacing
 import dev.vivvvek.seeker.Segment
@@ -72,8 +63,6 @@ fun TopPlayerControlsPortrait(
 ) {
   PlayerButtonTheme {
     val playlistModeEnabled = viewModel.hasPlaylistSupport()
-    val clickEvent = LocalPlayerButtonsClickEvent.current
-    val titleHeight = playerTitleHeight(45.dp, MaterialTheme.typography.titleMedium.lineHeight)
 
     Column(
       modifier =
@@ -92,81 +81,13 @@ fun TopPlayerControlsPortrait(
             modifier = Modifier.size(48.dp),
           )
 
-          Column(
+          PlayerTitlePill(
+            title = mediaTitle,
+            playlistInfo = viewModel.getPlaylistInfo(),
+            onOpenInfo = { onOpenSheet(Sheets.MediaInfo) },
+            onOpenPlaylist = if (playlistModeEnabled) ({ onOpenSheet(Sheets.Playlist) }) else null,
             modifier = Modifier.padding(start = 4.dp),
-          ) {
-            val enableLiquidGlass = liquidGlassActive()
-
-            if (enableLiquidGlass) {
-              LiquidPillButton(
-                onClick = {
-                  if (playlistModeEnabled) {
-                    clickEvent()
-                    onOpenSheet(Sheets.Playlist)
-                  }
-                },
-                isInteractive = playlistModeEnabled,
-                height = titleHeight,
-                horizontalPadding = 14.dp,
-              ) {
-                Text(
-                  mediaTitle ?: "",
-                  maxLines = 1,
-                  overflow = TextOverflow.Ellipsis,
-                  style = MaterialTheme.typography.titleMedium,
-                  modifier = Modifier.weight(1f, fill = false).playerTitleMarquee(),
-                )
-                viewModel.getPlaylistInfo()?.let { playlistInfo ->
-                  Text(
-                    " • $playlistInfo",
-                    maxLines = 1,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = LocalContentColor.current.copy(alpha = 0.7f),
-                  )
-                }
-              }
-            } else {
-              val titleInteractionSource =
-                remember {
-                  androidx.compose.foundation.interaction
-                    .MutableInteractionSource()
-                }
-
-              Surface(
-                shape = CircleShape,
-                color = playerButtonContainerColor(),
-                contentColor = playerButtonContentColor(),
-                onClick = {
-                  clickEvent()
-                  onOpenSheet(Sheets.Playlist)
-                },
-                enabled = playlistModeEnabled,
-                border = BorderStroke(1.dp, playerButtonBorderColor()),
-                modifier = Modifier.heightIn(min = titleHeight),
-              ) {
-                Row(
-                  verticalAlignment = Alignment.CenterVertically,
-                  modifier = Modifier.heightIn(min = titleHeight).padding(horizontal = 14.dp, vertical = 4.dp),
-                ) {
-                  Text(
-                    mediaTitle ?: "",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f, fill = false).playerTitleMarquee(),
-                  )
-                  viewModel.getPlaylistInfo()?.let { playlistInfo ->
-                    Text(
-                      " • $playlistInfo",
-                      maxLines = 1,
-                      style = MaterialTheme.typography.bodyMedium,
-                      color = LocalContentColor.current.copy(alpha = 0.7f),
-                    )
-                  }
-                }
-              }
-            }
-          }
+          )
         }
       }
 

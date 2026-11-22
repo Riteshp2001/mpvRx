@@ -77,7 +77,6 @@ fun LiquidButton(
   shape: Shape = Capsule(),
   content: @Composable RowScope.() -> Unit,
 ) {
-  val glassSettings = rememberLiquidGlassSettings()
   val reducedMotion = AppMotion.shouldReduceMotion()
   val animatePress = enabled && !reducedMotion
   val interactionSource = remember { MutableInteractionSource() }
@@ -86,9 +85,6 @@ fun LiquidButton(
     remember(animationScope) {
       InteractiveHighlight(animationScope = animationScope)
     }
-  val rememberedHighlight = remember(glassSettings) { glassSettings.highlight(Highlight.Default) }
-  val rememberedShadow = remember { Shadow(radius = 6.dp) }
-  val rememberedInnerShadow = remember { InnerShadow(radius = 2.dp, color = Color.White.copy(alpha = 0.18f)) }
   // Read animated state in the layer phase, not composition. The same controller survives
   // SDR/HDR renderer changes, so pressing/dragging a button never changes its interaction model.
   //
@@ -120,67 +116,13 @@ fun LiquidButton(
       translationY = verticalRoom * tanh(0.12f * offset.y / maxOffset)
     }
   }
-  val glassModifier =
-    if (backdrop != null) {
-      Modifier.drawBackdrop(
-        backdrop = backdrop,
-        shape = { shape },
-        effects = {
-          liquidGlassEffects(
-            glassSettings,
-            8.dp.toPx(),
-            14.dp.toPx(),
-            24.dp.toPx(),
-            vibrant = true,
-            refractionEnabled = !reducedMotion,
-          )
-        },
-        highlight = { rememberedHighlight },
-        shadow = { rememberedShadow },
-        innerShadow = { rememberedInnerShadow },
-        layerBlock = if (animatePress) pressTransform else null,
-        onDrawSurface = {
-          // Keep the tint inside the animated outline, including during active-state morphs.
-          val outline = shape.createOutline(size, layoutDirection, this)
-          if (tint.isSpecified) {
-            drawOutline(outline, tint, blendMode = BlendMode.Hue)
-            drawOutline(outline, glassSettings.surfaceColor(tint.copy(alpha = 0.75f)))
-          }
-          if (surfaceColor.isSpecified) {
-            drawOutline(outline, glassSettings.surfaceColor(surfaceColor))
-          }
-        },
-      )
-    } else {
-      val baseColor = when {
-        surfaceColor.isSpecified -> surfaceColor
-        tint.isSpecified -> tint
-        else -> MaterialTheme.colorScheme.surfaceContainerHigh
-      }
-      // Thickens toward opaque above the default background level; fading below it is backgroundAlpha's job.
-      val fillLevel = maxOf(LocalPlayerButtonsOpacity.current, PlayerButtonAlpha.DEFAULT_BACKGROUND_LEVEL)
-      val fill = Brush.verticalGradient(
-        0f to baseColor.copy(alpha = PlayerButtonAlpha.background(0.68f, fillLevel)),
-        0.45f to baseColor.copy(alpha = PlayerButtonAlpha.background(0.42f, fillLevel)),
-        1f to baseColor.copy(alpha = PlayerButtonAlpha.background(0.58f, fillLevel)),
-      )
-      val rim = Brush.linearGradient(
-        listOf(
-          Color.White.copy(alpha = (0.43f * glassSettings.highlightStrength).coerceIn(0f, 1f)),
-          Color.White.copy(alpha = (0.10f * glassSettings.highlightStrength).coerceIn(0f, 1f)),
-          baseColor.copy(alpha = (0.30f * glassSettings.highlightStrength).coerceIn(0f, 1f)),
-        ),
-      )
-      Modifier
-        .graphicsLayer(pressTransform)
-        .outsideShadow(shape, radius = 6.dp)
-        .clip(shape)
-        .background(fill, shape)
-        .then(
-          if (glassSettings.highlightWidth > 0f) Modifier.border(1.dp * glassSettings.highlightWidth, rim, shape)
-          else Modifier,
-        )
-    }
+  val glassModifier = Modifier.liquidControlBackground(
+    backdrop = backdrop,
+    shape = shape,
+    surfaceColor = surfaceColor,
+    tint = tint,
+    transform = pressTransform.takeIf { animatePress },
+  )
 
   val interactionModifier =
     Modifier
@@ -240,4 +182,78 @@ fun LiquidButton(
       )
     }
   }
+}
+
+/** The button's optical surface without any size, focus, or pointer behavior. */
+@Composable
+internal fun Modifier.liquidControlBackground(
+  backdrop: Backdrop?,
+  shape: Shape,
+  surfaceColor: Color,
+  tint: Color = Color.Unspecified,
+  transform: (GraphicsLayerScope.() -> Unit)? = null,
+): Modifier {
+  val settings = rememberLiquidGlassSettings()
+  if (backdrop != null) {
+    val reducedMotion = AppMotion.shouldReduceMotion()
+    val highlight = remember(settings) { settings.highlight(Highlight.Default) }
+    val shadow = remember { Shadow(radius = 6.dp) }
+    val innerShadow = remember { InnerShadow(radius = 2.dp, color = Color.White.copy(alpha = 0.18f)) }
+    return drawBackdrop(
+      backdrop = backdrop,
+      shape = { shape },
+      effects = {
+        liquidGlassEffects(
+          settings,
+          8.dp.toPx(),
+          14.dp.toPx(),
+          24.dp.toPx(),
+          vibrant = true,
+          refractionEnabled = !reducedMotion,
+        )
+      },
+      highlight = { highlight },
+      shadow = { shadow },
+      innerShadow = { innerShadow },
+      layerBlock = transform,
+      onDrawSurface = {
+        val outline = shape.createOutline(size, layoutDirection, this)
+        if (tint.isSpecified) {
+          drawOutline(outline, tint, blendMode = BlendMode.Hue)
+          drawOutline(outline, settings.surfaceColor(tint.copy(alpha = 0.75f)))
+        }
+        if (surfaceColor.isSpecified) {
+          drawOutline(outline, settings.surfaceColor(surfaceColor))
+        }
+      },
+    )
+  }
+
+  // A native video surface cannot be sampled; keep the same frosted fallback as the buttons.
+  val baseColor = when {
+    surfaceColor.isSpecified -> surfaceColor
+    tint.isSpecified -> tint
+    else -> MaterialTheme.colorScheme.surfaceContainerHigh
+  }
+  val level = LocalPlayerButtonsOpacity.current
+  val fill = Brush.verticalGradient(
+    0f to baseColor.copy(alpha = PlayerButtonAlpha.glassTint(0.68f, level)),
+    0.45f to baseColor.copy(alpha = PlayerButtonAlpha.glassTint(0.42f, level)),
+    1f to baseColor.copy(alpha = PlayerButtonAlpha.glassTint(0.58f, level)),
+  )
+  val rim = Brush.linearGradient(
+    listOf(
+      Color.White.copy(alpha = (0.43f * settings.highlightStrength).coerceIn(0f, 1f)),
+      Color.White.copy(alpha = (0.10f * settings.highlightStrength).coerceIn(0f, 1f)),
+      baseColor.copy(alpha = (0.30f * settings.highlightStrength).coerceIn(0f, 1f)),
+    ),
+  )
+  return (if (transform == null) this else graphicsLayer(transform))
+    .outsideShadow(shape, radius = 6.dp)
+    .clip(shape)
+    .background(fill, shape)
+    .then(
+      if (settings.highlightWidth > 0f) Modifier.border(1.dp * settings.highlightWidth, rim, shape)
+      else Modifier,
+    )
 }

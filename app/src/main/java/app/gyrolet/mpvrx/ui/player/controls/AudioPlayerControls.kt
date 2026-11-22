@@ -1638,10 +1638,15 @@ fun AudioPlayerControls(
             modifier = Modifier.align(Alignment.CenterEnd),
             verticalAlignment = Alignment.CenterVertically,
           ) {
-            ReactiveIconButton(onClick = { onOpenSheet(Sheets.AudioProperties) }, modifier = Modifier.size(audioHeaderSize)) {
+            ReactiveIconButton(
+              onClick = { onOpenSheet(Sheets.MediaInfo) },
+              onLongClick = if (isShortLandscape) null else ({ onOpenSheet(Sheets.AudioProperties) }),
+              onLongClickLabel = stringResource(R.string.audio_information_title),
+              modifier = Modifier.size(audioHeaderSize),
+            ) {
               Icon(
                 imageVector = Icons.RoundedFilled.Info,
-                contentDescription = stringResource(R.string.player_sheets_more_title),
+                contentDescription = stringResource(R.string.ui_media_info),
                 tint = if (showImmersiveArtwork) immersiveHeaderContentColor else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(28.dp),
               )

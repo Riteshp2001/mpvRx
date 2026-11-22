@@ -102,6 +102,7 @@ private object TvPlayerDefaults {
   val PlayButtonSize: Dp = 60.dp
   val ButtonIconSize: Dp = 26.dp
   val ButtonSpacing: Dp = 8.dp
+  val ButtonBackground = Color.White.copy(alpha = 0.12f)
   val SeekBarHitHeight: Dp = 20.dp
   val SeekBarHeight: Dp = 6.dp
   val SeekBarFocusedHeight: Dp = 10.dp
@@ -200,6 +201,7 @@ internal fun TvPlayerControls(
 
         TvPlayerTopBar(
           title = mediaTitle,
+          onOpenInfo = { onOpenSheet(Sheets.MediaInfo) },
           modifier =
             Modifier
               .align(Alignment.TopStart)
@@ -367,6 +369,7 @@ internal fun TvPlayerControls(
 @Composable
 private fun TvPlayerTopBar(
   title: String?,
+  onOpenInfo: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   var clock by remember { mutableStateOf("") }
@@ -379,11 +382,18 @@ private fun TvPlayerTopBar(
       delay(60_000L - System.currentTimeMillis() % 60_000L)
     }
   }
-  Row(
-    modifier = modifier,
-    verticalAlignment = Alignment.Top,
-  ) {
-    Column(modifier = Modifier.weight(1f)) {
+  Column(modifier) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      TvPlayerButton(
+        icon = Icons.RoundedFilled.Info,
+        contentDescription = stringResource(R.string.ui_media_info),
+        onClick = onOpenInfo,
+        size = 44.dp,
+      )
       Text(
         text = title.orEmpty(),
         style = MaterialTheme.typography.headlineSmall,
@@ -391,16 +401,19 @@ private fun TvPlayerTopBar(
         color = Color.White,
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.weight(1f),
       )
-      if (!title.isNullOrBlank()) {
-        PlaybackFormatBadgeRow(modifier = Modifier.padding(top = 4.dp), logoHeight = 22.dp)
-      }
+      Spacer(Modifier.width(24.dp))
+      Text(
+        text = clock,
+        style = MaterialTheme.typography.titleLarge,
+        color = Color.White.copy(alpha = 0.92f),
+      )
     }
-    Spacer(Modifier.width(24.dp))
-    Text(
-      text = clock,
-      style = MaterialTheme.typography.titleLarge,
-      color = Color.White.copy(alpha = 0.92f),
+    PlaybackFormatBadgeRow(
+      modifier = Modifier.padding(top = 6.dp),
+      logoHeight = 24.dp,
+      tvButtonBackground = TvPlayerDefaults.ButtonBackground,
     )
   }
 }
@@ -554,7 +567,7 @@ private fun TvPlayerButton(
   val interactionSource = remember { MutableInteractionSource() }
   val focused by interactionSource.collectIsFocusedAsState()
   val background by animateColorAsState(
-    if (focused) Color.White else Color.White.copy(alpha = 0.12f),
+    if (focused) Color.White else TvPlayerDefaults.ButtonBackground,
     tween(150),
     label = "tv_button_bg",
   )

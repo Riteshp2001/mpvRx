@@ -9,8 +9,12 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -19,10 +23,16 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.liquidglass.AdaptiveControlsButton
+import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
 import app.gyrolet.mpvrx.ui.liquidglass.PlayerLiquidTokens
+import app.gyrolet.mpvrx.ui.liquidglass.liquidControlBackground
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonAlpha
 import app.gyrolet.mpvrx.ui.theme.LocalDarkAppColorScheme
 import app.gyrolet.mpvrx.ui.theme.controlColor
@@ -44,7 +54,7 @@ internal fun Color.asPlayerButtonBackground(): Color =
   copy(alpha = PlayerButtonAlpha.background(alpha, LocalPlayerButtonsOpacity.current))
 
 @Composable
-private fun playerButtonColorScheme(
+internal fun playerButtonColorScheme(
   forceDark: Boolean =
     LocalForceDarkPlayerButtonsBackground.current && !LocalBorderlessPlayerControls.current,
 ): ColorScheme =
@@ -65,6 +75,48 @@ internal fun playerButtonContentColor(): Color =
 @Composable
 internal fun playerButtonBorderColor(): Color =
   playerButtonColorScheme().outlineVariant.copy(alpha = PlayerButtonAlpha.BORDER).asPlayerButtonBackground()
+
+@Composable
+internal fun PlayerControlSurface(
+  shape: Shape,
+  modifier: Modifier = Modifier,
+  baseColor: Color? = null,
+  content: @Composable () -> Unit,
+) {
+  Box(modifier) {
+    if (liquidGlassActive()) {
+      val level = LocalPlayerButtonsOpacity.current
+      val alpha = PlayerButtonAlpha.glassLayer(level)
+      if (alpha > 0f) {
+        val base = baseColor ?: PlayerLiquidTokens.surfaceColor
+        val tint = base.copy(alpha = PlayerButtonAlpha.glassTint(base.alpha, level))
+        val opacity = if (alpha < 1f) {
+          Modifier.graphicsLayer {
+            this.alpha = alpha
+            compositingStrategy = CompositingStrategy.ModulateAlpha
+          }
+        } else Modifier
+        Spacer(
+          Modifier.matchParentSize()
+            .then(opacity)
+            .liquidControlBackground(LocalKyantPlayerBackdrop.current, shape, tint),
+        )
+      }
+    } else {
+      val fill = baseColor?.asPlayerButtonBackground() ?: playerButtonContainerColor()
+      if (fill.alpha > 0f) {
+        Spacer(
+          Modifier.matchParentSize().background(fill, shape)
+            .then(
+              if (baseColor == null) Modifier.border(1.dp, playerButtonBorderColor(), shape)
+              else Modifier,
+            ),
+        )
+      }
+    }
+    content()
+  }
+}
 
 @Composable
 fun ControlsButton(

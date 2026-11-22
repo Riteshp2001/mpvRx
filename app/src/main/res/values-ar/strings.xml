@@ -1341,6 +1341,8 @@
   <string name="ui_script_runtime">بيئة تشغيل البرنامج النصي</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">تُحمّل السكربتات المفعّلة الآن. أعد فتح الفيديو لإيقاف المعطّلة بالكامل.</string>
   <string name="ui_media_info">معلومات الوسائط</string>
+  <string name="media_info_playback_snapshot">عرض المعلومات التي يمكن للمشغّل قراءتها من هذا البث. قد لا تتوفر بعض تفاصيل الملف.</string>
+  <string name="media_info_unavailable">لا تتوفر معلومات وسائط لهذا المصدر.</string>
   <string name="ui_analyzing_media_file">جارٍ تحليل ملف الوسائط...</string>
   <string name="ui_media_tracks_summary">ملخّص مسارات الوسائط</string>
   <string name="ui_container_metadata">البيانات الوصفية للحاوية</string>

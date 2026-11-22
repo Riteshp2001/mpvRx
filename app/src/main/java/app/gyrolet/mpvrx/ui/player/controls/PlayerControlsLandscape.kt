@@ -9,31 +9,20 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
-import androidx.compose.foundation.BorderStroke
-import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,12 +30,10 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.liquidglass.LiquidPillButton
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.controls.components.ControlsButton
-import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonBorderColor
-import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContainerColor
+import app.gyrolet.mpvrx.ui.player.controls.components.PlayerTitlePill
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
 import app.gyrolet.mpvrx.ui.theme.spacing
 
@@ -65,9 +52,6 @@ fun TopLeftPlayerControlsLandscape(
 ) {
   PlayerButtonTheme {
     val playlistModeEnabled = viewModel.hasPlaylistSupport()
-    val clickEvent = LocalPlayerButtonsClickEvent.current
-    val enableLiquidGlass = liquidGlassActive()
-    val titleHeight = playerTitleHeight(45.dp, MaterialTheme.typography.titleMedium.lineHeight)
 
     Column(
       modifier = Modifier.width(IntrinsicSize.Max),
@@ -83,100 +67,20 @@ fun TopLeftPlayerControlsLandscape(
           modifier = Modifier.size(48.dp),
         )
 
-        Column(
+        PlayerTitlePill(
+          title = mediaTitle,
+          playlistInfo = viewModel.getPlaylistInfo(),
+          onOpenInfo = { onOpenSheet(Sheets.MediaInfo) },
+          onOpenPlaylist = if (playlistModeEnabled) ({ onOpenSheet(Sheets.Playlist) }) else null,
           modifier = Modifier.layout { measurable, constraints ->
-            if (mediaTitle.isNullOrBlank() || constraints.maxWidth < 80.dp.roundToPx()) {
+            if (constraints.maxWidth < 48.dp.roundToPx()) {
               layout(0, 0) {}
             } else {
               val placeable = measurable.measure(constraints)
               layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
             }
           },
-        ) {
-          if (enableLiquidGlass) {
-            LiquidPillButton(
-              onClick = {
-                if (playlistModeEnabled) {
-                  clickEvent()
-                  onOpenSheet(Sheets.Playlist)
-                }
-              },
-              isInteractive = playlistModeEnabled,
-              height = titleHeight,
-              horizontalPadding = MaterialTheme.spacing.medium,
-            ) {
-              Text(
-                mediaTitle ?: "",
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.weight(1f, fill = false).playerTitleMarquee(),
-              )
-              viewModel.getPlaylistInfo()?.let { playlistInfo ->
-                Text(
-                  " • $playlistInfo",
-                  maxLines = 1,
-                  overflow = TextOverflow.Visible,
-                  style = MaterialTheme.typography.bodyMedium,
-                )
-              }
-            }
-          } else {
-            val titleInteractionSource = remember { MutableInteractionSource() }
-
-            Box(
-              modifier =
-                Modifier
-                  .heightIn(min = titleHeight)
-                  .clip(CircleShape)
-                  .clickable(
-                    interactionSource = titleInteractionSource,
-                    indication = ripple(bounded = true),
-                    enabled = playlistModeEnabled,
-                    onClick = {
-                      clickEvent()
-                      onOpenSheet(Sheets.Playlist)
-                    },
-                  ),
-            ) {
-              Surface(
-                shape = CircleShape,
-                color = playerButtonContainerColor(),
-                contentColor = playerButtonContentColor(),
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-                border = BorderStroke(1.dp, playerButtonBorderColor()),
-              ) {
-                Row(
-                  verticalAlignment = Alignment.CenterVertically,
-                  modifier =
-                    Modifier
-                      .heightIn(min = titleHeight)
-                      .padding(
-                        horizontal = MaterialTheme.spacing.medium,
-                        vertical = 4.dp,
-                      ),
-                ) {
-                  Text(
-                    mediaTitle ?: "",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f, fill = false).playerTitleMarquee(),
-                  )
-                  viewModel.getPlaylistInfo()?.let { playlistInfo ->
-                    Text(
-                      " • $playlistInfo",
-                      maxLines = 1,
-                      overflow = TextOverflow.Visible,
-                      style = MaterialTheme.typography.bodyMedium,
-                    )
-                  }
-                }
-              }
-            }
-          }
-        }
+        )
       }
 
       val syncplayManager = org.koin.compose.koinInject<app.gyrolet.mpvrx.domain.syncplay.SyncplayManager>()

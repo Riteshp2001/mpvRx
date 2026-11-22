@@ -1286,6 +1286,8 @@
   <string name="ui_script_runtime">スクリプト実行環境</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">有効なスクリプトは即時読み込み。無効にしたものを完全に止めるには動画を開き直します。</string>
   <string name="ui_media_info">メディア情報</string>
+  <string name="media_info_playback_snapshot">プレーヤーがこのストリームから読み取れる情報を表示しています。ファイルの詳細の一部は表示できない場合があります。</string>
+  <string name="media_info_unavailable">このソースのメディア情報は取得できません。</string>
   <string name="ui_analyzing_media_file">メディアファイルを解析中...</string>
   <string name="ui_media_tracks_summary">メディアトラックの概要</string>
   <string name="ui_container_metadata">コンテナのメタデータ</string>

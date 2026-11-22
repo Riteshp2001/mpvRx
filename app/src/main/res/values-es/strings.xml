@@ -1297,6 +1297,8 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_script_runtime">Entorno de ejecución de scripts</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Los scripts activados cargan ahora. Reabre el vídeo para detener del todo los desactivados.</string>
   <string name="ui_media_info">Información multimedia</string>
+  <string name="media_info_playback_snapshot">Se muestra la información que el reproductor puede leer de esta transmisión. Puede que falten algunos datos del archivo.</string>
+  <string name="media_info_unavailable">No hay información multimedia disponible para esta fuente.</string>
   <string name="ui_analyzing_media_file">Analizando archivo multimedia...</string>
   <string name="ui_media_tracks_summary">Resumen de pistas multimedia</string>
   <string name="ui_container_metadata">Metadatos del contenedor</string>

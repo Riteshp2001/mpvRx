@@ -1778,6 +1778,8 @@
   <string name="ui_media">Media</string>
   <string name="ui_saved_media">Saved Links</string>
   <string name="ui_media_info">Media Info</string>
+  <string name="media_info_playback_snapshot">Showing what the player can read from this stream. Some file details may be unavailable.</string>
+  <string name="media_info_unavailable">No media information is available for this source.</string>
   <string name="ui_analyzing_media_file">Analyzing media file...</string>
   <string name="ui_media_tracks_summary">Media Tracks Summary</string>
   <string name="ui_container_metadata">Container Metadata</string>

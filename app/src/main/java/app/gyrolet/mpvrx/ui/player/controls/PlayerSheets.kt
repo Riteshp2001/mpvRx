@@ -39,6 +39,7 @@ import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverride
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.browser.dialogs.subtitlePickerExtensions
+import app.gyrolet.mpvrx.ui.mediainfo.PlaybackMediaInfoSheet
 import app.gyrolet.mpvrx.ui.player.Decoder
 import app.gyrolet.mpvrx.ui.player.Panels
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
@@ -138,6 +139,7 @@ fun PlayerSheets(
 
   when (sheetShown) {
     Sheets.None -> {}
+    Sheets.MediaInfo -> PlaybackMediaInfoSheet(onDismissRequest)
     Sheets.BookmarkEditor -> PlaybackBookmarkEditor(viewModel, { onShowSheet(Sheets.Chapters) }, onDismissRequest)
     Sheets.AudiobookRewind,
     Sheets.AudiobookSleepTimer,

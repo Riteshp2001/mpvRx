@@ -1313,6 +1313,8 @@
   <string name="ui_script_runtime">脚本运行时</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">启用的脚本立即加载；重新打开视频可完全停止已禁用脚本。</string>
   <string name="ui_media_info">媒体信息</string>
+  <string name="media_info_playback_snapshot">显示播放器可从此媒体流读取的信息。部分文件详细信息可能无法获取。</string>
+  <string name="media_info_unavailable">无法获取此来源的媒体信息。</string>
   <string name="ui_analyzing_media_file">正在分析媒体文件...</string>
   <string name="ui_media_tracks_summary">媒体轨道摘要</string>
   <string name="ui_container_metadata">容器元数据</string>

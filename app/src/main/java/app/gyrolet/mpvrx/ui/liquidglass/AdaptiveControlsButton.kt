@@ -181,13 +181,7 @@ fun AdaptiveControlsContainer(
     if (liquidGlassEnabled) {
       // Below the default level the whole glass layer fades instead (glassLayerAlpha).
       val base = surfaceColor.takeUnless { it == Color.Unspecified } ?: PlayerLiquidTokens.surfaceColor
-      base.copy(
-        alpha =
-          PlayerButtonAlpha.background(
-            base.alpha,
-            maxOf(backgroundLevel, PlayerButtonAlpha.DEFAULT_BACKGROUND_LEVEL),
-          ),
-      )
+      base.copy(alpha = PlayerButtonAlpha.glassTint(base.alpha, backgroundLevel))
     } else {
       surfaceColor.takeUnless { it == Color.Unspecified }?.asPlayerButtonBackground()
         ?: playerButtonContainerColor()
@@ -205,8 +199,7 @@ fun AdaptiveControlsContainer(
     if (horizontalPadding != null && horizontalPadding > 0.dp) Capsule() else CircleShape,
   )
   // Above the default level the glass tint thickens toward opaque; below it the whole glass fades.
-  val glassLayerAlpha =
-    (backgroundLevel / PlayerButtonAlpha.DEFAULT_BACKGROUND_LEVEL).coerceIn(0f, 1f)
+  val glassLayerAlpha = PlayerButtonAlpha.glassLayer(backgroundLevel)
   val controlModifier =
     modifier
       // LiquidButton already clips its glass to the capsule. Clipping again here, over the larger

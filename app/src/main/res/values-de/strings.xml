@@ -1297,6 +1297,8 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_script_runtime">Skript-Laufzeit</string>
   <string name="ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn">Aktivierte Skripte laden sofort. Video neu öffnen, um deaktivierte ganz zu stoppen.</string>
   <string name="ui_media_info">Medieninformationen</string>
+  <string name="media_info_playback_snapshot">Zeigt die Informationen, die der Player aus diesem Stream lesen kann. Einige Dateidetails sind möglicherweise nicht verfügbar.</string>
+  <string name="media_info_unavailable">Für diese Quelle sind keine Medieninformationen verfügbar.</string>
   <string name="ui_analyzing_media_file">Mediendatei wird analysiert...</string>
   <string name="ui_media_tracks_summary">Übersicht der Medientracks</string>
   <string name="ui_container_metadata">Container-Metadaten</string>

@@ -45,6 +45,11 @@ internal object PlayerButtonAlpha {
       alpha * (clamped / DEFAULT_BACKGROUND_LEVEL)
     }
   }
+
+  fun glassTint(designed: Float, level: Float): Float =
+    background(designed, maxOf(level, DEFAULT_BACKGROUND_LEVEL))
+
+  fun glassLayer(level: Float): Float = (level / DEFAULT_BACKGROUND_LEVEL).coerceIn(0f, 1f)
 }
 
 /**
