@@ -2057,6 +2057,25 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
+  /**
+   * Switches the active HLS variant / MPEG-TS program on mpv 0.42+, where variants are exposed as
+   * editions instead of video tracks. mpv restarts the demuxer at the current playback position for
+   * live inputs, so this is the supported way to change adaptive quality without reloading the URL.
+   */
+  internal fun selectEdition(
+    expectedGeneration: Long,
+    editionIndex: Int,
+  ) {
+    nativeLock.withLock {
+      val current = _state.value
+      if (!initialized || current.generation != expectedGeneration || loadedGeneration != expectedGeneration ||
+        current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND) ||
+        MpvConfigOverridePolicy.isOwnedByMpvConf("edition")
+      ) return@withLock
+      MPVLib.setPropertyInt("edition", editionIndex)
+    }
+  }
+
   fun getPropertyDouble(property: String): Double? = withReadyCore(null) {
     ambientVideoTransform?.get(property) ?: MPVLib.getPropertyDouble(property)
   }
@@ -3259,9 +3278,11 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     val context = applicationContext ?: return
     streamingOptionsApplied = true
 
-    // Use adaptive HLS bitrate selection to avoid forcing the heaviest stream profile.
-    // This reduces thermal load and helps prevent jitter/rebuffering on long sessions.
-    setPropertyString("hls-bitrate", "no")
+    // Prefer the highest-bitrate rendition of an HLS master playlist by default. This is mpv's own
+    // default (`max`); `no` means "don't select by bitrate" and makes mpv pick the first variant,
+    // which is almost always the lowest quality one. Users can still switch renditions from the
+    // video quality sheet, and an explicit `hls-bitrate` in mpv.conf takes precedence.
+    setPropertyString("hls-bitrate", "max")
     setPropertyString("cookies", "yes")
     setPropertyString("cookies-file", AndroidCookieJar.playbackCookieFile(context).absolutePath)
     setPropertyString("cache", "auto")

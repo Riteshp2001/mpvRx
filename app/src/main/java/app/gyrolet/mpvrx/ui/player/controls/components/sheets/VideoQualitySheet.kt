@@ -168,8 +168,14 @@ private fun qualityDetails(
           "${bitsPerSecond / 1_000L} kbps"
         }
       }
+  val identifier =
+    if (track.editionIndex == null) {
+      track.ytdlFormatId?.let { "#$it" } ?: "#${track.id}"
+    } else {
+      null
+    }
   return listOfNotNull(
-    track.ytdlFormatId?.let { "#$it" } ?: "#${track.id}",
+    identifier,
     track.effectiveTitle?.takeUnless { it == qualityLabel(track) },
     dimensions,
     codec,

@@ -716,8 +716,16 @@ class PlayerViewModel(
       .stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   val videoQualityTracks: StateFlow<List<TrackNode>> =
-    combine(allTracks, PlaybackSession.state) { tracks, session ->
+    combine(
+      allTracks,
+      PlaybackSession.state,
+      PlaybackSession.propNode["edition-list"],
+      PlaybackSession.propInt["current-edition"],
+    ) { tracks, session, editionListNode, activeEdition ->
       if (session.phase != PlaybackPhase.READY && session.phase != PlaybackPhase.BACKGROUND) {
+        return@combine persistentListOf()
+      }
+      if (!supportsOnlineVideoQualitySelection(session.currentItem)) {
         return@combine persistentListOf()
       }
 
@@ -731,12 +739,39 @@ class PlayerViewModel(
             .thenByDescending { track -> track.demuxFps ?: 0.0 }
             .thenByDescending { track -> track.effectiveBitrate ?: 0L },
         ).toList()
-      if (qualityTracks.size <= 1 || !supportsOnlineVideoQualitySelection(session.currentItem)) {
-        persistentListOf()
-      } else {
-        qualityTracks.toImmutableList()
+      if (qualityTracks.size > 1) {
+        return@combine qualityTracks.toImmutableList()
       }
+
+      // mpv 0.42+ exposes HLS variants / TS programs as editions and only lists the selected
+      // variant's tracks, so track-list alone cannot offer a quality choice. Turn the edition list
+      // into the same quality entries the sheet already knows how to render and select.
+      val editions =
+        runCatching { editionListNode?.toObject<List<EditionQualityNode>>(json) }
+          .getOrNull()
+          .orEmpty()
+      if (editions.size <= 1) return@combine persistentListOf()
+      editions.mapIndexed { index, edition ->
+        val editionIndex = edition.id?.toInt() ?: index
+        TrackNode(
+          id = -(editionIndex + 1),
+          type = "video",
+          title = edition.title?.takeIf(String::isNotBlank) ?: "Quality ${index + 1}",
+          hlsBitrate = editionQualityBitrate(edition.title),
+          selected = editionIndex == activeEdition,
+          editionIndex = editionIndex,
+        )
+      }.toImmutableList()
     }.stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
+
+  private fun editionQualityBitrate(title: String?): Long? {
+    if (title.isNullOrBlank()) return null
+    val match = EDITION_BITRATE_REGEX.find(title) ?: return null
+    val value = match.groupValues.getOrNull(1)?.toDoubleOrNull() ?: return null
+    val unit = match.groupValues.getOrNull(2)
+    val factor = if (unit.equals("Mbps", ignoreCase = true)) 1_000_000L else 1_000L
+    return (value * factor).toLong().takeIf { it > 0L }
+  }
 
   val showVideoQualitySelector: StateFlow<Boolean> =
     videoQualityTracks
@@ -839,6 +874,12 @@ class PlayerViewModel(
       session.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND) ||
       videoQualityTracks.value.none { candidate -> candidate == track }
     ) return
+
+    val editionIndex = track.editionIndex
+    if (editionIndex != null) {
+      PlaybackSession.selectEdition(expectedGeneration, editionIndex)
+      return
+    }
 
     if (currentItemRequiresYtdlp() && !MpvConfigOverridePolicy.isOwnedByMpvConf("ytdl-format")) {
       val selectedAudio = pairedYtdlTrack(track, TrackNode::isAudio)
@@ -3761,6 +3802,7 @@ fun restartFromBeginning() {
     const val FRAME_SEEK_CORRECTION_INTERVAL_MS = 24L
     const val FRAME_SEEK_CORRECTION_SETTLE_MS = 40L
     val QUALITY_HEIGHT_REGEX = Regex("""(?i)(\d{3,4})p""")
+    val EDITION_BITRATE_REGEX = Regex("""Bitrate:\s*([\d.]+)\s*(kbps|Mbps)""", RegexOption.IGNORE_CASE)
     val VIDEO_QUALITY_STREAM_SCHEMES = setOf(
       "http", "https", "ftp", "ftps", "rtmp", "rtmps", "rtsp", "rtsps", "mms", "mmsh",
       "srt", "rist", "udp", "tcp", NetworkPlaybackUri.SCHEME, XtreamPlaybackUri.SCHEME,

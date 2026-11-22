@@ -73,6 +73,8 @@ data class TrackNode(
   @SerialName("source-dolby-vision-profile") val sourceDolbyVisionProfile: Long? = null,
   @SerialName("source-dolby-vision-level") val sourceDolbyVisionLevel: Long? = null,
   val metadata: Map<String, String?>? = null,
+  /** Set for synthetic quality entries built from mpv's edition-list (HLS variants / TS programs). */
+  val editionIndex: Int? = null,
 ) {
   val isAudio = type == "audio"
   val isVideo = type == "video"
@@ -102,6 +104,14 @@ data class TrackNode(
       YTDL_FORMAT_ID_REGEX.find(effectiveTitle.orEmpty())?.groupValues?.getOrNull(1)
         ?: YTDL_MUXED_FORMAT_ID_REGEX.find(effectiveTitle.orEmpty())?.groupValues?.getOrNull(1)
 }
+
+/** One entry of mpv's `edition-list`, used for HLS variants / MPEG-TS program quality switching. */
+@Serializable
+data class EditionQualityNode(
+  val id: Long? = null,
+  val title: String? = null,
+  val default: Boolean? = null,
+)
 
 private val YTDL_FORMAT_ID_REGEX = Regex("""^\s*([^\s]+)\s+-\s+""")
 private val YTDL_MUXED_FORMAT_ID_REGEX = Regex("""(?:^|\s)muxed-([^\s]+)(?:\s|$)""")
