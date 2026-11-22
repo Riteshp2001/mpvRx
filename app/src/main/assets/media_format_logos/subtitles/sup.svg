@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
+  <title id="title">SUP bitmap subtitle format</title>
+  <path d="M16 17h55a8 8 0 0 1 8 8v32a8 8 0 0 1-8 8H16a8 8 0 0 1-8-8V25a8 8 0 0 1 8-8Z" fill="none" stroke="#2685C7" stroke-linejoin="round" stroke-width="4"/>
+  <path d="M21 51 35 35l10 10 10-12 16 18Z" fill="none" stroke="#2685C7" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
+  <circle cx="63" cy="29" r="3" fill="#2685C7"/>
+  <path d="M23 71h50M31 78h34" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
+  <text x="48" y="92" fill="#26354D" font-family="Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="2" text-anchor="middle">SUP</text>
+</svg>

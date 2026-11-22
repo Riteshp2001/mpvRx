@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
+  <title id="title">EBU STL broadcast subtitle format</title>
+  <path d="m15 26 10-13h57L71 26Z" fill="none" stroke="#B78326" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+  <path d="m25 14 12 12m9-12 12 12m9-12 12 12" stroke="#B78326" stroke-linecap="round" stroke-width="3"/>
+  <rect x="15" y="26" width="56" height="35" rx="5" fill="none" stroke="#B78326" stroke-width="4"/>
+  <path d="M24 41h37M24 49h25" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
+  <path d="M18 70h60" stroke="#B78326" stroke-linecap="round" stroke-width="4"/>
+  <circle cx="27" cy="70" r="3" fill="#FFF" stroke="#B78326" stroke-width="2"/>
+  <text x="48" y="91" fill="#26354D" font-family="Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="2" text-anchor="middle">STL</text>
+</svg>

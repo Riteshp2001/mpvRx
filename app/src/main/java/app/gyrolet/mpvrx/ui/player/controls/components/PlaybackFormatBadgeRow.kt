@@ -125,6 +125,8 @@ private fun FormatBadge(
   } else {
     badge.detail
   }
+  val tintArgb = if (darkBackground) badge.darkTintArgb else badge.lightTintArgb
+  val badgeForeground = tintArgb?.let(::Color) ?: foreground
   val path = badge.asset
   val painter = if (path == null) null else rememberAssetLogoPainter("media_format_logos/$path")
   Box(modifier.heightIn(min = logoHeight + 4.dp), contentAlignment = Alignment.Center) {
@@ -134,7 +136,7 @@ private fun FormatBadge(
       } else null
       Text(
         badge.label,
-        color = foreground,
+        color = badgeForeground,
         style = MaterialTheme.typography.labelMedium.copy(shadow = shadow),
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
@@ -142,20 +144,21 @@ private fun FormatBadge(
       )
     } else {
       val aspect = painter.intrinsicSize.width / painter.intrinsicSize.height
-      val contrast = when (badge.artwork) {
+      val artwork = badge.artwork
+      val contrast = when (artwork) {
         BadgeArtwork.OnDark -> Color(0xFF25262B).takeUnless { darkBackground }
         BadgeArtwork.OnLight -> Color(0xFFF6F4F8).takeIf { darkBackground }
         BadgeArtwork.ThemeInk, BadgeArtwork.Original -> null
       }
-      val needsBacking = badge.artwork == BadgeArtwork.OnDark || badge.artwork == BadgeArtwork.OnLight
+      val needsBacking = artwork == BadgeArtwork.OnDark || artwork == BadgeArtwork.OnLight
       val backing =
         if (contrast == null) Modifier else Modifier.background(contrast, BrandBackingShape)
-      val useThemeInk = badge.artwork == BadgeArtwork.ThemeInk
+      val useThemeInk = artwork == BadgeArtwork.ThemeInk
       val edge = if (useThemeInk && inkEdge.isSpecified) Modifier.logoInkEdge(painter, inkEdge) else Modifier
       Image(
         painter = painter,
         contentDescription = description,
-        colorFilter = if (useThemeInk) ColorFilter.tint(foreground) else null,
+        colorFilter = if (useThemeInk) ColorFilter.tint(badgeForeground) else null,
         contentScale = ContentScale.Fit,
         modifier = backing
           .then(if (needsBacking) Modifier.padding(horizontal = 3.dp, vertical = 2.dp) else Modifier)

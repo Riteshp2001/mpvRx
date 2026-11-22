@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
+  <title id="title">TTML timed text markup language format</title>
+  <path d="m29 19-13 15 13 15m38-30 13 15-13 15M58 16 39 53" fill="none" stroke="#159879" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+  <path d="M18 65h40M18 73h27" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
+  <circle cx="70" cy="69" r="12" fill="none" stroke="#159879" stroke-width="3"/>
+  <path d="M70 62v7l5 3" fill="none" stroke="#159879" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"/>
+  <text x="48" y="92" fill="#26354D" font-family="Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="2" text-anchor="middle">TTML</text>
+</svg>

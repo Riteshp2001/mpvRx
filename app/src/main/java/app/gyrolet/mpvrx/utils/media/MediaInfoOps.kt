@@ -392,16 +392,20 @@ object MediaInfoOps {
 
   private fun subtitleLabel(mime: String): String =
     when {
-      mime.contains("pgs") || mime.contains("hdmv") -> "PGS"
+      mime.contains("pgs") || mime.contains("hdmv") -> "SUP"
       mime.contains("subrip") || mime.contains("srt") -> "SRT"
-      mime.contains("ass") || mime.contains("ssa") -> "ASS"
+      mime.contains("advanced substation alpha") || mime.contains("ass") -> "ASS"
+      mime.contains("substation alpha") || mime.contains("ssa") -> "SSA"
       mime.contains("vtt") -> "VTT"
       mime.contains("tx3g") || mime.contains("quicktime-text") -> "TX3G"
-      mime.contains("vobsub") -> "DVD"
+      mime.contains("vobsub") || mime.contains("microdvd") -> "SUB"
+      mime.contains("idx") -> "IDX"
       mime.contains("dvb") -> "DVB"
       mime.contains("cea-608") -> "CEA-608"
       mime.contains("cea-708") -> "CEA-708"
-      mime.contains("ttml") -> "TTML"
+      mime.contains("ttml") || mime.contains("dfxp") || mime.contains("stpp") -> "TTML"
+      mime.contains("sbv") -> "SBV"
+      mime.contains("ebu-stl") -> "STL"
       mime.contains("subtitle") || mime.contains("subtitles") || mime.startsWith("text/") -> "TEXT"
       else -> ""
     }

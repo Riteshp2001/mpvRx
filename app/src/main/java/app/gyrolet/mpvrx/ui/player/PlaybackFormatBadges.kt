@@ -27,6 +27,8 @@ internal data class PlaybackFormatBadge(
   val artwork: BadgeArtwork = BadgeArtwork.ThemeInk,
   val detail: String = label,
   val isChannelLayout: Boolean = false,
+  val lightTintArgb: Long? = null,
+  val darkTintArgb: Long? = null,
 )
 
 internal enum class BadgeArtwork { ThemeInk, Original, OnLight, OnDark }
@@ -147,6 +149,7 @@ private fun readPlaybackFormatBadges(
       add(PlaybackFormatBadge("3D", "symbols/3d.svg"))
     }
     if (audio.flag("visual-impaired")) add(PlaybackFormatBadge("AD", "symbols/ad.svg"))
+    addAll(subtitleFormatBadges(media, subtitle))
     subtitleBadge(subtitle.text("codec"), subtitle.flag("hearing-impaired"))?.let(::add)
   }
   return PlaybackBadgeSnapshot(badges, videoTrackId.takeIf { rangeBadges.any { it.label == HDR10_PLUS_LABEL } })
@@ -217,7 +220,18 @@ internal fun resolutionBadge(width: Int, height: Int): PlaybackFormatBadge {
     "1080p", "720p", "576p", "480p", "360p", "240p" -> "resolution/$label.svg"
     else -> null
   }
-  return PlaybackFormatBadge(label, asset, detail = "$label ($width × $height)")
+  val (lightTint, darkTint) = when (label) {
+    "4K", "1080p" -> 0xFF946700L to 0xFFFFD56BL
+    "720p" -> 0xFF176FAE to 0xFF69C4FF
+    else -> 0xFF5F6C7D to 0xFFBBC7D6
+  }
+  return PlaybackFormatBadge(
+    label,
+    asset,
+    detail = "$label ($width × $height)",
+    lightTintArgb = lightTint,
+    darkTintArgb = darkTint,
+  )
 }
 
 internal fun pixelFormatBitDepth(raw: String?): Int? {
@@ -231,8 +245,18 @@ internal fun pixelFormatBitDepth(raw: String?): Int? {
 
 internal fun bitDepthBadge(depth: Int): PlaybackFormatBadge =
   when (depth) {
-    8 -> PlaybackFormatBadge("8-bit", "video/8-bit.svg")
-    10 -> PlaybackFormatBadge("10-bit", "video/10-bit.svg")
+    8 -> PlaybackFormatBadge(
+      "8-bit",
+      "video/8-bit.svg",
+      lightTintArgb = 0xFF5F6C7D,
+      darkTintArgb = 0xFFBBC7D6,
+    )
+    10 -> PlaybackFormatBadge(
+      "10-bit",
+      "video/10-bit.svg",
+      lightTintArgb = 0xFF946700,
+      darkTintArgb = 0xFFFFD56B,
+    )
     else -> PlaybackFormatBadge("$depth-bit")
   }
 
@@ -243,16 +267,126 @@ internal fun subtitleBadge(codec: String?, hearingImpaired: Boolean): PlaybackFo
     else -> null
   }
 
+internal fun subtitleFormatBadge(
+  codec: String? = null,
+  codecDescription: String? = null,
+  externalFilename: String? = null,
+): PlaybackFormatBadge? {
+  val descriptor = listOfNotNull(codec, codecDescription).joinToString(" ").lowercase(Locale.ROOT)
+  val tokens = Regex("[a-z0-9]+").findAll(descriptor).map { it.value }.toSet()
+  val extension = externalFilename?.fileExtension()?.lowercase(Locale.ROOT)
+  val extensionFormat = when (extension) {
+    "srt" -> "srt"
+    "vtt" -> "vtt"
+    "ass" -> "ass"
+    "ssa" -> "ssa"
+    "idx" -> "idx"
+    "sub" -> "sub"
+    "sup" -> "sup"
+    "ttml", "dfxp" -> "ttml"
+    "sbv" -> "sbv"
+    "stl" -> "stl"
+    else -> null
+  }
+  val format = extensionFormat ?: when {
+    "subrip" in tokens || "s_text/utf8" in descriptor || "s_text/utf-8" in descriptor -> "srt"
+    "webvtt" in tokens || "vtt" in tokens -> "vtt"
+    "advanced substation alpha" in descriptor || "ass" in tokens -> "ass"
+    "ssa" in tokens || "substation alpha" in descriptor -> "ssa"
+    "idx" in tokens -> "idx"
+    "vobsub" in tokens || "microdvd" in tokens || "subviewer" in tokens -> "sub"
+    "pgs" in tokens || "hdmv" in tokens || "sup" in tokens -> "sup"
+    "ttml" in tokens || "dfxp" in tokens || "stpp" in tokens -> "ttml"
+    "sbv" in tokens -> "sbv"
+    "ebustl" in tokens || "stl" in tokens || "ebu-stl" in descriptor -> "stl"
+    else -> return null
+  }
+  val detail = when (format) {
+    "srt" -> "SubRip subtitles (SRT)"
+    "vtt" -> "WebVTT subtitles (VTT)"
+    "ass" -> "Advanced SubStation Alpha subtitles (ASS)"
+    "ssa" -> "SubStation Alpha subtitles (SSA)"
+    "sub" -> "SUB subtitles"
+    "idx" -> "VobSub index subtitles (IDX)"
+    "sup" -> "PGS bitmap subtitles (SUP)"
+    "ttml" -> "Timed Text Markup Language subtitles (TTML)"
+    "sbv" -> "SBV subtitles"
+    else -> "EBU STL subtitles"
+  }
+  return PlaybackFormatBadge(
+    label = format.uppercase(Locale.ROOT),
+    asset = "subtitles/$format.svg",
+    artwork = BadgeArtwork.OnLight,
+    detail = detail,
+  )
+}
+
+private fun subtitleFormatBadges(
+  media: PlaybackSession.PropertyReader,
+  selectedSubtitle: Map<String, MPVNode>,
+): List<PlaybackFormatBadge> = buildList {
+  val trackCount = (media.int("track-list/count") ?: 0).coerceIn(0, 512)
+  for (index in 0 until trackCount) {
+    val prefix = "track-list/$index"
+    if (media.string("$prefix/type") != "sub") continue
+    subtitleFormatBadge(
+      codec = media.string("$prefix/codec"),
+      codecDescription = media.string("$prefix/codec-desc"),
+      externalFilename = media.string("$prefix/external-filename"),
+    )?.let(::add)
+  }
+  subtitleFormatBadge(
+    codec = selectedSubtitle.text("codec"),
+    codecDescription = selectedSubtitle.text("codec-desc"),
+    externalFilename = selectedSubtitle.text("external-filename"),
+  )?.let(::add)
+}.distinctBy(PlaybackFormatBadge::label)
+
 internal fun videoCodecBadge(codec: String?): PlaybackFormatBadge? =
   when (codec?.lowercase(Locale.ROOT)) {
-    "h264", "avc" -> PlaybackFormatBadge("AVC", "video/avc.svg", detail = "AVC (H.264)")
-    "hevc", "h265" -> PlaybackFormatBadge("HEVC", "video/hevc.svg", detail = "HEVC (H.265)")
-    "av1" -> PlaybackFormatBadge("AV1", "video/av1.svg")
-    "mpeg4" -> PlaybackFormatBadge("MPEG-4", "codecs/mpeg-4.svg")
+    "h264", "avc" -> PlaybackFormatBadge(
+      "AVC",
+      "video/avc.svg",
+      detail = "AVC (H.264)",
+      lightTintArgb = 0xFF6547C8,
+      darkTintArgb = 0xFFB69AFF,
+    )
+    "hevc", "h265" -> PlaybackFormatBadge(
+      "HEVC",
+      "video/hevc.svg",
+      detail = "HEVC (H.265)",
+      lightTintArgb = 0xFF31763C,
+      darkTintArgb = 0xFF8FDF83,
+    )
+    "av1" -> PlaybackFormatBadge(
+      "AV1",
+      "video/av1.svg",
+      lightTintArgb = 0xFF006F73,
+      darkTintArgb = 0xFF69DED7,
+    )
+    "mpeg4" -> PlaybackFormatBadge(
+      "MPEG-4",
+      "codecs/mpeg-4.svg",
+      lightTintArgb = 0xFF52617A,
+      darkTintArgb = 0xFFB7C7E0,
+    )
     "theora" -> PlaybackFormatBadge("Theora", "codecs/theora.svg", BadgeArtwork.Original)
-    "xvid" -> PlaybackFormatBadge("XviD", "video/xvid.svg")
-    "mpeg2video" -> PlaybackFormatBadge("MPEG-2")
-    "mpeg1video" -> PlaybackFormatBadge("MPEG-1")
+    "xvid" -> PlaybackFormatBadge(
+      "XviD",
+      "video/xvid.svg",
+      lightTintArgb = 0xFF367D40,
+      darkTintArgb = 0xFF9AE28C,
+    )
+    "mpeg2video" -> PlaybackFormatBadge(
+      "MPEG-2",
+      lightTintArgb = 0xFF52617A,
+      darkTintArgb = 0xFFB7C7E0,
+    )
+    "mpeg1video" -> PlaybackFormatBadge(
+      "MPEG-1",
+      lightTintArgb = 0xFF52617A,
+      darkTintArgb = 0xFFB7C7E0,
+    )
     else -> codec?.takeIf(TECHNICAL_NAME::matches)?.let { PlaybackFormatBadge(it.uppercase(Locale.ROOT)) }
   }
 
@@ -269,23 +403,74 @@ internal fun hdrBadges(
     add(PlaybackFormatBadge("Dolby Vision", "symbols/dolby-vision.svg"))
   }
   if (isHdr10Plus || HDR10_PLUS_TAG.containsMatchIn(tag)) {
-    add(PlaybackFormatBadge(HDR10_PLUS_LABEL, "video/alternates/hdr10-plus-original-color.svg", BadgeArtwork.Original))
+    add(
+      PlaybackFormatBadge(
+        HDR10_PLUS_LABEL,
+        "video/alternates/hdr10-plus-original-color.svg",
+        BadgeArtwork.OnDark,
+      ),
+    )
   }
   if (transfer in HLG_TRANSFERS || HLG_TAG.containsMatchIn(tag)) {
-    add(PlaybackFormatBadge("HLG"))
+    add(
+      PlaybackFormatBadge(
+        "HLG",
+        lightTintArgb = 0xFF31764D,
+        darkTintArgb = 0xFF7DE0A0,
+      ),
+    )
   }
   // Don't show a generic or inferred HDR10 badge in addition to a verified dynamic format.
   if (isEmpty()) {
     when {
+      SDR_TAG.containsMatchIn(tag) || transfer in SDR_TRANSFERS ->
+        add(
+          PlaybackFormatBadge(
+            "SDR",
+            "video/sdr.svg",
+            lightTintArgb = 0xFF5F6C7D,
+            darkTintArgb = 0xFFBBC7D6,
+          ),
+        )
       HDR10_TAG.containsMatchIn(tag) || transfer in PQ_TRANSFERS && primaries == "bt.2020" && bitDepth == 10 ->
-        add(PlaybackFormatBadge("HDR10", "video/hdr10.svg"))
+        add(
+          PlaybackFormatBadge(
+            "HDR10",
+            "video/hdr10.svg",
+            lightTintArgb = 0xFF946700,
+            darkTintArgb = 0xFFFFD56B,
+          ),
+        )
       transfer in PQ_TRANSFERS || HDR_TAG.containsMatchIn(tag) ->
-        add(PlaybackFormatBadge("HDR", "symbols/hdr.svg"))
+        add(
+          PlaybackFormatBadge(
+            "HDR",
+            "symbols/hdr.svg",
+            lightTintArgb = 0xFF9B6510,
+            darkTintArgb = 0xFFFFC56B,
+          ),
+        )
       else -> Unit
     }
   }
   if (IMAX_ENHANCED.containsMatchIn(tag)) {
-    add(PlaybackFormatBadge("IMAX Enhanced", "video/imax-enhanced.svg"))
+    add(
+      PlaybackFormatBadge(
+        "IMAX Enhanced",
+        "video/imax-enhanced.svg",
+        lightTintArgb = 0xFF345A78,
+        darkTintArgb = 0xFF9BD6FF,
+      ),
+    )
+  } else if (IMAX_TAG.containsMatchIn(tag)) {
+    add(
+      PlaybackFormatBadge(
+        "IMAX",
+        "symbols/imax.svg",
+        lightTintArgb = 0xFF3D4959,
+        darkTintArgb = 0xFFE0E7F0,
+      ),
+    )
   }
 }
 
@@ -305,12 +490,35 @@ internal fun audioFormatBadges(
     codecName in ATMOS_CARRIER_CODECS && tags.any { matchesAudioFeature(it, DOLBY_ATMOS_TAG) }
   val dtsX = codecName == "dts" && tags.any { matchesAudioFeature(it, DTS_X_PROFILE) }
   return buildList {
-    if (atmos) add(PlaybackFormatBadge("Dolby Atmos", "symbols/dolby-atmos.svg"))
+    if (atmos) {
+      add(
+        PlaybackFormatBadge(
+          "Dolby Atmos",
+          "symbols/dolby-atmos.svg",
+          lightTintArgb = 0xFF3D4959,
+          darkTintArgb = 0xFFE0E7F0,
+        ),
+      )
+    }
     if (dtsX) {
       if (matchesAudioFeature(profile.orEmpty(), DTS_X_IMAX)) {
-        add(PlaybackFormatBadge("DTS:X IMAX", "symbols/alternates/imax-dts-x.svg", BadgeArtwork.ThemeInk))
+        add(
+          PlaybackFormatBadge(
+            "DTS:X IMAX",
+            "symbols/alternates/imax-dts-x.svg",
+            lightTintArgb = 0xFF98500B,
+            darkTintArgb = 0xFFFFA24D,
+          ),
+        )
       } else {
-        add(PlaybackFormatBadge("DTS:X", "symbols/dts-x.svg"))
+        add(
+          PlaybackFormatBadge(
+            "DTS:X",
+            "symbols/dts-x.svg",
+            lightTintArgb = 0xFF98500B,
+            darkTintArgb = 0xFFFFA24D,
+          ),
+        )
       }
     }
     if (!dtsX || format.codecLabel != "DTS") add(audioCodecBadge(format.codecLabel))
@@ -322,12 +530,41 @@ private fun matchesAudioFeature(tag: String, feature: Regex): Boolean =
 
 private fun audioCodecBadge(label: String): PlaybackFormatBadge =
   when (label) {
-    "DOLBY DIGITAL" -> PlaybackFormatBadge("Dolby Digital", "audio/dolby-digital.svg")
-    "DOLBY DIGITAL PLUS" -> PlaybackFormatBadge("Dolby Digital Plus", "audio/dolby-digital-plus.svg")
-    "DOLBY TRUEHD" -> PlaybackFormatBadge("Dolby TrueHD", "audio/dolby-truehd.svg")
-    "DTS-HD MA" -> PlaybackFormatBadge(label, "audio/dts-hd-master-audio.svg", BadgeArtwork.OnLight)
-    "DTS-HD HRA" -> PlaybackFormatBadge(label, "audio/dts-hd.svg")
-    "DTS" -> PlaybackFormatBadge(label, "symbols/dts.svg")
+    "DOLBY DIGITAL" -> PlaybackFormatBadge(
+      "Dolby Digital",
+      "audio/dolby-digital.svg",
+      lightTintArgb = 0xFF3D4959,
+      darkTintArgb = 0xFFE0E7F0,
+    )
+    "DOLBY DIGITAL PLUS" -> PlaybackFormatBadge(
+      "Dolby Digital Plus",
+      "audio/dolby-digital-plus.svg",
+      lightTintArgb = 0xFF3D4959,
+      darkTintArgb = 0xFFE0E7F0,
+    )
+    "DOLBY TRUEHD" -> PlaybackFormatBadge(
+      "Dolby TrueHD",
+      "audio/dolby-truehd.svg",
+      lightTintArgb = 0xFF3D4959,
+      darkTintArgb = 0xFFE0E7F0,
+    )
+    "DTS-HD MA" -> PlaybackFormatBadge(
+      label,
+      "audio/dts-hd-master-audio.svg",
+      BadgeArtwork.OnLight,
+    )
+    "DTS-HD HRA" -> PlaybackFormatBadge(
+      label,
+      "audio/dts-hd.svg",
+      lightTintArgb = 0xFF94601C,
+      darkTintArgb = 0xFFFFC56B,
+    )
+    "DTS" -> PlaybackFormatBadge(
+      label,
+      "symbols/dts.svg",
+      lightTintArgb = 0xFF546170,
+      darkTintArgb = 0xFFC8D2DF,
+    )
     "AAC" -> PlaybackFormatBadge(label, "codecs/aac.svg", BadgeArtwork.Original)
     "FLAC" -> PlaybackFormatBadge(label, "codecs/flac.svg", BadgeArtwork.Original)
     "MP3" -> PlaybackFormatBadge(label, "codecs/mp3.svg")
@@ -337,7 +574,12 @@ private fun audioCodecBadge(label: String): PlaybackFormatBadge =
     "SPEEX" -> PlaybackFormatBadge("Speex", "codecs/speex.svg", BadgeArtwork.Original)
     "APE" -> PlaybackFormatBadge(label, "codecs/ape.svg", BadgeArtwork.Original)
     "MPC7", "MPC8" -> PlaybackFormatBadge("Musepack", "codecs/musepack.svg", BadgeArtwork.OnLight)
-    "WAVPACK" -> PlaybackFormatBadge("WavPack", "codecs/wavpack.svg", BadgeArtwork.Original)
+    "WAVPACK" -> PlaybackFormatBadge(
+      "WavPack",
+      "codecs/wavpack.svg",
+      lightTintArgb = 0xFF596779,
+      darkTintArgb = 0xFFC5D0DE,
+    )
     else -> PlaybackFormatBadge(label.take(22))
   }
 
@@ -355,7 +597,13 @@ internal fun audioChannelsBadge(layout: String?, count: Long?): PlaybackFormatBa
     else -> return null
   }
   val asset = label.takeIf { it in setOf("5.1", "6.1", "7.1") }?.let { "channels/$it.svg" }
-  return PlaybackFormatBadge(label, asset, isChannelLayout = true)
+  return PlaybackFormatBadge(
+    label,
+    asset,
+    isChannelLayout = true,
+    lightTintArgb = 0xFF146A80,
+    darkTintArgb = 0xFF64CEDB,
+  )
 }
 
 internal fun sourceBadge(fileFormat: String?, vararg filenames: String?): PlaybackFormatBadge? {
@@ -373,7 +621,7 @@ internal fun sourceBadge(fileFormat: String?, vararg filenames: String?): Playba
     "mp4" in formats -> PlaybackFormatBadge(
       if (extension == "mov") "MOV" else if (extension == "3gp") "3GP" else "MP4",
     )
-    "ogg" in formats -> PlaybackFormatBadge("Ogg", "codecs/ogg.svg", BadgeArtwork.Original)
+    "ogg" in formats -> PlaybackFormatBadge("Ogg", "codecs/ogg.svg")
     "flac" in formats -> PlaybackFormatBadge("FLAC", "codecs/flac.svg", BadgeArtwork.Original)
     "avi" in formats -> PlaybackFormatBadge("AVI")
     "mpegts" in formats -> PlaybackFormatBadge("MPEG-TS")
@@ -385,13 +633,67 @@ internal fun sourceBadge(fileFormat: String?, vararg filenames: String?): Playba
 private fun releaseTag(token: String) = Regex("""(?<![\p{L}\p{N}])(?:$token)(?![\p{L}\p{N}])""", RegexOption.IGNORE_CASE)
 
 private val RELEASE_BADGES = listOf(
-  releaseTag("remux|bdremux") to PlaybackFormatBadge("Remux", "source/remux.svg"),
-  releaseTag("web[ ._-]?dl") to PlaybackFormatBadge("WEB-DL", "source/web-dl.svg"),
-  releaseTag("web[ ._-]?rip") to PlaybackFormatBadge("WEBRip", "source/web-rip.svg"),
+  releaseTag("remux|bdremux") to PlaybackFormatBadge(
+    "Remux",
+    "source/remux.svg",
+    lightTintArgb = 0xFF536274,
+    darkTintArgb = 0xFFC4CFDD,
+  ),
+  releaseTag("web[ ._-]?dl") to PlaybackFormatBadge(
+    "WEB-DL",
+    "source/web-dl.svg",
+    lightTintArgb = 0xFF086DB2,
+    darkTintArgb = 0xFF68BFFF,
+  ),
+  releaseTag("web[ ._-]?rip") to PlaybackFormatBadge(
+    "WEBRip",
+    "source/web-rip.svg",
+    lightTintArgb = 0xFF007C8D,
+    darkTintArgb = 0xFF61D8E5,
+  ),
   releaseTag("blu[ ._-]?ray|bdrip|brrip") to PlaybackFormatBadge("Blu-ray", "source/blu-ray.svg", BadgeArtwork.OnDark),
-  releaseTag("hdtv") to PlaybackFormatBadge("HDTV", "source/hdtv.svg"),
-  releaseTag("dvd[ ._-]?rip") to PlaybackFormatBadge("DVDRip", "source/dvd-rip.svg"),
-  releaseTag("dvd[ ._-]?scr") to PlaybackFormatBadge("DVDScr", "source/dvd-screener.svg"),
+  releaseTag("hdtv") to PlaybackFormatBadge(
+    "HDTV",
+    "source/hdtv.svg",
+    lightTintArgb = 0xFF405F9E,
+    darkTintArgb = 0xFF91AEFF,
+  ),
+  releaseTag("cam(?:rip)?") to PlaybackFormatBadge(
+    "CAM",
+    "source/cam.svg",
+    lightTintArgb = 0xFF9B4242,
+    darkTintArgb = 0xFFFF9992,
+  ),
+  releaseTag("dvd[ ._-]?rip") to PlaybackFormatBadge(
+    "DVDRip",
+    "source/dvd-rip.svg",
+    lightTintArgb = 0xFF80621E,
+    darkTintArgb = 0xFFF0C66D,
+  ),
+  releaseTag("dvd[ ._-]?scr") to PlaybackFormatBadge(
+    "DVDScr",
+    "source/dvd-screener.svg",
+    lightTintArgb = 0xFF865B22,
+    darkTintArgb = 0xFFE9B96B,
+  ),
+  releaseTag("dvd[ ._-]?video") to PlaybackFormatBadge(
+    "DVD Video",
+    "source/dvd-video.svg",
+    lightTintArgb = 0xFF536274,
+    darkTintArgb = 0xFFC4CFDD,
+  ),
+  releaseTag("r5") to PlaybackFormatBadge(
+    "R5",
+    "source/r5.svg",
+    lightTintArgb = 0xFF624AAB,
+    darkTintArgb = 0xFFB8A2FF,
+  ),
+  releaseTag("seadex") to PlaybackFormatBadge(
+    "SeaDex",
+    "source/seadex.svg",
+    lightTintArgb = 0xFF14786F,
+    darkTintArgb = 0xFF74DCCF,
+  ),
 )
 
 private val HDR_METADATA_FIELDS = setOf("hdr_format", "hdr_format_commercial", "video_range_type")
@@ -408,6 +710,11 @@ private val HDR10_TAG = Regex("""\bhdr[ ._-]?10\b""", RegexOption.IGNORE_CASE)
 private val HDR_TAG = Regex("""\bhdr\b""", RegexOption.IGNORE_CASE)
 private val HLG_TAG = Regex("""\bhlg\b""", RegexOption.IGNORE_CASE)
 private val IMAX_ENHANCED = Regex("""\bimax[ ._-]+enhanced\b""", RegexOption.IGNORE_CASE)
+private val IMAX_TAG = Regex("""\bimax\b""", RegexOption.IGNORE_CASE)
+private val SDR_TAG = Regex("""\bsdr\b""", RegexOption.IGNORE_CASE)
+private val SDR_TRANSFERS = setOf(
+  "bt.1886", "bt.709", "bt.601", "smpte-170m", "smpte-240m", "srgb", "gamma2.2", "gamma2.8",
+)
 private val STEREOSCOPIC_MODES = setOf(
   "sbs2l", "sbs2r", "sbsl", "sbsr", "abl", "abr", "ab2l", "ab2r", "tbl", "tbr", "tb2l", "tb2r",
   "irl", "irr", "icl", "icr", "chl", "chr", "al", "ar", "ml", "mr",

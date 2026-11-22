@@ -10,6 +10,7 @@ import app.gyrolet.mpvrx.ui.player.hdrBadges
 import app.gyrolet.mpvrx.ui.player.resolutionBadge
 import app.gyrolet.mpvrx.ui.player.sourceBadge
 import app.gyrolet.mpvrx.ui.player.subtitleBadge
+import app.gyrolet.mpvrx.ui.player.subtitleFormatBadge
 import app.gyrolet.mpvrx.ui.player.videoCodecBadge
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import java.util.Locale
@@ -24,6 +25,7 @@ internal fun MediaInfoOps.MediaInfoData.overviewBadges(fileName: String): List<P
       else -> container
     }
     sourceBadge(mpvContainer, fileName, general.completeName.substringAfterLast('/').substringAfterLast('\\'))?.let(::add)
+    subtitleFormatBadge(codec = general.format, externalFilename = fileName)?.let(::add)
     videoStreams.forEach { addAll(it.formatBadges()) }
     audioStreams.forEach { addAll(it.formatBadges()) }
     textStreams.forEach { addAll(it.formatBadges()) }
@@ -87,9 +89,16 @@ internal fun MediaInfoOps.TextStreamInfo.formatBadges(): List<PlaybackFormatBadg
   val formatName = format.lowercase(Locale.ROOT)
   val closedCaptions = formatName in setOf("eia-608", "cea-608", "eia-708", "cea-708")
   val isSdh = hearingImpaired || SDH_TITLE.containsMatchIn(title)
-  return listOfNotNull(
-    subtitleBadge(if (closedCaptions) formatName.replace('-', '_') else formatName, isSdh) ?: format.textBadge(),
+  val formatBadge = subtitleFormatBadge(
+    codec = format,
+    codecDescription = listOf(codecId, codecIdInfo, muxingMode).filter(String::isNotBlank).joinToString(" "),
   )
+  val captionBadge = subtitleBadge(if (closedCaptions) formatName.replace('-', '_') else formatName, isSdh)
+  return buildList {
+    formatBadge?.let(::add)
+    captionBadge?.let(::add)
+    if (isEmpty()) format.textBadge()?.let(::add)
+  }
 }
 
 private fun String.textBadge(): PlaybackFormatBadge? =
