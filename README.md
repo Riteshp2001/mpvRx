@@ -326,7 +326,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 
 | Feature | Description |
 |---|---|
-| **Stats Page 7** | Live system monitor: FPS, dropped frames, codecs, network sparkline, battery |
+| **Playback Statistics** | The native Statistics overlay and gesture guide follow the app language. Page 7 shows time, network, battery, thermals, CPU, memory, and cache information. |
 | **Video Compressor** | Built-in FFmpeg-based compression with presets |
 | **12 Video Filter Presets** | Vivid, Cinematic, Dramatic, Ghibli Style, Neon Pop, Deep Black, and more |
 | **Custom Skip Segments** | Intro/outro/recap/credits/preview detection from IntroDB, TIDB v3, AniSkip v2, Anime Skip, and SkipDB (requires an IMDb ID). Hybrid uses one validated provider result; duration-aware caches keep release versions separate. |

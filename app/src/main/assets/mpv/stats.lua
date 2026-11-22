@@ -14,6 +14,18 @@ local mp = require 'mp'
 local utils = require 'mp.utils'
 local input = require 'mp.input'
 
+local labels = {}
+local case_fold = {}
+
+-- The English source is also the fallback when the script runs outside mpvRx.
+local function tr(text)
+    return labels[text] or text
+end
+
+local function search_lower(text)
+    return (text:lower():gsub("[\194-\244][\128-\191]+", case_fold))
+end
+
 -- Options
 local o = {
     -- Default key bindings
@@ -180,6 +192,9 @@ local function no_ASS(t)
     end
 end
 
+local function label(text)
+    return no_ASS(tr(text))
+end
 
 local function bold(t)
     return o.b1 .. t .. o.b0
@@ -631,11 +646,10 @@ local function sorted_keys(t, comp_fn)
 end
 
 local function scroll_hint(search)
-    local hint = format("(hint: swipe or scroll with %s/%s", o.key_scroll_up, o.key_scroll_down)
-    if search then
-        hint = hint .. " and search with " .. o.key_search
-    end
-    hint = hint .. ")"
+    local hint = search and format(tr("(Swipe or scroll with %s/%s; search with %s)"),
+                                   o.key_scroll_up, o.key_scroll_down, o.key_search)
+        or format(tr("(Swipe or scroll with %s/%s)"), o.key_scroll_up, o.key_scroll_down)
+    hint = no_ASS(hint)
     if not o.use_ass then return " " .. hint end
     return format(" {\\fs%s}%s{\\fs%s}", font_size * 0.66, hint, font_size)
 end
@@ -689,8 +703,8 @@ local function append_perfdata(header, s, dedicated_page)
     local h = dedicated_page and header or s
     h[#h+1] = format("%s%s%s%s%s%s%s%s",
                      dedicated_page and "" or o.nl, dedicated_page and "" or o.indent,
-                     bold("Frame Timings:"), o.prefix_sep, font_small,
-                     "(last/average/peak μs)", font_normal,
+                     bold(label("Frame Timings:")), o.prefix_sep, font_small,
+                     tr("(last/average/peak μs)"), font_normal,
                      dedicated_page and scroll_hint() or "")
 
     for _,frame in ipairs(sorted_keys(vo_p)) do  -- ensure fixed display order
@@ -699,7 +713,7 @@ local function append_perfdata(header, s, dedicated_page)
 
         if dedicated_page then
             s[#s+1] = format("%s%s%s:", o.nl, o.indent,
-                             bold(frame:gsub("^%l", string.upper)))
+                             bold(label((frame:gsub("^%l", string.upper)))))
 
             for _, pass in ipairs(data) do
                 s[#s+1] = format(f, o.nl, o.indent, o.indent,
@@ -717,17 +731,17 @@ local function append_perfdata(header, s, dedicated_page)
                 end
             end
 
-            -- Print sum of timing values as "Total"
+            -- Print sum of timing values as tr("Total")
             s[#s+1] = format(f, o.nl, o.indent, o.indent,
                              font_mono, pp(last_s[frame]),
                              pp(avg_s[frame]), pp(peak_s[frame]),
-                             o.prefix_sep, bold("Total"), font, "", "", "")
+                             o.prefix_sep, bold(label("Total")), font, "", "", "")
         else
             -- for the simplified view, we just print the sum of each pass
             s[#s+1] = format(f, o.nl, o.indent, o.indent, font_mono,
                             pp(last_s[frame]), pp(avg_s[frame]), pp(peak_s[frame]),
                             "", "", font, o.prefix_sep, o.prefix_sep,
-                            frame:gsub("^%l", string.upper))
+                            label((frame:gsub("^%l", string.upper))))
         end
     end
 end
@@ -768,7 +782,7 @@ local function cmd_subject(cmd)
     -- return the first sub-word of tok which is not a useless prefix
     repeat subw, tok = tok:match("([^_]*)_?(.*)")
     until tok == "" or not name_prefixes[subw]
-    return subw:len() > 1 and subw or "[unknown]"
+    return subw:len() > 1 and subw or tr("[unknown]")
 end
 
 -- key names are valid UTF-8, ascii7 except maybe the last/only codepoint.
@@ -858,25 +872,26 @@ local function get_gesture_info_lines()
     for _, group in ipairs(gesture_reference) do
         local matches = {}
         for _, gesture in ipairs(group[2]) do
-            local search = ("gestures " .. group[1] .. " " .. gesture[1] .. " " .. gesture[2]):lower()
+            local search = search_lower(table.concat({tr("Gestures"), tr(group[1]), tr(gesture[1]),
+                tr(gesture[2]), "gestures", group[1], gesture[1], gesture[2]}, " "))
             if searched_text == nil or search:find(searched_text, 1, true) then
                 matches[#matches + 1] = gesture
             end
         end
         if #matches > 0 then
             if #lines == 0 then
-                append(lines, "", {prefix="Gestures", indent=""})
-                append(lines, "Availability and tap actions follow Settings.", {indent=""})
+                append(lines, "", {prefix=label("Gestures"), indent=""})
+                append(lines, tr("Availability and tap actions follow Settings."), {indent=""})
             end
-            local title = bold(group[1])
+            local title = bold(label(group[1]))
             if o.use_ass then
                 title = format("{\\fnmpv-osd-symbols}%s{\\fn%s}%s%s",
                                gesture_group_icons[group[1]], o.font, o.prefix_sep, title)
             end
             append(lines, "", {prefix=title, no_prefix_markup=true, indent="", nl=o.nl .. o.nl})
             for _, gesture in ipairs(matches) do
-                append(lines, "", {prefix=gesture[1], prefix_sep=""})
-                append(lines, gesture[2], {indent=o.indent .. o.indent})
+                append(lines, "", {prefix=label(gesture[1]), prefix_sep=""})
+                append(lines, tr(gesture[2]), {indent=o.indent .. o.indent})
             end
         end
     end
@@ -907,7 +922,7 @@ local function get_kbinfo_lines()
         bind.subject = cmd_subject(bind.cmd)
         if bind.subject ~= "ignore" and (
                 searched_text == nil or
-                (bind.key .. bind.cmd .. (bind.comment or "")):lower():find(searched_text, 1, true)
+                search_lower(bind.key .. bind.cmd .. (bind.comment or "")):find(searched_text, 1, true)
             )
         then
             ordered[#ordered+1] = bind
@@ -955,14 +970,16 @@ local function get_kbinfo_lines()
     -- create the display lines
     local info_lines = get_gesture_info_lines()
     if #ordered > 0 then
-        append(info_lines, "", {prefix="Active Key Bindings", indent="", nl=o.nl .. o.nl})
+        append(info_lines, "", {prefix=label("Active Key Bindings"), indent="", nl=o.nl .. o.nl})
     end
     local subject = nil
     for _, bind in ipairs(ordered) do
         if bind.subject ~= subject then  -- new subject (title)
             subject = bind.subject
             append(info_lines, "", {})
-            append(info_lines, "", { prefix = spre .. subject .. spost })
+            local script_name = subject:match("^script: (.+)$")
+            local heading = script_name and format(tr("script: %s"), script_name) or subject
+            append(info_lines, "", { prefix = spre .. no_ASS(heading) .. spost })
         end
         if bind.comment then
             bind.cmd = bind.cmd .. "  # " .. bind.comment
@@ -1002,13 +1019,13 @@ local function append_display_sync(s)
                         {prefix="DS:" .. o.prefix_sep .. " - / ", prefix_sep=""})
     end
 
-    append_property(s, "mistimed-frame-count", {prefix="Mistimed:", nl="",
+    append_property(s, "mistimed-frame-count", {prefix=label("Mistimed:"), nl="",
                                                 indent=o.prefix_sep .. o.prefix_sep})
-    append_property(s, "vo-delayed-frame-count", {prefix="Delayed:", nl="",
+    append_property(s, "vo-delayed-frame-count", {prefix=label("Delayed:"), nl="",
                                                   indent=o.prefix_sep .. o.prefix_sep})
 
-    local vr = append_property(s, "vsync-ratio", {prefix="VSync Ratio:"})
-    append_property(s, "vsync-jitter", {prefix="VSync Jitter:",
+    local vr = append_property(s, "vsync-ratio", {prefix=label("VSync Ratio:")})
+    append_property(s, "vsync-jitter", {prefix=label("VSync Jitter:"),
                         nl=vr and "" or o.nl,
                         indent=vr and o.prefix_sep .. o.prefix_sep})
 end
@@ -1021,7 +1038,7 @@ local function append_filters(s, prop, prefix)
     for _,f in ipairs(mp.get_property_native(prop, {})) do
         local n = f.name
         if f.enabled ~= nil and not f.enabled then
-            n = n .. " (disabled)"
+            n = n .. " " .. tr("(disabled)")
         end
 
         if f.label ~= nil then
@@ -1061,14 +1078,14 @@ end
 
 
 local function add_file(s, print_cache, print_tags)
-    append(s, "", {prefix="File:", nl="", indent=""})
+    append(s, "", {prefix=label("File:"), nl="", indent=""})
     append_property(s, "filename", {prefix_sep="", nl="", indent=""})
     if mp.get_property_osd("filename") ~= mp.get_property_osd("media-title") then
-        append_property(s, "media-title", {prefix="Title:"})
+        append_property(s, "media-title", {prefix=label("Title:")})
     end
 
     if print_tags then
-        append_property(s, "duration", {prefix="Duration:"})
+        append_property(s, "duration", {prefix=label("Duration:")})
         local tags = mp.get_property_native("display-tags")
         local tags_displayed = 0
         for _, tag in ipairs(tags) do
@@ -1086,7 +1103,7 @@ local function add_file(s, print_cache, print_tags)
     local ed_cond = (edition and editions > 1)
     if ed_cond then
         append_property(s, "edition-list/" .. tostring(edition) .. "/title",
-                       {prefix="Edition:"})
+                       {prefix=label("Edition:")})
         append_property(s, "edition-list/count",
                         {prefix="(" .. tostring(edition + 1) .. "/", suffix=")", nl="",
                          indent=" ", prefix_sep=" ", no_prefix_markup=true})
@@ -1094,15 +1111,15 @@ local function add_file(s, print_cache, print_tags)
 
     local ch_index = mp.get_property_number("chapter")
     if ch_index and ch_index >= 0 then
-        append_property(s, "chapter-list/" .. tostring(ch_index) .. "/title", {prefix="Chapter:",
+        append_property(s, "chapter-list/" .. tostring(ch_index) .. "/title", {prefix=label("Chapter:"),
                         nl=ed_cond and "" or o.nl})
         append_property(s, "chapter-list/count",
                         {prefix="(" .. tostring(ch_index + 1) .. " /", suffix=")", nl="",
                          indent=" ", prefix_sep=" ", no_prefix_markup=true})
     end
 
-    local fs = append_property(s, "file-size", {prefix="Size:"})
-    append_property(s, "file-format", {prefix="Format/Protocol:",
+    local fs = append_property(s, "file-size", {prefix=label("Size:")})
+    append_property(s, "file-format", {prefix=label("Format/Protocol:"),
                                        nl=fs and "" or o.nl,
                                        indent=fs and o.prefix_sep .. o.prefix_sep})
 
@@ -1118,8 +1135,8 @@ local function add_file(s, print_cache, print_tags)
     end
     local demuxer_secs = mp.get_property_number("demuxer-cache-duration", 0)
     if demuxer_cache + demuxer_secs > 0 then
-        append(s, utils.format_bytes_humanized(demuxer_cache), {prefix="Total Cache:"})
-        append(s, format("%.1f", demuxer_secs), {prefix="(", suffix=" sec)", nl="",
+        append(s, utils.format_bytes_humanized(demuxer_cache), {prefix=label("Total Cache:")})
+        append(s, format("%.1f", demuxer_secs), {prefix="(", suffix=" s)", nl="",
                no_prefix_markup=true, prefix_sep="", indent=o.prefix_sep})
     end
 end
@@ -1204,7 +1221,7 @@ local function append_hdr(s, hdr, video_out)
     end
 
     -- If we are printing video out parameters it is just display, not mastering
-    local display_prefix = video_out and "Display:" or "Mastering display:"
+    local display_prefix = video_out and label("Display:") or label("Mastering display:")
 
     local indent = ""
     local has_dml = has(hdr["min-luma"], 0.203) or has(hdr["max-luma"], 203)
@@ -1240,16 +1257,16 @@ local function append_hdr(s, hdr, video_out)
                          hdr["scene-max-g"] or 0, hdr["scene-max-b"] or 0),
                {prefix="MaxRGB:", suffix=" cd/m²", nl="", indent=""})
         append(s, format("%.1f", hdr["scene-avg"] or 0),
-               {prefix="Avg:", suffix=" cd/m²", nl="", indent=indent})
+               {prefix=label("Avg:"), suffix=" cd/m²", nl="", indent=indent})
     end
 
     if hdr["max-pq-y"] and hdr["avg-pq-y"] then
         append(s, "", {prefix="PQ(Y):"})
         append(s, format("%.2f cd/m² (%.2f%% PQ)", pq_eotf(hdr["max-pq-y"]),
-                         hdr["max-pq-y"] * 100), {prefix="Max:", nl="",
+                         hdr["max-pq-y"] * 100), {prefix=label("Max:"), nl="",
                          indent=""})
         append(s, format("%.2f cd/m² (%.2f%% PQ)", pq_eotf(hdr["avg-pq-y"]),
-                         hdr["avg-pq-y"] * 100), {prefix="Avg:", nl="",
+                         hdr["avg-pq-y"] * 100), {prefix=label("Avg:"), nl="",
                          indent=indent})
     end
 end
@@ -1260,26 +1277,26 @@ local function append_img_params(s, r, ro)
         return
     end
 
-    append_resolution(s, r, "Resolution:", "w", "h", true)
+    append_resolution(s, r, label("Resolution:"), "w", "h", true)
     if ro and (r["w"] ~= ro["dw"] or r["h"] ~= ro["dh"]) then
         if ro["crop-w"] and (crop_noop(r["w"], r["h"], ro) or crop_equal(r, ro)) then
             ro["crop-w"] = nil
         end
-        append_resolution(s, ro, "Output Resolution:", "dw", "dh")
+        append_resolution(s, ro, label("Output Resolution:"), "dw", "dh")
     end
 
     local indent = o.prefix_sep .. o.prefix_sep
     r = ro or r
 
     local pixel_format = r["hw-pixelformat"] or r["pixelformat"]
-    append(s, pixel_format, {prefix="Format:"})
-    append(s, r["colorlevels"], {prefix="Levels:", nl="", indent=indent})
+    append(s, pixel_format, {prefix=label("Format:")})
+    append(s, r["colorlevels"], {prefix=label("Levels:"), nl="", indent=indent})
     if r["chroma-location"] and r["chroma-location"] ~= "unknown" then
-        append(s, r["chroma-location"], {prefix="Chroma Loc:", nl="", indent=indent})
+        append(s, r["chroma-location"], {prefix=label("Chroma Loc:"), nl="", indent=indent})
     end
 
     -- Group these together to save vertical space
-    append(s, r["colormatrix"], {prefix="Colormatrix:"})
+    append(s, r["colormatrix"], {prefix=label("Colormatrix:")})
     if r["prim-red-x"] or r["prim-red-y"] or
        r["prim-green-x"] or r["prim-green-y"] or
        r["prim-blue-x"] or r["prim-blue-y"] or
@@ -1289,13 +1306,13 @@ local function append_img_params(s, r, ro)
                                 r["prim-green-x"] or 0, r["prim-green-y"] or 0,
                                 r["prim-blue-x"] or 0, r["prim-blue-y"] or 0,
                                 r["prim-white-x"] or 0, r["prim-white-y"] or 0),
-            {prefix="Primaries:", nl="", indent=indent})
-        append(s, r["primaries"], {prefix="in", nl="", indent=" ", prefix_sep=" ",
+            {prefix=label("Primaries:"), nl="", indent=indent})
+        append(s, r["primaries"], {prefix=label("in"), nl="", indent=" ", prefix_sep=" ",
                                    no_prefix_markup=true})
     else
-        append(s, r["primaries"], {prefix="Primaries:", nl="", indent=indent})
+        append(s, r["primaries"], {prefix=label("Primaries:"), nl="", indent=indent})
     end
-    append(s, r["gamma"], {prefix="Transfer:", nl="", indent=indent})
+    append(s, r["gamma"], {prefix=label("Transfer:"), nl="", indent=indent})
 end
 
 
@@ -1304,9 +1321,9 @@ local function append_fps(s, prop, eprop)
     local efps = mp.get_property_osd(eprop)
     local single = eprop == "" or (fps ~= "" and efps ~= "" and fps == efps)
     local unit = prop == "display-fps" and " Hz" or " fps"
-    local suffix = single and "" or " (specified)"
-    local esuffix = single and "" or " (estimated)"
-    local prefix = prop == "display-fps" and "Refresh Rate:" or "Frame Rate:"
+    local suffix = single and "" or " " .. label("(specified)")
+    local esuffix = single and "" or " " .. label("(estimated)")
+    local prefix = prop == "display-fps" and label("Refresh Rate:") or label("Frame Rate:")
     local nl = o.nl
     local indent = o.indent
 
@@ -1329,26 +1346,26 @@ local function add_video_out(s)
         return
     end
 
-    append(s, "", {prefix="Display:", nl=o.nl .. o.nl, indent=""})
+    append(s, "", {prefix=label("Display:"), nl=o.nl .. o.nl, indent=""})
     append(s, vo, {prefix_sep="", nl="", indent=""})
 
     append_property(s, "display-names", {prefix_sep="", prefix="(", suffix=")",
                     no_prefix_markup=true, nl="", indent=" "}, nil, true)
     append(s, mp.get_property_native("current-gpu-context"),
-           {prefix="Context:", nl="", indent=o.prefix_sep .. o.prefix_sep})
+           {prefix=label("Context:"), nl="", indent=o.prefix_sep .. o.prefix_sep})
     local av = append_sync(s, "avsync", {prefix="A-V:"})
-    append_sync(s, "vo-presentation-delay", {prefix="Presentation:", nl=av and "" or o.nl,
+    append_sync(s, "vo-presentation-delay", {prefix=label("Presentation:"), nl=av and "" or o.nl,
                                              indent=av and o.prefix_sep .. o.prefix_sep})
     append_fps(s, "display-fps", "estimated-display-fps")
     if append_property(s, "decoder-frame-drop-count",
-                       {prefix="Dropped Frames:", suffix=" (decoder)"}) then
-        append_property(s, "frame-drop-count", {suffix=" (output)", nl="", indent=""})
+                       {prefix=label("Dropped Frames:"), suffix=" " .. label("(decoder)")}) then
+        append_property(s, "frame-drop-count", {suffix=" " .. label("(output)"), nl="", indent=""})
     end
     append_display_sync(s)
     append_perfdata(nil, s, false)
 
     if mp.get_property_native("deinterlace-active") then
-        append_property(s, "deinterlace", {prefix="Deinterlacing:"})
+        append_property(s, "deinterlace", {prefix=label("Deinterlacing:")})
     end
 
     local scale = nil
@@ -1370,7 +1387,7 @@ local function add_video_out(s)
     if not rt then
         r["w"] = r["crop-w"]
         r["h"] = r["crop-h"]
-        append_resolution(s, r, "Resolution:", "w", "h", true)
+        append_resolution(s, r, label("Resolution:"), "w", "h", true)
         return
     end
 
@@ -1391,7 +1408,7 @@ local function add_video(s)
     end
 
     local track = mp.get_property_native("current-tracks/video")
-    local track_type = (track and track.image) and "Image:" or "Video:"
+    local track_type = (track and track.image) and label("Image:") or label("Video:")
     append(s, "", {prefix=track_type, nl=o.nl .. o.nl, indent=""})
     if track and append(s, track["codec-desc"], {prefix_sep="", nl="", indent=""}) then
         append(s, track["codec-profile"], {prefix="[", nl="", indent=" ", prefix_sep="",
@@ -1406,7 +1423,7 @@ local function add_video(s)
     end
     local has_prefix = false
     if o.show_frame_info then
-        if append_property(s, "estimated-frame-number", {prefix="Frame:"}) then
+        if append_property(s, "estimated-frame-number", {prefix=label("Frame:")}) then
             append_property(s, "estimated-frame-count", {indent=" / ", nl="",
                                                         prefix_sep=""})
             has_prefix = true
@@ -1415,26 +1432,27 @@ local function add_video(s)
         if frame_info and frame_info["picture-type"] then
             local attrs = has_prefix and {prefix="(", suffix=")", indent=" ", nl="",
                                           prefix_sep="", no_prefix_markup=true}
-                                      or {prefix="Picture Type:"}
+                                      or {prefix=label("Picture Type:")}
             append(s, frame_info["picture-type"], attrs)
             has_prefix = true
         end
         if frame_info and frame_info["interlaced"] then
             local attrs = has_prefix and {indent=" ", nl="", prefix_sep=""}
-                                      or {prefix="Picture Type:"}
-            append(s, "Interlaced", attrs)
+                                      or {prefix=label("Picture Type:")}
+            append(s, tr("Interlaced"), attrs)
         end
 
         local timecodes = {
             ["gop-timecode"] = "GOP",
             ["smpte-timecode"] = "SMPTE",
-            ["estimated-smpte-timecode"] = "Estimated SMPTE",
+            ["estimated-smpte-timecode"] = tr("Estimated SMPTE"),
         }
         for prop, name in pairs(timecodes) do
             if frame_info and frame_info[prop] then
-                local attrs = has_prefix and {prefix=name .. " Timecode:",
+                local timecode = no_ASS(format(tr("%s Timecode:"), name))
+                local attrs = has_prefix and {prefix=timecode,
                                               indent=o.prefix_sep .. o.prefix_sep, nl=""}
-                                          or {prefix=name .. " Timecode:"}
+                                          or {prefix=timecode}
                 append(s, frame_info[prop], attrs)
                 break
             end
@@ -1446,8 +1464,8 @@ local function add_video(s)
     end
     append_img_params(s, r, ro)
     append_hdr(s, ro)
-    append_property(s, "video-bitrate", {prefix="Bitrate:"})
-    append_filters(s, "vf", "Filters:")
+    append_property(s, "video-bitrate", {prefix=label("Bitrate:")})
+    append_filters(s, "vf", label("Filters:"))
 end
 
 
@@ -1462,7 +1480,7 @@ local function add_motion(s)
 
     append(s, info.state, {prefix="MEMC:"})
     if info["target-fps"] > 0 then
-        append(s, format("target %d fps", info["target-fps"]),
+        append(s, format(tr("target %d fps"), info["target-fps"]),
                {prefix="(", suffix=")", nl="", indent=" ", prefix_sep="",
                 no_prefix_markup=true})
     end
@@ -1475,14 +1493,14 @@ local function add_motion(s)
         local seconds = (info["timestamp-ns"] - last["timestamp-ns"]) / 1e9
         local submitted = info["swapchain-submissions"] - last["swapchain-submissions"]
         local synthesized = info["synthesis-submissions"] - last["synthesis-submissions"]
-        append(s, format("%.1f/s, synthesis %.1f/s", submitted / seconds,
-                         synthesized / seconds), {prefix="MEMC submissions:"})
+        append(s, format(tr("%.1f/s, synthesis %.1f/s"), submitted / seconds,
+                         synthesized / seconds), {prefix=label("MEMC submissions:")})
     end
     if info["last-analysis-width"] and info["last-analysis-height"] and
        info["last-synthesis-width"] and info["last-synthesis-height"] then
         append(s, format("%dx%d ➜ %dx%d", info["last-analysis-width"],
                          info["last-analysis-height"], info["last-synthesis-width"],
-                         info["last-synthesis-height"]), {prefix="Last motion resolution:"})
+                         info["last-synthesis-height"]), {prefix=label("Last motion resolution:")})
     end
 end
 
@@ -1503,7 +1521,7 @@ local function add_audio(s)
         return (a == b or a == nil) and a or (a .. " ➜ " .. b)
     end
 
-    append(s, "", {prefix="Audio:", nl=o.nl .. o.nl, indent=""})
+    append(s, "", {prefix=label("Audio:"), nl=o.nl .. o.nl, indent=""})
     local track = mp.get_property_native("current-tracks/audio")
     if track then
         append(s, track["codec-desc"], {prefix_sep="", nl="", indent=""})
@@ -1519,33 +1537,33 @@ local function add_audio(s)
     if output and output.format then
         local output_type = "PCM"
         if output.format:match("^spdif%-") then
-            output_type = "Passthrough (IEC61937)"
+            output_type = tr("Passthrough (IEC61937)")
         elseif output.format:match("^raw%-") then
-            output_type = "Passthrough (raw)"
+            output_type = tr("Passthrough (raw)")
         elseif output.format == "dop" then
-            output_type = "Passthrough (DoP)"
+            output_type = tr("Passthrough (DoP)")
         elseif output.format == "dsd" then
             output_type = "DSD"
         end
-        append(s, output_type, {prefix="Output:"})
+        append(s, output_type, {prefix=label("Output:")})
         if mp.get_property_native("audio-passthrough-failed", false) then
-            append(s, "Passthrough output initialization failed", {prefix="Fallback:"})
+            append(s, tr("Passthrough output initialization failed"), {prefix=label("Fallback:")})
         end
     end
-    local dev = append_property(s, "audio-device", {prefix="Device:"})
-    local ao_mute = mp.get_property_native("ao-mute") and " (Muted)" or ""
-    append_property(s, "ao-volume", {prefix="AO Volume:", suffix="%" .. ao_mute,
+    local dev = append_property(s, "audio-device", {prefix=label("Device:")})
+    local ao_mute = mp.get_property_native("ao-mute") and " " .. label("(Muted)") or ""
+    append_property(s, "ao-volume", {prefix=label("AO Volume:"), suffix="%" .. ao_mute,
                                      nl=dev and "" or o.nl,
                                      indent=dev and o.prefix_sep .. o.prefix_sep})
     if math.abs(mp.get_property_native("audio-delay")) > 1e-6 then
-        append_property(s, "audio-delay", {prefix="A-V delay:"})
+        append_property(s, "audio-delay", {prefix=label("A-V delay:")})
     end
-    local cc = append(s, merge(r, ro, "channel-count"), {prefix="Channels:"})
-    append(s, merge(r, ro, "format"), {prefix="Format:", nl=cc and "" or o.nl,
+    local cc = append(s, merge(r, ro, "channel-count"), {prefix=label("Channels:")})
+    append(s, merge(r, ro, "format"), {prefix=label("Format:"), nl=cc and "" or o.nl,
                             indent=cc and o.prefix_sep .. o.prefix_sep})
-    append(s, merge(r, ro, "samplerate"), {prefix="Sample Rate:", suffix=" Hz"})
-    append_property(s, "audio-bitrate", {prefix="Bitrate:"})
-    append_filters(s, "af", "Filters:")
+    append(s, merge(r, ro, "samplerate"), {prefix=label("Sample Rate:"), suffix=" Hz"})
+    append_property(s, "audio-bitrate", {prefix=label("Bitrate:")})
+    append_filters(s, "af", label("Filters:"))
 end
 
 
@@ -1647,7 +1665,7 @@ local function keybinding_info(after_scroll, bindlist)
     local header = {}
     local page = pages[o.key_page_4]
     add_header(header)
-    local prefix = bindlist and page.desc or page.desc .. ":" .. scroll_hint(true)
+    local prefix = bindlist and label(page.desc) or label(page.desc) .. ":" .. scroll_hint(true)
     append(header, "", {prefix=prefix, nl="", indent=""})
     header = {table.concat(header)}
 
@@ -1687,29 +1705,30 @@ local function add_track(c, t, i)
         return
     end
 
-    local type = t.image and "Image" or t["type"]:sub(1, 1):upper() .. t["type"]:sub(2)
-    append(c, "", {prefix=type .. ":", nl=o.nl .. o.nl, indent=""})
+    local types = {video = "Video:", audio = "Audio:", sub = "Subtitles:"}
+    local type = t.image and "Image:" or types[t.type] or (t.type .. ":")
+    append(c, "", {prefix=label(type), nl=o.nl .. o.nl, indent=""})
     append(c, t["title"], {prefix_sep="", nl="", indent=""})
     append(c, t["id"], {prefix="ID:"})
-    append(c, t["src-id"], {prefix="Demuxer ID:", nl="", indent=o.prefix_sep .. o.prefix_sep})
-    append(c, t["program-id"], {prefix="Program ID:", nl="", indent=o.prefix_sep .. o.prefix_sep})
-    append(c, t["ff-index"], {prefix="FFmpeg Index:", nl="", indent=o.prefix_sep .. o.prefix_sep})
-    append(c, t["external-filename"], {prefix="File:"})
-    append(c, "", {prefix="Flags:"})
+    append(c, t["src-id"], {prefix=label("Demuxer ID:"), nl="", indent=o.prefix_sep .. o.prefix_sep})
+    append(c, t["program-id"], {prefix=label("Program ID:"), nl="", indent=o.prefix_sep .. o.prefix_sep})
+    append(c, t["ff-index"], {prefix=label("FFmpeg Index:"), nl="", indent=o.prefix_sep .. o.prefix_sep})
+    append(c, t["external-filename"], {prefix=label("File:")})
+    append(c, "", {prefix=label("Flags:")})
     local flags = {"default", "forced", "dependent", "visual-impaired",
                    "hearing-impaired", "original", "commentary", "image",
                    "albumart", "external"}
     local any = false
     for _, flag in ipairs(flags) do
         if t[flag] then
-            append(c, flag, {prefix=any and ", " or "", nl="", indent="", prefix_sep=""})
+            append(c, tr(flag), {prefix=any and ", " or "", nl="", indent="", prefix_sep=""})
             any = true
         end
     end
     if not any then
         table.remove(c)
     end
-    if append(c, t["codec-desc"], {prefix="Codec:"}) then
+    if append(c, t["codec-desc"], {prefix=label("Codec:")}) then
         append(c, t["codec-profile"], {prefix="[", nl="", indent=" ", prefix_sep="",
                no_prefix_markup=true, suffix="]"})
         if t["codec"] ~= t["decoder"] then
@@ -1717,50 +1736,50 @@ local function add_track(c, t, i)
                    no_prefix_markup=true, suffix="]"})
         end
     end
-    append(c, t["lang"], {prefix="Language:"})
-    append(c, t["demux-channel-count"], {prefix="Channels:"})
-    append(c, t["demux-channels"], {prefix="Channel Layout:"})
-    append(c, t["demux-samplerate"], {prefix="Sample Rate:", suffix=" Hz"})
+    append(c, t["lang"], {prefix=label("Language:")})
+    append(c, t["demux-channel-count"], {prefix=label("Channels:")})
+    append(c, t["demux-channels"], {prefix=label("Channel Layout:")})
+    append(c, t["demux-samplerate"], {prefix=label("Sample Rate:"), suffix=" Hz"})
     local function B(b) return b and string.format("%.2f", b / 1024) end
-    local bitrate = append(c, B(t["demux-bitrate"]), {prefix="Bitrate:", suffix=" kbps"})
-    append(c, B(t["hls-bitrate"]), {prefix="HLS Bitrate:", suffix=" kbps",
+    local bitrate = append(c, B(t["demux-bitrate"]), {prefix=label("Bitrate:"), suffix=" kbps"})
+    append(c, B(t["hls-bitrate"]), {prefix=label("HLS Bitrate:"), suffix=" kbps",
                                     nl=bitrate and "" or o.nl,
                                     indent=bitrate and o.prefix_sep .. o.prefix_sep})
     append_resolution(c, {w=t["demux-w"], h=t["demux-h"], ["crop-x"]=t["demux-crop-x"],
                           ["crop-y"]=t["demux-crop-y"], ["crop-w"]=t["demux-crop-w"],
-                          ["crop-h"]=t["demux-crop-h"]}, "Resolution:")
+                          ["crop-h"]=t["demux-crop-h"]}, tr("Resolution:"))
     if not t["image"] and t["demux-fps"] then
         append_fps(c, "track-list/" .. i .. "/demux-fps", "")
     end
-    append(c, t["format-name"], {prefix="Format:"})
-    append(c, t["demux-rotation"], {prefix="Rotation:"})
+    append(c, t["format-name"], {prefix=label("Format:")})
+    append(c, t["demux-rotation"], {prefix=label("Rotation:")})
     if t["demux-par"] then
         local num, den = float2rational(t["demux-par"])
-        append(c, string.format("%d:%d", num, den), {prefix="Pixel Aspect Ratio:"})
+        append(c, string.format("%d:%d", num, den), {prefix=label("Pixel Aspect Ratio:")})
     end
     local track_rg = t["replaygain-track-peak"] ~= nil or t["replaygain-track-gain"] ~= nil
     local album_rg = t["replaygain-album-peak"] ~= nil or t["replaygain-album-gain"] ~= nil
     if track_rg or album_rg then
-        append(c, "", {prefix="Replay Gain:"})
+        append(c, "", {prefix=label("Replay Gain:")})
     end
     if track_rg then
-        append(c, "", {prefix="Track:", indent=o.indent .. o.prefix_sep, prefix_sep=""})
-        append(c, t["replaygain-track-gain"], {prefix="Gain:", suffix=" dB",
+        append(c, "", {prefix=label("Track:"), indent=o.indent .. o.prefix_sep, prefix_sep=""})
+        append(c, t["replaygain-track-gain"], {prefix=label("Gain:"), suffix=" dB",
                                                nl="", indent=o.prefix_sep})
-        append(c, t["replaygain-track-peak"], {prefix="Peak:", suffix=" dB",
+        append(c, t["replaygain-track-peak"], {prefix=label("Peak:"), suffix=" dB",
                                                nl="", indent=o.prefix_sep})
     end
     if album_rg then
-        append(c, "", {prefix="Album:", indent=o.indent .. o.prefix_sep, prefix_sep=""})
-        append(c, t["replaygain-album-gain"], {prefix="Gain:", suffix=" dB",
+        append(c, "", {prefix=label("Album:"), indent=o.indent .. o.prefix_sep, prefix_sep=""})
+        append(c, t["replaygain-album-gain"], {prefix=label("Gain:"), suffix=" dB",
                                                nl="", indent=o.prefix_sep})
-        append(c, t["replaygain-album-peak"], {prefix="Peak:", suffix=" dB",
+        append(c, t["replaygain-album-peak"], {prefix=label("Peak:"), suffix=" dB",
                                                nl="", indent=o.prefix_sep})
     end
     if t["dolby-vision-profile"] or t["dolby-vision-level"] then
         append(c, "", {prefix="Dolby Vision:"})
-        append(c, t["dolby-vision-profile"], {prefix="Profile:", nl="", indent=""})
-        append(c, t["dolby-vision-level"], {prefix="Level:", nl="",
+        append(c, t["dolby-vision-profile"], {prefix=label("Profile:"), nl="", indent=""})
+        append(c, t["dolby-vision-level"], {prefix=label("Level:"), nl="",
                                             indent=t["dolby-vision-profile"] and
                                             o.prefix_sep .. o.prefix_sep or ""})
     end
@@ -1769,7 +1788,7 @@ end
 local function track_info()
     local h, c = {}, {}
     add_header(h)
-    local desc = pages[o.key_page_5].desc
+    local desc = label(pages[o.key_page_5].desc)
     append(h, "", {prefix=format("%s:%s", desc, scroll_hint()), nl="", indent=""})
     h = {table.concat(h)}
     table.insert(c, o.nl .. o.nl)
@@ -1786,7 +1805,7 @@ local function perf_stats()
     local header, content = {}, {}
     add_header(header)
     local page = pages[o.key_page_0]
-    append(header, "", {prefix=format("%s:%s", page.desc, scroll_hint()), nl="", indent=""})
+    append(header, "", {prefix=format("%s:%s", label(page.desc), scroll_hint()), nl="", indent=""})
     append_general_perfdata(content)
     header = {table.concat(header)}
     return finalize_page(header, content, true)
@@ -1804,18 +1823,18 @@ local function cache_stats()
     local stats = {}
 
     add_header(stats)
-    append(stats, "", {prefix="Cache Info:", nl="", indent=""})
+    append(stats, "", {prefix=label("Cache Info:"), nl="", indent=""})
 
     local info = mp.get_property_native("demuxer-cache-state")
     if info == nil then
-        append(stats, "Unavailable.", {})
+        append(stats, tr("Unavailable."), {})
         return finalize_page({}, stats, false)
     end
 
     local a = info["reader-pts"]
     local b = info["cache-end"]
 
-    append(stats, opt_time(a) .. " - " .. opt_time(b), {prefix = "Packet Queue:"})
+    append(stats, opt_time(a) .. " - " .. opt_time(b), {prefix = label("Packet Queue:")})
 
     local r = nil
     if a ~= nil and b ~= nil then
@@ -1829,22 +1848,22 @@ local function cache_stats()
                                  nil, 0.8, 1)
         r_graph = o.prefix_sep .. r_graph
     end
-    append(stats, opt_time(r), {prefix = "Readahead:", suffix = r_graph})
+    append(stats, opt_time(r), {prefix = label("Readahead:"), suffix = r_graph})
 
     -- These states are not necessarily exclusive. They're about potentially
     -- separate mechanisms, whose states may be decoupled.
-    local state = "reading"
+    local state = tr("reading")
     local seek_ts = info["debug-seeking"]
     if seek_ts ~= nil then
-        state = "seeking (to " .. mp.format_time(seek_ts) .. ")"
+        state = format(tr("seeking (to %s)"), mp.format_time(seek_ts))
     elseif info["eof"] == true then
-        state = "eof"
+        state = tr("eof")
     elseif info["underrun"] then
-        state = "underrun"
+        state = tr("underrun")
     elseif info["idle"]  == true then
-        state = "inactive"
+        state = tr("inactive")
     end
-    append(stats, state, {prefix = "State:"})
+    append(stats, state, {prefix = label("State:")})
 
     local speed = info["raw-input-rate"] or 0
     local speed_graph = nil
@@ -1854,37 +1873,37 @@ local function cache_stats()
                                      nil, 0.8, 1)
         speed_graph = o.prefix_sep .. speed_graph
     end
-    append(stats, utils.format_bytes_humanized(speed) .. "/s", {prefix="Speed:",
+    append(stats, utils.format_bytes_humanized(speed) .. "/s", {prefix=label("Speed:"),
         suffix=speed_graph})
 
     append(stats, utils.format_bytes_humanized(info["total-bytes"]),
-           {prefix = "Total RAM:"})
+           {prefix = label("Total RAM:")})
     append(stats, utils.format_bytes_humanized(info["fw-bytes"]),
-           {prefix = "Forward RAM:"})
+           {prefix = label("Forward RAM:")})
 
     local fc = info["file-cache-bytes"]
     if fc ~= nil then
         fc = utils.format_bytes_humanized(fc)
     else
-        fc = "(disabled)"
+        fc = tr("(disabled)")
     end
-    append(stats, fc, {prefix = "Disk Cache:"})
+    append(stats, fc, {prefix = label("Disk Cache:")})
 
-    append(stats, info["debug-low-level-seeks"], {prefix = "Media Seeks:"})
-    append(stats, info["debug-byte-level-seeks"], {prefix = "Stream Seeks:"})
+    append(stats, info["debug-low-level-seeks"], {prefix = label("Media Seeks:")})
+    append(stats, info["debug-byte-level-seeks"], {prefix = label("Stream Seeks:")})
 
-    append(stats, "", {prefix="Ranges:", nl=o.nl .. o.nl, indent=""})
+    append(stats, "", {prefix=label("Ranges:"), nl=o.nl .. o.nl, indent=""})
 
-    append(stats, info["bof-cached"] and "yes" or "no",
-           {prefix = "Start Cached:"})
-    append(stats, info["eof-cached"] and "yes" or "no",
-           {prefix = "End Cached:"})
+    append(stats, tr(info["bof-cached"] and "yes" or "no"),
+           {prefix = label("Start Cached:")})
+    append(stats, tr(info["eof-cached"] and "yes" or "no"),
+           {prefix = label("End Cached:")})
 
     local ranges = info["seekable-ranges"] or {}
     for n, range in ipairs(ranges) do
         append(stats, mp.format_time(range["start"]) .. " - " ..
                       mp.format_time(range["end"]),
-               {prefix = format("Range %s:", n)})
+               {prefix = no_ASS(format(tr("Range %s:"), n))})
     end
 
     return finalize_page({}, stats, false)
@@ -1894,8 +1913,8 @@ end
 local function sync_stats()
     local stats = {}
     add_header(stats)
-    append(stats, "", {prefix="Sync Info:", nl="", indent=""})
-    append_property(stats, "video-sync", {prefix="Video Sync:"})
+    append(stats, "", {prefix=label("Sync Info:"), nl="", indent=""})
+    append_property(stats, "video-sync", {prefix=label("Video Sync:")})
     append_fps(stats, "display-fps", "estimated-display-fps")
     append_fps(stats, "container-fps", "estimated-vf-fps")
 
@@ -1909,16 +1928,16 @@ local function sync_stats()
                       sync_marks[i].color, size, size, size, size, text_style(), o.prefix_sep)
     end
     if append_property(stats, "decoder-frame-drop-count",
-                       {prefix="Dropped Frames:", suffix=" (decoder)",
+                       {prefix=label("Dropped Frames:"), suffix=" " .. label("(decoder)"),
                         indent=o.indent .. mark(1)}) then
-        append_property(stats, "frame-drop-count", {suffix=" (output)", nl="", indent=""})
+        append_property(stats, "frame-drop-count", {suffix=" " .. label("(output)"), nl="", indent=""})
     end
     local display_sync = mp.get_property_bool("display-sync-active", false)
     if display_sync then
         append_property(stats, "vo-delayed-frame-count",
-                        {prefix="Delayed:", nl="", indent=o.prefix_sep .. o.prefix_sep .. mark(2)})
+                        {prefix=label("Delayed:"), nl="", indent=o.prefix_sep .. o.prefix_sep .. mark(2)})
         append_property(stats, "mistimed-frame-count",
-                        {prefix="Mistimed:", nl="", indent=o.prefix_sep .. o.prefix_sep .. mark(3)})
+                        {prefix=label("Mistimed:"), nl="", indent=o.prefix_sep .. o.prefix_sep .. mark(3)})
     end
 
     local values = {{"avsync", "A-V:"}, {"vo-presentation-delay", "Presentation:"}}
@@ -1930,7 +1949,7 @@ local function sync_stats()
     end
     if not graphs then
         for _, value in ipairs(values) do
-            append_sync(stats, value[1], {prefix=value[2]})
+            append_sync(stats, value[1], {prefix=label(value[2])})
         end
         return finalize_page({}, stats, false)
     end
@@ -1948,7 +1967,7 @@ local function sync_stats()
     local shown = {}
     for _, value in ipairs(values) do
         local title = {}
-        if append_sync(title, value[1], {prefix=value[2], indent=""}) then
+        if append_sync(title, value[1], {prefix=label(value[2]), indent=""}) then
             shown[#shown+1] = {value[1], title[1]:sub(#o.nl + 1)}
         end
     end
@@ -1996,29 +2015,29 @@ local function app_stats()
     local header, content = {}, {}
     eval_ass_formatting()
     add_header(header)
-    append(header, "", {prefix="Time, network & system:" .. scroll_hint(),
+    append(header, "", {prefix=label("Time, Network & System") .. ":" .. scroll_hint(),
                         nl="", indent=""})
-    append(content, "", {prefix=android_stats.playback_header or "PLAYBACK & DECODER",
+    append(content, "", {prefix=label("PLAYBACK & DECODER"),
                          indent=""})
-    append_property(content, "media-title", {prefix="File:"})
+    append_property(content, "media-title", {prefix=label("File:")})
     append(content, format("%s | %s | %s",
         mp.get_property("current-vo", "--"), mp.get_property("gpu-api", "--"),
-        mp.get_property("gpu-context", "--")), {prefix="Renderer:"})
-    append_property(content, "current-tracks/video/codec", {prefix="Video:"})
-    append_property(content, "hwdec-current", {prefix="Decoder:"})
-    append_property(content, "current-tracks/audio/codec", {prefix="Audio:"})
-    append_property(content, "audio-out-params/format", {prefix="Audio output:"})
-    append_property(content, "video-params/gamma", {prefix="Source transfer:"})
-    append_property(content, "video-out-params/gamma", {prefix="Output transfer:"})
-    append(content, android_stats.hdr_mode, {prefix="App HDR setting:"})
+        mp.get_property("gpu-context", "--")), {prefix=label("Renderer:")})
+    append_property(content, "current-tracks/video/codec", {prefix=label("Video:")})
+    append_property(content, "hwdec-current", {prefix=label("Decoder:")})
+    append_property(content, "current-tracks/audio/codec", {prefix=label("Audio:")})
+    append_property(content, "audio-out-params/format", {prefix=label("Audio output:")})
+    append_property(content, "video-params/gamma", {prefix=label("Source transfer:")})
+    append_property(content, "video-out-params/gamma", {prefix=label("Output transfer:")})
+    append(content, android_stats.hdr_mode, {prefix=label("App HDR setting:")})
     add_motion(content)
 
-    append(content, android_stats.clock or os.date("%H:%M"), {prefix="Time:"})
-    append_property(content, "playback-time", {prefix="Position:"})
-    append_property(content, "playtime-remaining", {prefix="Remaining:"})
+    append(content, android_stats.clock or os.date("%H:%M"), {prefix=label("Time:")})
+    append_property(content, "playback-time", {prefix=label("Position:")})
+    append_property(content, "playtime-remaining", {prefix=label("Remaining:")})
     local speed = mp.get_property_number("cache-speed")
     if speed and speed >= 0 then
-        append(content, utils.format_bytes_humanized(speed) .. "/s", {prefix="Network:"})
+        append(content, utils.format_bytes_humanized(speed) .. "/s", {prefix=label("Network:")})
     end
     for _, section in ipairs(android_stats.sections or {}) do
         append(content, "", {prefix=no_ASS(section.title), indent="", nl=o.nl .. o.nl})
@@ -2216,7 +2235,7 @@ local remove_page_bindings
 local function filter_bindings()
     statistics_search_active = true
     input.get({
-        prompt = "Filter gestures / bindings:",
+        prompt = tr("Filter gestures / bindings:"),
         opened = function ()
             -- This is necessary to close the console if the oneshot
             -- display_timer expires without typing anything.
@@ -2228,7 +2247,7 @@ local function filter_bindings()
         end,
         edited = function (text)
             reset_scroll_offsets()
-            searched_text = text:lower()
+            searched_text = search_lower(text)
             print_page(curr_page)
             if display_timer.oneshot then
                 display_timer:kill()
@@ -2548,6 +2567,20 @@ mp.observe_property("user-data/mpv/console/open", "bool", function(_, value)
         requested_page = 0
     end
     reconcile()
+end)
+
+mp.observe_property("user-data/mpvrx/statistics-language", "native", function(_, value)
+    if value == nil then
+        labels, case_fold = {}, {}
+        return
+    end
+    local data, err
+    if type(value) == "string" then data, err = utils.parse_json(value) end
+    if type(data) ~= "table" or type(data.labels) ~= "table" or type(data.case_fold) ~= "table" then
+        mp.msg.error("Invalid statistics translations: " .. tostring(err or type(value)))
+        return
+    end
+    labels, case_fold = data.labels, data.case_fold
 end)
 
 mp.observe_property("user-data/mpvrx/statistics-android", "native", function(_, value)

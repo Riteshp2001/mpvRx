@@ -617,6 +617,7 @@ class MPVView(
   private fun postInitOptions() {
     // Also disable a stock copy enabled by mpv.conf. Only the managed renderer owns stats.
     PlaybackSession.setIntegrationOptionString("load-stats-overlay", "no")
+    PlaybackSession.updateStatisticsLanguage(context)
     PlaybackSession.command("load-script", awaitInitInputs().statisticsScriptPath)
     // Native initialization can run off the main thread. Start with a safe baseline and let the
     // Activity's WindowInsets listener apply the real cutout margins when the view is attached.

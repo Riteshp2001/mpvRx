@@ -259,6 +259,7 @@ class App :
 
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
+    PlaybackSession.updateStatisticsLanguage(this)
     MediaPlayerWidget.requestUpdate(this)
   }
 

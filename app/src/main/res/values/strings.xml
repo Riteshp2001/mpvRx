@@ -629,7 +629,6 @@
   <string name="player_sheets_more_title">More</string>
   <string name="player_sheets_stats_page_title">Default statistics page</string>
   <string name="player_sheets_stats_page_chip">Page %d</string>
-  <string name="player_sheets_stats_page_console">Console</string>
   <string name="player_aspect_fit">Fit Screen</string>
   <string name="player_aspect_crop">Crop</string>
   <string name="player_aspect_stretch">Stretch</string>
@@ -1236,28 +1235,6 @@
   <string name="player_move_resize_subtitles_hint">Drag to move · Pinch with two fingers to resize</string>
   <string name="player_next_dialog">Next Dialog</string>
   <string name="player_previous_dialog">Previous Dialog</string>
-  <string name="diagnostics_playback_decoder_header">PLAYBACK &amp; DECODER</string>
-  <string name="diagnostics_power_thermals_header">POWER &amp; THERMALS</string>
-  <string name="diagnostics_session_header">SESSION</string>
-  <string name="diagnostics_session_battery_used">Session battery use (net)</string>
-  <string name="diagnostics_battery_live">Battery now</string>
-  <string name="diagnostics_session_battery_charge_value" translatable="false">%1$.1f mAh</string>
-  <string name="diagnostics_session_battery_energy_value" translatable="false">%1$.1f mWh</string>
-  <string name="diagnostics_session_battery_percent_value">Approx. %1$.0f percentage points</string>
-  <string name="diagnostics_session_battery_unavailable">Battery counters unavailable</string>
-  <string name="diagnostics_torrent_header">TORRENT</string>
-  <string name="diagnostics_torrent_peer_status">Peer status</string>
-  <string name="diagnostics_torrent_peers_value">%1$d peers | %2$d seeds</string>
-  <string name="diagnostics_torrent_loaded">Loaded</string>
-  <string name="diagnostics_torrent_loaded_value">%1$s / %2$s (%3$d%%)</string>
-  <string name="diagnostics_torrent_transfer">Transfer</string>
-  <string name="diagnostics_torrent_transfer_value">Down %1$s | Up %2$s</string>
-  <string name="diagnostics_app_cpu">App CPU</string>
-  <string name="diagnostics_memory_cache_header">MEMORY &amp; CACHE</string>
-  <string name="diagnostics_process_memory">Process</string>
-  <string name="diagnostics_process_memory_value">PSS %1$s | Java %2$s/%3$s | Native %4$s</string>
-  <string name="diagnostics_playback_cache">Playback</string>
-  <string name="diagnostics_playback_cache_value">Buffered %1$.1f s | Packets %2$s | Disk cache %3$s</string>
   <string name="toast_failed_to_read_file">Failed to read file: %1$s</string>
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (Experimental)</string>
   <string name="hdr_mode_off">Off</string>
@@ -1275,7 +1252,6 @@
   <string name="hdr_mode_linear_description">Native linear HDR. Inverse tone mapping stays on and tone mapping is locked to Clip.</string>
   <string name="hdr_linear_inverse_ownership">The app locks this to yes for Linear HDR. Assign it to mpv.conf to control it yourself.</string>
   <string name="hdr_linear_tone_ownership">The app locks this to clip for Linear HDR. Assign it to mpv.conf to control it yourself.</string>
-  <string name="hdr_mode_output_diagnostic">HDR - %1$s Mode Output</string>
   <string name="pref_section_support">Support</string>
   <string name="pref_section_updates">Updates</string>
   <string name="pref_section_system">System</string>

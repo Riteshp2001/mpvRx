@@ -67,6 +67,7 @@ import app.gyrolet.mpvrx.presentation.crash.DebugLogReader
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.NotificationStyle
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.MpvConfigCache
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.preferences.components.RestartRequiredDialog
@@ -329,6 +330,7 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
               LocaleListCompat.forLanguageTags(language.languageTag)
             }
           AppCompatDelegate.setApplicationLocales(locales)
+          PlaybackSession.updateStatisticsLanguage(context.applicationContext, locales)
         },
       )
     }

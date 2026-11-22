@@ -50,7 +50,6 @@ internal fun readSessionBatteryReading(
 
 /** Supplies Android-only data; stats.lua owns Page 7's layout, native properties and scrolling. */
 internal class StatisticsDiagnostics(
-  private val context: Context,
   private val playerPreferences: PlayerPreferences,
   private val decoderPreferences: DecoderPreferences,
 ) {
@@ -62,13 +61,15 @@ internal class StatisticsDiagnostics(
   private var activeTimeMs = 0L
   private var lastMemoryTimeMs = 0L
   private var memoryText: String? = null
+  private var memoryLocale: Locale? = null
   private var initialTemperature: Float? = null
   private var peakTemperature: Float? = null
   private val torrentEngine by lazy {
     KoinJavaComponent.get<TorrentStreamingEngine>(TorrentStreamingEngine::class.java)
   }
 
-  fun sample(state: PlaybackSessionState): JsonObject {
+  fun sample(state: PlaybackSessionState, context: Context): JsonObject {
+    val locale = context.resources.configuration.locales[0] ?: Locale.ROOT
     val now = SystemClock.elapsedRealtime()
     val cpu = Process.getElapsedCpuTime()
     val elapsed = (now - lastTimeMs).coerceAtLeast(1L)
@@ -81,7 +82,7 @@ internal class StatisticsDiagnostics(
     lastCpuMs = cpu
     lastTimeMs = now
 
-    if (memoryText == null || now - lastMemoryTimeMs >= 5_000L) {
+    if (memoryText == null || memoryLocale != locale || now - lastMemoryTimeMs >= 5_000L) {
       val memory = Debug.MemoryInfo()
       Debug.getMemoryInfo(memory)
       val runtime = Runtime.getRuntime()
@@ -94,32 +95,33 @@ internal class StatisticsDiagnostics(
           formatTorrentBytes(Debug.getNativeHeapAllocatedSize()),
         )
       lastMemoryTimeMs = now
+      memoryLocale = locale
     }
     val battery = readBatterySnapshot(context)
     battery.temperatureCelsius?.let { temperature ->
       if (initialTemperature == null) initialTemperature = temperature
       peakTemperature = maxOf(peakTemperature ?: temperature, temperature)
     }
-    val peakText = peakTemperature?.let { String.format(Locale.getDefault(), "%.1f\u00B0C", it) } ?: "--"
+    val peakText = peakTemperature?.let { String.format(locale, "%.1f\u00B0C", it) } ?: "--"
     val riseText =
       battery.temperatureCelsius?.let { temperature ->
-        initialTemperature?.let { String.format(Locale.getDefault(), "%+.1f\u00B0C", temperature - it) }
+        initialTemperature?.let { String.format(locale, "%+.1f\u00B0C", temperature - it) }
       } ?: "--"
     val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
-    val thermal =
+    val thermalRes =
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         when (powerManager?.currentThermalStatus) {
-          PowerManager.THERMAL_STATUS_NONE -> "Normal"
-          PowerManager.THERMAL_STATUS_LIGHT -> "Light Throttling"
-          PowerManager.THERMAL_STATUS_MODERATE -> "Moderate Throttling"
-          PowerManager.THERMAL_STATUS_SEVERE -> "Severe Throttling"
-          PowerManager.THERMAL_STATUS_CRITICAL -> "Critical Throttling"
-          PowerManager.THERMAL_STATUS_EMERGENCY -> "Emergency!"
-          PowerManager.THERMAL_STATUS_SHUTDOWN -> "Overheating Shutdown!"
-          else -> "Unavailable"
+          PowerManager.THERMAL_STATUS_NONE -> R.string.stats_thermal_normal
+          PowerManager.THERMAL_STATUS_LIGHT -> R.string.stats_thermal_light
+          PowerManager.THERMAL_STATUS_MODERATE -> R.string.stats_thermal_moderate
+          PowerManager.THERMAL_STATUS_SEVERE -> R.string.stats_thermal_severe
+          PowerManager.THERMAL_STATUS_CRITICAL -> R.string.stats_thermal_critical
+          PowerManager.THERMAL_STATUS_EMERGENCY -> R.string.stats_thermal_emergency
+          PowerManager.THERMAL_STATUS_SHUTDOWN -> R.string.stats_thermal_shutdown
+          else -> R.string.stats_unavailable
         }
       } else {
-        "Unavailable"
+        R.string.stats_unavailable
       }
     val activeSeconds = activeTimeMs / 1000L
     val cacheText =
@@ -144,7 +146,6 @@ internal class StatisticsDiagnostics(
       if (state.currentItem?.torrentFileIndex != null) torrentEngine.state.value else TorrentStreamingState.Idle
 
     return buildJsonObject {
-      put("playback_header", context.getString(R.string.diagnostics_playback_decoder_header))
       put("clock", formatClock(context, playerPreferences.clockFormat.get()))
       put(
         "hdr_mode",
@@ -154,7 +155,7 @@ internal class StatisticsDiagnostics(
             context.getString(decoderPreferences.hdrScreenMode.get().shortTitleRes),
           )
         } else {
-          "SDR Output"
+          context.getString(R.string.stats_sdr_output)
         },
       )
       put(
@@ -162,11 +163,12 @@ internal class StatisticsDiagnostics(
         buildJsonArray {
           when (torrent) {
             is TorrentStreamingState.Connecting ->
-              add(torrentSection(torrent.peers, torrent.seeds, torrent.downloadSpeed, torrent.uploadSpeed))
+              add(torrentSection(context, torrent.peers, torrent.seeds, torrent.downloadSpeed, torrent.uploadSpeed))
             is TorrentStreamingState.Streaming -> {
               val progress = torrent.bufferProgress.takeIf { it.isFinite() }?.coerceIn(0f, 1f)
               add(
                 torrentSection(
+                  context,
                   torrent.peers,
                   torrent.seeds,
                   torrent.downloadSpeed,
@@ -191,9 +193,10 @@ internal class StatisticsDiagnostics(
                 context.getString(R.string.diagnostics_battery_live) to
                   "${battery.percentageText} | ${battery.wattsText} | ${battery.rateText}",
                 context.getString(R.string.diagnostics_session_battery_used) to
-                  sessionBatteryUse(state.generation, battery),
-                "Temp" to "${battery.tempText} (Peak: $peakText | Rise: $riseText)",
-                "Thermal" to thermal,
+                  sessionBatteryUse(context, state.generation, battery),
+                context.getString(R.string.stats_temperature) to
+                  context.getString(R.string.stats_temperature_details, battery.tempText, peakText, riseText),
+                context.getString(R.string.stats_heat_status) to context.getString(thermalRes),
               ),
             ),
           )
@@ -201,9 +204,9 @@ internal class StatisticsDiagnostics(
             section(
               context.getString(R.string.diagnostics_session_header),
               listOf(
-                "Active" to
+                context.getString(R.string.stats_active_playback) to
                   String.format(
-                    Locale.getDefault(),
+                    locale,
                     "%02d:%02d:%02d",
                     activeSeconds / 3600,
                     activeSeconds / 60 % 60,
@@ -227,7 +230,7 @@ internal class StatisticsDiagnostics(
     }
   }
 
-  private fun sessionBatteryUse(generation: Long, battery: BatterySnapshot): String {
+  private fun sessionBatteryUse(context: Context, generation: Long, battery: BatterySnapshot): String {
     val baseline =
       PlaybackSession.readSessionBatteryBaseline(generation)
         ?: return "--"
@@ -266,6 +269,7 @@ internal class StatisticsDiagnostics(
   }
 
   private fun torrentSection(
+    context: Context,
     peers: Int,
     seeds: Int,
     down: Long,

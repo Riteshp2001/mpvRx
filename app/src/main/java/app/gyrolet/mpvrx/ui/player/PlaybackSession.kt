@@ -16,6 +16,8 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.Surface
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.data.network.proxy.XtreamStreamingProxy
@@ -221,6 +223,8 @@ object PlaybackSession : MPVLib.EventObserver {
   private const val STATISTICS_REQUEST_PROPERTY = "user-data/mpvrx/statistics-request"
   private const val STATISTICS_STATE_PROPERTY = "user-data/mpvrx/statistics-state"
   private const val STATISTICS_ANDROID_PROPERTY = "user-data/mpvrx/statistics-android"
+  private const val STATISTICS_LANGUAGE_PROPERTY = "user-data/mpvrx/statistics-language"
+  @Volatile private var statisticsLocalizedContext: Context? = null
   private val statisticsErrorHandler = CoroutineExceptionHandler { _, error ->
     Log.e(TAG, "Statistics update failed", error)
   }
@@ -1828,6 +1832,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   }
 
   private fun resetStatisticsState() = synchronized(statisticsStateLock) {
+    statisticsLocalizedContext = null
     statisticsDiagnosticsJob?.cancel()
     statisticsDiagnosticsJob = null
     statisticsRevision += 1
@@ -1903,6 +1908,18 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
+  internal fun updateStatisticsLanguage(
+    context: Context,
+    locales: LocaleListCompat = AppCompatDelegate.getApplicationLocales(),
+  ) = withReadyCore(Unit) {
+    val localized = StatisticsTranslations.localizedContext(context, locales)
+    if (localized.resources.configuration.locales == statisticsLocalizedContext?.resources?.configuration?.locales) {
+      return@withReadyCore
+    }
+    MPVLib.setPropertyString(STATISTICS_LANGUAGE_PROPERTY, StatisticsTranslations.payload(localized))
+    statisticsLocalizedContext = localized
+  }
+
   private fun updateStatisticsDiagnostics(page: Int) {
     if (page != 7) {
       statisticsDiagnosticsJob?.cancel()
@@ -1911,10 +1928,10 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       val context = checkNotNull(applicationContext) { "Statistics require an initialized application context" }
       val core = nativeObserver
       statisticsDiagnosticsJob = statisticsDiagnostics.launch {
-        val diagnostics = StatisticsDiagnostics(context, playerPreferences, decoderPreferences)
+        val diagnostics = StatisticsDiagnostics(playerPreferences, decoderPreferences)
         while (isActive && _visibleStatisticsPage.value == 7 && advancedPreferences.enabledStatisticsPage.get() == 7) {
           val state = _state.value
-          val sample = diagnostics.sample(state).toString()
+          val sample = diagnostics.sample(state, statisticsLocalizedContext ?: context).toString()
           withReadyCore(Unit) {
             if (isActive && nativeObserver === core && _state.value.generation == state.generation &&
               _visibleStatisticsPage.value == 7 &&
