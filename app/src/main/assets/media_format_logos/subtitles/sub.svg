@@ -1,7 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
-  <title id="title">SUB subtitle format</title>
-  <rect x="18" y="14" width="60" height="49" rx="8" fill="none" stroke="#6D62D6" stroke-linejoin="round" stroke-width="4"/>
-  <path d="M26 23h6v6h-6zm10 0h6v6h-6zm20 0h6v6h-6zm10 0h6v6h-6zM26 33h6v6h-6zm20 0h6v6h-6zm20 0h6v6h-6z" fill="#8065DB"/>
-  <path d="M26 51h44M26 57h28" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
-  <text x="48" y="84" fill="#26354D" font-family="Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="1.5" text-anchor="middle">SUB</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 40" role="img" aria-labelledby="title">
+  <title id="title">SUB subtitles</title>
+  <rect x="2" y="7" width="30" height="26" rx="5" fill="none" stroke="#26354D" stroke-width="3"/>
+  <path d="M8 16h18M8 24h12" fill="none" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
+  <text x="40" y="31" fill="#26354D" font-family="Arial,sans-serif" font-size="29" font-weight="700">SUB</text>
 </svg>

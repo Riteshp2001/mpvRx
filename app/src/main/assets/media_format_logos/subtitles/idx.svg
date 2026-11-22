@@ -1,8 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
-  <title id="title">IDX subtitle index format</title>
-  <path d="M21 12h42l13 13v46a7 7 0 0 1-7 7H21a7 7 0 0 1-7-7V19a7 7 0 0 1 7-7Z" fill="none" stroke="#D98925" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
-  <path d="M63 13v10a3 3 0 0 0 3 3h10" fill="none" stroke="#D98925" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
-  <path d="M27 37h30M27 46h24M27 55h18" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
-  <path d="M67 39v27l-7-4-7 4V39a7 7 0 0 1 14 0Z" fill="#D98925"/>
-  <text x="43" y="72" fill="#26354D" font-family="Arial,sans-serif" font-size="12" font-weight="700" text-anchor="middle">IDX</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 40" role="img" aria-labelledby="title">
+  <title id="title">VobSub index subtitles</title>
+  <rect x="2" y="7" width="30" height="26" rx="5" fill="none" stroke="#26354D" stroke-width="3"/>
+  <path d="M8 16h18M8 24h12" fill="none" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
+  <text x="40" y="31" fill="#26354D" font-family="Arial,sans-serif" font-size="29" font-weight="700">IDX</text>
 </svg>

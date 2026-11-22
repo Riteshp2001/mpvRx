@@ -1,10 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
-  <title id="title">SBV subtitle format</title>
-  <rect x="12" y="13" width="72" height="49" rx="8" fill="none" stroke="#D94454" stroke-width="4"/>
-  <path d="M14 27h68" stroke="#D94454" stroke-linecap="round" stroke-width="4"/>
-  <circle cx="21" cy="20" r="2" fill="#D94454"/>
-  <circle cx="28" cy="20" r="2" fill="#D94454"/>
-  <path d="m42 35 15 9-15 9Z" fill="#D94454"/>
-  <path d="M21 71h54M21 78h33" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
-  <text x="48" y="94" fill="#D94454" font-family="Arial,sans-serif" font-size="12" font-weight="700" letter-spacing="2" text-anchor="middle">SBV</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 40" role="img" aria-labelledby="title">
+  <title id="title">SBV subtitles</title>
+  <rect x="2" y="7" width="30" height="26" rx="5" fill="none" stroke="#26354D" stroke-width="3"/>
+  <path d="M8 16h18M8 24h12" fill="none" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
+  <text x="40" y="31" fill="#26354D" font-family="Arial,sans-serif" font-size="29" font-weight="700">SBV</text>
 </svg>

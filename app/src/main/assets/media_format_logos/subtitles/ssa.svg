@@ -1,7 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
-  <title id="title">SubStation Alpha subtitle format</title>
-  <path d="M14 16h48a9 9 0 0 1 9 9v20a9 9 0 0 1-9 9H39L27 64v-10h-4a9 9 0 0 1-9-9Z" fill="none" stroke="#7555D9" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
-  <path d="M28 31h29M28 39h20" stroke="#7555D9" stroke-linecap="round" stroke-width="3"/>
-  <path d="M47 54h32a8 8 0 0 1 8 8v9a8 8 0 0 1-8 8H67l-9 7v-7h-3a8 8 0 0 1-8-8Z" fill="none" stroke="#26354D" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/>
-  <text x="65" y="70" fill="#7555D9" font-family="Arial,sans-serif" font-size="10" font-weight="700" text-anchor="middle">SSA</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 40" role="img" aria-labelledby="title">
+  <title id="title">SubStation Alpha subtitles</title>
+  <rect x="2" y="7" width="30" height="26" rx="5" fill="none" stroke="#26354D" stroke-width="3"/>
+  <path d="M8 16h18M8 24h12" fill="none" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
+  <text x="40" y="31" fill="#26354D" font-family="Arial,sans-serif" font-size="29" font-weight="700">SSA</text>
 </svg>

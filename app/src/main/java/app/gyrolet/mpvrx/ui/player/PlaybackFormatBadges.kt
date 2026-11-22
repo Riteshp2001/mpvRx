@@ -149,7 +149,6 @@ private fun readPlaybackFormatBadges(
       add(PlaybackFormatBadge("3D", "symbols/3d.svg"))
     }
     if (audio.flag("visual-impaired")) add(PlaybackFormatBadge("AD", "symbols/ad.svg"))
-    addAll(subtitleFormatBadges(media, subtitle))
     subtitleBadge(subtitle.text("codec"), subtitle.flag("hearing-impaired"))?.let(::add)
   }
   return PlaybackBadgeSnapshot(badges, videoTrackId.takeIf { rangeBadges.any { it.label == HDR10_PLUS_LABEL } })
@@ -313,34 +312,29 @@ internal fun subtitleFormatBadge(
     "sbv" -> "SBV subtitles"
     else -> "EBU STL subtitles"
   }
+  val (lightTint, darkTint) = subtitleBadgeTints(format)
   return PlaybackFormatBadge(
     label = format.uppercase(Locale.ROOT),
     asset = "subtitles/$format.svg",
-    artwork = BadgeArtwork.OnLight,
     detail = detail,
+    lightTintArgb = lightTint,
+    darkTintArgb = darkTint,
   )
 }
 
-private fun subtitleFormatBadges(
-  media: PlaybackSession.PropertyReader,
-  selectedSubtitle: Map<String, MPVNode>,
-): List<PlaybackFormatBadge> = buildList {
-  val trackCount = (media.int("track-list/count") ?: 0).coerceIn(0, 512)
-  for (index in 0 until trackCount) {
-    val prefix = "track-list/$index"
-    if (media.string("$prefix/type") != "sub") continue
-    subtitleFormatBadge(
-      codec = media.string("$prefix/codec"),
-      codecDescription = media.string("$prefix/codec-desc"),
-      externalFilename = media.string("$prefix/external-filename"),
-    )?.let(::add)
+private fun subtitleBadgeTints(format: String): Pair<Long, Long> =
+  when (format) {
+    "srt" -> 0xFF4F3FB0L to 0xFFB9ACFFL
+    "vtt" -> 0xFF00727DL to 0xFF6FE0E8L
+    "ass" -> 0xFFA32D68L to 0xFFFF9ACBL
+    "ssa" -> 0xFF5B3FADL to 0xFFC0AAFFL
+    "idx" -> 0xFFA66310L to 0xFFFFC079L
+    "sub" -> 0xFF4E43B0L to 0xFFB7ADFFL
+    "sup" -> 0xFF1A6499L to 0xFF8FCFFFL
+    "ttml" -> 0xFF0F6E5AL to 0xFF79DCC2L
+    "sbv" -> 0xFFAE2636L to 0xFFFF9AA6L
+    else -> 0xFF8A6117L to 0xFFFFD07AL
   }
-  subtitleFormatBadge(
-    codec = selectedSubtitle.text("codec"),
-    codecDescription = selectedSubtitle.text("codec-desc"),
-    externalFilename = selectedSubtitle.text("external-filename"),
-  )?.let(::add)
-}.distinctBy(PlaybackFormatBadge::label)
 
 internal fun videoCodecBadge(codec: String?): PlaybackFormatBadge? =
   when (codec?.lowercase(Locale.ROOT)) {

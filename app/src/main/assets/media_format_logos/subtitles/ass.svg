@@ -1,9 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
-  <title id="title">Advanced SubStation Alpha subtitle format</title>
-  <text x="25" y="52" fill="#D94F91" font-family="Arial,sans-serif" font-size="40" font-weight="700">A</text>
-  <text x="54" y="52" fill="#26354D" font-family="Arial,sans-serif" font-size="30" font-style="italic" font-weight="600">a</text>
-  <path d="M23 62h49" fill="none" stroke="#D94F91" stroke-linecap="round" stroke-width="4"/>
-  <path d="M23 70h30" fill="none" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
-  <path d="M72 23v12m-5-7h10" fill="none" stroke="#D94F91" stroke-linecap="round" stroke-width="3"/>
-  <text x="48" y="89" fill="#26354D" font-family="Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="1.5" text-anchor="middle">ASS</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 40" role="img" aria-labelledby="title">
+  <title id="title">Advanced SubStation Alpha subtitles</title>
+  <rect x="2" y="7" width="30" height="26" rx="5" fill="none" stroke="#26354D" stroke-width="3"/>
+  <path d="M8 16h18M8 24h12" fill="none" stroke="#26354D" stroke-linecap="round" stroke-width="3"/>
+  <text x="40" y="31" fill="#26354D" font-family="Arial,sans-serif" font-size="29" font-weight="700">ASS</text>
 </svg>
