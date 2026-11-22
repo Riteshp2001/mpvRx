@@ -22,12 +22,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.Text
@@ -41,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.domain.navidrome.NavidromeServer
 import app.gyrolet.mpvrx.repository.NavidromeRepository
 import app.gyrolet.mpvrx.ui.browser.music.SharedMusicCarouselSection
@@ -79,12 +78,11 @@ fun NavidromeDetailSheet(
   val queueState by PlaybackSession.queue.collectAsStateWithLifecycle()
   val currentSessionItem = queueState.currentItem
 
-  ModalBottomSheet(
+  ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
     shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    dragHandle = { BottomSheetDefaults.DragHandle() },
   ) {
     LazyColumn(
       modifier = Modifier

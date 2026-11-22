@@ -97,22 +97,6 @@ fun MotionInterpolationSheet(
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     title = stringResource(R.string.motion_title),
-    bottomBar = {
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.End,
-      ) {
-        TextButton(
-          onClick = {
-            preferences.motionInterpolationMode.delete()
-            preferences.motionInterpolationTargetFps.delete()
-          },
-          enabled = optionsEnabled,
-        ) {
-          Text(stringResource(R.string.generic_reset), style = MaterialTheme.typography.labelMedium)
-        }
-      }
-    },
   ) {
     Column(
       modifier =
@@ -184,6 +168,16 @@ fun MotionInterpolationSheet(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
         )
+      }
+      TextButton(
+        modifier = Modifier.align(Alignment.End).padding(end = MaterialTheme.spacing.medium),
+        onClick = {
+          preferences.motionInterpolationMode.delete()
+          preferences.motionInterpolationTargetFps.delete()
+        },
+        enabled = optionsEnabled,
+      ) {
+        Text(stringResource(R.string.generic_reset), style = MaterialTheme.typography.labelMedium)
       }
     }
   }

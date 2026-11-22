@@ -24,14 +24,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.SheetValue
@@ -49,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.presentation.components.AppAlertDialog
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddXtreamPlaylistDialog
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -117,13 +116,12 @@ fun PlaylistActionSheet(
     enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
   )
 
-  ModalBottomSheet(
+  ResponsiveBottomSheet(
     onDismissRequest = {
       zipImportJob?.cancel()
       onDismiss()
     },
     sheetState = sheetState,
-    dragHandle = { BottomSheetDefaults.DragHandle() },
     modifier = modifier,
   ) {
     Column(

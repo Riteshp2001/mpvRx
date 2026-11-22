@@ -51,7 +51,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
@@ -76,6 +75,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.domain.seerr.MediaDetails
 import app.gyrolet.mpvrx.domain.seerr.MediaStatus
 import app.gyrolet.mpvrx.domain.seerr.MediaType
@@ -229,11 +229,11 @@ fun SeerrDetailSheet(
   var isOverviewExpanded by remember(details?.id, searchItem?.id) { mutableStateOf(false) }
   var canExpandOverview by remember(details?.id, searchItem?.id) { mutableStateOf(false) }
 
-  ModalBottomSheet(
+  ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    dragHandle = null,
+    showDragHandle = false,
   ) {
     Column(
       modifier = Modifier

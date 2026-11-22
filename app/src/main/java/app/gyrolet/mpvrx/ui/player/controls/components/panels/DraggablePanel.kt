@@ -13,7 +13,7 @@ package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,11 +27,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,24 +47,29 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.components.PlayerSheetDragHandle
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
 import app.gyrolet.mpvrx.ui.liquidglass.playerGlassSurface
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
+import app.gyrolet.mpvrx.ui.tv.isTelevision
 import kotlin.math.roundToInt
 
 /**
@@ -91,6 +97,7 @@ fun DraggablePanel(
   var offsetX by rememberSaveable { mutableFloatStateOf(0f) }
   var panelWidth by remember { mutableIntStateOf(0) }
   val liquidGlassEnabled = liquidGlassActive()
+  val television = isTelevision()
 
   val panelAlignment = alignment
   val layoutDirection = LocalLayoutDirection.current
@@ -109,6 +116,7 @@ fun DraggablePanel(
       ).x
     val minOffset = -initialLeft.toFloat()
     val maxOffset = (freeSpace - initialLeft).toFloat()
+    val canDrag = !television && freeSpace > 0
     val panelHeight = if (isPortrait) maxHeight * portraitHeightFraction.coerceIn(0.4f, 1f) else maxHeight
 
     val colors = panelCardsColors()
@@ -150,28 +158,29 @@ fun DraggablePanel(
         },
     ) {
       Column(Modifier.fillMaxWidth()) {
-        // Drag Handle & Indicator
-        Box(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .heightIn(min = 48.dp)
-              .pointerInput(maxOffset, minOffset) {
-                detectDragGestures { change, dragAmount ->
-                  change.consume()
-                  val newOffset = offsetX.coerceIn(minOffset, maxOffset) + dragAmount.x
-                  offsetX = newOffset.coerceIn(minOffset, maxOffset)
-                }
-              },
-          contentAlignment = Alignment.Center,
-        ) {
-          PlayerSheetDragHandle()
-        }
-
-        // Fixed header (if provided) - stays constant
-        if (header != null) {
-          Box(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-            header()
+        if (header != null || canDrag) {
+          // Drag the header itself, so a separate handle row doesn't take space from settings.
+          val dragModifier = if (canDrag) {
+            Modifier.pointerInput(minOffset, maxOffset) {
+              detectHorizontalDragGestures { change, delta ->
+                change.consume()
+                offsetX = (offsetX.coerceIn(minOffset, maxOffset) + delta).coerceIn(minOffset, maxOffset)
+              }
+            }
+          } else Modifier
+          Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).then(dragModifier),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            if (canDrag) {
+              Icon(
+                Icons.RoundedFilled.DragHandle,
+                contentDescription = null,
+                tint = colors.contentColor.copy(alpha = 0.65f),
+                modifier = Modifier.padding(start = 8.dp).size(16.dp).rotate(90f),
+              )
+            }
+            if (header != null) Box(Modifier.weight(1f)) { header() }
           }
         }
 
@@ -206,19 +215,23 @@ fun DraggablePanelHeader(
   leadingContent: (@Composable () -> Unit)? = null,
 ) {
   Row(
-    modifier = modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 4.dp, bottom = 4.dp),
-    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    modifier = modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     leadingContent?.invoke()
     Text(
       text = title,
-      style = MaterialTheme.typography.titleLargeEmphasized,
-      modifier = Modifier.weight(1f),
+      style = MaterialTheme.typography.titleMediumEmphasized,
+      modifier = Modifier.weight(1f).semantics { heading() },
       maxLines = 2,
+      overflow = TextOverflow.Ellipsis,
     )
-    FilledTonalIconButton(onClick = onDismissRequest) {
-      Icon(Icons.RoundedFilled.Close, contentDescription = stringResource(R.string.generic_cancel))
+    IconButton(
+      onClick = onDismissRequest,
+      modifier = Modifier.size(48.dp).tvFocusHighlight(MaterialTheme.shapes.medium),
+    ) {
+      Icon(Icons.RoundedFilled.Close, contentDescription = stringResource(R.string.ui_close), modifier = Modifier.size(22.dp))
     }
   }
 }

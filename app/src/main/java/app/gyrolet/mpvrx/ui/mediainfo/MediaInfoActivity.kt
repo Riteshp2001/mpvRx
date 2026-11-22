@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -81,6 +82,8 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -568,7 +571,7 @@ internal object MediaInfoDetails {
           Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = if (inPlayer) 4.dp else 12.dp),
         horizontalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing),
       ) {
         availableTabs.forEachIndexed { index, tab ->
@@ -602,10 +605,13 @@ internal object MediaInfoDetails {
             color = containerColor,
             contentColor = contentColor,
             shape = tabShape,
-            modifier = Modifier.tvFocusHighlight(tabShape).animateContentSize(),
+            modifier = Modifier
+              .semantics { selected = isSelected }
+              .tvFocusHighlight(tabShape)
+              .animateContentSize(),
           ) {
             Row(
-              modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+              modifier = Modifier.heightIn(min = 48.dp).padding(horizontal = 14.dp, vertical = 6.dp),
               horizontalArrangement = Arrangement.Center,
               verticalAlignment = Alignment.CenterVertically,
             ) {

@@ -2,7 +2,6 @@
 
 package app.gyrolet.mpvrx.ui.mediainfo
 
-import android.annotation.SuppressLint
 import android.net.Uri
 import android.text.format.DateUtils
 import android.text.format.Formatter
@@ -12,10 +11,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
@@ -42,7 +39,6 @@ import java.io.File
 private data class FileReport(val name: String, val data: MediaInfoOps.Report?)
 private data class PlaybackReport(val data: MediaInfoOps.Report?)
 
-@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 internal fun PlaybackMediaInfoSheet(onDismissRequest: () -> Unit) {
   val state by PlaybackSession.state.collectAsStateWithLifecycle()
@@ -76,8 +72,6 @@ internal fun PlaybackMediaInfoSheet(onDismissRequest: () -> Unit) {
     PlayerSheet(
       onDismissRequest = onDismissRequest,
       title = title,
-      customMaxWidth = 840.dp,
-      customMaxHeight = LocalConfiguration.current.screenHeightDp.dp * 0.90f,
       actions = {
         if (report != null) {
           PlayerSheetAction(Icons.RoundedFilled.ContentCopy, stringResource(R.string.ui_copy_all), onClick = {

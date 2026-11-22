@@ -60,7 +60,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
@@ -97,6 +96,7 @@ import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinPerson
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import java.util.Locale
@@ -152,7 +152,7 @@ fun JellyfinDetailSheet(
     val queueState by PlaybackSession.queue.collectAsStateWithLifecycle()
     val currentSessionItem = queueState.currentItem
 
-    ModalBottomSheet(
+    ResponsiveBottomSheet(
       onDismissRequest = onDismiss,
       sheetState = sheetState,
       containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -282,12 +282,12 @@ fun JellyfinDetailSheet(
   var canExpandOverview by remember(item.id) { mutableStateOf(false) }
   val context = LocalContext.current
 
-  ModalBottomSheet(
+  ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     contentColor = MaterialTheme.colorScheme.onSurface,
-    dragHandle = null,
+    showDragHandle = false,
     shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
   ) {
     Column(

@@ -73,6 +73,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 | **Player Controls Animation** | 5 animation styles: Default, Elastic Bounce, Cinematic Scale, Slide Up, Minimal Fade |
 | **Always Dark Mode** | Option to keep player controls in dark theme regardless of app theme |
 | **Themed Player Controls** | Adaptive controls that match your app theme or system accent |
+| **Responsive Sheets & Panels** | Long sheets such as Media Info open just over half-height in portrait and can expand to fill the usable space. Landscape gives long content the full usable height, and tablets get wider sheets. Drag floating panels by their compact headers. |
 | **Media Format Badges** | Crisp, vector-only badges below the video title show the source or container, resolution, video and audio formats, HDR, bit depth, and channels when known. They follow active tracks and the player theme on phones, tablets, and TV. Toggle them under **Player Layout → Appearance** (**Display Controls** on TV). |
 | **Adaptive Toasts** | Message-sized pills resize smoothly within safe screen bounds and float above browser navigation, selection actions, and the mini player; swipe dismissal remains available |
 | **Material 3 Expressive UI** | Expressive components, spring-based navigation, responsive grids, and polished predictive-back motion |

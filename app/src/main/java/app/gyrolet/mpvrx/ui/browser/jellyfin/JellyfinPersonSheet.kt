@@ -38,7 +38,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
@@ -66,6 +65,7 @@ import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinPerson
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 
 private enum class PersonMediaFilter(val label: String) {
   ALL("All"),
@@ -93,7 +93,7 @@ fun JellyfinPersonSheet(
   val scrollState = rememberScrollState()
   val initialFocus = rememberTvInitialFocusRequester(enabled = !isLoading, requestKey = person.id)
 
-  ModalBottomSheet(
+  ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
     containerColor = MaterialTheme.colorScheme.surface,

@@ -31,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
@@ -61,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.components.AppComboBox
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.data.network.ServerSuggestion
 import app.gyrolet.mpvrx.domain.network.NetworkAddress
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
@@ -154,7 +154,7 @@ internal fun ConnectionEditorSheet(
     }
   }
 
-  ModalBottomSheet(
+  ResponsiveBottomSheet(
     onDismissRequest = dismiss,
     modifier = modifier,
     sheetState = sheetState,

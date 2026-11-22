@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -233,7 +233,7 @@ internal fun AutoEqHeadphonePickerSheet(onDismissRequest: () -> Unit) {
       if (!failed && matches?.isEmpty() == true) {
         Text(stringResource(R.string.autoeq_no_matches), modifier = Modifier.padding(vertical = 12.dp))
       }
-      LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp).selectableGroup()) {
+      LazyColumn(Modifier.fillMaxWidth().selectableGroup()) {
         items(matches.orEmpty(), key = { it.url }) { entry ->
           ListItem(
             headlineContent = { Text(entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },

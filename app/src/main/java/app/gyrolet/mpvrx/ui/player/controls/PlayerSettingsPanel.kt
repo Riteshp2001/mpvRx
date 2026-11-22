@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.paneTitle
@@ -197,7 +198,7 @@ internal fun PlayerSettingsPanel(
             title = title,
             canGoBack = searchMode || query.isNotBlank() || backStack.size > 1,
             onBack = back,
-            onSearch = { searchMode = true },
+            onSearch = if (searchMode) null else ({ searchMode = true }),
             onClose = close,
           )
         },
@@ -212,7 +213,7 @@ internal fun PlayerSettingsPanel(
             Box(
               Modifier.fillMaxSize()
                 .padding(horizontal = 4.dp)
-                .padding(bottom = 12.dp)
+                .padding(bottom = 4.dp)
                 .clipToBounds(),
             ) {
               // Keep the current page mounted beneath search, preserving its scroll position
@@ -240,6 +241,7 @@ internal fun PlayerSettingsPanel(
                   SettingsPanelHome(categories, query, { query = it }, backStack, requestSearchFocus = true) {
                     searchMode = false
                     query = ""
+                    query = ""
                     keyboard?.hide()
                   }
                 }
@@ -257,20 +259,22 @@ private fun SettingsPanelHeader(
   title: String,
   canGoBack: Boolean,
   onBack: () -> Unit,
-  onSearch: () -> Unit,
+  onSearch: (() -> Unit)?,
   onClose: () -> Unit,
 ) {
-  Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+  Row(Modifier.fillMaxWidth().padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
     if (canGoBack) {
       IconButton(onClick = onBack) { Icon(Icons.RoundedFilled.ArrowBack, stringResource(R.string.back)) }
     } else {
-      Icon(Icons.RoundedFilled.Settings, null, Modifier.padding(12.dp).size(24.dp))
+      Icon(Icons.RoundedFilled.Settings, null, Modifier.padding(horizontal = 10.dp).size(20.dp))
     }
     Text(
-      title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium,
-      maxLines = 1, overflow = TextOverflow.Ellipsis,
+      title, Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleMedium,
+      maxLines = 2, overflow = TextOverflow.Ellipsis,
     )
-    IconButton(onClick = onSearch) { Icon(Icons.RoundedFilled.Search, stringResource(R.string.settings_search_title)) }
+    if (onSearch != null) {
+      IconButton(onClick = onSearch) { Icon(Icons.RoundedFilled.Search, stringResource(R.string.settings_search_title)) }
+    }
     IconButton(onClick = onClose) { Icon(Icons.RoundedFilled.Close, stringResource(R.string.player_settings_close)) }
   }
 }
@@ -343,26 +347,28 @@ private fun SettingsPanelHome(
     onNavigate()
   }
   Column(Modifier.fillMaxSize()) {
-    InlineSearchBar(
-      query = query,
-      onQueryChange = onQueryChange,
-      onSearch = onQueryChange,
-      inputFieldModifier = Modifier.focusRequester(searchFocus),
-      placeholder = { Text(stringResource(R.string.player_settings_search)) },
-      leadingIcon = { Icon(Icons.RoundedFilled.Search, null) },
-      trailingIcon = {
-        if (query.isNotEmpty()) {
-          IconButton(onClick = { onQueryChange("") }) {
-            Icon(Icons.RoundedFilled.Close, stringResource(R.string.player_settings_clear_search))
+    if (requestSearchFocus) {
+      InlineSearchBar(
+        query = query,
+        onQueryChange = onQueryChange,
+        onSearch = onQueryChange,
+        inputFieldModifier = Modifier.focusRequester(searchFocus),
+        placeholder = { Text(stringResource(R.string.player_settings_search)) },
+        leadingIcon = { Icon(Icons.RoundedFilled.Search, null) },
+        trailingIcon = {
+          if (query.isNotEmpty()) {
+            IconButton(onClick = { onQueryChange("") }) {
+              Icon(Icons.RoundedFilled.Close, stringResource(R.string.player_settings_clear_search))
+            }
           }
-        }
-      },
-      windowInsets = WindowInsets(0),
-      modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-    )
+        },
+        windowInsets = WindowInsets(0),
+        modifier = Modifier.padding(horizontal = 12.dp),
+      )
+    }
     LazyColumn(
       modifier = Modifier.weight(1f),
-      contentPadding = PaddingValues(12.dp),
+      contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
       verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
       if (query.isNotBlank()) {

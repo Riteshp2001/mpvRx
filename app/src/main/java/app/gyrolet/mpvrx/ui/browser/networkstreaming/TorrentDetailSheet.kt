@@ -39,7 +39,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.SheetValue
@@ -66,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.database.entities.NetworkStreamEntryEntity
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.ui.torrent.TorrentDownloadButton
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -135,11 +135,11 @@ fun TorrentDetailSheet(
       base.firstOrNull { it.fileIndex !in viewedFileIndices } ?: base.firstOrNull()
     }
 
-  ModalBottomSheet(
+  ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
     containerColor = MaterialTheme.colorScheme.surface,
-    dragHandle = null,
+    showDragHandle = false,
     modifier = modifier,
   ) {
     val listState = rememberLazyListState()

@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,7 +51,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
@@ -61,7 +59,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
@@ -120,6 +117,7 @@ import app.gyrolet.mpvrx.presentation.components.AppPickerSheet
 import app.gyrolet.mpvrx.presentation.components.AppComboBoxChip
 import app.gyrolet.mpvrx.presentation.components.AppComboBoxOption
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSearchField
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
@@ -853,12 +851,11 @@ private fun AudiobookDetailsBottomSheet(
     initialValue = SheetValue.Expanded,
     enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
   )
-  ModalBottomSheet(
+  ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
     shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    dragHandle = { BottomSheetDefaults.DragHandle() },
   ) {
     LazyColumn(
       modifier = Modifier.fillMaxWidth(),
@@ -1241,7 +1238,7 @@ private fun AudiobookOnlineSearchDialog(
           }
         } else {
           LazyColumn(
-            modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp),
+            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
             items(

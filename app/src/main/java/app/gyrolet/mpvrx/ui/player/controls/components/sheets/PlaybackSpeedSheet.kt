@@ -21,7 +21,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -78,30 +78,6 @@ fun PlaybackSpeedSheet(
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     title = stringResource(R.string.btn_label_speed),
-    bottomBar = {
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        Button(
-          modifier = Modifier.weight(1f),
-          onClick = { onMakeDefault(speed) },
-          enabled = speedControlEnabled,
-        ) {
-          Text(text = stringResource(id = R.string.player_sheets_speed_make_default))
-        }
-        Button(
-          onClick = {
-            onResetDefault()
-            onResetPresets()
-            onSpeedChange(1.0f)
-          },
-          enabled = speedControlEnabled,
-        ) {
-          Text(text = stringResource(id = R.string.generic_reset))
-        }
-      }
-    },
   ) {
     Column(
       modifier
@@ -236,6 +212,28 @@ fun PlaybackSpeedSheet(
         summaryStyle = MaterialTheme.typography.bodySmall,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
       )
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+      ) {
+        TextButton(
+          modifier = Modifier.weight(1f, fill = false),
+          onClick = { onMakeDefault(speed) },
+          enabled = speedControlEnabled,
+        ) {
+          Text(stringResource(R.string.player_sheets_speed_make_default))
+        }
+        TextButton(
+          onClick = {
+            onResetDefault()
+            onResetPresets()
+            onSpeedChange(1.0f)
+          },
+          enabled = speedControlEnabled,
+        ) {
+          Text(stringResource(R.string.generic_reset))
+        }
+      }
     }
   }
 }

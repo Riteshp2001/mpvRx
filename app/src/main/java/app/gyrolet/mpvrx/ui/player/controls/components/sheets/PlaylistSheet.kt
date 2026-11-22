@@ -342,11 +342,10 @@ fun PlaylistSheet(
     modifier = Modifier.fillMaxWidth(),
     customMaxWidth =
       if (!isPortrait && !isListMode && configuration.smallestScreenWidthDp >= 600) {
-        (configuration.screenWidthDp.dp - 48.dp).coerceAtMost(1280.dp)
+        1280.dp
       } else {
         null
       },
-    customMaxHeight = if (isPortrait) configuration.screenHeightDp.dp * 0.55f else null,
     isSwipeActive = isSwipeActive,
     swipeOffset = swipeOffset,
     useFrostedGlass = true,

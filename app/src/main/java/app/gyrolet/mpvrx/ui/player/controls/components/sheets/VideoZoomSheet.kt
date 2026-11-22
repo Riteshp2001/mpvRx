@@ -20,12 +20,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
@@ -84,34 +83,6 @@ fun VideoZoomSheet(
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     title = stringResource(R.string.btn_label_zoom),
-    bottomBar = {
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        OutlinedButton(
-          onClick = { playerPreferences.defaultVideoZoom.set(zoom) },
-          enabled = zoomControlEnabled && zoom != defaultZoom,
-          modifier = Modifier.weight(1f),
-        ) {
-          Text(stringResource(R.string.set_as_default), style = MaterialTheme.typography.labelMedium)
-        }
-
-        Button(
-          onClick = {
-            if (zoomControlEnabled) {
-              zoom = 0f
-              playerPreferences.defaultVideoZoom.set(0f)
-            }
-            if (panControlEnabled) onResetVideoPan()
-          },
-          enabled = (zoomControlEnabled && zoom != 0f) || panControlEnabled,
-          modifier = Modifier.weight(1f),
-        ) {
-          Text(stringResource(R.string.generic_reset), style = MaterialTheme.typography.labelMedium)
-        }
-      }
-    },
   ) {
     ZoomVideoSheet(
       zoom = zoom,
@@ -127,7 +98,34 @@ fun VideoZoomSheet(
       zoomControlEnabled = zoomControlEnabled,
       panControlEnabled = panControlEnabled,
       modifier = modifier,
-    )
+    ) {
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+      ) {
+        TextButton(
+          onClick = { playerPreferences.defaultVideoZoom.set(zoom) },
+          enabled = zoomControlEnabled && zoom != defaultZoom,
+          modifier = Modifier.weight(1f, fill = false),
+        ) {
+          Text(stringResource(R.string.set_as_default), style = MaterialTheme.typography.labelMedium)
+        }
+
+        TextButton(
+          onClick = {
+            if (zoomControlEnabled) {
+              zoom = 0f
+              playerPreferences.defaultVideoZoom.set(0f)
+            }
+            if (panControlEnabled) onResetVideoPan()
+          },
+          enabled = (zoomControlEnabled && zoom != 0f) || panControlEnabled,
+          modifier = Modifier.weight(1f),
+        ) {
+          Text(stringResource(R.string.generic_reset), style = MaterialTheme.typography.labelMedium)
+        }
+      }
+    }
   }
 }
 
@@ -141,6 +139,7 @@ private fun ZoomVideoSheet(
   zoomControlEnabled: Boolean,
   panControlEnabled: Boolean,
   modifier: Modifier = Modifier,
+  actions: @Composable () -> Unit,
 ) {
   val preferences = koinInject<PlayerPreferences>()
   val overlaysFollowZoom by preferences.overlaysFollowVideoZoom.collectAsState()
@@ -256,6 +255,7 @@ private fun ZoomVideoSheet(
         groupIndex = 1,
       )
     }
+    actions()
   }
 }
 

@@ -18,6 +18,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import app.gyrolet.mpvrx.ui.browser.cards.mediaCardClickable
 import app.gyrolet.mpvrx.ui.browser.components.mediaItemMotion
 import androidx.compose.foundation.layout.Arrangement
@@ -58,12 +60,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -74,7 +74,6 @@ import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.animateFloatingActionButton
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -117,6 +116,7 @@ import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -886,17 +886,13 @@ fun MusicLibraryContent(
 
         // Song Options Sheet
         selectedSongForOptions?.let { song ->
-          ModalBottomSheet(
+          ResponsiveBottomSheet(
             onDismissRequest = { selectedSongForOptions = null },
-            sheetState =
-              rememberBottomSheetState(
-                initialValue = SheetValue.Hidden,
-                enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-              )
           ) {
             Column(
               modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp)
             ) {
               Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1015,17 +1011,13 @@ fun MusicLibraryContent(
           val albumSongs = remember(songs, album) {
             songs.filter { it.albumKey == album.id }.sortedByAlbumTrack()
           }
-          ModalBottomSheet(
+          ResponsiveBottomSheet(
             onDismissRequest = { selectedAlbumForOptions = null },
-            sheetState =
-              rememberBottomSheetState(
-                initialValue = SheetValue.Hidden,
-                enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-              )
           ) {
             Column(
               modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp)
             ) {
               Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1092,17 +1084,13 @@ fun MusicLibraryContent(
           val artistSongs = remember(songs, artist) {
             songs.filter { it.artist.equals(artist.name, ignoreCase = true) }
           }
-          ModalBottomSheet(
+          ResponsiveBottomSheet(
             onDismissRequest = { selectedArtistForOptions = null },
-            sheetState =
-              rememberBottomSheetState(
-                initialValue = SheetValue.Hidden,
-                enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-              )
           ) {
             Column(
               modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp)
             ) {
               Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1158,17 +1146,13 @@ fun MusicLibraryContent(
 
         // Playlist Options Sheet
         selectedPlaylistForOptions?.let { playlist ->
-          ModalBottomSheet(
+          ResponsiveBottomSheet(
             onDismissRequest = { selectedPlaylistForOptions = null },
-            sheetState =
-              rememberBottomSheetState(
-                initialValue = SheetValue.Hidden,
-                enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-              )
           ) {
             Column(
               modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp)
             ) {
               Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2559,14 +2543,7 @@ private fun AlbumDetailSheet(
   onSongLongClick: (MusicSong) -> Unit,
   onPlayAlbum: () -> Unit
 ) {
-  ModalBottomSheet(
-    onDismissRequest = onDismiss,
-    sheetState =
-      rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-      )
-  ) {
+  ResponsiveBottomSheet(onDismissRequest = onDismiss) {
     Column(
       modifier = Modifier
         .fillMaxWidth()
@@ -2625,7 +2602,7 @@ private fun AlbumDetailSheet(
       LazyColumn(
         modifier = Modifier
           .fillMaxWidth()
-          .height(350.dp)
+          .weight(1f, fill = false),
       ) {
         items(songs, key = { it.id }) { song ->
           val isPlaying = when {
@@ -2657,14 +2634,7 @@ private fun ArtistDetailSheet(
   onSongLongClick: (MusicSong) -> Unit,
   onPlayArtist: () -> Unit
 ) {
-  ModalBottomSheet(
-    onDismissRequest = onDismiss,
-    sheetState =
-      rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-      )
-  ) {
+  ResponsiveBottomSheet(onDismissRequest = onDismiss) {
     Column(
       modifier = Modifier
         .fillMaxWidth()
@@ -2709,7 +2679,7 @@ private fun ArtistDetailSheet(
       LazyColumn(
         modifier = Modifier
           .fillMaxWidth()
-          .height(350.dp)
+          .weight(1f, fill = false),
       ) {
         items(songs, key = { it.id }) { song ->
           val isPlaying = when {

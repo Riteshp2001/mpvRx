@@ -32,7 +32,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
@@ -46,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.domain.update.Release
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -79,7 +79,7 @@ fun UpdateSheet(
   val asset = state.asset
   val busy = state.isDownloading || state.isInstalling
 
-  ModalBottomSheet(
+  ResponsiveBottomSheet(
     onDismissRequest = { if (!busy) onDismiss() },
     sheetState = sheetState,
     sheetGesturesEnabled = !busy,
@@ -175,7 +175,7 @@ fun UpdateSheet(
         Text(stringResource(R.string.update_checking_download), style = MaterialTheme.typography.bodySmall)
       }
       FlowRow(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
         verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
