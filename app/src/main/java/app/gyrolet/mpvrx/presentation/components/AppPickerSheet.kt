@@ -76,11 +76,11 @@ fun AppPickerSheet(
           Modifier
             .fillMaxWidth()
             .then(if (embeddedTvPicker || fixedHeight) Modifier.fillMaxHeight() else Modifier)
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 20.dp)
             .padding(bottom = 4.dp),
       ) {
         Row(
-          modifier = Modifier.fillMaxWidth(),
+          modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
           horizontalArrangement = Arrangement.spacedBy(8.dp),
           verticalAlignment = Alignment.Top,
         ) {
@@ -140,8 +140,8 @@ fun AppPickerSheet(
         Spacer(Modifier.height(4.dp))
 
         FlowRow(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+          modifier = Modifier.align(Alignment.End),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
           verticalArrangement = Arrangement.spacedBy(4.dp),
           content = actions,
         )

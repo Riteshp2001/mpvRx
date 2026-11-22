@@ -175,8 +175,8 @@ fun UpdateSheet(
         Text(stringResource(R.string.update_checking_download), style = MaterialTheme.typography.bodySmall)
       }
       FlowRow(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        modifier = Modifier.align(Alignment.End).padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         if (state.isDownloading) {

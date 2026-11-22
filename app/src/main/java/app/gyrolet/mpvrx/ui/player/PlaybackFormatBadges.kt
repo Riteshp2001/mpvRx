@@ -615,7 +615,7 @@ internal fun sourceBadge(fileFormat: String?, vararg filenames: String?): Playba
     "mp4" in formats -> PlaybackFormatBadge(
       if (extension == "mov") "MOV" else if (extension == "3gp") "3GP" else "MP4",
     )
-    "ogg" in formats -> PlaybackFormatBadge("Ogg", "codecs/ogg.svg")
+    "ogg" in formats -> PlaybackFormatBadge("Ogg", "codecs/ogg.svg", BadgeArtwork.OnLight)
     "flac" in formats -> PlaybackFormatBadge("FLAC", "codecs/flac.svg", BadgeArtwork.Original)
     "avi" in formats -> PlaybackFormatBadge("AVI")
     "mpegts" in formats -> PlaybackFormatBadge("MPEG-TS")

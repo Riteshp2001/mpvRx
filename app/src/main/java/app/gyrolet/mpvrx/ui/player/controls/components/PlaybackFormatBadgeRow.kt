@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +35,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -49,6 +50,7 @@ import org.koin.compose.koinInject
 
 private val BadgeRailShape = RoundedCornerShape(12.dp)
 private val BrandBackingShape = RoundedCornerShape(5.dp)
+private const val UniformTextScale = 0.72f
 
 @Composable
 internal fun PlaybackFormatBadgeRow(
@@ -136,7 +138,7 @@ private fun FormatBadge(
   val badgeForeground = tintArgb?.let(::Color) ?: foreground
   val path = badge.asset
   val painter = if (path == null) null else rememberAssetLogoPainter("media_format_logos/$path")
-  Box(modifier.heightIn(min = logoHeight + 4.dp), contentAlignment = Alignment.Center) {
+  Box(modifier.height(logoHeight), contentAlignment = Alignment.Center) {
     if (painter == null) {
       val shadow = if (inkEdge.isSpecified) {
         Shadow(color = inkEdge, blurRadius = with(LocalDensity.current) { 2.dp.toPx() })
@@ -144,7 +146,10 @@ private fun FormatBadge(
       Text(
         badge.label,
         color = badgeForeground,
-        style = MaterialTheme.typography.labelMedium.copy(shadow = shadow),
+        style = MaterialTheme.typography.labelMedium.copy(
+          fontSize = (logoHeight.value * UniformTextScale).sp,
+          shadow = shadow,
+        ),
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
         modifier = Modifier.clearAndSetSemantics { contentDescription = description },
@@ -167,9 +172,10 @@ private fun FormatBadge(
         contentDescription = description,
         colorFilter = if (useThemeInk) ColorFilter.tint(badgeForeground) else null,
         contentScale = ContentScale.Fit,
-        modifier = backing
-          .then(if (needsBacking) Modifier.padding(horizontal = 3.dp, vertical = 2.dp) else Modifier)
+        modifier = Modifier
           .size(width = logoHeight * aspect, height = logoHeight)
+          .then(backing)
+          .then(if (needsBacking) Modifier.padding(horizontal = 3.dp) else Modifier)
           .then(edge),
       )
     }

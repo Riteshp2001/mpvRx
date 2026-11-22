@@ -569,7 +569,7 @@ internal object MediaInfoDetails {
       Row(
         modifier =
           Modifier
-            .fillMaxWidth()
+            .align(Alignment.End)
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = if (inPlayer) 4.dp else 12.dp),
         horizontalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing),

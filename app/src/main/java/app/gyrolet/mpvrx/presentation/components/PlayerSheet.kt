@@ -228,7 +228,9 @@ fun PlayerSheet(
       modifier = Modifier.fillMaxSize()
         // Lifts the whole sheet above the keyboard instead of padding inside a height-capped surface.
         .imePadding()
-        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+        .windowInsetsPadding(
+          CenteredSheetInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
+        )
         .then(if (television) Modifier.padding(TvSafeArea.Padding) else Modifier)
         .onSizeChanged {
           val anchors =
@@ -296,11 +298,8 @@ fun PlayerSheet(
               .padding(bottom = if (isImeVisible) 0.dp else 4.dp),
           ) { resize ->
             if (title != null) {
-              if (canDrag) PlayerSheetDragHandle()
-              PlayerSheetHeader(title = title) {
-                if (resize != null) SheetResizeAction(resize)
-                actions()
-              }
+              if (canDrag || resize != null) PlayerSheetDragHandle(onVerticalDrag = resize?.setExpanded)
+              PlayerSheetHeader(title = title, actions = actions)
             } else {
               SheetOpeningHandle(resize, showDragHandle = canDrag)
             }
@@ -377,8 +376,13 @@ fun PlayerSheet(
 }
 
 @Composable
-fun PlayerSheetDragHandle() {
-  Box(Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 2.dp), contentAlignment = Alignment.Center) {
+fun PlayerSheetDragHandle(onVerticalDrag: ((Boolean) -> Unit)? = null) {
+  Box(
+    Modifier.fillMaxWidth()
+      .padding(top = 8.dp, bottom = 2.dp)
+      .then(if (onVerticalDrag != null) Modifier.sheetExpandDrag(onVerticalDrag) else Modifier),
+    contentAlignment = Alignment.Center,
+  ) {
     Box(
       Modifier.size(width = 34.dp, height = 4.dp)
         .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(2.dp)),
@@ -394,7 +398,7 @@ fun PlayerSheetHeader(
   actions: @Composable RowScope.() -> Unit = {},
 ) {
   Row(
-    modifier = modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, bottom = 2.dp),
+    modifier = modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 4.dp, bottom = 2.dp),
     horizontalArrangement = Arrangement.spacedBy(6.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {

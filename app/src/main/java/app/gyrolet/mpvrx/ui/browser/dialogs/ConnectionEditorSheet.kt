@@ -363,8 +363,8 @@ internal fun ConnectionEditorSheet(
       }
 
       FlowRow(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        modifier = Modifier.align(Alignment.End).padding(bottom = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
       ) {
         TextButton(onClick = dismiss, shapes = ButtonDefaults.shapes()) {

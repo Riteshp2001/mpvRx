@@ -3,7 +3,7 @@
 package app.gyrolet.mpvrx.presentation.components
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -30,23 +30,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.dismiss
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.tv.TvSafeArea
 import app.gyrolet.mpvrx.ui.tv.isTelevision
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 internal data class SheetWindow(val width: Dp, val height: Dp, val television: Boolean) {
   private val landscape = width >= height
@@ -55,7 +57,7 @@ internal data class SheetWindow(val width: Dp, val height: Dp, val television: B
   fun maxWidth(preferredWidth: Dp? = null): Dp = when {
     television -> minOf((width - TvSafeArea.Horizontal * 2).coerceAtLeast(0.dp), preferredWidth ?: 960.dp)
     large -> minOf(width - 48.dp, preferredWidth ?: if (landscape) 1000.dp else 840.dp)
-    landscape -> preferredWidth ?: 840.dp
+    landscape -> preferredWidth ?: minOf(width - 48.dp, 640.dp)
     else -> preferredWidth ?: Dp.Unspecified
   }
 
@@ -78,7 +80,36 @@ internal fun sheetWindow(): SheetWindow {
   return SheetWindow(configuration.screenWidthDp.dp, configuration.screenHeightDp.dp, isTelevision())
 }
 
-internal data class SheetResize(val expanded: Boolean, val toggle: () -> Unit)
+internal class CenteredSheetInsets(private val insets: WindowInsets) : WindowInsets {
+  override fun getLeft(density: Density, layoutDirection: LayoutDirection): Int =
+    maxOf(insets.getLeft(density, layoutDirection), insets.getRight(density, layoutDirection))
+
+  override fun getRight(density: Density, layoutDirection: LayoutDirection): Int =
+    getLeft(density, layoutDirection)
+
+  override fun getTop(density: Density): Int = insets.getTop(density)
+
+  override fun getBottom(density: Density): Int = insets.getBottom(density)
+}
+
+internal data class SheetResize(val expanded: Boolean, val setExpanded: (Boolean) -> Unit)
+
+private val SheetExpandThreshold = 24.dp
+
+internal fun Modifier.sheetExpandDrag(setExpanded: (Boolean) -> Unit): Modifier = pointerInput(Unit) {
+  var travelled = 0f
+  detectVerticalDragGestures(
+    onDragStart = { travelled = 0f },
+    onVerticalDrag = { change, amount ->
+      change.consume()
+      travelled += amount
+      if (abs(travelled) >= SheetExpandThreshold.toPx()) {
+        setExpanded(travelled < 0f)
+        travelled = 0f
+      }
+    },
+  )
+}
 
 /** Constrain the content, not its outer anchor, so pinned actions aren't below the fold. */
 @Composable
@@ -98,7 +129,7 @@ internal fun ResponsiveSheetContent(
     val initialHeight = window.initialHeight(availableHeight, keyboardVisible)
     val isAtInitialLimit = contentHeightPx >= with(density) { initialHeight.roundToPx() }
     val resize = if (maxContentHeight > initialHeight && (expanded || isAtInitialLimit)) {
-      SheetResize(expanded) { expanded = !expanded }
+      SheetResize(expanded) { expanded = it }
     } else null
     Column(
       Modifier.fillMaxWidth()
@@ -111,20 +142,9 @@ internal fun ResponsiveSheetContent(
 }
 
 @Composable
-internal fun SheetResizeAction(resize: SheetResize) {
-  PlayerSheetAction(
-    icon = if (resize.expanded) Icons.RoundedFilled.ExpandMore else Icons.RoundedFilled.ExpandLess,
-    label = stringResource(if (resize.expanded) R.string.generic_collapse else R.string.generic_expand),
-    onClick = resize.toggle,
-  )
-}
-
-@Composable
 internal fun SheetOpeningHandle(resize: SheetResize?, showDragHandle: Boolean) {
   if (resize != null) {
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-      SheetResizeAction(resize)
-    }
+    PlayerSheetDragHandle(onVerticalDrag = resize.setExpanded)
   } else if (showDragHandle) {
     PlayerSheetDragHandle()
   }
@@ -171,12 +191,16 @@ internal fun ResponsiveBottomSheet(
     containerColor = containerColor,
     contentColor = contentColor,
     dragHandle = null,
-    contentWindowInsets = { WindowInsets.safeDrawing },
+    contentWindowInsets = { CenteredSheetInsets(WindowInsets.safeDrawing) },
     properties = properties,
   ) {
     ResponsiveSheetContent(
       window = window,
-      modifier = if (window.television) Modifier.padding(vertical = TvSafeArea.Vertical) else Modifier,
+      modifier = if (window.television) {
+        Modifier.padding(vertical = TvSafeArea.Vertical)
+      } else {
+        Modifier.padding(top = 4.dp)
+      },
     ) { resize ->
       SheetOpeningHandle(resize, showDragHandle && sheetGesturesEnabled && !window.television)
       content()
