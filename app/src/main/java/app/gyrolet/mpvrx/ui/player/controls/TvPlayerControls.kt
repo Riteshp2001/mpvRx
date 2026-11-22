@@ -88,6 +88,7 @@ import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.controls.components.AnimatedPlayPauseIcon
+import app.gyrolet.mpvrx.ui.player.controls.components.PlaybackFormatBadgeRow
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 import kotlin.math.abs
@@ -382,15 +383,19 @@ private fun TvPlayerTopBar(
     modifier = modifier,
     verticalAlignment = Alignment.Top,
   ) {
-    Text(
-      text = title.orEmpty(),
-      style = MaterialTheme.typography.headlineSmall,
-      fontWeight = FontWeight.SemiBold,
-      color = Color.White,
-      maxLines = 2,
-      overflow = TextOverflow.Ellipsis,
-      modifier = Modifier.weight(1f),
-    )
+    Column(modifier = Modifier.weight(1f)) {
+      Text(
+        text = title.orEmpty(),
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.SemiBold,
+        color = Color.White,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+      )
+      if (!title.isNullOrBlank()) {
+        PlaybackFormatBadgeRow(modifier = Modifier.padding(top = 4.dp), logoHeight = 22.dp)
+      }
+    }
     Spacer(Modifier.width(24.dp))
     Text(
       text = clock,

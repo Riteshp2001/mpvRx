@@ -1714,6 +1714,16 @@ object SearchablePreferences {
         SearchEntrySpec(R.string.pref_player_buttons_opacity, listOf("opacity", "transparency", "transparent", "alpha", "background", "buttons", "player")),
         SearchEntrySpec(R.string.ui_time_network_clock, listOf("clock", "time", "network", "format", "12 hour", "24 hour")),
       )
+      add(
+        SearchablePreference(
+          titleRes = R.string.pref_layout_media_format_badges_title,
+          summaryRes = R.string.pref_layout_media_format_badges_summary,
+          keywords = listOf("badge", "format", "codec", "resolution", "hdr", "video title", "player layout"),
+          category = "Appearance",
+          screen = PlayerControlsPreferencesScreen,
+          anchorItemIndex = 9,
+        ),
+      )
 
       addSearchEntries(
         category = "Player",

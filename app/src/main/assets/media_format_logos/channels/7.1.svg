@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48.657 24">
+  <title>7.1 channels</title>
+  <path fill="currentColor" d="M2 9.25h3.25L10 5.4v13.2l-4.75-3.85H2Z"/>
+  <path d="M13.1 8.5a4.85 4.85 0 0 1 0 7M16 6a8.6 8.6 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+  <path fill="currentColor" transform="translate(22 3)" d="m.972 16.055 6.26-12.129-.073-.085H0V.012h12.045v3.282l-.171.316L4.789 18Zm12.855 1.568q-1.081 0-1.829-.741-.747-.742-.747-1.835 0-1.058.747-1.799.748-.742 1.829-.742 1.106 0 1.842.742.735.741.735 1.799 0 1.093-.735 1.835-.736.741-1.842.741m5.515-.206V5.469l-2.516 1.836-2.248-2.893L20.716 0h2.941v17.417Z"/>
+</svg>

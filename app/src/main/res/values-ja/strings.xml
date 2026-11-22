@@ -173,6 +173,8 @@
   <string name="pref_clear_thumbnail_cache_title">サムネイルキャッシュを消去</string>
   <string name="pref_clear_thumbnail_cache_summary">キャッシュされた動画サムネイルをすべて削除します</string>
   <string name="pref_layout_title">プレーヤーのレイアウト</string>
+  <string name="pref_layout_media_format_badges_title">メディア形式バッジ</string>
+  <string name="pref_layout_media_format_badges_summary">動画のタイトルの下に解像度、コーデック、HDR、音声情報を表示します。</string>
   <string name="pref_layout_summary">プレーヤーボタンの配置をカスタマイズします</string>
   <string name="pref_layout_reset_default">デフォルトに戻す</string>
   <string name="pref_layout_top_right_controls">右上のコントロール</string>

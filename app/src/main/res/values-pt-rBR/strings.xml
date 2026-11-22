@@ -173,6 +173,8 @@
   <string name="pref_clear_thumbnail_cache_title">Limpar cache de miniaturas</string>
   <string name="pref_clear_thumbnail_cache_summary">Excluir todas as miniaturas de vídeo armazenadas em cache</string>
   <string name="pref_layout_title">Layout do player</string>
+  <string name="pref_layout_media_format_badges_title">Selos de formato de mídia</string>
+  <string name="pref_layout_media_format_badges_summary">Mostra a resolução, os codecs, o HDR e as informações de áudio abaixo do título do vídeo.</string>
   <string name="pref_layout_summary">Personalizar o layout dos botões do player</string>
   <string name="pref_layout_reset_default">Restaurar padrão</string>
   <string name="pref_layout_top_right_controls">Controles superiores direitos</string>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 84.856 25">
+  <title>HDTV</title>
+  <g fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1.8" y="5.5" width="16.4" height="11.8" rx="2.4"/>
+    <path d="M7 20h6m-3-2.7V20"/>
+  </g>
+  <path fill="currentColor" transform="translate(23 4.6)" d="M9.401 15.8V0h3.916v15.8ZM0 15.8V0h3.906v15.8Zm2.317-6.278V5.958h8.86v3.564ZM16.994 15.8V0h5.76q3.574 0 5.649 2.085 2.074 2.086 2.074 5.683v.22q0 3.531-2.124 5.671-2.124 2.141-5.599 2.141Zm3.895-3.487h1.567q1.919 0 2.995-1.064 1.076-1.065 1.076-3.139v-.387q0-2.14-1.098-3.155-1.098-1.015-2.951-1.015h-1.589ZM35.823 15.8V1.843h3.906V15.8ZM31.564 3.542V0h12.424v3.542ZM50.577 15.8 44.917 0h4.115l2.77 8.562.662 2.174h.088l.607-2.152L55.862 0h3.994l-5.66 15.8Z"/>
+</svg>

@@ -159,6 +159,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.LocalPlayerButtonsOpacity
 import app.gyrolet.mpvrx.ui.player.controls.components.asPlayerButtonBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.MediaScopesOverlay
 import app.gyrolet.mpvrx.ui.player.controls.components.MultipleSpeedPlayerUpdate
+import app.gyrolet.mpvrx.ui.player.controls.components.PlaybackFormatBadgeRow
 import app.gyrolet.mpvrx.ui.player.controls.components.ResumeAvailablePlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.ResumedFromPlayerUpdate
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekPlayerUpdate
@@ -2270,28 +2271,37 @@ fun PlayerControls(
                 }
               }
             }
-            if (isPortrait) {
-              titleControls()
-            } else {
-              LandscapePlayerHeader(
-                title = titleControls,
-                actions = {
-                  AnimatedVisibility(
-                    visible = controlsShown && !areControlsLocked && !areSlidersShown,
-                    enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { it },
-                    exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { it },
-                  ) {
-                    PlayerButtonTheme {
-                      LandscapeActionGroup(
-                        buttons = topRightButtons,
-                        endAligned = true,
-                        fillWidth = false,
-                        renderButton = renderLandscapeButton,
-                      )
+            Column {
+              if (isPortrait) {
+                titleControls()
+              } else {
+                LandscapePlayerHeader(
+                  title = titleControls,
+                  actions = {
+                    AnimatedVisibility(
+                      visible = controlsShown && !areControlsLocked && !areSlidersShown,
+                      enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { it },
+                      exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { it },
+                    ) {
+                      PlayerButtonTheme {
+                        LandscapeActionGroup(
+                          buttons = topRightButtons,
+                          endAligned = true,
+                          fillWidth = false,
+                          renderButton = renderLandscapeButton,
+                        )
+                      }
                     }
-                  }
-                },
-              )
+                  },
+                )
+              }
+              AnimatedVisibility(
+                visible = controlsShown && !areControlsLocked && !areSlidersShown && !mediaTitle.isNullOrBlank(),
+                enter = buildControlsEnterH(controlsAnimStyle, reduceMotion, enterMs) { -it },
+                exit = buildControlsExitH(controlsAnimStyle, reduceMotion, exitMs) { -it },
+              ) {
+                PlaybackFormatBadgeRow(Modifier.padding(start = 48.dp + spacing.extraSmall, top = 3.dp))
+              }
             }
           }
 

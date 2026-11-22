@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 278 155">
+  <defs>
+    <clipPath id="m">
+      <path clip-rule="evenodd" d="M0 0h278v155H0Zm208.6 52.5-8.4 8.3-8.9-9.4 19.5-19h13.6v48.2h-15.8Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#m)">
+    <polygon points="278 112.7 213.2 0 148.5 112.7 278 112.7" fill="currentColor" opacity="0.6"/>
+    <polygon points="278 112.7 253.7 84.5 237.5 112.7 278 112.7" fill="currentColor" opacity="0.3"/>
+    <polygon points="172.8 84.5 148.5 112.7 189 112.7 172.8 84.5" fill="currentColor" opacity="0.3"/>
+    <polygon points="213.2 155 253.7 84.5 172.8 84.5 213.2 155" fill="currentColor"/>
+    <path d="M35.6 82.2h18.2l-9.1-28.3zm24.5 20.2H29.4l-3.1 10.4H0l29.5-80.4H60l29.5 80.4H63.2z" fill="currentColor"/>
+    <polygon points="73.6 32.4 101.1 32.4 118.3 86.5 135.6 32.4 163.1 32.4 133.6 112.8 103.1 112.8 73.6 32.4" fill="currentColor"/>
+  </g>
+</svg>

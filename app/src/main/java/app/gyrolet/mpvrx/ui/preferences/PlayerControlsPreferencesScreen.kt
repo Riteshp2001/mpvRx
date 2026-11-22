@@ -292,6 +292,7 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
 
           item {
             val forceDarkPlayerButtonsBackground by appearancePrefs.forceDarkPlayerButtonsBackground.collectAsState()
+            val showMediaFormatBadges by appearancePrefs.showMediaFormatBadges.collectAsState()
             val playerButtonsBackgroundOpacity by appearancePrefs.playerButtonsBackgroundOpacity.collectAsState()
             val storedPlayerTimeToDisappear by playerPrefs.playerTimeToDisappear.collectAsState()
             val playerTimeToDisappear =
@@ -306,6 +307,18 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
             var customTimeValue by remember { mutableStateOf("") }
 
             PreferenceCard {
+              SwitchPreference(
+                groupIndex = 0,
+                groupSize = 1,
+                modifier = Modifier.settingsSearchTarget(R.string.pref_layout_media_format_badges_title),
+                value = showMediaFormatBadges,
+                onValueChange = { appearancePrefs.showMediaFormatBadges.set(it) },
+                title = { Text(stringResource(R.string.pref_layout_media_format_badges_title)) },
+                summary = { Text(stringResource(R.string.pref_layout_media_format_badges_summary)) },
+              )
+
+              PreferenceDivider()
+
               DevicePreference(R.string.pref_player_buttons_opacity) {
                 ExpressivePreferenceItem(standalone = true) {
                   AppSliderPreference(

@@ -242,6 +242,8 @@
   <string name="pref_clear_thumbnail_cache_title">Clear thumbnail cache</string>
   <string name="pref_clear_thumbnail_cache_summary">Delete all cached video thumbnails</string>
   <string name="pref_layout_title">Player Layout</string>
+  <string name="pref_layout_media_format_badges_title">Media format badges</string>
+  <string name="pref_layout_media_format_badges_summary">Show resolution, codecs, HDR, and audio information below the video title.</string>
   <string name="pref_layout_summary">Customize player button layout</string>
   <string name="pref_layout_reset_default">Reset to default</string>
   <string name="pref_layout_top_right_controls">Top Right Controls</string>

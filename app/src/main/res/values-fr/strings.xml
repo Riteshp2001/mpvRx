@@ -173,6 +173,8 @@
   <string name="pref_clear_thumbnail_cache_title">Vider le cache des miniatures</string>
   <string name="pref_clear_thumbnail_cache_summary">Supprimer toutes les miniatures vidéo mises en cache</string>
   <string name="pref_layout_title">Disposition du lecteur</string>
+  <string name="pref_layout_media_format_badges_title">Badges de format multimédia</string>
+  <string name="pref_layout_media_format_badges_summary">Afficher la résolution, les codecs, le HDR et les informations audio sous le titre de la vidéo.</string>
   <string name="pref_layout_summary">Personnaliser la disposition des boutons du lecteur</string>
   <string name="pref_layout_reset_default">Rétablir les valeurs par défaut</string>
   <string name="pref_layout_top_right_controls">Commandes en haut à droite</string>

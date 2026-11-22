@@ -173,6 +173,8 @@
   <string name="pref_clear_thumbnail_cache_title">مسح ذاكرة الصور المصغّرة</string>
   <string name="pref_clear_thumbnail_cache_summary">حذف جميع صور الفيديو المصغّرة المخزّنة مؤقتًا</string>
   <string name="pref_layout_title">تخطيط المشغّل</string>
+  <string name="pref_layout_media_format_badges_title">شارات تنسيق الوسائط</string>
+  <string name="pref_layout_media_format_badges_summary">عرض الدقة وأنواع الترميز وHDR ومعلومات الصوت أسفل عنوان الفيديو.</string>
   <string name="pref_layout_summary">تخصيص تخطيط أزرار المشغّل</string>
   <string name="pref_layout_reset_default">إعادة الضبط إلى الافتراضي</string>
   <string name="pref_layout_top_right_controls">عناصر التحكم أعلى اليمين</string>

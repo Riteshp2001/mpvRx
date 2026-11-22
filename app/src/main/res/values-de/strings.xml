@@ -173,6 +173,8 @@
   <string name="pref_clear_thumbnail_cache_title">Vorschaubild-Cache leeren</string>
   <string name="pref_clear_thumbnail_cache_summary">Alle zwischengespeicherten Video-Vorschaubilder löschen</string>
   <string name="pref_layout_title">Player-Layout</string>
+  <string name="pref_layout_media_format_badges_title">Kennzeichen für Medienformate</string>
+  <string name="pref_layout_media_format_badges_summary">Auflösung, Codecs, HDR und Audioinformationen unter dem Videotitel anzeigen.</string>
   <string name="pref_layout_summary">Anordnung der Player-Schaltflächen anpassen</string>
   <string name="pref_layout_reset_default">Auf Standard zurücksetzen</string>
   <string name="pref_layout_top_right_controls">Steuerelemente oben rechts</string>

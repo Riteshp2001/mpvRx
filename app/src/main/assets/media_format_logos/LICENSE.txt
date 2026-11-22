@@ -1,0 +1,36 @@
+mpvRx Media Badge Artwork License
+
+Copyright (c) 2026 mpvRx artwork contributors, for their original artwork only.
+All rights reserved except as stated below.
+
+Scope
+
+This license covers only original mpvRx artwork in this directory, such as
+the resolution frames, channel badges, and custom format-label designs, and
+only to the extent that the mpvRx artwork contributors hold the copyright.
+
+Permitted use
+
+You may copy, build with, and display the covered artwork as part of mpvRx
+or its forks. You may redistribute it unmodified with their source code or
+installable builds, provided you include this notice.
+
+Standalone redistribution, reuse in unrelated projects, and distribution of
+modified versions of the covered artwork require prior written permission
+from the applicable copyright holder. This license does not limit rights
+under applicable law, separately granted licenses, or GitHub's terms for
+viewing and forking public repositories.
+
+Third-party artwork and marks
+
+Third-party artwork, logos, wordmarks, and trademarks are excluded, including
+those reproduced, recolored, or redrawn for a badge. They remain subject to
+their respective owners' rights and applicable terms. They are shown to
+identify media formats; no affiliation, endorsement, or permission to reuse
+them is implied.
+
+Application source code
+
+This license does not change the GNU Affero General Public License terms for
+mpvRx's source code. You may omit or replace this artwork when building or
+redistributing the software under its source code license.

@@ -167,6 +167,8 @@
   <string name="pref_clear_thumbnail_cache_title">थंबनेल कैश साफ करें</string>
   <string name="pref_clear_thumbnail_cache_summary">सभी कैश किए गए वीडियो थंबनेल डिलीट करें</string>
   <string name="pref_layout_title">प्लेयर लेआउट</string>
+  <string name="pref_layout_media_format_badges_title">मीडिया फ़ॉर्मैट बैज</string>
+  <string name="pref_layout_media_format_badges_summary">वीडियो के शीर्षक के नीचे रिज़ॉल्यूशन, कोडेक, HDR और ऑडियो की जानकारी दिखाएँ।</string>
   <string name="pref_layout_summary">प्लेयर बटन लेआउट कस्टमाइज़ करें</string>
   <string name="pref_layout_reset_default">डिफ़ॉल्ट पर रीसेट करें</string>
   <string name="pref_layout_top_right_controls">टॉप राइट कंट्रोल्स</string>
