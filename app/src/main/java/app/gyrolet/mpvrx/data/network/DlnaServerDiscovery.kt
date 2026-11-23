@@ -66,16 +66,23 @@ internal class DlnaServerDiscovery(context: Context) {
       DatagramSocket().use { socket ->
         network?.bindSocket(socket)
         socket.soTimeout = 500
-        val message = ("M-SEARCH * HTTP/1.1\r\n" +
-          "HOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\n" +
-          "ST: urn:schemas-upnp-org:device:MediaServer:1\r\n\r\n").toByteArray(Charsets.US_ASCII)
+        val searchTypes = listOf("urn:schemas-upnp-org:device:MediaServer:1", "ssdp:all")
+        val searches = searchTypes.map { type ->
+          ("M-SEARCH * HTTP/1.1\r\n" +
+            "HOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\n" +
+            "ST: $type\r\n\r\n").toByteArray(Charsets.US_ASCII)
+        }
         val target = InetAddress.getByName("239.255.255.250")
-        repeat(2) { socket.send(DatagramPacket(message, message.size, target, 1900)) }
         val end = System.nanoTime() + TimeUnit.SECONDS.toNanos(6)
+        var nextSearch = 0L
         while (currentCoroutineContext().isActive && System.nanoTime() < end && seen.size < 100) {
+          if (System.nanoTime() >= nextSearch) {
+            searches.forEach { message -> runCatching { socket.send(DatagramPacket(message, message.size, target, 1900)) } }
+            nextSearch = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
+          }
           val packet = DatagramPacket(ByteArray(16 * 1024), 16 * 1024)
           try { socket.receive(packet) } catch (_: SocketTimeoutException) { continue }
-          val response = String(packet.data, packet.offset, packet.length, Charsets.UTF_8)
+          val response = String(packet.data, packet.offset, packet.length, Charsets.ISO_8859_1)
           val location = response.lineSequence().mapNotNull { line ->
             val colon = line.indexOf(':')
             if (colon > 0 && line.substring(0, colon).trim().equals("location", true)) {
@@ -83,7 +90,7 @@ internal class DlnaServerDiscovery(context: Context) {
             } else null
           }.firstOrNull()?.toHttpUrlOrNull() ?: continue
           if (location.username.isNotEmpty() || location.password.isNotEmpty() ||
-            location.query != null || location.fragment != null || !seen.add(location.toString())) continue
+            location.query != null || location.fragment != null || seen.contains(location.toString())) continue
           val path = runCatching { NetworkPath.from(location.pathSegments.joinToString("/")).value }.getOrNull() ?: continue
           val suggestion = runCatching {
             val request = Request.Builder().url(location).get().build()
@@ -97,6 +104,7 @@ internal class DlnaServerDiscovery(context: Context) {
               )
             }
           }.getOrNull()
+          if (suggestion != null) seen.add(location.toString())
           if (suggestion != null && currentCoroutineContext().isActive) onServer(suggestion)
         }
       }

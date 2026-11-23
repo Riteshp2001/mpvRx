@@ -1534,6 +1534,12 @@ class PlayerActivity :
     return Rect(bounds.left * scale + dx, bounds.top * scale + dy, bounds.right * scale + dx, bounds.bottom * scale + dy)
   }
 
+  private var lastVideoTransformGeneration = -1L
+  private var lastVideoTransformZoom: Float? = null
+  private var lastVideoTransformPanX: Float? = null
+  private var lastVideoTransformPanY: Float? = null
+  private var lastVideoTransformFollowVideo: Boolean? = null
+
   private fun setupVideoTransformObserver() {
     binding.player.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> applyVideoTransform() }
     lifecycleScope.launch {
@@ -1561,6 +1567,16 @@ class PlayerActivity :
     binding.player.translationX = if (followVideo) panX else 0f
     binding.player.translationY = if (followVideo) panY else 0f
     if (!canIssueMpvCommands()) return
+    val generation = PlaybackSession.state.value.generation
+    if (generation == lastVideoTransformGeneration &&
+      zoom == lastVideoTransformZoom && panX == lastVideoTransformPanX &&
+      panY == lastVideoTransformPanY && followVideo == lastVideoTransformFollowVideo
+    ) return
+    lastVideoTransformGeneration = generation
+    lastVideoTransformZoom = zoom
+    lastVideoTransformPanX = panX
+    lastVideoTransformPanY = panY
+    lastVideoTransformFollowVideo = followVideo
     val (mpvPanX, mpvPanY) = if (followVideo) {
       0f to 0f
     } else {

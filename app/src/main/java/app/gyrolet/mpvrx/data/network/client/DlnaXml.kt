@@ -13,6 +13,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.parsers.ParserConfigurationException
 import okhttp3.HttpUrl
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -55,11 +56,21 @@ internal object DlnaXml {
     if (xml.contains("<!DOCTYPE", ignoreCase = true)) throw IOException("Invalid DLNA XML")
     val factory = DocumentBuilderFactory.newInstance().apply {
       isNamespaceAware = true
-      setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-      setFeature("http://xml.org/sax/features/external-general-entities", false)
-      setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+      setFeatureSafely("http://apache.org/xml/features/disallow-doctype-decl", true)
+      setFeatureSafely("http://xml.org/sax/features/external-general-entities", false)
+      setFeatureSafely("http://xml.org/sax/features/external-parameter-entities", false)
+      setFeatureSafely("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
     }
     return factory.newDocumentBuilder().parse(xml.byteInputStream()).documentElement
+  }
+
+  /** Android's bundled parser may not expose Apache-specific features; DOCTYPEs are already rejected above. */
+  private fun DocumentBuilderFactory.setFeatureSafely(name: String, value: Boolean) {
+    try {
+      setFeature(name, value)
+    } catch (_: ParserConfigurationException) {
+    } catch (_: IllegalArgumentException) {
+    }
   }
 
   private fun Element.descendants(name: String): List<Element> {

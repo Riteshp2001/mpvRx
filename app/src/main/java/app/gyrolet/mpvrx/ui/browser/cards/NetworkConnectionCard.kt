@@ -43,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -168,6 +169,8 @@ fun NetworkConnectionCard(
           text = "Error: $error",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.error,
+          maxLines = 3,
+          overflow = TextOverflow.Ellipsis,
           modifier = Modifier.padding(top = 8.dp),
         )
       }

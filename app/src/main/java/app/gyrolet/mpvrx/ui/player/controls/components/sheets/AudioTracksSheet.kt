@@ -183,6 +183,7 @@ fun AudioTracksSheet(
 
             val volumeNormalization by audioPreferences.volumeNormalization.collectAsState()
             val drcEnabled by audioPreferences.drcEnabled.collectAsState()
+            val spatialAudio by audioPreferences.spatialAudio.collectAsState()
 
             PlayerSheetSectionHeader(stringResource(R.string.pref_audio_effects))
             Row(
@@ -210,6 +211,19 @@ fun AudioTracksSheet(
               Text(stringResource(R.string.pref_audio_drc_title), modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge)
               IconSwitch(checked = drcEnabled, onCheckedChange = null, enabled = audioEffectsEnabled)
+            }
+            Row(
+              modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp).heightIn(min = 56.dp)
+                .animatedPlayerSheetBackground(spatialAudio, MaterialTheme.shapes.medium)
+                .toggleable(value = spatialAudio, enabled = audioEffectsEnabled, role = Role.Switch,
+                  onValueChange = audioPreferences.spatialAudio::set)
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+              horizontalArrangement = Arrangement.spacedBy(16.dp),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Text(stringResource(R.string.pref_audio_spatial_title), modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge)
+              IconSwitch(checked = spatialAudio, onCheckedChange = null, enabled = audioEffectsEnabled)
             }
           }
         }
