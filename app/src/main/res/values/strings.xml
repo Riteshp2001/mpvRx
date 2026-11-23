@@ -1466,6 +1466,17 @@
   <string name="media_info_stat_bit_depth">Bit depth</string>
   <string name="media_info_stat_channels">Channels</string>
   <string name="media_info_stat_sample_rate">Sample rate</string>
+  <string name="media_info_date_added">Added to media library</string>
+  <string name="media_info_date_created">Created</string>
+  <string name="media_info_date_taken">Date taken</string>
+  <string name="media_info_date_modified">Last modified</string>
+  <string name="media_info_downloaded_from">Downloaded from</string>
+  <string name="media_info_saved_by">Saved by</string>
+  <string name="media_info_artwork_title">Artwork</string>
+  <string name="media_info_artwork_preview_failed">Couldn\'t display the artwork</string>
+  <string name="media_info_artwork_download">Download</string>
+  <string name="media_info_artwork_saved">Artwork saved</string>
+  <string name="media_info_artwork_save_failed">Couldn\'t save the artwork</string>
   <string name="audio_information_title">Audio information</string>
   <string name="audio_info_loading">Loading audio information…</string>
   <string name="audio_info_unavailable">Audio information is not available until the current track has loaded.</string>

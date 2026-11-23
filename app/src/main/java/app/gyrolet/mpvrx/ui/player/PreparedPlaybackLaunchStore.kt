@@ -55,6 +55,11 @@ internal object PreparedPlaybackLaunchStore {
     }
   }
 
+  fun pendingMediaKind(): DeclaredPlaybackMediaKind? =
+    synchronized(lock) {
+      pending?.let { launch -> launch.items.getOrNull(launch.currentIndex)?.declaredMediaKind() }
+    }
+
   fun consume(token: Long): PreparedPlaybackLaunchResult {
     if (token <= 0L) return PreparedPlaybackLaunchResult.Missing
     synchronized(lock) {

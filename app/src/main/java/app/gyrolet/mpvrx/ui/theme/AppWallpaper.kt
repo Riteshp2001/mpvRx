@@ -155,8 +155,8 @@ fun AppWallpaperHost(content: @Composable () -> Unit) {
       modifier =
         Modifier
           .matchParentSize()
+          .playerSheetWallpaper(MaterialTheme.colorScheme.background)
           .then(if (backgroundBackdrop != null) Modifier.layerBackdrop(backgroundBackdrop) else Modifier)
-          .playerSheetWallpaper()
           .background(MaterialTheme.colorScheme.background),
     ) {
       // Fade the wallpaper in together with the content so the launch hands off from the splash

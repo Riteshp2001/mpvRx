@@ -354,7 +354,11 @@ internal object PlayerSheetTransitions {
   fun captureBrowser() {
     if (drag != null || motion?.host == PlayerSheetDestination.FULL) return
     // Video uses the native window transition; no full-browser GPU snapshot is needed there.
-    if (PlaybackSession.state.value.currentItem?.declaredMediaKind() == DeclaredPlaybackMediaKind.VIDEO) return
+    // Check a freshly staged launch first so a stale video in PlaybackSession doesn't skip audio capture.
+    val outgoingKind =
+      PreparedPlaybackLaunchStore.pendingMediaKind()
+        ?: PlaybackSession.state.value.currentItem?.declaredMediaKind()
+    if (outgoingKind == DeclaredPlaybackMediaKind.VIDEO) return
     browserWallpaper = wallpaper?.frozen()?.takeIf { it.snapshot != null }
     browserBackdrop = backdrop?.frozen()?.takeIf { it.snapshot != null }
     // A hidden mini player still holds its last recording, so this also works mid-expansion.
@@ -390,6 +394,9 @@ internal object PlayerSheetTransitions {
       val full = fullAnchor?.takeIf { it.capture?.isRecorded == true }
         ?: restingHandOff(mediaId)?.endpoints?.full
         ?: return null
+      // When AppWallpaperHost is active, browserBackdrop is transparent over the wallpaper; don't
+      // run the morph without both layers frozen.
+      if (wallpaper != null && browserWallpaper == null) return null
       PlayerSheetEndpoints(
         full = full.copy(mediaId = mediaId),
         mini = browserMini?.takeIf { it.mediaId == mediaId }?.copy(bounds = placement.bounds)
@@ -593,7 +600,7 @@ private fun Modifier.recordPlayerSheet(
     PlayerSheetCapture(context, view, density, direction)
   }
   val owner = remember(capture) { Any() }
-  var coordinates by remember(capture) { mutableStateOf<LayoutCoordinates?>(null) }
+  var coordinates by remember(view, slot) { mutableStateOf<LayoutCoordinates?>(null) }
 
   fun updateAnchor(layout: LayoutCoordinates) {
     if (!layout.isAttached) return
@@ -650,8 +657,8 @@ internal fun Modifier.playerSheetBackdrop(): Modifier =
   recordPlayerSheet(PlayerSheetSlot.BACKDROP, null, RectangleShape, Color.Transparent)
 
 @Composable
-internal fun Modifier.playerSheetWallpaper(): Modifier =
-  recordPlayerSheet(PlayerSheetSlot.WALLPAPER, null, RectangleShape, Color.Transparent)
+internal fun Modifier.playerSheetWallpaper(backgroundColor: Color = Color.Transparent): Modifier =
+  recordPlayerSheet(PlayerSheetSlot.WALLPAPER, null, RectangleShape, backgroundColor)
 
 @Composable
 internal fun Modifier.playerSheetMiniPlacement(shape: Shape, backgroundColor: Color): Modifier {
@@ -702,6 +709,9 @@ private fun DrawScope.drawPlayerSheet(
 ) {
   if (drawBackdrop) {
     endpoints.wallpaper?.let {
+      if (it.backgroundColor.alpha > 0f) {
+        drawRect(it.backgroundColor)
+      }
       drawSheetContent(it, hostView, it.bounds.left - origin.x, it.bounds.top - origin.y, 1f)
     }
     endpoints.backdrop?.let {

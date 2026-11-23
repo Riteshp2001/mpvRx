@@ -9,17 +9,19 @@
 
 package app.gyrolet.mpvrx.domain.thumbnail
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.content.Context
 import android.net.Uri
+import android.util.Log
 import java.io.FileInputStream
-import java.io.RandomAccessFile
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import kotlin.math.min
 
 internal object MatroskaEmbeddedArtworkExtractor {
+  private const val TAG = "MatroskaArtwork"
   private const val ID_SEGMENT = 0x18538067L
   private const val ID_ATTACHMENTS = 0x1941A469L
   private const val ID_ATTACHED_FILE = 0x61A7L
@@ -31,25 +33,45 @@ internal object MatroskaEmbeddedArtworkExtractor {
 
   fun decode(path: String?, maxSize: Int = MAX_THUMBNAIL_SIZE): Bitmap? {
     val localPath = path?.toLocalFilePath()?.takeIf { it.hasMatroskaExtension() } ?: return null
-    return runCatching {
-      RandomAccessFile(localPath, "r").use { file ->
-        val reader = SeekableMedia(file.channel)
-        findArtwork(reader, start = 0L, end = reader.length(), depth = 0)?.decode(reader, maxSize)
+    return try {
+      FileInputStream(localPath).channel.use { channel ->
+        channel.readArtwork()?.decodeArtwork(maxSize)
       }
-    }.getOrNull()
+    } catch (error: IOException) {
+      Log.w(TAG, "Could not read the artwork attachment", error)
+      null
+    } catch (error: SecurityException) {
+      Log.w(TAG, "Artwork attachment is not accessible", error)
+      null
+    }
   }
 
   /** Read attachments from an Android document-tree grant without copying a whole video to disk. */
-  fun decode(context: Context, uri: Uri, displayName: String?, maxSize: Int = MAX_THUMBNAIL_SIZE): Bitmap? {
+  fun decode(context: Context, uri: Uri, displayName: String?, maxSize: Int = MAX_THUMBNAIL_SIZE): Bitmap? =
+    readArtwork(context, uri, displayName)?.decodeArtwork(maxSize)
+
+  /** Original attachment bytes for exporting artwork without downscaling or recompressing it. */
+  fun readArtwork(context: Context, uri: Uri, displayName: String?): ByteArray? {
     if (displayName?.hasMatroskaExtension() != true) return null
-    return runCatching {
+    return try {
       context.contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
-        FileInputStream(descriptor.fileDescriptor).channel.use { channel ->
-          val reader = SeekableMedia(channel)
-          findArtwork(reader, start = 0L, end = reader.length(), depth = 0)?.decode(reader, maxSize)
-        }
+        FileInputStream(descriptor.fileDescriptor).channel.use { it.readArtwork() }
       }
-    }.getOrNull()
+    } catch (error: IOException) {
+      Log.w(TAG, "Could not read the artwork attachment", error)
+      null
+    } catch (error: SecurityException) {
+      Log.w(TAG, "Artwork attachment is not accessible", error)
+      null
+    } catch (error: IllegalArgumentException) {
+      Log.w(TAG, "Could not open the media document", error)
+      null
+    }
+  }
+
+  private fun FileChannel.readArtwork(): ByteArray? {
+    val reader = SeekableMedia(this)
+    return findArtwork(reader, start = 0L, end = reader.length(), depth = 0)?.readBytes(reader)
   }
 
   private class SeekableMedia(private val channel: FileChannel) {
@@ -137,34 +159,38 @@ internal object MatroskaEmbeddedArtworkExtractor {
     ).takeIf { it.isImage && it.dataSize in 1..MAX_ATTACHMENT_BYTES }
   }
 
-  private fun Attachment.decode(file: SeekableMedia, maxSize: Int): Bitmap? {
+  private fun Attachment.readBytes(file: SeekableMedia): ByteArray? {
     if (dataOffset < 0 || dataSize <= 0 || dataSize > MAX_ATTACHMENT_BYTES) return null
     val bytes = ByteArray(dataSize.toInt())
     file.seek(dataOffset)
     file.readFully(bytes)
-    val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
-    val sampleSize = calculateThumbnailSampleSize(options.outWidth, options.outHeight, maxSize)
-    return BitmapFactory.decodeByteArray(
-      bytes,
-      0,
-      bytes.size,
-      BitmapFactory.Options().apply {
-        inSampleSize = sampleSize
-        inPreferredConfig = Bitmap.Config.ARGB_8888
-      },
-    )
+    return bytes
   }
 
+  private fun ByteArray.decodeArtwork(maxSize: Int): Bitmap? =
+    try {
+      val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+      BitmapFactory.decodeByteArray(this, 0, size, options)
+      val sampleSize = calculateThumbnailSampleSize(options.outWidth, options.outHeight, maxSize)
+      BitmapFactory.decodeByteArray(
+        this, 0, size,
+        BitmapFactory.Options().apply {
+          inSampleSize = sampleSize
+          inPreferredConfig = Bitmap.Config.ARGB_8888
+        },
+      )
+    } catch (error: IllegalArgumentException) {
+      Log.w(TAG, "Could not decode the artwork attachment", error)
+      null
+    }
+
   private fun readElementHeader(file: SeekableMedia): ElementHeader? {
-    val start = file.position()
     val id = readEbmlId(file) ?: return null
     val size = readEbmlSize(file) ?: return null
     return ElementHeader(
       id = id,
       size = size,
       dataOffset = file.position(),
-      headerSize = file.position() - start,
     )
   }
 
@@ -248,7 +274,6 @@ internal object MatroskaEmbeddedArtworkExtractor {
     val id: Long,
     val size: Long,
     val dataOffset: Long,
-    val headerSize: Long,
   )
 
   private data class Attachment(

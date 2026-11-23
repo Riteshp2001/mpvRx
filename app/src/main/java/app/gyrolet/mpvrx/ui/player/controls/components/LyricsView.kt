@@ -33,8 +33,6 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -56,7 +54,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -75,32 +72,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType
 import app.gyrolet.mpvrx.domain.lyrics.SyncedLine
-import app.gyrolet.mpvrx.domain.lyrics.SyncedWord
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.LyricsTranslationDisplayMode
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -134,7 +123,6 @@ private const val BACKING_LEAD_IN_MS = 120L
 private const val BACKING_TAIL_MS = 350L
 private const val LEAD_DONE_GRACE_MS = 150L
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LyricsView(
   viewModel: PlayerViewModel,
@@ -306,12 +294,6 @@ fun LyricsView(
                     line.alignEnd -> Alignment.End
                     else -> Alignment.Start
                   }
-                val rowArrangement: Arrangement.Horizontal =
-                  when {
-                    !hasDuet -> Arrangement.Center
-                    line.alignEnd -> Arrangement.End
-                    else -> Arrangement.Start
-                  }
                 val rowTextAlign =
                   when {
                     !hasDuet -> TextAlign.Center
@@ -422,38 +404,23 @@ fun LyricsView(
                     .padding(vertical = 4.dp, horizontal = 6.dp),
                   horizontalAlignment = rowAlignment,
                 ) {
-                  if (leadLit && !isBlankLine && !line.words.isNullOrEmpty()) {
-                    val isRtl = displayText.hasRtlDirection()
-                    CompositionLocalProvider(
-                      LocalLayoutDirection provides if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr,
-                    ) {
-                      FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = rowArrangement,
-                        verticalArrangement = Arrangement.Center,
-                      ) {
-                        line.words.forEachIndexed { wordIndex, word ->
-                          val wordStartMs = word.time.toLong()
-                          val wordEndMs =
-                            line.words.getOrNull(wordIndex + 1)?.time?.toLong()
-                              ?.takeIf { it > wordStartMs }
-                              ?: line.endTime?.toLong()?.takeIf { it > wordStartMs }
-                              ?: activeLyrics.synced.getOrNull(index + 1)?.time?.toLong()
-                                ?.coerceAtMost(line.time.toLong() + 8_000L)
-                                ?.takeIf { it > wordStartMs }
-                              ?: (wordStartMs + 600L)
-                          AnimatedLyricWord(
-                            word = word,
-                            endTimeMs = wordEndMs,
-                            positionMs = smoothPositionMs,
-                            activeColor = activeColor,
-                            inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                            fontSize = if (isLyricsFullscreen) 30.sp else 26.sp,
-                            isRtl = isRtl,
-                          )
-                        }
-                      }
-                    }
+                  val words = line.words.orEmpty()
+                  val nextLineTimeMs = activeLyrics.synced.getOrNull(index + 1)?.time?.toLong()
+                    ?.coerceAtMost(line.time.toLong() + 8_000L)
+                  val hasOriginalWordTiming = words.isNotEmpty() &&
+                    (translationDisplayMode != LyricsTranslationDisplayMode.Replace || line.translation.isNullOrBlank())
+                  if (leadLit && !isBlankLine && hasOriginalWordTiming) {
+                    SweepingLyricText(
+                      text = displayText,
+                      words = words,
+                      endTimeMs = lyricWordEndTime(words, words.lastIndex, line.endTime?.toLong(), nextLineTimeMs),
+                      positionMs = smoothPositionMs,
+                      activeColor = activeColor,
+                      inactiveColor = activeColor.copy(alpha = 0.42f),
+                      fontSize = if (isLyricsFullscreen) 30.sp else 26.sp,
+                      textAlign = rowTextAlign,
+                      modifier = Modifier.fillMaxWidth(),
+                    )
                   } else {
                     Text(
                       text = displayText,
@@ -495,7 +462,6 @@ fun LyricsView(
                         positionMs = smoothPositionMs,
                         activeColor = activeColor,
                         fullscreen = isLyricsFullscreen,
-                        arrangement = rowArrangement,
                         textAlign = rowTextAlign,
                         translated = backing.translation?.trim()?.takeIf { it.isNotBlank() },
                         replaceWithTranslation = translationDisplayMode == LyricsTranslationDisplayMode.Replace,
@@ -966,14 +932,12 @@ private fun Modifier.lyricsEdgeFade(): Modifier =
  * word on its own timings when the source has them and shown whole when it has
  * not.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BackingVoice(
   backing: SyncedLine,
   positionMs: State<Long>,
   activeColor: Color,
   fullscreen: Boolean,
-  arrangement: Arrangement.Horizontal,
   textAlign: TextAlign,
   translated: String? = null,
   replaceWithTranslation: Boolean = false,
@@ -1004,27 +968,17 @@ private fun BackingVoice(
     )
     return
   }
-  FlowRow(
+  SweepingLyricText(
+    text = backing.line,
+    words = words,
+    endTimeMs = lyricWordEndTime(words, words.lastIndex, backing.endTime?.toLong()),
+    positionMs = positionMs,
+    activeColor = activeColor.copy(alpha = 0.78f),
+    inactiveColor = activeColor.copy(alpha = 0.28f),
+    fontSize = size,
+    textAlign = textAlign,
     modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-    horizontalArrangement = arrangement,
-  ) {
-    words.forEachIndexed { index, word ->
-      val start = word.time.toLong()
-      val end =
-        words.getOrNull(index + 1)?.time?.toLong()?.takeIf { it > start }
-          ?: backing.endTime?.toLong()?.takeIf { it > start }
-          ?: (start + 600L)
-      AnimatedLyricWord(
-        word = word,
-        endTimeMs = end,
-        positionMs = positionMs,
-        activeColor = activeColor.copy(alpha = 0.78f),
-        inactiveColor = activeColor.copy(alpha = 0.28f),
-        fontSize = size,
-        isRtl = word.word.hasRtlDirection(),
-      )
-    }
-  }
+  )
 }
 
 // One equal-weight segment of the sync offset pill; `emphasized` marks the center reset/readout segment.
@@ -1125,62 +1079,6 @@ internal fun rememberSmoothedPositionMs(
     }
   }
   return smoothed
-}
-
-/** Smooth karaoke fill: a glowing active layer is revealed in the lyric line's direction. */
-@Composable
-internal fun AnimatedLyricWord(
-  word: SyncedWord,
-  endTimeMs: Long,
-  positionMs: State<Long>,
-  activeColor: Color,
-  inactiveColor: Color,
-  fontSize: TextUnit = 26.sp,
-  isRtl: Boolean = false,
-) {
-  val text = "${word.word} "
-  val textStyle =
-    MaterialTheme.typography.headlineSmall.copy(
-      fontSize = fontSize,
-      fontWeight = FontWeight.Black,
-      fontFamily = fontFamilyForText(text),
-    )
-  if (text.isEmpty()) {
-    Text(text = " ", style = textStyle)
-    return
-  }
-
-  val startTimeMs = word.time.toLong()
-  val durationMs = (endTimeMs - startTimeMs).coerceAtLeast(1L)
-  val activeStyle =
-    textStyle.copy(
-      shadow =
-        Shadow(
-          color = activeColor.copy(alpha = 0.42f),
-          offset = Offset.Zero,
-          blurRadius = 10f,
-        ),
-    )
-
-  Box(contentAlignment = Alignment.CenterStart) {
-    Text(text = text, color = inactiveColor, style = textStyle)
-    Text(
-      text = text,
-      color = activeColor,
-      style = activeStyle,
-      modifier =
-        Modifier.drawWithContent {
-          val fillProgress =
-            ((positionMs.value - startTimeMs).toFloat() / durationMs)
-              .coerceIn(0f, 1f)
-          val left = if (isRtl) size.width * (1f - fillProgress) else 0f
-          val right = if (isRtl) size.width else size.width * fillProgress
-          clipRect(left = left, right = right) {
-            this@drawWithContent.drawContent()
-          }
-        },
-    )
-  }
 }
 
 internal fun String.hasRtlDirection(): Boolean =

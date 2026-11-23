@@ -109,7 +109,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -136,8 +135,12 @@ import app.gyrolet.mpvrx.ui.player.controls.components.MiniAudioVisualizer
 import app.gyrolet.mpvrx.ui.player.controls.components.stableNumericWidth
 import app.gyrolet.mpvrx.ui.player.controls.components.withTabularDigits
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberSmoothedPositionMs
-import app.gyrolet.mpvrx.ui.player.controls.components.AnimatedLyricWord
+import app.gyrolet.mpvrx.ui.player.controls.components.SweepingLyricText
 import app.gyrolet.mpvrx.ui.player.controls.components.hasRtlDirection
+import app.gyrolet.mpvrx.ui.player.controls.components.lyricCharacterPosition
+import app.gyrolet.mpvrx.ui.player.controls.components.lyricSweepX
+import app.gyrolet.mpvrx.ui.player.controls.components.lyricWordEndTime
+import app.gyrolet.mpvrx.ui.player.controls.components.lyricWordSpans
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem
 import sh.calvin.reorderable.ReorderableCollectionItemScope
 import sh.calvin.reorderable.ReorderableItem
@@ -149,7 +152,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
@@ -169,6 +171,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -1464,7 +1467,7 @@ fun AudioPlayerControls(
   val swipeNextCoverBitmap by rememberUpdatedState(nextCoverBitmap ?: albumArtBitmap)
   val swipePrevCoverBitmap by rememberUpdatedState(prevCoverBitmap ?: albumArtBitmap)
   BoxWithConstraints(
-    modifier
+    Modifier
       .fillMaxSize()
       .then(
         if (inAppSheet == null) {
@@ -1477,6 +1480,7 @@ fun AudioPlayerControls(
           Modifier
         },
       )
+      .then(modifier)
       .background(immersiveSurface)
       .drawWithCache {
       if (ambientModeEnabled &&
@@ -2336,22 +2340,23 @@ fun AudioPlayerControls(
                 ) { (line, nextLineTime, text) ->
                   val words = if (line != null && text == line.line.trim()) line.words else null
                   val scrollState = rememberScrollState()
-                  val wordWidths = remember(line, text) { mutableStateMapOf<Int, Int>() }
+                  val lyricLayout = remember(line, text) { mutableStateOf<TextLayoutResult?>(null) }
+                  val isRtl = text.hasRtlDirection()
                   val lineStartMs = line?.time?.toLong() ?: 0L
                   val lineEndMs = nextLineTime?.toLong()?.takeIf { it > lineStartMs } ?: (lineStartMs + 8_000L)
-                  val wordEndTimes = remember(words, lineStartMs, nextLineTime) {
-                    words.orEmpty().mapIndexed { wordIndex, word ->
-                      val wordStartMs = word.time.toLong()
-                      words?.getOrNull(wordIndex + 1)?.time?.toLong()
-                        ?.takeIf { it > wordStartMs }
-                        ?: nextLineTime?.toLong()
-                          ?.coerceAtMost(lineStartMs + 8_000L)
-                          ?.takeIf { it > wordStartMs }
-                        ?: (wordStartMs + 600L)
-                    }
+                  val sweepEndMs = if (!words.isNullOrEmpty()) {
+                    lyricWordEndTime(
+                      words, words.lastIndex, line?.endTime?.toLong(),
+                      nextLineTime?.toLong()?.coerceAtMost(lineStartMs + 8_000L),
+                    )
+                  } else {
+                    lineEndMs
+                  }
+                  val spans = remember(text, words, sweepEndMs) {
+                    lyricWordSpans(text, words.orEmpty(), sweepEndMs)
                   }
 
-                  LaunchedEffect(line, nextLineTime, text, scrollState) {
+                  LaunchedEffect(line, nextLineTime, text, scrollState, spans, isRtl) {
                     snapshotFlow {
                       val maxScroll = scrollState.maxValue
                       val viewportWidth = scrollState.viewportSize
@@ -2360,15 +2365,13 @@ fun AudioPlayerControls(
                       } else {
                         val positionMs = smoothPositionMs.value
                         val highlightPosition = if (!words.isNullOrEmpty()) {
-                          val activeWordIndex = words.indexOfLast { it.time.toLong() <= positionMs }
-                          if (activeWordIndex < 0 || wordWidths.size != words.size) {
+                          val layout = lyricLayout.value
+                          if (layout == null || spans.isEmpty()) {
                             0f
                           } else {
-                            val wordStartMs = words[activeWordIndex].time.toLong()
-                            val wordDurationMs = (wordEndTimes[activeWordIndex] - wordStartMs).coerceAtLeast(1L)
-                            val progress = ((positionMs - wordStartMs).toFloat() / wordDurationMs).coerceIn(0f, 1f)
-                            val precedingWidth = (0 until activeWordIndex).sumOf { wordWidths[it] ?: 0 }
-                            precedingWidth + (wordWidths[activeWordIndex] ?: 0) * progress
+                            val head = lyricCharacterPosition(text.length, spans, positionMs)
+                            val x = lyricSweepX(layout, head, isRtl)
+                            if (isRtl) layout.size.width - x else x
                           }
                         } else {
                           val progress = ((positionMs - lineStartMs).toFloat() / (lineEndMs - lineStartMs))
@@ -2385,31 +2388,25 @@ fun AudioPlayerControls(
                   if (!words.isNullOrEmpty()) {
                     val activeColor = MaterialTheme.colorScheme.onSurface
                     val inactiveColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.42f)
-                    val isRtl = text.hasRtlDirection()
                     CompositionLocalProvider(
                       LocalLayoutDirection provides if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr,
                     ) {
-                      Row(
+                      SweepingLyricText(
+                        text = text,
+                        words = words,
+                        endTimeMs = sweepEndMs,
+                        positionMs = smoothPositionMs,
+                        activeColor = activeColor,
+                        inactiveColor = inactiveColor,
+                        fontSize = 19.sp,
+                        textAlign = TextAlign.Start,
                         modifier = Modifier
                           .fillMaxWidth()
                           .horizontalScroll(scrollState, enabled = false),
-                        horizontalArrangement = Arrangement.Start,
-                        verticalAlignment = Alignment.CenterVertically,
-                      ) {
-                        words.forEachIndexed { wordIndex, word ->
-                          Box(Modifier.onSizeChanged { wordWidths[wordIndex] = it.width }) {
-                            AnimatedLyricWord(
-                              word = word,
-                              endTimeMs = wordEndTimes[wordIndex],
-                              positionMs = smoothPositionMs,
-                              activeColor = activeColor,
-                              inactiveColor = inactiveColor,
-                              fontSize = 19.sp,
-                              isRtl = isRtl,
-                            )
-                          }
-                        }
-                      }
+                        maxLines = 1,
+                        softWrap = false,
+                        onTextLayout = { lyricLayout.value = it },
+                      )
                     }
                   } else {
                     Text(

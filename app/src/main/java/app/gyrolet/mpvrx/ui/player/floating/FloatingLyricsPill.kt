@@ -70,7 +70,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
@@ -117,7 +116,12 @@ import app.gyrolet.mpvrx.domain.lyrics.SyncedLine
 import app.gyrolet.mpvrx.preferences.LyricsTranslationDisplayMode
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.controls.components.LyricWordSpan
+import app.gyrolet.mpvrx.ui.player.controls.components.drawLyricFill
 import app.gyrolet.mpvrx.ui.player.controls.components.hasRtlDirection
+import app.gyrolet.mpvrx.ui.player.controls.components.lyricCharacterPosition
+import app.gyrolet.mpvrx.ui.player.controls.components.lyricSweepX
+import app.gyrolet.mpvrx.ui.player.controls.components.lyricWordSpans
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.LocalAppFontFamily
 import kotlin.math.PI
@@ -777,8 +781,7 @@ private fun pillScript(model: FloatingLyricsModel, mode: LyricsTranslationDispla
   return PillScript(model.generation, rows, stops, slots)
 }
 
-private data class WordSpan(val from: Int, val to: Int, val start: Long, val end: Long)
-private data class PreparedRow(val row: PillRow, val layout: TextLayoutResult, val spans: List<WordSpan>)
+private data class PreparedRow(val row: PillRow, val layout: TextLayoutResult, val spans: List<LyricWordSpan>)
 private data class PreparedScript(val script: PillScript, val rows: List<PreparedRow>)
 
 @Composable
@@ -810,20 +813,7 @@ private fun PillLyricRows(
           ),
           overflow = TextOverflow.Clip, softWrap = false, maxLines = 1,
         )
-        val spans = buildList {
-          var cursor = 0
-          val words = row.line?.words.orEmpty()
-          for ((index, word) in words.withIndex()) {
-            if (word.word.isEmpty()) continue
-            val start = row.text.indexOf(word.word, cursor)
-            if (start < 0) continue
-            val end = start + word.word.length
-            val endTime = words.getOrNull(index + 1)?.time?.toLong()?.takeIf { it > word.time }
-              ?: row.endMs.takeIf { it > word.time } ?: (word.time.toLong() + 600)
-            add(WordSpan(start, end, word.time.toLong(), endTime))
-            cursor = end
-          }
-        }
+        val spans = lyricWordSpans(row.text, row.line?.words.orEmpty(), row.endMs)
         PreparedRow(row, layout, spans)
       }
       PreparedScript(script, rows)
@@ -951,10 +941,10 @@ private fun PillLyricRow(
           ((SystemClock.uptimeMillis() - model.positionUpdatedAt).coerceIn(0L, 250L) * model.speed).toLong()
         } else 0L
         val time = model.positionMs + elapsed + model.offsetMs
-        head.floatValue = if (swept) wordHead(prepared, time) else 0f
+        head.floatValue = if (swept) lyricCharacterPosition(row.text.length, prepared.spans, time) else 0f
         val dt = if (previousFrame == 0L) 0.016f else ((now - previousFrame) / 1_000_000_000f).coerceIn(0f, 0.064f)
         previousFrame = now
-        val x = sweepX(layout, head.floatValue, rtl)
+        val x = lyricSweepX(layout, head.floatValue, rtl)
         val read = if (rtl) layout.size.width - x else x
         val target = if (swept) (read - slotWidth * 0.62f).coerceIn(0f, overflow) else 0f
         slide.floatValue = if (reduced) target else slide.floatValue + (target - slide.floatValue) * (1f - exp(-dt / 0.28f))
@@ -1006,48 +996,11 @@ private fun PillLyricRow(
         }
         if (row.dots || dots.value >= 0.999f) return@drawWithContent
         if (swept) {
-          val h = head.floatValue
-          when {
-            h <= 0f -> drawText(layout, color = ink.copy(alpha = 0.42f))
-            h >= row.text.length -> drawText(layout, color = ink)
-            else -> {
-              val x = sweepX(layout, h, rtl)
-              val direction = if (rtl) -1f else 1f
-              drawText(
-                layout, brush = Brush.horizontalGradient(
-                  0f to ink, 1f to ink.copy(alpha = 0.42f),
-                  startX = x - layout.layoutInput.style.fontSize.toPx() * 0.55f * direction,
-                  endX = x + 2.dp.toPx() * direction,
-                ), alpha = 1f,
-              )
-            }
-          }
+          drawLyricFill(layout, head.floatValue, rtl, ink, ink.copy(alpha = 0.42f))
         } else {
           val active = ink.copy(alpha = if (row.small) 0.58f else 1f)
           drawText(layout, color = lerp(active, ink.copy(alpha = 0.42f), wait.value), alpha = 1f - dots.value)
         }
       },
   )
-}
-
-private fun wordHead(row: PreparedRow, position: Long): Float {
-  if (row.spans.isEmpty()) return if (position >= row.row.startMs) row.row.text.length.toFloat() else 0f
-  for (span in row.spans) {
-    if (position < span.start) return span.from.toFloat()
-    if (position < span.end) {
-      val progress = ((position - span.start).toFloat() / (span.end - span.start).coerceAtLeast(1)).coerceIn(0f, 1f)
-      return span.from + (span.to - span.from) * progress
-    }
-  }
-  return row.row.text.length.toFloat()
-}
-
-private fun sweepX(layout: TextLayoutResult, head: Float, rtl: Boolean): Float {
-  val length = layout.layoutInput.text.length
-  if (length == 0) return 0f
-  if (head >= length) return if (rtl) 0f else layout.size.width.toFloat()
-  val index = head.toInt().coerceIn(0, length - 1)
-  val box = layout.getBoundingBox(index)
-  val fraction = (head - index).coerceIn(0f, 1f)
-  return if (rtl) box.right - box.width * fraction else box.left + box.width * fraction
 }
