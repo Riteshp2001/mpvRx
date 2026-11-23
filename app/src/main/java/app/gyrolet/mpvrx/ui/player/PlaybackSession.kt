@@ -301,7 +301,7 @@ object PlaybackSession : MPVLib.EventObserver {
     val generation: Long,
   )
 
-  private val nativeLock = ReentrantLock(true)
+  private val nativeLock = ReentrantLock()
   private val advancedPreferences by lazy {
     org.koin.java.KoinJavaComponent.get<AdvancedPreferences>(AdvancedPreferences::class.java)
   }
@@ -570,6 +570,9 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   val propFloat = PlaybackProperty(MPVLib.MpvFormat.MPV_FORMAT_DOUBLE, ::getPropertyFloat)
   val propString = PlaybackProperty(MPVLib.MpvFormat.MPV_FORMAT_STRING, ::getPropertyString)
   val propNode = PlaybackProperty(MPVLib.MpvFormat.MPV_FORMAT_NODE, ::getPropertyNode)
+
+  private fun <T> cachedPropertyOnMain(cache: PlaybackProperty<T>, property: String): T? =
+    if (Looper.myLooper() === Looper.getMainLooper()) cache.cachedValue(property) else null
 
   /** Returns true when this call created the core, false when it was already alive. */
   fun initialize(
@@ -1801,7 +1804,16 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     true
   }
 
-  fun commandNode(vararg command: String): MPVNode? = withCore(null) { MPVLib.commandNode(*command) }
+  fun commandNode(vararg command: String): MPVNode? {
+    val prepared =
+      withCore(null) {
+        if (MpvConfigOverridePolicy.shouldSuppress(command)) return@withCore null
+        val preparedCommand = prepareSeekCommandLocked(command)
+        if (handleAmbientShaderCommandLocked(preparedCommand)) return@withCore null
+        preparedCommand
+      } ?: return null
+    return MPVLib.commandNode(*prepared)
+  }
 
   /** 0 = Off, 1..7 = stats.lua pages, 8 = Console, 9 = mpv's keyboard-only page 0. */
   fun setStatisticsPage(page: Int) {
@@ -2012,11 +2024,16 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     return 0
   }
 
-  fun getPropertyInt(property: String): Int? = withReadyCore(null) { MPVLib.getPropertyInt(property) }
+  fun getPropertyInt(property: String): Int? {
+    cachedPropertyOnMain(propInt, property)?.let { return it }
+    return withReadyCore(null) { MPVLib.getPropertyInt(property) }
+  }
 
   // mpvlib's getPropertyLong delegates through Int; string conversion preserves all 64 bits.
-  fun getPropertyLong(property: String): Long? =
-    withReadyCore(null) { MPVLib.getPropertyString(property)?.toLongOrNull() }
+  fun getPropertyLong(property: String): Long? {
+    cachedPropertyOnMain(propLong, property)?.let { return it }
+    return withReadyCore(null) { MPVLib.getPropertyString(property)?.toLongOrNull() }
+  }
 
   fun setPropertyInt(
     property: String,
@@ -2076,8 +2093,13 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
-  fun getPropertyDouble(property: String): Double? = withReadyCore(null) {
-    ambientVideoTransform?.get(property) ?: MPVLib.getPropertyDouble(property)
+  fun getPropertyDouble(property: String): Double? {
+    if (property !in ambientTransformProperties) {
+      cachedPropertyOnMain(propDouble, property)?.let { return it }
+    }
+    return withReadyCore(null) {
+      ambientVideoTransform?.get(property) ?: MPVLib.getPropertyDouble(property)
+    }
   }
 
   fun setPropertyDouble(
@@ -2100,8 +2122,13 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
-  fun getPropertyFloat(property: String): Float? = withReadyCore(null) {
-    ambientVideoTransform?.get(property)?.toFloat() ?: MPVLib.getPropertyFloat(property)
+  fun getPropertyFloat(property: String): Float? {
+    if (property !in ambientTransformProperties) {
+      cachedPropertyOnMain(propFloat, property)?.let { return it }
+    }
+    return withReadyCore(null) {
+      ambientVideoTransform?.get(property)?.toFloat() ?: MPVLib.getPropertyFloat(property)
+    }
   }
 
   fun setPropertyFloat(
@@ -2133,7 +2160,10 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       true
     }
 
-  fun getPropertyBoolean(property: String): Boolean? = withReadyCore(null) { MPVLib.getPropertyBoolean(property) }
+  fun getPropertyBoolean(property: String): Boolean? {
+    cachedPropertyOnMain(propBoolean, property)?.let { return it }
+    return withReadyCore(null) { MPVLib.getPropertyBoolean(property) }
+  }
 
   internal fun audiobookProgress(reachedEnd: Boolean = false): AudiobookProgress? = withCore(null) {
     val book = loadedPlaybackItem?.audiobook ?: return@withCore null
@@ -2285,7 +2315,10 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       nextPaused
     }
 
-  fun getPropertyString(property: String): String? = withReadyCore(null) { MPVLib.getPropertyString(property) }
+  fun getPropertyString(property: String): String? {
+    cachedPropertyOnMain(propString, property)?.let { return it }
+    return withReadyCore(null) { MPVLib.getPropertyString(property) }
+  }
 
   /**
    * The current item's source in a form that still resolves after this session ends.
