@@ -22,6 +22,7 @@ import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
@@ -83,7 +84,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -119,6 +119,10 @@ import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ConstrainScope
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.components.SwipeDismissibleToast
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
@@ -139,6 +143,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.Decoder.Companion.getDecoderFromValue
 import app.gyrolet.mpvrx.ui.player.InAppMusicSheetState
 import app.gyrolet.mpvrx.ui.player.Panels
+import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerUpdates
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
@@ -178,8 +183,10 @@ import app.gyrolet.mpvrx.ui.theme.playerRippleConfiguration
 import app.gyrolet.mpvrx.ui.theme.spacing
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import app.gyrolet.mpvrx.ui.liquidglass.AdaptiveControlsContainer
 import app.gyrolet.mpvrx.ui.liquidglass.LiquidPillButton
@@ -581,7 +588,7 @@ fun PlayerControls(
   val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsStateWithLifecycle()
   val queuedTitle =
     playbackQueue.currentItem?.title?.takeIf { playbackQueue.isExplicitQueue && it.isNotBlank() }
-  val mediaTitle =
+  val defaultMediaTitle =
     remember(queuedTitle, rawMediaTitle, playerActivity, showMediaExtensions) {
       val title = queuedTitle
         ?: playerActivity.getTitleForControls().takeIf { it.isNotBlank() }
@@ -686,6 +693,18 @@ fun PlayerControls(
   val areSlidersShown =
     (isBrightnessSliderShown && showBrightnessGestureOverlay) ||
       (isVolumeSliderShown && showVolumeGestureOverlay)
+  val hasLoadedVideo =
+    playbackSessionState.phase == PlaybackPhase.READY || playbackSessionState.phase == PlaybackPhase.BACKGROUND
+  val configuredTitle =
+    if (hasLoadedVideo) {
+      rememberConfiguredVideoTitle(
+        playbackGeneration = playbackSessionState.generation,
+        visible = isPlayerDrawerShown || (controlsShown && (isTelevision || (!areControlsLocked && !areSlidersShown))),
+      )
+    } else {
+      null
+    }
+  val mediaTitle = configuredTitle ?: defaultMediaTitle
   val gestureSeekUpdate by viewModel.playerUpdate.collectAsState()
   // The auto-hide timer keeps running through a swipe-seek, even while paused.
   val isPlayingForAutoHide = paused == false || gestureSeekUpdate is PlayerUpdates.HorizontalSeek
@@ -2499,6 +2518,41 @@ fun PlayerControls(
       }
     }
   }
+}
+
+@Composable
+private fun rememberConfiguredVideoTitle(
+  playbackGeneration: Long,
+  visible: Boolean,
+): String? {
+  val format by PlaybackSession.propString["options/title"].collectAsStateWithLifecycle()
+  val defaultFormat by PlaybackSession.propString["option-info/title/default-value"].collectAsStateWithLifecycle()
+  // The built-in mpv format should not replace mpvRx's normal filename and queue titles.
+  val customFormat = format?.takeUnless { it == defaultFormat } ?: return null
+  if ('$' !in customFormat) return customFormat
+
+  val lifecycleOwner = LocalLifecycleOwner.current
+  var expandedTitle by remember(playbackGeneration, customFormat) { mutableStateOf<String?>(null) }
+  LaunchedEffect(lifecycleOwner, playbackGeneration, customFormat, visible) {
+    if (!visible) return@LaunchedEffect
+    lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+      // Templates can reference live playback properties; refresh only while the controls are visible.
+      while (PlaybackSession.state.value.generation == playbackGeneration) {
+        val title =
+          withContext(Dispatchers.IO) {
+            PlaybackSession.commandNode("expand-text", customFormat)?.asString()
+          }
+        if (PlaybackSession.state.value.generation != playbackGeneration) break
+        expandedTitle = title
+        if (title == null) {
+          Log.w("PlayerControls", "mpv could not expand the configured video title")
+          break
+        }
+        delay(1_000)
+      }
+    }
+  }
+  return expandedTitle
 }
 
 private const val UNMEASURED_HEIGHT = -1

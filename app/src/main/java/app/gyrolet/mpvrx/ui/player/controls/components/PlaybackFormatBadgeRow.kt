@@ -95,12 +95,13 @@ internal fun MediaFormatBadges(
   background: Color = MaterialTheme.colorScheme.surface,
   inkEdge: Color = Color.Unspecified,
   colorize: Boolean = true,
+  rowSpacing: Dp = 4.dp,
 ) {
   if (badges.isEmpty()) return
   FlowRow(
     modifier = modifier,
     horizontalArrangement = Arrangement.spacedBy(8.dp),
-    verticalArrangement = Arrangement.spacedBy(4.dp),
+    verticalArrangement = Arrangement.spacedBy(rowSpacing),
   ) {
     badges.forEach { badge ->
       FormatBadge(

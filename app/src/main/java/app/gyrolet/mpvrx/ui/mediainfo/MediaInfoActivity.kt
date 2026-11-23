@@ -554,7 +554,7 @@ internal object MediaInfoDetails {
       Row(
         modifier =
           Modifier
-            .align(Alignment.End)
+            .align(if (inPlayer) Alignment.CenterHorizontally else Alignment.End)
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = if (inPlayer) 4.dp else 12.dp),
         horizontalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing),
@@ -838,6 +838,7 @@ internal object MediaInfoDetails {
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             background = background,
             colorize = colorizeBadges,
+            rowSpacing = 8.dp,
           )
         }
       }
