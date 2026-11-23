@@ -2,9 +2,9 @@
 
 These notes are written in plain English and focus on what changed for real use.
 
-## Unreleased — Motion
+## 3.1.1 — Motion
 
-**Release date:** Coming soon · [Compare every change since 3.0.2 →](https://github.com/Riteshp2001/mpvRx/compare/v3.0.2...master)
+**Release date:** November 23, 2026 · [Compare every change since 3.0.2 →](https://github.com/Riteshp2001/mpvRx/compare/v3.0.2...v3.1.1)
 
 <p align="center"><strong>Smoother motion. Richer detail. More ways to play.</strong><br />Motion interpolation · Dolby Vision passthrough · Media format badges · Torrent downloads · Floating lyrics · TV file picker</p>
 
