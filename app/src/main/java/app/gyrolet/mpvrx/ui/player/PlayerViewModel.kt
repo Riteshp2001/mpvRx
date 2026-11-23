@@ -5995,9 +5995,9 @@ fun restartFromBeginning() {
     val cropWanted = combine(
       _videoAspect,
       _currentAspectRatio,
-      _isAmbientEnabled,
-    ) { aspect, customRatio, ambientEnabled ->
-      customRatio <= 0 && wantsBlackBarCrop(aspect, ambientEnabled)
+      playerPreferences.autoCropBlackBars.changes(),
+    ) { aspect, customRatio, cropEnabled ->
+      customRatio <= 0 && wantsBlackBarCrop(aspect, cropEnabled)
     }
     val detectionWanted = combine(
       blackBarScanRequestedFor,
@@ -6037,11 +6037,21 @@ fun restartFromBeginning() {
     }
   }
 
-  private fun wantsBlackBarCrop(aspect: VideoAspect, ambientEnabled: Boolean = _isAmbientEnabled.value): Boolean =
-    aspect == VideoAspect.Fit && ambientEnabled &&
-      !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT) &&
+  private fun wantsBlackBarCrop(
+    aspect: VideoAspect,
+    cropEnabled: Boolean = playerPreferences.autoCropBlackBars.get(),
+  ): Boolean =
+    aspect == VideoAspect.Fit && cropEnabled &&
       !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ASPECT) &&
       !MpvConfigOverridePolicy.isOwnedByMpvConf("video-crop")
+
+  fun setAutoCropBlackBars(enabled: Boolean) {
+    playerPreferences.autoCropBlackBars.set(enabled)
+    if (!enabled) {
+      PlaybackSession.clearBlackBarCrop()
+      detectedBlackBars = null
+    }
+  }
 
   private fun applyDetectedBlackBars() {
     if (isAudioOnly.value || _currentAspectRatio.value > 0 ||

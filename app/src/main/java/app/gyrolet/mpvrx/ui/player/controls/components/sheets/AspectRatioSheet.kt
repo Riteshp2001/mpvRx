@@ -43,6 +43,7 @@ import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSectionHeader
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.player.VideoAspect
 import app.gyrolet.mpvrx.ui.player.controls.icon
 import app.gyrolet.mpvrx.ui.theme.spacing
@@ -59,6 +60,8 @@ fun AspectRatioSheet(
   currentMode: VideoAspect,
   currentRatio: Double?,
   customRatios: List<AspectRatio>,
+  autoCropEnabled: Boolean,
+  onAutoCropChanged: (Boolean) -> Unit,
   onSelectMode: (VideoAspect) -> Unit,
   onSelectRatio: (Double) -> Unit,
   onAddCustomRatio: (String, Double) -> Unit,
@@ -86,6 +89,14 @@ fun AspectRatioSheet(
           .verticalScroll(rememberScrollState())
           .padding(bottom = 8.dp),
     ) {
+      SwitchPreference(
+        value = autoCropEnabled,
+        onValueChange = onAutoCropChanged,
+        title = { Text(stringResource(R.string.ui_auto_crop_black_bars)) },
+        summary = { Text(stringResource(R.string.ui_auto_crop_black_bars_summary)) },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+      )
+
       PlayerSheetSectionHeader(stringResource(R.string.player_aspect_display_mode))
       androidx.compose.foundation.layout.FlowRow(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
