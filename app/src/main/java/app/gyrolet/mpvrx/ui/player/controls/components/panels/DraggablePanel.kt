@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -53,7 +52,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -64,7 +62,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetDragHandle
-import app.gyrolet.mpvrx.presentation.components.sheetWindow
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
@@ -101,8 +98,6 @@ fun DraggablePanel(
   var panelWidth by remember { mutableIntStateOf(0) }
   val liquidGlassEnabled = playerGlassSurfaceEnabled()
   val television = isTelevision()
-  val window = sheetWindow()
-  val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
   val panelAlignment = alignment
   val layoutDirection = LocalLayoutDirection.current
@@ -122,8 +117,7 @@ fun DraggablePanel(
     val minOffset = -initialLeft.toFloat()
     val maxOffset = (freeSpace - initialLeft).toFloat()
     val canDrag = !television && freeSpace > 0
-    val panelHeight = if (isPortrait) maxHeight * portraitHeightFraction.coerceIn(0.4f, 1f)
-      else window.maxHeight(maxHeight, keyboardVisible)
+    val panelHeight = if (isPortrait) maxHeight * portraitHeightFraction.coerceIn(0.4f, 1f) else maxHeight
     val dragModifier = if (canDrag) {
       Modifier.pointerInput(minOffset, maxOffset) {
         detectHorizontalDragGestures { change, delta ->
