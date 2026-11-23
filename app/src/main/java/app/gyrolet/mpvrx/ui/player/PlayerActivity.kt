@@ -5439,6 +5439,7 @@ class PlayerActivity :
     val borderStyle = subtitlesPreferences.borderStyle.get().value
     val borderSize = subtitlesPreferences.borderSize.get()
     val shadowOffset = subtitlesPreferences.shadowOffset.get()
+    val backgroundRadius = subtitlesPreferences.backgroundRadius.get()
 
     // Color settings
     val textColor = subtitlesPreferences.textColor.get().toColorHexString()
@@ -5460,6 +5461,7 @@ class PlayerActivity :
     PlaybackSession.setPropertyInt("sub-border-size", borderSize)
     PlaybackSession.setPropertyInt("sub-outline-size", borderSize)
     PlaybackSession.setPropertyInt("sub-shadow-offset", shadowOffset)
+    PlaybackSession.setPropertyInt("sub-back-radius", backgroundRadius)
     PlaybackSession.setPropertyString("sub-color", textColor)
     PlaybackSession.setPropertyString("sub-border-color", borderColor)
     PlaybackSession.setPropertyString("sub-back-color", backgroundColor)

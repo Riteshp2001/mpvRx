@@ -161,6 +161,7 @@ enum class MpvConfigOverride(
         "sub-outline-size",
         "sub-border-style",
         "sub-shadow-offset",
+        "sub-back-radius",
         "sub-scale",
         "sub-pos",
         "sub-margin-x",

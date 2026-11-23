@@ -245,7 +245,7 @@
   <string name="pref_layout_media_format_badges_title">Media format badges</string>
   <string name="pref_layout_media_format_badges_summary">Show resolution, codecs, HDR, and audio information below the video title.</string>
   <string name="pref_layout_colorize_media_format_badges_title">Colorize media format badges</string>
-  <string name="pref_layout_colorize_media_format_badges_summary">Use format colors in the player badge row. Turn off for a plain single-color look.</string>
+  <string name="pref_layout_colorize_media_format_badges_summary">Use format colors in player and Media Info badges. Turn off for theme-colored symbols and grayscale logos.</string>
   <string name="pref_layout_summary">Customize player button layout</string>
   <string name="pref_layout_reset_default">Reset to default</string>
   <string name="pref_layout_top_right_controls">Top Right Controls</string>
@@ -571,6 +571,7 @@
   <string name="player_sheets_subtitles_border_style_opaque_box">Opaque box</string>
   <string name="player_sheets_subtitles_border_style_background_box">Background box</string>
   <string name="player_sheets_subtitles_shadow_offset">Shadow offset</string>
+  <string name="player_sheets_subtitles_background_radius">Box corner radius</string>
   <string name="player_sheets_sub_color_red">Red</string>
   <string name="player_sheets_sub_color_green">Green</string>
   <string name="player_sheets_sub_color_blue">Blue</string>

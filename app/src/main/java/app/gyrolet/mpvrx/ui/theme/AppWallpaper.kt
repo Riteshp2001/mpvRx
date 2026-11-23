@@ -50,6 +50,7 @@ import app.gyrolet.mpvrx.ui.background.AnimatedBackground
 import app.gyrolet.mpvrx.ui.background.BackdropGate
 import app.gyrolet.mpvrx.ui.background.BackgroundType
 import app.gyrolet.mpvrx.ui.background.rememberActiveBackground
+import app.gyrolet.mpvrx.ui.player.playerSheetWallpaper
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
@@ -155,6 +156,7 @@ fun AppWallpaperHost(content: @Composable () -> Unit) {
         Modifier
           .matchParentSize()
           .then(if (backgroundBackdrop != null) Modifier.layerBackdrop(backgroundBackdrop) else Modifier)
+          .playerSheetWallpaper()
           .background(MaterialTheme.colorScheme.background),
     ) {
       // Fade the wallpaper in together with the content so the launch hands off from the splash

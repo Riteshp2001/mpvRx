@@ -182,16 +182,29 @@ internal data class PlayerSheetAnchor(
     if (snapshot != null || capture == null) this else copy(snapshot = capture.snapshot(), capture = null)
 }
 
+internal enum class PlayerSheetSlot(
+  val destination: PlayerSheetDestination?,
+) {
+  FULL(PlayerSheetDestination.FULL),
+  MINI(PlayerSheetDestination.MINI),
+  BACKDROP(null),
+  WALLPAPER(null),
+}
+
 internal data class PlayerSheetEndpoints(
   val full: PlayerSheetAnchor,
   val mini: PlayerSheetAnchor,
   val backdrop: PlayerSheetAnchor?,
+  val wallpaper: PlayerSheetAnchor? = null,
 ) {
   val travel: Float
     get() = (mini.bounds.top - full.bounds.top).coerceAtLeast(1f)
 
   fun uses(capture: PlayerSheetCapture): Boolean =
-    full.capture === capture || mini.capture === capture || backdrop?.capture === capture
+    full.capture === capture ||
+      mini.capture === capture ||
+      backdrop?.capture === capture ||
+      wallpaper?.capture === capture
 }
 
 internal class PlayerSheetMotion(
@@ -250,9 +263,11 @@ internal object PlayerSheetTransitions {
   private var miniAnchor by mutableStateOf<PlayerSheetAnchor?>(null)
   private var miniPlacement by mutableStateOf<PlayerSheetAnchor?>(null)
   private var backdrop by mutableStateOf<PlayerSheetAnchor?>(null)
+  private var wallpaper by mutableStateOf<PlayerSheetAnchor?>(null)
   private var fullBackground: Color? = null
 
   // Browser content frozen while MainActivity was still visible, for motion inside the player.
+  private var browserWallpaper: PlayerSheetAnchor? = null
   private var browserBackdrop: PlayerSheetAnchor? = null
   private var browserMini: PlayerSheetAnchor? = null
 
@@ -302,24 +317,26 @@ internal object PlayerSheetTransitions {
   fun anchor(destination: PlayerSheetDestination): PlayerSheetAnchor? =
     if (destination == PlayerSheetDestination.FULL) fullAnchor else miniAnchor
 
-  fun update(destination: PlayerSheetDestination?, anchor: PlayerSheetAnchor) {
-    when (destination) {
-      PlayerSheetDestination.FULL -> {
+  fun update(slot: PlayerSheetSlot, anchor: PlayerSheetAnchor) {
+    when (slot) {
+      PlayerSheetSlot.FULL -> {
         fullAnchor = anchor
         fullBackground = anchor.backgroundColor
       }
-      PlayerSheetDestination.MINI -> miniAnchor = anchor
-      null -> backdrop = anchor
+      PlayerSheetSlot.MINI -> miniAnchor = anchor
+      PlayerSheetSlot.BACKDROP -> backdrop = anchor
+      PlayerSheetSlot.WALLPAPER -> wallpaper = anchor
     }
   }
 
-  fun remove(destination: PlayerSheetDestination?, owner: Any, capture: PlayerSheetCapture) {
-    when (destination) {
-      PlayerSheetDestination.FULL -> if (fullAnchor?.owner === owner) fullAnchor = null
-      PlayerSheetDestination.MINI -> if (miniAnchor?.owner === owner) miniAnchor = null
-      null -> if (backdrop?.owner === owner) backdrop = null
+  fun remove(slot: PlayerSheetSlot, owner: Any, capture: PlayerSheetCapture) {
+    when (slot) {
+      PlayerSheetSlot.FULL -> if (fullAnchor?.owner === owner) fullAnchor = null
+      PlayerSheetSlot.MINI -> if (miniAnchor?.owner === owner) miniAnchor = null
+      PlayerSheetSlot.BACKDROP -> if (backdrop?.owner === owner) backdrop = null
+      PlayerSheetSlot.WALLPAPER -> if (wallpaper?.owner === owner) wallpaper = null
     }
-    if (drag?.endpoints?.uses(capture) == true && drag?.source == destination) drag = null
+    if (drag?.endpoints?.uses(capture) == true && drag?.source == slot.destination) drag = null
     // A running morph may still draw this layer after its composable has left.
     pendingReleases.add(capture)
     releaseUnusedCaptures()
@@ -338,12 +355,14 @@ internal object PlayerSheetTransitions {
     if (drag != null || motion?.host == PlayerSheetDestination.FULL) return
     // Video uses the native window transition; no full-browser GPU snapshot is needed there.
     if (PlaybackSession.state.value.currentItem?.declaredMediaKind() == DeclaredPlaybackMediaKind.VIDEO) return
+    browserWallpaper = wallpaper?.frozen()?.takeIf { it.snapshot != null }
     browserBackdrop = backdrop?.frozen()?.takeIf { it.snapshot != null }
     // A hidden mini player still holds its last recording, so this also works mid-expansion.
     browserMini = miniAnchor?.takeIf { it.capture?.isRecorded == true }?.frozen()?.takeIf { it.snapshot != null }
   }
 
   fun clearBrowserCache() {
+    browserWallpaper = null
     browserBackdrop = null
     browserMini = null
   }
@@ -377,6 +396,7 @@ internal object PlayerSheetTransitions {
           ?: placement.copy(mediaId = mediaId),
         // Without a frozen browser the player's black video surface would show through.
         backdrop = browserBackdrop ?: return null,
+        wallpaper = browserWallpaper,
       )
     }
     if (pair.full.bounds.isEmpty || pair.mini.bounds.isEmpty) return null
@@ -560,7 +580,7 @@ private fun LayoutCoordinates.sheetScreenBounds(view: View): Rect {
 
 @Composable
 private fun Modifier.recordPlayerSheet(
-  destination: PlayerSheetDestination?,
+  slot: PlayerSheetSlot,
   mediaId: String?,
   shape: Shape,
   backgroundColor: Color,
@@ -569,7 +589,7 @@ private fun Modifier.recordPlayerSheet(
   val view = LocalView.current
   val density = LocalDensity.current
   val direction = LocalLayoutDirection.current
-  val capture = remember(context, view, destination, mediaId, density, direction) {
+  val capture = remember(context, view, slot, mediaId, density, direction) {
     PlayerSheetCapture(context, view, density, direction)
   }
   val owner = remember(capture) { Any() }
@@ -581,14 +601,14 @@ private fun Modifier.recordPlayerSheet(
     val outline = shape.createOutline(Size(bounds.width, bounds.height), direction, density)
     val radius = (outline as? Outline.Rounded)?.roundRect?.topLeftCornerRadius?.x ?: 0f
     PlayerSheetTransitions.update(
-      destination,
+      slot,
       PlayerSheetAnchor(owner, mediaId, bounds, radius, backgroundColor, capture),
     )
   }
 
   SideEffect { coordinates?.let(::updateAnchor) }
   DisposableEffect(capture) {
-    onDispose { PlayerSheetTransitions.remove(destination, owner, capture) }
+    onDispose { PlayerSheetTransitions.remove(slot, owner, capture) }
   }
   return this
     .onGloballyPositioned {
@@ -596,6 +616,7 @@ private fun Modifier.recordPlayerSheet(
       updateAnchor(it)
     }
     .drawWithContent {
+      val destination = slot.destination
       val hidden = destination != null && PlayerSheetTransitions.isHidden(destination)
       // While hidden the morph draws the last recording; replaying the whole player or browser
       // into it every frame would only add UI-thread work to the animation.
@@ -617,11 +638,20 @@ internal fun Modifier.playerSheetAnchor(
   mediaId: String?,
   shape: Shape = RectangleShape,
   backgroundColor: Color,
-): Modifier = recordPlayerSheet(destination, mediaId, shape, backgroundColor)
+): Modifier = recordPlayerSheet(
+  if (destination == PlayerSheetDestination.FULL) PlayerSheetSlot.FULL else PlayerSheetSlot.MINI,
+  mediaId,
+  shape,
+  backgroundColor,
+)
 
 @Composable
 internal fun Modifier.playerSheetBackdrop(): Modifier =
-  recordPlayerSheet(null, null, RectangleShape, Color.Transparent)
+  recordPlayerSheet(PlayerSheetSlot.BACKDROP, null, RectangleShape, Color.Transparent)
+
+@Composable
+internal fun Modifier.playerSheetWallpaper(): Modifier =
+  recordPlayerSheet(PlayerSheetSlot.WALLPAPER, null, RectangleShape, Color.Transparent)
 
 @Composable
 internal fun Modifier.playerSheetMiniPlacement(shape: Shape, backgroundColor: Color): Modifier {
@@ -671,6 +701,9 @@ private fun DrawScope.drawPlayerSheet(
   drawBackdrop: Boolean,
 ) {
   if (drawBackdrop) {
+    endpoints.wallpaper?.let {
+      drawSheetContent(it, hostView, it.bounds.left - origin.x, it.bounds.top - origin.y, 1f)
+    }
     endpoints.backdrop?.let {
       drawSheetContent(it, hostView, it.bounds.left - origin.x, it.bounds.top - origin.y, 1f)
     }

@@ -29,6 +29,8 @@ internal data class PlaybackFormatBadge(
   val isChannelLayout: Boolean = false,
   val lightTintArgb: Long? = null,
   val darkTintArgb: Long? = null,
+  val darkAsset: String? = null,
+  val preserveColors: Boolean = false,
 )
 
 internal enum class BadgeArtwork { ThemeInk, Original, OnLight, OnDark }
@@ -146,7 +148,7 @@ private fun readPlaybackFormatBadges(
       add(bitDepthBadge(depth))
     }
     if (decodedVideo.text("stereo-in").orEmpty().lowercase(Locale.ROOT) in STEREOSCOPIC_MODES) {
-      add(PlaybackFormatBadge("3D", "symbols/3d.svg"))
+      add(PlaybackFormatBadge("3D", "symbols/3d.svg", BadgeArtwork.Original))
     }
     if (audio.flag("visual-impaired")) add(PlaybackFormatBadge("AD", "symbols/ad.svg"))
     subtitleBadge(subtitle.text("codec"), subtitle.flag("hearing-impaired"))?.let(::add)
@@ -227,6 +229,7 @@ internal fun resolutionBadge(width: Int, height: Int): PlaybackFormatBadge {
   return PlaybackFormatBadge(
     label,
     asset,
+    artwork = if (label == "4K") BadgeArtwork.Original else BadgeArtwork.ThemeInk,
     detail = "$label ($width × $height)",
     lightTintArgb = lightTint,
     darkTintArgb = darkTint,
@@ -341,20 +344,18 @@ internal fun videoCodecBadge(codec: String?): PlaybackFormatBadge? =
     "h264", "avc" -> PlaybackFormatBadge(
       "AVC",
       "video/avc.svg",
+      BadgeArtwork.Original,
       detail = "AVC (H.264)",
-      lightTintArgb = 0xFF6547C8,
-      darkTintArgb = 0xFFB69AFF,
     )
     "hevc", "h265" -> PlaybackFormatBadge(
       "HEVC",
       "video/hevc.svg",
+      BadgeArtwork.Original,
       detail = "HEVC (H.265)",
-      lightTintArgb = 0xFF31763C,
-      darkTintArgb = 0xFF8FDF83,
     )
     "av1" -> PlaybackFormatBadge(
       "AV1",
-      "video/av1.svg",
+      "symbols/av1.svg",
       lightTintArgb = 0xFF006F73,
       darkTintArgb = 0xFF69DED7,
     )
@@ -401,7 +402,9 @@ internal fun hdrBadges(
       PlaybackFormatBadge(
         HDR10_PLUS_LABEL,
         "video/alternates/hdr10-plus-original-color.svg",
-        BadgeArtwork.OnDark,
+        BadgeArtwork.Original,
+        darkAsset = "video/hdr10-plus-color-dark.svg",
+        preserveColors = true,
       ),
     )
   }
@@ -451,7 +454,7 @@ internal fun hdrBadges(
     add(
       PlaybackFormatBadge(
         "IMAX Enhanced",
-        "video/imax-enhanced.svg",
+        "symbols/imax-enhanced.svg",
         lightTintArgb = 0xFF345A78,
         darkTintArgb = 0xFF9BD6FF,
       ),

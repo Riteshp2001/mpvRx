@@ -92,9 +92,10 @@ fun SubtitleSettingsTypographyCard(
   val borderSizeOptions =
     setOf("sub-border-size", "sub-outline-size")
   val shadowOffsetOptions = setOf("sub-shadow-offset")
+  val backgroundRadiusOptions = setOf("sub-back-radius")
   val typographyOptions =
     boldOptions + italicOptions + justifyOptions + fontOptions + fontSizeOptions +
-      borderStyleOptions + borderSizeOptions + shadowOffsetOptions
+      borderStyleOptions + borderSizeOptions + shadowOffsetOptions + backgroundRadiusOptions
   var isExpanded by remember { mutableStateOf(true) }
   val effectiveDefaultFont = DEFAULT_SUBTITLE_FONT_FAMILY
   var fonts by remember { mutableStateOf(listOf("Default")) }
@@ -159,7 +160,11 @@ fun SubtitleSettingsTypographyCard(
       var localShadowOffset by remember(shadowOffset) {
         mutableStateOf(shadowOffset ?: preferences.shadowOffset.get())
       }
-      PanelConnectedTile(index = 0, itemCount = 6) {
+      val backgroundRadius by PlaybackSession.propInt["sub-back-radius"].collectAsState()
+      // The radius only shapes the background box, so it shows with that style alone.
+      val showBackgroundRadius = borderStyle == SubtitlesBorderStyle.BackgroundBox
+      val tileCount = if (showBackgroundRadius) 7 else 6
+      PanelConnectedTile(index = 0, itemCount = tileCount) {
         Row(
           Modifier
           .fillMaxWidth()
@@ -228,7 +233,7 @@ fun SubtitleSettingsTypographyCard(
         }
       }
       }
-      PanelConnectedTile(index = 1, itemCount = 6) {
+      PanelConnectedTile(index = 1, itemCount = tileCount) {
         Row(
         modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
@@ -264,7 +269,7 @@ fun SubtitleSettingsTypographyCard(
         )
       }
       }
-      PanelConnectedTile(index = 2, itemCount = 6) {
+      PanelConnectedTile(index = 2, itemCount = tileCount) {
         SliderItem(
           label = stringResource(R.string.player_sheets_sub_typography_font_size),
           max = 100,
@@ -280,7 +285,7 @@ fun SubtitleSettingsTypographyCard(
           Icon(Icons.RoundedFilled.FormatSize, null)
         }
       }
-      PanelConnectedTile(index = 3, itemCount = 6) {
+      PanelConnectedTile(index = 3, itemCount = tileCount) {
         Row(
           modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
           horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
@@ -304,7 +309,7 @@ fun SubtitleSettingsTypographyCard(
           )
         }
       }
-      PanelConnectedTile(index = 4, itemCount = 6) {
+      PanelConnectedTile(index = 4, itemCount = tileCount) {
         SliderItem(
           stringResource(R.string.player_sheets_sub_typography_border_size),
           value = borderSize ?: preferences.borderSize.get(),
@@ -319,7 +324,7 @@ fun SubtitleSettingsTypographyCard(
           icon = { Icon(Icons.RoundedFilled.BorderColor, null) },
         )
       }
-      PanelConnectedTile(index = 5, itemCount = 6) {
+      PanelConnectedTile(index = 5, itemCount = tileCount) {
         SliderItem(
           stringResource(R.string.player_sheets_subtitles_shadow_offset),
           value = localShadowOffset.coerceIn(-20, 20),
@@ -338,6 +343,23 @@ fun SubtitleSettingsTypographyCard(
           icon = { Icon(Icons.RoundedFilled.Shadow, null) },
         )
       }
+      if (showBackgroundRadius) {
+        PanelConnectedTile(index = 6, itemCount = tileCount) {
+          val radius = (backgroundRadius ?: preferences.backgroundRadius.get()).coerceIn(0, 40)
+          SliderItem(
+            stringResource(R.string.player_sheets_subtitles_background_radius),
+            value = radius,
+            valueText = radius.toString(),
+            onChange = {
+              preferences.backgroundRadius.set(it)
+              PlaybackSession.setPropertyInt("sub-back-radius", it)
+            },
+            max = 40,
+            enabled = !ownsAny(backgroundRadiusOptions),
+            icon = { Icon(Icons.RoundedFilled.RoundedCorner, null) },
+          )
+        }
+      }
     }
   }
 }
@@ -353,6 +375,7 @@ fun resetTypography(
   val fontSize = preferences.fontSize.deleteAndGet()
   val borderSize = preferences.borderSize.deleteAndGet()
   val shadowOffset = preferences.shadowOffset.deleteAndGet()
+  val backgroundRadius = preferences.backgroundRadius.deleteAndGet()
   val borderStyle = preferences.borderStyle.deleteAndGet().value
 
   PlaybackSession.setPropertyInt("sub-font-size", fontSize)
@@ -365,6 +388,7 @@ fun resetTypography(
   PlaybackSession.setPropertyInt("sub-border-size", borderSize)
   PlaybackSession.setPropertyInt("sub-outline-size", borderSize)
   PlaybackSession.setPropertyInt("sub-shadow-offset", shadowOffset)
+  PlaybackSession.setPropertyInt("sub-back-radius", backgroundRadius)
   PlaybackSession.setPropertyString("sub-border-style", borderStyle)
   PlaybackSession.setPropertyBoolean("sub-ass-justify", false)
 }

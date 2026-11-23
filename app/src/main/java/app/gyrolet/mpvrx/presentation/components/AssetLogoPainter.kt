@@ -2,6 +2,8 @@
 
 package app.gyrolet.mpvrx.presentation.components
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Picture
 import android.graphics.RectF
 import android.util.Log
@@ -12,11 +14,14 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.caverock.androidsvg.SVG
 import com.caverock.androidsvg.SVGParseException
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +30,8 @@ import java.io.IOException
 import kotlin.math.ceil
 
 private val logoPictures = LruCache<String, Picture>(48)
+internal val GrayscaleLogoFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+internal val MediaBadgeLogoHeight = 20.dp
 
 @Composable
 internal fun rememberAssetLogoPainter(path: String): Painter? = key(path) {
@@ -62,12 +69,42 @@ private fun renderLogo(svg: SVG): Picture {
   val paddedWidth = width + padding * 2f
   val paddedHeight = height + padding * 2f
   svg.setDocumentViewBox(bounds.left - padding, bounds.top - padding, paddedWidth, paddedHeight)
-  val scale = 512f / maxOf(paddedWidth, paddedHeight)
+  val scale = 1024f / maxOf(paddedWidth, paddedHeight)
   val pictureWidth = ceil(paddedWidth * scale).toInt().coerceAtLeast(1)
   val pictureHeight = ceil(paddedHeight * scale).toInt().coerceAtLeast(1)
   svg.setDocumentWidth(pictureWidth.toFloat())
   svg.setDocumentHeight(pictureHeight.toFloat())
-  return svg.renderToPicture(pictureWidth, pictureHeight)
+  val picture = svg.renderToPicture(pictureWidth, pictureHeight)
+  val bitmap = Bitmap.createBitmap(pictureWidth, pictureHeight, Bitmap.Config.ARGB_8888)
+  try {
+    Canvas(bitmap).drawPicture(picture)
+    val pixels = IntArray(pictureWidth * pictureHeight)
+    bitmap.getPixels(pixels, 0, pictureWidth, 0, 0, pictureWidth, pictureHeight)
+    var left = pictureWidth
+    var top = pictureHeight
+    var right = -1
+    var bottom = -1
+    for (y in 0 until pictureHeight) {
+      for (x in 0 until pictureWidth) {
+        if (pixels[y * pictureWidth + x] ushr 24 != 0) {
+          left = minOf(left, x)
+          top = minOf(top, y)
+          right = maxOf(right, x)
+          bottom = maxOf(bottom, y)
+        }
+      }
+    }
+    require(right >= left && bottom >= top) { "Logo has no visible artwork" }
+    // Measure ink, not transparent SVG margins; keep the cropped result as vector drawing commands.
+    return Picture().apply {
+      val canvas = beginRecording(right - left + 1, bottom - top + 1)
+      canvas.translate(-left.toFloat(), -top.toFloat())
+      canvas.drawPicture(picture)
+      endRecording()
+    }
+  } finally {
+    bitmap.recycle()
+  }
 }
 
 private class LogoPainter(private val picture: Picture) : Painter() {

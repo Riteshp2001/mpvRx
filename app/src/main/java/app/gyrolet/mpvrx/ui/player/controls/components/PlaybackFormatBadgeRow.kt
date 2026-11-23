@@ -40,6 +40,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.presentation.components.GrayscaleLogoFilter
+import app.gyrolet.mpvrx.presentation.components.MediaBadgeLogoHeight
 import app.gyrolet.mpvrx.presentation.components.rememberAssetLogoPainter
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.player.BadgeArtwork
@@ -55,7 +57,6 @@ private const val UniformTextScale = 0.72f
 @Composable
 internal fun PlaybackFormatBadgeRow(
   modifier: Modifier = Modifier,
-  logoHeight: Dp = 20.dp,
   tvButtonBackground: Color? = null,
 ) {
   val preferences = koinInject<AppearancePreferences>()
@@ -77,7 +78,6 @@ internal fun PlaybackFormatBadgeRow(
     MediaFormatBadges(
       badges = badges,
       modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-      logoHeight = logoHeight,
       foreground = foreground,
       background = surfaceColor,
       inkEdge = inkEdge,
@@ -91,7 +91,6 @@ internal fun PlaybackFormatBadgeRow(
 internal fun MediaFormatBadges(
   badges: List<PlaybackFormatBadge>,
   modifier: Modifier = Modifier,
-  logoHeight: Dp = 20.dp,
   foreground: Color = MaterialTheme.colorScheme.onSurface,
   background: Color = MaterialTheme.colorScheme.surface,
   inkEdge: Color = Color.Unspecified,
@@ -106,7 +105,7 @@ internal fun MediaFormatBadges(
     badges.forEach { badge ->
       FormatBadge(
         badge = badge,
-        logoHeight = logoHeight,
+        logoHeight = MediaBadgeLogoHeight,
         foreground = foreground,
         inkEdge = inkEdge,
         darkBackground = background.luminance() < 0.45f,
@@ -136,7 +135,7 @@ private fun FormatBadge(
     if (darkBackground) badge.darkTintArgb else badge.lightTintArgb
   } else null
   val badgeForeground = tintArgb?.let(::Color) ?: foreground
-  val path = badge.asset
+  val path = if (darkBackground) badge.darkAsset ?: badge.asset else badge.asset
   val painter = if (path == null) null else rememberAssetLogoPainter("media_format_logos/$path")
   Box(modifier.height(logoHeight), contentAlignment = Alignment.Center) {
     if (painter == null) {
@@ -167,17 +166,21 @@ private fun FormatBadge(
         if (contrast == null) Modifier else Modifier.background(contrast, BrandBackingShape)
       val useThemeInk = artwork == BadgeArtwork.ThemeInk
       val edge = if (useThemeInk && inkEdge.isSpecified) Modifier.logoInkEdge(painter, inkEdge) else Modifier
-      Image(
-        painter = painter,
-        contentDescription = description,
-        colorFilter = if (useThemeInk) ColorFilter.tint(badgeForeground) else null,
-        contentScale = ContentScale.Fit,
-        modifier = Modifier
-          .size(width = logoHeight * aspect, height = logoHeight)
-          .then(backing)
-          .then(if (needsBacking) Modifier.padding(horizontal = 3.dp) else Modifier)
-          .then(edge),
-      )
+      Box(
+        backing.then(if (needsBacking) Modifier.padding(horizontal = 3.dp) else Modifier),
+      ) {
+        Image(
+          painter = painter,
+          contentDescription = description,
+          colorFilter = when {
+            useThemeInk -> ColorFilter.tint(badgeForeground)
+            !colorize && !badge.preserveColors -> GrayscaleLogoFilter
+            else -> null
+          },
+          contentScale = ContentScale.Fit,
+          modifier = Modifier.size(width = logoHeight * aspect, height = logoHeight).then(edge),
+        )
+      }
     }
   }
 }

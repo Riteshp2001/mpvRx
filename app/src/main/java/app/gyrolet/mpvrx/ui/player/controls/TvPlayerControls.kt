@@ -412,7 +412,6 @@ private fun TvPlayerTopBar(
     }
     PlaybackFormatBadgeRow(
       modifier = Modifier.padding(top = 6.dp),
-      logoHeight = 24.dp,
       tvButtonBackground = TvPlayerDefaults.ButtonBackground,
     )
   }

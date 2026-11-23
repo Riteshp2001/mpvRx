@@ -1003,6 +1003,7 @@ class MPVView(
       add("sub-border-size" to subtitlesPreferences.borderSize.get().toString())
       add("sub-border-style" to subtitlesPreferences.borderStyle.get().value)
       add("sub-shadow-offset" to subtitlesPreferences.shadowOffset.get().toString())
+      add("sub-back-radius" to subtitlesPreferences.backgroundRadius.get().toString())
       add("sub-scale" to subtitlesPreferences.subScale.get().toString())
       add("sub-pos" to clampSubtitlePosition(subtitlesPreferences.subPos.get()).toString())
       addAll(windowOptions)

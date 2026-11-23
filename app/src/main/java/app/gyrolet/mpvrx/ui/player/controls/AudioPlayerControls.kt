@@ -1464,7 +1464,21 @@ fun AudioPlayerControls(
   val swipeNextCoverBitmap by rememberUpdatedState(nextCoverBitmap ?: albumArtBitmap)
   val swipePrevCoverBitmap by rememberUpdatedState(prevCoverBitmap ?: albumArtBitmap)
   BoxWithConstraints(
-    modifier.fillMaxSize().background(immersiveSurface).drawWithCache {
+    modifier
+      .fillMaxSize()
+      .then(
+        if (inAppSheet == null) {
+          Modifier.playerSheetAnchor(
+            destination = PlayerSheetDestination.FULL,
+            mediaId = currentItem?.stableId,
+            backgroundColor = immersiveSurface,
+          )
+        } else {
+          Modifier
+        },
+      )
+      .background(immersiveSurface)
+      .drawWithCache {
       if (ambientModeEnabled &&
         (animatedAmbientTop != Color.Transparent || animatedAmbientBottom != Color.Transparent)
       ) {
@@ -1550,17 +1564,11 @@ fun AudioPlayerControls(
                 enabled = !isSheetOpen && !showInPlaceLyrics && !isLyricsFullscreen,
               )
             } else {
-              Modifier
-                .playerSheetAnchor(
-                  destination = PlayerSheetDestination.FULL,
-                  mediaId = currentItem?.stableId,
-                  backgroundColor = MaterialTheme.colorScheme.surface,
-                )
-                .swipeDownToMiniPlayer(
-                  mediaId = currentItem?.stableId,
-                  enabled = !isSheetOpen && !showInPlaceLyrics && !isLyricsFullscreen,
-                  onMinimize = viewModel::minimizeToMiniPlayer,
-                )
+              Modifier.swipeDownToMiniPlayer(
+                mediaId = currentItem?.stableId,
+                enabled = !isSheetOpen && !showInPlaceLyrics && !isLyricsFullscreen,
+                onMinimize = viewModel::minimizeToMiniPlayer,
+              )
             },
           )
           .fillMaxSize()
@@ -1885,7 +1893,6 @@ fun AudioPlayerControls(
                     if (isAudioOnly && !isAudiobook && activeCoverOverride == null) {
                       AudioFormatArtworkBadge(
                         format = audioFormatInfo,
-                        size = if (isCompactLandscape) 18.dp else 22.dp,
                         modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
                       )
                     }

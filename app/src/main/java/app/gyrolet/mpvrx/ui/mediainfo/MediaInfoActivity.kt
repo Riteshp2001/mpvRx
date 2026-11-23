@@ -100,7 +100,6 @@ import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.PlaybackFormatBadge
 import app.gyrolet.mpvrx.ui.player.controls.components.MediaFormatBadges
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.resolveLocalPath
@@ -116,6 +115,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
+import org.koin.compose.koinInject
 import java.io.File
 
 private data class ValueDetailSelection(
@@ -540,15 +540,9 @@ internal object MediaInfoDetails {
               filePath,
               playbackSnapshot,
             )
-          InfoTab.VIDEO -> StreamTabContent(videoSections, "Video Stream") {
-            mediaInfo.videoStreams.getOrNull(it)?.formatBadges().orEmpty()
-          }
-          InfoTab.AUDIO -> StreamTabContent(audioSections, "Audio Stream") {
-            mediaInfo.audioStreams.getOrNull(it)?.formatBadges().orEmpty()
-          }
-          InfoTab.SUBTITLES -> StreamTabContent(subtitleSections, "Subtitle Track") {
-            mediaInfo.textStreams.getOrNull(it)?.formatBadges().orEmpty()
-          }
+          InfoTab.VIDEO -> StreamTabContent(videoSections, "Video Stream")
+          InfoTab.AUDIO -> StreamTabContent(audioSections, "Audio Stream")
+          InfoTab.SUBTITLES -> StreamTabContent(subtitleSections, "Subtitle Track")
           InfoTab.IMAGE -> StreamTabContent(imageSections, "Image")
           InfoTab.CHAPTERS -> ChaptersTabContent(menuSections)
           InfoTab.OTHER -> OtherTabContent(otherSections, attachmentNames)
@@ -756,6 +750,7 @@ internal object MediaInfoDetails {
     val durationLabel = mediaInfo.general.duration.ifBlank { "Unknown" }
     val formatLabel = mediaInfo.general.format.ifBlank { "Unknown" }
 
+    val colorizeBadges by koinInject<AppearancePreferences>().colorizeMediaFormatBadges.collectAsState()
     val formatBadges = remember(mediaInfo, fileName) { mediaInfo.overviewBadges(fileName) }
     val heroChips =
       remember(mediaInfo, sections) {
@@ -842,6 +837,7 @@ internal object MediaInfoDetails {
             badges = formatBadges,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
             background = background,
+            colorize = colorizeBadges,
           )
         }
       }
@@ -1128,7 +1124,6 @@ internal object MediaInfoDetails {
     headerTextColor: Color,
     properties: List<Pair<String, String>>,
     modifier: Modifier = Modifier,
-    formats: List<PlaybackFormatBadge> = emptyList(),
   ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -1171,14 +1166,7 @@ internal object MediaInfoDetails {
               style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
               color = headerTextColor,
             )
-            if (formats.isNotEmpty()) {
-              MediaFormatBadges(
-                badges = formats,
-                foreground = headerTextColor,
-                background = headerBgColor,
-                logoHeight = 18.dp,
-              )
-            } else if (badge != null) {
+            if (badge != null) {
               Surface(
                 shape = MaterialTheme.shapes.medium,
                 color = headerTextColor.copy(alpha = 0.12f),
@@ -1306,7 +1294,6 @@ internal object MediaInfoDetails {
   private fun StreamTabContent(
     sections: List<InfoSection>,
     streamTypeLabel: String,
-    formatsAt: (Int) -> List<PlaybackFormatBadge> = { emptyList() },
   ) {
     Column(
       modifier =
@@ -1358,7 +1345,6 @@ internal object MediaInfoDetails {
           headerBgColor = headerBgColor,
           headerTextColor = headerTextColor,
           properties = section.properties,
-          formats = formatsAt(index),
         )
       }
     }

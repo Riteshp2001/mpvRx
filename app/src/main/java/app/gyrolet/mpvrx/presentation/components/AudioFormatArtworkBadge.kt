@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -22,15 +23,17 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.currentStateAsState
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.player.AudioFormatInfo
 import app.gyrolet.mpvrx.ui.player.AudioQuality
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import org.koin.compose.koinInject
 private val audioLogoGold = Color(0xFFFFD166)
 private val audioLogoSilver = Color(0xFFE9EEF4)
 
@@ -38,15 +41,15 @@ private val audioLogoSilver = Color(0xFFE9EEF4)
 internal fun AudioFormatArtworkBadge(
   format: AudioFormatInfo?,
   modifier: Modifier = Modifier,
-  size: Dp = 18.dp,
 ) {
   val logo = format?.artworkLogo ?: return
+  val colorize by koinInject<AppearancePreferences>().colorizeMediaFormatBadges.collectAsState()
   val logoPainter = rememberAssetLogoPainter("audio_format_logos/${logo.asset}") ?: return
   val aspectRatio = logoPainter.intrinsicSize.width / logoPainter.intrinsicSize.height
-  val width = minOf(size * aspectRatio, size * 2.4f)
-  val height = width / aspectRatio
+  val width = MediaBadgeLogoHeight * aspectRatio
+  val height = MediaBadgeLogoHeight
   val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
-  val animateSheen = !AppMotion.shouldReduceMotion() && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
+  val animateSheen = colorize && !AppMotion.shouldReduceMotion() && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
   val sheenProgress: State<Float>? =
     if (animateSheen) {
       val transition = rememberInfiniteTransition(label = "audioFormatSheen")
@@ -62,7 +65,8 @@ internal fun AudioFormatArtworkBadge(
     } else {
       null
     }
-  val goldFilter = remember { ColorFilter.tint(audioLogoGold) }
+  val ink = if (colorize) audioLogoGold else MaterialTheme.colorScheme.onSurface
+  val inkFilter = remember(ink) { ColorFilter.tint(ink) }
   val qualityLabel = stringResource(
     when (format.quality) {
       AudioQuality.HiRes -> R.string.audio_quality_hi_res
@@ -101,7 +105,11 @@ internal fun AudioFormatArtworkBadge(
     painter = logoPainter,
     contentDescription = format.details(qualityLabel),
     contentScale = ContentScale.Fit,
-    colorFilter = if (logo.isMonochrome) goldFilter else null,
+    colorFilter = when {
+      logo.isMonochrome -> inkFilter
+      !colorize -> GrayscaleLogoFilter
+      else -> null
+    },
     modifier = modifier.size(width, height).then(sheenModifier),
   )
 }
