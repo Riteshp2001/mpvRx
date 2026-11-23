@@ -3,6 +3,7 @@
 package app.gyrolet.mpvrx.presentation.components
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.tv.TvSafeArea
 import app.gyrolet.mpvrx.ui.tv.isTelevision
 import kotlinx.coroutines.launch
@@ -98,14 +100,20 @@ private val SheetExpandThreshold = 24.dp
 
 internal fun Modifier.sheetExpandDrag(setExpanded: (Boolean) -> Unit): Modifier = pointerInput(Unit) {
   var travelled = 0f
+  var committed = false
   detectVerticalDragGestures(
-    onDragStart = { travelled = 0f },
+    onDragStart = {
+      travelled = 0f
+      committed = false
+    },
     onVerticalDrag = { change, amount ->
       change.consume()
-      travelled += amount
-      if (abs(travelled) >= SheetExpandThreshold.toPx()) {
-        setExpanded(travelled < 0f)
-        travelled = 0f
+      if (!committed) {
+        travelled += amount
+        if (abs(travelled) >= SheetExpandThreshold.toPx()) {
+          committed = true
+          setExpanded(travelled < 0f)
+        }
       }
     },
   )
@@ -122,18 +130,24 @@ internal fun ResponsiveSheetContent(
   var contentHeightPx by remember { mutableIntStateOf(0) }
   val density = LocalDensity.current
   val keyboardVisible = WindowInsets.ime.getBottom(density) > 0
+  val reduceMotion = AppMotion.shouldReduceMotion()
 
   BoxWithConstraints(modifier.fillMaxWidth()) {
     val availableHeight = if (constraints.hasBoundedHeight) maxHeight else window.height
-    val maxContentHeight = window.maxHeight(availableHeight, keyboardVisible)
     val initialHeight = window.initialHeight(availableHeight, keyboardVisible)
+    val animatedHeight by animateDpAsState(
+      targetValue = if (expanded) availableHeight else initialHeight,
+      animationSpec = if (reduceMotion) AppMotion.ReducedDp else AppMotion.noBounce(380f),
+      label = "sheetExpansionHeight",
+    )
+    val contentHeight = animatedHeight.coerceIn(0.dp, availableHeight)
     val isAtInitialLimit = contentHeightPx >= with(density) { initialHeight.roundToPx() }
-    val resize = if (maxContentHeight > initialHeight && (expanded || isAtInitialLimit)) {
+    val resize = if (availableHeight > initialHeight && (expanded || isAtInitialLimit)) {
       SheetResize(expanded) { expanded = it }
     } else null
     Column(
       Modifier.fillMaxWidth()
-        .heightIn(max = if (expanded) maxContentHeight else initialHeight)
+        .heightIn(min = if (expanded) contentHeight else 0.dp, max = contentHeight)
         .onSizeChanged { contentHeightPx = it.height },
     ) {
       content(resize)
@@ -142,11 +156,16 @@ internal fun ResponsiveSheetContent(
 }
 
 @Composable
-internal fun SheetOpeningHandle(resize: SheetResize?, showDragHandle: Boolean) {
-  if (resize != null) {
-    PlayerSheetDragHandle(onVerticalDrag = resize.setExpanded)
-  } else if (showDragHandle) {
-    PlayerSheetDragHandle()
+internal fun SheetOpeningHandle(
+  resize: SheetResize?,
+  showDragHandle: Boolean,
+  gesturesEnabled: Boolean = true,
+) {
+  if (resize != null || showDragHandle) {
+    PlayerSheetDragHandle(
+      onVerticalDrag = resize?.setExpanded,
+      visible = gesturesEnabled || resize != null,
+    )
   }
 }
 
@@ -202,7 +221,11 @@ internal fun ResponsiveBottomSheet(
         Modifier.padding(top = 4.dp)
       },
     ) { resize ->
-      SheetOpeningHandle(resize, showDragHandle && sheetGesturesEnabled && !window.television)
+      SheetOpeningHandle(
+        resize = resize,
+        showDragHandle = showDragHandle && !window.television,
+        gesturesEnabled = sheetGesturesEnabled,
+      )
       content()
     }
   }

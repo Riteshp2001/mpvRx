@@ -407,7 +407,6 @@ internal object MediaInfoDetails {
     @androidx.annotation.StringRes val displayNameRes: Int,
   ) {
     OVERVIEW(R.string.media_info_tab_overview),
-    THUMBNAIL(R.string.media_info_tab_thumbnail),
     VIDEO(R.string.media_info_tab_video),
     AUDIO(R.string.media_info_tab_audio),
     SUBTITLES(R.string.media_info_tab_subtitles),
@@ -451,12 +450,6 @@ internal object MediaInfoDetails {
         fileUri?.let { uri -> uri.resolveLocalPath(context) ?: uri.toString() }
       }
     val sections = remember(fullMediaInfoText) { parseMediaInfoText(fullMediaInfoText) }
-    val thumbnailVideo = remember(mediaInfo, fileUri, filePath, fileName) {
-      fileUri?.takeIf { mediaInfo.videoStreams.isNotEmpty() || mediaInfo.audioStreams.isNotEmpty() }?.let { uri ->
-        mediaInfoThumbnailVideo(mediaInfo, uri, fileName, filePath ?: uri.toString())
-      }
-    }
-    val requestValueDetail = LocalValueDetailRequest.current
 
     // Group sections dynamically
     val videoSections = remember(sections) { sections.filter { it.name.startsWith("Video", ignoreCase = true) } }
@@ -505,10 +498,9 @@ internal object MediaInfoDetails {
 
     // Determine available tabs
     val availableTabs =
-      remember(sections, thumbnailVideo != null) {
+      remember(sections) {
         buildList {
           add(InfoTab.OVERVIEW)
-          if (thumbnailVideo != null) add(InfoTab.THUMBNAIL)
           if (videoSections.isNotEmpty()) add(InfoTab.VIDEO)
           if (audioSections.isNotEmpty()) add(InfoTab.AUDIO)
           if (subtitleSections.isNotEmpty()) add(InfoTab.SUBTITLES)
@@ -548,7 +540,6 @@ internal object MediaInfoDetails {
               filePath,
               playbackSnapshot,
             )
-          InfoTab.THUMBNAIL -> thumbnailVideo?.let { MediaThumbnailTab(it, requestValueDetail) }
           InfoTab.VIDEO -> StreamTabContent(videoSections, "Video Stream") {
             mediaInfo.videoStreams.getOrNull(it)?.formatBadges().orEmpty()
           }
@@ -618,7 +609,6 @@ internal object MediaInfoDetails {
               val icon =
                 when (tab) {
                   InfoTab.OVERVIEW -> Icons.RoundedFilled.Info
-                  InfoTab.THUMBNAIL -> Icons.RoundedFilled.Image
                   InfoTab.VIDEO -> Icons.RoundedFilled.Videocam
                   InfoTab.AUDIO -> Icons.RoundedFilled.VolumeUp
                   InfoTab.SUBTITLES -> Icons.RoundedFilled.Subtitles
@@ -774,8 +764,6 @@ internal object MediaInfoDetails {
             imageValue("Format").takeIf(String::isNotBlank)?.let { add(it) }
             if (imageResolution.isNotBlank()) add(imageResolution)
           }
-          if (sizeLabel != "Unknown") add(sizeLabel)
-          if (durationLabel != "Unknown") add(durationLabel)
         }
       }
 

@@ -164,7 +164,7 @@ fun PlayerSheet(
     }
   }
   val isImeVisible = WindowInsets.ime.getBottom(density) > 0
-  val sheetTravelPx = with(density) { window.maxHeight(window.height, isImeVisible).toPx() }
+  val sheetTravelPx = with(density) { window.height.toPx() }
   val decayAnimationSpec = rememberSplineBasedDecay<Float>()
   val anchoredDraggableState =
     remember {
@@ -297,11 +297,13 @@ fun PlayerSheet(
             modifier = Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
               .padding(bottom = if (isImeVisible) 0.dp else 4.dp),
           ) { resize ->
+            SheetOpeningHandle(
+              resize = resize,
+              showDragHandle = canDrag || (!television && title != null),
+              gesturesEnabled = canDrag || resize != null,
+            )
             if (title != null) {
-              if (canDrag || resize != null) PlayerSheetDragHandle(onVerticalDrag = resize?.setExpanded)
               PlayerSheetHeader(title = title, actions = actions)
-            } else {
-              SheetOpeningHandle(resize, showDragHandle = canDrag)
             }
             Box(Modifier.fillMaxWidth().weight(1f, fill = false)) {
               content()
@@ -376,16 +378,22 @@ fun PlayerSheet(
 }
 
 @Composable
-fun PlayerSheetDragHandle(onVerticalDrag: ((Boolean) -> Unit)? = null) {
+fun PlayerSheetDragHandle(
+  onVerticalDrag: ((Boolean) -> Unit)? = null,
+  visible: Boolean = true,
+) {
   Box(
     Modifier.fillMaxWidth()
-      .padding(top = 8.dp, bottom = 2.dp)
-      .then(if (onVerticalDrag != null) Modifier.sheetExpandDrag(onVerticalDrag) else Modifier),
+      .then(if (visible && onVerticalDrag != null) Modifier.sheetExpandDrag(onVerticalDrag) else Modifier)
+      .padding(top = 12.dp, bottom = 12.dp),
     contentAlignment = Alignment.Center,
   ) {
     Box(
       Modifier.size(width = 34.dp, height = 4.dp)
-        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f), RoundedCornerShape(2.dp)),
+        .background(
+          if (visible) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f) else Color.Transparent,
+          RoundedCornerShape(2.dp),
+        ),
     )
   }
 }
