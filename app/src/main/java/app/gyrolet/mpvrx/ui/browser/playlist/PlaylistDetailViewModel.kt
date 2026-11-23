@@ -28,6 +28,7 @@ import app.gyrolet.mpvrx.domain.network.DlnaPath
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
 import app.gyrolet.mpvrx.domain.network.NetworkProtocol
+import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.repository.MediaFileRepository
 import app.gyrolet.mpvrx.repository.NetworkProbeResult
 import app.gyrolet.mpvrx.repository.NetworkRepository
@@ -36,6 +37,7 @@ import app.gyrolet.mpvrx.ui.player.extractLocalPath
 import app.gyrolet.mpvrx.ui.player.resolveUri
 import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils
+import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -75,6 +77,7 @@ class PlaylistDetailViewModel(
   KoinComponent {
   private val playlistRepository: PlaylistRepository by inject()
   private val networkRepository: NetworkRepository by inject()
+  private val browserPreferences: BrowserPreferences by inject()
   // Using MediaFileRepository singleton directly
 
   private val _playlist = MutableStateFlow<PlaylistEntity?>(null)
@@ -122,13 +125,19 @@ class PlaylistDetailViewModel(
 
     // Observe playlist items and load video metadata
     viewModelScope.launch(Dispatchers.IO) {
+      val viewPreferences = browserPreferences.playlistItemView
       combine(
         playlistRepository.observePlaylistItems(playlistId),
         // Connections are part of the input: deleting or re-creating one must re-evaluate every
         // entry that references it instead of waiting for the playlist itself to be reloaded.
         networkRepository.observeAllConnectionsIncludingDeleted(),
         playlistRepository.observePlaylistById(playlistId),
-      ) { items, connections, playlist -> Triple(items, connections, playlist) }
+        combine(
+          viewPreferences.showFramerateInResolution.changes(),
+          viewPreferences.showSubtitleIndicator.changes(),
+          viewPreferences.showCodecSupportIndicator.changes(),
+        ) { _, _, _ -> Unit },
+      ) { items, connections, playlist, _ -> Triple(items, connections, playlist) }
         .collectLatest { (items, connections, playlist) ->
         _playlist.value = playlist
         _isLoading.value = true
@@ -241,12 +250,27 @@ class PlaylistDetailViewModel(
       val available = matchedVideo != null || isLocalEntryAvailable(item.filePath, fileExists)
       PlaylistVideoItem(
         playlistItem = item,
-        video = video,
+        video = if (available) withIndicatorMetadata(video) else video,
         sourcePath = file.parent,
         isAvailable = available,
         unavailableReasonRes = if (available) null else R.string.playlist_unavailable_file,
       )
     }
+  }
+
+  private suspend fun withIndicatorMetadata(video: Video): Video {
+    val preferences = browserPreferences.playlistItemView
+    val includeCodec = preferences.showCodecSupportIndicator.get()
+    if (video.isAudio || (!preferences.showFramerateInResolution.get() &&
+        !preferences.showSubtitleIndicator.get() && !includeCodec)) return video
+    val metadata = when (video.uri.scheme) {
+      "content" -> metadataCache.getOrExtractContentMetadata(video, includeCodec)
+      "file", null -> File(video.path).takeIf(File::isFile)?.let { file ->
+        metadataCache.getOrExtractMetadata(file, video.uri, video.displayName, includeCodec)
+      }
+      else -> null
+    }
+    return metadata?.let { MetadataRetrieval.withMetadata(video, it) } ?: video
   }
 
   override fun refresh() {
@@ -517,7 +541,9 @@ class PlaylistDetailViewModel(
               fps = 0f,
               resolution = "--",
             )
-          PlaylistVideoItem(item, video)
+          PlaylistVideoItem(item, withIndicatorMetadata(video))
+        } catch (cancelled: CancellationException) {
+          throw cancelled
         } catch (e: Exception) {
           Log.w(TAG, "Failed to create video item for URL: ${item.filePath}", e)
           null

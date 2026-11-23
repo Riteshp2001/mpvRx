@@ -278,10 +278,12 @@ fun VideoCard(
     if (showFramerateInResolution && hasFps) "${base}@$fpsOnly" else base
   }
   val hasCodecChip = showCodecSupportIndicator && !video.isAudio && video.videoCodec.isNotBlank()
-  val hasSubtitleChips = showSubtitleIndicator && !video.isAudio && video.hasEmbeddedSubtitles && video.subtitleCodec.isNotBlank()
+  val hasSubtitleChips = showSubtitleIndicator && !video.isAudio &&
+    (video.hasEmbeddedSubtitles || video.subtitleCodec.isNotBlank())
+  val subtitleCodecs = video.subtitleCodec.split(" ").filter(String::isNotBlank).ifEmpty { listOf("TEXT") }
   val hasDateMetadataChip = showDateChip && video.dateModified > 0
   val hasResolutionMetadataChip = !isGridMode && showResolutionChip && hasResolution
-  val hasFramerateMetadataChip = !isGridMode && showFramerateInResolution && hasFps && !showResolutionChip
+  val hasFramerateMetadataChip = !isGridMode && showFramerateInResolution && hasFps && !(showResolutionChip && hasResolution)
   val hasMetadataChips =
     sourceLabel != null ||
       hasCodecChip ||
@@ -624,21 +626,19 @@ fun VideoCard(
               if (sourceLabel != null) {
                 SourceChip(label = sourceLabel, color = sourceColor ?: MaterialTheme.colorScheme.surfaceContainerHigh)
               }
-              if (showSubtitleIndicator && !video.isAudio) {
-                if (video.hasEmbeddedSubtitles && video.subtitleCodec.isNotBlank()) {
-                  video.subtitleCodec.split(" ").forEach { codec ->
-                    Text(
-                      text = codec,
-                      style = MaterialTheme.typography.labelSmall,
-                      modifier =
-                        Modifier
-                          .background(
-                            MaterialTheme.colorScheme.primary,
-                            AppShapeScale.small,
-                          ).padding(horizontal = 8.dp, vertical = 4.dp),
-                      color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                  }
+              if (hasSubtitleChips) {
+                subtitleCodecs.forEach { codec ->
+                  Text(
+                    text = codec,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier =
+                      Modifier
+                        .background(
+                          MaterialTheme.colorScheme.primary,
+                          AppShapeScale.small,
+                        ).padding(horizontal = 8.dp, vertical = 4.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                  )
                 }
               }
               if (hasSizeChip) {
@@ -953,21 +953,19 @@ fun VideoCard(
                 if (showCodecSupportIndicator && !video.isAudio && video.videoCodec.isNotBlank()) {
                   CodecSupportIndicator(video = video)
                 }
-                if (showSubtitleIndicator && !video.isAudio) {
-                  if (video.hasEmbeddedSubtitles && video.subtitleCodec.isNotBlank()) {
-                    video.subtitleCodec.split(" ").forEach { codec ->
-                      Text(
-                        text = codec,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier =
-                          Modifier
-                            .background(
-                              MaterialTheme.colorScheme.primary,
-                              AppShapeScale.small,
-                            ).padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                      )
-                    }
+                if (hasSubtitleChips) {
+                  subtitleCodecs.forEach { codec ->
+                    Text(
+                      text = codec,
+                      style = MaterialTheme.typography.labelSmall,
+                      modifier =
+                        Modifier
+                          .background(
+                            MaterialTheme.colorScheme.primary,
+                            AppShapeScale.small,
+                          ).padding(horizontal = 8.dp, vertical = 4.dp),
+                      color = MaterialTheme.colorScheme.onPrimary,
+                    )
                   }
                 }
                 if (hasSizeChip) {

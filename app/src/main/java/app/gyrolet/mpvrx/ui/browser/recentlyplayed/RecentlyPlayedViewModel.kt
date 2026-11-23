@@ -26,6 +26,7 @@ import app.gyrolet.mpvrx.utils.storage.leafStorageName
 import app.gyrolet.mpvrx.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import app.gyrolet.mpvrx.utils.media.HttpUtils
+import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.CancellationException
@@ -147,7 +148,6 @@ class RecentlyPlayedViewModel(
       val title = file.nameWithoutExtension
 
       // Get metadata from cache or extract it
-      val metadataCache by inject<VideoMetadataCacheRepository>(VideoMetadataCacheRepository::class.java)
       val metadata = metadataCache.getOrExtractMetadata(file, uri, displayName)
 
       val duration = metadata?.durationMs ?: 0L
@@ -213,8 +213,12 @@ class RecentlyPlayedViewModel(
         height = height,
         fps = fps,
         resolution = if (isAudio) "--" else VideoScanUtils.formatResolution(width, height),
+        hasEmbeddedSubtitles = metadata?.hasEmbeddedSubtitles == true,
+        subtitleCodec = metadata?.subtitleCodec.orEmpty(),
         isAudio = isAudio,
       )
+    } catch (cancelled: CancellationException) {
+      throw cancelled
     } catch (e: Exception) {
       Log.e("RecentlyPlayedViewModel", "Error creating video from path: $filePath", e)
       null
@@ -224,7 +228,7 @@ class RecentlyPlayedViewModel(
    * Builds recent items from MediaStore and SAF content URIs without treating them as filesystem
    * paths. Play Store Tree and Library entries, including `.nomedia` files, are provider-backed.
    */
-  private fun createVideoFromContentUri(
+  private suspend fun createVideoFromContentUri(
     uri: Uri,
     entity: RecentlyPlayedEntity,
   ): Video? =
@@ -268,7 +272,7 @@ class RecentlyPlayedViewModel(
       val duration = entity.duration
       val size = metadata.second?.takeIf { it > 0L } ?: entity.fileSize
 
-      Video(
+      val video = Video(
         id = uri.toString().hashCode().toLong(),
         title = entity.videoTitle?.takeIf(String::isNotBlank) ?: FileTypeUtils.stripExtension(displayName),
         displayName = displayName,
@@ -290,6 +294,9 @@ class RecentlyPlayedViewModel(
         isAudio = isAudio,
         artworkUrl = entity.artworkUrl,
       )
+      metadataCache.getOrExtractContentMetadata(video)?.let { MetadataRetrieval.withMetadata(video, it) } ?: video
+    } catch (cancelled: CancellationException) {
+      throw cancelled
     } catch (error: Exception) {
       Log.w("RecentlyPlayedViewModel", "Cannot restore recent content URI: $uri", error)
       null

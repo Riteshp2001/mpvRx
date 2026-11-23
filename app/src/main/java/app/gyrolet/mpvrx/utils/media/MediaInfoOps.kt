@@ -17,6 +17,8 @@ import android.os.Process
 import android.util.Log
 import android.net.Uri
 import android.util.LruCache
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.mediaarea.mediainfo.lib.MediaInfo
@@ -25,11 +27,12 @@ import java.io.IOException
 
 object MediaInfoOps {
   // Basic metadata is requested from several entry points (filesystem browser, playlists, recents,
-  // thumbnail fallback and the persistent Room metadata repository). Keep the expensive native
-  // MediaInfo extraction behind one process-wide bounded cache so those paths do not repeatedly
+  // thumbnail fallback and the persistent Room metadata repository). Keep the framework/Media3
+  // probes behind one process-wide bounded cache so those paths do not repeatedly
   // parse the same container during a session. The persistent repository can still provide the
   // cross-process cache; this layer catches direct callers that previously bypassed it.
   private const val TAG = "MediaInfoOps"
+  internal const val BASIC_METADATA_VERSION = 2
   private const val BASIC_METADATA_CACHE_ENTRIES = 512
   private val basicMetadataCache = LruCache<String, VideoMetadata>(BASIC_METADATA_CACHE_ENTRIES)
   private val videoCodecCache = LruCache<String, VideoCodecDescriptor>(BASIC_METADATA_CACHE_ENTRIES)
@@ -306,7 +309,7 @@ object MediaInfoOps {
   /**
    * Background library enrichment must never pass untrusted files to MediaInfoLib.
    * Its AAC/MPEG-4 native finalizer has caused SIGSEGV on 32-bit devices.
-   * MediaExtractor / MediaMetadataRetriever provide the fields needed by browser chips.
+   * Use framework metadata plus bounded Media3 parsing for missing subtitle tracks and frame rates.
    */
   suspend fun extractBasicMetadata(
     context: Context,
@@ -321,8 +324,28 @@ object MediaInfoOps {
       }?.let { cached -> return@withContext Result.success(cached) }
 
       val result = runCatching {
-        platformProbe(context, uri)?.metadata
-          ?: VideoMetadata(0L, 0L, 0, 0, 0f, false)
+        val metadata = platformProbe(context, uri)?.metadata
+          ?: throw IOException("Could not open media file")
+        val isVideo = metadata.width > 0 || metadata.height > 0 || FileTypeUtils.isVideoFile(File(fileName))
+        val missingFrameRate = !metadata.fps.isFinite() || metadata.fps <= 0f
+        val container = if (isVideo && (missingFrameRate || !metadata.hasEmbeddedSubtitles)) {
+          ContainerMetadataProbe.read(context, uri, readFrameRate = missingFrameRate)
+        } else null
+        if (container == null) metadata else metadata.copy(
+          sizeBytes = metadata.sizeBytes.takeIf { it > 0L } ?: container.sizeBytes,
+          durationMs = metadata.durationMs.takeIf { it > 0L } ?: container.durationMs,
+          width = metadata.width.takeIf { it > 0 } ?: container.width,
+          height = metadata.height.takeIf { it > 0 } ?: container.height,
+          fps = metadata.fps.takeIf { it.isFinite() && it > 0f } ?: container.fps,
+          hasEmbeddedSubtitles = metadata.hasEmbeddedSubtitles || container.hasEmbeddedSubtitles,
+          subtitleCodec = (metadata.subtitleCodec.split(" ") + container.subtitleCodec.split(" "))
+            .filter(String::isNotBlank).distinct().joinToString(" "),
+          videoCodec = metadata.videoCodec.ifBlank { container.videoCodec },
+          videoCodecMimeType = metadata.videoCodecMimeType.ifBlank { container.videoCodecMimeType },
+        )
+      }.onFailure { error ->
+        if (error is CancellationException) throw error
+        Log.w(TAG, "Could not read metadata for $fileName", error)
       }
       result.getOrNull()?.takeIf { it.durationMs > 0L }?.let { metadata ->
         synchronized(basicMetadataCache) { basicMetadataCache.put(cacheKey, metadata) }
@@ -390,7 +413,7 @@ object MediaInfoOps {
   private fun MediaFormat.textValue(key: String): String =
     runCatching { getString(key) }.getOrNull().orEmpty()
 
-  private fun subtitleLabel(mime: String): String =
+  internal fun subtitleLabel(mime: String): String =
     when {
       mime.contains("pgs") || mime.contains("hdmv") -> "SUP"
       mime.contains("subrip") || mime.contains("srt") -> "SRT"
@@ -463,7 +486,7 @@ object MediaInfoOps {
               val trackFps = track.numberValue(MediaFormat.KEY_FRAME_RATE)?.toFloat() ?: 0f
               if (width <= 0) width = trackWidth
               if (height <= 0) height = trackHeight
-              if (fps <= 0f) fps = trackFps
+              if (videoStreams.isEmpty() && trackFps.isFinite() && trackFps > 0f) fps = trackFps
               if (videoCodec.mimeType.isBlank()) {
                 videoCodec = if (mime == "video/dolby-vision") {
                   VideoCodecDescriptor("DOLBY VISION", mime)

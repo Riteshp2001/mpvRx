@@ -8,6 +8,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import app.gyrolet.mpvrx.utils.storage.MediaStoreGenerationGuard
@@ -33,6 +34,7 @@ internal object MediaLibraryCache {
   private const val KEY_SCAN_OPTIONS = "scan_options_v3"
   private const val KEY_GENERATION = "generation_v3"
   private const val KEY_METADATA = "metadata_v3"
+  private const val KEY_METADATA_VERSION = "metadata_version"
 
   // Unreadable snapshots from other encodings (v4 was the reverted nullable-rotation format). They
   // would otherwise be parsed into memory with this preferences file on every cold start.
@@ -96,6 +98,7 @@ internal object MediaLibraryCache {
         .putString(KEY_SCAN_OPTIONS, scanOptionsKey)
         .putString(KEY_GENERATION, observedGeneration)
         .putBoolean(KEY_METADATA, metadataEnriched)
+        .putInt(KEY_METADATA_VERSION, MediaInfoOps.BASIC_METADATA_VERSION)
         .also { editor -> OBSOLETE_KEYS.forEach(editor::remove) }
         .apply()
     }.onFailure { error ->
@@ -113,6 +116,7 @@ internal object MediaLibraryCache {
       val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
       if (prefs.getString(KEY_SCAN_OPTIONS, null) != scanOptionsKey) return null
       if (requireMetadata && !prefs.getBoolean(KEY_METADATA, false)) return null
+      if (requireMetadata && prefs.getInt(KEY_METADATA_VERSION, 0) != MediaInfoOps.BASIC_METADATA_VERSION) return null
       val snapshotGeneration = prefs.getString(KEY_GENERATION, null) ?: return null
       if (!MediaStoreGenerationGuard.isTokenCurrent(context, snapshotGeneration)) return null
       val raw = prefs.getString(KEY_VIDEOS, null) ?: return null
@@ -132,6 +136,7 @@ internal object MediaLibraryCache {
         .remove(KEY_SCAN_OPTIONS)
         .remove(KEY_GENERATION)
         .remove(KEY_METADATA)
+        .remove(KEY_METADATA_VERSION)
         .also { editor -> OBSOLETE_KEYS.forEach(editor::remove) }
         .apply()
     }.onFailure { error ->
