@@ -21,10 +21,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TextButton
 import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
@@ -103,15 +104,15 @@ fun VideoZoomSheet(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
       ) {
-        TextButton(
+        Button(
           onClick = { playerPreferences.defaultVideoZoom.set(zoom) },
           enabled = zoomControlEnabled && zoom != defaultZoom,
-          modifier = Modifier.weight(1f, fill = false),
+          modifier = Modifier.weight(1f).heightIn(min = 48.dp),
         ) {
           Text(stringResource(R.string.set_as_default), style = MaterialTheme.typography.labelMedium)
         }
 
-        TextButton(
+        FilledTonalButton(
           onClick = {
             if (zoomControlEnabled) {
               zoom = 0f
@@ -120,7 +121,7 @@ fun VideoZoomSheet(
             if (panControlEnabled) onResetVideoPan()
           },
           enabled = (zoomControlEnabled && zoom != 0f) || panControlEnabled,
-          modifier = Modifier.weight(1f),
+          modifier = Modifier.weight(1f).heightIn(min = 48.dp),
         ) {
           Text(stringResource(R.string.generic_reset), style = MaterialTheme.typography.labelMedium)
         }

@@ -47,6 +47,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
+import app.gyrolet.mpvrx.ui.liquidglass.playerGlassContainerColor
 
 /**
  * Shared Material 3 Expressive state colors for player selection sheets.
@@ -59,12 +60,12 @@ internal fun playerSheetSelectionColor(
   frosted: Boolean = LocalPlayerGlassSurfaceActive.current,
 ): Color {
   val colors = MaterialTheme.colorScheme
-  return when {
-    selected && frosted -> colors.secondaryContainer.copy(alpha = 0.65f)
+  val color = when {
     selected -> colors.secondaryContainer
-    frosted -> colors.surfaceContainerLow.copy(alpha = 0.35f)
+    frosted -> colors.surfaceContainerLow
     else -> colors.surfaceContainerHigh
   }
+  return playerGlassContainerColor(color, selected = selected, frosted = frosted)
 }
 
 /** Every player option gets its own animated Material 3 state surface. */

@@ -80,6 +80,7 @@ import app.gyrolet.mpvrx.ui.preferences.searchTargetKey
 import app.gyrolet.mpvrx.ui.preferences.searchCategoryTitleRes
 import app.gyrolet.mpvrx.ui.preferences.isLivePlayerSetting
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
+import app.gyrolet.mpvrx.ui.liquidglass.playerGlassContainerColor
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
@@ -408,7 +409,7 @@ private fun SettingsPanelHome(
               onNavigate()
             },
             shape = rememberConnectedShape(index, categories.size, ConnectedLayout.Vertical),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = playerGlassContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh),
           ) {
             Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 16.dp),
               verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -451,7 +452,7 @@ private fun SettingsResultRow(
   Surface(
     onClick = onOpen,
     shape = rememberConnectedShape(index, count, ConnectedLayout.Vertical),
-    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    color = playerGlassContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh),
   ) {
     Row(
       Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(start = 16.dp, end = 4.dp),

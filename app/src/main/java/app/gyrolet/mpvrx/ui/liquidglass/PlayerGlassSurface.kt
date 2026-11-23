@@ -7,6 +7,7 @@ package app.gyrolet.mpvrx.ui.liquidglass
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
@@ -14,15 +15,32 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.drawBackdrop
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
+import org.koin.compose.koinInject
 
 /** Surface treatment is independent of whether the renderer exposes a sampleable video layer. */
 internal val LocalPlayerGlassSurfaceActive = staticCompositionLocalOf { false }
+
+/** Keep the panel material enabled when native HDR prevents live video sampling. */
+@Composable
+internal fun playerGlassSurfaceEnabled(): Boolean {
+  val enabled by koinInject<AppearancePreferences>().liquidGlassEnabled.collectAsState()
+  return enabled
+}
+
+@Composable
+internal fun playerGlassContainerColor(
+  color: Color,
+  selected: Boolean = false,
+  frosted: Boolean = LocalPlayerGlassSurfaceActive.current,
+): Color = if (frosted) color.copy(alpha = color.alpha * (if (selected) 0.65f else 0.35f)) else color
 
 /** Shared material for player sheets and movable panels; one optical layer per container. */
 @Composable
@@ -35,13 +53,13 @@ internal fun Modifier.playerGlassSurface(
   if (!enabled) return this
   val settings = rememberLiquidGlassSettings()
   val reducedMotion = AppMotion.shouldReduceMotion()
-  val tint = remember(containerColor) {
+  val tint = remember(containerColor, settings.opacity) {
     // Preserve the player's original 80% frosted backing. Rows inside it provide lighter
     // 35% / 65% resting / selected surfaces, rather than opaque cards hiding the video.
     Brush.verticalGradient(
-      0f to containerColor.copy(alpha = 0.86f),
-      0.25f to containerColor.copy(alpha = 0.80f),
-      1f to containerColor.copy(alpha = 0.80f),
+      0f to settings.surfaceColor(containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.86f))),
+      0.25f to settings.surfaceColor(containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.80f))),
+      1f to settings.surfaceColor(containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.80f))),
     )
   }
   // SurfaceView (HDR without the "liquid glass in HDR" opt-in) is composed by Android outside the

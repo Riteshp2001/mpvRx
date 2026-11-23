@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.ui.liquidglass.playerGlassContainerColor
 
 /** Layouts supported by [connectedShape]. */
 enum class ConnectedLayout {
@@ -197,7 +198,7 @@ fun animatedConnectedContainerColorState(
   selectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
   reduceMotion: Boolean = AppMotion.shouldReduceMotion(),
 ): State<Color> {
-  val base = if (selected) selectedContainerColor else containerColor
+  val base = playerGlassContainerColor(if (selected) selectedContainerColor else containerColor, selected = selected)
   return animateColorAsState(
     targetValue = if (pressed && enabled) lerp(base, MaterialTheme.colorScheme.primary, 0.10f) else base,
     animationSpec = if (reduceMotion) snap() else AppMotion.Effect.Color,

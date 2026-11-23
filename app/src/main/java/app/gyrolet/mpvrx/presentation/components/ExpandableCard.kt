@@ -38,6 +38,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
+import app.gyrolet.mpvrx.ui.liquidglass.playerGlassContainerColor
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppMotion
@@ -68,6 +70,15 @@ fun ExpandableCard(
   content: @Composable () -> Unit,
 ) {
   val reduceMotion = AppMotion.shouldReduceMotion()
+  val frosted = LocalPlayerGlassSurfaceActive.current
+  val resolvedColors = if (frosted) {
+    CardDefaults.cardColors(
+      containerColor = playerGlassContainerColor(colors.containerColor),
+      contentColor = colors.contentColor,
+      disabledContainerColor = playerGlassContainerColor(colors.disabledContainerColor),
+      disabledContentColor = colors.disabledContentColor,
+    )
+  } else colors
   val interactionSource = remember { MutableInteractionSource() }
   val actionLabel = stringResource(if (isExpanded) R.string.generic_collapse else R.string.generic_expand)
   val rotationState by animateFloatAsState(
@@ -77,9 +88,9 @@ fun ExpandableCard(
   )
   Card(
     modifier = modifier.animateContentSize(if (reduceMotion) snap() else AppMotion.IntSizeSpring),
-    colors = colors,
+    colors = resolvedColors,
     shape = shape,
-    border = border,
+    border = if (frosted) null else border,
     elevation = elevation,
   ) {
     Row(

@@ -80,8 +80,8 @@ internal val LocalPlayerHdrOutputEnabled = staticCompositionLocalOf { false }
 internal val LocalPlayerLiquidGlassActive = staticCompositionLocalOf<Boolean?> { null }
 
 /**
- * Whether Liquid Glass applies here. Player components read this instead of the raw preference,
- * so they fall back to their regular, non-glass form whenever the player turns glass off.
+ * Whether live Liquid Glass controls apply here. They fall back to their regular form when the
+ * renderer cannot be sampled; panel materials separately retain a translucent, non-sampling fallback.
  */
 @Composable
 fun liquidGlassActive(): Boolean {

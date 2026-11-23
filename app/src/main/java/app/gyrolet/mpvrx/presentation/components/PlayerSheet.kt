@@ -100,7 +100,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import androidx.compose.ui.focus.focusProperties
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
-import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
+import app.gyrolet.mpvrx.ui.liquidglass.playerGlassSurfaceEnabled
 import app.gyrolet.mpvrx.ui.liquidglass.playerGlassSurface
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
 import app.gyrolet.mpvrx.ui.theme.AppMotion
@@ -132,7 +132,7 @@ fun PlayerSheet(
   val scope = rememberCoroutineScope()
   val window = sheetWindow()
   val television = window.television
-  val liquidGlassEnabled = liquidGlassActive()
+  val liquidGlassEnabled = playerGlassSurfaceEnabled()
   val playerBackdrop = LocalKyantPlayerBackdrop.current
   val isFrosted = useFrostedGlass && liquidGlassEnabled
   // TV/remote: request focus INTO the sheet content when it opens, so the D-pad can navigate/select

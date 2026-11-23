@@ -12,11 +12,14 @@ import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 
-/** Filled, morphing actions inside app dialogs; ordinary text buttons elsewhere. */
+/** Filled dialog actions with stable corners; ordinary text buttons elsewhere. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppDialogTextButton(
@@ -32,26 +35,32 @@ fun AppDialogTextButton(
   shapes: ButtonShapes? = null,
   content: @Composable RowScope.() -> Unit,
 ) {
-  val focusModifier = modifier.tvFocusHighlight(shape, clipToShape = false)
   val emphasis = LocalDialogActionEmphasis.current
+  val source = interactionSource ?: remember { MutableInteractionSource() }
+  val reduceMotion = AppMotion.shouldReduceMotion()
+  val focusModifier = modifier.tvFocusHighlight(shape, clipToShape = false).then(
+    if (emphasis != DialogActionEmphasis.None && shapes == null) {
+      Modifier.appPressFeedback(source, enabled = enabled, reduceMotion = reduceMotion)
+    } else Modifier,
+  )
   val scheme = MaterialTheme.colorScheme
   val resolvedColors = colors ?: when (emphasis) {
     DialogActionEmphasis.Primary -> ButtonDefaults.textButtonColors(containerColor = scheme.primary, contentColor = scheme.onPrimary)
     DialogActionEmphasis.Secondary -> ButtonDefaults.textButtonColors(containerColor = scheme.secondaryContainer, contentColor = scheme.onSecondaryContainer)
     DialogActionEmphasis.None -> ButtonDefaults.textButtonColors()
   }
-  val resolvedShapes = shapes ?: if (emphasis != DialogActionEmphasis.None) ButtonDefaults.shapes() else null
+  val resolvedShapes = shapes?.takeUnless { reduceMotion }
   if (resolvedShapes != null) {
     androidx.compose.material3.TextButton(
       onClick = onClick, modifier = focusModifier, enabled = enabled, shapes = resolvedShapes,
       colors = resolvedColors, elevation = elevation, border = border,
-      contentPadding = contentPadding, interactionSource = interactionSource, content = content,
+      contentPadding = contentPadding, interactionSource = source, content = content,
     )
   } else {
     androidx.compose.material3.TextButton(
       onClick = onClick, modifier = focusModifier, enabled = enabled, shape = shape,
       colors = resolvedColors, elevation = elevation, border = border,
-      contentPadding = contentPadding, interactionSource = interactionSource, content = content,
+      contentPadding = contentPadding, interactionSource = source, content = content,
     )
   }
 }

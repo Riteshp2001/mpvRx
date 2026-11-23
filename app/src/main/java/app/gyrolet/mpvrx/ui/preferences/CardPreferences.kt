@@ -46,6 +46,7 @@ import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.ui.liquidglass.playerGlassContainerColor
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
@@ -217,7 +218,9 @@ fun ExpressivePreferenceTile(
 ) {
   val colors = MaterialTheme.colorScheme
   val containerColor by animateColorAsState(
-    targetValue = if (selected) colors.secondaryContainer else colors.surfaceContainerLow,
+    targetValue = playerGlassContainerColor(
+      if (selected) colors.secondaryContainer else colors.surfaceContainerLow, selected = selected,
+    ),
     animationSpec = AppMotion.spatial(AppMotion.Effect.Color, snap()),
     label = "expressivePreferenceTileColor",
   )
@@ -263,11 +266,11 @@ fun ExpressivePreferenceItem(
   val color by animateColorAsState(
     // PreferenceCard paints both selected and unselected tiles at their measured connected
     // corners; a child surface must not override that geometry.
-    targetValue = when {
+    targetValue = playerGlassContainerColor(when {
       insideGroup -> androidx.compose.ui.graphics.Color.Transparent
       selected -> colors.secondaryContainer
       else -> colors.surfaceContainerLow
-    },
+    }, selected = selected),
     animationSpec = AppMotion.spatial(AppMotion.Effect.Color, snap()),
     label = "preferenceItemColor",
   )
