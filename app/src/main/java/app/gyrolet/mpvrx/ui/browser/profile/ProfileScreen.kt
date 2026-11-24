@@ -137,6 +137,7 @@ import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.cards.PlaylistCard
+import app.gyrolet.mpvrx.ui.browser.cards.WatchedThumbnailFilter
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.rememberSwipePlaybackInfo
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
@@ -208,6 +209,9 @@ object ProfileScreen : Screen {
       visibleProfileItems(ProfileSection.entries, sectionOrder, hiddenSections)
     }
     val showRecentThumbnails by browserPreferences.recentView.showThumbnails.collectAsState()
+    // The shelves mark watched items like the screens they open: Recents follows its own view setting.
+    val grayscaleRecentWatched by browserPreferences.recentView.grayscaleWatchedThumbnails.collectAsState()
+    val grayscaleAddedWatched by browserPreferences.grayscaleWatchedThumbnails.collectAsState()
     val playlistManualGrid by browserPreferences.playlistView.manualGridColumnsEnabled.collectAsState()
     val playlistGridColumnsPortrait by browserPreferences.playlistView.gridColumnsPortrait.collectAsState()
     val playlistGridColumnsLandscape by browserPreferences.playlistView.gridColumnsLandscape.collectAsState()
@@ -462,6 +466,8 @@ object ProfileScreen : Screen {
                               RecentVideoCard(
                                 video = item.video,
                                 progress = info?.progressPercentage?.takeUnless { info.isWatched },
+                                isWatched = info?.isWatched == true,
+                                grayscaleWatched = grayscaleRecentWatched,
                                 showThumbnail = showRecentThumbnails,
                                 onClick = { playRecent(item.video) },
                                 onLongClick = {
@@ -528,6 +534,8 @@ object ProfileScreen : Screen {
                           RecentVideoCard(
                             video = video,
                             progress = info?.progressPercentage?.takeUnless { info.isWatched },
+                            isWatched = info?.isWatched == true,
+                            grayscaleWatched = grayscaleAddedWatched,
                             showThumbnail = showAddedThumbnails,
                             onClick = { MediaUtils.playFile(video, context) },
                           )
@@ -1145,6 +1153,8 @@ private fun RecentVideoCard(
   showThumbnail: Boolean,
   onClick: () -> Unit,
   onLongClick: (() -> Unit)? = null,
+  isWatched: Boolean = false,
+  grayscaleWatched: Boolean = true,
 ) {
   val thumbnailRepository = koinInject<ThumbnailRepository>()
   val density = LocalDensity.current
@@ -1175,6 +1185,8 @@ private fun RecentVideoCard(
         bitmap.asImageBitmap(),
         contentDescription = null,
         contentScale = ContentScale.Crop,
+        // Same look as the Recently Played screen: watched items lose their colour.
+        colorFilter = if (isWatched && grayscaleWatched) WatchedThumbnailFilter else null,
         modifier = Modifier.fillMaxSize(),
       )
     } else {
@@ -1210,6 +1222,15 @@ private fun RecentVideoCard(
 
     if (video.durationFormatted.isNotBlank() && video.durationFormatted != "--:--") {
       FrameBadge(video.durationFormatted, Modifier.align(Alignment.BottomEnd))
+    }
+
+    if (isWatched) {
+      Icon(
+        imageVector = Icons.RoundedFilled.Check,
+        contentDescription = stringResource(R.string.video_label_watched),
+        modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(24.dp),
+        tint = Color.White,
+      )
     }
 
     if (progress != null && progress > 0f) {
