@@ -64,7 +64,6 @@ import app.gyrolet.mpvrx.ui.browser.jellyfin.seerr.SeerrConnectionDialog
 import app.gyrolet.mpvrx.ui.browser.jellyfin.seerr.SeerrViewModel
 import app.gyrolet.mpvrx.ui.browser.navidrome.AddNavidromeServerDialog
 import app.gyrolet.mpvrx.ui.browser.navidrome.NavidromeViewModel
-import app.gyrolet.mpvrx.ui.browser.music.DlnaMusicServerSelector
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
@@ -597,18 +596,6 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
                   },
                 )
                 }
-              }
-            }
-          }
-
-          item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.music_source_dlna))
-          }
-          item {
-            PreferenceCard {
-              Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(R.string.music_dlna_server_description))
-                DlnaMusicServerSelector()
               }
             }
           }

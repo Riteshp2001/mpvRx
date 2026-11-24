@@ -6,24 +6,17 @@ package app.gyrolet.mpvrx.ui.browser.music
 
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
-import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.domain.network.NetworkProtocol
-import app.gyrolet.mpvrx.preferences.MediaServerPreferences
-import app.gyrolet.mpvrx.preferences.MusicSourceProvider
-import app.gyrolet.mpvrx.repository.NetworkRepository
+import app.gyrolet.mpvrx.ui.player.PlaybackItem
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PreparedPlaybackLaunchStore
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -31,7 +24,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -42,7 +34,6 @@ import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.util.concurrent.atomic.AtomicBoolean
-import java.io.IOException
 
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import app.gyrolet.mpvrx.utils.media.MediaUtils
@@ -56,17 +47,14 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   private val audioPreferences: app.gyrolet.mpvrx.preferences.AudioPreferences by inject()
   private val foldersPreferences: app.gyrolet.mpvrx.preferences.FoldersPreferences by inject()
   private val audiobookDao: app.gyrolet.mpvrx.database.dao.AudiobookDao by inject()
-  private val mediaServerPreferences: MediaServerPreferences by inject()
-  private val networkRepository: NetworkRepository by inject()
 
   val visibleTabs: StateFlow<List<MusicTab>> = combine(
     audioPreferences.musicTabOrder.changes(),
     audioPreferences.enabledMusicTabs.changes(),
-    mediaServerPreferences.musicSourceProvider.changes(),
-  ) { orderList, enabledSet, source ->
+  ) { orderList, enabledSet ->
     val tabMap = MusicTab.entries.associateBy { it.name }
     val orderedTabs = (orderList.mapNotNull { tabMap[it] } + (MusicTab.entries - orderList.mapNotNull { tabMap[it] }.toSet())).distinct()
-    val filtered = orderedTabs.filter { it.name in enabledSet && (source != MusicSourceProvider.DLNA || it != MusicTab.FOLDERS) }
+    val filtered = orderedTabs.filter { it.name in enabledSet }
     if (filtered.isEmpty()) listOf(MusicTab.SONGS) else filtered
   }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MusicTab.entries.toList())
 
@@ -75,7 +63,6 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   private val _allSongs = MutableStateFlow<List<MusicSong>>(emptyList())
   private val filterMutex = Mutex()
   private val refreshMutex = Mutex()
-  private var refreshJob: Job? = null
 
   private val _songs = MutableStateFlow<List<MusicSong>>(emptyList())
   val songs: StateFlow<List<MusicSong>> = _songs.asStateFlow()
@@ -119,9 +106,6 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   // must show its loading state rather than an empty library.
   private val _isLoading = MutableStateFlow(true)
   val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-  private val _error = MutableStateFlow<String?>(null)
-  val error: StateFlow<String?> = _error.asStateFlow()
-  private var loadedLibrarySource: Pair<MusicSourceProvider, Long>? = null
 
   // MainScreen creates this ViewModel on every launch, also for users who never open Music, so the
   // first MediaStore scan (and album-tag probing) waits until the library is actually requested.
@@ -139,21 +123,6 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
 
   init {
     viewModelScope.launch {
-      combine(
-        mediaServerPreferences.musicSourceProvider.changes(),
-        mediaServerPreferences.dlnaMusicConnectionId.changes(),
-        networkRepository.getAllConnections(),
-      ) { source, id, connections ->
-        Triple(source, id, connections.filter { it.protocol == NetworkProtocol.DLNA }.map { it.copy(lastConnected = 0L) })
-      }.distinctUntilChanged().collectLatest { (source, _, _) ->
-        if (libraryLoadRequested.get() && source in setOf(MusicSourceProvider.LOCAL, MusicSourceProvider.DLNA)) {
-          refreshLibrary(context)
-        } else {
-          refreshJob?.cancel()
-        }
-      }
-    }
-    viewModelScope.launch {
       playlistRepository.getOrCreateFavoritesPlaylist(isAudio = true)
     }
     viewModelScope.launch {
@@ -169,9 +138,7 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
     viewModelScope.launch {
       MediaLibraryEvents.changes.collectLatest {
         // An unread library has nothing stale to refresh; it is read in full when first shown.
-        if (libraryLoadRequested.get() && mediaServerPreferences.musicSourceProvider.get() == MusicSourceProvider.LOCAL) {
-          refreshLibrary(context)
-        }
+        if (libraryLoadRequested.get()) refreshLibrary(context)
       }
     }
   }
@@ -246,57 +213,27 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
 
   suspend fun refreshLibrary(context: Context) {
     libraryLoadRequested.set(true)
-    val job = withContext(Dispatchers.Main.immediate) {
-      refreshJob?.cancel()
-      viewModelScope.launch(start = CoroutineStart.LAZY) {
-        refreshMutex.withLock { refreshLibraryLocked(context) }
-      }.also {
-        refreshJob = it
-        it.start()
-      }
-    }
-    job.join()
+    refreshMutex.withLock { refreshLibraryLocked(context) }
   }
 
   private suspend fun refreshLibraryLocked(context: Context) {
     _isLoading.value = true
-    _error.value = null
     try {
-      val source = mediaServerPreferences.musicSourceProvider.get()
-      val connection = if (source == MusicSourceProvider.DLNA) {
-        val servers = networkRepository.getAllConnections().first().filter { it.protocol == NetworkProtocol.DLNA }
-        val selectedId = mediaServerPreferences.dlnaMusicConnectionId.get()
-        (if (selectedId < 0L) servers.firstOrNull() else servers.firstOrNull { it.id == selectedId })
-          ?: throw IOException(context.getString(R.string.music_dlna_server_missing))
-      } else null
-      val sourceKey = source to (connection?.id ?: -1L)
-      if (loadedLibrarySource != sourceKey) {
-        _allSongs.value = emptyList()
-        applyFilters()
+      withContext(Dispatchers.IO) {
+        app.gyrolet.mpvrx.domain.audiobook.AudiobookMarkerUtils.syncKnownAudiobooks(context, audiobookDao)
       }
-      if (connection != null) {
-        _allSongs.value = DlnaMusicLibraryScanner.scan(context, networkRepository, connection)
-      } else {
-        withContext(Dispatchers.IO) {
-          app.gyrolet.mpvrx.domain.audiobook.AudiobookMarkerUtils.syncKnownAudiobooks(context, audiobookDao)
+      _allSongs.value = MusicLibraryScanner.scanSongs(context) { indexedSongs ->
+        if (_allSongs.value.isEmpty()) {
+          _allSongs.value = indexedSongs
+          applyFilters()
         }
-        _allSongs.value = MusicLibraryScanner.scanSongs(context) { indexedSongs ->
-          if (_allSongs.value.isEmpty()) {
-            _allSongs.value = indexedSongs
-            applyFilters()
-          }
-          _isLoading.value = false
-        }
+        _isLoading.value = false
       }
-      loadedLibrarySource = sourceKey
       applyFilters()
     } catch (e: CancellationException) {
       throw e
     } catch (e: Exception) {
-      Log.w("MusicLibrary", "Could not load the selected music library", e)
-      _error.value = e.message ?: context.getString(R.string.music_library_load_failed)
-      _allSongs.value = emptyList()
-      applyFilters()
+      e.printStackTrace()
     } finally {
       _isLoading.value = false
     }
@@ -406,7 +343,16 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
     if (songList.isEmpty()) return
     val index = songList.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
 
-    val queueItems = songList.map { it.toPlaybackItem() }
+    val queueItems = songList.map { item ->
+      PlaybackItem.fromUri(
+        uri = item.uri.toString(),
+        title = item.title,
+        artist = item.artist,
+        mimeType = "audio/*",
+        artworkUri = item.albumArtUri?.toString(),
+        durationSeconds = (item.durationMs / 1000L).toInt().takeIf { it > 0 },
+      )
+    }
     if (MediaUtils.shouldPlayInMiniPlayerOnly(isAudio = true)) {
       MediaUtils.playInMiniPlayer(context, queueItems, index)
       return
@@ -438,7 +384,16 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
     val list = if (shuffle) songsToPlay.shuffled() else songsToPlay
     val firstSong = list.first()
 
-    val queueItems = list.map { it.toPlaybackItem() }
+    val queueItems = list.map { item ->
+      PlaybackItem.fromUri(
+        uri = item.uri.toString(),
+        title = item.title,
+        artist = item.artist,
+        mimeType = "audio/*",
+        artworkUri = item.albumArtUri?.toString(),
+        durationSeconds = (item.durationMs / 1000L).toInt().takeIf { it > 0 },
+      )
+    }
     if (MediaUtils.shouldPlayInMiniPlayerOnly(isAudio = true)) {
       MediaUtils.playInMiniPlayer(context, queueItems, 0)
       return
@@ -481,11 +436,6 @@ class MusicLibraryViewModel : ViewModel(), KoinComponent {
   }
 
   suspend fun deleteSongs(context: Context, songsToDelete: List<MusicSong>): Pair<Int, Int> {
-    if (songsToDelete.any { app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri.parse(it.uri.toString()) != null }) {
-      Log.w("MusicLibrary", "DLNA library files are read-only")
-      _error.value = context.getString(R.string.music_dlna_read_only)
-      return 0 to songsToDelete.size
-    }
     val videos = songsToDelete.map { song ->
       app.gyrolet.mpvrx.domain.media.model.Video(
         id = song.id,
