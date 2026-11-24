@@ -22,4 +22,10 @@ data class NetworkFile(
   val isDirectory: Boolean,
   val lastModified: Long = 0,
   val mimeType: String? = null,
+  val durationMs: Long = 0L,
+  val artist: String? = null,
+  val album: String? = null,
+  val artworkUrl: String? = null,
+  val trackNumber: Int = 0,
+  val year: Int = 0,
 )

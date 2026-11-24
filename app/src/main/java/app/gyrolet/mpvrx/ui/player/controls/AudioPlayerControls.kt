@@ -303,6 +303,17 @@ private object AudioPresentationMetadataCache {
       val key = "${cacheKey(pathOrUri, artworkUri)}|$generator|$revision"
       synchronized(cache) { cache.get(key) }?.let { return@withContext it }
 
+      val networkSource = app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri.parse(pathOrUri)
+      if (networkSource != null) {
+        val loaded = AudioPresentationMetadata(
+          artwork = EmbeddedArtworkResolver.decodeArtworkUri(context, artworkUri)
+            ?: repository.getThumbnailForNetworkSource(networkSource.connectionId, networkSource.path.value, 512, 512),
+          artist = null,
+        )
+        synchronized(cache) { if (activeRevision == revision) cache.put(key, loaded) }
+        return@withContext loaded
+      }
+
       // An old native retriever may still be unwinding; Android artwork must not wait for it.
       val localFolderMotion = app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkCandidates
         .audioFolderMotionPath(pathOrUri)
@@ -1001,7 +1012,9 @@ fun AudioPlayerControls(
 
   val currentAudioPresentation =
     rememberAudioPresentationMetadata(
-      pathOrUri = currentMediaSource?.takeIf { isAudiobook || isLocalArtworkSource(it) } ?: mediaPath?.takeIf { it.isNotBlank() } ?: currentMediaSource,
+      pathOrUri = currentMediaSource?.takeIf {
+        isAudiobook || isLocalArtworkSource(it) || app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri.parse(it) != null
+      } ?: mediaPath?.takeIf { it.isNotBlank() } ?: currentMediaSource,
       artworkUri = currentArtworkUri,
     )
   // Android's retriever cannot read covers from streams; FongMi's mpv already parsed the file's own.

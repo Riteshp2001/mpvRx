@@ -7112,6 +7112,11 @@ fun restartFromBeginning() {
             item.networkConnectionId == null || abs(item.index - currentIndex) <= PLAYLIST_NETWORK_METADATA_PREFETCH_RADIUS
           }
 
+          val pendingEntries = metadataItems.mapTo(mutableSetOf()) { it.queueEntryId }
+          _playlistItems.value = _playlistItems.value.map { item ->
+            item.copy(metadataLoading = item.queueEntryId in pendingEntries)
+          }
+
         // Limit concurrent metadata extraction to avoid overwhelming resources
         val batchSize = 5
         metadataItems.chunked(batchSize).forEach { batch ->
@@ -7138,14 +7143,17 @@ fun restartFromBeginning() {
           }
 
           // Apply all batched updates at once (single playlist update)
-          if (updates.isNotEmpty()) {
+          val completedEntries = batch.mapTo(mutableSetOf()) { it.queueEntryId }
+          if (completedEntries.isNotEmpty()) {
             _playlistItems.value =
               _playlistItems.value.map { currentItem ->
+                if (currentItem.queueEntryId !in completedEntries) return@map currentItem
                 val cacheKey = currentItem.uri.toString()
-                val (durationStr, resolutionStr) = updates[cacheKey] ?: return@map currentItem
+                val (durationStr, resolutionStr) = updates[cacheKey] ?: (currentItem.duration to currentItem.resolution)
                 currentItem.copy(
                   duration = durationStr.ifBlank { currentItem.duration },
                   resolution = resolutionStr.ifBlank { currentItem.resolution },
+                  metadataLoading = false,
                 )
               }
           }

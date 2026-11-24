@@ -46,7 +46,7 @@ interface NetworkClient {
   ): Result<InputStream>
 
   /**
-   * Get file size when the protocol can expose it cheaply.
+   * Get file size when the protocol can expose it cheaply; -1 identifies a live stream with no finite length.
    */
   suspend fun getFileSize(path: String): Result<Long> =
     Result.failure(UnsupportedOperationException("File size is not supported by this client"))

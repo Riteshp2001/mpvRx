@@ -233,7 +233,10 @@ class NetworkBrowserViewModel(
         PlaybackItem.fromUri(
           uri = networkUri,
           title = networkFile.name,
+          artist = networkFile.artist,
           mimeType = networkFile.mimeType,
+          artworkUri = networkFile.artworkUrl,
+          durationSeconds = (networkFile.durationMs / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt().takeIf { it > 0 },
           networkSource = NetworkPlaybackSource(
             connection.id, networkFile.path, networkFile.size.coerceAtLeast(-1L),
           ),

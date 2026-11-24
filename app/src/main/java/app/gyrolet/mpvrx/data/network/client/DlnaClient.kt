@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.data.network.client
 
 import android.net.Uri
+import android.util.LruCache
 import app.gyrolet.mpvrx.domain.network.DlnaPath
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
@@ -17,7 +18,6 @@ import app.gyrolet.mpvrx.domain.network.NetworkPath
 import app.gyrolet.mpvrx.network.SharedHttpClient
 import java.io.IOException
 import java.io.InputStream
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -35,13 +35,14 @@ class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
   companion object {
     private const val PAGE_SIZE = 128
     private const val MAX_ITEMS = 50_000
+    private const val MAX_METADATA_ENTRIES = 4096
     private val soapType = "text/xml; charset=utf-8".toMediaType()
     private val contentRange = Regex("bytes\\s+(\\d+)-(\\d+)/(\\d+|\\*)", RegexOption.IGNORE_CASE)
     private val http by lazy { SharedHttpClient.derive { callTimeout(0, TimeUnit.SECONDS) } }
   }
 
   @Volatile private var device: DlnaDevice? = null
-  private val metadata = ConcurrentHashMap<String, DlnaEntry>()
+  private val metadata = LruCache<String, DlnaEntry>(MAX_METADATA_ENTRIES)
 
   private fun descriptionUrl(): HttpUrl {
     val builder = HttpUrl.Builder()
@@ -73,7 +74,7 @@ class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
 
   override suspend fun disconnect() {
     device = null
-    metadata.clear()
+    metadata.evictAll()
   }
 
   override fun isConnected(): Boolean = device != null
@@ -110,7 +111,16 @@ class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
             val duplicate = occurrences.getOrDefault(key, 0)
             occurrences[key] = duplicate + 1
             val child = DlnaPath.child(directory, entry.id, entry.kind, duplicate)
-            files += NetworkFile(entry.title, child.value, entry.size, entry.kind == 'd' || entry.kind == 'o', mimeType = entry.mimeType)
+            metadata.put(entry.id, entry)
+            val parent = metadata[id]
+            files += NetworkFile(
+              entry.title, child.value, entry.size, entry.kind == 'd' || entry.kind == 'o',
+              mimeType = entry.mimeType, durationMs = entry.durationMs,
+              artist = entry.artist ?: parent?.artist,
+              album = entry.album ?: parent?.album,
+              artworkUrl = (entry.artworkUrl ?: parent?.artworkUrl)?.toString(),
+              trackNumber = entry.trackNumber, year = entry.year,
+            )
           }
           start += page.returned
         }
@@ -131,7 +141,7 @@ class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
     metadata[id]?.let { return it }
     val entry = browse(id, true, 0, 1).entries.firstOrNull { it.resource != null }
       ?: throw IOException("DLNA media is no longer available")
-    metadata[id] = entry
+    metadata.put(id, entry)
     return entry
   }
 
@@ -148,11 +158,11 @@ class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
   override suspend fun getFileSize(path: String): Result<Long> = withContext(Dispatchers.IO) {
     try {
       val entry = resolve(path)
-      if (entry.size >= 0) return@withContext Result.success(entry.size)
+      if (entry.size > 0) return@withContext Result.success(entry.size)
       val url = requireNotNull(entry.resource)
       val head = Request.Builder().url(url).head().header("Accept-Encoding", "identity").build()
       val size = http.newCall(head).execute().use { response ->
-        if (response.isSuccessful) response.header("Content-Length")?.toLongOrNull()?.takeIf { it >= 0 } else null
+        if (response.isSuccessful) response.header("Content-Length")?.toLongOrNull()?.takeIf { it > 0 } else null
       } ?: run {
         val request = Request.Builder().url(url).get().header("Range", "bytes=0-0")
           .header("Accept-Encoding", "identity").build()
@@ -162,7 +172,8 @@ class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
             ?: if (response.code == 200) response.header("Content-Length")?.toLongOrNull() else null
         }
       }
-      Result.success(size?.takeIf { it >= 0 } ?: throw IOException("DLNA server did not provide a file size"))
+      // Live tuner channels can be chunked HTTP streams with no finite file length.
+      Result.success(size?.takeIf { it > 0 } ?: -1L)
     } catch (cancelled: CancellationException) {
       throw cancelled
     } catch (error: Exception) {
@@ -173,8 +184,10 @@ class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
   private data class RangedResponse(val response: Response, val start: Long, val end: Long?, val total: Long?)
 
   private fun open(url: HttpUrl, offset: Long): RangedResponse {
-    val request = Request.Builder().url(url).get().header("Range", "bytes=$offset-")
-      .header("Accept-Encoding", "identity").build()
+    val request = Request.Builder().url(url).get()
+      .apply { if (offset > 0L) header("Range", "bytes=$offset-") }
+      .header("Accept-Encoding", "identity")
+      .header("transferMode.dlna.org", "Streaming").build()
     val response = http.newCall(request).execute()
     try {
       val length = response.body.contentLength()

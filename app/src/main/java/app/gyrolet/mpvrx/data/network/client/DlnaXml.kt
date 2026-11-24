@@ -32,6 +32,12 @@ internal data class DlnaEntry(
   val mimeType: String?,
   val size: Long,
   val resource: HttpUrl?,
+  val durationMs: Long = 0L,
+  val artist: String? = null,
+  val album: String? = null,
+  val artworkUrl: HttpUrl? = null,
+  val trackNumber: Int = 0,
+  val year: Int = 0,
 )
 
 internal data class DlnaBrowsePage(val entries: List<DlnaEntry>, val returned: Int, val total: Int?)
@@ -125,9 +131,17 @@ internal object DlnaXml {
       val id = element.getAttribute("id").takeIf(String::isNotBlank) ?: return@mapNotNull null
       val title = element.text("title").orEmpty().ifBlank { id }
       val type = element.text("class").orEmpty().lowercase()
+      val artist = element.text("artist")?.takeIf(String::isNotBlank)
+      val album = element.text("album")?.takeIf(String::isNotBlank)
+      val artwork = element.text("albumArtURI")?.let(base::resolve)?.takeIf {
+        it.username.isEmpty() && it.password.isEmpty()
+      }
       if (elementName == "container") {
         val ordered = type.contains("playlistcontainer") || type.contains("musicalbum")
-        return@mapNotNull DlnaEntry(id, title, if (ordered) 'o' else 'd', null, 0, null)
+        return@mapNotNull DlnaEntry(
+          id, title, if (ordered) 'o' else 'd', null, 0, null,
+          artist = artist, album = if (type.contains("musicalbum")) title else album, artworkUrl = artwork,
+        )
       }
       val classKind = when {
         type.contains("audioitem") -> 'a'
@@ -162,8 +176,24 @@ internal object DlnaXml {
       val mimePrefix = when (kind) { 'a' -> "audio/"; 'v' -> "video/"; else -> "image/" }
       val mime = advertisedMime?.takeIf { it.startsWith(mimePrefix) }
         ?: when (kind) { 'a' -> "audio/*"; 'v' -> "video/*"; else -> null }
-      DlnaEntry(id, title, kind, mime, chosen.first.getAttribute("size").toLongOrNull()?.takeIf { it >= 0 } ?: -1L, chosen.second)
+      DlnaEntry(
+        id, title, kind, mime,
+        chosen.first.getAttribute("size").toLongOrNull()?.takeIf { it > 0 } ?: -1L, chosen.second,
+        durationMs = parseDuration(chosen.first.getAttribute("duration")),
+        artist = artist, album = album, artworkUrl = artwork,
+        trackNumber = element.text("originalTrackNumber")?.toIntOrNull()?.coerceAtLeast(0) ?: 0,
+        year = element.text("date")?.substringBefore('-')?.toIntOrNull()?.coerceAtLeast(0) ?: 0,
+      )
     }
     return DlnaBrowsePage(entries, returnedValue ?: entries.size, total)
+  }
+
+  private fun parseDuration(value: String): Long {
+    val parts = value.split(':')
+    if (parts.size != 3) return 0L
+    val hours = parts[0].toLongOrNull()?.takeIf { it >= 0 } ?: return 0L
+    val minutes = parts[1].toIntOrNull()?.takeIf { it in 0..59 } ?: return 0L
+    val seconds = parts[2].toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0 && it < 60 } ?: return 0L
+    return ((hours * 3600.0 + minutes * 60.0 + seconds) * 1000.0).toLong()
   }
 }

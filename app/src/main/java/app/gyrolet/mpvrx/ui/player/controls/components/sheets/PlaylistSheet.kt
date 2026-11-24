@@ -138,6 +138,7 @@ data class PlaylistItem(
   val networkConnectionId: Long? = null,
   val networkPath: String = "",
   val queueEntryId: Long = index.toLong(),
+  val metadataLoading: Boolean = false,
 )
 
 @Composable
@@ -745,7 +746,7 @@ fun PlaylistTrackListItem(
           )
         }
 
-        // Duration and resolution chips - always show with loading state if empty
+        // Missing metadata is not a loading state once probing has finished.
         Row(
           horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
@@ -765,7 +766,7 @@ fun PlaylistTrackListItem(
                 color = if (item.isPlaying) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
-          } else {
+          } else if (item.metadataLoading) {
             LoadingChip(width = 40.dp)
           }
 
@@ -785,7 +786,7 @@ fun PlaylistTrackListItem(
                 color = if (item.isPlaying) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
               )
             }
-          } else if (!item.isAudio) {
+          } else if (!item.isAudio && item.metadataLoading) {
             LoadingChip(width = 60.dp)
           }
         }
@@ -935,7 +936,7 @@ fun PlaylistTrackGridItem(
               color = Color.White,
             )
           }
-        } else {
+        } else if (item.metadataLoading) {
           // Loading duration badge
           Box(
             modifier =

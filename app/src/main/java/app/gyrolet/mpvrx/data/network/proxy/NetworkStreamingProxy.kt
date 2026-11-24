@@ -251,7 +251,7 @@ class NetworkStreamingProxy private constructor() :
     rangeHeader: String,
   ): Response {
     val fileSize = getFileSize(streamInfo, path)
-    if (fileSize < 0L) return upstreamFailure(headOnly)
+    if (fileSize < 0L) return handleFullRequest(headOnly, streamInfo, path, fileSize)
     val range = HttpByteRange.parse(rangeHeader, fileSize) ?: return rangeNotSatisfiable(fileSize)
     val mimeType = mimeTypeFor(streamInfo, path)
     // ISO readers issue short, bounded byte ranges for sector probes, not only open-ended
@@ -296,11 +296,15 @@ class NetworkStreamingProxy private constructor() :
     headOnly: Boolean,
     streamInfo: StreamInfo,
     path: NetworkPath,
+    fileSize: Long = getFileSize(streamInfo, path),
   ): Response {
-    val fileSize = getFileSize(streamInfo, path)
     val mimeType = mimeTypeFor(streamInfo, path)
 
-    if (headOnly && fileSize < 0L) return upstreamFailure(headOnly)
+    if (headOnly && fileSize < 0L) {
+      return newChunkedResponse(Response.Status.OK, mimeType, ByteArrayInputStream(ByteArray(0))).apply {
+        addHeader("Accept-Ranges", "none")
+      }
+    }
     if (headOnly) {
       return HeadResponse(Response.Status.OK, mimeType, fileSize).apply {
         addHeader("Accept-Ranges", "bytes")
@@ -316,7 +320,7 @@ class NetworkStreamingProxy private constructor() :
         addHeader("Accept-Ranges", "bytes")
       }
     } else {
-      newChunkedResponse(Response.Status.OK, mimeType, inputStream)
+      newChunkedResponse(Response.Status.OK, mimeType, inputStream).apply { addHeader("Accept-Ranges", "none") }
     }
   }
 
@@ -329,9 +333,9 @@ class NetworkStreamingProxy private constructor() :
     val discovered =
       awaitProxyIo {
         withConnectedClient(streamInfo) { client -> client.getFileSize(path.value) }
-      }.getOrNull() ?: -1L
+      }.getOrNull() ?: return -1L
 
-    if (discovered >= 0L) {
+    if (discovered >= -1L) {
       streamInfo.knownSizes.putIfAbsent(path, discovered)
     }
     return discovered
