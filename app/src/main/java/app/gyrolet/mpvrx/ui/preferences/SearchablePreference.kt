@@ -448,6 +448,14 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_tv_seek_duration_title,
+          keywords = listOf("seek", "duration", "remote", "dpad", "skip", "seconds", "custom", "tv"),
+          category = "Player",
+          screen = PlayerPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_player_custom_skip_duration_title,
           summaryRes = R.string.pref_player_custom_skip_duration_summary,
           keywords = listOf("custom skip", "skip duration", "forward", "seek", "seconds", "jump"),

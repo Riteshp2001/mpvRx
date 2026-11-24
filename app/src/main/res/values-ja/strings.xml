@@ -671,6 +671,7 @@
   <string name="pref_custom_seek_label">秒</string>
   <string name="pref_double_tap_seek_area_width_summary">現在：%1$d%%</string>
   <string name="pref_custom_seek_summary_format">カスタム（%1$d秒）</string>
+  <string name="pref_tv_seek_duration_title">リモコンのシーク時間</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- Player Controls Sections                                   -->

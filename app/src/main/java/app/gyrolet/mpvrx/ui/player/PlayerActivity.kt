@@ -7458,12 +7458,12 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
         }
         TvPlayerRemoteAction.SEEK_BACKWARD -> {
           consumedTvRemoteKeys += keyCode
-          viewModel.seekFromTvRemote(-tvScrubStepSeconds(event?.repeatCount ?: 0))
+          viewModel.seekFromTvRemote(-tvScrubStepSeconds(event?.repeatCount ?: 0, gesturePreferences.tvSeekDuration.get()))
           return true
         }
         TvPlayerRemoteAction.SEEK_FORWARD -> {
           consumedTvRemoteKeys += keyCode
-          viewModel.seekFromTvRemote(tvScrubStepSeconds(event?.repeatCount ?: 0))
+          viewModel.seekFromTvRemote(tvScrubStepSeconds(event?.repeatCount ?: 0, gesturePreferences.tvSeekDuration.get()))
           return true
         }
         TvPlayerRemoteAction.TOGGLE_PLAYBACK -> {

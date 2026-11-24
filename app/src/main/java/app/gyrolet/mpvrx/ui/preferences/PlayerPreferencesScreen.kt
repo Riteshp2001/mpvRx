@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
 import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import app.gyrolet.mpvrx.R
@@ -47,6 +49,7 @@ import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BackgroundPlaybackBehavior
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -55,6 +58,7 @@ import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerOrientation
 import app.gyrolet.mpvrx.ui.player.ResumePlaybackMode
+import app.gyrolet.mpvrx.ui.player.controls.TV_SEEK_DURATION_RANGE
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotFormat
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
@@ -90,6 +94,10 @@ object PlayerPreferencesScreen : ScrollableSettingsScreen {
       ) { _ -> }
     var showTemplateDialog by remember { mutableStateOf(false) }
     var templateDraft by remember { mutableStateOf("") }
+    val gesturePreferences = koinInject<GesturePreferences>()
+    val television = app.gyrolet.mpvrx.ui.tv.isTelevision()
+    var showTvSeekCustomDialog by remember { mutableStateOf(false) }
+    var tvSeekCustomDraft by remember { mutableStateOf("") }
     var showVideoMiniPlayerDependencyDialog by remember { mutableStateOf(false) }
     Scaffold(
       contentWindowInsets = settingsContentWindowInsets(),
@@ -588,6 +596,46 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_player_seeking_title)) }
           item {
             PreferenceCard {
+              if (television) {
+                // The phone's tap seek duration lives on Gestures, which TV does not show.
+                val tvSeekDuration by gesturePreferences.tvSeekDuration.collectAsState()
+                val tvSeekPresets = listOf(3, 5, 10, 15, 20, 25, 30)
+                val tvSeekIsCustom = tvSeekDuration !in tvSeekPresets
+                ExpressivePreferenceItem {
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_tv_seek_duration_title),
+                  value = if (tvSeekIsCustom) -1 else tvSeekDuration,
+                  onValueChange = { value ->
+                    if (value == -1) {
+                      tvSeekCustomDraft = tvSeekDuration.toString()
+                      showTvSeekCustomDialog = true
+                    } else {
+                      gesturePreferences.tvSeekDuration.set(value)
+                    }
+                  },
+                  values = tvSeekPresets + -1,
+                  valueToText = { value ->
+                    AnnotatedString(
+                      if (value == -1) resources.getString(R.string.pref_gesture_double_tap_custom) else "${value}s",
+                    )
+                  },
+                  title = { Text(stringResource(R.string.pref_tv_seek_duration_title)) },
+                  summary = {
+                    Text(
+                      if (tvSeekIsCustom) {
+                        stringResource(R.string.pref_custom_seek_summary_format, tvSeekDuration)
+                      } else {
+                        "${tvSeekDuration}s"
+                      },
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+                }
+
+                PreferenceDivider()
+              }
+
               DevicePreference(R.string.show_splash_ovals_on_double_tap_to_seek) {
                 val showDoubleTapOvals by preferences.showDoubleTapOvals.collectAsState()
                 SwitchPreference(
@@ -1277,6 +1325,43 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           }
         }
       }
+    }
+    if (showTvSeekCustomDialog) {
+      AlertDialog(
+        onDismissRequest = { showTvSeekCustomDialog = false },
+        title = { Text(stringResource(R.string.pref_tv_seek_duration_title)) },
+        text = {
+          Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.pref_custom_seek_dialog_text))
+            OutlinedTextField(
+              value = tvSeekCustomDraft,
+              onValueChange = { tvSeekCustomDraft = it },
+              label = { Text(stringResource(R.string.pref_custom_seek_label)) },
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+              modifier = Modifier.fillMaxWidth(),
+              singleLine = true,
+            )
+          }
+        },
+        confirmButton = {
+          TextButton(
+            onClick = {
+              val seconds = tvSeekCustomDraft.trim().toIntOrNull()
+              if (seconds != null && seconds in TV_SEEK_DURATION_RANGE) {
+                gesturePreferences.tvSeekDuration.set(seconds)
+                showTvSeekCustomDialog = false
+              }
+            },
+          ) {
+            Text(stringResource(R.string.generic_ok))
+          }
+        },
+        dismissButton = {
+          TextButton(onClick = { showTvSeekCustomDialog = false }) {
+            Text(stringResource(R.string.generic_cancel))
+          }
+        },
+      )
     }
     if (showVideoMiniPlayerDependencyDialog) {
       AlertDialog(

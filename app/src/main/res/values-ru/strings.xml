@@ -674,6 +674,7 @@
   <string name="pref_custom_seek_label">Секунды</string>
   <string name="pref_double_tap_seek_area_width_summary">Текущее: %1$d%%</string>
   <string name="pref_custom_seek_summary_format">Пользовательское (%1$dс)</string>
+  <string name="pref_tv_seek_duration_title">Шаг перемотки с пульта</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- Player Controls Sections                                   -->

@@ -676,6 +676,7 @@
   <string name="pref_custom_seek_label">ثوانٍ</string>
   <string name="pref_double_tap_seek_area_width_summary">الحالي: %1$d%%</string>
   <string name="pref_custom_seek_summary_format">مخصص (%1$dث)</string>
+  <string name="pref_tv_seek_duration_title">مدة التقديم بجهاز التحكم</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- Player Controls Sections                                   -->

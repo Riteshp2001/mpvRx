@@ -741,6 +741,7 @@
   <string name="pref_custom_seek_label">Секунди</string>
   <string name="pref_double_tap_seek_area_width_summary">Поточна: %1$d%%</string>
   <string name="pref_custom_seek_summary_format">Власна (%1$d с)</string>
+  <string name="pref_tv_seek_duration_title">Крок перемотування з пульта</string>
   <string name="pref_section_landscape_controls">Альбомні елементи керування</string>
   <string name="pref_section_portrait_controls">Портретні елементи керування</string>
   <string name="pref_section_seekbar_style">Стиль панелі пошуку</string>

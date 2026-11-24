@@ -948,6 +948,7 @@
   <string name="pref_custom_seek_label">Seconds</string>
   <string name="pref_double_tap_seek_area_width_summary">Current: %1$d%%</string>
   <string name="pref_custom_seek_summary_format">Custom (%1$ds)</string>
+  <string name="pref_tv_seek_duration_title">Remote seek duration</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- Player Controls Sections                                   -->

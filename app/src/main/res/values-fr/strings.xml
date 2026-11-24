@@ -672,6 +672,7 @@
   <string name="pref_custom_seek_label">Secondes</string>
   <string name="pref_double_tap_seek_area_width_summary">Actuelle : %1$d%%</string>
   <string name="pref_custom_seek_summary_format">Personnalisée (%1$ds)</string>
+  <string name="pref_tv_seek_duration_title">Durée de saut à la télécommande</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- Player Controls Sections                                   -->

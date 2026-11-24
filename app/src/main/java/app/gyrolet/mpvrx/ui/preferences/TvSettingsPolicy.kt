@@ -70,7 +70,7 @@ internal object TvSettingsPolicy {
   fun supportsTitle(@StringRes title: Int?): Boolean = title !in mobileTitles
 
   // Remote-only behaviour that phones never show.
-  private val televisionTitles = setOf(R.string.pref_tv_double_back_exit_title)
+  private val televisionTitles = setOf(R.string.pref_tv_double_back_exit_title, R.string.pref_tv_seek_duration_title)
 
   fun supportsMobileSearch(preference: SearchablePreference): Boolean =
     preference.titleRes !in televisionTitles && preference.targetRes !in televisionTitles

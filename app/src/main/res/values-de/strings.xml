@@ -672,6 +672,7 @@
   <string name="pref_custom_seek_label">Sekunden</string>
   <string name="pref_double_tap_seek_area_width_summary">Aktuell: %1$d%%</string>
   <string name="pref_custom_seek_summary_format">Benutzerdefiniert (%1$ds)</string>
+  <string name="pref_tv_seek_duration_title">Sprungdauer der Fernbedienung</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- Player Controls Sections                                   -->

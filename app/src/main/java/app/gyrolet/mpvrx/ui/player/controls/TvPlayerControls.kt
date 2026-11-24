@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.AppIcon
@@ -112,14 +113,19 @@ private object TvPlayerDefaults {
   const val FadeOutMillis = 260
 }
 
-/** Seek step for a held D-pad key, growing with the key-repeat count (NuvioTV scrub rates). */
-internal fun tvScrubStepSeconds(repeatCount: Int): Int =
-  when {
-    repeatCount >= 15 -> 60
-    repeatCount >= 8 -> 30
-    repeatCount >= 3 -> 20
-    else -> 10
+/** Seek step for a held D-pad key: the chosen step, growing with the key-repeat count (NuvioTV scrub rates). */
+internal fun tvScrubStepSeconds(repeatCount: Int, baseSeconds: Int): Int {
+  val base = baseSeconds.coerceIn(TV_SEEK_DURATION_RANGE)
+  return when {
+    repeatCount >= 15 -> base * 6
+    repeatCount >= 8 -> base * 3
+    repeatCount >= 3 -> base * 2
+    else -> base
   }
+}
+
+/** Same bounds as the phone's custom tap seek duration. */
+internal val TV_SEEK_DURATION_RANGE = 1..120
 
 @Composable
 internal fun TvPlayerControls(
@@ -429,6 +435,7 @@ private fun TvSeekBar(
   playFocusRequester: FocusRequester,
 ) {
   val interactionSource = remember { MutableInteractionSource() }
+  val tvSeekDuration by koinInject<GesturePreferences>().tvSeekDuration.collectAsState()
   val focused by interactionSource.collectIsFocusedAsState()
   val barHeight by animateDpAsState(
     if (focused) TvPlayerDefaults.SeekBarFocusedHeight else TvPlayerDefaults.SeekBarHeight,
@@ -465,11 +472,11 @@ private fun TvSeekBar(
           val repeat = event.nativeKeyEvent.repeatCount
           when (event.key) {
             Key.DirectionLeft -> {
-              onSeekBy(-tvScrubStepSeconds(repeat))
+              onSeekBy(-tvScrubStepSeconds(repeat, tvSeekDuration))
               true
             }
             Key.DirectionRight -> {
-              onSeekBy(tvScrubStepSeconds(repeat))
+              onSeekBy(tvScrubStepSeconds(repeat, tvSeekDuration))
               true
             }
             Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {

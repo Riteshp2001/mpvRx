@@ -672,6 +672,7 @@
   <string name="pref_custom_seek_label">Segundos</string>
   <string name="pref_double_tap_seek_area_width_summary">Actual: %1$d%%</string>
   <string name="pref_custom_seek_summary_format">Personalizado (%1$ds)</string>
+  <string name="pref_tv_seek_duration_title">Duración del salto con el mando</string>
 
   <!-- ═══════════════════════════════════════════════════════════ -->
   <!-- Player Controls Sections                                   -->
