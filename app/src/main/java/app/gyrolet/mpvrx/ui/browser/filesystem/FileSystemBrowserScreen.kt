@@ -551,6 +551,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
   Box(modifier = Modifier.fillMaxSize()) {
     val bottomBarBackdrop = rememberBrowserBottomBarBackdrop()
     Scaffold(
+      contentWindowInsets = FabPlacement.scaffoldInsets(),
       modifier = Modifier.captureLiquidGlassBackdrop(bottomBarBackdrop),
       containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
       topBar = {
@@ -681,7 +682,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 .getPermissionDeniedState()
 
           FloatingActionButtonMenu(
-            modifier = Modifier.padding(bottom = FabPlacement.scaffoldBottomPadding()),
+            modifier = FabPlacement.scaffoldMenu(),
             expanded = isFabExpanded.value && !quickPlayFabDirect,
             button = {
               TooltipBox(

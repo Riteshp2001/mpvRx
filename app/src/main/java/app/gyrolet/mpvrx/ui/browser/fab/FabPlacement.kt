@@ -9,75 +9,64 @@
 
 package app.gyrolet.mpvrx.ui.browser.fab
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
-import app.gyrolet.mpvrx.ui.theme.AppMotion
 
-/** True when ScreenNavigation has already reserved the global bottom overlay outside this entry. */
-internal val LocalFabHostInsetsApplied = compositionLocalOf { false }
+/** The main TV pager reserves less trailing overscan than a pushed screen. */
+internal val LocalFabTrailingInset = compositionLocalOf { 0.dp }
 
 /**
- * Single source of truth for where browser FABs float.
+ * Screen-level FABs use the bottom-end of their host's safe bounds. The dock clearance is
+ * local to that region and already zero if the navigation host reserved it outside the screen.
  *
- * [LocalNavigationBarHeight] describes everything floating along the bottom edge of the current
- * region, excluding system insets: the navigation pill on the main tabs, selection actions, and the
- * mini player, whether it sits above the pill, beside it on wide screens, alone at the bottom of a
- * pushed screen such as a folder, or over only the right pane in dual-pane mode. FABs float one
- * spacing above that stack. Keep the home-screen resting position even when a folder has no bar.
+ * Material 3 Scaffold adds 16.dp at the end and bottom. FloatingActionButtonMenu adds another
+ * 16.dp on both axes inside its own bounds. Match that anchor for buttons without a menu.
  */
-object FabPlacement {
-  /** Material 3 Scaffold adds this spacing, plus the system bar inset, below its FAB slot. */
-  val ScaffoldFabSpacing: Dp = 16.dp
-
-  /** Match the horizontal padding built into Material 3 FloatingActionButtonMenu on Home. */
-  val StandaloneEndPadding: Dp = 16.dp
-
-  /** Expanded home pill (68.dp), its bottom margin and the gap above it (12.dp each). */
-  val RestingBottomClearance: Dp = 92.dp
+internal object FabPlacement {
+  private val ScaffoldSpacing = 16.dp
+  private val MenuSpacing = 16.dp
 
   @Composable
-  private fun bottomClearance(): Dp =
-    if (LocalFabHostInsetsApplied.current) 0.dp
-    else maxOf(RestingBottomClearance, LocalNavigationBarHeight.current)
-
-  /** Bottom padding for a FAB hosted in a Scaffold `floatingActionButton` slot. */
-  @Composable
-  fun scaffoldBottomPadding(): Dp =
-    // Scaffold owns its built-in 16.dp FAB spacing. When the navigation host has already
-    // reserved the bottom overlay, bottomClearance() is zero; subtracting ScaffoldFabSpacing
-    // here used to produce -16.dp and crash Compose during layout on inset-by-host screens.
-    animatedPadding((bottomClearance() - ScaffoldFabSpacing).coerceAtLeast(0.dp))
-
-  /**
-   * Bottom padding for a FAB drawn as an overlay at the bottom of a full-height region rather than
-   * in a Scaffold slot. Apply it inside [overlayInsets] so it lines up with Scaffold-hosted FABs.
-   */
-  @Composable
-  fun overlayBottomPadding(): Dp =
-    animatedPadding(bottomClearance().coerceAtLeast(0.dp))
-
-  /** The system bars Scaffold keeps its FAB clear of. */
-  val overlayInsets: WindowInsets
-    @Composable get() = ScaffoldDefaults.contentWindowInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+  fun scaffoldInsets(): WindowInsets =
+    ScaffoldDefaults.contentWindowInsets.union(WindowInsets.ime.only(WindowInsetsSides.Bottom))
 
   @Composable
-  private fun animatedPadding(target: Dp): Dp {
-    val padding by animateDpAsState(
-      targetValue = target.coerceAtLeast(0.dp),
-      animationSpec = AppMotion.spatial<Dp>(AppMotion.noBounce(Spring.StiffnessMedium), snap()),
-      label = "fab_bottom_padding",
-    )
-    return padding.coerceAtLeast(0.dp)
-  }
+  fun scaffoldMenu(): Modifier = padding(extraSpacing = 0.dp)
+
+  @Composable
+  fun scaffoldButton(): Modifier = padding(extraSpacing = MenuSpacing)
+
+  @Composable
+  fun overlayMenu(): Modifier =
+    Modifier.windowInsetsPadding(overlayInsets()).then(padding(extraSpacing = ScaffoldSpacing))
+
+  @Composable
+  fun overlayButton(clearance: Dp): Modifier =
+    Modifier.windowInsetsPadding(overlayInsets())
+      .then(padding(extraSpacing = ScaffoldSpacing + MenuSpacing, clearance = clearance))
+
+  @Composable
+  private fun overlayInsets(): WindowInsets =
+    scaffoldInsets().only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
+
+  @Composable
+  private fun padding(
+    extraSpacing: Dp,
+    clearance: Dp = LocalNavigationBarHeight.current,
+  ): Modifier = Modifier.padding(
+    end = LocalFabTrailingInset.current + extraSpacing,
+    bottom = clearance.coerceAtLeast(0.dp) + extraSpacing,
+  )
 }

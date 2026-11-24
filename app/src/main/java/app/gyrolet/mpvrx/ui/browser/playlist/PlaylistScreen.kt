@@ -274,6 +274,7 @@ object PlaylistScreen : Screen {
     )
 
     Scaffold(
+      contentWindowInsets = FabPlacement.scaffoldInsets(),
       containerColor = wallpaperAwareBackgroundColor(),
       topBar = {
         if (isSearching) {
@@ -328,7 +329,7 @@ object PlaylistScreen : Screen {
             },
             icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
             text = { Text(stringResource(R.string.ui_create_playlist)) },
-            modifier = Modifier.padding(bottom = FabPlacement.scaffoldBottomPadding()),
+            modifier = FabPlacement.scaffoldButton(),
           )
         }
       },

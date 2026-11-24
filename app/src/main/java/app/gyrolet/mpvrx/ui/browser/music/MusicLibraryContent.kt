@@ -447,6 +447,7 @@ fun MusicLibraryContent(
 
   Box(modifier = modifier.fillMaxSize()) {
     Scaffold(
+      contentWindowInsets = FabPlacement.scaffoldInsets(),
       modifier = Modifier.fillMaxSize().captureLiquidGlassBackdrop(bottomBarBackdrop),
       containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
     topBar = {
@@ -631,7 +632,7 @@ fun MusicLibraryContent(
         // FolderListScreen.MediaStoreFolderListContent renders its own FAB, skip ours.
       } else if (isPlaylistsTab) {
         FloatingActionButtonMenu(
-          modifier = Modifier.padding(bottom = FabPlacement.scaffoldBottomPadding()),
+          modifier = FabPlacement.scaffoldMenu(),
           expanded = false,
           button = {
             ToggleFloatingActionButton(
@@ -652,7 +653,7 @@ fun MusicLibraryContent(
         ) { }
       } else if (songs.isNotEmpty()) {
         FloatingActionButtonMenu(
-          modifier = Modifier.padding(bottom = FabPlacement.scaffoldBottomPadding()),
+          modifier = FabPlacement.scaffoldMenu(),
           expanded = isFabExpanded.value && !quickPlayFabDirect,
           button = {
             TooltipBox(

@@ -34,7 +34,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -1345,14 +1344,11 @@ fun JellyfinContent(
           uiState.activeServer != null &&
           (uiState.currentItems.isNotEmpty() || uiState.resumeItems.isNotEmpty() || uiState.heroItems.isNotEmpty())
 
-      // Expressive Floating Action Button Menu. It overlays the tab instead of using a Scaffold slot,
-      // so it applies the system bar inset itself to line up with every other browser FAB.
       FloatingActionButtonMenu(
         modifier =
           Modifier
             .align(Alignment.BottomEnd)
-            .windowInsetsPadding(FabPlacement.overlayInsets)
-            .padding(end = FabPlacement.ScaffoldFabSpacing, bottom = FabPlacement.overlayBottomPadding()),
+            .then(FabPlacement.overlayMenu()),
         expanded = isFabExpanded && !quickPlayFabDirect,
         button = {
           ToggleFloatingActionButton(

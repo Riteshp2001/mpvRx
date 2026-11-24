@@ -49,6 +49,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
@@ -598,7 +599,7 @@ internal object MediaInfoDetails {
             )
           InfoTab.CHAPTERS -> ChaptersTabContent(menuSections)
           InfoTab.OTHER -> OtherTabContent(otherSections, attachmentNames)
-          InfoTab.RAW -> RawTabContent(fullMediaInfoText)
+          InfoTab.RAW -> RawTabContent(fullMediaInfoText, sectionCount = sections.size)
         }
       }
 
@@ -1704,146 +1705,142 @@ internal object MediaInfoDetails {
   }
 
   /**
-   * The raw report remains byte-for-byte unchanged for copying/sharing, but renders as a
-   * virtualized code reader with clearly differentiated headings, labels and values.
-   * Rendering per-line avoids building one huge AnnotatedString for long reports.
+   * The summary scrolls with the lazily rendered report, leaving the whole tab available
+   * for reading in landscape. Copying the full report still uses the original text.
    */
   @Composable
-  private fun RawTabContent(rawText: String) {
+  private fun RawTabContent(rawText: String, sectionCount: Int) {
     val context = LocalContext.current
     val lines = remember(rawText) { rawText.lines() }
-    val sectionCount = remember(rawText) { parseMediaInfoText(rawText).size }
     val colors = MaterialTheme.colorScheme
 
-    Column(
-      modifier = Modifier.fillMaxSize().padding(bottom = 20.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-      Surface(
-        shape = MaterialTheme.shapes.extraLarge,
-        color = colors.primaryContainer,
-        contentColor = colors.onPrimaryContainer,
+    SelectionContainer {
+      LazyColumn(
+        modifier = Modifier
+          .fillMaxSize()
+          .clip(MaterialTheme.shapes.extraLarge)
+          .background(colors.surfaceContainerLow),
+        contentPadding = PaddingValues(bottom = 8.dp),
       ) {
-        Row(
-          modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-          Surface(
-            shape = MaterialTheme.shapes.large,
-            color = colors.onPrimaryContainer.copy(alpha = 0.12f),
-          ) {
-            Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-              Icon(
-                imageVector = Icons.RoundedFilled.Article,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-              )
-            }
-          }
-          Column(modifier = Modifier.weight(1f)) {
-            Text(
-              text = stringResource(R.string.media_info_tab_raw),
-              style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            )
-            Text(
-              text = "${lines.size} lines  •  ${sectionCount} sections",
-              style = MaterialTheme.typography.labelMedium,
-              color = colors.onPrimaryContainer.copy(alpha = 0.76f),
-            )
-          }
-          Surface(
-            onClick = {
-              SafeClipboard.copyPlainText(context, "MediaInfo", rawText)
-            },
-            shape = MaterialTheme.shapes.large,
-            color = colors.onPrimaryContainer.copy(alpha = 0.13f),
-            contentColor = colors.onPrimaryContainer,
-          ) {
-            Row(
-              modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(6.dp),
+        item(contentType = "summary") {
+          DisableSelection {
+            Surface(
+              modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+              shape = MaterialTheme.shapes.extraLarge,
+              color = colors.primaryContainer,
+              contentColor = colors.onPrimaryContainer,
             ) {
-              Icon(
-                imageVector = Icons.RoundedFilled.ContentCopy,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-              )
-              Text(
-                text = stringResource(R.string.ui_copy_all),
-                style = MaterialTheme.typography.labelLarge,
-              )
+              Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+              ) {
+                Surface(
+                  shape = MaterialTheme.shapes.large,
+                  color = colors.onPrimaryContainer.copy(alpha = 0.12f),
+                ) {
+                  Box(modifier = Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                    Icon(
+                      imageVector = Icons.RoundedFilled.Article,
+                      contentDescription = null,
+                      modifier = Modifier.size(24.dp),
+                    )
+                  }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                  Text(
+                    text = stringResource(R.string.media_info_tab_raw),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                  )
+                  Text(
+                    text = "${lines.size} lines  •  $sectionCount sections",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.onPrimaryContainer.copy(alpha = 0.76f),
+                  )
+                }
+                Surface(
+                  onClick = {
+                    SafeClipboard.copyPlainText(context, "MediaInfo", rawText)
+                  },
+                  shape = MaterialTheme.shapes.large,
+                  color = colors.onPrimaryContainer.copy(alpha = 0.13f),
+                  contentColor = colors.onPrimaryContainer,
+                ) {
+                  Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                  ) {
+                    Icon(
+                      imageVector = Icons.RoundedFilled.ContentCopy,
+                      contentDescription = null,
+                      modifier = Modifier.size(18.dp),
+                    )
+                    Text(
+                      text = stringResource(R.string.ui_copy_all),
+                      style = MaterialTheme.typography.labelLarge,
+                    )
+                  }
+                }
+              }
             }
           }
         }
-      }
-
-      // Keep source spacing exactly as received; only paint semantic spans.
-      SelectionContainer {
-        LazyColumn(
-          modifier = Modifier
-            .fillMaxWidth()
-            .weight(1f)
-            .clip(MaterialTheme.shapes.extraLarge)
-            .background(colors.surfaceContainerLow),
-          contentPadding = PaddingValues(vertical = 8.dp),
-        ) {
-          items(count = lines.size) { index ->
-            val line = lines[index]
-            val trimmed = line.trim()
-            val delimiter = line.indexOf(" : ")
-            val isHeading = trimmed.isNotEmpty() &&
-              !line.startsWith(" ") && delimiter < 0 &&
-              !trimmed.startsWith("=") && !trimmed.contains("MEDIA INFO")
-            val annotated = buildAnnotatedString {
-              when {
-                isHeading -> withStyle(SpanStyle(color = colors.primary, fontWeight = FontWeight.Bold)) {
-                  append(line)
-                }
-                delimiter >= 0 -> {
-                  withStyle(SpanStyle(color = colors.onSurfaceVariant, fontWeight = FontWeight.SemiBold)) {
-                    append(line.substring(0, delimiter))
-                  }
-                  withStyle(SpanStyle(color = colors.primary)) {
-                    append(" : ")
-                  }
-                  withStyle(SpanStyle(color = colors.onSurface)) {
-                    append(line.substring(delimiter + 3))
-                  }
-                }
-                else -> append(line)
+        // Keep source spacing exactly as received; only paint semantic spans.
+        items(count = lines.size) { index ->
+          val line = lines[index]
+          val trimmed = line.trim()
+          val delimiter = line.indexOf(" : ")
+          val isHeading = trimmed.isNotEmpty() &&
+            !line.startsWith(" ") && delimiter < 0 &&
+            !trimmed.startsWith("=") && !trimmed.contains("MEDIA INFO")
+          val annotated = buildAnnotatedString {
+            when {
+              isHeading -> withStyle(SpanStyle(color = colors.primary, fontWeight = FontWeight.Bold)) {
+                append(line)
               }
+              delimiter >= 0 -> {
+                withStyle(SpanStyle(color = colors.onSurfaceVariant, fontWeight = FontWeight.SemiBold)) {
+                  append(line.substring(0, delimiter))
+                }
+                withStyle(SpanStyle(color = colors.primary)) {
+                  append(" : ")
+                }
+                withStyle(SpanStyle(color = colors.onSurface)) {
+                  append(line.substring(delimiter + 3))
+                }
+              }
+              else -> append(line)
             }
-            Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                  if (isHeading) colors.secondaryContainer.copy(alpha = 0.62f)
-                  else Color.Transparent,
-                )
-                .padding(horizontal = 12.dp, vertical = if (isHeading) 10.dp else 4.dp),
-              verticalAlignment = Alignment.Top,
-              horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-              Text(
-                text = (index + 1).toString(),
-                style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                color = colors.onSurfaceVariant.copy(alpha = 0.72f),
-                textAlign = TextAlign.End,
-                modifier = Modifier.width(32.dp),
+          }
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .background(
+                if (isHeading) colors.secondaryContainer.copy(alpha = 0.62f)
+                else Color.Transparent,
               )
-              Text(
-                text = annotated,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodySmall.copy(
-                  fontFamily = FontFamily.Monospace,
-                  lineHeight = 19.sp,
-                ),
-                color = colors.onSurface,
-                softWrap = true,
-              )
-            }
+              .padding(horizontal = 12.dp, vertical = if (isHeading) 10.dp else 4.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+          ) {
+            Text(
+              text = (index + 1).toString(),
+              style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+              color = colors.onSurfaceVariant.copy(alpha = 0.72f),
+              textAlign = TextAlign.End,
+              modifier = Modifier.width(32.dp),
+            )
+            Text(
+              text = annotated,
+              modifier = Modifier.weight(1f),
+              style = MaterialTheme.typography.bodySmall.copy(
+                fontFamily = FontFamily.Monospace,
+                lineHeight = 19.sp,
+              ),
+              color = colors.onSurface,
+              softWrap = true,
+            )
           }
         }
       }

@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Scaffold
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -236,6 +237,7 @@ data object SecureFolderScreen : Screen {
     }
 
     Scaffold(
+      contentWindowInsets = FabPlacement.scaffoldInsets(),
       topBar = {
         BrowserTopBar(
           title = stringResource(R.string.secure_folder_title),
@@ -282,7 +284,7 @@ data object SecureFolderScreen : Screen {
             onClick = { backstack.navigateTo(SecureFolderAddFilesScreen) },
             icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
             text = { Text(stringResource(R.string.secure_folder_add_files)) },
-            modifier = Modifier.padding(bottom = app.gyrolet.mpvrx.ui.browser.fab.FabPlacement.scaffoldBottomPadding()),
+            modifier = FabPlacement.scaffoldButton(),
           )
         }
       },

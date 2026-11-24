@@ -162,7 +162,6 @@ object RecentlyPlayedScreen : Screen {
     val enableRecentlyPlayed by advancedPreferences.enableRecentlyPlayed.collectAsState()
     val showQuickPlayFab by appearancePreferences.showQuickPlayFab.collectAsState()
     val quickPlayFabDirect by appearancePreferences.quickPlayFabDirect.collectAsState()
-    val navigationBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
 
     // FAB visibility for scroll-based hiding
     val isFabVisible = remember { mutableStateOf(true) }
@@ -203,10 +202,7 @@ object RecentlyPlayedScreen : Screen {
         onOperationComplete = { },
       )
 
-    // Handle back button during selection mode or FAB menu expanded
-    // Synchronize NavigationBarState when selection mode changes
-    app.gyrolet.mpvrx.ui.browser.NavigationBarSelectionEffect(selectionManager.isInSelectionMode)
-
+    // Selection actions live in the top bar; there is no bottom selection dock to reserve.
     BackHandler(enabled = selectionManager.isInSelectionMode || isFabExpanded.value) {
       when {
         isFabExpanded.value -> isFabExpanded.value = false
@@ -264,6 +260,7 @@ object RecentlyPlayedScreen : Screen {
     }
 
     Scaffold(
+      contentWindowInsets = FabPlacement.scaffoldInsets(),
       modifier = Modifier.onSizeChanged { size ->
         contentWidthDp = with(density) { size.width.toDp().value.toInt() }
       },
@@ -300,7 +297,7 @@ object RecentlyPlayedScreen : Screen {
           showQuickPlayFab && !selectionManager.isInSelectionMode && isFabVisible.value && filteredRecentItems.isNotEmpty()
 
         FloatingActionButtonMenu(
-          modifier = Modifier.padding(bottom = FabPlacement.scaffoldBottomPadding()),
+          modifier = FabPlacement.scaffoldMenu(),
           expanded = isFabExpanded.value && !quickPlayFabDirect,
           button = {
             TooltipBox(
@@ -830,6 +827,8 @@ private fun RecentItemsContent(
     label = "scrollbarAlpha",
   )
 
+  val bottomClearance = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
+
   PullRefreshBox(
     isRefreshing = isRefreshing,
     onRefresh = onRefresh,
@@ -837,10 +836,6 @@ private fun RecentItemsContent(
     modifier = modifier.fillMaxSize(),
   ) {
     if (isGridMode) {
-      val bottomClearance = maxOf(
-        app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current,
-        if (isInSelectionMode) app.gyrolet.mpvrx.ui.browser.NavigationBarState.selectionBarClearance else 0.dp,
-      )
       BoxWithConstraints(
         modifier =
           Modifier
@@ -859,7 +854,7 @@ private fun RecentItemsContent(
             PaddingValues(
               start = 8.dp,
               end = 8.dp,
-              bottom = bottomClearance,
+              bottom = bottomClearance + 8.dp,
             ),
           horizontalArrangement = Arrangement.spacedBy(MediaSelectionGridGap),
           verticalArrangement = Arrangement.spacedBy(MediaSelectionGridGap),
@@ -982,10 +977,6 @@ private fun RecentItemsContent(
         }
       }
     } else {
-      val bottomClearance = maxOf(
-        app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current,
-        if (isInSelectionMode) app.gyrolet.mpvrx.ui.browser.NavigationBarState.selectionBarClearance else 0.dp,
-      )
       Box(
         modifier =
           Modifier
@@ -999,7 +990,7 @@ private fun RecentItemsContent(
             PaddingValues(
               start = 8.dp,
               end = 8.dp,
-              bottom = bottomClearance,
+              bottom = bottomClearance + 8.dp,
             ),
         ) {
           items(

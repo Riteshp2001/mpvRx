@@ -44,6 +44,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Scaffold
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -212,6 +213,7 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
   }
 
   Scaffold(
+    contentWindowInsets = FabPlacement.scaffoldInsets(),
     topBar = {
       TopAppBar(
         title = {
@@ -347,7 +349,7 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
     floatingActionButton = {
       AnimatedVisibility(
         visible = showJumpToLatest,
-        modifier = Modifier.padding(bottom = app.gyrolet.mpvrx.ui.browser.fab.FabPlacement.scaffoldBottomPadding()),
+        modifier = FabPlacement.scaffoldButton(),
       ) {
         SmallFloatingActionButton(
           onClick = {

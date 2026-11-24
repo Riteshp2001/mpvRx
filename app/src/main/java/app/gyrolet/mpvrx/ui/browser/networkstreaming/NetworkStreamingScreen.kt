@@ -46,6 +46,7 @@ import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextFie
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -309,6 +310,7 @@ object NetworkStreamingScreen : Screen {
       }
 
     Scaffold(
+      contentWindowInsets = FabPlacement.scaffoldInsets(),
       containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
       modifier = Modifier.fillMaxSize(),
       topBar = {
@@ -440,7 +442,7 @@ object NetworkStreamingScreen : Screen {
                   stringResource(R.string.ui_add_connection),
                 )
               },
-              modifier = Modifier.padding(bottom = app.gyrolet.mpvrx.ui.browser.fab.FabPlacement.scaffoldBottomPadding()),
+              modifier = FabPlacement.scaffoldButton(),
             )
           }
           NetworkTab.MEDIA.ordinal -> {
@@ -448,7 +450,7 @@ object NetworkStreamingScreen : Screen {
               onClick = { showAddMediaDialog = true },
               icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
               text = { Text("Add Media") },
-              modifier = Modifier.padding(bottom = app.gyrolet.mpvrx.ui.browser.fab.FabPlacement.scaffoldBottomPadding()),
+              modifier = FabPlacement.scaffoldButton(),
             )
           }
         }

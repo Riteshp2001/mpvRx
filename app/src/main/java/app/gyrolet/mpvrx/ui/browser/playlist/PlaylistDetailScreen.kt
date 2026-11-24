@@ -48,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -450,6 +451,7 @@ data class PlaylistDetailScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
       Scaffold(
+        contentWindowInsets = FabPlacement.scaffoldInsets(),
         modifier = Modifier.fillMaxSize().captureLiquidGlassBackdrop(bottomBarBackdrop),
         containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
         topBar = {
@@ -614,7 +616,7 @@ data class PlaylistDetailScreen(
         if (!isSearching && !isReorderMode && !selectionManager.isInSelectionMode && playlist?.isZipPlaylist != true) {
           val isAudioPlaylist = playlist?.isAudio == true || videoItems.any { it.video.isAudio }
           ExtendedFloatingActionButton(
-            modifier = Modifier.padding(bottom = app.gyrolet.mpvrx.ui.browser.fab.FabPlacement.scaffoldBottomPadding()),
+            modifier = FabPlacement.scaffoldButton(),
             onClick = { backStack.navigateTo(PlaylistAddVideosScreen(playlistId, isAudio = isAudioPlaylist)) },
             icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
               text = { Text(stringResource(if (isAudioPlaylist) R.string.playlist_add_songs else R.string.playlist_add_videos)) },

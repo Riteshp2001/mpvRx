@@ -82,6 +82,7 @@ import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
 import app.gyrolet.mpvrx.presentation.components.rememberLiquidGlassBackdrop
 import app.gyrolet.mpvrx.ui.browser.MainScreen
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
+import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedScreen
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.browser.rememberMiniPlayerShape
 import app.gyrolet.mpvrx.ui.browser.TvSideNavigationDefaults
@@ -782,7 +783,7 @@ open class MainActivity : AppCompatActivity() {
               opaqueFrom = app.gyrolet.mpvrx.ui.preferences.PreferencesScreen,
               tvSafeArea = true,
               bottomOverlayClearance = NavigationBarState.miniPlayerClearance,
-              bottomOverlayExempt = MainScreen,
+              bottomOverlayExempt = setOf(MainScreen, RecentlyPlayedScreen),
               onBack = {
                 if (typedBackstack.size <= 1 || !typedBackstack.popSafely()) {
                   this@MainActivity.finish()

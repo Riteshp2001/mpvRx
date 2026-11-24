@@ -396,6 +396,7 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
 
   Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
+      contentWindowInsets = FabPlacement.scaffoldInsets(),
       modifier = Modifier.captureLiquidGlassBackdrop(bottomBarBackdrop),
       containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
     topBar = {
@@ -497,7 +498,7 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
           !MainScreen.getPermissionDeniedState()
 
       FloatingActionButtonMenu(
-        modifier = Modifier.padding(bottom = FabPlacement.scaffoldBottomPadding()),
+        modifier = FabPlacement.scaffoldMenu(),
         expanded = isFabExpanded.value && !quickPlayFabDirect,
         button = {
           TooltipBox(

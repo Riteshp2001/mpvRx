@@ -48,7 +48,6 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
-import app.gyrolet.mpvrx.ui.browser.fab.LocalFabHostInsetsApplied
 import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
 import app.gyrolet.mpvrx.ui.player.LocalInAppMusicSheet
 import app.gyrolet.mpvrx.ui.preferences.ScrollableSettingsScreen
@@ -124,7 +123,7 @@ internal fun ScreenNavDisplay(
   tvAutoFocus: Boolean = true,
   tvFocusRequestKey: Any? = Unit,
   bottomOverlayClearance: Dp = 0.dp,
-  bottomOverlayExempt: Screen? = null,
+  bottomOverlayExempt: Set<Screen> = emptySet(),
   onBack: () -> Unit = { backStack.popSafely() },
   content: @Composable (Screen) -> Unit = { it.Content() },
 ) {
@@ -208,18 +207,17 @@ internal fun ScreenNavDisplay(
           }
         val entryColor =
           if (entryOpaque) MaterialTheme.colorScheme.background else wallpaperAwareBackgroundColor()
-        // Settings lists reserve clearance in their scroll content so the page can continue
+        // Inset-aware lists reserve clearance in their scroll content so the page can continue
         // behind the floating mini-player instead of exposing an empty host-background strip.
         val scrollHandlesOverlay =
           route is ScrollableSettingsScreen ||
             route is app.gyrolet.mpvrx.ui.preferences.LuaScriptEditorScreen
-        val insetByHost = bottomOverlayExempt != null && route != bottomOverlayExempt &&
+        val insetByHost = bottomOverlayClearance > 0.dp && route !in bottomOverlayExempt &&
           !NavigationBarState.isInSelectionMode && !scrollHandlesOverlay
         val inheritedClearance = LocalNavigationBarHeight.current
         CompositionLocalProvider(
           LocalCurrentScreen provides route,
           LocalNavigationBarHeight provides if (insetByHost) 0.dp else inheritedClearance,
-          LocalFabHostInsetsApplied provides insetByHost,
         ) {
           Surface(
             Modifier.fillMaxSize(),

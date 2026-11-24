@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
@@ -210,8 +211,7 @@ internal fun WallpaperHomePreviewDialog(
             modifier =
               Modifier
                 .align(Alignment.BottomEnd)
-                .navigationBarsPadding()
-                .padding(end = 16.dp, bottom = maxOf(contentBottomPadding, 16.dp)),
+                .then(FabPlacement.overlayButton(clearance = contentBottomPadding)),
             checked = false,
             onCheckedChange = {},
           ) {

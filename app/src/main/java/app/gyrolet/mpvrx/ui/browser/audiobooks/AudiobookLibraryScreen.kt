@@ -299,6 +299,7 @@ fun AudiobookLibraryContent(
     R.string.audiobook_not_started,
   )
   Scaffold(
+    contentWindowInsets = FabPlacement.scaffoldInsets(),
     containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
     topBar = {
       BrowserTopBar(
@@ -389,7 +390,7 @@ fun AudiobookLibraryContent(
       floatingActionButton = {
         if (!isAbsSource && importing == null) {
           FloatingActionButtonMenu(
-            modifier = Modifier.padding(bottom = FabPlacement.scaffoldBottomPadding()),
+            modifier = FabPlacement.scaffoldMenu(),
             expanded = importMenu,
             button = {
               TooltipBox(

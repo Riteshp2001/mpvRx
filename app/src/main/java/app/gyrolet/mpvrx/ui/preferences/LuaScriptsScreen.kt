@@ -27,6 +27,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -125,6 +126,7 @@ object LuaScriptsScreen : ScrollableSettingsScreen {
     }
 
     Scaffold(
+      contentWindowInsets = FabPlacement.scaffoldInsets(),
       topBar = {
         TopAppBar(
           title = {
@@ -151,7 +153,7 @@ object LuaScriptsScreen : ScrollableSettingsScreen {
         FloatingActionButton(
           onClick = { editorBackStack.navigateTo(LuaScriptEditorScreen(scriptName = null)) },
           containerColor = MaterialTheme.colorScheme.primaryContainer,
-          modifier = Modifier.padding(bottom = app.gyrolet.mpvrx.ui.browser.fab.FabPlacement.scaffoldBottomPadding()),
+          modifier = FabPlacement.scaffoldButton(),
         ) {
           Icon(
             imageVector = Icons.RoundedFilled.Add,

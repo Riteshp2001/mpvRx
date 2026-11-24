@@ -298,17 +298,16 @@ enum class AppTheme(
   val backgroundDark: Color,
   val isDynamic: Boolean = false,
 ) {
-  Default(
+  Lavender(
     titleRes = R.string.theme_default,
-    primaryLight = Color(0xFF794F81),
-    primaryDark = Color(0xFFE8B5EF),
-    secondaryLight = Color(0xFF6A596C),
-    secondaryDark = Color(0xFFD6C0D6),
-    tertiaryLight = Color(0xFF82524D),
-    tertiaryDark = Color(0xFFF5B7B0),
-    // Low-chroma lavender grey: comfortably bright without a pure-white canvas.
-    backgroundLight = Color(0xFFF7F5F8),
-    backgroundDark = Color(0xFF161217),
+    primaryLight = Color(0xFF7C5AB8),
+    primaryDark = Color(0xFFCFBCFF),
+    secondaryLight = Color(0xFF635B70),
+    secondaryDark = Color(0xFFCBC3DA),
+    tertiaryLight = Color(0xFF7E525A),
+    tertiaryDark = Color(0xFFF2B8C1),
+    backgroundLight = Color(0xFFFCF8FF),
+    backgroundDark = Color(0xFF16121A),
   ),
   Dynamic(
     titleRes = R.string.theme_dynamic,
@@ -410,16 +409,16 @@ enum class AppTheme(
     backgroundLight = Color(0xFFF2ECBC),
     backgroundDark = Color(0xFF1F1F28),
   ),
-  Lavender(
-    titleRes = R.string.theme_lavender,
-    primaryLight = Color(0xFF7C5AB8),
-    primaryDark = Color(0xFFCFBCFF),
-    secondaryLight = Color(0xFF635B70),
-    secondaryDark = Color(0xFFCBC3DA),
-    tertiaryLight = Color(0xFF7E525A),
-    tertiaryDark = Color(0xFFF2B8C1),
-    backgroundLight = Color(0xFFFCF8FF),
-    backgroundDark = Color(0xFF16121A),
+  Default(
+    titleRes = R.string.theme_classic,
+    primaryLight = Color(0xFF794F81),
+    primaryDark = Color(0xFFE8B5EF),
+    secondaryLight = Color(0xFF6A596C),
+    secondaryDark = Color(0xFFD6C0D6),
+    tertiaryLight = Color(0xFF82524D),
+    tertiaryDark = Color(0xFFF5B7B0),
+    backgroundLight = Color(0xFFF7F5F8),
+    backgroundDark = Color(0xFF161217),
   ),
   Midnight(
     titleRes = R.string.theme_midnight,

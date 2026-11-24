@@ -365,6 +365,7 @@ data class VideoListScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
       Scaffold(
+        contentWindowInsets = FabPlacement.scaffoldInsets(),
         modifier =
           Modifier
             .fillMaxSize()
@@ -462,11 +463,7 @@ data class VideoListScreen(
           ) {
             FloatingActionButton(
               modifier =
-                Modifier
-                  .padding(
-                    end = FabPlacement.StandaloneEndPadding,
-                    bottom = FabPlacement.scaffoldBottomPadding(),
-                  )
+                FabPlacement.scaffoldButton()
                   .animateFloatingActionButton(
                     visible = isFabShouldBeVisible,
                     alignment = Alignment.BottomEnd,
