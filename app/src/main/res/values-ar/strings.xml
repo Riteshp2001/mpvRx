@@ -2258,6 +2258,8 @@
   <string name="playlist_columns_landscape">الأعمدة في الوضع الأفقي</string>
   <string name="playlist_extension">امتداد الملف</string>
   <string name="pref_background_playback_behavior">سلوك التشغيل في الخلفية</string>
+  <string name="pref_video_background_screen_off_only_title">فقط عند إطفاء الشاشة</string>
+  <string name="pref_video_background_screen_off_only_summary">متابعة تشغيل الفيديو عند إطفاء الشاشة، وإيقافه مؤقتًا عند إغلاق المشغل أو التبديل إلى تطبيق آخر</string>
   <string name="pref_background_playback_remember">تذكر اختياري دائمًا</string>
   <string name="pref_background_playback_remember_summary">الاحتفاظ باختيار التشغيل في الخلفية للفيديوهات التالية.</string>
   <string name="pref_background_playback_per_video">تذكر الاختيار لكل فيديو</string>

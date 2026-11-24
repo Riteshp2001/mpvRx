@@ -2710,6 +2710,8 @@
   <string name="playlist_columns_landscape">Landscape columns</string>
   <string name="playlist_extension">File extension</string>
   <string name="pref_background_playback_behavior">Background playback behavior</string>
+  <string name="pref_video_background_screen_off_only_title">Only when the screen is off</string>
+  <string name="pref_video_background_screen_off_only_summary">Keep videos playing when the screen turns off, but pause them when you close the player or switch apps</string>
   <string name="pref_background_playback_remember">Always remember my choice</string>
   <string name="pref_background_playback_remember_summary">Keep the background playback choice for future videos.</string>
   <string name="pref_background_playback_per_video">Remember for each video</string>

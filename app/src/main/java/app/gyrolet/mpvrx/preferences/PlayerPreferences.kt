@@ -169,6 +169,9 @@ class PlayerPreferences(
   private val storedEnableVideoMiniPlayer = preferenceStore.getBoolean("enable_video_mini_player", false)
   val enableVideoMiniPlayer = DependentBooleanPreference(storedEnableVideoMiniPlayer, videoBackgroundPlayback)
 
+  /** Video background playback only continues for screen-off; closing the player or Home pauses it. */
+  val videoBackgroundOnlyWhenScreenOff = preferenceStore.getBoolean("video_background_only_when_screen_off", false)
+
   val keepScreenOnWhenPaused = preferenceStore.getBoolean("keep_screen_on_when_paused", false)
   val externalDisplayProjection = preferenceStore.getBoolean("external_display_projection", false)
   val autoplayAfterScreenUnlock = preferenceStore.getBoolean("autoplay_after_screen_unlock", false)

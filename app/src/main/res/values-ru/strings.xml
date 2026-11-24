@@ -2228,6 +2228,8 @@
   <string name="playlist_columns_landscape">Столбцы по горизонтали</string>
   <string name="playlist_extension">Расширение файла</string>
   <string name="pref_background_playback_behavior">Поведение фонового воспроизведения</string>
+  <string name="pref_video_background_screen_off_only_title">Только при выключенном экране</string>
+  <string name="pref_video_background_screen_off_only_summary">Продолжать воспроизведение при выключении экрана, но ставить на паузу при закрытии плеера или переходе в другое приложение</string>
   <string name="pref_background_playback_remember">Всегда запоминать мой выбор</string>
   <string name="pref_background_playback_remember_summary">Сохранять выбор фонового воспроизведения для следующих видео.</string>
   <string name="pref_background_playback_per_video">Запоминать выбор для каждого видео</string>

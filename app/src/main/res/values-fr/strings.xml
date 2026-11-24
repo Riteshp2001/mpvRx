@@ -2200,6 +2200,8 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="playlist_columns_landscape">Colonnes en paysage</string>
   <string name="playlist_extension">Extension du fichier</string>
   <string name="pref_background_playback_behavior">Comportement de lecture en arrière-plan</string>
+  <string name="pref_video_background_screen_off_only_title">Uniquement écran éteint</string>
+  <string name="pref_video_background_screen_off_only_summary">Continue la lecture quand l’écran s’éteint, mais la met en pause quand vous fermez le lecteur ou changez d’application</string>
   <string name="pref_background_playback_remember">Toujours mémoriser mon choix</string>
   <string name="pref_background_playback_remember_summary">Conserver le choix de lecture en arrière-plan pour les prochaines vidéos.</string>
   <string name="pref_background_playback_per_video">Mémoriser le choix pour chaque vidéo</string>

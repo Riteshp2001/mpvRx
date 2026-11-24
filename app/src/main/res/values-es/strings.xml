@@ -2200,6 +2200,8 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="playlist_columns_landscape">Columnas en horizontal</string>
   <string name="playlist_extension">Extensión del archivo</string>
   <string name="pref_background_playback_behavior">Comportamiento de reproducción en segundo plano</string>
+  <string name="pref_video_background_screen_off_only_title">Solo con la pantalla apagada</string>
+  <string name="pref_video_background_screen_off_only_summary">Sigue reproduciendo el vídeo al apagar la pantalla, pero lo pausa al cerrar el reproductor o cambiar de aplicación</string>
   <string name="pref_background_playback_remember">Recordar siempre mi elección</string>
   <string name="pref_background_playback_remember_summary">Conservar la elección de reproducción en segundo plano para los próximos vídeos.</string>
   <string name="pref_background_playback_per_video">Recordar la elección para cada vídeo</string>

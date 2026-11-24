@@ -1266,6 +1266,15 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_video_background_screen_off_only_title,
+          summaryRes = R.string.pref_video_background_screen_off_only_summary,
+          keywords = listOf("background", "screen off", "lock", "back", "close", "exit", "home", "pause", "video"),
+          category = "Player",
+          screen = PlayerPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_audio_channels,
           keywords = listOf("channels", "audio", "stereo", "surround", "output", "sound"),
           category = "Audio",

@@ -2186,6 +2186,8 @@
   <string name="playlist_columns_landscape">横向きの列数</string>
   <string name="playlist_extension">ファイル拡張子</string>
   <string name="pref_background_playback_behavior">バックグラウンド再生の動作</string>
+  <string name="pref_video_background_screen_off_only_title">画面オフ時のみ</string>
+  <string name="pref_video_background_screen_off_only_summary">画面がオフになっても再生を続け、プレーヤーを閉じたりアプリを切り替えたりすると一時停止します</string>
   <string name="pref_background_playback_remember">選択を常に記憶する</string>
   <string name="pref_background_playback_remember_summary">バックグラウンド再生の選択を次の動画でも維持します。</string>
   <string name="pref_background_playback_per_video">動画ごとに選択を記憶する</string>

@@ -2207,6 +2207,8 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="playlist_columns_landscape">Colunas em paisagem</string>
   <string name="playlist_extension">Extensão do arquivo</string>
   <string name="pref_background_playback_behavior">Comportamento da reprodução em segundo plano</string>
+  <string name="pref_video_background_screen_off_only_title">Somente com a tela desligada</string>
+  <string name="pref_video_background_screen_off_only_summary">Continua reproduzindo quando a tela desliga, mas pausa ao fechar o player ou trocar de app</string>
   <string name="pref_background_playback_remember">Sempre lembrar minha escolha</string>
   <string name="pref_background_playback_remember_summary">Manter a escolha de reprodução em segundo plano para os próximos vídeos.</string>
   <string name="pref_background_playback_per_video">Lembrar a escolha para cada vídeo</string>

@@ -2200,6 +2200,8 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="playlist_columns_landscape">Spalten im Querformat</string>
   <string name="playlist_extension">Dateierweiterung</string>
   <string name="pref_background_playback_behavior">Verhalten der Hintergrundwiedergabe</string>
+  <string name="pref_video_background_screen_off_only_title">Nur bei ausgeschaltetem Bildschirm</string>
+  <string name="pref_video_background_screen_off_only_summary">Videos laufen weiter, wenn der Bildschirm ausgeht, pausieren aber beim Schließen des Players oder beim Wechsel zu einer anderen App</string>
   <string name="pref_background_playback_remember">Meine Auswahl immer merken</string>
   <string name="pref_background_playback_remember_summary">Die Auswahl zur Hintergrundwiedergabe für künftige Videos beibehalten.</string>
   <string name="pref_background_playback_per_video">Auswahl für jedes Video merken</string>

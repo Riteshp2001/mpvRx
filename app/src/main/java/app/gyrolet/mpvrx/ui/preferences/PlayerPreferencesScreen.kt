@@ -292,6 +292,22 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
 
               PreferenceDivider()
 
+              val videoBackgroundOnlyWhenScreenOff by preferences.videoBackgroundOnlyWhenScreenOff.collectAsState()
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_video_background_screen_off_only_title),
+                value = videoBackgroundOnlyWhenScreenOff,
+                onValueChange = preferences.videoBackgroundOnlyWhenScreenOff::set,
+                title = { Text(stringResource(R.string.pref_video_background_screen_off_only_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_video_background_screen_off_only_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
+
               DevicePreference(R.string.pref_player_external_display_projection_title) {
                 val externalDisplayProjection by preferences.externalDisplayProjection.collectAsState()
                 SwitchPreference(

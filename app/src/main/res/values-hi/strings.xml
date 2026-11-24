@@ -2123,6 +2123,8 @@
   <string name="playlist_columns_landscape">लैंडस्केप कॉलम</string>
   <string name="playlist_extension">फ़ाइल एक्सटेंशन</string>
   <string name="pref_background_playback_behavior">बैकग्राउंड प्लेबैक का व्यवहार</string>
+  <string name="pref_video_background_screen_off_only_title">केवल स्क्रीन बंद होने पर</string>
+  <string name="pref_video_background_screen_off_only_summary">स्क्रीन बंद होने पर वीडियो चलता रहता है, लेकिन प्लेयर बंद करने या दूसरे ऐप पर जाने पर रुक जाता है</string>
   <string name="pref_background_playback_remember">मेरी पसंद हमेशा याद रखें</string>
   <string name="pref_background_playback_remember_summary">अगले वीडियो के लिए भी बैकग्राउंड प्लेबैक की पसंद रखें।</string>
   <string name="pref_background_playback_per_video">हर वीडियो के लिए पसंद याद रखें</string>

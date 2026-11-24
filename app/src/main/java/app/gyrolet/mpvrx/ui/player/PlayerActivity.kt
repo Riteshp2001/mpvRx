@@ -1253,7 +1253,7 @@ class PlayerActivity :
     if (
       isMiniPlayerEnabled() ||
       PlayerLifecyclePolicy.shouldStartBackgroundPlaybackOnBack(
-        backgroundPlaybackEnabled = isBackgroundPlaybackEnabled(),
+        backgroundPlaybackEnabled = isBackgroundPlaybackAllowedOnLeave(),
         mediaReady = isReady,
       )
     ) {
@@ -1274,6 +1274,10 @@ class PlayerActivity :
       return
     }
 
+    // A screen-off handoff can outlive an unlock that restored the player through window focus.
+    // Closing must end it; otherwise finish() treats the service as a live background session
+    // and leaves the video playing after the player is gone.
+    if (isBackgroundPlaybackSessionActive) endBackgroundPlayback()
     isUserFinishing = true
     finish()
   }
@@ -2462,9 +2466,15 @@ class PlayerActivity :
         return@runCatching
       }
 
+      // Limited to screen-off: Home or an app switch with the screen on leaves the player, so the
+      // video pauses there instead of continuing in the background.
+      val pauseOnLeave =
+        isVideoBackgroundLimitedToScreenOff() && !isDeviceScreenOffOrLocked() &&
+          externalDisplayManager?.isActive != true
+
       if (
         PlayerLifecyclePolicy.shouldStartBackgroundPlaybackOnStop(
-          backgroundPlaybackEnabled = isBackgroundPlaybackEnabled() || externalDisplayManager?.isActive == true,
+          backgroundPlaybackEnabled = isBackgroundPlaybackAllowedOnLeave() || externalDisplayManager?.isActive == true,
           backgroundPlaybackSessionActive = isBackgroundPlaybackSessionActive,
           isUserFinishing = isUserFinishing,
           isFinishing = isFinishing,
@@ -2486,6 +2496,13 @@ class PlayerActivity :
         rememberResumeAfterUnlockBeforeForcedPause()
         viewModel.pause()
       } else if (!isBackgroundPlaybackSessionActive && (isUserFinishing || isFinishing)) {
+        viewModel.pause()
+      } else if (
+        pauseOnLeave && !isUserFinishing && !isFinishing && !isInPictureInPictureMode &&
+        !pendingBackNavigationBackgroundTransition
+      ) {
+        // Also ends a screen-off handoff the player was restored over without onStart.
+        if (isBackgroundPlaybackSessionActive) endBackgroundPlayback()
         viewModel.pause()
       } else if (isBackgroundPlaybackSessionActive && !isInBackgroundPlayback) {
         if (externalDisplayManager?.isActive != true) markPlaybackInBackground()
@@ -2687,7 +2704,7 @@ class PlayerActivity :
       }
       if (!MediaPlaybackService.activityForeground &&
         isBackgroundPlaybackSessionActive &&
-        !isBackgroundPlaybackEnabled()
+        !isBackgroundPlaybackAllowedOnLeave()
       ) {
         isBackgroundPlaybackSessionActive = false
         viewModel.pause()
@@ -4064,6 +4081,19 @@ class PlayerActivity :
     if (PlaybackSession.state.value.currentItem?.audiobook != null) true
     else if (isCurrentPlaybackAudio()) audioPreferences.audioBackgroundPlayback.get()
     else PlaybackSession.isVideoBackgroundPlaybackEnabled()
+
+  /** The user limited video background playback to screen-off; audio and audiobooks keep their own rules. */
+  private fun isVideoBackgroundLimitedToScreenOff(): Boolean =
+    playerPreferences.videoBackgroundOnlyWhenScreenOff.get() &&
+      PlaybackSession.state.value.currentItem?.audiobook == null &&
+      !isCurrentPlaybackAudio()
+
+  private fun isBackgroundPlaybackAllowedOnLeave(): Boolean =
+    PlayerLifecyclePolicy.allowsBackgroundPlaybackOnLeave(
+      backgroundPlaybackEnabled = isBackgroundPlaybackEnabled(),
+      onlyWhenScreenOff = isVideoBackgroundLimitedToScreenOff(),
+      isScreenOffOrLocked = isDeviceScreenOffOrLocked(),
+    )
 
   private fun isCurrentPlaybackAudio(): Boolean =
     when (currentDeclaredMediaKind()) {

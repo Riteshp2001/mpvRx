@@ -2196,6 +2196,8 @@
   <string name="playlist_columns_landscape">横屏列数</string>
   <string name="playlist_extension">文件扩展名</string>
   <string name="pref_background_playback_behavior">后台播放行为</string>
+  <string name="pref_video_background_screen_off_only_title">仅在屏幕关闭时</string>
+  <string name="pref_video_background_screen_off_only_summary">屏幕关闭时继续播放，关闭播放器或切换应用时暂停</string>
   <string name="pref_background_playback_remember">始终记住我的选择</string>
   <string name="pref_background_playback_remember_summary">为后续视频保留后台播放选择。</string>
   <string name="pref_background_playback_per_video">为每个视频记住选择</string>

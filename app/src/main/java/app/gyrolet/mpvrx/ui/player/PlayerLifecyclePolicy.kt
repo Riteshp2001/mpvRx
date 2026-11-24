@@ -121,6 +121,16 @@ internal object PlayerLifecyclePolicy {
     mediaReady: Boolean,
   ): Boolean = backgroundPlaybackEnabled && mediaReady
 
+  /**
+   * Background playback limited to screen-off: Back, Home and app switches leave the player while
+   * the screen stays on, so only a screen that is off or locked may keep a video playing.
+   */
+  fun allowsBackgroundPlaybackOnLeave(
+    backgroundPlaybackEnabled: Boolean,
+    onlyWhenScreenOff: Boolean,
+    isScreenOffOrLocked: Boolean,
+  ): Boolean = backgroundPlaybackEnabled && (!onlyWhenScreenOff || isScreenOffOrLocked)
+
   fun shouldKeepBackgroundPlaybackAliveOnDestroy(
     backgroundPlaybackEnabled: Boolean,
     backgroundPlaybackSessionActive: Boolean,
