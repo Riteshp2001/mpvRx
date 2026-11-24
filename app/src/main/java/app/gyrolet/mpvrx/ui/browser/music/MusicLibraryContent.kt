@@ -121,6 +121,8 @@ import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.MediaServerPreferences
+import app.gyrolet.mpvrx.preferences.MusicSourceProvider
+import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.preferences.VideoSwipeAction
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.preferences.PreferencesScreen
@@ -194,7 +196,8 @@ private fun MusicSong.toVideo(): Video {
     height = 0,
     fps = 0f,
     resolution = "",
-    isAudio = true
+    isAudio = true,
+    artworkUrl = albumArtUri?.toString(),
   )
 }
 
@@ -227,6 +230,7 @@ fun MusicLibraryContent(
   val sortOrder by musicViewModel.sortOrder.collectAsState()
   val viewMode by musicViewModel.viewMode.collectAsState()
   val isLoading by musicViewModel.isLoading.collectAsState()
+  val libraryError by musicViewModel.error.collectAsState()
   LaunchedEffect(musicViewModel) { musicViewModel.ensureLibraryLoaded() }
 
   val songs by musicViewModel.filteredSongs.collectAsState()
@@ -242,6 +246,7 @@ fun MusicLibraryContent(
   val browserPreferences = koinInject<BrowserPreferences>()
   val mediaServerPreferences = koinInject<MediaServerPreferences>()
   val currentMusicSource by mediaServerPreferences.musicSourceProvider.collectAsState()
+  val isDlna = currentMusicSource == MusicSourceProvider.DLNA
   val foldersPreferences = koinInject<app.gyrolet.mpvrx.preferences.FoldersPreferences>()
   val folderSortType by browserPreferences.folderSortType.collectAsState()
   val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
@@ -349,10 +354,12 @@ fun MusicLibraryContent(
   val pagerState = rememberPagerState(initialPage = initialPageIndex) { visibleTabs.size }
   val navigateTab = rememberTabNavigation(pagerState)
 
-  val permissionState = PermissionUtils.handleStoragePermission(
-    audioOnly = true,
-    onPermissionGranted = { musicViewModel.scanLibrary(context) },
-  )
+  if (!isDlna) {
+    PermissionUtils.handleStoragePermission(
+      audioOnly = true,
+      onPermissionGranted = { musicViewModel.scanLibrary(context) },
+    )
+  }
 
   LaunchedEffect(pagerState, visibleTabs) {
     if (visibleTabs.isEmpty()) return@LaunchedEffect
@@ -625,7 +632,8 @@ fun MusicLibraryContent(
       val isPlaylistsTab = visibleTabs.getOrNull(pagerState.currentPage) == MusicTab.PLAYLISTS
       val isFoldersTab = visibleTabs.getOrNull(pagerState.currentPage) == MusicTab.FOLDERS
       val isFabShouldBeVisible =
-        showQuickPlayFab && !activeSelectionManager.isInSelectionMode && isFabVisible.value && !MainScreen.getPermissionDeniedState()
+        showQuickPlayFab && !activeSelectionManager.isInSelectionMode && isFabVisible.value &&
+          (isDlna || !MainScreen.getPermissionDeniedState())
 
       if (isFoldersTab) {
         // FolderListScreen.MediaStoreFolderListContent renders its own FAB, skip ours.
@@ -726,7 +734,16 @@ fun MusicLibraryContent(
       ) {
         // Playlists are not part of the condition: the Favorites playlist always exists, which kept
         // the first scan from ever showing this and flashed "No songs found" instead.
-        if (isLoading && songs.isEmpty() && albums.isEmpty() && artists.isEmpty()) {
+        if (libraryError != null) {
+          Column(
+            Modifier.fillMaxSize().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+          ) {
+            Text(libraryError.orEmpty(), textAlign = TextAlign.Center)
+            Button(onClick = { musicViewModel.scanLibrary(context) }) { Text(stringResource(R.string.ui_retry)) }
+          }
+        } else if (isLoading && songs.isEmpty() && albums.isEmpty() && artists.isEmpty()) {
           Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -932,6 +949,7 @@ fun MusicLibraryContent(
                   selectedVideosForAddToPlaylist = listOf(target.toVideo())
                 }
               )
+              if (!isDlna) {
               ListItem(
                 content = { Text("Share") },
                 leadingContent = { Icon(Icons.RoundedFilled.Share, contentDescription = null) },
@@ -950,6 +968,7 @@ fun MusicLibraryContent(
                   selectedSongForDelete = target
                 }
               )
+              }
             }
           }
         }
@@ -1273,7 +1292,7 @@ fun MusicLibraryContent(
         showCopy = false,
         showMove = false,
         showRename = false,
-        showDelete = selectedTab == MusicTab.SONGS || selectedTab == MusicTab.PLAYLISTS,
+        showDelete = (!isDlna && selectedTab == MusicTab.SONGS) || selectedTab == MusicTab.PLAYLISTS,
         showAddToPlaylist = selectedTab != MusicTab.PLAYLISTS && selectedTab != MusicTab.FOLDERS,
         modifier = Modifier.padding(bottom = 0.dp)
       )
@@ -1288,6 +1307,16 @@ fun LocalAlbumArtImage(
   modifier: Modifier = Modifier,
   audioSong: MusicSong? = null,
 ) {
+  val remoteArtwork = uri?.toString()?.takeIf { it.startsWith("http://", true) || it.startsWith("https://", true) }
+  if (remoteArtwork != null) {
+    RemoteImage(
+      url = remoteArtwork,
+      contentDescription = contentDescription,
+      modifier = modifier,
+      contentScale = ContentScale.Crop,
+    )
+    return
+  }
   val thumbnailRepository = koinInject<app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository>()
   val revision by thumbnailRepository.cacheRevision.collectAsState()
   val generator by koinInject<BrowserPreferences>().thumbnailGenerator.collectAsState()
@@ -1303,7 +1332,10 @@ fun LocalAlbumArtImage(
       mutableStateOf(video?.let { thumbnailRepository.peekThumbnailFromMemory(it, widthPx, heightPx) }?.asImageBitmap() ?: retainedBitmap)
     }
     LaunchedEffect(video, uri, widthPx, heightPx, generator, revision) {
-      val loaded = if (video != null) {
+      val network = audioSong?.uri?.toString()?.let(NetworkPlaybackUri::parse)
+      val loaded = if (network != null) {
+        thumbnailRepository.getThumbnailForNetworkSource(network.connectionId, network.path.value, widthPx, heightPx)
+      } else if (video != null) {
         thumbnailRepository.getThumbnail(video, widthPx, heightPx)
       } else {
         thumbnailRepository.getArtwork(uri?.toString(), widthPx = widthPx, heightPx = heightPx)
@@ -1338,10 +1370,14 @@ private fun ArtistAvatarImage(
   iconSize: Dp? = null,
 ) {
   val client = koinInject<OkHttpClient>()
-  var imageUrl by remember(artistName) { mutableStateOf<String?>(null) }
+  val source by koinInject<MediaServerPreferences>().musicSourceProvider.collectAsState()
+  var imageUrl by remember(artistName, source) { mutableStateOf<String?>(null) }
 
-  LaunchedEffect(artistName) {
-    imageUrl = ArtistImageRepository.getArtistImageUrl(client, artistName)
+  LaunchedEffect(artistName, source) {
+    // Do not send private DLNA library tags to external artist-image services.
+    if (source != MusicSourceProvider.DLNA) {
+      imageUrl = ArtistImageRepository.getArtistImageUrl(client, artistName)
+    }
   }
 
   val url = imageUrl

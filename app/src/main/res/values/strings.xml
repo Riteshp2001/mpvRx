@@ -2430,6 +2430,14 @@
   <string name="pref_navidrome_add_another_server">Add another server</string>
   <string name="pref_navidrome_add_another_server_desc">Connect an additional Navidrome server</string>
   <string name="music_source_navidrome">Navidrome Music</string>
+  <string name="music_source_dlna">DLNA Music</string>
+  <string name="music_dlna_server_missing">Select a DLNA server, or add one in Network.</string>
+  <string name="music_dlna_library_too_large">This DLNA music library exceeds the supported scan size.</string>
+  <string name="music_dlna_manage_servers">Manage DLNA servers</string>
+  <string name="music_dlna_server_description">Use a saved DLNA connection for Songs, Albums, and Artists in the Music tab.</string>
+  <string name="music_library_load_failed">Could not load the selected music library.</string>
+  <string name="music_dlna_read_only">Files on a DLNA music server cannot be deleted here.</string>
+  <string name="music_unknown_artist">Unknown Artist</string>
   <string name="pref_navidrome_no_server">No Navidrome server connected</string>
   <string name="pref_audiobookshelf_title">Audiobookshelf</string>
   <string name="pref_audiobookshelf_add_server">Connect Audiobookshelf</string>

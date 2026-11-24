@@ -39,6 +39,10 @@ fun addVideosToPlaybackQueue(
             ?.let(PlaybackIdentity::forLocalPath),
         title = video.displayName.ifBlank { video.title },
         mimeType = video.mimeType,
+        artworkUri = video.artworkUrl,
+        networkSource = app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri.parse(uri)?.let {
+          app.gyrolet.mpvrx.ui.player.NetworkPlaybackSource(it.connectionId, it.path.value, video.size.takeIf { size -> size > 0L } ?: -1L)
+        },
         durationSeconds = (video.duration / 1000L).toInt().takeIf { it > 0 },
         videoWidth = video.width,
         videoHeight = video.height,

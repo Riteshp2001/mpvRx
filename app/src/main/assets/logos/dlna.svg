@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-labelledby="title">
+  <title id="title">DLNA network audio</title>
+  <path
+    d="M19 4H45Q48 4 48 7V19Q48 22 45 22H19Q16 22 16 19V7Q16 4 19 4Z M24 12V16 M28 9V18 M32 7V19 M36 9V18 M40 12V16 M32 22V30 M12 30H52 M12 30V35 M52 30V35 M8 35H16Q18 35 18 37V42Q18 44 16 44H8Q6 44 6 42V37Q6 35 8 35Z M48 35H56Q58 35 58 37V42Q58 44 56 44H48Q46 44 46 42V37Q46 35 48 35Z M7 49H10C18 49 18 61 10 61H7Z M22 49V61H29 M33 61V49L41 61V49 M45 61L50 49L55 61 M47 56H53"
+    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

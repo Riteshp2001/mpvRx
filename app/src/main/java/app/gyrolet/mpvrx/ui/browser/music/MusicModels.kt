@@ -8,6 +8,9 @@ import android.net.Uri
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Immutable
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
+import app.gyrolet.mpvrx.ui.player.NetworkPlaybackSource
+import app.gyrolet.mpvrx.ui.player.PlaybackItem
 
 @Immutable
 enum class MusicTab(@StringRes val titleRes: Int) {
@@ -43,6 +46,19 @@ data class MusicSong(
 ) {
   val albumKey: Long?
     get() = if (hasAlbumTag) albumId.takeIf { it > 0 } ?: album.hashCode().toLong() else null
+}
+
+internal fun MusicSong.toPlaybackItem(): PlaybackItem {
+  val reference = NetworkPlaybackUri.parse(uri.toString())
+  return PlaybackItem.fromUri(
+    uri = uri.toString(),
+    title = title,
+    artist = artist,
+    mimeType = mimeType ?: "audio/*",
+    artworkUri = albumArtUri?.toString(),
+    durationSeconds = (durationMs / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt().takeIf { it > 0 },
+    networkSource = reference?.let { NetworkPlaybackSource(it.connectionId, it.path.value, size.takeIf { it > 0 } ?: -1L) },
+  )
 }
 
 internal fun Iterable<MusicSong>.sortedByAlbumTrack(): List<MusicSong> =

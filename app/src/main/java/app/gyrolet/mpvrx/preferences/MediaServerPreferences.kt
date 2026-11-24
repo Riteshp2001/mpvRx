@@ -16,7 +16,8 @@ enum class MusicSourceProvider(val id: String) {
   LOCAL("local"),
   JELLYFIN("jellyfin"),
   NAVIDROME("navidrome"),
-  AUDIOBOOKS("audiobooks");
+  AUDIOBOOKS("audiobooks"),
+  DLNA("dlna");
 
   companion object {
     fun fromId(id: String): MusicSourceProvider =
@@ -39,6 +40,7 @@ class MediaServerPreferences(
 ) {
   val musicSourceProvider =
     preferenceStore.getEnum("media_server_music_source_provider", MusicSourceProvider.LOCAL)
+  val dlnaMusicConnectionId = preferenceStore.getLong("media_server_dlna_music_connection_id", -1L)
 
   val audiobookSourceProvider =
     preferenceStore.getEnum("media_server_audiobook_source_provider", AudiobookSourceProvider.LOCAL)
