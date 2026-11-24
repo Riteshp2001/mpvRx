@@ -4820,8 +4820,10 @@ class PlayerActivity :
     if (!MediaPlaybackService.activityForeground) return
     // A dropped network stream can drain the demuxer and flip eof-reached mid-file. Only a
     // position at (or within a couple of seconds of) the known duration is a real end.
+    // The ViewModel copy of time-pos lags a seek that lands straight on EOF; eof-reached will not
+    // fire again, so also read the session value mpv's event thread has already published.
     val durationSecs = viewModel.duration ?: 0
-    val positionSecs = viewModel.pos ?: 0
+    val positionSecs = maxOf(viewModel.pos ?: 0, PlaybackSession.propInt["time-pos"].value ?: 0)
     if (durationSecs > 0 && positionSecs < durationSecs - 2) return
     if (fileName.isNotBlank()) saveVideoPlaybackState(fileName, immediate = true)
 
@@ -5297,6 +5299,16 @@ class PlayerActivity :
         if (!restored.hasState) viewModel.setVideoZoom(playerPreferences.defaultVideoZoom.get())
         applyVideoTransform()
       }
+      if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
+      // Companion audio is looked up after the unpause: probing ~80 candidate filenames used to hold
+      // every new video paused, and its audio-add is only accepted once the session is READY.
+      try {
+        ExternalAudioDiscovery.autoload(this@PlayerActivity, loadGeneration)
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Exception) {
+        Log.e(TAG, "Companion audio discovery failed", error)
+      }
       autoloadJob?.join()
       if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@launch
       trackSelector.onFileLoaded(
@@ -5744,8 +5756,6 @@ class PlayerActivity :
     }
 
     return runCatching {
-      ExternalAudioDiscovery.autoload(this@PlayerActivity, loadGeneration)
-      if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@runCatching LoadedPlaybackState()
       val state = resolvePlaybackState(identifier, legacyIdentifier)
 
       if (!PlaybackSession.isCurrentGeneration(loadGeneration)) return@runCatching LoadedPlaybackState()

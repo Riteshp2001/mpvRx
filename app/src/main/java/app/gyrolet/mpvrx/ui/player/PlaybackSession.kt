@@ -1800,9 +1800,13 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   ): Boolean = withReadyCore(false) {
     val current = _state.value
     val loadedItem = loadedPlaybackItem ?: return@withReadyCore false
+    // FILE_LOADED has run for this generation; a pending saved-position restore only keeps the
+    // phase at LOADING while the Activity re-adds the file's saved external audio.
+    val restoringLoadedFile =
+      current.phase == PlaybackPhase.LOADING && pendingPositionRestoreGeneration == expectedGeneration
     if (expectedGeneration <= 0L || loadedGeneration != expectedGeneration ||
       current.generation != expectedGeneration || current.currentItem?.queueEntryId != loadedItem.queueEntryId ||
-      current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+      (current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND) && !restoringLoadedFile)
     ) return@withReadyCore false
     for (index in 0 until (MPVLib.getPropertyInt("track-list/count") ?: 0)) {
       if (MPVLib.getPropertyString("track-list/$index/type") != "audio") continue

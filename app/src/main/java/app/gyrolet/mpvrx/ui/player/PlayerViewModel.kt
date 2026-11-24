@@ -3797,6 +3797,8 @@ fun restartFromBeginning() {
     val target: Double,
     // Ends the scrub: the thumb stays on its target until mpv has landed there.
     val isFinal: Boolean,
+    // A final request released at the media end: seeks exactly to the end instead of a keyframe.
+    val toEnd: Boolean = false,
   )
 
   private val scrubSeeks = Channel<ScrubSeek>(Channel.CONFLATED)
@@ -5640,13 +5642,26 @@ fun restartFromBeginning() {
     queueScrubSeek(target, isFinal = false)
   }
 
+  /**
+   * With precise seeking off (hr-seek=no) an absolute seek to the end lands on the last keyframe,
+   * so the final GOP — often 5-10 s — plays out before end-of-file. A scrub released at the end
+   * seeks exactly instead, like [seekBy], so the file ends at once.
+   */
+  private fun reachesMediaEnd(target: Double): Boolean {
+    if (!target.isFinite() || isLiveMedia.value) return false
+    val loop = _abLoopState.value
+    if (loop.a != null && loop.b != null) return false
+    val durationSeconds = _preciseDuration.value.toDouble()
+    return durationSeconds > 0.0 && target >= durationSeconds - SCRUB_SEEK_STEP_SECONDS
+  }
+
   /** Ends a seekbar drag or tap. The thumb stays on [position] until mpv has landed there. */
   fun seekFromScrub(position: Float) {
     if (!position.isFinite()) return
     val target = clampSeekTarget(position.toDouble())
     cancelFrameSeek()
     lastScrubTarget = Double.NaN
-    queueScrubSeek(target, isFinal = true)
+    queueScrubSeek(target, isFinal = true, toEnd = reachesMediaEnd(target))
     _precisePosition.value = target.toFloat()
     syncplayManager.updatePlayerState(target, paused ?: false, doSeek = true)
   }
@@ -5668,14 +5683,17 @@ fun restartFromBeginning() {
 
   /**
    * Ends a swipe (null cancels it). Its live seeks already followed the finger, so mpv seeks again
-   * only if the last step never reached it. The thumb stays on the target until mpv lands there.
+   * only if the last step never reached it, or exactly when it was released at the end.
+   * The thumb stays on the target until mpv lands there.
    */
   fun finishGestureSeek(position: Float?) {
     // A swipe that never moved the thumb has nothing to seek to, nor a thumb to hold.
     val moved = isGestureSeeking
     val target = position?.takeIf { moved && it.isFinite() }?.let { clampSeekTarget(it.toDouble()) }
     // The settle hold must start before the swipe hold ends, or a stale position could slip in between.
-    if (moved) queueScrubSeek(target ?: lastScrubTarget, isFinal = true)
+    if (moved) {
+      queueScrubSeek(target ?: lastScrubTarget, isFinal = true, toEnd = target != null && reachesMediaEnd(target))
+    }
     lastScrubTarget = Double.NaN
     isGestureSeeking = false
     if (target != null) syncplayManager.updatePlayerState(target, paused ?: false, doSeek = true)
@@ -5705,6 +5723,7 @@ fun restartFromBeginning() {
   private fun queueScrubSeek(
     target: Double,
     isFinal: Boolean,
+    toEnd: Boolean = false,
   ) {
     val serial = scrubSerial.incrementAndGet()
     // A drag or swipe in progress owns the thumb itself; only the end of a scrub holds it on a target.
@@ -5717,6 +5736,7 @@ fun restartFromBeginning() {
         generation = PlaybackSession.state.value.generation,
         target = target,
         isFinal = isFinal,
+        toEnd = toEnd,
       ),
     )
   }
@@ -5747,21 +5767,32 @@ fun restartFromBeginning() {
             continue
           }
           // Releasing within one step of the last live seek would only replay its decode and freeze the picture.
+          // A release at the end always seeks: the live step landed on a keyframe before it.
           val needsSeek =
             seek.target.isFinite() &&
-              (!seek.isFinal || lastSent.isNaN() || abs(seek.target - lastSent) >= SCRUB_SEEK_STEP_SECONDS)
+              (seek.toEnd || !seek.isFinal || lastSent.isNaN() || abs(seek.target - lastSent) >= SCRUB_SEEK_STEP_SECONDS)
           // Unlike setting time-pos, `seek` lets mpv show a frame from each spot before taking the next one.
           // A seek from another path voids this one; that check runs under the native lock, so this
           // seek can never land after it. A newer scrub target merely follows this one.
           val sent =
             needsSeek &&
-              PlaybackSession.commandForGenerationIf(
-                seek.generation,
-                { seek.epoch == scrubEpoch.get() },
-                "seek",
-                seek.target.toString(),
-                "absolute",
-              )
+              if (seek.toEnd) {
+                PlaybackSession.commandForGenerationIf(
+                  seek.generation,
+                  { seek.epoch == scrubEpoch.get() },
+                  "seek",
+                  "100",
+                  "absolute-percent+exact",
+                )
+              } else {
+                PlaybackSession.commandForGenerationIf(
+                  seek.generation,
+                  { seek.epoch == scrubEpoch.get() },
+                  "seek",
+                  seek.target.toString(),
+                  "absolute",
+                )
+              }
           if (sent) lastSent = seek.target
           if (seek.isFinal) {
             lastSent = Double.NaN
