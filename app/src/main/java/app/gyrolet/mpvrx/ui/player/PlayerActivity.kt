@@ -1192,18 +1192,18 @@ class PlayerActivity :
 
   private fun handleBackPress() {
     returnToBrowserAfterMinimize = false
-    // Dismiss overlays first
+    // Dismiss overlays first; touch devices keep the controls hidden after closing one.
     if (viewModel.sheetShown.value != Sheets.None) {
       lastExitBackPressAtMs = null
       viewModel.sheetShown.update { Sheets.None }
-      viewModel.showControls()
+      if (isTelevision) viewModel.showControls()
       return
     }
 
     if (viewModel.panelShown.value != Panels.None) {
       lastExitBackPressAtMs = null
       viewModel.panelShown.update { Panels.None }
-      viewModel.showControls()
+      if (isTelevision) viewModel.showControls()
       return
     }
 

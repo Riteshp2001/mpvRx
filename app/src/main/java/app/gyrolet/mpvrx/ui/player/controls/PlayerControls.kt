@@ -233,12 +233,11 @@ internal fun AudioPlayerScreen(
   val decoder = remember(activeDecoder, configuredDecoder) {
     getDecoderFromValue(activeDecoder?.takeIf { it.isNotBlank() } ?: configuredDecoder ?: "auto")
   }
+  // Closing a sheet or panel leaves the controls hidden; only a tap brings them back.
   val onOpenSheet: (Sheets) -> Unit = remember(viewModel) {
     {
       viewModel.sheetShown.update { _ -> it }
-      if (it == Sheets.None) {
-        viewModel.showControls()
-      } else {
+      if (it != Sheets.None) {
         viewModel.hideControls()
         viewModel.panelShown.update { Panels.None }
       }
@@ -247,9 +246,7 @@ internal fun AudioPlayerScreen(
   val onOpenPanel: (Panels) -> Unit = remember(viewModel) {
     {
       viewModel.panelShown.update { _ -> it }
-      if (it == Panels.None) {
-        viewModel.showControls()
-      } else {
+      if (it != Panels.None) {
         viewModel.hideControls()
         viewModel.sheetShown.update { Sheets.None }
       }
@@ -528,11 +525,13 @@ fun PlayerControls(
     initial = PlaybackSession.isVideoBackgroundPlaybackEnabled(),
   )
 
-  val onOpenSheet: (Sheets) -> Unit = remember(viewModel) {
+  // Closing a sheet or panel leaves the controls hidden on touch devices; a TV remote needs
+  // them back to keep a focus target.
+  val onOpenSheet: (Sheets) -> Unit = remember(viewModel, isTelevision) {
     {
       viewModel.sheetShown.update { _ -> it }
       if (it == Sheets.None) {
-        viewModel.showControls()
+        if (isTelevision) viewModel.showControls()
       } else {
         viewModel.hideControls()
         viewModel.panelShown.update { Panels.None }
@@ -540,11 +539,11 @@ fun PlayerControls(
     }
   }
 
-  val onOpenPanel: (Panels) -> Unit = remember(viewModel) {
+  val onOpenPanel: (Panels) -> Unit = remember(viewModel, isTelevision) {
     {
       viewModel.panelShown.update { _ -> it }
       if (it == Panels.None) {
-        viewModel.showControls()
+        if (isTelevision) viewModel.showControls()
       } else {
         viewModel.hideControls()
         viewModel.sheetShown.update { Sheets.None }
@@ -681,7 +680,7 @@ fun PlayerControls(
       viewModel.hideControls()
     } else if (!visible && isPlayerDrawerShown) {
       isPlayerDrawerShown = false
-      if (viewModel.sheetShown.value == Sheets.None && viewModel.panelShown.value == Panels.None) {
+      if (isTelevision && viewModel.sheetShown.value == Sheets.None && viewModel.panelShown.value == Panels.None) {
         viewModel.showControls()
       }
     }

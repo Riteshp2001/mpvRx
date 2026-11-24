@@ -277,6 +277,8 @@ fun GestureHandler(
     if (anyPanelShown && !allowGesturesInPanels) {
       if (viewModel.panelShown.value != Panels.None) viewModel.panelShown.update { Panels.None }
       if (externalPanelShown) onDismissExternalPanel()
+      // The tap only closed the panel; the controls stay hidden behind it.
+      if (!viewModel.areControlsLocked.value) return
     }
     if (viewModel.areControlsLocked.value || !viewModel.controlsShown.value) {
       viewModel.showControls()
