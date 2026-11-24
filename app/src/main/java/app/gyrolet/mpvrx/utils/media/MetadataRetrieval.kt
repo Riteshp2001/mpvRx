@@ -64,8 +64,11 @@ object MetadataRetrieval {
 
   internal fun withMetadata(video: Video, metadata: MediaInfoOps.VideoMetadata): Video {
     val duration = metadata.durationMs.takeIf { it > 0L } ?: video.duration
-    val width = metadata.width.takeIf { it > 0 } ?: video.width
-    val height = metadata.height.takeIf { it > 0 } ?: video.height
+    // MediaStore's dimensions are what the library and resolution chip report; a probe only
+    // fills them in when the index has none, so enrichment never changes a shown resolution.
+    val hasIndexedSize = video.width > 0 && video.height > 0
+    val width = if (hasIndexedSize) video.width else metadata.width.takeIf { it > 0 } ?: video.width
+    val height = if (hasIndexedSize) video.height else metadata.height.takeIf { it > 0 } ?: video.height
     val fps = metadata.fps.takeIf { it.isFinite() && it > 0f } ?: video.fps
     return video.copy(
       duration = duration,
