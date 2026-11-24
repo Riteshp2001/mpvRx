@@ -41,7 +41,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,7 +60,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
-import androidx.compose.material3.Icon as DrawableIcon
 
 private const val TAG = "AudioOutputSheet"
 
@@ -227,7 +225,7 @@ internal fun AudioOutputGlyph(
   label: String? = null,
   tint: Color = LocalContentColor.current,
 ) {
-  DrawableIcon(painterResource(R.drawable.ic_audio_output), contentDescription = label, modifier = modifier, tint = tint)
+  Icon(Icons.RoundedFilled.MediaOutput, contentDescription = label, modifier = modifier, tint = tint)
 }
 
 @Composable
