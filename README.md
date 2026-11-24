@@ -52,7 +52,7 @@
 
 
 <div align="center">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/jellyfin.jpg" width="32%" alt="mpvRx picture-in-picture mode">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/jellyfin.jpg" width="32%" alt="mpvRx Jellyfin library home">
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/music-player.jpg" width="32%" alt="mpvRx music player">
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/about-screen.jpg" width="32%" alt="mpvRx About screen">
 </div>
