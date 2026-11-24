@@ -41,10 +41,8 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -91,11 +89,6 @@ fun TorrentDetailSheet(
 ) {
   if (group == null) return
 
-  val sheetState =
-    rememberBottomSheetState(
-      initialValue = SheetValue.Hidden,
-      enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
   val context = LocalContext.current
   var isOverviewExpanded by remember(group.id) { mutableStateOf(false) }
   var canExpandOverview by remember(group.id) { mutableStateOf(false) }
@@ -137,7 +130,6 @@ fun TorrentDetailSheet(
 
   ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
-    sheetState = sheetState,
     containerColor = MaterialTheme.colorScheme.surface,
     showDragHandle = false,
     modifier = modifier,

@@ -52,11 +52,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SheetState
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -111,11 +108,6 @@ fun SeerrDetailSheet(
   onDeleteRequest: ((requestId: Int) -> Unit)? = null,
   onDeleteMedia: ((mediaId: Int) -> Unit)? = null,
   onOpenJellyfinItem: ((jellyfinId: String) -> Unit)? = null,
-  sheetState: SheetState =
-    rememberBottomSheetState(
-      initialValue = SheetValue.Hidden,
-      enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    ),
 ) {
   if (searchItem == null && details == null) return
   val scrollState = rememberScrollState()
@@ -231,7 +223,6 @@ fun SeerrDetailSheet(
 
   ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
-    sheetState = sheetState,
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     showDragHandle = false,
   ) {

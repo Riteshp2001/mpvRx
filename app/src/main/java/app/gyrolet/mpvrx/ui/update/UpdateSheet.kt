@@ -32,12 +32,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,22 +68,13 @@ fun UpdateSheet(
   onIgnore: () -> Unit,
   onRetryCheck: () -> Unit,
 ) {
-  val sheetState = rememberBottomSheetState(
-    initialValue = SheetValue.Hidden,
-    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-  )
   val release = state.release
   val asset = state.asset
   val busy = state.isDownloading || state.isInstalling
 
   ResponsiveBottomSheet(
-    onDismissRequest = { if (!busy) onDismiss() },
-    sheetState = sheetState,
-    sheetGesturesEnabled = !busy,
-    properties = ModalBottomSheetProperties(
-      shouldDismissOnBackPress = !busy,
-      shouldDismissOnClickOutside = !busy,
-    ),
+    onDismissRequest = onDismiss,
+    dismissEnabled = !busy,
   ) {
     val notesScroll = rememberScrollState()
     Column(

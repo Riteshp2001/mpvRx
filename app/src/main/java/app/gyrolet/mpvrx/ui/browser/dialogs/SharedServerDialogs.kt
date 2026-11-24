@@ -48,12 +48,10 @@ import androidx.compose.material3.MaterialTheme
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -114,17 +112,11 @@ fun SharedAddServerDialog(
 ) {
   if (!isOpen) return
 
-  val sheetState =
-    rememberBottomSheetState(
-      initialValue = SheetValue.Hidden,
-      enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
-
   var isPasswordVisible by remember { mutableStateOf(false) }
 
   ResponsiveBottomSheet(
-    onDismissRequest = { if (!isLoading) onDismiss() },
-    sheetState = sheetState,
+    onDismissRequest = onDismiss,
+    dismissEnabled = !isLoading,
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
   ) {
     Column(
@@ -479,15 +471,8 @@ fun <T> SharedManageServersDialog(
 ) {
   if (!isOpen) return
 
-  val sheetState =
-    rememberBottomSheetState(
-      initialValue = SheetValue.Hidden,
-      enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
-
   ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
-    sheetState = sheetState,
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
   ) {
     Column(

@@ -181,6 +181,7 @@ enum class Sheets {
   AudiobookRewind,
   AudiobookSleepTimer,
   MediaInfo,
+  AudioOutput,
 }
 
 enum class Panels {

@@ -211,7 +211,6 @@ import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.Panels
-import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.AudioQuality
@@ -219,6 +218,7 @@ import app.gyrolet.mpvrx.ui.player.resolveAudioFormatInfo
 import app.gyrolet.mpvrx.ui.player.RepeatMode
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioOutputGlyph
 import app.gyrolet.mpvrx.ui.player.controls.components.SeekbarWithTimers
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
@@ -1117,7 +1117,6 @@ fun AudioPlayerControls(
   val appearancePreferences = koinInject<AppearancePreferences>()
   val audioVisualizerStyle by audioPreferences.audioVisualizerStyle.collectAsState()
   val audioWavySeekbar by audioPreferences.audioWavySeekbar.collectAsState()
-  val backgroundPlaybackEnabled by audioPreferences.audioBackgroundPlayback.collectAsState()
   val colorScheme = MaterialTheme.colorScheme
   val palette =
     remember(colorScheme) {
@@ -2813,27 +2812,14 @@ fun AudioPlayerControls(
               }
               if (!isAudiobook) {
                 ExpressiveConnectedBarButton(
-                  index = 3, itemCount = centerCount, height = barHeight, selected = backgroundPlaybackEnabled,
+                  index = 3, itemCount = centerCount, height = barHeight, selected = sheetShown == Sheets.AudioOutput,
                   onClick = {
-                    val enabled = !audioPreferences.audioBackgroundPlayback.get()
-                    val activity = context as? PlayerActivity
-                    if (activity != null) {
-                      activity.toggleAudioBackgroundPlayback()
-                    } else {
-                      audioPreferences.audioBackgroundPlayback.set(enabled)
-                      viewModel.showToast(
-                        context.getString(
-                          if (enabled) R.string.toast_audio_background_playback_on
-                          else R.string.toast_audio_background_playback_off,
-                        ),
-                      )
-                    }
-                    actionHaptics.selection(enabled)
+                    onOpenSheet(Sheets.AudioOutput)
+                    actionHaptics.confirm()
                   },
                 ) { tint ->
-                  Icon(
-                    Icons.RoundedFilled.Headset,
-                    contentDescription = stringResource(R.string.btn_label_background_playback),
+                  AudioOutputGlyph(
+                    label = stringResource(R.string.pref_audio_output_title),
                     tint = tint,
                     modifier = Modifier.size(iconSize),
                   )

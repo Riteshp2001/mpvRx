@@ -32,10 +32,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,17 +109,11 @@ fun PlaylistActionSheet(
 
   if (!isOpen) return
 
-  val sheetState = rememberBottomSheetState(
-    initialValue = SheetValue.Hidden,
-    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-  )
-
   ResponsiveBottomSheet(
     onDismissRequest = {
       zipImportJob?.cancel()
       onDismiss()
     },
-    sheetState = sheetState,
     modifier = modifier,
   ) {
     Column(

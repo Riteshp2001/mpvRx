@@ -8153,49 +8153,6 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     }
   }
 
-  /** Toggles the audio-player-specific background playback setting. */
-  fun toggleAudioBackgroundPlayback() {
-    val enabled = !audioPreferences.audioBackgroundPlayback.get()
-
-    if (enabled && !shouldShowPlaybackNotification()) {
-      Toast
-        .makeText(
-          this,
-          getString(R.string.notification_disabled_in_advanced_settings),
-          Toast.LENGTH_LONG,
-        ).show()
-      return
-    }
-
-    audioPreferences.audioBackgroundPlayback.set(enabled)
-
-    if (enabled) ensureNotificationAccessForPlayback(allowUserPrompt = true)
-    if (!enabled) {
-      pendingBackgroundTransition = false
-      isBackgroundPlaybackSessionActive = false
-      endBackgroundPlayback()
-      enableVideoAfterBackground()
-      viewModel.showToast(getString(R.string.toast_audio_background_playback_off))
-      return
-    }
-    if (fileName.isBlank() || !isReady) {
-      viewModel.showToast(getString(R.string.toast_audio_background_playback_on))
-      return
-    }
-    when (startBackgroundPlayback()) {
-      BackgroundPlaybackStartResult.Started -> {
-        isBackgroundPlaybackSessionActive = true
-        viewModel.showToast(getString(R.string.toast_audio_background_playback_on))
-      }
-      BackgroundPlaybackStartResult.PendingPermission -> pendingBackgroundTransition = true
-      BackgroundPlaybackStartResult.Blocked -> {
-        audioPreferences.audioBackgroundPlayback.set(false)
-        isBackgroundPlaybackSessionActive = false
-        pendingBackgroundTransition = false
-      }
-    }
-  }
-
   private fun finishIntoBackgroundPlayback() {
     isBackgroundPlaybackSessionActive = true
     pendingBackNavigationBackgroundTransition = false

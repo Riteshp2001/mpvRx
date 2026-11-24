@@ -439,6 +439,15 @@
   <string name="pref_audio_preferred_language">Comma-separated language codes, e.g. en,eng,ja. Matched left to right.</string>
   <string name="pref_audio_volume_boost_cap">Volume boost cap</string>
   <string name="pref_audio_output_title">Audio output</string>
+  <string name="audio_output_current_device">Current media output</string>
+  <string name="audio_output_device_speakers">Device speakers</string>
+  <string name="audio_output_system_managed">Managed by Android</string>
+  <string name="audio_output_change_device">Change output device</string>
+  <string name="audio_output_android_picker">Choose a device with Android’s media output picker</string>
+  <string name="audio_output_android_settings">Manage connected devices in Android settings</string>
+  <string name="audio_output_picker_unavailable">Could not open Android’s audio output controls.</string>
+  <string name="audio_output_volume_unavailable">Android did not allow changing the media volume.</string>
+  <string name="audio_output_volume_fixed">Adjust volume on the output device.</string>
   <string name="pref_audio_output_auto">Auto</string>
   <string name="pref_audio_output_audiotrack">AudioTrack</string>
   <string name="pref_audio_output_aaudio">AAudio (low latency)</string>

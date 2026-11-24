@@ -3,27 +3,29 @@
 package app.gyrolet.mpvrx.presentation.components
 
 import android.annotation.SuppressLint
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitVerticalTouchSlopOrCancellation
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -34,9 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.dismiss
 import androidx.compose.ui.semantics.semantics
@@ -49,7 +50,7 @@ import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.tv.TvSafeArea
 import app.gyrolet.mpvrx.ui.tv.isTelevision
 import kotlinx.coroutines.launch
-import kotlin.math.abs
+import kotlin.math.roundToInt
 
 internal data class SheetWindow(val width: Dp, val height: Dp, val television: Boolean) {
   private val landscape = width >= height
@@ -95,64 +96,69 @@ internal class CenteredSheetInsets(private val insets: WindowInsets) : WindowIns
 
 internal data class SheetResize(val expanded: Boolean, val setExpanded: (Boolean) -> Unit)
 
-private val SheetExpandThreshold = 24.dp
-
-internal fun Modifier.sheetExpandDrag(setExpanded: (Boolean) -> Unit): Modifier = pointerInput(Unit) {
-  var travelled = 0f
-  var committed = false
-  detectVerticalDragGestures(
-    onDragStart = {
-      travelled = 0f
-      committed = false
-    },
-    onVerticalDrag = { change, amount ->
-      change.consume()
-      if (!committed) {
-        travelled += amount
-        if (abs(travelled) >= SheetExpandThreshold.toPx()) {
-          committed = true
-          setExpanded(travelled < 0f)
-        }
+@Composable
+private fun Modifier.sheetExpandDrag(resize: SheetResize): Modifier {
+  val latestResize by rememberUpdatedState(resize)
+  return pointerInput(Unit) {
+    awaitEachGesture {
+      val down = awaitFirstDown()
+      val expanded = latestResize.expanded
+      val drag = awaitVerticalTouchSlopOrCancellation(down.id) { change, overSlop ->
+        // A downward drag from the compact height still belongs to swipe-to-dismiss.
+        if (if (expanded) overSlop > 0f else overSlop < 0f) change.consume()
       }
-    },
-  )
+      if (drag != null) {
+        do {
+          val event = awaitPointerEvent()
+          event.changes.forEach { it.consume() }
+        } while (event.changes.any { it.pressed })
+        latestResize.setExpanded(!expanded)
+      }
+    }
+  }
 }
 
-/** Constrain the content, not its outer anchor, so pinned actions aren't below the fold. */
+/** Measures the sheet body against the host's live bounds; only user-requested expansion animates. */
 @Composable
 internal fun ResponsiveSheetContent(
   window: SheetWindow,
   modifier: Modifier = Modifier,
+  reservedTopInsets: WindowInsets = WindowInsets(0, 0, 0, 0),
   content: @Composable ColumnScope.(SheetResize?) -> Unit,
 ) {
   var expanded by rememberSaveable { mutableStateOf(false) }
-  var contentHeightPx by remember { mutableIntStateOf(0) }
-  val density = LocalDensity.current
-  val safeDrawing = WindowInsets.safeDrawing
-  val verticalInsets = with(density) {
-    (safeDrawing.getTop(density) + safeDrawing.getBottom(density)).toDp()
-  }
-  val keyboardVisible = WindowInsets.ime.getBottom(density) > 0
+  var canResize by remember { mutableStateOf(false) }
+  val imeInsets = WindowInsets.ime
   val reduceMotion = AppMotion.shouldReduceMotion()
-
-  val availableHeight = (window.height - verticalInsets).coerceAtLeast(0.dp)
-  val initialHeight = window.initialHeight(availableHeight, keyboardVisible)
-  val animatedHeight by animateDpAsState(
-    targetValue = if (expanded) availableHeight else initialHeight,
-    animationSpec = if (reduceMotion) AppMotion.ReducedDp else AppMotion.noBounce(380f),
+  val expansion = animateFloatAsState(
+    targetValue = if (expanded) 1f else 0f,
+    animationSpec = if (reduceMotion) snap() else AppMotion.noBounce(380f),
     label = "sheetExpansionHeight",
   )
-  val contentHeight = animatedHeight.coerceIn(0.dp, availableHeight)
-  val isAtInitialLimit = contentHeightPx >= with(density) { initialHeight.roundToPx() }
-  val resize = if (availableHeight > initialHeight && (expanded || isAtInitialLimit)) {
-    SheetResize(expanded) { expanded = it }
-  } else null
+
   Column(
     modifier.fillMaxWidth()
-      .heightIn(min = if (expanded) contentHeight else 0.dp, max = contentHeight)
-      .onSizeChanged { contentHeightPx = it.height },
+      .layout { measurable, constraints ->
+        val availableHeight = (
+          (if (constraints.hasBoundedHeight) constraints.maxHeight else window.height.roundToPx()) -
+            reservedTopInsets.getTop(this)
+        ).coerceAtLeast(0)
+        val compactHeight = window.initialHeight(availableHeight.toDp(), imeInsets.getBottom(this) > 0)
+          .roundToPx().coerceIn(0, availableHeight)
+        val fraction = expansion.value.coerceIn(0f, 1f)
+        val heightLimit = (compactHeight + ((availableHeight - compactHeight) * fraction).roundToInt())
+          .coerceAtLeast(constraints.minHeight)
+        val placeable = measurable.measure(
+          constraints.copy(
+            minHeight = if (fraction > 0f) heightLimit else constraints.minHeight,
+            maxHeight = heightLimit,
+          ),
+        )
+        canResize = availableHeight > compactHeight && (placeable.height >= compactHeight || expanded)
+        layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+      },
   ) {
-    content(resize)
+    content(if (canResize) SheetResize(expanded) { expanded = it } else null)
   }
 }
 
@@ -161,11 +167,12 @@ internal fun SheetOpeningHandle(
   resize: SheetResize?,
   showDragHandle: Boolean,
   gesturesEnabled: Boolean = true,
+  resizeEnabled: Boolean = gesturesEnabled,
 ) {
   if (resize != null || showDragHandle) {
     PlayerSheetDragHandle(
-      onVerticalDrag = resize?.setExpanded,
-      visible = gesturesEnabled || resize != null,
+      modifier = if (resize != null && resizeEnabled) Modifier.sheetExpandDrag(resize) else Modifier,
+      visible = gesturesEnabled || (resize != null && resizeEnabled),
     )
   }
 }
@@ -175,30 +182,33 @@ internal fun SheetOpeningHandle(
 internal fun ResponsiveBottomSheet(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
-  sheetState: SheetState = rememberBottomSheetState(
-    initialValue = SheetValue.Hidden,
-    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-  ),
-  sheetGesturesEnabled: Boolean = true,
+  animateEntrance: Boolean = true,
+  dismissEnabled: Boolean = true,
   shape: Shape = BottomSheetDefaults.ExpandedShape,
   containerColor: Color = BottomSheetDefaults.ContainerColor,
   contentColor: Color = contentColorFor(containerColor),
   showDragHandle: Boolean = true,
-  properties: ModalBottomSheetProperties = ModalBottomSheetProperties(),
   content: @Composable ColumnScope.() -> Unit,
 ) {
   val window = sheetWindow()
   val scope = rememberCoroutineScope()
   val onDismiss by rememberUpdatedState(onDismissRequest)
+  val canDismiss by rememberUpdatedState(dismissEnabled)
+  val reduceMotion = AppMotion.shouldReduceMotion()
+  val sheetState = rememberBottomSheetState(
+    initialValue = if (animateEntrance && !reduceMotion) SheetValue.Hidden else SheetValue.Expanded,
+    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    confirmValueChange = { it != SheetValue.Hidden || canDismiss },
+  )
   val closeLabel = stringResource(R.string.ui_close)
   ModalBottomSheet(
-    onDismissRequest = onDismissRequest,
+    onDismissRequest = { if (canDismiss) onDismiss() },
     modifier = modifier.semantics {
-      if (sheetGesturesEnabled) {
+      if (dismissEnabled) {
         dismiss(closeLabel) {
           scope.launch {
             sheetState.hide()
-            if (!sheetState.isVisible) onDismiss()
+            if (canDismiss && !sheetState.isVisible) onDismiss()
           }
           true
         }
@@ -206,16 +216,24 @@ internal fun ResponsiveBottomSheet(
     },
     sheetState = sheetState,
     sheetMaxWidth = window.maxWidth(),
-    sheetGesturesEnabled = sheetGesturesEnabled,
+    sheetGesturesEnabled = dismissEnabled,
     shape = shape,
     containerColor = containerColor,
     contentColor = contentColor,
     dragHandle = null,
-    contentWindowInsets = { CenteredSheetInsets(WindowInsets.safeDrawing) },
-    properties = properties,
+    // Material consumes top insets based on its moving offset. Reserve the top in the
+    // height limit instead, so the entrance doesn't repeatedly resize the sheet.
+    contentWindowInsets = {
+      CenteredSheetInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+    },
+    properties = ModalBottomSheetProperties(
+      shouldDismissOnBackPress = dismissEnabled,
+      shouldDismissOnClickOutside = dismissEnabled,
+    ),
   ) {
     ResponsiveSheetContent(
       window = window,
+      reservedTopInsets = WindowInsets.safeDrawing,
       modifier = if (window.television) {
         Modifier.padding(vertical = TvSafeArea.Vertical)
       } else {
@@ -225,7 +243,9 @@ internal fun ResponsiveBottomSheet(
       SheetOpeningHandle(
         resize = resize,
         showDragHandle = showDragHandle && !window.television,
-        gesturesEnabled = sheetGesturesEnabled,
+        gesturesEnabled = dismissEnabled,
+        resizeEnabled = dismissEnabled && sheetState.currentValue == SheetValue.Expanded &&
+          sheetState.targetValue == SheetValue.Expanded && !sheetState.isAnimationRunning,
       )
       content()
     }

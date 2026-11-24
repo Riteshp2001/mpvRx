@@ -32,10 +32,8 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -100,11 +98,6 @@ internal fun ConnectionEditorSheet(
   val pathFocusRequester = remember { FocusRequester() }
   val usernameFocusRequester = remember { FocusRequester() }
   val passwordFocusRequester = remember { FocusRequester() }
-  val sheetState =
-    rememberBottomSheetState(
-      initialValue = SheetValue.Hidden,
-      enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
   val parsedPort = port.toIntOrNull()
   val isPortValid = parsedPort != null && parsedPort in MIN_PORT..MAX_PORT
   val address = remember(host, protocol, useHttps) {
@@ -157,7 +150,6 @@ internal fun ConnectionEditorSheet(
   ResponsiveBottomSheet(
     onDismissRequest = dismiss,
     modifier = modifier,
-    sheetState = sheetState,
     containerColor = MaterialTheme.colorScheme.surfaceContainer,
   ) {
     Column(

@@ -31,7 +31,7 @@ class AudioPreferences(
   val backgroundPlaybackBehavior = preferenceStore.getEnum("background_playback_behavior", BackgroundPlaybackBehavior.Remember)
   private val videoBackgroundPlaybackIds = preferenceStore.getStringSet("background_playback_video_ids", emptySet())
   private val videoBackgroundPlaybackLock = Any()
-  /** Audio-player-only background playback; video retains [backgroundPlayback]. */
+  /** Enabled by default and configurable in Audio settings; video retains [backgroundPlayback]. */
   val audioBackgroundPlayback = preferenceStore.getBoolean("audio_player_background_playback", true)
   val volumeNormalization = preferenceStore.getBoolean("audio_volume_normalization", false)
   val spatialAudio = preferenceStore.getBoolean("audio_spatial_audio", false)
