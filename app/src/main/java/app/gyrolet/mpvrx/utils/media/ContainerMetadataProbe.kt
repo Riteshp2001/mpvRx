@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.DataReader
 import androidx.media3.common.Format
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceUtil
 import androidx.media3.datasource.DataSpec
@@ -22,11 +23,13 @@ import androidx.media3.extractor.ExtractorOutput
 import androidx.media3.extractor.PositionHolder
 import androidx.media3.extractor.SeekMap
 import androidx.media3.extractor.TrackOutput
+import androidx.media3.extractor.mkv.MatroskaExtractor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.io.EOFException
 import java.io.IOException
+import java.util.Locale
 
 /** Container metadata Android's extractors omit, without loading native MediaInfo or decoding video. */
 @OptIn(UnstableApi::class)
@@ -35,17 +38,27 @@ internal object ContainerMetadataProbe {
   private const val MAX_PROBE_BYTES = 16 * 1024 * 1024
   private const val MAX_SEEKS = 8
   private const val FPS_SAMPLE_COUNT = 48
+  private const val MAX_SCRIPT_HEADER_BYTES = 64 * 1024
 
   suspend fun read(
     context: Context,
     uri: Uri,
     readFrameRate: Boolean,
+    readDuration: Boolean = false,
   ): MediaInfoOps.VideoMetadata? {
     val coroutineContext = currentCoroutineContext()
     val dataSource = DefaultDataSource.Factory(context).createDataSource()
-    val extractors = DefaultExtractorsFactory().setTextTrackTranscodingEnabled(false).createExtractors()
+    val extractors =
+      DefaultExtractorsFactory()
+        .setTextTrackTranscodingEnabled(false)
+        // Matroska otherwise holds every track format back until it has read the Cues index, which
+        // usually sits behind all clusters and, in typical anime releases, behind megabytes of
+        // attached fonts. The byte budget ran out first, so subtitle tracks had no format at all.
+        .setMatroskaExtractorFlags(MatroskaExtractor.FLAG_DISABLE_SEEK_FOR_CUES)
+        .createExtractors()
     val tracks = linkedMapOf<Int, MetadataTrack>()
     var tracksEnded = false
+    var seekMapReceived = false
     var durationMs = 0L
     var sizeBytes = 0L
     var bytesRead = 0
@@ -87,12 +100,14 @@ internal object ContainerMetadataProbe {
         }
 
         override fun seekMap(seekMap: SeekMap) {
+          seekMapReceived = true
           durationMs = seekMap.durationUs.takeIf { it > 0L }?.div(1000L) ?: 0L
         }
       })
       val seekPosition = PositionHolder()
       var seeks = 0
-      while (!tracksEnded || tracks.values.any { it.needsSamples }) {
+      // Matroska reports its duration with the seek map at the first cluster, after the tracks.
+      while (!tracksEnded || (readDuration && !seekMapReceived) || tracks.values.any { it.needsSamples }) {
         coroutineContext.ensureActive()
         when (extractor.read(input, seekPosition)) {
           Extractor.RESULT_END_OF_INPUT -> break
@@ -126,12 +141,26 @@ internal object ContainerMetadataProbe {
       height = video?.trackFormat?.height?.coerceAtLeast(0) ?: 0,
       fps = video?.frameRate ?: 0f,
       hasEmbeddedSubtitles = textTracks.isNotEmpty(),
-      subtitleCodec = textTracks.map { track ->
-        MediaInfoOps.subtitleLabel(track.trackFormat?.sampleMimeType.orEmpty()).ifBlank { "TEXT" }
-      }.distinct().joinToString(" "),
+      subtitleCodec = textTracks.map { track -> subtitleLabel(track.trackFormat) }.distinct().joinToString(" "),
       videoCodec = codec.label,
       videoCodecMimeType = codec.mimeType,
     )
+  }
+
+  private fun subtitleLabel(format: Format?): String {
+    val mime = format?.sampleMimeType?.lowercase(Locale.ROOT).orEmpty()
+    // Media3 reports ASS and SSA alike as text/x-ssa; the script header tells them apart.
+    if (mime == MimeTypes.TEXT_SSA) return if (isPlainSsa(format)) "SSA" else "ASS"
+    return MediaInfoOps.subtitleLabel(mime).ifBlank { MediaInfoOps.GENERIC_SUBTITLE_LABEL }
+  }
+
+  /** Only a v4 (not v4+) script header makes a track SSA; nearly every script today is ASS. */
+  private fun isPlainSsa(format: Format?): Boolean {
+    // Matroska passes its CodecPrivate, the script header, after Media3's own dialogue format line.
+    val header = format?.initializationData?.getOrNull(1) ?: return false
+    val text = String(header, 0, minOf(header.size, MAX_SCRIPT_HEADER_BYTES), Charsets.UTF_8).lowercase(Locale.ROOT)
+    if ("[v4+ styles]" in text || "v4.00+" in text) return false
+    return "[v4 styles]" in text || "v4.00" in text
   }
 
   private class MetadataTrack(

@@ -32,7 +32,11 @@ object MediaInfoOps {
   // parse the same container during a session. The persistent repository can still provide the
   // cross-process cache; this layer catches direct callers that previously bypassed it.
   private const val TAG = "MediaInfoOps"
-  internal const val BASIC_METADATA_VERSION = 2
+  // 3: Matroska subtitle formats are read before the Cues index, ASS and SSA are told apart, and
+  // PGS is named PGS. Older cached labels (often a bare TEXT) are probed again.
+  internal const val BASIC_METADATA_VERSION = 3
+  // A subtitle track whose format is unknown. Any specific label for the file replaces it.
+  internal const val GENERIC_SUBTITLE_LABEL = "TEXT"
   private const val BASIC_METADATA_CACHE_ENTRIES = 512
   private val basicMetadataCache = LruCache<String, VideoMetadata>(BASIC_METADATA_CACHE_ENTRIES)
   private val videoCodecCache = LruCache<String, VideoCodecDescriptor>(BASIC_METADATA_CACHE_ENTRIES)
@@ -328,8 +332,15 @@ object MediaInfoOps {
           ?: throw IOException("Could not open media file")
         val isVideo = metadata.width > 0 || metadata.height > 0 || FileTypeUtils.isVideoFile(File(fileName))
         val missingFrameRate = !metadata.fps.isFinite() || metadata.fps <= 0f
-        val container = if (isVideo && (missingFrameRate || !metadata.hasEmbeddedSubtitles)) {
-          ContainerMetadataProbe.read(context, uri, readFrameRate = missingFrameRate)
+        // Android's extractors skip most subtitle tracks (all of them in Matroska) and name others
+        // only generically, so the container probe also runs unless every track already has a name.
+        val container = if (isVideo && (missingFrameRate || !hasSpecificSubtitleLabels(metadata.subtitleCodec))) {
+          ContainerMetadataProbe.read(
+            context,
+            uri,
+            readFrameRate = missingFrameRate,
+            readDuration = metadata.durationMs <= 0L,
+          )
         } else null
         if (container == null) metadata else metadata.copy(
           sizeBytes = metadata.sizeBytes.takeIf { it > 0L } ?: container.sizeBytes,
@@ -338,8 +349,7 @@ object MediaInfoOps {
           height = metadata.height.takeIf { it > 0 } ?: container.height,
           fps = metadata.fps.takeIf { it.isFinite() && it > 0f } ?: container.fps,
           hasEmbeddedSubtitles = metadata.hasEmbeddedSubtitles || container.hasEmbeddedSubtitles,
-          subtitleCodec = (metadata.subtitleCodec.split(" ") + container.subtitleCodec.split(" "))
-            .filter(String::isNotBlank).distinct().joinToString(" "),
+          subtitleCodec = mergeSubtitleLabels(metadata.subtitleCodec, container.subtitleCodec),
           videoCodec = metadata.videoCodec.ifBlank { container.videoCodec },
           videoCodecMimeType = metadata.videoCodecMimeType.ifBlank { container.videoCodecMimeType },
         )
@@ -415,12 +425,12 @@ object MediaInfoOps {
 
   internal fun subtitleLabel(mime: String): String =
     when {
-      mime.contains("pgs") || mime.contains("hdmv") -> "SUP"
+      mime.contains("pgs") || mime.contains("hdmv") -> "PGS"
       mime.contains("subrip") || mime.contains("srt") -> "SRT"
       mime.contains("advanced substation alpha") || mime.contains("ass") -> "ASS"
       mime.contains("substation alpha") || mime.contains("ssa") -> "SSA"
       mime.contains("vtt") -> "VTT"
-      mime.contains("tx3g") || mime.contains("quicktime-text") -> "TX3G"
+      mime.contains("tx3g") || mime.contains("quicktime-text") || mime.contains("3gpp-tt") -> "TX3G"
       mime.contains("vobsub") || mime.contains("microdvd") -> "SUB"
       mime.contains("idx") -> "IDX"
       mime.contains("dvb") -> "DVB"
@@ -429,9 +439,24 @@ object MediaInfoOps {
       mime.contains("ttml") || mime.contains("dfxp") || mime.contains("stpp") -> "TTML"
       mime.contains("sbv") -> "SBV"
       mime.contains("ebu-stl") -> "STL"
-      mime.contains("subtitle") || mime.contains("subtitles") || mime.startsWith("text/") -> "TEXT"
+      mime.contains("subtitle") || mime.contains("subtitles") || mime.startsWith("text/") -> GENERIC_SUBTITLE_LABEL
       else -> ""
     }
+
+  /** True when [labels] name at least one subtitle track, and none of them only generically. */
+  private fun hasSpecificSubtitleLabels(labels: String): Boolean {
+    val names = labels.split(" ").filter(String::isNotBlank)
+    return names.isNotEmpty() && names.none { it == GENERIC_SUBTITLE_LABEL }
+  }
+
+  /**
+   * Joins the subtitle labels of both probes. A generic label goes once any track has a specific
+   * one: it is usually the same track, seen by a probe that could not tell its format.
+   */
+  internal fun mergeSubtitleLabels(vararg labels: String): String {
+    val names = labels.flatMap { it.split(" ") }.filter(String::isNotBlank).distinct()
+    return names.filter { it != GENERIC_SUBTITLE_LABEL }.ifEmpty { names }.joinToString(" ")
+  }
 
   private fun platformProbe(context: Context, uri: Uri): PlatformProbe? {
     // Keep the descriptor owned by ParcelFileDescriptor. Never detach/close a raw
