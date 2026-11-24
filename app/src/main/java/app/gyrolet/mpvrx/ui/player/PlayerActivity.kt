@@ -6668,16 +6668,20 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
       positionRestoreOverride ?: scriptRestore ?: snapshotJump ?: AudiobookPlayback.positionForLoad(item, intent)
     val restoreSavedPosition = playerPreferences.savePositionOnQuit.get()
     val resumeMode = playerPreferences.resumePlaybackMode.get()
+    // A video that was never played has nothing to restore, so it must not start held paused
+    // behind the restore work that runs after FILE_LOADED.
+    val savedState =
+      if (effectivePositionOverride == null && restoreSavedPosition && !item.isDefinitelyAudioOnly()) {
+        resolvePlaybackState(item.stableId, legacyMediaIdentifier)
+      } else {
+        null
+      }
     // Only Always Resume may use the fast load-local start option. Never starts at zero.
     val initialPositionSeconds =
       if (effectivePositionOverride != null) {
         effectivePositionOverride.positionSeconds?.takeIf { it.isFinite() && it > 0.0 }
-      } else if (
-        restoreSavedPosition &&
-        resumeMode == ResumePlaybackMode.Always &&
-        !item.isDefinitelyAudioOnly()
-      ) {
-        resolvePlaybackState(item.stableId, legacyMediaIdentifier)
+      } else if (resumeMode == ResumePlaybackMode.Always) {
+        savedState
           ?.lastPosition
           ?.takeIf { it > 3 }
           ?.toDouble()
@@ -6730,7 +6734,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     val generation =
       PlaybackSession.load(
           item = item,
-          restoreSavedPosition = restoreSavedPosition,
+          restoreSavedPosition = restoreSavedPosition && savedState != null,
           positionRestoreOverride = effectivePositionOverride,
           initialPositionSeconds = initialPositionSeconds,
           flattenEditions = requiresYtdlp && !MpvConfigOverridePolicy.isOwnedByMpvConf("flatten-editions"),
