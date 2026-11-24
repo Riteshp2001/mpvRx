@@ -101,8 +101,12 @@ class PlaybackProperty<T> internal constructor(
   private val reader: (String) -> T?,
 ) {
   private val states = ConcurrentHashMap<String, MutableStateFlow<T?>>()
+  // One read-only view per property. Compose keys collection on the flow instance, so handing out a
+  // new wrapper on every read restarted the collector each time the reading composable recomposed.
+  private val views = ConcurrentHashMap<String, StateFlow<T?>>()
 
   operator fun get(property: String): StateFlow<T?> {
+    views[property]?.let { return it }
     val candidate = MutableStateFlow<T?>(null)
     val existing = states.putIfAbsent(property, candidate)
     val state = existing ?: candidate
@@ -110,7 +114,7 @@ class PlaybackProperty<T> internal constructor(
       PlaybackSession.observeProperty(property, format)
       state.value = reader(property)
     }
-    return state.asStateFlow()
+    return views.getOrPut(property) { state.asStateFlow() }
   }
 
   internal fun emit(
@@ -1768,9 +1772,19 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   fun commandForGeneration(
     expectedGeneration: Long,
     vararg command: String,
+  ): Boolean = commandForGenerationIf(expectedGeneration, { true }, *command)
+
+  /**
+   * [commandForGeneration] for a request that a newer one can replace. [isCurrent] runs under the
+   * native lock, so a command another thread issues after replacing the request always lands last.
+   */
+  fun commandForGenerationIf(
+    expectedGeneration: Long,
+    isCurrent: () -> Boolean,
+    vararg command: String,
   ): Boolean =
     nativeLock.withLock {
-      if (!initialized || _state.value.generation != expectedGeneration) return@withLock false
+      if (!initialized || _state.value.generation != expectedGeneration || !isCurrent()) return@withLock false
       if (MpvConfigOverridePolicy.shouldSuppress(command)) return@withLock true
       val preparedCommand = prepareSeekCommandLocked(command)
       if (!handleAmbientShaderCommandLocked(preparedCommand)) MPVLib.command(*preparedCommand)

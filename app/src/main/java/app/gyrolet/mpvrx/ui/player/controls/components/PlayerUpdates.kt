@@ -46,6 +46,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -79,6 +80,7 @@ import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.Capsule
 import `is`.xyz.mpv.Utils
+import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.roundToInt
 import java.util.Locale
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
@@ -440,5 +442,38 @@ fun SeekPlayerUpdate(
         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
       )
     }
+  }
+}
+
+/**
+ * The swipe-seek chip. It reads the swipe's live target itself and recomposes only when a shown
+ * second changes, so a fast swipe never re-runs the player controls around it.
+ */
+@Composable
+fun HorizontalSeekPlayerUpdate(
+  startPosition: Float,
+  position: StateFlow<Float>,
+  modifier: Modifier = Modifier,
+) {
+  val positionState = position.collectAsState()
+  val seconds by remember { derivedStateOf { positionState.value.toInt() } }
+  val deltaSeconds by remember(startPosition) { derivedStateOf { (positionState.value - startPosition).toInt() } }
+  val currentTime = remember(seconds) { formatSeekTime(seconds) }
+  val seekDelta =
+    remember(deltaSeconds) {
+      if (deltaSeconds >= 0) "+${formatSeekTime(deltaSeconds)}" else "-${formatSeekTime(-deltaSeconds)}"
+    }
+  SeekPlayerUpdate(currentTime = currentTime, seekDelta = "[$seekDelta]", modifier = modifier)
+}
+
+private fun formatSeekTime(seconds: Int): String {
+  val absSeconds = kotlin.math.abs(seconds)
+  val hours = absSeconds / 3600
+  val minutes = (absSeconds % 3600) / 60
+  val secs = absSeconds % 60
+  return if (hours > 0) {
+    String.format("%d:%02d:%02d", hours, minutes, secs)
+  } else {
+    String.format("%02d:%02d", minutes, secs)
   }
 }

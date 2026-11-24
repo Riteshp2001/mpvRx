@@ -75,6 +75,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -111,6 +112,8 @@ class MediaPlaybackService :
     private const val PLAYBACK_STATE_SAVE_INTERVAL_MS = 5000L
     private const val PROGRESS_NOTIFICATION_UPDATE_INTERVAL_MS = 2000L
     private const val MEDIA_NOTIFICATION_UPDATE_INTERVAL_MS = 1000L
+    // Scrubbing jumps the position on every step. Jumps republish at most this often, the last one late.
+    private const val POSITION_JUMP_PUBLISH_INTERVAL_MS = 500L
     private const val MEDIA_SESSION_DRIFT_TOLERANCE_SECONDS = 2.0
     private const val MAX_MEDIA_SESSION_QUEUE_ITEMS = 200
     private const val VIDEO_CONTENT_INTENT_REQUEST_CODE = 1100
@@ -346,6 +349,8 @@ class MediaPlaybackService :
   private var lastThumbnailSource: WeakReference<Bitmap>? = null
   private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
   private var playbackStateSaveJob: Job? = null
+  // Only touched from the libmpv event thread.
+  private var positionJumpPublishJob: Job? = null
   private var favoriteStateJob: Job? = null
   private var favoriteActionJob: Job? = null
   private val mediaFavoriteActionMutex = Mutex()
@@ -2023,7 +2028,15 @@ class MediaPlaybackService :
         val elapsedSinceUpdate = (currentTime - lastNotificationUpdateTime).coerceAtLeast(0L)
         val expectedAdvance = elapsedSinceUpdate / 1000.0 * playbackSpeed.coerceAtLeast(0f)
         val positionJump = abs(currentPositionSeconds - lastPublishedPositionSeconds) > expectedAdvance + 3.0
+        if (positionJump && elapsedSinceUpdate < POSITION_JUMP_PUBLISH_INTERVAL_MS) {
+          // A scrub jumps on every step. Republishing each jump rebuilt the notification and the
+          // MediaSession state on the main thread many times a second, right while the finger moved.
+          schedulePositionJumpPublish(POSITION_JUMP_PUBLISH_INTERVAL_MS - elapsedSinceUpdate)
+          return
+        }
         if (elapsedSinceUpdate >= updateInterval || positionJump) {
+          positionJumpPublishJob?.cancel()
+          positionJumpPublishJob = null
           lastNotificationUpdateTime = currentTime
           lastPublishedPositionSeconds = currentPositionSeconds
           // Android 13+ draws Media-style progress from the MediaSession and advances it itself.
@@ -2124,6 +2137,20 @@ class MediaPlaybackService :
 
     if (state != null && detachedTrackSelector.applySavedAudioSelection(state, generation)) return
     detachedTrackSelector.applyAutomaticAudioSelection(generation)
+  }
+
+  /** Publishes the newest position once the jump window closes, so a scrub's final spot still lands. */
+  private fun schedulePositionJumpPublish(delayMillis: Long) {
+    if (positionJumpPublishJob?.isActive == true) return
+    positionJumpPublishJob =
+      serviceScope.launch {
+        delay(delayMillis)
+        lastNotificationUpdateTime = SystemClock.elapsedRealtime()
+        lastPublishedPositionSeconds = currentPositionSeconds
+        schedulePlaybackStateSave()
+        updateMediaSessionPlaybackState()
+        updateNotification()
+      }
   }
 
   private fun schedulePlaybackStateSave(force: Boolean = false) {
