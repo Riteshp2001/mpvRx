@@ -46,6 +46,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BackgroundPlaybackBehavior
+import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -77,6 +78,7 @@ object PlayerPreferencesScreen : ScrollableSettingsScreen {
     val context = LocalContext.current
     val resources = LocalResources.current
     val preferences = koinInject<PlayerPreferences>()
+    val browserPreferences = koinInject<BrowserPreferences>()
     val configOwnedOptions = currentMpvConfigOverrideOptions()
     val audioPreferences = koinInject<AudioPreferences>()
     val backgroundPlaybackBehavior by audioPreferences.backgroundPlaybackBehavior.collectAsState()
@@ -186,6 +188,34 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                 onValueChange = preferences.savePositionOnQuit::set,
                 title = { Text(stringResource(R.string.pref_player_save_position_on_quit)) },
               )
+
+              PreferenceDivider()
+
+              val watchedThreshold by browserPreferences.watchedThreshold.collectAsState()
+              val watchedThresholdPercent = watchedThreshold.coerceIn(0, 100)
+              ExpressivePreferenceItem {
+              SliderPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_player_watched_threshold_title),
+                value = watchedThresholdPercent.toFloat(),
+                onValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt().coerceIn(0, 100)) },
+                title = { Text(stringResource(R.string.pref_player_watched_threshold_title)) },
+                summary = {
+                  Text(
+                    // 0 keeps manual marks but never marks a video as watched from its progress.
+                    if (watchedThresholdPercent == 0) {
+                      stringResource(R.string.pref_player_watched_threshold_summary_never)
+                    } else {
+                      stringResource(R.string.pref_player_watched_threshold_summary, watchedThresholdPercent)
+                    },
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+                valueRange = 0f..100f,
+                valueSteps = 19,
+                onSliderValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt().coerceIn(0, 100)) },
+                sliderValue = watchedThresholdPercent.toFloat(),
+              )
+              }
 
               PreferenceDivider()
 

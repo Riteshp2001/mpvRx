@@ -194,6 +194,9 @@
   <string name="pref_player_orientation_reverse_landscape">أفقي معكوس</string>
   <string name="pref_player_orientation_sensor_landscape">أفقي حسب المستشعر</string>
   <string name="pref_player_save_position_on_quit">حفظ الموضع عند الخروج</string>
+  <string name="pref_player_watched_threshold_title">حد المشاهدة</string>
+  <string name="pref_player_watched_threshold_summary">وضع علامة تمت المشاهدة عند وصول التشغيل إلى %d%%</string>
+  <string name="pref_player_watched_threshold_summary_never">عدم وضع علامة تمت المشاهدة تلقائيًا</string>
   <string name="pref_player_double_tap_seek_duration">مدة التقديم بالنقر</string>
   <string name="pref_player_custom_skip_duration_title">مدة تخطٍ مخصصة</string>
   <string name="pref_player_custom_skip_duration_summary">المدة المطلوب تخطيها للأمام بزر التخطي المخصص</string>

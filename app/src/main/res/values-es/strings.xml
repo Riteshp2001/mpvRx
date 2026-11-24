@@ -194,6 +194,9 @@
   <string name="pref_player_orientation_reverse_landscape">Horizontal invertida</string>
   <string name="pref_player_orientation_sensor_landscape">Horizontal por sensor</string>
   <string name="pref_player_save_position_on_quit">Guardar posición al salir</string>
+  <string name="pref_player_watched_threshold_title">Umbral de visto</string>
+  <string name="pref_player_watched_threshold_summary">Marcar el vídeo como visto cuando la reproducción alcance el %d%%</string>
+  <string name="pref_player_watched_threshold_summary_never">Nunca marcar como visto automáticamente</string>
   <string name="pref_player_double_tap_seek_duration">Duración del salto por toque</string>
   <string name="pref_player_custom_skip_duration_title">Duración de salto personalizada</string>
   <string name="pref_player_custom_skip_duration_summary">Duración del avance con el botón de salto personalizado</string>

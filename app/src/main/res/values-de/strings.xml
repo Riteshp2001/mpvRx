@@ -194,6 +194,9 @@
   <string name="pref_player_orientation_reverse_landscape">Umgekehrtes Querformat</string>
   <string name="pref_player_orientation_sensor_landscape">Querformat per Sensor</string>
   <string name="pref_player_save_position_on_quit">Position beim Beenden speichern</string>
+  <string name="pref_player_watched_threshold_title">Gesehen-Schwellenwert</string>
+  <string name="pref_player_watched_threshold_summary">Video als gesehen markieren, wenn die Wiedergabe %d%% erreicht</string>
+  <string name="pref_player_watched_threshold_summary_never">Nie automatisch als gesehen markieren</string>
   <string name="pref_player_double_tap_seek_duration">Sprungdauer beim Tippen</string>
   <string name="pref_player_custom_skip_duration_title">Benutzerdefinierte Sprungdauer</string>
   <string name="pref_player_custom_skip_duration_summary">Dauer für den Vorwärtssprung mit der benutzerdefinierten Sprungtaste</string>

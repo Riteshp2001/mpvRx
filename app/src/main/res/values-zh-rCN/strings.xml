@@ -194,6 +194,9 @@
   <string name="pref_player_orientation_reverse_landscape">反向横屏</string>
   <string name="pref_player_orientation_sensor_landscape">传感器横屏</string>
   <string name="pref_player_save_position_on_quit">退出时保存位置</string>
+  <string name="pref_player_watched_threshold_title">已观看阈值</string>
+  <string name="pref_player_watched_threshold_summary">播放进度达到 %d%% 时将视频标记为已观看</string>
+  <string name="pref_player_watched_threshold_summary_never">永不自动标记为已观看</string>
   <string name="pref_player_double_tap_seek_duration">点击快进时长</string>
   <string name="pref_player_custom_skip_duration_title">自定义跳过时长</string>
   <string name="pref_player_custom_skip_duration_summary">自定义跳过按钮向前跳过的时长</string>

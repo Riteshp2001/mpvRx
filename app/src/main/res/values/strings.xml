@@ -267,6 +267,9 @@
   <string name="pref_player_orientation_reverse_landscape">Reverse landscape</string>
   <string name="pref_player_orientation_sensor_landscape">Sensor landscape</string>
   <string name="pref_player_save_position_on_quit">Save position on quit</string>
+  <string name="pref_player_watched_threshold_title">Watched threshold</string>
+  <string name="pref_player_watched_threshold_summary">Mark video as watched when playback reaches %d%%</string>
+  <string name="pref_player_watched_threshold_summary_never">Never mark videos as watched automatically</string>
   <string name="pref_player_resume_playback_title">Resume playback</string>
   <string name="pref_player_resume_mode_always">Always resume</string>
   <string name="pref_player_resume_mode_always_summary">Automatically resume from last saved position</string>

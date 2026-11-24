@@ -194,6 +194,9 @@
   <string name="pref_player_orientation_reverse_landscape">Paisagem invertida</string>
   <string name="pref_player_orientation_sensor_landscape">Paisagem por sensor</string>
   <string name="pref_player_save_position_on_quit">Salvar posição ao sair</string>
+  <string name="pref_player_watched_threshold_title">Limite de assistido</string>
+  <string name="pref_player_watched_threshold_summary">Marcar o vídeo como assistido quando a reprodução atingir %d%%</string>
+  <string name="pref_player_watched_threshold_summary_never">Nunca marcar como assistido automaticamente</string>
   <string name="pref_player_double_tap_seek_duration">Duração da busca por toque</string>
   <string name="pref_player_custom_skip_duration_title">Duração de salto personalizada</string>
   <string name="pref_player_custom_skip_duration_summary">Duração do avanço pelo botão de salto personalizado</string>

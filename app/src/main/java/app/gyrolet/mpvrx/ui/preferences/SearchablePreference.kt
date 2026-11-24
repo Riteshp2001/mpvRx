@@ -335,6 +335,14 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_player_watched_threshold_title,
+          keywords = listOf("watched", "threshold", "completed", "finished", "mark", "progress", "percent"),
+          category = "Player",
+          screen = PlayerPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_player_close_after_eof,
           keywords = listOf("close", "end", "playback", "quit", "finish"),
           category = "Player",

@@ -31,6 +31,8 @@ internal data class PlayerSettingAvailability(
 
 private val livePlayerSettings = setOf(
   R.string.pref_player_save_position_on_quit,
+  // Read whenever the current video's progress is saved.
+  R.string.pref_player_watched_threshold_title,
   R.string.pref_player_close_after_eof,
   R.string.pref_video_background_playback_title,
   R.string.pref_background_playback_behavior,

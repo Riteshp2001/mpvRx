@@ -194,6 +194,9 @@
   <string name="pref_player_orientation_reverse_landscape">Обратная альбомная</string>
   <string name="pref_player_orientation_sensor_landscape">Альбомная по датчику</string>
   <string name="pref_player_save_position_on_quit">Сохранять позицию при выходе</string>
+  <string name="pref_player_watched_threshold_title">Порог просмотра</string>
+  <string name="pref_player_watched_threshold_summary">Отмечать видео как просмотренное при достижении %d%% воспроизведения</string>
+  <string name="pref_player_watched_threshold_summary_never">Никогда не отмечать как просмотренное автоматически</string>
   <string name="pref_player_double_tap_seek_duration">Длительность перемотки касанием</string>
   <string name="pref_player_custom_skip_duration_title">Пользовательская длительность пропуска</string>
   <string name="pref_player_custom_skip_duration_summary">Длительность перемотки вперёд пользовательской кнопкой пропуска</string>

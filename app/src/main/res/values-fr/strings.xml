@@ -194,6 +194,9 @@
   <string name="pref_player_orientation_reverse_landscape">Paysage inversé</string>
   <string name="pref_player_orientation_sensor_landscape">Paysage par capteur</string>
   <string name="pref_player_save_position_on_quit">Enregistrer la position en quittant</string>
+  <string name="pref_player_watched_threshold_title">Seuil de visionnage</string>
+  <string name="pref_player_watched_threshold_summary">Marquer la vidéo comme vue lorsque la lecture atteint %d%%</string>
+  <string name="pref_player_watched_threshold_summary_never">Ne jamais marquer automatiquement comme vu</string>
   <string name="pref_player_double_tap_seek_duration">Durée du saut par appui</string>
   <string name="pref_player_custom_skip_duration_title">Durée de saut personnalisée</string>
   <string name="pref_player_custom_skip_duration_summary">Durée du saut vers l’avant avec le bouton de saut personnalisé</string>
