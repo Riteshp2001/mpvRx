@@ -2592,9 +2592,16 @@ fun AudioPlayerControls(
       val playbackControlsRow = @Composable {
         val seekable by PlaybackSession.propBoolean["seekable"].collectAsStateWithLifecycle()
         val canSeek = seekable == true && playbackState.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
-        val prevEnabled = if (isAudiobook) bookChapterIndex >= 0 else playlistModeEnabled
+        // The first track has no previous and the last no next, unless Repeat All wraps the queue
+        // (in shuffle, first and last follow the shuffle order). Matches the artwork swipe and the
+        // video player, which already stop at the ends.
+        val prevEnabled = if (isAudiobook) bookChapterIndex >= 0 else playlistModeEnabled && prevItem != null
         val nextEnabled =
-          if (isAudiobook) bookChapterIndex >= 0 && bookChapterIndex < chapters.lastIndex else playlistModeEnabled
+          if (isAudiobook) {
+            bookChapterIndex >= 0 && bookChapterIndex < chapters.lastIndex
+          } else {
+            playlistModeEnabled && nextItem != null
+          }
         val sideSize =
           when {
             isShortLandscape -> 42.dp
@@ -3707,6 +3714,8 @@ private fun ExpressiveTransportSideButton(
   val containerColor by animateColorAsState(
     targetValue =
       when {
+        // A disabled button dims as a whole, not just its icon.
+        !enabled -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.38f)
         active -> MaterialTheme.colorScheme.primaryContainer
         pressed -> MaterialTheme.colorScheme.secondaryContainer
         else -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f)
