@@ -1829,8 +1829,6 @@
   <string name="ytdlp_cookies_import_failed">Could not update cookies. Check file access and try again.</string>
   <string name="ytdlp_cookies_config_owned">mpv.conf or custom yt-dlp options control cookies. Update those options before retrying.</string>
   <string name="ui_aspect_ratio">Aspect Ratio</string>
-  <string name="ui_auto_crop_black_bars">Auto crop black bars</string>
-  <string name="ui_auto_crop_black_bars_summary">Sample a few frames and crop persistent encoded black bars.</string>
   <string name="ui_presets">Presets</string>
   <string name="ui_add_custom_ratio_e_g_16_9">Add Custom Ratio (e.g. 16:9)</string>
   <string name="ui_width">Width</string>

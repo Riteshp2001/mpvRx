@@ -74,7 +74,6 @@ class PlayerPreferences(
   val customAspectRatios = preferenceStore.getStringSet("custom_aspect_ratios", emptySet())
   val lastVideoAspect = preferenceStore.getEnum("last_video_aspect", VideoAspect.Fit)
   val lastCustomAspectRatio = preferenceStore.getFloat("last_custom_aspect_ratio", -1f)
-  val autoCropBlackBars = preferenceStore.getBoolean("auto_crop_black_bars", false)
 
   val defaultSpeed = preferenceStore.getFloat("default_speed", 1f)
   val speedPresets =
