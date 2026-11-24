@@ -1,20 +1,19 @@
 /*
  * SPDX-License-Identifier: AGPL-3.0-or-later
  *
- * TIDAL video album covers through the official TIDAL API
- * (https://developer.tidal.com), authenticated with the client credentials
- * the user registers there. The videos are streamed, not stored.
+ * TIDAL album covers through the public search endpoint TIDAL's embeddable player uses, the
+ * way BitChord reads them (https://github.com/kushagrasinghx/BitChord, GPL-3.0). No account
+ * or developer credentials are needed: a track search returns its album, whose `cover` and
+ * `videoCover` ids expand into fixed 1280px URLs on TIDAL's CDN.
  */
 
 package app.gyrolet.mpvrx.data.artwork
 
 import android.util.Log
 import app.gyrolet.mpvrx.network.awaitResponse
-import app.gyrolet.mpvrx.preferences.AudioPreferences
 import java.io.IOException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -28,21 +27,12 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.longOrNull
 import okhttp3.CookieJar
-import okhttp3.Credentials
-import okhttp3.FormBody
-import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-internal class TidalArtworkRepository(
-  client: OkHttpClient,
-  private val preferences: AudioPreferences,
-) : MotionArtworkProvider {
+internal class TidalArtworkRepository(client: OkHttpClient) : MotionArtworkProvider {
   private val http = client.newBuilder()
     .cookieJar(CookieJar.NO_COOKIES)
     .callTimeout(20, TimeUnit.SECONDS)
@@ -50,162 +40,116 @@ internal class TidalArtworkRepository(
     .build()
   private val json = Json { ignoreUnknownKeys = true }
   private val mutex = Mutex()
-  private data class Cached(val artwork: RemoteMotionArtwork?, val expiresAt: Long)
-  private data class Lookup(val artwork: RemoteMotionArtwork?)
+
+  /** One matched album; either id may be absent. [albumMatched] means it is the tagged release. */
+  private data class Album(val cover: String?, val videoCover: String?, val albumMatched: Boolean)
+  private data class Cached(val albums: List<Album>, val expiresAt: Long)
   private val cache = object : LinkedHashMap<MotionArtworkQuery, Cached>(16, 0.75f, true) {
     override fun removeEldestEntry(eldest: MutableMap.MutableEntry<MotionArtworkQuery, Cached>?): Boolean = size > 64
   }
-  private var credentialsHash = 0
-  private var token: String? = null
-  private var tokenExpiry = 0L
-  private var nextTokenAttempt = 0L
+  private var retryAfter = 0L
 
-  val isConfigured: Boolean
-    get() = preferences.tidalClientId.get().isNotBlank() && preferences.tidalClientSecret.get().isNotBlank()
+  override suspend fun find(query: MotionArtworkQuery): RemoteMotionArtwork? =
+    albums(query).firstNotNullOfOrNull { album -> album.videoCover?.let { videoUrl(it) } }
+      ?.let { RemoteMotionArtwork(MotionArtworkSource.TIDAL, listOf(MotionArtworkRendition(it, hls = false))) }
 
-  override suspend fun find(query: MotionArtworkQuery): RemoteMotionArtwork? = withContext(Dispatchers.IO) {
-    val clientId = preferences.tidalClientId.get().trim()
-    val clientSecret = preferences.tidalClientSecret.get().trim()
-    if (clientId.isEmpty() || clientSecret.isEmpty()) return@withContext null
+  /**
+   * The largest still cover TIDAL serves for [query], or null. It replaces the file's own
+   * cover, so with an album tag only that release's cover qualifies.
+   */
+  suspend fun findStillCover(query: MotionArtworkQuery): String? {
+    val albumTagged = !query.album.isNullOrBlank()
+    return albums(query).filter { !albumTagged || it.albumMatched }
+      .firstNotNullOfOrNull { album -> album.cover?.let { imageUrl(it) } }
+  }
+
+  /** Matching albums, best first; the search is shared by the still and video lookups. */
+  private suspend fun albums(query: MotionArtworkQuery): List<Album> = withContext(Dispatchers.IO) {
     mutex.withLock {
-      val hash = (clientId to clientSecret).hashCode()
-      if (hash != credentialsHash) {
-        credentialsHash = hash
-        cache.clear()
-        token = null
-        tokenExpiry = 0L
-        nextTokenAttempt = 0L
-      }
       val now = System.currentTimeMillis()
-      cache[query]?.takeIf { it.expiresAt > now }?.let { return@withLock it.artwork }
+      cache[query]?.takeIf { it.expiresAt > now }?.let { return@withLock it.albums }
+      if (now < retryAfter) return@withLock emptyList()
       try {
-        val result = withTimeoutOrNull(30_000L) {
-          val country = MotionArtworkMatching.storefront().uppercase(Locale.ROOT)
-          Lookup(search(query, country, clientId, clientSecret) ?: if (country != "US") search(query, "US", clientId, clientSecret) else null)
-        }
-        val artwork = result?.artwork
+        val albums = withTimeoutOrNull(30_000L) { search(query) }
         val lifetime = when {
-          result == null -> MINUTE
-          artwork == null -> 30 * MINUTE
+          albums == null -> MINUTE
+          albums.isEmpty() -> 30 * MINUTE
           else -> 6 * HOUR
         }
-        cache[query] = Cached(artwork, System.currentTimeMillis() + lifetime)
-        if (artwork == null) Log.d(TAG, "No TIDAL video cover available for this track")
-        artwork
+        cache[query] = Cached(albums.orEmpty(), System.currentTimeMillis() + lifetime)
+        if (albums.isNullOrEmpty()) Log.d(TAG, "No matching TIDAL album for this track")
+        albums.orEmpty()
       } catch (e: IOException) {
-        Log.w(TAG, "TIDAL video cover lookup failed; retaining the existing cover: ${e.message}")
-        cache[query] = Cached(null, System.currentTimeMillis() + MINUTE)
-        null
+        Log.w(TAG, "TIDAL artwork lookup failed; retaining the existing cover: ${e.message}")
+        cache[query] = Cached(emptyList(), System.currentTimeMillis() + MINUTE)
+        emptyList()
       } catch (e: SerializationException) {
         Log.w(TAG, "Unexpected TIDAL response; retaining the existing cover", e)
-        cache[query] = Cached(null, System.currentTimeMillis() + MINUTE)
-        null
+        cache[query] = Cached(emptyList(), System.currentTimeMillis() + MINUTE)
+        emptyList()
       }
     }
   }
 
-  private suspend fun search(query: MotionArtworkQuery, country: String, clientId: String, clientSecret: String): RemoteMotionArtwork? {
-    val term = "${query.artist} ${MotionArtworkMatching.cleanTitle(query.title)}"
-    val searchUrl = api().addPathSegment("searchResults").addPathSegment(term)
-      .addPathSegment("relationships").addPathSegment("tracks")
+  private suspend fun search(query: MotionArtworkQuery): List<Album> {
+    val title = MotionArtworkMatching.cleanTitle(query.title)
+    // The album is what makes the catalogue search land; a mistagged one must not hide the song.
+    val terms = listOfNotNull(
+      query.album?.takeIf { it.isNotBlank() }?.let { "$it ${query.artist} $title" },
+      "${query.artist} $title",
+    ).distinct()
+    val countries = listOf(MotionArtworkMatching.storefront().uppercase(Locale.ROOT), "US").distinct()
+    for (country in countries) {
+      for (term in terms) {
+        val albums = searchOnce(query, term, country) ?: break
+        if (albums.isNotEmpty()) return albums
+      }
+    }
+    return emptyList()
+  }
+
+  /** Null when [country] is not a TIDAL market, so the caller moves on to the next one. */
+  private suspend fun searchOnce(query: MotionArtworkQuery, term: String, country: String): List<Album>? {
+    val url = SEARCH.toHttpUrl().newBuilder()
+      .addQueryParameter("query", term)
+      .addQueryParameter("limit", "10")
+      .addQueryParameter("types", "TRACKS")
       .addQueryParameter("countryCode", country)
-      .addQueryParameter("explicitFilter", "INCLUDE")
-      .addQueryParameter("include", "tracks")
       .build()
-    val root = try {
-      request(searchUrl, clientId, clientSecret)
-    } catch (e: HttpFailure) {
-      // The device region may not be a TIDAL market; the caller retries with US.
-      if (country != "US" && (e.status == 400 || e.status == 404)) return null
-      throw e
-    }
-    val candidates = root.included("tracks").filter { track ->
-      val title = track.obj("attributes")?.text("title") ?: return@filter false
-      MotionArtworkMatching.titleMatches(query, title)
-    }.take(4)
-    val visitedAlbums = mutableSetOf<String>()
-    val ranked = candidates.mapNotNull { track ->
-      val id = track.text("id") ?: return@mapNotNull null
-      val trackUrl = api().addPathSegment("tracks").addPathSegment(id)
-        .addQueryParameter("countryCode", country)
-        .addQueryParameter("include", "albums")
-        .addQueryParameter("include", "artists")
-        .build()
-      val details = try {
-        request(trackUrl, clientId, clientSecret)
-      } catch (e: HttpFailure) {
-        if (e.status == 404) return@mapNotNull null
-        throw e
-      }
-      val title = details.obj("data")?.obj("attributes")?.text("title") ?: return@mapNotNull null
-      val artist = details.included("artists").mapNotNull { it.obj("attributes")?.text("name") }.joinToString(", ")
-      if (!MotionArtworkMatching.artistsMatch(query, artist, title)) return@mapNotNull null
-      val albums = details.included("albums").filter {
-        !it.obj("attributes")?.text("albumType").equals("COMPILATION", ignoreCase = true)
-      }
-      albums.mapNotNull { album ->
-        val albumId = album.text("id") ?: return@mapNotNull null
-        MotionArtworkMatching.score(query, album.obj("attributes")?.text("title")) to albumId
-      }.maxByOrNull { it.first }
-    }.sortedByDescending { it.first }
-    for ((_, albumId) in ranked) {
-      if (!visitedAlbums.add(albumId)) continue
-      val coverUrl = api().addPathSegment("albums").addPathSegment(albumId)
-        .addPathSegment("relationships").addPathSegment("coverArt")
-        .addQueryParameter("countryCode", country)
-        .addQueryParameter("include", "coverArt")
-        .build()
-      val cover = try {
-        request(coverUrl, clientId, clientSecret)
-      } catch (e: HttpFailure) {
-        if (e.status == 404) continue
-        throw e
-      }
-      videoCover(cover)?.let { return it }
-    }
-    return null
-  }
-
-  private suspend fun request(url: HttpUrl, clientId: String, clientSecret: String): JsonObject {
-    repeat(2) { attempt ->
-      val bearer = accessToken(clientId, clientSecret)
-      val request = Request.Builder().url(url)
-        .header("Authorization", "Bearer $bearer")
-        .header("Accept", "application/vnd.api+json")
-        .build()
-      try {
-        return json.parseToJsonElement(get(request)) as? JsonObject
-          ?: throw IOException("Unexpected TIDAL response")
-      } catch (e: HttpFailure) {
-        if (e.status != 401 || attempt > 0) throw e
-        token = null
-        tokenExpiry = 0L
-      }
-    }
-    throw IOException("TIDAL authorization unavailable")
-  }
-
-  private suspend fun accessToken(clientId: String, clientSecret: String): String {
-    val now = System.currentTimeMillis()
-    token?.takeIf { tokenExpiry > now + MINUTE }?.let { return it }
-    if (now < nextTokenAttempt) throw IOException("TIDAL authorization is backing off")
-    val request = Request.Builder().url(TOKEN_URL)
-      .header("Authorization", Credentials.basic(clientId, clientSecret))
-      .post(FormBody.Builder().add("grant_type", "client_credentials").build())
+    val request = Request.Builder().url(url)
+      .header("X-Tidal-Token", EMBED_TOKEN)
+      .header("User-Agent", USER_AGENT)
       .build()
     val body = try {
       get(request)
     } catch (e: HttpFailure) {
-      // Rejected credentials will not fix themselves; avoid hammering the auth server.
-      nextTokenAttempt = now + if (e.status == 400 || e.status == 401) 10 * MINUTE else MINUTE
-      throw IOException("TIDAL rejected the client credentials (HTTP ${e.status})")
+      when (e.status) {
+        400, 404 -> return if (country != "US") null else emptyList()
+        // A rejected embed token will not recover by itself; stop asking for a while.
+        401, 403 -> retryAfter = System.currentTimeMillis() + 30 * MINUTE
+      }
+      throw e
     }
-    val root = json.parseToJsonElement(body) as? JsonObject ?: throw IOException("Unexpected TIDAL token response")
-    val access = root.text("access_token")?.takeIf(String::isNotBlank) ?: throw IOException("TIDAL token response had no token")
-    val expiresIn = (root["expires_in"] as? JsonPrimitive)?.longOrNull ?: 3600L
-    token = access
-    tokenExpiry = now + expiresIn * 1000L
-    return access
+    val root = json.parseToJsonElement(body) as? JsonObject ?: throw IOException("Unexpected TIDAL response")
+    // The response has a section per result type even when one was asked for; name it.
+    val items = (root.obj("tracks")?.get("items") as? JsonArray).orEmpty()
+    return items.mapNotNull { element ->
+      val track = element as? JsonObject ?: return@mapNotNull null
+      val trackTitle = track.text("title") ?: return@mapNotNull null
+      if (!MotionArtworkMatching.titleMatches(query, trackTitle)) return@mapNotNull null
+      val artists = (track["artists"] as? JsonArray).orEmpty()
+        .mapNotNull { (it as? JsonObject)?.text("name") }
+        .joinToString(", ")
+      if (!MotionArtworkMatching.artistsMatch(query, artists, trackTitle)) return@mapNotNull null
+      val album = track.obj("album") ?: return@mapNotNull null
+      val albumTitle = album.text("title")
+      val match = Album(
+        cover = album.text("cover"),
+        videoCover = album.text("videoCover"),
+        albumMatched = MotionArtworkMatching.albumMatches(query, albumTitle),
+      )
+      MotionArtworkMatching.score(query, albumTitle) to match
+    }.sortedByDescending { it.first }.map { it.second }.distinct()
   }
 
   private suspend fun get(request: Request): String =
@@ -225,35 +169,23 @@ internal class TidalArtworkRepository(
     private const val MINUTE = 60_000L
     private const val HOUR = 60 * MINUTE
     private const val RESPONSE_LIMIT = 2 * 1024 * 1024
-    private const val TOKEN_URL = "https://auth.tidal.com/v1/oauth2/token"
-    private const val API = "https://openapi.tidal.com/v2"
-    private const val PREFERRED_SIZE = 720
+    private const val SEARCH = "https://api.tidal.com/v1/search"
 
-    private fun api(): HttpUrl.Builder = API.toHttpUrl().newBuilder()
+    /** The read-only token TIDAL's public embed player ships; no account involved. */
+    private const val EMBED_TOKEN = "vNVdglQOjFJJGG2U"
+    private const val USER_AGENT =
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    private val RESOURCE_ID = Regex("[0-9A-Za-z]+(?:-[0-9A-Za-z]+){4}")
 
-    /** Video renditions of an album's cover art, closest to the decode size first. */
-    fun videoCover(root: JsonObject): RemoteMotionArtwork? {
-      val renditions = root.included("artworks")
-        .filter { it.obj("attributes")?.text("mediaType").equals("VIDEO", ignoreCase = true) }
-        .flatMap { (it.obj("attributes")?.get("files") as? JsonArray).orEmpty() }
-        .mapNotNull { element ->
-          val file = element as? JsonObject ?: return@mapNotNull null
-          val href = file.text("href") ?: return@mapNotNull null
-          val url = href.toHttpUrlOrNull() ?: return@mapNotNull null
-          if (!url.isHttps || !(url.host == "tidal.com" || url.host.endsWith(".tidal.com"))) return@mapNotNull null
-          val width = (file.obj("meta")?.get("width") as? JsonPrimitive)?.intOrNull ?: PREFERRED_SIZE
-          val hls = url.encodedPath.endsWith(".m3u8", ignoreCase = true) ||
-            file.text("type")?.contains("mpegurl", ignoreCase = true) == true
-          width to MotionArtworkRendition(href, hls)
-        }
-        .sortedBy { abs(it.first - PREFERRED_SIZE) }
-        .map { it.second }
-        .distinctBy { it.url }
-      return renditions.takeIf { it.isNotEmpty() }?.let { RemoteMotionArtwork(MotionArtworkSource.TIDAL, it) }
-    }
+    /** A resource id's five dash-separated segments spell out its path on the CDN. */
+    private fun resourcePath(id: String): String? =
+      id.takeIf { RESOURCE_ID.matches(it) }?.replace('-', '/')
 
-    private fun JsonObject.included(type: String): List<JsonObject> =
-      (get("included") as? JsonArray).orEmpty().mapNotNull { it as? JsonObject }.filter { it.text("type") == type }
+    fun videoUrl(id: String): String? =
+      resourcePath(id)?.let { "https://resources.tidal.com/videos/$it/1280x1280.mp4" }
+
+    fun imageUrl(id: String): String? =
+      resourcePath(id)?.let { "https://resources.tidal.com/images/$it/1280x1280.jpg" }
 
     private fun JsonObject.obj(key: String): JsonObject? = get(key) as? JsonObject
     private fun JsonObject.text(key: String): String? = (get(key) as? JsonPrimitive)?.contentOrNull

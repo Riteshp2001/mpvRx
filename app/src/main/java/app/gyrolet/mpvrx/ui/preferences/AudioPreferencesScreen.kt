@@ -406,6 +406,21 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
               )
 
               PreferenceDivider()
+              val highQualityArtwork by preferences.highQualityArtwork.collectAsState()
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_high_quality_artwork_title),
+                value = highQualityArtwork,
+                onValueChange = { preferences.highQualityArtwork.set(it) },
+                title = { Text(stringResource(R.string.pref_audio_high_quality_artwork_title)) },
+                summary = {
+                  Text(
+                    stringResource(R.string.pref_audio_high_quality_artwork_summary),
+                    color = MaterialTheme.colorScheme.outline,
+                  )
+                },
+              )
+
+              PreferenceDivider()
               val animatedAlbumArtwork by preferences.animatedAlbumArtwork.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_animated_artwork_title),
@@ -438,8 +453,6 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
 
               PreferenceDivider()
               val animatedArtworkTidal by preferences.animatedArtworkTidal.collectAsState()
-              val tidalClientId by preferences.tidalClientId.collectAsState()
-              val tidalClientSecret by preferences.tidalClientSecret.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_audio_animated_artwork_tidal_title),
                 value = animatedArtworkTidal,
@@ -448,79 +461,67 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
                 title = { Text(stringResource(R.string.pref_audio_animated_artwork_tidal_title)) },
                 summary = {
                   Text(
-                    stringResource(
-                      if (tidalClientId.isNotBlank() && tidalClientSecret.isNotBlank()) {
-                        R.string.pref_audio_animated_artwork_tidal_summary
-                      } else {
-                        R.string.pref_audio_animated_artwork_tidal_needs_credentials
-                      },
-                    ),
+                    stringResource(R.string.pref_audio_animated_artwork_tidal_summary),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },
               )
 
-              PreferenceDivider()
-              ExpressivePreferenceItem {
-                TextFieldPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_tidal_client_id),
-                  value = tidalClientId,
-                  onValueChange = { preferences.tidalClientId.set(it) },
-                  textToValue = { it.trim() },
-                  enabled = animatedAlbumArtwork && animatedArtworkTidal,
-                  title = { Text(stringResource(R.string.pref_tidal_client_id)) },
+              if (!app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD) {
+                PreferenceDivider()
+                val animatedArtworkSpotify by preferences.animatedArtworkSpotify.collectAsState()
+                val spotifyCookie by preferences.spotifySpDcCookie.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_audio_animated_artwork_spotify_title),
+                  value = animatedArtworkSpotify,
+                  onValueChange = { preferences.animatedArtworkSpotify.set(it) },
+                  enabled = animatedAlbumArtwork,
+                  title = { Text(stringResource(R.string.pref_audio_animated_artwork_spotify_title)) },
                   summary = {
                     Text(
-                      text = tidalClientId.ifBlank { stringResource(R.string.pref_tidal_credentials_not_set) },
+                      stringResource(
+                        if (spotifyCookie.isNotBlank()) {
+                          R.string.pref_audio_animated_artwork_spotify_summary
+                        } else {
+                          R.string.pref_audio_animated_artwork_spotify_needs_cookie
+                        },
+                      ),
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },
-                  textField = { value, onValueChange, _ ->
-                    Column {
-                      Text(stringResource(R.string.pref_tidal_credentials_dialog_desc))
-                      TextField(
-                        value = value,
-                        onValueChange = onValueChange,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                      )
-                    }
-                  },
                 )
-              }
 
-              PreferenceDivider()
-              ExpressivePreferenceItem {
-                TextFieldPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_tidal_client_secret),
-                  value = tidalClientSecret,
-                  onValueChange = { preferences.tidalClientSecret.set(it) },
-                  textToValue = { it.trim() },
-                  enabled = animatedAlbumArtwork && animatedArtworkTidal,
-                  title = { Text(stringResource(R.string.pref_tidal_client_secret)) },
-                  summary = {
-                    Text(
-                      text = if (tidalClientSecret.isBlank()) {
-                        stringResource(R.string.pref_tidal_credentials_not_set)
-                      } else {
-                        stringResource(R.string.pref_tidal_client_secret_set)
-                      },
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                  textField = { value, onValueChange, _ ->
-                    Column {
-                      Text(stringResource(R.string.pref_tidal_credentials_dialog_desc))
-                      TextField(
-                        value = value,
-                        onValueChange = onValueChange,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
+                PreferenceDivider()
+                ExpressivePreferenceItem {
+                  TextFieldPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_spotify_sp_dc_cookie),
+                    value = spotifyCookie,
+                    onValueChange = { preferences.spotifySpDcCookie.set(it) },
+                    textToValue = { it.trim() },
+                    enabled = animatedAlbumArtwork && animatedArtworkSpotify,
+                    title = { Text(stringResource(R.string.pref_spotify_sp_dc_cookie)) },
+                    summary = {
+                      Text(
+                        text = stringResource(
+                          if (spotifyCookie.isBlank()) R.string.pref_spotify_cookie_not_set else R.string.pref_spotify_cookie_set,
+                        ),
+                        color = MaterialTheme.colorScheme.outline,
                       )
-                    }
-                  },
-                )
+                    },
+                    textField = { value, onValueChange, _ ->
+                      Column {
+                        Text(stringResource(R.string.pref_spotify_sp_dc_cookie_dialog_desc))
+                        TextField(
+                          value = value,
+                          onValueChange = onValueChange,
+                          modifier = Modifier.fillMaxWidth(),
+                          singleLine = true,
+                          visualTransformation = PasswordVisualTransformation(),
+                        )
+                      }
+                    },
+                  )
+                }
               }
 
             }

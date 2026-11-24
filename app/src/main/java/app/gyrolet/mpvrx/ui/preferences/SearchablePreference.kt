@@ -1845,12 +1845,20 @@ object SearchablePreferences {
         SearchEntrySpec(R.string.pref_audio_ambient_mode_title, listOf("audio", "ambient", "background", "visualizer")),
         SearchEntrySpec(R.string.pref_audio_immersive_artwork_title, listOf("audio", "music", "immersive", "artwork", "album", "cover", "background")),
         SearchEntrySpec(R.string.pref_audio_wavy_seekbar_title, listOf("audio", "wavy", "seekbar", "visualizer", "animation", "wave")),
-        SearchEntrySpec(R.string.pref_audio_animated_artwork_title, listOf("audio", "music", "animated", "artwork", "album", "cover", "apple", "tidal", "motion")),
+        SearchEntrySpec(R.string.pref_audio_high_quality_artwork_title, listOf("audio", "music", "artwork", "album", "cover", "high quality", "hd", "resolution", "apple", "tidal", "download")),
+        SearchEntrySpec(R.string.pref_audio_animated_artwork_title, listOf("audio", "music", "animated", "artwork", "album", "cover", "apple", "tidal", "spotify", "canvas", "motion")),
         SearchEntrySpec(R.string.pref_audio_animated_artwork_apple_music_title, listOf("audio", "music", "animated", "artwork", "apple", "motion", "cover")),
         SearchEntrySpec(R.string.pref_audio_animated_artwork_tidal_title, listOf("audio", "music", "animated", "artwork", "tidal", "video", "cover")),
-        SearchEntrySpec(R.string.pref_tidal_client_id, listOf("tidal", "client", "id", "developer", "credentials", "artwork")),
-        SearchEntrySpec(R.string.pref_tidal_client_secret, listOf("tidal", "client", "secret", "developer", "credentials", "artwork")),
       )
+      if (!app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD) {
+        addSearchEntries(
+          category = "Audio",
+          screen = AudioPreferencesScreen,
+          anchorItemIndex = 3,
+          SearchEntrySpec(R.string.pref_audio_animated_artwork_spotify_title, listOf("audio", "music", "animated", "artwork", "spotify", "canvas", "video")),
+          SearchEntrySpec(R.string.pref_spotify_sp_dc_cookie, listOf("spotify", "cookie", "sp_dc", "session", "canvas", "artwork")),
+        )
+      }
       addSearchEntries(
         category = "Audio",
         screen = AudioPreferencesScreen,

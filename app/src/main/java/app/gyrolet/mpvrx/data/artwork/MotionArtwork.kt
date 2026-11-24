@@ -9,15 +9,26 @@ import java.util.Locale
 
 internal data class MotionArtworkQuery(val title: String, val artist: String, val album: String?)
 
-/** Online providers, in the order they are asked. Still artwork stays underneath as the final fallback. */
-internal enum class MotionArtworkSource { APPLE_MUSIC, TIDAL }
+/**
+ * Online providers, in BitChord's default order: Spotify goes last because reaching it means
+ * loading the web player. Still artwork stays underneath as the final fallback.
+ */
+internal enum class MotionArtworkSource { APPLE_MUSIC, TIDAL, SPOTIFY }
 
 internal data class MotionArtworkRendition(val url: String, val hls: Boolean)
 
+/**
+ * [renditions] are square-first for a square cover; [portrait] holds the tall cut that fills a
+ * full-window background without heavy cropping, when the provider has one.
+ */
 internal data class RemoteMotionArtwork(
   val source: MotionArtworkSource,
   val renditions: List<MotionArtworkRendition>,
-)
+  val portrait: List<MotionArtworkRendition> = emptyList(),
+) {
+  fun renditionsFor(portraitLayout: Boolean): List<MotionArtworkRendition> =
+    if (portraitLayout && portrait.isNotEmpty()) (portrait + renditions).distinct() else renditions
+}
 
 internal interface MotionArtworkProvider {
   suspend fun find(query: MotionArtworkQuery): RemoteMotionArtwork?
@@ -26,15 +37,29 @@ internal interface MotionArtworkProvider {
 internal class MotionArtworkResolver(
   private val appleMusic: AppleMusicArtworkRepository,
   private val tidal: TidalArtworkRepository,
+  private val spotify: SpotifyArtworkRepository,
 ) {
+  private data class Key(val query: MotionArtworkQuery, val sources: List<MotionArtworkSource>)
+  private val hits = object : LinkedHashMap<Key, RemoteMotionArtwork>(16, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Key, RemoteMotionArtwork>?): Boolean = size > 64
+  }
+
+  /** A clip already found for [query] this session, without touching the network. */
+  fun cached(query: MotionArtworkQuery, sources: List<MotionArtworkSource>): RemoteMotionArtwork? =
+    synchronized(hits) { hits[Key(query, sources)] }
+
   /** First provider in [sources] order with artwork for [query]; null keeps the still cover. */
   suspend fun find(query: MotionArtworkQuery, sources: List<MotionArtworkSource>): RemoteMotionArtwork? {
     for (source in sources) {
       val provider = when (source) {
         MotionArtworkSource.APPLE_MUSIC -> appleMusic
         MotionArtworkSource.TIDAL -> tidal
+        MotionArtworkSource.SPOTIFY -> spotify
       }
-      provider.find(query)?.let { return it }
+      provider.find(query)?.let { found ->
+        synchronized(hits) { hits[Key(query, sources)] = found }
+        return found
+      }
     }
     return null
   }
@@ -43,9 +68,11 @@ internal class MotionArtworkResolver(
     fun sources(
       appleMusic: Boolean,
       tidal: Boolean,
+      spotify: Boolean,
     ): List<MotionArtworkSource> = buildList {
       if (appleMusic) add(MotionArtworkSource.APPLE_MUSIC)
       if (tidal) add(MotionArtworkSource.TIDAL)
+      if (spotify) add(MotionArtworkSource.SPOTIFY)
     }
   }
 }
@@ -78,11 +105,25 @@ internal object MotionArtworkMatching {
     return wanted.isNotEmpty() && wanted.all { it in credited }
   }
 
-  /** 2 when the album tag agrees, else 1; edition labels must not veto a song. */
-  fun score(query: MotionArtworkQuery, album: String?): Int {
-    val wanted = query.album?.let(::normalize)?.takeIf(String::isNotBlank)
-    return if (wanted != null && wanted == album?.let(::normalize)) 2 else 1
+  /**
+   * Whether [album] is the release the query's album tag names. Edition and format labels
+   * ("(Remastered 2009)", "[Deluxe Edition]", " - Single") are ignored; "(Taylor's Version)"
+   * style re-recordings are not, since their covers differ.
+   */
+  fun albumMatches(query: MotionArtworkQuery, album: String?): Boolean {
+    val wanted = query.album?.let { normalize(cleanAlbum(it)) }?.takeIf(String::isNotBlank) ?: return false
+    return wanted == album?.let { normalize(cleanAlbum(it)) }
   }
+
+  /** 2 when the album tag agrees, else 1; edition labels must not veto a song. */
+  fun score(query: MotionArtworkQuery, album: String?): Int = if (albumMatches(query, album)) 2 else 1
+
+  private val ALBUM_EDITION = Regex(
+    """\s*[\[(][^\])]*\b(?:remaster(?:ed)?|deluxe|edition|expanded|anniversary|bonus|explicit|clean)\b[^\])]*[\])]|\s+-\s+(?:single|ep)$""",
+    RegexOption.IGNORE_CASE,
+  )
+
+  private fun cleanAlbum(album: String): String = album.replace(ALBUM_EDITION, "").trim()
 
   private fun artistCredits(artist: String, title: String): Set<String> =
     (sequenceOf(artist) + FEATURED_CREDIT.findAll(title).map { it.groupValues[1] })

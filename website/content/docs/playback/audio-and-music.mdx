@@ -50,20 +50,37 @@ The existing **Animated album artwork** switch remains separate. Reduced motion
 keeps immersive artwork still, and unavailable motion artwork retains the
 ordinary cover.
 
+### High-quality artwork
+
+**Audio settings → Appearance → High-quality artwork** is on by default. For
+each song it downloads the sharpest cover the catalogues publish, even when the
+file already embeds one: Apple Music's original (up to 3000 × 3000) first, then
+TIDAL's 1280 × 1280 cover. The cover is matched by title and artist, and by
+album when the file has an album tag so a single or compilation sleeve is never
+used instead. It is stored in
+the app cache and reused on every later play, so it is downloaded once. Songs
+no catalogue knows keep their embedded or folder artwork, and are not searched
+again for a few days. Clearing the app cache removes the downloaded covers.
+
 ### Animated album artwork
 
 Enable **Audio settings → Appearance → Animated album artwork** to stream a
 motion cover over the still artwork. It is off by default, shares the track's
-title, artist, and album with the selected services, and uses mobile data. The
-sources are tried in this order; each can be turned off on its own:
+title, artist, and album with the selected services, and uses mobile data. Each
+clip is cached on disk while it loops, so it is downloaded once rather than on
+every loop. The immersive background uses a provider's tall portrait cut when
+one exists. The sources are tried in this order; each can be turned off on its
+own:
 
 1. **Apple Music motion covers**: square album loops; no account needed.
-2. **TIDAL video covers**: album-level video covers from the official TIDAL
-   API. Create an app at [developer.tidal.com](https://developer.tidal.com) and
-   enter its **TIDAL client ID** and **TIDAL client secret**.
-3. **Spotify Canvas**: a portrait loop used only for the immersive background
-   in portrait. It needs a PaxSenix API key, which is set in the lyrics
-   settings, and is not available in Play Store builds.
+2. **TIDAL video covers**: square 1280 × 1280 album loops through TIDAL's
+   public embed endpoint; no account needed.
+3. **Spotify Canvas**: Spotify's portrait loops. As in BitChord, it needs the
+   `sp_dc` session cookie: sign in at open.spotify.com in a browser, open
+   Developer Tools → Application → Cookies, and paste the `sp_dc` value into
+   **Spotify sp_dc cookie**. The cookie grants access to your Spotify account;
+   it is stored on the device and sent only to Spotify. Not available in Play
+   Store builds.
 
 If a source has no match or its video cannot be played, the next one is tried.
 When none succeed, the embedded or still cover stays visible. Animated artwork

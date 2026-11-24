@@ -711,6 +711,7 @@ private fun CoverArtCardImage(
   localMotionArtworkUri: String? = null,
   isPlaying: Boolean = false,
   remoteMotionQuery: MotionArtworkQuery? = null,
+  portraitMotion: Boolean = false,
   modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current
@@ -779,6 +780,7 @@ private fun CoverArtCardImage(
       RemoteMotionArtwork(
         query = remoteMotionQuery,
         isPlaying = isPlaying,
+        portraitLayout = portraitMotion,
         modifier = Modifier.fillMaxSize(),
       )
     }
@@ -890,6 +892,8 @@ private fun ImmersiveArtworkBackground(
           motionArtwork = motionArtwork.takeUnless { reducedMotion },
           localMotionArtworkUri = localMotionArtworkUri.takeUnless { reducedMotion },
           remoteMotionQuery = remoteMotionQuery.takeUnless { reducedMotion },
+          // The full-window background takes the provider's tall cut, as BitChord's player does.
+          portraitMotion = !landscape,
           isPlaying = isPlaying && !reducedMotion,
         )
       }
@@ -1024,7 +1028,7 @@ fun AudioPlayerControls(
       enabled = currentAudioPresentation != null && currentAudioPresentation.artwork == null && hasMpvAlbumArt,
       key = currentItem?.stableId,
     )
-  val albumArtBitmap = currentAudioPresentation?.artwork ?: mpvAlbumArt
+  val embeddedAlbumArt = currentAudioPresentation?.artwork ?: mpvAlbumArt
 
   fun cleanSongTitle(
     title: String,
@@ -1086,12 +1090,13 @@ fun AudioPlayerControls(
   val audioPreferences = koinInject<AudioPreferences>()
   val immersiveArtworkEnabled by audioPreferences.immersiveArtwork.collectAsState()
   val animatedAlbumArtwork by audioPreferences.animatedAlbumArtwork.collectAsState()
-  val motionQuery =
-    if (animatedAlbumArtwork && !isAudiobook &&
+  val highQualityArtwork by audioPreferences.highQualityArtwork.collectAsState()
+  val artworkQuery =
+    if ((animatedAlbumArtwork || highQualityArtwork) && !isAudiobook &&
       (playbackState.phase == PlaybackPhase.READY || playbackState.phase == PlaybackPhase.BACKGROUND)
     ) {
-      // One metadata observer, only while opted in. Tag names vary in case across containers;
-      // metadata/album is not the by-key lookup, and queue titles may still be raw filenames.
+      // One metadata observer, only while an online artwork feature is on. Tag names vary in case
+      // across containers; metadata/album is not the by-key lookup, and queue titles may still be raw filenames.
       val nativeMetadata by PlaybackSession.propNode["metadata"].collectAsState()
       remember(nativeMetadata, playbackState.generation, currentItem?.title, mediaTitle, displayArtist) {
         // Use the event as a trigger, then take one generation-checked native snapshot.
@@ -1114,6 +1119,11 @@ fun AudioPlayerControls(
     } else {
       null
     }
+  val motionQuery = artworkQuery?.takeIf { animatedAlbumArtwork }
+  // The catalogue's own cover replaces the embedded one whatever its resolution; until it is
+  // cached the embedded art shows, and it stays when no catalogue knows the song.
+  val highQualityCover = rememberHighQualityArtwork(artworkQuery?.takeIf { highQualityArtwork })
+  val albumArtBitmap = highQualityCover ?: embeddedAlbumArt
   val appearancePreferences = koinInject<AppearancePreferences>()
   val audioVisualizerStyle by audioPreferences.audioVisualizerStyle.collectAsState()
   val audioWavySeekbar by audioPreferences.audioWavySeekbar.collectAsState()

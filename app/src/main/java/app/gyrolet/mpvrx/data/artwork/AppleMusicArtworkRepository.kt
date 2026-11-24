@@ -3,7 +3,7 @@
  *
  * Apple Music editorial-video discovery inspired by BitChord:
  * https://github.com/kushagrasinghx/BitChord (GPL-3.0).
- * This implementation does not download or persist the artwork videos.
+ * The clips are streamed; MotionArtworkCache keeps their bytes on disk so a loop is not refetched.
  */
 
 package app.gyrolet.mpvrx.data.artwork
@@ -86,7 +86,21 @@ internal class AppleMusicArtworkRepository(client: OkHttpClient) : MotionArtwork
   }
 
   private suspend fun search(query: MotionArtworkQuery, storefront: String): RemoteMotionArtwork? {
-    val term = "${query.artist} ${MotionArtworkMatching.cleanTitle(query.title)}"
+    val title = MotionArtworkMatching.cleanTitle(query.title)
+    // Folding the album into the term is what makes the catalogue search land on the right
+    // release; a mistagged album must still not hide the song, so the plain term follows.
+    val terms = listOfNotNull(
+      query.album?.takeIf { it.isNotBlank() && !title.contains(it, ignoreCase = true) }
+        ?.let { "${query.artist} $title $it" },
+      "${query.artist} $title",
+    )
+    for (term in terms) {
+      searchTerm(query, storefront, term)?.let { return it }
+    }
+    return null
+  }
+
+  private suspend fun searchTerm(query: MotionArtworkQuery, storefront: String, term: String): RemoteMotionArtwork? {
     val url = "$CATALOG/$storefront/search".toHttpUrl().newBuilder()
       .addQueryParameter("term", term)
       .addQueryParameter("types", "songs")
@@ -256,18 +270,20 @@ internal class AppleMusicArtworkRepository(client: OkHttpClient) : MotionArtwork
 
     private fun motionArtwork(attributes: JsonObject): RemoteMotionArtwork? {
       val video = attributes.obj("editorialVideo") ?: return null
-      val renditions = listOf("motionDetailSquare", "motionSquareVideo1x1", "motionDetailRaw", "motionDetailTall", "motionTallVideo3x4")
-        .mapNotNull { key ->
-          val asset = video.obj(key) ?: return@mapNotNull null
-          sequenceOf("video", "videoUrl", "hlsUrl", "url").mapNotNull { asset.text(it) }
-            .firstOrNull { value ->
-              val url = value.toHttpUrlOrNull() ?: return@firstOrNull false
-              url.isHttps && (url.host.endsWith(".apple.com") || url.host.endsWith(".mzstatic.com")) &&
-                (url.encodedPath.endsWith(".m3u8", ignoreCase = true) || url.encodedPath.endsWith(".mp4", ignoreCase = true))
-            }
-        }.distinct()
-        .map { MotionArtworkRendition(it, hls = !it.substringBefore('?').endsWith(".mp4", ignoreCase = true)) }
-      return renditions.takeIf { it.isNotEmpty() }?.let { RemoteMotionArtwork(MotionArtworkSource.APPLE_MUSIC, it) }
+      fun renditions(vararg keys: String) = keys.mapNotNull { key ->
+        val asset = video.obj(key) ?: return@mapNotNull null
+        sequenceOf("video", "videoUrl", "hlsUrl", "url").mapNotNull { asset.text(it) }
+          .firstOrNull { value ->
+            val url = value.toHttpUrlOrNull() ?: return@firstOrNull false
+            url.isHttps && (url.host.endsWith(".apple.com") || url.host.endsWith(".mzstatic.com")) &&
+              (url.encodedPath.endsWith(".m3u8", ignoreCase = true) || url.encodedPath.endsWith(".mp4", ignoreCase = true))
+          }
+      }.distinct().map { MotionArtworkRendition(it, hls = !it.substringBefore('?').endsWith(".mp4", ignoreCase = true)) }
+      // Square first for the cover; the tall cut is Apple's own full-screen framing and the last retry.
+      val square = renditions("motionDetailSquare", "motionSquareVideo1x1", "motionDetailRaw")
+      val tall = renditions("motionDetailTall", "motionTallVideo3x4")
+      val all = (square + tall).distinct()
+      return all.takeIf { it.isNotEmpty() }?.let { RemoteMotionArtwork(MotionArtworkSource.APPLE_MUSIC, it, portrait = tall) }
     }
 
     private fun JsonObject.obj(key: String): JsonObject? = get(key) as? JsonObject
