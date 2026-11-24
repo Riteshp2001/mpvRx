@@ -1843,7 +1843,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_yt_dlp_version">Version %1$s</string>
   <string name="ui_yt_dlp_commit">Révision %1$s</string>
   <string name="ui_version_unavailable">Version indisponible</string>
-  <string name="ui_update_channel">Canal de mise à jour</string>
   <string name="update_whats_new">Nouveautés</string>
   <string name="update_no_release_notes">Aucune note de version fournie.</string>
   <string name="update_ready_to_install">Prêt à installer</string>
@@ -1853,8 +1852,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="update_size">Taille</string>
   <string name="update_package">Paquet</string>
   <string name="update_unknown_size">Taille inconnue</string>
-  <string name="update_beta_build_format">Bêta r%1$d</string>
-  <string name="ui_beta_badge_suffix">\u0020(Bêta)</string>
   <string name="player_video_quality">Qualité vidéo</string>
   <string name="player_video_quality_button">Qualité vidéo</string>
   <string name="network_bookmark_add">Ajouter le dossier aux favoris</string>
@@ -2714,7 +2711,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
   <string name="pref_thumbnail_generator_native_summary">Extrait miniatures et pochettes des fichiers locaux. Changer vide le cache.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Utilise les miniatures et pochettes Android. Changer vide le cache. Les aperçus réseau utilisent Natif.</string>
-  <string name="ui_update_channels_summary">Versions stables, aperçus nocturnes ou compilations expérimentales issues de l’intégration continue.</string>
   <string name="tv_nav_settings">Paramètres</string>
   <string name="tv_move_up">Déplacer vers le haut</string>
   <string name="tv_move_down">Déplacer vers le bas</string>

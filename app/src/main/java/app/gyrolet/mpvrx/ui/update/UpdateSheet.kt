@@ -196,10 +196,7 @@ fun UpdateSheet(
   }
 }
 
-@Composable
-private fun releaseVersion(release: Release): String =
-  release.previewBuildNumber?.let { stringResource(R.string.update_beta_build_format, it) }
-    ?: release.tagName.removePrefix("v")
+private fun releaseVersion(release: Release): String = release.tagName.removePrefix("v")
 
 @Composable
 private fun SheetHeader(

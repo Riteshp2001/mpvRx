@@ -14,7 +14,6 @@ import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.BuildConfig
-import app.gyrolet.mpvrx.domain.update.AppUpdateChannel
 import app.gyrolet.mpvrx.domain.update.Asset
 import app.gyrolet.mpvrx.domain.update.Release
 import app.gyrolet.mpvrx.domain.update.UpdateManager
@@ -63,14 +62,6 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
   private val _isAutoInstallEnabled = MutableStateFlow(UpdateWork.automaticEnabled(application))
   val isAutoInstallEnabled = _isAutoInstallEnabled.asStateFlow()
 
-  private val _updateChannel = MutableStateFlow(
-    prefs.getString(UPDATE_CHANNEL_KEY, null)?.let(AppUpdateChannel::fromStoredValue)
-      ?: when {
-        BuildConfig.IS_PREVIEW_BUILD -> AppUpdateChannel.PREVIEW
-        else -> AppUpdateChannel.STABLE
-      },
-  )
-  val updateChannel = _updateChannel.asStateFlow()
   private val _uiState = MutableStateFlow(UpdateUiState())
   val uiState = _uiState.asStateFlow()
   private var checkJob: Job? = null
@@ -87,21 +78,6 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
         delay(UPDATE_CHECK_STARTUP_DELAY_MS)
         if (_isAutoUpdateEnabled.value) checkForUpdate()
       }
-    }
-  }
-
-  fun setUpdateChannel(channel: AppUpdateChannel) {
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE || busy() || _uiState.value.awaitingApproval || channel == _updateChannel.value) return
-    stopChecking()
-    prefs.edit().putString(UPDATE_CHANNEL_KEY, channel.name).apply()
-    _updateChannel.value = channel
-    viewModelScope.launch {
-      withContext(Dispatchers.IO) {
-        UpdateWork.cancelAutomatic(getApplication())
-        UpdateWork.update(getApplication()) { UpdateTaskState() }
-      }
-      _uiState.value = UpdateUiState(visible = _uiState.value.visible)
-      checkForUpdate(manual = true)
     }
   }
 
@@ -134,13 +110,12 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     }
     if (!manual && _uiState.value.visible) return
     checkJob?.cancel()
-    val channel = _updateChannel.value
     if (manual) _uiState.update { it.copy(visible = true, checking = true, checkError = false, noUpdate = false) }
     checkJob = viewModelScope.launch {
       try {
-        val release = updateManager.checkForUpdate(channel, forceShow = manual)
+        val release = updateManager.checkForUpdate(forceShow = manual)
         ensureActive()
-        if (channel != _updateChannel.value || busy()) return@launch
+        if (busy()) return@launch
         val asset = release?.let(updateManager::selectUpdateAsset)
         if (release != null && asset != null) {
           _uiState.value = UpdateUiState(visible = true, release = release, asset = asset, selecting = true)
@@ -199,7 +174,7 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
           return@launch
         }
         withContext(Dispatchers.IO) {
-          if (UpdateWork.state(getApplication()).value.release?.updateKey != release.updateKey) {
+          if (UpdateWork.state(getApplication()).value.release?.tagName != release.tagName) {
             UpdateWork.update(getApplication()) { UpdateTaskState(release = release, stage = UpdateStage.READY) }
           }
           UpdateInstaller.requestUserInstall(getApplication(), release)
@@ -223,7 +198,7 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
 
   fun ignoreVersion() {
     if (busy() || _uiState.value.awaitingApproval) return
-    _uiState.value.release?.let { updateManager.ignoreVersion(it.updateKey, _updateChannel.value) }
+    _uiState.value.release?.let { updateManager.ignoreVersion(it.tagName) }
     dismiss()
   }
 
@@ -264,6 +239,5 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
 
   private companion object {
     const val UPDATE_CHECK_STARTUP_DELAY_MS = 1500L
-    const val UPDATE_CHANNEL_KEY = "app_update_channel"
   }
 }

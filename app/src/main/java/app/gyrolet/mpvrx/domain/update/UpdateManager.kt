@@ -43,85 +43,38 @@ class UpdateManager(
     coerceInputValues = true
   }
 
-  suspend fun checkForUpdate(
-    channel: AppUpdateChannel,
-    forceShow: Boolean = false,
-  ): Release? {
+  suspend fun checkForUpdate(forceShow: Boolean = false): Release? {
     // Return null immediately if update checks are disabled for this build.
     if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
       return null
     }
 
-    val release =
-      getLatestRelease(
-        when (channel) {
-          AppUpdateChannel.STABLE -> STABLE_RELEASE_URL
-          AppUpdateChannel.PREVIEW -> PREVIEW_RELEASE_URL
-        },
-      )
+    val release = getLatestRelease(STABLE_RELEASE_URL)
     if (selectUpdateAsset(release) == null) {
       return null
     }
     val prefs = context.getSharedPreferences("mpvrx_prefs", Context.MODE_PRIVATE)
     val ignoredVersion =
-      prefs.getString(ignoredVersionKey(channel), null)
-        ?: if (channel == AppUpdateChannel.STABLE) prefs.getString(LEGACY_IGNORED_VERSION_KEY, null) else null
+      prefs.getString(IGNORED_VERSION_KEY, null) ?: prefs.getString(LEGACY_IGNORED_VERSION_KEY, null)
 
     // If this version was ignored, don't show it unless forced (manual check)
-    val isIgnored =
-      ignoredVersion == release.updateKey ||
-        (channel == AppUpdateChannel.STABLE && ignoredVersion == release.tagName.removePrefix("v"))
+    val isIgnored = ignoredVersion == release.tagName || ignoredVersion == release.tagName.removePrefix("v")
     if (!forceShow && isIgnored) {
       return null
     }
 
-    val isNewer =
-      when (channel) {
-        AppUpdateChannel.STABLE -> {
-          val currentVersion = BuildConfig.VERSION_NAME.substringBefore('-')
-          isNewerVersion(release.tagName.removePrefix("v"), currentVersion)
-        }
-        AppUpdateChannel.PREVIEW -> isNewerPreviewBuild(release)
-      }
-
-    return if (isNewer) {
+    val currentVersion = BuildConfig.VERSION_NAME.substringBefore('-')
+    return if (isNewerVersion(release.tagName.removePrefix("v"), currentVersion)) {
       release
     } else {
       null
     }
   }
 
-  /**
-   * Preview feeds publish the newest CI build of master. Commit counts order
-   * builds, but an amended or force-pushed master publishes a different commit at the same count,
-   * which must still reach users who already run that count.
-   */
-  private fun isNewerPreviewBuild(release: Release): Boolean {
-    val remoteBuild = release.previewBuildNumber ?: return false
-    if (remoteBuild != BuildConfig.GIT_COUNT) return remoteBuild > BuildConfig.GIT_COUNT
-
-    return !BuildConfig.IS_PREVIEW_BUILD || isDifferentCommit(release.commitSha)
-  }
-
-  private fun isDifferentCommit(remoteSha: String?): Boolean {
-    val local = BuildConfig.GIT_SHA.trim()
-    val remote = remoteSha?.trim().orEmpty()
-    if (!GIT_SHA_REGEX.matches(local) || !GIT_SHA_REGEX.matches(remote)) return false
-    return !remote.startsWith(local, ignoreCase = true) && !local.startsWith(remote, ignoreCase = true)
-  }
-
   internal fun isInstalledRelease(release: Release): Boolean =
-    when {
-      release.isPreview -> BuildConfig.IS_PREVIEW_BUILD &&
-        release.previewBuildNumber == BuildConfig.GIT_COUNT && !isDifferentCommit(release.commitSha)
-      else -> !BuildConfig.IS_PREVIEW_BUILD &&
-        release.tagName.removePrefix("v") == BuildConfig.VERSION_NAME.substringBefore('-')
-    }
+    release.tagName.removePrefix("v") == BuildConfig.VERSION_NAME.substringBefore('-')
 
-  fun ignoreVersion(
-    version: String,
-    channel: AppUpdateChannel,
-  ) {
+  fun ignoreVersion(version: String) {
     // No-op if update feature is disabled
     if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
       return
@@ -130,7 +83,7 @@ class UpdateManager(
     val prefs = context.getSharedPreferences("mpvrx_prefs", Context.MODE_PRIVATE)
     prefs
       .edit()
-      .putString(ignoredVersionKey(channel), version)
+      .putString(IGNORED_VERSION_KEY, version)
       .apply()
   }
 
@@ -160,13 +113,10 @@ class UpdateManager(
     return false
   }
 
-  private fun ignoredVersionKey(channel: AppUpdateChannel): String =
-    "ignored_version_${channel.name.lowercase()}"
-
   /** The exact APK this install would download: same distribution, and the same ABI package when known. */
   fun selectUpdateAsset(release: Release): Asset? {
     if (!BuildConfig.ENABLE_UPDATE_FEATURE) return null
-    return selectBestApkAsset(release.updateAssets)
+    return selectBestApkAsset(release.assets)
   }
 
   fun downloadUpdate(release: Release): Flow<Float> {
@@ -244,8 +194,8 @@ class UpdateManager(
   private fun primaryDeviceAbi(): String? = Build.SUPPORTED_ABIS.firstOrNull()?.takeIf { it in APK_ABIS }
 
   /**
-   * CI rebuilds at the same commit count reuse asset names, so the published content hash keeps
-   * their downloads (and resumable partials) from being mistaken for one another.
+   * A re-uploaded asset can keep its name, so the published content hash keeps its downloads
+   * (and resumable partials) from being mistaken for one another.
    */
   private fun localApkFile(asset: Asset): File {
     val name =
@@ -432,13 +382,12 @@ class UpdateManager(
 
   private companion object {
     const val STABLE_RELEASE_URL = "https://api.github.com/repos/Riteshp2001/mpvRx/releases/latest"
-    const val PREVIEW_RELEASE_URL = "https://riteshp2001.github.io/mpvRx/latest.json"
+    const val IGNORED_VERSION_KEY = "ignored_version_stable"
     const val LEGACY_IGNORED_VERSION_KEY = "ignored_version"
     const val PART_SUFFIX = ".part"
     const val LOCAL_HASH_LENGTH = 12
     const val HTTP_PARTIAL_CONTENT = 206
     const val HTTP_RANGE_NOT_SATISFIABLE = 416
-    val GIT_SHA_REGEX = Regex("[0-9a-fA-F]{7,40}")
     val CONTENT_RANGE_REGEX = Regex("bytes (\\d+)-(\\d+)/(?:\\d+|\\*)")
     val HEX_DIGITS = "0123456789abcdef".toCharArray()
   }

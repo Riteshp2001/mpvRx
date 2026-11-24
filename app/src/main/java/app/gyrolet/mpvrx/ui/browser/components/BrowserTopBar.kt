@@ -69,12 +69,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.sp
@@ -185,7 +181,6 @@ fun BrowserTopBar(
   onRestoreClick: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
   forceHeadlineSmall: Boolean = false,
-  titleBadge: String? = null,
   customTitle: (@Composable () -> Unit)? = null,
 ) {
   val reducedMotion = AppMotion.shouldReduceMotion()
@@ -259,7 +254,6 @@ fun BrowserTopBar(
         onTitleDoubleTap = onTitleDoubleTap,
         colors = colors,
         forceHeadlineSmall = forceHeadlineSmall,
-        titleBadge = titleBadge,
         customTitle = customTitle,
       )
     }
@@ -287,7 +281,6 @@ private fun NormalTopBar(
   onTitleDoubleTap: (() -> Unit)? = null,
   colors: TopAppBarColors? = null,
   forceHeadlineSmall: Boolean = false,
-  titleBadge: String? = null,
   customTitle: (@Composable () -> Unit)? = null,
 ) {
   val preferences = koinInject<AppearancePreferences>()
@@ -404,20 +397,7 @@ private fun NormalTopBar(
             contentAlignment = Alignment.CenterStart,
           ) {
             Text(
-              buildAnnotatedString {
-                append(title)
-                if (!titleBadge.isNullOrEmpty()) {
-                  withStyle(
-                    SpanStyle(
-                      fontSize = MaterialTheme.typography.labelSmall.fontSize,
-                      fontWeight = FontWeight.SemiBold,
-                      baselineShift = BaselineShift.Superscript,
-                    ),
-                  ) {
-                    append(titleBadge)
-                  }
-                }
-              },
+              title,
               // Match the Profile hero title: headline styles use the app's bundled
               // expressive Google Sans Flex variable-display cut (or the user's chosen
               // display font), without overriding accessibility or language fallbacks.

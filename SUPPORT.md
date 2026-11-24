@@ -4,7 +4,7 @@
 
 - Check the [README](README.md) for features, build variants, and setup information.
 - Check [release notes](https://github.com/Riteshp2001/mpvRx/releases) and [existing issues](https://github.com/Riteshp2001/mpvRx/issues) before opening a new report.
-- When troubleshooting, note whether you are using a stable or preview build and which APK variant you installed.
+- When troubleshooting, note which release version and APK variant you installed.
 
 ## Report a bug
 

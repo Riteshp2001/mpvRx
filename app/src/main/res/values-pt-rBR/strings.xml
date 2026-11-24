@@ -1843,7 +1843,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="ui_yt_dlp_version">Versão %1$s</string>
   <string name="ui_yt_dlp_commit">Commit %1$s</string>
   <string name="ui_version_unavailable">Versão indisponível</string>
-  <string name="ui_update_channel">Canal de atualização</string>
   <string name="update_whats_new">Novidades</string>
   <string name="update_no_release_notes">Nenhuma nota de versão foi fornecida.</string>
   <string name="update_ready_to_install">Pronto para instalar</string>
@@ -1853,8 +1852,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="update_size">Tamanho</string>
   <string name="update_package">Pacote</string>
   <string name="update_unknown_size">Tamanho desconhecido</string>
-  <string name="update_beta_build_format">Beta r%1$d</string>
-  <string name="ui_beta_badge_suffix">\u0020(Beta)</string>
   <string name="player_video_quality">Qualidade do vídeo</string>
   <string name="player_video_quality_button">Qualidade do vídeo</string>
   <string name="network_bookmark_add">Adicionar pasta aos favoritos</string>
@@ -2721,7 +2718,6 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
   <string name="pref_thumbnail_generator_native_summary">Extrai miniaturas e capas de arquivos locais. A troca limpa o cache.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Usa miniaturas e capas do Android. A troca limpa o cache. Prévias de rede usam Nativo.</string>
-  <string name="ui_update_channels_summary">Versões estáveis, prévias noturnas ou compilações experimentais de CI.</string>
   <string name="tv_nav_settings">Configurações</string>
   <string name="tv_move_up">Mover para cima</string>
   <string name="tv_move_down">Mover para baixo</string>

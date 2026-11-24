@@ -1759,7 +1759,6 @@
   <string name="ui_yt_dlp_version">संस्करण %1$s</string>
   <string name="ui_yt_dlp_commit">कमिट %1$s</string>
   <string name="ui_version_unavailable">संस्करण उपलब्ध नहीं है</string>
-  <string name="ui_update_channel">अपडेट चैनल</string>
   <string name="update_whats_new">नया क्या है</string>
   <string name="update_no_release_notes">कोई रिलीज़ नोट उपलब्ध नहीं है।</string>
   <string name="update_ready_to_install">इंस्टॉल करने के लिए तैयार</string>
@@ -1769,8 +1768,6 @@
   <string name="update_size">आकार</string>
   <string name="update_package">पैकेज</string>
   <string name="update_unknown_size">अज्ञात आकार</string>
-  <string name="update_beta_build_format">बीटा r%1$d</string>
-  <string name="ui_beta_badge_suffix">\u0020(बीटा)</string>
   <string name="player_video_quality">वीडियो गुणवत्ता</string>
   <string name="player_video_quality_button">वीडियो गुणवत्ता</string>
   <string name="network_bookmark_add">फ़ोल्डर को बुकमार्क करें</string>
@@ -2633,7 +2630,6 @@
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
   <string name="pref_thumbnail_generator_native_summary">स्थानीय फ़ाइल से थंबनेल और कवर निकालें। बदलने पर कैश मिटता है।</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Android थंबनेल और कवर इस्तेमाल करें। बदलने पर कैश मिटता है। नेटवर्क पूर्वावलोकन Native इस्तेमाल करते हैं।</string>
-  <string name="ui_update_channels_summary">स्थिर संस्करण, हर रात के पूर्वावलोकन या प्रायोगिक CI बिल्ड।</string>
   <string name="tv_nav_settings">सेटिंग्स</string>
   <string name="tv_move_up">ऊपर ले जाएँ</string>
   <string name="tv_move_down">नीचे ले जाएँ</string>

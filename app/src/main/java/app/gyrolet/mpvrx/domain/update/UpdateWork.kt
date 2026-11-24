@@ -74,10 +74,11 @@ object UpdateWork {
       mutableState.value = saved?.let { runCatching { json.decodeFromString<UpdateTaskState>(it) }.getOrNull() }
         ?: UpdateTaskState()
       val restoredRelease = mutableState.value.release
-      if (restoredRelease?.channel.equals("experimental", ignoreCase = true) ||
-        restoredRelease?.tagName?.startsWith("experimental", ignoreCase = true) == true
-      ) {
-        Log.i("UpdateWork", "Discarding a pending update from the retired Experimental channel")
+      val fromRetiredChannel = listOfNotNull(restoredRelease?.channel, restoredRelease?.tagName).any { value ->
+        value.startsWith("experimental", ignoreCase = true) || value.startsWith("preview", ignoreCase = true)
+      }
+      if (fromRetiredChannel) {
+        Log.i("UpdateWork", "Discarding a pending update from a retired update channel")
         mutableState.value = UpdateTaskState()
         check(storage(context).edit().putString("state", json.encodeToString(mutableState.value)).commit())
         WorkManager.getInstance(context).cancelUniqueWork(DOWNLOAD_WORK)
@@ -101,14 +102,6 @@ object UpdateWork {
 
   fun automaticEnabled(context: Context): Boolean = BuildConfig.ENABLE_UPDATE_FEATURE &&
     context.getSharedPreferences("mpvrx_prefs", Context.MODE_PRIVATE).getBoolean(AUTO_INSTALL_KEY, false)
-
-  fun selectedChannel(context: Context): AppUpdateChannel {
-    val saved = context.getSharedPreferences("mpvrx_prefs", Context.MODE_PRIVATE).getString("app_update_channel", null)
-    return saved?.let(AppUpdateChannel::fromStoredValue) ?: when {
-      BuildConfig.IS_PREVIEW_BUILD -> AppUpdateChannel.PREVIEW
-      else -> AppUpdateChannel.STABLE
-    }
-  }
 
   fun schedule(context: Context) {
     if (!BuildConfig.ENABLE_UPDATE_FEATURE) return
@@ -144,11 +137,10 @@ object UpdateWork {
     WorkManager.getInstance(context).cancelUniqueWork(DOWNLOAD_WORK).result.get()
   }
 
-  suspend fun enqueue(context: Context, release: Release, automatic: Boolean = false,
-    channel: AppUpdateChannel = selectedChannel(context)): Boolean = withContext(Dispatchers.IO) {
+  suspend fun enqueue(context: Context, release: Release, automatic: Boolean = false): Boolean = withContext(Dispatchers.IO) {
     if (!BuildConfig.ENABLE_UPDATE_FEATURE) return@withContext false
     enqueueMutex.withLock {
-      if (channel != selectedChannel(context) || (automatic && !automaticEnabled(context))) return@withLock false
+      if (automatic && !automaticEnabled(context)) return@withLock false
       val current = state(context).value
       if (current.stage == UpdateStage.INSTALLING || current.stage == UpdateStage.APPROVAL) return@withLock false
       val manager = WorkManager.getInstance(context)
@@ -208,10 +200,9 @@ class UpdateCheckWorker(context: Context, params: WorkerParameters) : CoroutineW
     if (!UpdateWork.automaticEnabled(context) || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return Result.success()
     if (UpdateWork.state(context).value.busy) return Result.success()
     return try {
-      val channel = UpdateWork.selectedChannel(context)
-      val release = UpdateManager(context).checkForUpdate(channel)
-      if (release != null && UpdateWork.automaticEnabled(context) && channel == UpdateWork.selectedChannel(context)) {
-        UpdateWork.enqueue(context, release, automatic = true, channel = channel)
+      val release = UpdateManager(context).checkForUpdate()
+      if (release != null && UpdateWork.automaticEnabled(context)) {
+        UpdateWork.enqueue(context, release, automatic = true)
       }
       Result.success()
     } catch (cancelled: CancellationException) {

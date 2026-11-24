@@ -1549,7 +1549,6 @@
   <string name="ui_auto_check_for_updates">Автоперевірка оновлень</string>
   <string name="ui_check_on_startup">Перевіряти під час запуску</string>
   <string name="ui_check_for_updates_now">Перевірити наявність оновлень зараз</string>
-  <string name="ui_update_channel">Канал оновлень</string>
   <string name="update_whats_new">Що нового</string>
   <string name="update_no_release_notes">Примітки до випуску відсутні.</string>
   <string name="update_ready_to_install">Готово до встановлення</string>
@@ -1559,8 +1558,6 @@
   <string name="update_size">Розмір</string>
   <string name="update_package">Пакет</string>
   <string name="update_unknown_size">Невідомий розмір</string>
-  <string name="update_beta_build_format">Бета r%1$d</string>
-  <string name="ui_beta_badge_suffix"> (Бета)</string>
   <string name="ui_core_open_source_dependencies_used_by_mpvrx">Основні відкриті залежності, що використовуються в mpvRx.</string>
   <string name="ui_copy_upi_id">Скопіювати UPI ID</string>
   <string name="ui_already_using_latest_version">Уже використовується остання версія</string>
@@ -2687,7 +2684,6 @@
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
   <string name="pref_thumbnail_generator_native_summary">Видобувати мініатюри й обкладинки з локальних файлів. Зміна очищує кеш.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Мініатюри й обкладинки Android. Зміна очищує кеш. Мережеві перегляди використовують Native.</string>
-  <string name="ui_update_channels_summary">Стабільні версії, нічні попередні версії або експериментальні збірки CI.</string>
   <string name="tv_nav_settings">Налаштування</string>
   <string name="tv_move_up">Перемістити вгору</string>
   <string name="tv_move_down">Перемістити вниз</string>

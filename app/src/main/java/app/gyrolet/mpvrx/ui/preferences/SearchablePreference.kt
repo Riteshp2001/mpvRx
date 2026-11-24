@@ -2203,7 +2203,6 @@ object SearchablePreferences {
           screen = AboutScreen,
           anchorItemIndex = 0,
           SearchEntrySpec(R.string.ui_auto_check_for_updates, listOf("update", "automatic", "startup")),
-          SearchEntrySpec(R.string.ui_update_channel, listOf("update", "channel", "stable", "preview", "experimental")),
         )
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
           addSearchEntries(

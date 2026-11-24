@@ -43,9 +43,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -70,10 +67,8 @@ import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.domain.update.AppUpdateChannel
 import app.gyrolet.mpvrx.presentation.crash.CrashActivity.Companion.collectDeviceInfo
 import app.gyrolet.mpvrx.ui.components.IconSwitch
-import app.gyrolet.mpvrx.ui.components.themedSegmentedButtonColors
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.update.UpdateViewModel
@@ -94,12 +89,7 @@ object AboutScreen : ScrollableSettingsScreen {
     val backstack = LocalBackStack.current
     val packageManager: PackageManager = context.packageManager
     val packageInfo = packageManager.getPackageInfo(context.packageName, 0)
-    val versionName =
-      packageInfo.versionName
-        ?.let { value ->
-          if (BuildConfig.IS_PREVIEW_BUILD) value else value.substringBefore('-')
-        }
-        ?: BuildConfig.VERSION_NAME
+    val versionName = packageInfo.versionName?.substringBefore('-') ?: BuildConfig.VERSION_NAME
     val buildType = BuildConfig.BUILD_TYPE
     val githubRepoUrl = stringResource(R.string.github_repo_url)
     val privacyPolicyUrl = stringResource(R.string.privacy_policy_url)
@@ -492,7 +482,6 @@ object AboutScreen : ScrollableSettingsScreen {
           PreferenceCard {
             val isAutoUpdateEnabled by updateViewModel.isAutoUpdateEnabled.collectAsState()
             val isAutoInstallEnabled by updateViewModel.isAutoInstallEnabled.collectAsState()
-            val updateChannel by updateViewModel.updateChannel.collectAsState()
             Row(
                 modifier =
                   Modifier
@@ -550,50 +539,6 @@ object AboutScreen : ScrollableSettingsScreen {
                   IconSwitch(checked = isAutoInstallEnabled, onCheckedChange = { updateViewModel.toggleAutoInstall(it) })
                 }
               }
-
-              Column(
-                modifier = Modifier.fillMaxWidth().settingsSearchTarget(R.string.ui_update_channel).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-              ) {
-                Text(
-                  text = stringResource(R.string.ui_update_channel),
-                  style = MaterialTheme.typography.titleMedium,
-                  fontWeight = FontWeight.SemiBold,
-                  color = cs.onSurface,
-                )
-                Text(
-                  text = stringResource(R.string.ui_update_channels_summary),
-                  style = MaterialTheme.typography.bodyMedium,
-                  color = cs.outline,
-                )
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                  AppUpdateChannel.entries.forEachIndexed { index, channel ->
-                    SegmentedButton(
-                      modifier = Modifier.weight(1f),
-                      selected = updateChannel == channel,
-                      onClick = { updateViewModel.setUpdateChannel(channel) },
-                      shape = SegmentedButtonDefaults.itemShape(index, AppUpdateChannel.entries.size),
-                      colors = themedSegmentedButtonColors(),
-                      contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                      icon = {},
-                      label = {
-                        Text(
-                          stringResource(
-                            when (channel) {
-                              AppUpdateChannel.STABLE -> R.string.ui_update_channel_stable_short
-                              AppUpdateChannel.PREVIEW -> R.string.ui_update_channel_preview_short
-                            },
-                          ),
-                          maxLines = 1,
-                          overflow = TextOverflow.Ellipsis,
-                          style = MaterialTheme.typography.labelMedium,
-                        )
-                      },
-                    )
-                  }
-                }
-              }
-
 
               Column(modifier = Modifier.padding(16.dp)) {
                 Button(

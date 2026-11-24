@@ -1867,7 +1867,6 @@
   <string name="ui_yt_dlp_version">Версия %1$s</string>
   <string name="ui_yt_dlp_commit">Коммит %1$s</string>
   <string name="ui_version_unavailable">Версия недоступна</string>
-  <string name="ui_update_channel">Канал обновлений</string>
   <string name="update_whats_new">Что нового</string>
   <string name="update_no_release_notes">Примечания к выпуску отсутствуют.</string>
   <string name="update_ready_to_install">Готово к установке</string>
@@ -1877,8 +1876,6 @@
   <string name="update_size">Размер</string>
   <string name="update_package">Пакет</string>
   <string name="update_unknown_size">Размер неизвестен</string>
-  <string name="update_beta_build_format">Бета r%1$d</string>
-  <string name="ui_beta_badge_suffix">\u0020(Бета)</string>
   <string name="player_video_quality">Качество видео</string>
   <string name="player_video_quality_button">Качество видео</string>
   <string name="network_bookmark_add">Добавить папку в закладки</string>
@@ -2762,7 +2759,6 @@
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
   <string name="pref_thumbnail_generator_native_summary">Извлекать миниатюры и обложки из локальных файлов. Смена очищает кэш.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Миниатюры и обложки Android. Смена очищает кэш. Для сетевых превью используется Native.</string>
-  <string name="ui_update_channels_summary">Стабильные версии, ночные предварительные версии или экспериментальные сборки CI.</string>
   <string name="tv_nav_settings">Настройки</string>
   <string name="tv_move_up">Переместить вверх</string>
   <string name="tv_move_down">Переместить вниз</string>

@@ -12,7 +12,6 @@ import {
   Layers3,
   Music2,
   Play,
-  Radio,
   ShieldCheck,
   Sliders,
   Sparkles,
@@ -28,7 +27,6 @@ import GitHubIcon from "../components/GitHubIcon.astro";
 
 const releaseUrl = "https://github.com/Riteshp2001/mpvRx/releases/latest";
 const repoUrl = "https://github.com/Riteshp2001/mpvRx";
-const previewUrl = "https://riteshp2001.github.io/mpvRx/#preview";
 
 const capabilities = [
   {
@@ -532,32 +530,6 @@ const showcaseGallery = [
           </div>
         </div>
       </section>
-
-      <section class="preview-channel" aria-labelledby="preview-title">
-        <div class="container preview-channel-inner">
-          <div class="preview-copy">
-            <p class="preview-kicker"><Radio size={17} /> Preview channel</p>
-            <h2 id="preview-title">Try the next mpvRx build early.</h2>
-            <p>
-              Preview builds are signed and published from the latest selected source for testers who want new fixes and features before the next stable release.
-            </p>
-            <div class="preview-tags" aria-label="Available preview variants">
-              <span>Standard</span>
-              <span>FongMi</span>
-              <span>No Vulkan</span>
-              <span>Checksummed</span>
-            </div>
-          </div>
-          <div class="preview-actions">
-            <a class="btn btn-primary btn-large" href={previewUrl} target="_blank" rel="noopener noreferrer">
-              <Radio size={20} />
-              <span>Open preview builds</span>
-              <ExternalLink size={16} />
-            </a>
-            <p>Preview builds may contain regressions. Keep the stable APK available and include the preview revision in issue reports.</p>
-          </div>
-        </div>
-      </section>
     </main>
 
     <!-- Site Footer -->
@@ -580,7 +552,6 @@ const showcaseGallery = [
             <a href="#showcase">Screenshots</a>
             <a href="#builds">Build Variants</a>
             <a href={releaseUrl} target="_blank" rel="noopener noreferrer">Releases</a>
-            <a href={previewUrl} target="_blank" rel="noopener noreferrer">Preview Builds</a>
           </div>
           <div class="footer-link-group">
             <h5>Documentation</h5>
@@ -1762,78 +1733,6 @@ const showcaseGallery = [
     gap: 16px;
   }
 
-  .preview-channel {
-    padding: 72px 0;
-    border-top: 1px solid var(--border-subtle);
-    background:
-      radial-gradient(circle at 15% 20%, rgba(139, 108, 255, 0.18), transparent 38%),
-      linear-gradient(135deg, var(--bg-surface-elevated), var(--bg-surface));
-  }
-
-  .preview-channel-inner {
-    display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
-    gap: clamp(40px, 8vw, 96px);
-    align-items: center;
-  }
-
-  .preview-kicker {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 14px;
-    color: var(--accent-teal-bright);
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  .preview-copy h2 {
-    max-width: 720px;
-    margin-bottom: 14px;
-    color: var(--text-primary);
-    font-size: clamp(2rem, 4vw, 3.25rem);
-    line-height: 1.08;
-  }
-
-  .preview-copy > p:not(.preview-kicker) {
-    max-width: 720px;
-    color: var(--text-secondary);
-    font-size: 1rem;
-  }
-
-  .preview-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 22px;
-  }
-
-  .preview-tags span {
-    padding: 5px 10px;
-    border: 1px solid var(--border-medium);
-    border-radius: 100px;
-    background: var(--accent-teal-soft);
-    color: var(--text-secondary);
-    font-size: 0.76rem;
-    font-weight: 600;
-  }
-
-  .preview-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 14px;
-  }
-
-  .preview-actions p {
-    max-width: 440px;
-    color: var(--text-muted);
-    font-size: 0.84rem;
-    line-height: 1.55;
-  }
-
   /* Footer */
   .site-footer {
     border-top: 1px solid var(--border-subtle);
@@ -2000,11 +1899,6 @@ const showcaseGallery = [
     .footer-container {
       grid-template-columns: 1fr;
       gap: 40px;
-    }
-
-    .preview-channel-inner {
-      grid-template-columns: 1fr;
-      gap: 30px;
     }
   }
 

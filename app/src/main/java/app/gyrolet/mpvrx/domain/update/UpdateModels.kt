@@ -12,17 +12,6 @@ package app.gyrolet.mpvrx.domain.update
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-enum class AppUpdateChannel {
-  STABLE,
-  PREVIEW,
-  ;
-
-  companion object {
-    fun fromStoredValue(value: String?): AppUpdateChannel =
-      entries.firstOrNull { channel -> channel.name.equals(value, ignoreCase = true) } ?: STABLE
-  }
-}
-
 @Serializable
 data class Release(
   @SerialName("tag_name") val tagName: String,
@@ -30,44 +19,9 @@ data class Release(
   @SerialName("body") val body: String,
   @SerialName("published_at") val publishedAt: String,
   @SerialName("assets") val assets: List<Asset>,
+  // GitHub releases have no channel; only records saved from retired feeds carry one.
   @SerialName("channel") val channel: String? = null,
-  @SerialName("commit_count") val commitCount: Int? = null,
-  @SerialName("commit_sha") val commitSha: String? = null,
-) {
-  val isPreview: Boolean
-    get() = channel.equals("preview", ignoreCase = true) || tagName.startsWith("preview-r")
-
-  val previewBuildNumber: Int?
-    get() =
-      if (isPreview) {
-        commitCount ?: PREVIEW_TAG_REGEX.find(tagName)?.groupValues?.getOrNull(1)?.toIntOrNull()
-      } else {
-        null
-      }
-
-  // Preview feeds are rolling, and an amended or force-pushed master republishes the same commit count,
-  // so the key carries the commit: ignoring one build must not ignore a different build at that count.
-  val updateKey: String
-    get() {
-      if (!isPreview) return tagName
-      val buildNumber = previewBuildNumber ?: return tagName
-      val commit = commitSha?.trim()?.take(SHORT_SHA_LENGTH)?.takeIf { it.isNotEmpty() }
-      return listOfNotNull("preview-r$buildNumber", commit).joinToString("-")
-    }
-
-  // Old assets stay available during publication. Never select one from a different build.
-  val updateAssets: List<Asset>
-    get() {
-      if (!isPreview) return assets
-      val buildNumber = previewBuildNumber ?: return emptyList()
-      return assets.filter { it.name.startsWith("mpvRx-preview-r$buildNumber-", ignoreCase = true) }
-    }
-
-  companion object {
-    private const val SHORT_SHA_LENGTH = 7
-    private val PREVIEW_TAG_REGEX = Regex("""(?:preview-)?r(\d+)""", RegexOption.IGNORE_CASE)
-  }
-}
+)
 
 @Serializable
 data class Asset(
@@ -75,13 +29,12 @@ data class Asset(
   @SerialName("name") val name: String,
   @SerialName("size") val size: Long,
   @SerialName("content_type") val contentType: String,
-  // Pages feeds publish "sha256"; GitHub release assets publish "digest" as "sha256:<hex>".
-  @SerialName("sha256") val sha256: String? = null,
+  // GitHub release assets publish "digest" as "sha256:<hex>".
   @SerialName("digest") val digest: String? = null,
 ) {
   val expectedSha256: String?
     get() =
-      (sha256 ?: digest?.takeIf { it.startsWith(SHA256_DIGEST_PREFIX, ignoreCase = true) }?.drop(SHA256_DIGEST_PREFIX.length))
+      digest?.takeIf { it.startsWith(SHA256_DIGEST_PREFIX, ignoreCase = true) }?.drop(SHA256_DIGEST_PREFIX.length)
         ?.trim()
         ?.lowercase()
         ?.takeIf { SHA256_HEX_REGEX.matches(it) }
@@ -114,7 +67,7 @@ internal const val APK_VARIANT_PLAYSTORE = "playstore"
 /** ABI splits published next to the universal APK, matching the Android ABI names. */
 internal val APK_ABIS = listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
 
-/** Matches a dash-separated token in an asset name such as `mpvRx-preview-r1969-arm64-v8a.apk`. */
+/** Matches a dash-separated token in an asset name such as `mpvRx-arm64-v8a-v3.1.1.apk`. */
 internal fun String.hasApkAssetToken(token: String): Boolean =
   Regex(
     pattern = "(?:^|-)${Regex.escape(token)}(?:-|\\.apk$)",

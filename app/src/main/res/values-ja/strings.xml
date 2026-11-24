@@ -1831,7 +1831,6 @@
   <string name="ui_yt_dlp_version">バージョン %1$s</string>
   <string name="ui_yt_dlp_commit">コミット %1$s</string>
   <string name="ui_version_unavailable">バージョンを取得できません</string>
-  <string name="ui_update_channel">アップデートチャンネル</string>
   <string name="update_whats_new">新機能</string>
   <string name="update_no_release_notes">リリースノートはありません。</string>
   <string name="update_ready_to_install">インストール準備完了</string>
@@ -1841,8 +1840,6 @@
   <string name="update_size">サイズ</string>
   <string name="update_package">パッケージ</string>
   <string name="update_unknown_size">サイズ不明</string>
-  <string name="update_beta_build_format">ベータ r%1$d</string>
-  <string name="ui_beta_badge_suffix">\u0020(ベータ)</string>
   <string name="player_video_quality">動画品質</string>
   <string name="player_video_quality_button">動画品質</string>
   <string name="network_bookmark_add">フォルダーをブックマーク</string>
@@ -2690,7 +2687,6 @@
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
   <string name="pref_thumbnail_generator_native_summary">ローカルファイルからサムネイルとカバーを抽出。切り替えるとキャッシュを消去。</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Androidのサムネイルとカバーを使用。切り替えるとキャッシュを消去。ネットワークはネイティブ抽出です。</string>
-  <string name="ui_update_channels_summary">安定版、ナイトリープレビュー、実験的な CI ビルド。</string>
   <string name="tv_nav_settings">設定</string>
   <string name="tv_move_up">上へ移動</string>
   <string name="tv_move_down">下へ移動</string>

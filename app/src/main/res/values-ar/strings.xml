@@ -1893,7 +1893,6 @@
   <string name="ui_yt_dlp_version">الإصدار %1$s</string>
   <string name="ui_yt_dlp_commit">الالتزام %1$s</string>
   <string name="ui_version_unavailable">الإصدار غير متاح</string>
-  <string name="ui_update_channel">قناة التحديث</string>
   <string name="update_whats_new">ما الجديد</string>
   <string name="update_no_release_notes">لا توجد ملاحظات إصدار.</string>
   <string name="update_ready_to_install">جاهز للتثبيت</string>
@@ -1903,8 +1902,6 @@
   <string name="update_size">الحجم</string>
   <string name="update_package">الحزمة</string>
   <string name="update_unknown_size">حجم غير معروف</string>
-  <string name="update_beta_build_format">تجريبي r%1$d</string>
-  <string name="ui_beta_badge_suffix">\u0020(تجريبي)</string>
   <string name="player_video_quality">جودة الفيديو</string>
   <string name="player_video_quality_button">جودة الفيديو</string>
   <string name="network_bookmark_add">وضع إشارة مرجعية للمجلد</string>
@@ -2812,7 +2809,6 @@
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
   <string name="pref_thumbnail_generator_native_summary">استخرج الصور المصغرة والأغلفة من الملفات المحلية. التبديل يمسح التخزين المؤقت.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">استخدم صور Android المصغرة والأغلفة. التبديل يمسح التخزين المؤقت. معاينات الشبكة تستخدم Native.</string>
-  <string name="ui_update_channels_summary">إصدارات مستقرة أو معاينات ليلية أو إصدارات تجريبية من التكامل المستمر.</string>
   <string name="tv_nav_settings">الإعدادات</string>
   <string name="tv_move_up">نقل لأعلى</string>
   <string name="tv_move_down">نقل لأسفل</string>

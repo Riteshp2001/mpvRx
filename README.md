@@ -383,14 +383,7 @@ _Just a Pro tip if your battery consumption stays within 200 mAh and belwo 0.9W 
   <a href="https://github.com/Riteshp2001/mpvRx/releases">
     <img src="https://img.shields.io/badge/Download-Stable_Release-blue?style=for-the-badge&logo=github" alt="Stable Release">
   </a>
-  <!-- <a href="https://riteshp2001.github.io/mpvRx/">
-    <img src="https://img.shields.io/badge/Download-Preview_Build-orange?style=for-the-badge&logo=github" alt="Preview Build">
-  </a> -->
 </div>
-
-<!-- <div align="center">
-  <i>Note: Previews may be unstable and are intended for testing purposes only.</i>
-</div> -->
 
 For help, reproducible bug reports, or feature suggestions, start with the [support guide](SUPPORT.md) and [existing issues](https://github.com/Riteshp2001/mpvRx/issues).
 
@@ -473,13 +466,6 @@ Then bump `versionCode` and `versionName` in `app/build.gradle.kts`, create a ta
 ```bash
 git tag -a v1.3.1 -m "Release version 1.3.1"
 git push origin v1.3.1
-```
-
-Preview releases use the same flow with preview tags such as:
-
-```bash
-git tag -a v1.3.1-preview.1 -m "Preview release"
-git push origin v1.3.1-preview.1
 ```
 
 ---

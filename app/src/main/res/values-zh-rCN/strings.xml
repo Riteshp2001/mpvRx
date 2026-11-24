@@ -1858,7 +1858,6 @@
   <string name="ui_yt_dlp_version">版本 %1$s</string>
   <string name="ui_yt_dlp_commit">提交 %1$s</string>
   <string name="ui_version_unavailable">版本不可用</string>
-  <string name="ui_update_channel">更新渠道</string>
   <string name="update_whats_new">新增内容</string>
   <string name="update_no_release_notes">未提供发行说明。</string>
   <string name="update_ready_to_install">可以安装</string>
@@ -1868,8 +1867,6 @@
   <string name="update_size">大小</string>
   <string name="update_package">安装包</string>
   <string name="update_unknown_size">大小未知</string>
-  <string name="update_beta_build_format">测试版 r%1$d</string>
-  <string name="ui_beta_badge_suffix">\u0020（测试版）</string>
   <string name="player_video_quality">视频质量</string>
   <string name="player_video_quality_button">视频质量</string>
   <string name="network_bookmark_add">收藏文件夹</string>
@@ -2692,7 +2689,6 @@
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
   <string name="pref_thumbnail_generator_native_summary">从本地文件提取缩略图和封面。切换会清空缓存。</string>
   <string name="pref_thumbnail_generator_mediastore_summary">使用 Android 缩略图和封面。切换会清空缓存；网络预览使用原生提取。</string>
-  <string name="ui_update_channels_summary">稳定版本、每夜预览版或实验性 CI 构建。</string>
   <string name="tv_nav_settings">设置</string>
   <string name="tv_move_up">上移</string>
   <string name="tv_move_down">下移</string>

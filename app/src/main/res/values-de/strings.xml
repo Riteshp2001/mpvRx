@@ -1843,7 +1843,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_yt_dlp_version">Version %1$s</string>
   <string name="ui_yt_dlp_commit">Commit %1$s</string>
   <string name="ui_version_unavailable">Version nicht verfügbar</string>
-  <string name="ui_update_channel">Update-Kanal</string>
   <string name="update_whats_new">Neuigkeiten</string>
   <string name="update_no_release_notes">Keine Versionshinweise vorhanden.</string>
   <string name="update_ready_to_install">Bereit zur Installation</string>
@@ -1853,8 +1852,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="update_size">Größe</string>
   <string name="update_package">Paket</string>
   <string name="update_unknown_size">Unbekannte Größe</string>
-  <string name="update_beta_build_format">Beta r%1$d</string>
-  <string name="ui_beta_badge_suffix">\u0020(Beta)</string>
   <string name="player_video_quality">Videoqualität</string>
   <string name="player_video_quality_button">Videoqualität</string>
   <string name="network_bookmark_add">Ordner als Lesezeichen speichern</string>
@@ -2714,7 +2711,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_thumbnail_generator_mediastore">MediaStore</string>
   <string name="pref_thumbnail_generator_native_summary">Vorschaubilder und Cover aus lokalen Dateien extrahieren. Wechsel leert den Cache.</string>
   <string name="pref_thumbnail_generator_mediastore_summary">Android-Vorschaubilder und Cover nutzen. Wechsel leert den Cache. Netzwerkvorschauen nutzen Native.</string>
-  <string name="ui_update_channels_summary">Stabile Versionen, nächtliche Vorschauversionen oder experimentelle CI-Builds.</string>
   <string name="tv_nav_settings">Einstellungen</string>
   <string name="tv_move_up">Nach oben verschieben</string>
   <string name="tv_move_down">Nach unten verschieben</string>

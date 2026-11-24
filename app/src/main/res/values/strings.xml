@@ -1875,10 +1875,6 @@
   <string name="ui_auto_check_for_updates">Auto Check for Updates</string>
   <string name="ui_check_on_startup">Check on startup</string>
   <string name="ui_check_for_updates_now">Check for Updates Now</string>
-  <string name="ui_update_channel">Update Channel</string>
-  <string name="ui_update_channel_stable_short" translatable="false">Stable</string>
-  <string name="ui_update_channel_preview_short" translatable="false">Nightly</string>
-  <string name="ui_update_channels_summary">Stable releases, nightly previews, or experimental CI builds.</string>
   <string name="update_whats_new">What’s New</string>
   <string name="update_no_release_notes">No release notes provided.</string>
   <string name="update_ready_to_install">Ready to Install</string>
@@ -1888,9 +1884,6 @@
   <string name="update_size">Size</string>
   <string name="update_package">Package</string>
   <string name="update_unknown_size">Unknown size</string>
-  <string name="update_beta_build_format">Beta r%1$d</string>
-  <string name="ui_beta_badge_suffix">\u0020(Beta)</string>
-  <string name="ui_tester_badge_suffix">\u0020(Tester)</string>
   <string name="ui_core_open_source_dependencies_used_by_mpvrx">Core open source dependencies used by mpvRx.</string>
   <string name="ui_copy_upi_id">Copy UPI ID</string>
   <string name="ui_already_using_latest_version">Already using latest version</string>
