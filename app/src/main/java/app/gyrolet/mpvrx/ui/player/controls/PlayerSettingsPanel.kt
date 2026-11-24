@@ -175,11 +175,14 @@ internal fun PlayerSettingsPanel(
   }
 
   Box(Modifier.fillMaxSize().imePadding()) {
-    Box(Modifier.fillMaxSize().clickable(
-      interactionSource = remember { MutableInteractionSource() },
-      indication = null,
-      onClick = close,
-    ))
+    // The exit animation keeps this panel composed; only an active panel may swallow player taps.
+    if (active) {
+      Box(Modifier.fillMaxSize().clickable(
+        interactionSource = remember { MutableInteractionSource() },
+        indication = null,
+        onClick = close,
+      ))
+    }
     savedContent.SaveableStateProvider("player-settings-panel") {
       DraggablePanel(
         modifier = Modifier.semantics { paneTitle = resources.getString(R.string.player_settings_title) },

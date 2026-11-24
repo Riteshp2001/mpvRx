@@ -106,8 +106,10 @@ import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.LocalMotionPolicy
 import app.gyrolet.mpvrx.ui.theme.MotionPolicy
 import app.gyrolet.mpvrx.ui.tv.TvSafeArea
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Composable
@@ -156,6 +158,7 @@ fun PlayerSheet(
   var opened by remember { mutableStateOf(false) }
   var closing by remember { mutableStateOf(false) }
   var dismissalDelivered by remember { mutableStateOf(false) }
+  var sheetHeightPx by remember { mutableStateOf(0) }
   val deliverDismissal: () -> Unit = {
     if (!dismissalDelivered) {
       dismissalDelivered = true
@@ -174,6 +177,12 @@ fun PlayerSheet(
         velocityThreshold = { with(density) { 125.dp.toPx() } },
       )
     }
+  // The bottom-aligned sheet has left the screen once it travelled its own height; the rest of
+  // the spring toward the closed anchor is invisible.
+  val sheetOffscreen: () -> Boolean = {
+    val offset = anchoredDraggableState.offset
+    sheetHeightPx > 0 && offset.isFinite() && offset >= sheetHeightPx - 1f
+  }
 
   val scaledSwipeOffset = swipeOffset * 2f
   val currentIsSwipeActive by rememberUpdatedState(isSwipeActive)
@@ -201,15 +210,22 @@ fun PlayerSheet(
     if (!closing && !dismissalDelivered && latestConfirmDismiss()) closing = true
   }
   val closeLabel = stringResource(R.string.ui_close)
+  // A leaving sheet must not keep an invisible full-screen scrim over the player's gestures.
+  val scrimBlocksTouches = !closing && !dismissalDelivered && !(opened && anchoredDraggableState.targetValue == 1)
+  val scrimInteractionSource = remember { MutableInteractionSource() }
   Box(Modifier.fillMaxSize().semantics { isTraversalGroup = true }) {
     Box(
       Modifier.matchParentSize().background(Color.Black.copy(alpha))
         .focusProperties { canFocus = false }
-        .clickable(
-          interactionSource = remember { MutableInteractionSource() },
-          indication = null,
-          onClickLabel = closeLabel,
-          onClick = internalOnDismissRequest,
+        .then(
+          if (scrimBlocksTouches) {
+            Modifier.clickable(
+              interactionSource = scrimInteractionSource,
+              indication = null,
+              onClickLabel = closeLabel,
+              onClick = internalOnDismissRequest,
+            )
+          } else Modifier,
         ),
     )
     Box(
@@ -247,6 +263,7 @@ fun PlayerSheet(
       val dragEnabled = canDrag && opened && !closing
       Surface(
         modifier = Modifier
+          .onSizeChanged { sheetHeightPx = it.height }
           .sizeIn(maxWidth = window.maxWidth(customMaxWidth))
           .fillMaxWidth()
           .then(modifier)
@@ -284,7 +301,7 @@ fun PlayerSheet(
         tonalElevation = if (isFrosted) 0.dp else tonalElevation,
         border = if (isFrosted) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)),
       ) {
-        BackHandler(onBack = internalOnDismissRequest)
+        BackHandler(enabled = !closing && !dismissalDelivered, onBack = internalOnDismissRequest)
         CompositionLocalProvider(
           LocalPlayerGlassSurfaceActive provides isFrosted,
           LocalMotionPolicy provides MotionPolicy(reduceMotion = reducedMotion),
@@ -316,7 +333,12 @@ fun PlayerSheet(
     LaunchedEffect(anchoredDraggableState, closing) {
       if (closing) {
         snapshotFlow { anchoredDraggableState.offset.isFinite() }.first { it }
-        anchoredDraggableState.animateTo(1)
+        launch {
+          anchoredDraggableState.animateTo(1)
+          deliverDismissal()
+        }
+        // Hand the player back as soon as the sheet is out of sight.
+        snapshotFlow { sheetOffscreen() }.first { it }
         deliverDismissal()
         return@LaunchedEffect
       }
@@ -342,16 +364,25 @@ fun PlayerSheet(
     }
 
     LaunchedEffect(anchoredDraggableState) {
-      snapshotFlow { opened && !closing && anchoredDraggableState.settledValue == 1 }
-        .collectLatest { draggedClosed ->
-          if (draggedClosed && !dismissalDelivered) {
-            if (latestConfirmDismiss()) {
-              deliverDismissal()
-            } else {
-              anchoredDraggableState.animateTo(0)
-            }
-          }
+      while (true) {
+        // A swipe that settles closed is finished once the sheet is out of sight.
+        snapshotFlow {
+          opened && !closing && !dismissalDelivered && (
+            anchoredDraggableState.settledValue == 1 ||
+              (anchoredDraggableState.isAnimationRunning && anchoredDraggableState.targetValue == 1 && sheetOffscreen())
+            )
+        }.first { it }
+        if (latestConfirmDismiss()) {
+          deliverDismissal()
+          return@LaunchedEffect
         }
+        try {
+          anchoredDraggableState.animateTo(0)
+        } catch (e: CancellationException) {
+          // A new drag or a close may take the sheet over; only leaving composition ends this loop.
+          ensureActive()
+        }
+      }
     }
   }
 }
