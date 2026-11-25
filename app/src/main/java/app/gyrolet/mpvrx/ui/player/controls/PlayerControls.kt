@@ -56,6 +56,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.areNavigationBarsVisible
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
@@ -63,6 +64,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBarsIgnoringVisibility
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -482,12 +485,13 @@ fun PlayerControls(
     } else {
       Modifier
     }
+  // The bottom safe area is reserved whether or not the navigation bar is showing. Following its
+  // visibility lifted the whole bottom cluster while Home or Recents revealed the bar and dropped
+  // it again on return.
   val navigationBarBottomInsetModifier =
-    if (showSystemNavigationBar) {
-      Modifier.windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom))
-    } else {
-      Modifier
-    }
+    Modifier.windowInsetsPadding(
+      WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout).only(WindowInsetsSides.Bottom),
+    )
   // mpv toggles `seeking` for every seek of a scrub, so only the seekbar that needs it reads it.
   val mpvSeekingState = PlaybackSession.propBoolean["seeking"].collectAsStateWithLifecycle()
   // mpv can remain "seeking" until its cache refills. Only active scrubbing suppresses the spinner;
@@ -1172,11 +1176,13 @@ fun PlayerControls(
           fun portraitInset(slot: BottomSlot?): Dp =
             if (isPortrait) portraitGlassShadowRoom(slot, enableLiquidGlass) else 0.dp
 
+          // The lowest visible surface rests on the bottom safe area, with no extra gap below it.
+          // Its transparent glass shadow room may extend into the inset.
           val clusterEdge =
             if (isPortrait) {
-              PortraitSectionGap - portraitInset(bottomStack.firstOrNull { bandHeight(it) > 0.dp })
+              -portraitInset(bottomStack.firstOrNull { bandHeight(it) > 0.dp })
             } else {
-              spacing.medium
+              0.dp
             }
           val clusterGap = if (isPortrait) PortraitSectionGap else spacing.extraSmall
           val customButtonsGap = spacing.smaller * 2
@@ -1196,9 +1202,10 @@ fun PlayerControls(
               previousVisibleSlot = slot
             }
           }
-          val buttonsBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Buttons] ?: clusterEdge)
-          val seekbarBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Seekbar] ?: clusterEdge)
-          val playbackBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Playback] ?: clusterEdge)
+          val idleBandCenter = clusterEdge.coerceAtLeast(0.dp)
+          val buttonsBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Buttons] ?: idleBandCenter)
+          val seekbarBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Seekbar] ?: idleBandCenter)
+          val playbackBandCenter = createGuidelineFromBottom(bandCenters[BottomSlot.Playback] ?: idleBandCenter)
           fun ConstrainScope.linkInBottomStack(slot: BottomSlot) {
             val center =
               when (slot) {
