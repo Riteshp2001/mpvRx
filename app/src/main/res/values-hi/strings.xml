@@ -480,10 +480,11 @@
     <item quantity="one">%1$d सेकंड</item>
     <item quantity="other">%1$d सेकंड</item>
   </plurals>
-  <string name="pref_audio_background_playback_title">ऑडियो प्लेयर बैकग्राउंड प्लेबैक</string>
-  <string name="pref_audio_background_playback_summary">ऑडियो प्लेयर से बाहर जाने या स्क्रीन बंद करने पर ऑडियो चलता रखें</string>
   <string name="pref_video_background_playback_title">वीडियो प्लेयर बैकग्राउंड प्लेबैक</string>
-  <string name="pref_video_background_playback_summary">वीडियो प्लेयर से बाहर जाने या स्क्रीन बंद करने पर वीडियो का ऑडियो चलता रखें</string>
+  <string name="pref_video_background_playback_summary">होम पर जाने, ऐप बदलने या स्क्रीन बंद करने पर भी वीडियो चलते रहें। बैक दबाने से वीडियो हमेशा बंद होता है। सिर्फ़ एक बार ऐसा करने के लिए प्लेयर में बैकग्राउंड बटन को देर तक दबाएँ।</string>
+  <string name="toast_background_playback_on">बैकग्राउंड प्लेबैक चालू</string>
+  <string name="toast_background_playback_off">बैकग्राउंड प्लेबैक बंद</string>
+  <string name="btn_label_background_playback_once">एक बार बैकग्राउंड में चलाएँ</string>
   <string name="deselect_all">सभी अनसिलेक्ट करें</string>
   <string name="select_all">सभी सिलेक्ट करें</string>
   <string name="invert_selection">सिलेक्शन उलटें</string>
@@ -2116,13 +2117,6 @@
   <string name="playlist_columns_portrait">पोर्ट्रेट कॉलम</string>
   <string name="playlist_columns_landscape">लैंडस्केप कॉलम</string>
   <string name="playlist_extension">फ़ाइल एक्सटेंशन</string>
-  <string name="pref_background_playback_behavior">बैकग्राउंड प्लेबैक का व्यवहार</string>
-  <string name="pref_video_background_screen_off_only_title">केवल स्क्रीन बंद होने पर</string>
-  <string name="pref_video_background_screen_off_only_summary">स्क्रीन बंद होने पर वीडियो चलता रहता है, लेकिन प्लेयर बंद करने या दूसरे ऐप पर जाने पर रुक जाता है</string>
-  <string name="pref_background_playback_remember">मेरी पसंद हमेशा याद रखें</string>
-  <string name="pref_background_playback_remember_summary">अगले वीडियो के लिए भी बैकग्राउंड प्लेबैक की पसंद रखें।</string>
-  <string name="pref_background_playback_per_video">हर वीडियो के लिए पसंद याद रखें</string>
-  <string name="pref_background_playback_per_video_summary">हर वीडियो के लिए बैकग्राउंड प्लेबैक अलग याद रखें।</string>
   <string name="jellyfin_technical_details">तकनीकी विवरण</string>
 
   <!-- Snapshots (frame capture) -->
@@ -3002,7 +2996,6 @@
   <string name="pref_floating_lyrics_summary">दूसरे ऐप्स के ऊपर गीत के बोल की खिसकने वाली पट्टी दिखाएँ</string>
   <string name="floating_lyrics_permission">फ़्लोटिंग बोल के लिए दूसरे ऐप्स के ऊपर दिखाने की अनुमति दें</string>
   <string name="floating_lyrics_unavailable">फ़्लोटिंग बोल शुरू नहीं हो सके</string>
-  <string name="floating_lyrics_background_required">पहले बैकग्राउंड ऑडियो चालू करें</string>
   <string name="floating_lyrics_open_player">प्लेयर खोलें</string>
   <string name="floating_lyrics_dock_left">फ़्लोटिंग बोल बाईं ओर ले जाएँ</string>
   <string name="floating_lyrics_dock_right">फ़्लोटिंग बोल दाईं ओर ले जाएँ</string>

@@ -9,13 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,7 +34,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioOutput
@@ -82,10 +76,6 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
     val configOwnedOptions = currentMpvConfigOverrideOptions()
     val browserPreferences = koinInject<BrowserPreferences>()
     val playerPreferences = koinInject<PlayerPreferences>()
-    val notificationPermissionLauncher =
-      rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-      ) { _ -> }
 
 
     Scaffold(
@@ -649,30 +639,6 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
                 summary = {
                   Text(
                     stringResource(R.string.pref_ignore_audio_focus_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-              val audioBackgroundPlayback by preferences.audioBackgroundPlayback.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_background_playback_title),
-                value = audioBackgroundPlayback,
-                onValueChange = { enabled ->
-                  preferences.audioBackgroundPlayback.set(enabled)
-                  if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                      PackageManager.PERMISSION_GRANTED
-                    ) {
-                      notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                  }
-                },
-                title = { Text(stringResource(R.string.pref_audio_background_playback_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_audio_background_playback_summary),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

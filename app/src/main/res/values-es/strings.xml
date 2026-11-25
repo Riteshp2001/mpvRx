@@ -486,10 +486,11 @@
     <item quantity="other">%1$d segundos</item>
   </plurals>
   <!-- Background Playback -->
-  <string name="pref_audio_background_playback_title">Reproducción en segundo plano (Reproductor de Audio)</string>
-  <string name="pref_audio_background_playback_summary">Mantener la reproducción al salir del reproductor de audio o apagar la pantalla</string>
   <string name="pref_video_background_playback_title">Reproducción en segundo plano (Reproductor de Video)</string>
-  <string name="pref_video_background_playback_summary">Mantener el audio del video al salir del reproductor de video o apagar la pantalla</string>
+  <string name="pref_video_background_playback_summary">Sigue reproduciendo los videos al ir a la pantalla de inicio, cambiar de app o apagar la pantalla. Atrás siempre cierra el video. Mantén pulsado el botón de segundo plano del reproductor para hacerlo una sola vez.</string>
+  <string name="toast_background_playback_on">Reproducción en segundo plano activada</string>
+  <string name="toast_background_playback_off">Reproducción en segundo plano desactivada</string>
+  <string name="btn_label_background_playback_once">Reproducir en segundo plano una vez</string>
   <string name="deselect_all">Deseleccionar todo</string>
   <string name="select_all">Seleccionar todo</string>
   <string name="invert_selection">Invertir selección</string>
@@ -2193,13 +2194,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="playlist_columns_portrait">Columnas en vertical</string>
   <string name="playlist_columns_landscape">Columnas en horizontal</string>
   <string name="playlist_extension">Extensión del archivo</string>
-  <string name="pref_background_playback_behavior">Comportamiento de reproducción en segundo plano</string>
-  <string name="pref_video_background_screen_off_only_title">Solo con la pantalla apagada</string>
-  <string name="pref_video_background_screen_off_only_summary">Sigue reproduciendo el vídeo al apagar la pantalla, pero lo pausa al cerrar el reproductor o cambiar de aplicación</string>
-  <string name="pref_background_playback_remember">Recordar siempre mi elección</string>
-  <string name="pref_background_playback_remember_summary">Conservar la elección de reproducción en segundo plano para los próximos vídeos.</string>
-  <string name="pref_background_playback_per_video">Recordar la elección para cada vídeo</string>
-  <string name="pref_background_playback_per_video_summary">Recuerda la reproducción en segundo plano para cada vídeo.</string>
   <string name="jellyfin_technical_details">Detalles técnicos</string>
 
   <!-- Snapshots (frame capture) -->
@@ -3088,7 +3082,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_floating_lyrics_summary">Mostrar una burbuja móvil de letras sobre otras aplicaciones</string>
   <string name="floating_lyrics_permission">Permite mostrar sobre otras aplicaciones para usar letras flotantes</string>
   <string name="floating_lyrics_unavailable">No se pudieron iniciar las letras flotantes</string>
-  <string name="floating_lyrics_background_required">Activa primero el audio en segundo plano</string>
   <string name="floating_lyrics_open_player">Abrir reproductor</string>
   <string name="floating_lyrics_dock_left">Mover las letras flotantes a la izquierda</string>
   <string name="floating_lyrics_dock_right">Mover las letras flotantes a la derecha</string>

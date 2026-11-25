@@ -1230,15 +1230,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_audio_background_playback_title,
-          summaryRes = R.string.pref_audio_background_playback_summary,
-          keywords = listOf("background", "playback", "audio", "service", "music"),
-          category = "Audio",
-          screen = AudioPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_autoplay_next_audio_title,
           summaryRes = R.string.pref_autoplay_next_audio_summary,
           keywords = listOf("autoplay", "next", "audio", "music", "advance", "continuous"),
@@ -1250,25 +1241,7 @@ object SearchablePreferences {
         SearchablePreference(
           titleRes = R.string.pref_video_background_playback_title,
           summaryRes = R.string.pref_video_background_playback_summary,
-          keywords = listOf("background", "playback", "video", "service", "media"),
-          category = "Player",
-          screen = PlayerPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_background_playback_behavior,
-          summaryRes = R.string.pref_background_playback_per_video_summary,
-          keywords = listOf("background", "remember", "per video", "individual", "save", "video"),
-          category = "Player",
-          screen = PlayerPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
-          titleRes = R.string.pref_video_background_screen_off_only_title,
-          summaryRes = R.string.pref_video_background_screen_off_only_summary,
-          keywords = listOf("background", "screen off", "lock", "back", "close", "exit", "home", "pause", "video"),
+          keywords = listOf("background", "playback", "video", "home", "screen off", "long press", "once"),
           category = "Player",
           screen = PlayerPreferencesScreen,
         ),

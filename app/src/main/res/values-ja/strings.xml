@@ -485,10 +485,11 @@
     <item quantity="other">%1$d秒</item>
   </plurals>
   <!-- Background Playback -->
-  <string name="pref_audio_background_playback_title">バックグラウンド再生（オーディオプレイヤー）</string>
-  <string name="pref_audio_background_playback_summary">オーディオプレイヤーを離れたり画面をオフにしても音声を再生し続ける</string>
   <string name="pref_video_background_playback_title">バックグラウンド再生（ビデオプレイヤー）</string>
-  <string name="pref_video_background_playback_summary">ビデオプレイヤーを離れたり画面をオフにしても動画の音声を再生し続ける</string>
+  <string name="pref_video_background_playback_summary">ホームに戻る、アプリを切り替える、画面をオフにしたときも動画の再生を続けます。戻るボタンでは常に動画を閉じます。一度だけ行うには、プレーヤーのバックグラウンドボタンを長押しします。</string>
+  <string name="toast_background_playback_on">バックグラウンド再生オン</string>
+  <string name="toast_background_playback_off">バックグラウンド再生オフ</string>
+  <string name="btn_label_background_playback_once">一度だけバックグラウンドで再生</string>
   <string name="deselect_all">すべて選択解除</string>
   <string name="select_all">すべて選択</string>
   <string name="invert_selection">選択を反転</string>
@@ -2179,13 +2180,6 @@
   <string name="playlist_columns_portrait">縦向きの列数</string>
   <string name="playlist_columns_landscape">横向きの列数</string>
   <string name="playlist_extension">ファイル拡張子</string>
-  <string name="pref_background_playback_behavior">バックグラウンド再生の動作</string>
-  <string name="pref_video_background_screen_off_only_title">画面オフ時のみ</string>
-  <string name="pref_video_background_screen_off_only_summary">画面がオフになっても再生を続け、プレーヤーを閉じたりアプリを切り替えたりすると一時停止します</string>
-  <string name="pref_background_playback_remember">選択を常に記憶する</string>
-  <string name="pref_background_playback_remember_summary">バックグラウンド再生の選択を次の動画でも維持します。</string>
-  <string name="pref_background_playback_per_video">動画ごとに選択を記憶する</string>
-  <string name="pref_background_playback_per_video_summary">バックグラウンド再生の設定を動画ごとに保存します。</string>
   <string name="jellyfin_technical_details">技術情報</string>
 
   <!-- Snapshots (frame capture) -->
@@ -3061,7 +3055,6 @@
   <string name="pref_floating_lyrics_summary">他のアプリの上に移動できる歌詞パネルを表示</string>
   <string name="floating_lyrics_permission">フローティング歌詞を使うには他のアプリの上への表示を許可してください</string>
   <string name="floating_lyrics_unavailable">フローティング歌詞を開始できませんでした</string>
-  <string name="floating_lyrics_background_required">先に音声のバックグラウンド再生を有効にしてください</string>
   <string name="floating_lyrics_open_player">プレーヤーを開く</string>
   <string name="floating_lyrics_dock_left">歌詞パネルを左側へ移動</string>
   <string name="floating_lyrics_dock_right">歌詞パネルを右側へ移動</string>

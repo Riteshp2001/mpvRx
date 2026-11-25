@@ -486,10 +486,11 @@
     <item quantity="other">%1$d secondes</item>
   </plurals>
   <!-- Background Playback -->
-  <string name="pref_audio_background_playback_title">Lecture en arrière-plan (Lecteur Audio)</string>
-  <string name="pref_audio_background_playback_summary">Continuer la lecture audio en quittant le lecteur audio ou en éteignant l\’écran</string>
   <string name="pref_video_background_playback_title">Lecture en arrière-plan (Lecteur Vidéo)</string>
-  <string name="pref_video_background_playback_summary">Continuer la lecture du son de la vidéo en quittant le lecteur vidéo ou en éteignant l\’écran</string>
+  <string name="pref_video_background_playback_summary">Continue la lecture des vidéos lorsque vous revenez à l’écran d’accueil, changez d’application ou éteignez l’écran. Retour ferme toujours la vidéo. Appuyez longuement sur le bouton d’arrière-plan du lecteur pour le faire une seule fois.</string>
+  <string name="toast_background_playback_on">Lecture en arrière-plan activée</string>
+  <string name="toast_background_playback_off">Lecture en arrière-plan désactivée</string>
+  <string name="btn_label_background_playback_once">Lire en arrière-plan une fois</string>
   <string name="deselect_all">Tout désélectionner</string>
   <string name="select_all">Tout sélectionner</string>
   <string name="invert_selection">Inverser la sélection</string>
@@ -2193,13 +2194,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="playlist_columns_portrait">Colonnes en portrait</string>
   <string name="playlist_columns_landscape">Colonnes en paysage</string>
   <string name="playlist_extension">Extension du fichier</string>
-  <string name="pref_background_playback_behavior">Comportement de lecture en arrière-plan</string>
-  <string name="pref_video_background_screen_off_only_title">Uniquement écran éteint</string>
-  <string name="pref_video_background_screen_off_only_summary">Continue la lecture quand l’écran s’éteint, mais la met en pause quand vous fermez le lecteur ou changez d’application</string>
-  <string name="pref_background_playback_remember">Toujours mémoriser mon choix</string>
-  <string name="pref_background_playback_remember_summary">Conserver le choix de lecture en arrière-plan pour les prochaines vidéos.</string>
-  <string name="pref_background_playback_per_video">Mémoriser le choix pour chaque vidéo</string>
-  <string name="pref_background_playback_per_video_summary">Mémorise la lecture en arrière-plan séparément pour chaque vidéo.</string>
   <string name="jellyfin_technical_details">Détails techniques</string>
 
   <!-- Snapshots (frame capture) -->
@@ -3102,7 +3096,6 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="pref_floating_lyrics_summary">Afficher une bulle de paroles déplaçable sur les autres applications</string>
   <string name="floating_lyrics_permission">Autorisez l’affichage sur les autres applications pour les paroles flottantes</string>
   <string name="floating_lyrics_unavailable">Impossible de démarrer les paroles flottantes</string>
-  <string name="floating_lyrics_background_required">Activez d’abord l’audio en arrière-plan</string>
   <string name="floating_lyrics_open_player">Ouvrir le lecteur</string>
   <string name="floating_lyrics_dock_left">Déplacer les paroles flottantes à gauche</string>
   <string name="floating_lyrics_dock_right">Déplacer les paroles flottantes à droite</string>

@@ -28,7 +28,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -87,11 +86,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.ui.background.BackdropGate
@@ -496,8 +493,6 @@ fun InAppMusicPlayerSheet(
   val context = LocalContext.current
   val sessionState by PlaybackSession.state.collectAsStateWithLifecycle()
   val serviceOwnsPlayback by MediaPlaybackService.foregroundActive.collectAsStateWithLifecycle()
-  val lifecycle = LocalLifecycleOwner.current.lifecycle
-  val lifecycleState by lifecycle.currentStateFlow.collectAsState()
   val store = viewModel<InAppMusicPlayerStore>()
   val isTelevision = remember(context) { DeviceFormFactor.isTelevision(context) }
   val currentItem = sessionState.currentItem
@@ -518,11 +513,6 @@ fun InAppMusicPlayerSheet(
     if (!canShow && !state.isContentRequested) store.release()
   }
 
-  val shownInApp = state.isOpen && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
-  DisposableEffect(shownInApp) {
-    MediaPlaybackService.setInAppPlayerVisible(shownInApp)
-    onDispose { MediaPlaybackService.setInAppPlayerVisible(false) }
-  }
   val covering = state.coversWindow
   DisposableEffect(covering) {
     if (covering) BackdropGate.covers++

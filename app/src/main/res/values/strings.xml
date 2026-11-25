@@ -681,10 +681,11 @@
   <!-- Background Playback -->
   <string name="pref_ignore_audio_focus_title">Ignore audio focus</string>
   <string name="pref_ignore_audio_focus_summary">Keep audio and video playing alongside other apps without pausing or lowering volume</string>
-  <string name="pref_audio_background_playback_title">Audio Player Background Playback</string>
-  <string name="pref_audio_background_playback_summary">Keep audio playing when leaving the audio player or turning off screen</string>
   <string name="pref_video_background_playback_title">Video Player Background Playback</string>
-  <string name="pref_video_background_playback_summary">Keep video audio playing when leaving the video player or turning off screen</string>
+  <string name="pref_video_background_playback_summary">Keep videos playing after you go Home, switch apps or turn off the screen. Back always closes the video. Long-press the background button in the player to do this once.</string>
+  <string name="toast_background_playback_on">Background playback on</string>
+  <string name="toast_background_playback_off">Background playback off</string>
+  <string name="btn_label_background_playback_once">Play in the background once</string>
   <string name="deselect_all">Deselect All</string>
   <string name="select_all">Select All</string>
   <string name="invert_selection">Invert Selection</string>
@@ -2700,13 +2701,6 @@
   <string name="playlist_columns_portrait">Portrait columns</string>
   <string name="playlist_columns_landscape">Landscape columns</string>
   <string name="playlist_extension">File extension</string>
-  <string name="pref_background_playback_behavior">Background playback behavior</string>
-  <string name="pref_video_background_screen_off_only_title">Only when the screen is off</string>
-  <string name="pref_video_background_screen_off_only_summary">Keep videos playing when the screen turns off, but pause them when you close the player or switch apps</string>
-  <string name="pref_background_playback_remember">Always remember my choice</string>
-  <string name="pref_background_playback_remember_summary">Keep the background playback choice for future videos.</string>
-  <string name="pref_background_playback_per_video">Remember for each video</string>
-  <string name="pref_background_playback_per_video_summary">Remember background playback separately for each video.</string>
   <string name="jellyfin_technical_details">Technical details</string>
 
   <!-- Snapshots (frame capture) -->
@@ -3254,7 +3248,6 @@
   <string name="pref_floating_lyrics_summary">Show a movable lyrics pill over other apps</string>
   <string name="floating_lyrics_permission">Allow Display over other apps to use floating lyrics</string>
   <string name="floating_lyrics_unavailable">Could not start floating lyrics</string>
-  <string name="floating_lyrics_background_required">Enable audio background playback first</string>
   <string name="floating_lyrics_open_player">Open player</string>
   <string name="floating_lyrics_dock_left">Move floating lyrics to the left</string>
   <string name="floating_lyrics_dock_right">Move floating lyrics to the right</string>

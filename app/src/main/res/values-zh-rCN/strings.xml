@@ -487,10 +487,11 @@
   <!-- Background Playback -->
   <string name="pref_ignore_audio_focus_title">忽略音频焦点</string>
   <string name="pref_ignore_audio_focus_summary">允许音频和视频与其他应用同时播放，不因音频焦点变化暂停或降低音量</string>
-  <string name="pref_audio_background_playback_title">后台播放（音频播放器）</string>
-  <string name="pref_audio_background_playback_summary">在离开音频播放器或关闭屏幕时保持音频播放</string>
   <string name="pref_video_background_playback_title">后台播放（视频播放器）</string>
-  <string name="pref_video_background_playback_summary">在离开视频播放器或关闭屏幕时保持视频音频播放</string>
+  <string name="pref_video_background_playback_summary">返回主屏幕、切换应用或关闭屏幕时继续播放视频。返回键始终关闭视频。长按播放器中的后台播放按钮可单次在后台播放。</string>
+  <string name="toast_background_playback_on">后台播放已开启</string>
+  <string name="toast_background_playback_off">后台播放已关闭</string>
+  <string name="btn_label_background_playback_once">单次后台播放</string>
   <string name="deselect_all">取消全选</string>
   <string name="select_all">全选</string>
   <string name="invert_selection">反选</string>
@@ -2189,13 +2190,6 @@
   <string name="playlist_columns_portrait">竖屏列数</string>
   <string name="playlist_columns_landscape">横屏列数</string>
   <string name="playlist_extension">文件扩展名</string>
-  <string name="pref_background_playback_behavior">后台播放行为</string>
-  <string name="pref_video_background_screen_off_only_title">仅在屏幕关闭时</string>
-  <string name="pref_video_background_screen_off_only_summary">屏幕关闭时继续播放，关闭播放器或切换应用时暂停</string>
-  <string name="pref_background_playback_remember">始终记住我的选择</string>
-  <string name="pref_background_playback_remember_summary">为后续视频保留后台播放选择。</string>
-  <string name="pref_background_playback_per_video">为每个视频记住选择</string>
-  <string name="pref_background_playback_per_video_summary">分别记住每个视频的后台播放设置。</string>
   <string name="jellyfin_technical_details">技术详情</string>
 
   <!-- 快照（帧捕获） -->
@@ -3061,7 +3055,6 @@
   <string name="pref_floating_lyrics_summary">在其他应用上方显示可移动的歌词悬浮窗</string>
   <string name="floating_lyrics_permission">请允许在其他应用上层显示以使用悬浮歌词</string>
   <string name="floating_lyrics_unavailable">无法启动悬浮歌词</string>
-  <string name="floating_lyrics_background_required">请先启用音频后台播放</string>
   <string name="floating_lyrics_open_player">打开播放器</string>
   <string name="floating_lyrics_dock_left">将悬浮歌词移至左侧</string>
   <string name="floating_lyrics_dock_right">将悬浮歌词移至右侧</string>

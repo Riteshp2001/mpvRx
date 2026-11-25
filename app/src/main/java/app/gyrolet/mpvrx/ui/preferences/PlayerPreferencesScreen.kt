@@ -9,12 +9,9 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import android.Manifest
 import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,7 +28,6 @@ import androidx.compose.material3.Text
 import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import app.gyrolet.mpvrx.presentation.components.AppTextField as TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,19 +39,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
-import app.gyrolet.mpvrx.preferences.AudioPreferences
-import app.gyrolet.mpvrx.preferences.BackgroundPlaybackBehavior
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.player.NotificationStyle
-import app.gyrolet.mpvrx.ui.player.PlaybackPhase
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerOrientation
 import app.gyrolet.mpvrx.ui.player.ResumePlaybackMode
 import app.gyrolet.mpvrx.ui.player.controls.TV_SEEK_DURATION_RANGE
@@ -84,14 +75,7 @@ object PlayerPreferencesScreen : ScrollableSettingsScreen {
     val preferences = koinInject<PlayerPreferences>()
     val browserPreferences = koinInject<BrowserPreferences>()
     val configOwnedOptions = currentMpvConfigOverrideOptions()
-    val audioPreferences = koinInject<AudioPreferences>()
-    val backgroundPlaybackBehavior by audioPreferences.backgroundPlaybackBehavior.collectAsState()
-    val playbackState by PlaybackSession.state.collectAsState()
     val advancedPreferences = koinInject<AdvancedPreferences>()
-    val notificationPermissionLauncher =
-      rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-      ) { _ -> }
     var showTemplateDialog by remember { mutableStateOf(false) }
     var templateDraft by remember { mutableStateOf("") }
     val gesturePreferences = koinInject<GesturePreferences>()
@@ -236,64 +220,15 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
 
               PreferenceDivider()
 
-              val videoBackgroundPlayback by PlaybackSession.videoBackgroundPlaybackEnabled.collectAsState(
-                initial = PlaybackSession.isVideoBackgroundPlaybackEnabled(),
-              )
+              val videoBackgroundPlayback by preferences.videoBackgroundPlayback.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_video_background_playback_title),
                 value = videoBackgroundPlayback,
-                enabled = backgroundPlaybackBehavior == BackgroundPlaybackBehavior.Remember ||
-                  (PlaybackSession.videoBackgroundPlaybackId(playbackState) != null &&
-                    playbackState.phase in setOf(PlaybackPhase.LOADING, PlaybackPhase.READY, PlaybackPhase.BACKGROUND)),
-                onValueChange = { enabled ->
-                  PlaybackSession.setVideoBackgroundPlaybackEnabled(enabled)
-                  if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                    PackageManager.PERMISSION_GRANTED
-                  ) {
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                  }
-                },
+                onValueChange = preferences.videoBackgroundPlayback::set,
                 title = { Text(stringResource(R.string.pref_video_background_playback_title)) },
                 summary = {
                   Text(
-                    stringResource(
-                      if (backgroundPlaybackBehavior == BackgroundPlaybackBehavior.PerVideo) {
-                        R.string.pref_background_playback_per_video_summary
-                      } else {
-                        R.string.pref_video_background_playback_summary
-                      },
-                    ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_background_playback_behavior),
-                value = backgroundPlaybackBehavior,
-                onValueChange = audioPreferences.backgroundPlaybackBehavior::set,
-                values = app.gyrolet.mpvrx.preferences.BackgroundPlaybackBehavior.entries,
-                valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
-                title = { Text(stringResource(R.string.pref_background_playback_behavior)) },
-                summary = { Text(stringResource(backgroundPlaybackBehavior.summaryRes), color = MaterialTheme.colorScheme.outline) },
-              )
-              }
-
-              PreferenceDivider()
-
-              val videoBackgroundOnlyWhenScreenOff by preferences.videoBackgroundOnlyWhenScreenOff.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_video_background_screen_off_only_title),
-                value = videoBackgroundOnlyWhenScreenOff,
-                onValueChange = preferences.videoBackgroundOnlyWhenScreenOff::set,
-                title = { Text(stringResource(R.string.pref_video_background_screen_off_only_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_video_background_screen_off_only_summary),
+                    stringResource(R.string.pref_video_background_playback_summary),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

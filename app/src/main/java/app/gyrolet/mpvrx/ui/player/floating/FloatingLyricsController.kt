@@ -163,10 +163,7 @@ internal class FloatingLyricsController(
               }
             }
           }
-          val enabled = combine(
-            preferences.floatingLyricsEnabled.changes(),
-            preferences.audioBackgroundPlayback.changes(),
-          ) { floating, background -> floating && background }
+          val enabled = preferences.floatingLyricsEnabled.changes()
             .onEach { if (!it) closeWindow() }
           val playback = combine(PlaybackSession.state, playbackKindChanges) { state, _ -> state }
           combine(enabled, App.foregroundState, screenAvailable, dismissed, playback) { on, visible, screenOn, hidden, state ->
@@ -301,9 +298,7 @@ internal class FloatingLyricsController(
       PlaybackSession.state.value.currentItem?.originalUri == track.item.originalUri
 
   private suspend fun showTrack(track: Track) {
-    if (App.isInForeground || !canShowOnScreen() ||
-      !preferences.floatingLyricsEnabled.get() || !preferences.audioBackgroundPlayback.get()
-    ) {
+    if (App.isInForeground || !canShowOnScreen() || !preferences.floatingLyricsEnabled.get()) {
       closeWindow()
       return
     }

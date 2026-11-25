@@ -79,7 +79,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
@@ -195,17 +194,6 @@ class MediaPlaybackService :
     }
 
     internal fun takeAudioOwnershipForDetachedPlayback(): Boolean = activeInstance?.takeAudioOwnership() == true
-
-    private val inAppPlayerVisible = MutableStateFlow(false)
-
-    /**
-     * The in-app music sheet shows the full player while the service keeps owning playback. While
-     * it is visible, turning background playback off means "stop once I leave", as it does in
-     * PlayerActivity, instead of stopping the playback the user is looking at.
-     */
-    internal fun setInAppPlayerVisible(visible: Boolean) {
-      inAppPlayerVisible.value = visible
-    }
 
     // In-app full player transport. It shares the detached owner's queue handling, notification
     // updates and forced state saves, exactly like the notification and media-session controls.
@@ -588,24 +576,14 @@ class MediaPlaybackService :
     }
 
     serviceScope.launch {
-      combine(
-        PlaybackSession.videoBackgroundPlaybackEnabled,
-        audioPreferences.audioBackgroundPlayback.changes(),
-        PlaybackSession.state,
-        inAppPlayerVisible,
-      ) { _, audioEnabled, playbackState, inAppVisible ->
-        when {
-          inAppVisible -> true
-          playbackState.currentItem?.audiobook != null -> true
-          playbackState.currentItem?.declaredMediaKind() == DeclaredPlaybackMediaKind.AUDIO -> audioEnabled
-          playbackState.currentItem?.declaredMediaKind() == DeclaredPlaybackMediaKind.VIDEO ->
-            audioPreferences.getVideoBackgroundPlayback(PlaybackSession.videoBackgroundPlaybackId(playbackState))
-          usesAudioBackgroundPlayback -> audioEnabled
-          else -> audioPreferences.getVideoBackgroundPlayback(PlaybackSession.videoBackgroundPlaybackId(playbackState))
-        }
-      }.distinctUntilChanged().drop(1).collect { enabled ->
-        if (!enabled) {
-          Log.d(TAG, "Background playback disabled; stopping service")
+      // Audio always keeps playing in the background. Turning the video switch off ends a video
+      // that is already playing there.
+      playerPreferences.videoBackgroundPlayback.changes().distinctUntilChanged().drop(1).collect { enabled ->
+        val item = PlaybackSession.state.value.currentItem
+        val isAudio =
+          item != null && (item.audiobook != null || resolveNotificationIsAudio(item, usesAudioBackgroundPlayback))
+        if (!enabled && !isAudio) {
+          Log.d(TAG, "Video background playback disabled; stopping service")
           stopDetachedPlaybackIfNeeded()
           stopForegroundNotification()
           stopSelf()

@@ -35,7 +35,6 @@ import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 internal fun FloatingLyricsPreference(preferences: AudioPreferences) {
   val context = LocalContext.current
   val wanted by preferences.floatingLyricsEnabled.collectAsState()
-  val background by preferences.audioBackgroundPlayback.collectAsState()
   var allowed by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
   var asking by rememberSaveable { mutableStateOf(false) }
 
@@ -47,10 +46,8 @@ internal fun FloatingLyricsPreference(preferences: AudioPreferences) {
     allowed = Settings.canDrawOverlays(context)
     if (asking) {
       asking = false
-      val audioEnabled = preferences.audioBackgroundPlayback.get()
-      preferences.floatingLyricsEnabled.set(allowed && audioEnabled)
+      preferences.floatingLyricsEnabled.set(allowed)
       if (!allowed) warning(R.string.floating_lyrics_permission)
-      else if (!audioEnabled) warning(R.string.floating_lyrics_background_required)
     } else if (preferences.floatingLyricsEnabled.get() && !allowed) {
       preferences.floatingLyricsEnabled.set(false)
       warning(R.string.floating_lyrics_permission)
@@ -85,13 +82,10 @@ internal fun FloatingLyricsPreference(preferences: AudioPreferences) {
   SwitchPreference(
     modifier = Modifier.settingsSearchTarget(R.string.pref_floating_lyrics_title),
     value = (wanted && allowed) || asking,
-    enabled = background || wanted || asking,
     onValueChange = { on ->
       if (!on) {
         asking = false
         preferences.floatingLyricsEnabled.set(false)
-      } else if (!preferences.audioBackgroundPlayback.get()) {
-        warning(R.string.floating_lyrics_background_required)
       } else if (Settings.canDrawOverlays(context)) {
         allowed = true
         preferences.floatingLyricsEnabled.set(true)
@@ -102,7 +96,7 @@ internal fun FloatingLyricsPreference(preferences: AudioPreferences) {
     title = { Text(stringResource(R.string.pref_floating_lyrics_title)) },
     summary = {
       Text(
-        stringResource(if (background) R.string.pref_floating_lyrics_summary else R.string.floating_lyrics_background_required),
+        stringResource(R.string.pref_floating_lyrics_summary),
         color = MaterialTheme.colorScheme.outline,
       )
     },

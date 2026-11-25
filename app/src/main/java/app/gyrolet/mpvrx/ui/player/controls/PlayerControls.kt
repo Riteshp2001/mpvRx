@@ -528,9 +528,7 @@ fun PlayerControls(
   val isPostProcessingEnabled by viewModel.isPostProcessingEnabled.collectAsState()
   val motionInterpolationState by viewModel.motionInterpolation.state.collectAsState()
   val isMotionInterpolationEnabled = motionInterpolationState.config.enabled
-  val backgroundPlaybackEnabled by PlaybackSession.videoBackgroundPlaybackEnabled.collectAsState(
-    initial = PlaybackSession.isVideoBackgroundPlaybackEnabled(),
-  )
+  val backgroundPlaybackEnabled by playerPreferences.videoBackgroundPlayback.collectAsState()
 
   // Closing a sheet or panel leaves the controls hidden on touch devices; a TV remote needs
   // them back to keep a focus target.

@@ -344,7 +344,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 | **Frame Navigation** | Frame-by-frame forward/backward with frame number display |
 | **Sleep Timer** | Built-in with quick presets (15/30/45/60 min) |
 | **Adaptive Background Playback** | Auto-PiP on Home, auto-resume after screen unlock |
-| **Unified Background Playback** | One persistent audio/video switch; Back can return to browser lists without stopping the current media |
+| **Background Playback** | Music always keeps playing; one switch keeps videos playing after Home, an app switch or screen-off, and a long press on the player button does it once. Back closes a video |
 | **Notification Styles** | None, Media, or Progress with Chapters (Android 16+) |
 | **Safe Area / Window Offset** | Prevents camera notch overlap |
 | **Display Cutout Mode** | Full-bleed on notch devices |

@@ -490,10 +490,11 @@
     <item quantity="other">%1$d ثانية</item>
   </plurals>
   <!-- Background Playback -->
-  <string name="pref_audio_background_playback_title">التشغيل في الخلفية (مشغل الصوت)</string>
-  <string name="pref_audio_background_playback_summary">مواصلة تشغيل الصوت عند مغادرة مشغل الصوت أو إيقاف الشاشة</string>
   <string name="pref_video_background_playback_title">التشغيل في الخلفية (مشغل الفيديو)</string>
-  <string name="pref_video_background_playback_summary">مواصلة تشغيل صوت الفيديو عند مغادرة مشغل الفيديو أو إيقاف الشاشة</string>
+  <string name="pref_video_background_playback_summary">يواصل تشغيل الفيديو عند الانتقال إلى الشاشة الرئيسية أو التبديل إلى تطبيق آخر أو إطفاء الشاشة. يغلق زر الرجوع الفيديو دائمًا. اضغط مطولًا على زر التشغيل في الخلفية في المشغل لفعل ذلك مرة واحدة.</string>
+  <string name="toast_background_playback_on">تم تشغيل التشغيل في الخلفية</string>
+  <string name="toast_background_playback_off">تم إيقاف التشغيل في الخلفية</string>
+  <string name="btn_label_background_playback_once">التشغيل في الخلفية مرة واحدة</string>
   <string name="deselect_all">إلغاء تحديد الكل</string>
   <string name="select_all">تحديد الكل</string>
   <string name="invert_selection">عكس التحديد</string>
@@ -2251,13 +2252,6 @@
   <string name="playlist_columns_portrait">الأعمدة في الوضع العمودي</string>
   <string name="playlist_columns_landscape">الأعمدة في الوضع الأفقي</string>
   <string name="playlist_extension">امتداد الملف</string>
-  <string name="pref_background_playback_behavior">سلوك التشغيل في الخلفية</string>
-  <string name="pref_video_background_screen_off_only_title">فقط عند إطفاء الشاشة</string>
-  <string name="pref_video_background_screen_off_only_summary">متابعة تشغيل الفيديو عند إطفاء الشاشة، وإيقافه مؤقتًا عند إغلاق المشغل أو التبديل إلى تطبيق آخر</string>
-  <string name="pref_background_playback_remember">تذكر اختياري دائمًا</string>
-  <string name="pref_background_playback_remember_summary">الاحتفاظ باختيار التشغيل في الخلفية للفيديوهات التالية.</string>
-  <string name="pref_background_playback_per_video">تذكر الاختيار لكل فيديو</string>
-  <string name="pref_background_playback_per_video_summary">تذكّر التشغيل في الخلفية لكل فيديو على حدة.</string>
   <string name="jellyfin_technical_details">التفاصيل التقنية</string>
 
   <!-- Snapshots (frame capture) -->
@@ -3185,7 +3179,6 @@
   <string name="pref_floating_lyrics_summary">عرض فقاعة كلمات قابلة للتحريك فوق التطبيقات الأخرى</string>
   <string name="floating_lyrics_permission">اسمح بالظهور فوق التطبيقات الأخرى لاستخدام الكلمات العائمة</string>
   <string name="floating_lyrics_unavailable">تعذّر بدء الكلمات العائمة</string>
-  <string name="floating_lyrics_background_required">فعّل تشغيل الصوت في الخلفية أولاً</string>
   <string name="floating_lyrics_open_player">فتح المشغل</string>
   <string name="floating_lyrics_dock_left">نقل الكلمات العائمة إلى اليسار</string>
   <string name="floating_lyrics_dock_right">نقل الكلمات العائمة إلى اليمين</string>

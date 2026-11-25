@@ -1300,12 +1300,12 @@ fun RenderPlayerButton(
     }
 
     PlayerButton.BACKGROUND_PLAYBACK -> {
-      val backgroundPlaybackEnabled by PlaybackSession.videoBackgroundPlaybackEnabled.collectAsState(
-        initial = PlaybackSession.isVideoBackgroundPlaybackEnabled(),
-      )
+      val backgroundPlaybackEnabled by playerPreferences.videoBackgroundPlayback.collectAsState()
       ControlsButton(
         icon = Icons.RoundedFilled.Headset,
         onClick = { activity.toggleBackgroundPlayback() },
+        onLongClick = { activity.playInBackgroundOnce() },
+        onLongClickLabel = stringResource(R.string.btn_label_background_playback_once),
         active = backgroundPlaybackEnabled,
         color =
           if (backgroundPlaybackEnabled) {

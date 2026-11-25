@@ -47,15 +47,12 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
@@ -333,22 +330,6 @@ object PlaybackSession : MPVLib.EventObserver {
   val videoZoom: StateFlow<Float> = _videoZoom.asStateFlow()
   val videoPanX: StateFlow<Float> = _videoPanX.asStateFlow()
   val videoPanY: StateFlow<Float> = _videoPanY.asStateFlow()
-
-  val videoBackgroundPlaybackEnabled: Flow<Boolean> by lazy {
-    audioPreferences.videoBackgroundPlaybackChanges(state.map(::videoBackgroundPlaybackId).distinctUntilChanged())
-  }
-
-  internal fun videoBackgroundPlaybackId(playbackState: PlaybackSessionState): String? =
-    playbackState.currentItem?.takeUnless { it.audiobook != null || it.isDefinitelyAudioOnly() }?.stableId
-
-  fun isVideoBackgroundPlaybackEnabled(): Boolean =
-    audioPreferences.getVideoBackgroundPlayback(videoBackgroundPlaybackId(_state.value))
-
-  fun setVideoBackgroundPlaybackEnabled(enabled: Boolean) {
-    nativeLock.withLock {
-      audioPreferences.setVideoBackgroundPlayback(videoBackgroundPlaybackId(_state.value), enabled)
-    }
-  }
 
   fun setVideoTransformZoom(zoom: Float) {
     _videoZoom.value = zoom

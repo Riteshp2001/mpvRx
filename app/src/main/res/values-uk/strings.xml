@@ -565,10 +565,11 @@
     <item quantity="many">%1$d секунд</item>
     <item quantity="other">%1$d секунд</item>
   </plurals>
-  <string name="pref_audio_background_playback_title">Фонове відтворення аудіоплеєра</string>
-  <string name="pref_audio_background_playback_summary">Продовжувати відтворення аудіо під час виходу з аудіоплеєра або вимкнення екрана</string>
   <string name="pref_video_background_playback_title">Фонове відтворення відеоплеєра</string>
-  <string name="pref_video_background_playback_summary">Продовжувати відтворення звуку відео під час виходу з відеоплеєра або вимкнення екрана</string>
+  <string name="pref_video_background_playback_summary">Відео продовжує відтворюватися, коли ви переходите на головний екран, перемикаєтеся на інший застосунок або вимикаєте екран. Кнопка «Назад» завжди закриває відео. Щоб зробити це один раз, утримуйте кнопку фонового відтворення в плеєрі.</string>
+  <string name="toast_background_playback_on">Фонове відтворення увімкнено</string>
+  <string name="toast_background_playback_off">Фонове відтворення вимкнено</string>
+  <string name="btn_label_background_playback_once">Відтворити у фоні один раз</string>
   <string name="deselect_all">Зняти виділення з усіх</string>
   <string name="select_all">Виділити все</string>
   <string name="invert_selection">Інвертувати виділення</string>
@@ -2219,13 +2220,6 @@
   <string name="playlist_columns_portrait">Колонки в портретному режимі</string>
   <string name="playlist_columns_landscape">Колонки в альбомному режимі</string>
   <string name="playlist_extension">Розширення файлу</string>
-  <string name="pref_background_playback_behavior">Поведінка фонового відтворення</string>
-  <string name="pref_video_background_screen_off_only_title">Лише за вимкненого екрана</string>
-  <string name="pref_video_background_screen_off_only_summary">Продовжувати відтворення, коли екран вимикається, але ставити на паузу під час закриття плеєра або переходу в іншу програму</string>
-  <string name="pref_background_playback_remember">Завжди пам\'ятати мій вибір</string>
-  <string name="pref_background_playback_remember_summary">Зберігати вибір фонового відтворення для наступних відео.</string>
-  <string name="pref_background_playback_per_video">Пам\'ятати для кожного відео окремо</string>
-  <string name="pref_background_playback_per_video_summary">Запам’ятовувати фонове відтворення окремо для кожного відео.</string>
   <string name="jellyfin_technical_details">Технічні подробиці</string>
   <string name="ui_snapshots">Знімки</string>
   <string name="ui_profile">Профіль</string>
@@ -3064,7 +3058,6 @@
   <string name="pref_floating_lyrics_summary">Показувати рухому панель тексту поверх інших застосунків</string>
   <string name="floating_lyrics_permission">Дозвольте показ поверх інших застосунків для плаваючих текстів</string>
   <string name="floating_lyrics_unavailable">Не вдалося запустити плаваючі тексти</string>
-  <string name="floating_lyrics_background_required">Спочатку ввімкніть фонове відтворення аудіо</string>
   <string name="floating_lyrics_open_player">Відкрити програвач</string>
   <string name="floating_lyrics_dock_left">Перемістити панель тексту ліворуч</string>
   <string name="floating_lyrics_dock_right">Перемістити панель тексту праворуч</string>

@@ -13,9 +13,6 @@ import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 
 class AudioPreferences(
   preferenceStore: PreferenceStore,
@@ -27,12 +24,6 @@ class AudioPreferences(
   val audioChannels = preferenceStore.getEnum("audio_channels", AudioChannels.AutoSafe)
   val volumeBoostCap = preferenceStore.getInt("audio_volume_boost_cap", 30)
   val ignoreAudioFocus = preferenceStore.getBoolean("ignore_audio_focus", false)
-  val backgroundPlayback = preferenceStore.getBoolean("automatic_background_playback", false)
-  val backgroundPlaybackBehavior = preferenceStore.getEnum("background_playback_behavior", BackgroundPlaybackBehavior.Remember)
-  private val videoBackgroundPlaybackIds = preferenceStore.getStringSet("background_playback_video_ids", emptySet())
-  private val videoBackgroundPlaybackLock = Any()
-  /** Enabled by default and configurable in Audio settings; video retains [backgroundPlayback]. */
-  val audioBackgroundPlayback = preferenceStore.getBoolean("audio_player_background_playback", true)
   val volumeNormalization = preferenceStore.getBoolean("audio_volume_normalization", false)
   val spatialAudio = preferenceStore.getBoolean("audio_spatial_audio", false)
   val drcEnabled = preferenceStore.getBoolean("audio_drc_enabled", false)
@@ -93,39 +84,6 @@ class AudioPreferences(
   val floatingLyricsDockEnd = preferenceStore.getBoolean("floating_lyrics_dock_end", true)
   val floatingLyricsY = preferenceStore.getInt("floating_lyrics_y", 350)
 
-  fun getVideoBackgroundPlayback(mediaId: String?): Boolean =
-    resolveVideoBackgroundPlayback(backgroundPlaybackBehavior.get(), backgroundPlayback.get(), videoBackgroundPlaybackIds.get(), mediaId)
-
-  fun setVideoBackgroundPlayback(mediaId: String?, enabled: Boolean) {
-    if (backgroundPlaybackBehavior.get() == BackgroundPlaybackBehavior.Remember) {
-      backgroundPlayback.set(enabled)
-      return
-    }
-    if (mediaId.isNullOrBlank()) return
-    synchronized(videoBackgroundPlaybackLock) {
-      val enabledVideos = videoBackgroundPlaybackIds.get()
-      videoBackgroundPlaybackIds.set(if (enabled) enabledVideos + mediaId else enabledVideos - mediaId)
-    }
-  }
-
-  fun videoBackgroundPlaybackChanges(mediaIds: Flow<String?>): Flow<Boolean> =
-    combine(
-      backgroundPlaybackBehavior.changes(),
-      backgroundPlayback.changes(),
-      videoBackgroundPlaybackIds.changes(),
-      mediaIds,
-    ) { behavior, globalChoice, enabledVideos, mediaId ->
-      resolveVideoBackgroundPlayback(behavior, globalChoice, enabledVideos, mediaId)
-    }.distinctUntilChanged()
-
-  private fun resolveVideoBackgroundPlayback(
-    behavior: BackgroundPlaybackBehavior,
-    globalChoice: Boolean,
-    enabledVideos: Set<String>,
-    mediaId: String?,
-  ): Boolean =
-    if (behavior == BackgroundPlaybackBehavior.Remember) globalChoice else mediaId != null && mediaId in enabledVideos
-
   /** mpv's ao list: AudioTrack while this app's passthrough setting is in effect. */
   fun mpvAudioOutput(): String {
     val passthrough =
@@ -134,22 +92,15 @@ class AudioPreferences(
   }
 
   init {
-    if (preferenceStore.getString("background_playback_behavior").get() == "ResetAfterVideo") {
-      backgroundPlaybackBehavior.set(BackgroundPlaybackBehavior.PerVideo)
-    }
-    // Consolidate the old audio-only screen-lock switch into the single global setting.
-    val legacyScreenLockPlayback = preferenceStore.getBoolean("play_audio_after_screen_lock", false)
-    if (legacyScreenLockPlayback.get()) backgroundPlayback.set(true)
-    if (legacyScreenLockPlayback.isSet()) legacyScreenLockPlayback.delete()
+    // Audio always plays in the background and video has one switch, so the per-video choice and
+    // the old audio-only switches are gone.
+    listOf(
+      preferenceStore.getString("background_playback_behavior"),
+      preferenceStore.getStringSet("background_playback_video_ids"),
+      preferenceStore.getBoolean("audio_player_background_playback"),
+      preferenceStore.getBoolean("play_audio_after_screen_lock"),
+    ).filter { it.isSet() }.forEach { it.delete() }
   }
-}
-
-enum class BackgroundPlaybackBehavior(
-  @StringRes val titleRes: Int,
-  @StringRes val summaryRes: Int,
-) {
-  Remember(R.string.pref_background_playback_remember, R.string.pref_background_playback_remember_summary),
-  PerVideo(R.string.pref_background_playback_per_video, R.string.pref_background_playback_per_video_summary),
 }
 
 enum class LyricsTranslationDisplayMode(

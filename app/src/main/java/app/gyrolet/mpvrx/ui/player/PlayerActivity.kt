@@ -470,6 +470,10 @@ class PlayerActivity :
   private var backPressHandlerInstalled = false
   private var noisyReceiverRegistered = false
   private var isInBackgroundPlayback = false // Track if we are currently in background playback mode
+
+  // A long press on the background button plays this video in the background once, even with
+  // the switch off, until the player is on screen again.
+  private var backgroundPlaybackOnce = false
   private var screenStateReceiverRegistered = false
   private var mpvInitialized = false // Track MPV initialization state
   private var viewModelHostAttached = false
@@ -1248,15 +1252,9 @@ class PlayerActivity :
       }
     }
 
-    // Background playback or Mini Player handoff on Back: return to the browser while handing
-    // the live MPV session to the foreground service. This is also the PiP-failure fallback.
-    if (
-      isMiniPlayerEnabled() ||
-      PlayerLifecyclePolicy.shouldStartBackgroundPlaybackOnBack(
-        backgroundPlaybackEnabled = isBackgroundPlaybackAllowedOnLeave(),
-        mediaReady = isReady,
-      )
-    ) {
+    // Audio hands the live session to the mini player on Back. A video always closes, even with
+    // background playback on; only Home or an app switch keeps it playing.
+    if (isMiniPlayerEnabled()) {
       when (startBackgroundPlayback()) {
         BackgroundPlaybackStartResult.Started -> {
           pendingBackNavigationBackgroundTransition = true
@@ -2466,15 +2464,9 @@ class PlayerActivity :
         return@runCatching
       }
 
-      // Limited to screen-off: Home or an app switch with the screen on leaves the player, so the
-      // video pauses there instead of continuing in the background.
-      val pauseOnLeave =
-        isVideoBackgroundLimitedToScreenOff() && !isDeviceScreenOffOrLocked() &&
-          externalDisplayManager?.isActive != true
-
       if (
         PlayerLifecyclePolicy.shouldStartBackgroundPlaybackOnStop(
-          backgroundPlaybackEnabled = isBackgroundPlaybackAllowedOnLeave() || externalDisplayManager?.isActive == true,
+          backgroundPlaybackEnabled = isBackgroundPlaybackEnabled() || externalDisplayManager?.isActive == true,
           backgroundPlaybackSessionActive = isBackgroundPlaybackSessionActive,
           isUserFinishing = isUserFinishing,
           isFinishing = isFinishing,
@@ -2496,13 +2488,6 @@ class PlayerActivity :
         rememberResumeAfterUnlockBeforeForcedPause()
         viewModel.pause()
       } else if (!isBackgroundPlaybackSessionActive && (isUserFinishing || isFinishing)) {
-        viewModel.pause()
-      } else if (
-        pauseOnLeave && !isUserFinishing && !isFinishing && !isInPictureInPictureMode &&
-        !pendingBackNavigationBackgroundTransition
-      ) {
-        // Also ends a screen-off handoff the player was restored over without onStart.
-        if (isBackgroundPlaybackSessionActive) endBackgroundPlayback()
         viewModel.pause()
       } else if (isBackgroundPlaybackSessionActive && !isInBackgroundPlayback) {
         if (externalDisplayManager?.isActive != true) markPlaybackInBackground()
@@ -2704,7 +2689,7 @@ class PlayerActivity :
       }
       if (!MediaPlaybackService.activityForeground &&
         isBackgroundPlaybackSessionActive &&
-        !isBackgroundPlaybackAllowedOnLeave()
+        !isBackgroundPlaybackEnabled()
       ) {
         isBackgroundPlaybackSessionActive = false
         viewModel.pause()
@@ -4085,23 +4070,30 @@ class PlayerActivity :
   /** Only audio hands off to the browser's mini player. */
   private fun isMiniPlayerEnabled(): Boolean = isCurrentPlaybackAudio()
 
+  /** Audio and audiobooks always keep playing in the background. */
+  private fun isAudioBackgroundPlayback(): Boolean =
+    PlaybackSession.state.value.currentItem?.audiobook != null || isCurrentPlaybackAudio()
+
+  /** A video keeps playing after Home, an app switch or screen-off with the switch on, or once. */
   private fun isBackgroundPlaybackEnabled(): Boolean =
-    if (PlaybackSession.state.value.currentItem?.audiobook != null) true
-    else if (isCurrentPlaybackAudio()) audioPreferences.audioBackgroundPlayback.get()
-    else PlaybackSession.isVideoBackgroundPlaybackEnabled()
+    isAudioBackgroundPlayback() || playerPreferences.videoBackgroundPlayback.get() || backgroundPlaybackOnce
 
-  /** The user limited video background playback to screen-off; audio and audiobooks keep their own rules. */
-  private fun isVideoBackgroundLimitedToScreenOff(): Boolean =
-    playerPreferences.videoBackgroundOnlyWhenScreenOff.get() &&
-      PlaybackSession.state.value.currentItem?.audiobook == null &&
-      !isCurrentPlaybackAudio()
+  private fun hasBackgroundPlaybackService(): Boolean =
+    serviceBound || mediaPlaybackService != null || MediaPlaybackService.isNotificationOwnerReady()
 
-  private fun isBackgroundPlaybackAllowedOnLeave(): Boolean =
-    PlayerLifecyclePolicy.allowsBackgroundPlaybackOnLeave(
-      backgroundPlaybackEnabled = isBackgroundPlaybackEnabled(),
-      onlyWhenScreenOff = isVideoBackgroundLimitedToScreenOff(),
-      isScreenOffOrLocked = isDeviceScreenOffOrLocked(),
-    )
+  /**
+   * While the player is on screen only audio keeps the playback service and its notification.
+   * A video starts the service once it actually leaves the screen.
+   */
+  private fun syncForegroundPlaybackService() {
+    if (isAudioBackgroundPlayback()) {
+      startBackgroundPlayback(allowUserPrompt = false)
+    } else if (
+      MediaPlaybackService.activityForeground && !isInPictureInPictureMode && hasBackgroundPlaybackService()
+    ) {
+      endBackgroundPlayback()
+    }
+  }
 
   private fun isCurrentPlaybackAudio(): Boolean =
     when (currentDeclaredMediaKind()) {
@@ -4159,9 +4151,17 @@ class PlayerActivity :
       scheduleRendererRecoveryAfterUnlock()
       return false
     }
+    // The player is on screen again, which ends a one-time background request.
+    backgroundPlaybackOnce = false
     if (!MediaPlaybackService.activityForeground) {
       MediaPlaybackService.activityForeground = true
       if (viewModel.paused != true) requestAudioFocus()
+    }
+    // Every return path lands here, including unlocks that skip onStart. A video on screen drops
+    // its background service and notification; audio keeps them for its controls.
+    if (!isAudioBackgroundPlayback() && !isInPictureInPictureMode && hasBackgroundPlaybackService()) {
+      endBackgroundPlayback()
+      isBackgroundPlaybackSessionActive = false
     }
     if (!player.isSurfaceReady) acquireRendererRecoveryWakeLock()
     player.attachSessionSurface()
@@ -5085,9 +5085,7 @@ class PlayerActivity :
         viewModel.motionInterpolation.refresh()
         handleFileLoaded(loadGeneration)
         scheduleDeferredUserMpvAssetRefresh()
-        if (isBackgroundPlaybackEnabled()) {
-          startBackgroundPlayback(allowUserPrompt = false)
-        }
+        syncForegroundPlaybackService()
       }
 
       MPVLib.MpvEvent.MPV_EVENT_PLAYBACK_RESTART -> {
@@ -6199,7 +6197,8 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
           applyPlaybackBrightnessPolicy(isAudio = isCurrentMediaKnownAudio())
           applyLiveSessionOrientation(isAudioHint = isCurrentMediaKnownAudio())
           setOrientation()
-          if (isBackgroundPlaybackEnabled()) {
+          // Back on screen: audio keeps its service and controls, a video drops its notification.
+          if (isAudioBackgroundPlayback()) {
             if (!serviceBound || mediaPlaybackService == null) {
               startBackgroundPlaybackInternal(bindToActivity = true)
             }
@@ -8157,53 +8156,40 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     }
   }
 
-  /** Toggles video background playback without changing the audio-player setting. */
+  /** The background button: turns video background playback on or off for every video. */
   fun toggleBackgroundPlayback() {
-    val enabled = !PlaybackSession.isVideoBackgroundPlaybackEnabled()
+    val enabled = !playerPreferences.videoBackgroundPlayback.get()
+    playerPreferences.videoBackgroundPlayback.set(enabled)
+    viewModel.showToast(
+      getString(if (enabled) R.string.toast_background_playback_on else R.string.toast_background_playback_off),
+    )
+  }
 
-    if (enabled && !shouldShowPlaybackNotification()) {
-      Toast
-        .makeText(
-          this,
-          getString(R.string.notification_disabled_in_advanced_settings),
-          Toast.LENGTH_LONG,
-        ).show()
-      return
-    }
-
-    PlaybackSession.setVideoBackgroundPlaybackEnabled(enabled)
-
-    if (enabled) {
-      ensureNotificationAccessForPlayback(allowUserPrompt = true)
-    } else {
-      pendingBackgroundTransition = false
-      isBackgroundPlaybackSessionActive = false
-      endBackgroundPlayback()
-      enableVideoAfterBackground()
-      viewModel.showToast("Background playback off")
-      return
-    }
-
-    if (fileName.isBlank() || !isReady) {
-      Log.w(TAG, "Cannot start background playback: media not ready")
-      viewModel.showToast("Background playback on")
-      return
-    }
-
-    Log.d(TAG, "Background playback enabled from player controls")
-    when (startBackgroundPlayback()) {
-      BackgroundPlaybackStartResult.Started -> {
-        isBackgroundPlaybackSessionActive = true
-        viewModel.showToast("Background playback on")
+  /**
+   * A long press on the background button: go Home and keep this video playing, even with the
+   * switch off. Returning to the player ends the exception.
+   */
+  fun playInBackgroundOnce() {
+    if (!mpvInitialized || !ownsPlaybackSession() || !isReady || isFinishing || isDestroyed) return
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      runCatching {
+        setPictureInPictureParams(android.app.PictureInPictureParams.Builder().setAutoEnterEnabled(false).build())
       }
-      BackgroundPlaybackStartResult.PendingPermission -> pendingBackgroundTransition = true
-      BackgroundPlaybackStartResult.Blocked -> {
-        PlaybackSession.setVideoBackgroundPlaybackEnabled(false)
-        isBackgroundPlaybackSessionActive = false
-        pendingBackgroundTransition = false
-      }
+    }
+    backgroundPlaybackOnce = true
+    if (!moveTaskToBack(true)) {
+      backgroundPlaybackOnce = false
+      if (::pipHelper.isInitialized) pipHelper.updatePictureInPictureParams()
     }
   }
+
+  /**
+   * True when this player's media keeps playing after the app leaves the screen: the service took
+   * it over, including a reopened player that handed it back before it finished attaching.
+   */
+  fun continuesPlaybackInBackground(): Boolean =
+    !ownsPlaybackSession() || isBackgroundPlaybackSessionActive ||
+      (!mpvInitialized && MediaPlaybackService.isForegroundActive())
 
   private fun finishIntoBackgroundPlayback() {
     isBackgroundPlaybackSessionActive = true
@@ -8514,7 +8500,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
 
   private fun syncBackgroundPlaybackService(updateThumbnail: Boolean) {
     if (!ownsPlaybackSession()) return
-    if (mediaPlaybackService == null && isBackgroundPlaybackEnabled() && isReady && fileName.isNotBlank()) {
+    if (mediaPlaybackService == null && isAudioBackgroundPlayback() && isReady && fileName.isNotBlank()) {
       startBackgroundPlayback(allowUserPrompt = false)
     }
     val service = mediaPlaybackService ?: return

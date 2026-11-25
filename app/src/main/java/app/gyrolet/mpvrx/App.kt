@@ -382,8 +382,8 @@ class App :
       Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && playerActivity.isInPictureInPictureMode
     if (isInPictureInPicture) return
 
-    val videoBackgroundPlaybackEnabled = PlaybackSession.isVideoBackgroundPlaybackEnabled()
-    if (videoBackgroundPlaybackEnabled) return
+    // The service already took the video over: the background switch is on, or a one-time request.
+    if (playerActivity.continuesPlaybackInBackground()) return
 
     val state = PlaybackSession.state.value
     if (state.currentItem == null || state.phase == PlaybackPhase.IDLE || state.phase == PlaybackPhase.UNINITIALIZED) return
