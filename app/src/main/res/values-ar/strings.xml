@@ -519,12 +519,7 @@
   <string name="notification_playing">قيد التشغيل</string>
   <string name="notification_add_to_favorites">إضافة إلى المفضلة</string>
   <string name="notification_saved_to_favorites">تم الحفظ في المفضلة</string>
-  <string name="notification_chapter_counter">الفصل %1$d من %2$d</string>
   <string name="notification_playback_progress">انقضى %1$s - متبقٍ %2$s</string>
-  <string name="notification_permission_denied">يلزم إذن الإشعارات لعناصر تحكم التشغيل في الخلفية.</string>
-  <string name="notification_permission_disabled">الإشعارات معطّلة لـ mpvRx. فعّلها لإظهار عناصر تحكم التشغيل.</string>
-  <string name="notification_disabled_in_advanced_settings">قم بتمكين الإشعارات من الإعدادات المتقدمة لاستخدام التشغيل في الخلفية.</string>
-  <string name="pref_advanced_notification_style">نمط الإشعار</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">استخدام تقديم دقيق</string>
   <!-- Folders Preferences -->
@@ -1325,7 +1320,7 @@
   <string name="ui_file_permission_desc_playstore">مطلوب للوصول إلى ملفات الوسائط المخزنة على جهازك وتشغيلها.</string>
   <string name="ui_file_permission_desc_all_files">مطلوب لاكتشاف ملفات الوسائط والترجمة على جهازك.</string>
   <string name="ui_notification_permission_title">الإشعارات</string>
-  <string name="ui_notification_permission_desc">اختياري. مطلوب لعناصر التحكم في تشغيل الوسائط والحالة في الخلفية وتنبيهات التحديث.</string>
+  <string name="ui_notification_permission_desc">اختياري. يُستخدم لإظهار تقدم التنزيل وتنبيهات التحديث. تعمل عناصر التحكم في التشغيل بدونه.</string>
   <string name="ui_audio_record_permission_title">تسجيل الصوت</string>
   <string name="ui_audio_record_permission_desc">اختياري. يسمح للمؤثرات المرئية بقراءة مستويات الصوت الحية.</string>
   <string name="ui_permission_granted">مسموح</string>

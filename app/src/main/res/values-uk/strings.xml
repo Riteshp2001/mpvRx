@@ -596,12 +596,7 @@
   <string name="notification_add_to_favorites">Додати до вибраного</string>
   <string name="notification_saved_to_favorites">Збережено у вибраному</string>
   <string name="notification_close">Закрити</string>
-  <string name="notification_chapter_counter">Розділ %1$d з %2$d</string>
   <string name="notification_playback_progress">Минуло: %1$s — залишилося: %2$s</string>
-  <string name="notification_permission_denied">Для керування фоновим відтворенням потрібен дозвіл на сповіщення.</string>
-  <string name="notification_permission_disabled">Сповіщення для mpvRx вимкнено. Увімкніть їх для відображення кнопок керування.</string>
-  <string name="notification_disabled_in_advanced_settings">Увімкніть сповіщення в розширених налаштуваннях для використання фонового відтворення.</string>
-  <string name="pref_advanced_notification_style">Стиль сповіщень</string>
   <string name="pref_player_use_precise_seeking">Використовувати точне перемотування</string>
   <string name="pref_folders_title">Папки</string>
   <string name="pref_folders_summary">Керування чорним списком папок та прихованими медіафайлами</string>
@@ -1459,7 +1454,7 @@
   <string name="ui_file_permission_desc_playstore">Необхідно для доступу та відтворення медіафайлів, збережених на пристрої.</string>
   <string name="ui_file_permission_desc_all_files">Необхідно для пошуку медіафайлів і субтитрів на вашому пристрої.</string>
   <string name="ui_notification_permission_title">Сповіщення</string>
-  <string name="ui_notification_permission_desc">Необов\'язково. Необхідно для керування відтворенням у фоні, відображення стану та сповіщень про оновлення.</string>
+  <string name="ui_notification_permission_desc">Необов’язково. Використовується для прогресу завантажень і сповіщень про оновлення. Керування відтворенням працює і без нього.</string>
   <string name="ui_audio_record_permission_title">Запис аудіо</string>
   <string name="ui_audio_record_permission_desc">Необов’язково. Надає візуалізатору доступ до поточних рівнів звуку.</string>
   <string name="ui_permission_granted">Надано</string>

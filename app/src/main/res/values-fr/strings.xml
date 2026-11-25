@@ -515,12 +515,7 @@
   <string name="notification_playing">Lecture en cours</string>
   <string name="notification_add_to_favorites">Ajouter aux favoris</string>
   <string name="notification_saved_to_favorites">Enregistré dans les favoris</string>
-  <string name="notification_chapter_counter">Chapitre %1$d sur %2$d</string>
   <string name="notification_playback_progress">%1$s écoulées - %2$s restantes</string>
-  <string name="notification_permission_denied">L’autorisation des notifications est requise pour les commandes de lecture en arrière-plan.</string>
-  <string name="notification_permission_disabled">Les notifications sont désactivées pour mpvRx. Activez-les pour afficher les commandes de lecture.</string>
-  <string name="notification_disabled_in_advanced_settings">Activez les notifications dans les paramètres avancés pour utiliser la lecture en arrière-plan.</string>
-  <string name="pref_advanced_notification_style">Style de notification</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Utiliser une recherche précise</string>
   <!-- Folders Preferences -->
@@ -1281,7 +1276,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_file_permission_desc_playstore">Requis pour accéder et lire les fichiers multimédias stockés sur votre appareil.</string>
   <string name="ui_file_permission_desc_all_files">Requis pour découvrir les fichiers multimédias et de sous-titres sur votre appareil.</string>
   <string name="ui_notification_permission_title">Notifications</string>
-  <string name="ui_notification_permission_desc">Optionnel. Requis pour les commandes de lecture, le statut en arrière-plan et les alertes de mise à jour.</string>
+  <string name="ui_notification_permission_desc">Facultatif. Sert à afficher la progression des téléchargements et les alertes de mise à jour. Les commandes de lecture fonctionnent sans.</string>
   <string name="ui_audio_record_permission_title">Enregistrement audio</string>
   <string name="ui_audio_record_permission_desc">Facultative. Permet au visualiseur de lire les niveaux audio en direct.</string>
   <string name="ui_permission_granted">Accordé</string>

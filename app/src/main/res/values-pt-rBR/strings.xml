@@ -515,12 +515,7 @@
   <string name="notification_playing">Reproduzindo</string>
   <string name="notification_add_to_favorites">Adicionar aos favoritos</string>
   <string name="notification_saved_to_favorites">Salvo nos favoritos</string>
-  <string name="notification_chapter_counter">Capítulo %1$d de %2$d</string>
   <string name="notification_playback_progress">%1$s decorridos - %2$s restantes</string>
-  <string name="notification_permission_denied">A permissão de notificações é necessária para os controles de reprodução em segundo plano.</string>
-  <string name="notification_permission_disabled">As notificações estão desativadas para o mpvRx. Ative-as para mostrar os controles de reprodução.</string>
-  <string name="notification_disabled_in_advanced_settings">Ative as notificações nas configurações avançadas para usar a reprodução em segundo plano.</string>
-  <string name="pref_advanced_notification_style">Estilo da notificação</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Usar busca precisa</string>
   <!-- Folders Preferences -->
@@ -1281,7 +1276,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="ui_file_permission_desc_playstore">Necessário para acessar e reproduzir arquivos de mídia armazenados no seu dispositivo.</string>
   <string name="ui_file_permission_desc_all_files">Necessário para descobrir arquivos de mídia e legendas no seu dispositivo.</string>
   <string name="ui_notification_permission_title">Notificações</string>
-  <string name="ui_notification_permission_desc">Opcional. Necessário para controles de reprodução, status em segundo plano e alertas de atualização.</string>
+  <string name="ui_notification_permission_desc">Opcional. Usado para o progresso dos downloads e alertas de atualização. Os controles de reprodução funcionam sem ele.</string>
   <string name="ui_audio_record_permission_title">Gravação de áudio</string>
   <string name="ui_audio_record_permission_desc">Opcional. Permite ao visualizador ler os níveis de áudio ao vivo.</string>
   <string name="ui_permission_granted">Concedido</string>

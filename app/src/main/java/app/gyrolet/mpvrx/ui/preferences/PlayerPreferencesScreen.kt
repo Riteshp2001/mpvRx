@@ -11,7 +11,6 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import android.content.ComponentName
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,13 +39,11 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.ui.player.NotificationStyle
 import app.gyrolet.mpvrx.ui.player.PlayerOrientation
 import app.gyrolet.mpvrx.ui.player.ResumePlaybackMode
 import app.gyrolet.mpvrx.ui.player.controls.TV_SEEK_DURATION_RANGE
@@ -75,7 +72,6 @@ object PlayerPreferencesScreen : ScrollableSettingsScreen {
     val preferences = koinInject<PlayerPreferences>()
     val browserPreferences = koinInject<BrowserPreferences>()
     val configOwnedOptions = currentMpvConfigOverrideOptions()
-    val advancedPreferences = koinInject<AdvancedPreferences>()
     var showTemplateDialog by remember { mutableStateOf(false) }
     var templateDraft by remember { mutableStateOf("") }
     val gesturePreferences = koinInject<GesturePreferences>()
@@ -253,33 +249,6 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                     )
                   },
                 )
-
-                PreferenceDivider()
-
-                val notificationStyle by advancedPreferences.notificationStyle.collectAsState()
-                val supportedNotificationStyles =
-                  remember {
-                    NotificationStyle.entries.filter { it.isSupportedOn(Build.VERSION.SDK_INT) }
-                  }
-                val selectedNotificationStyle =
-                  notificationStyle.takeIf { it.isSupportedOn(Build.VERSION.SDK_INT) }
-                    ?: NotificationStyle.Media
-                ExpressivePreferenceItem {
-                ListPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_notification_style),
-                  value = selectedNotificationStyle,
-                  onValueChange = advancedPreferences.notificationStyle::set,
-                  values = supportedNotificationStyles,
-                  valueToText = { AnnotatedString(it.displayName) },
-                  title = { Text(text = stringResource(R.string.pref_advanced_notification_style)) },
-                  summary = {
-                    Text(
-                      text = selectedNotificationStyle.displayName,
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
-                }
 
                 PreferenceDivider()
               }

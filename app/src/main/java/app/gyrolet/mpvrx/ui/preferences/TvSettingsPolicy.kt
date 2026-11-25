@@ -22,7 +22,6 @@ internal object TvSettingsPolicy {
     R.string.pref_auto_pip_title,
     R.string.pref_player_autoplay_after_screen_unlock_title,
     R.string.pref_player_external_display_projection_title,
-    R.string.pref_advanced_notification_style,
     R.string.pref_player_controls_drawer_title,
     R.string.pref_player_display_show_status_bar,
     R.string.pref_nav_bar_title,

@@ -515,12 +515,7 @@
   <string name="notification_playing">Wiedergabe</string>
   <string name="notification_add_to_favorites">Zu Favoriten hinzufügen</string>
   <string name="notification_saved_to_favorites">In Favoriten gespeichert</string>
-  <string name="notification_chapter_counter">Kapitel %1$d von %2$d</string>
   <string name="notification_playback_progress">%1$s vergangen - %2$s verbleibend</string>
-  <string name="notification_permission_denied">Für die Steuerung der Hintergrundwiedergabe ist die Benachrichtigungsberechtigung erforderlich.</string>
-  <string name="notification_permission_disabled">Benachrichtigungen sind für mpvRx deaktiviert. Aktivieren Sie sie, um Wiedergabesteuerungen anzuzeigen.</string>
-  <string name="notification_disabled_in_advanced_settings">Aktivieren Sie Benachrichtigungen in den erweiterten Einstellungen, um die Hintergrundwiedergabe zu nutzen.</string>
-  <string name="pref_advanced_notification_style">Benachrichtigungsstil</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Präzise Suche verwenden</string>
   <!-- Folders Preferences -->
@@ -1281,7 +1276,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_file_permission_desc_playstore">Erforderlich, um auf Ihrem Gerät gespeicherte Mediendateien abzuspielen.</string>
   <string name="ui_file_permission_desc_all_files">Erforderlich, um Medien- und Untertiteldateien auf Ihrem Gerät zu suchen.</string>
   <string name="ui_notification_permission_title">Benachrichtigungen</string>
-  <string name="ui_notification_permission_desc">Optional. Erforderlich für Wiedergabesteuerung, Hintergrundstatus und Aktualisierungshinweise.</string>
+  <string name="ui_notification_permission_desc">Optional. Wird für den Download-Fortschritt und Update-Hinweise verwendet. Die Wiedergabesteuerung funktioniert auch ohne.</string>
   <string name="ui_audio_record_permission_title">Audioaufnahme</string>
   <string name="ui_audio_record_permission_desc">Optional. Ermöglicht Visualisierungen das Lesen aktueller Audiopegel.</string>
   <string name="ui_permission_granted">Gewährt</string>

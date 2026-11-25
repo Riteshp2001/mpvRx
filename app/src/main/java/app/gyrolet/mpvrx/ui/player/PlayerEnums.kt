@@ -468,25 +468,3 @@ enum class DebandSettings(
     200,
   ),
 }
-
-/** Controls whether the playback service shows a notification, and which style it uses. */
-enum class NotificationStyle(
-  val displayName: String,
-) {
-  /** Do not show any playback notification. */
-  None("No Notification"),
-
-  /** Classic MediaStyle with transport controls rendered by the system. */
-  Media("Media Controls"),
-
-  /** Progress-centric style with chapter segment indicators (Android 16+ only). */
-  Progress("Progress with Chapters"),
-
-  ;
-
-  fun isSupportedOn(sdkInt: Int): Boolean =
-    when (this) {
-      Progress -> sdkInt >= 36
-      None, Media -> true
-    }
-}

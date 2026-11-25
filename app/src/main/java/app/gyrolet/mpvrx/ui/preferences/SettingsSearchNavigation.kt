@@ -133,7 +133,6 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_player_keep_screen_on_when_paused_title, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_player_autoplay_after_screen_unlock_title, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_video_background_playback_title, itemIndex = 1),
-        SettingsSearchListAnchor(titleRes = R.string.pref_advanced_notification_style, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_tv_seek_duration_title, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.show_splash_ovals_on_double_tap_to_seek, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.show_time_on_double_tap_to_seek, itemIndex = 3),
@@ -263,7 +262,6 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
       listOf(
         SettingsSearchListAnchor(titleRes = R.string.pref_advanced, itemIndex = 8),
         SettingsSearchListAnchor(titleRes = R.string.pref_app_language_title, itemIndex = 9),
-        SettingsSearchListAnchor(titleRes = R.string.pref_advanced_notification_style, itemIndex = 9),
         SettingsSearchListAnchor(titleRes = R.string.pref_export_settings_title, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_import_settings_title, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_advanced_mpv_conf_storage_location, itemIndex = 3),

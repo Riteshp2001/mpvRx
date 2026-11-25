@@ -508,12 +508,7 @@
   <string name="notification_playing">चल रहा है</string>
   <string name="notification_add_to_favorites">पसंदीदा में जोड़ें</string>
   <string name="notification_saved_to_favorites">पसंदीदा में सहेजा गया</string>
-  <string name="notification_chapter_counter">चैप्टर %1$d, कुल %2$d में से</string>
   <string name="notification_playback_progress">%1$s बीता - %2$s शेष</string>
-  <string name="notification_permission_denied">बैकग्राउंड प्लेबैक कंट्रोल्स के लिए नोटिफिकेशन परमिशन ज़रूरी है।</string>
-  <string name="notification_permission_disabled">mpvRx के लिए नोटिफिकेशन बंद हैं। प्लेबैक कंट्रोल्स दिखाने के लिए इन्हें सक्षम करें।</string>
-  <string name="notification_disabled_in_advanced_settings">बैकग्राउंड प्लेबैक इस्तेमाल करने के लिए एडवांस्ड सेटिंग्स में नोटिफिकेशन सक्षम करें।</string>
-  <string name="pref_advanced_notification_style">नोटिफिकेशन स्टाइल</string>
   <string name="pref_player_use_precise_seeking">सटीक सीकिंग इस्तेमाल करें</string>
   <string name="pref_folders_title">फोल्डर्स</string>
   <string name="pref_folders_summary">फोल्डर ब्लैकलिस्ट और .nomedia हैंडलिंग मैनेज करें</string>
@@ -1201,7 +1196,7 @@
   <string name="ui_file_permission_desc_playstore">आपके डिवाइस पर मौजूद मीडिया फाइलों तक पहुंचने और चलाने के लिए ज़रूरी।</string>
   <string name="ui_file_permission_desc_all_files">आपके डिवाइस पर मीडिया और सबटाइटल फाइलें ढूंढने के लिए ज़रूरी।</string>
   <string name="ui_notification_permission_title">नोटिफिकेशन</string>
-  <string name="ui_notification_permission_desc">वैकल्पिक। मीडिया प्लेबैक कंट्रोल्स, बैकग्राउंड स्टेटस और अपडेट अलर्ट के लिए ज़रूरी।</string>
+  <string name="ui_notification_permission_desc">वैकल्पिक। डाउनलोड की प्रगति और अपडेट अलर्ट के लिए इस्तेमाल होता है। प्लेबैक कंट्रोल इसके बिना भी काम करते हैं।</string>
   <string name="ui_audio_record_permission_title">ऑडियो रिकॉर्ड करें</string>
   <string name="ui_audio_record_permission_desc">वैकल्पिक। विज़ुअलाइज़र को लाइव ध्वनि स्तर पढ़ने देता है।</string>
   <string name="ui_permission_granted">दी गई</string>

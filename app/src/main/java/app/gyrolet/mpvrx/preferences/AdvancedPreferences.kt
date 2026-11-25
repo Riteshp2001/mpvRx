@@ -11,8 +11,6 @@ package app.gyrolet.mpvrx.preferences
 
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
-import app.gyrolet.mpvrx.preferences.preference.getEnum
-import app.gyrolet.mpvrx.ui.player.NotificationStyle
 
 class AdvancedPreferences(
   preferenceStore: PreferenceStore,
@@ -65,6 +63,9 @@ class AdvancedPreferences(
 
   val enableP2pStreaming = preferenceStore.getBoolean("enable_p2p_streaming", true)
 
-  /** Notification style for the playback service (Media vs Progress-centric on Android 16+). */
-  val notificationStyle = preferenceStore.getEnum("notification_style", NotificationStyle.Media)
+  init {
+    // Playback always uses the media notification, which needs no notification permission.
+    val legacyNotificationStyle = preferenceStore.getString("notification_style")
+    if (legacyNotificationStyle.isSet()) legacyNotificationStyle.delete()
+  }
 }

@@ -44,7 +44,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.media.MediaBrowserServiceCompat
 import androidx.media.session.MediaButtonReceiver
-import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.data.lyrics.LyricsTranslationService
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
@@ -53,7 +52,6 @@ import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.domain.thumbnail.getArtwork
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
-import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
@@ -109,7 +107,6 @@ class MediaPlaybackService :
     private const val NOTIFICATION_ID = 1
     private const val NOTIFICATION_CHANNEL_ID = "mpvrx_playback_channel"
     private const val PLAYBACK_STATE_SAVE_INTERVAL_MS = 5000L
-    private const val PROGRESS_NOTIFICATION_UPDATE_INTERVAL_MS = 2000L
     private const val MEDIA_NOTIFICATION_UPDATE_INTERVAL_MS = 1000L
     // Scrubbing jumps the position on every step. Jumps republish at most this often, the last one late.
     private const val POSITION_JUMP_PUBLISH_INTERVAL_MS = 500L
@@ -271,7 +268,6 @@ class MediaPlaybackService :
   private val binder = MediaPlaybackBinder()
   private lateinit var mediaSession: MediaSessionCompat
   private val playerPreferences: PlayerPreferences by inject()
-  private val advancedPreferences: AdvancedPreferences by inject()
   private val audioPreferences: AudioPreferences by inject()
   private val browserPreferences: BrowserPreferences by inject()
   private val thumbnailRepository: ThumbnailRepository by inject()
@@ -629,20 +625,6 @@ class MediaPlaybackService :
       }
     }
 
-    serviceScope.launch {
-      advancedPreferences.notificationStyle.changes().drop(1).collect {
-        if (!notificationsEnabled()) {
-          stopDetachedPlaybackIfNeeded()
-          stopForegroundNotification()
-          stopSelf()
-        } else {
-          updateMediaSessionPlaybackState()
-          syncMediaSessionVisibility()
-          updateNotification()
-        }
-      }
-    }
-
     // Only add MPV observer if MPV is initialized
     try {
       PlaybackSession.addObserver(this)
@@ -792,14 +774,6 @@ class MediaPlaybackService :
 
     updateMediaSessionMetadata()
     updateMediaSessionPlaybackState()
-
-    if (!notificationsEnabled()) {
-      Log.d(TAG, "Notification style disabled, stopping playback service")
-      stopDetachedPlaybackIfNeeded()
-      stopForegroundNotification()
-      stopSelf()
-      return START_NOT_STICKY
-    }
 
     if (!startForegroundNotification()) {
       foregroundReady = false
@@ -1061,7 +1035,7 @@ class MediaPlaybackService :
       }
   }
 
-  /** Existing Progress-with-Chapters favorite path. Keep its behavior isolated and unchanged. */
+  /** The home-screen widget's favorite toggle. */
   private fun toggleCurrentItemFavorite() {
     if (favoriteActionJob?.isActive == true) return
     val item = PlaybackSession.queue.value.currentItem ?: return
@@ -1401,25 +1375,13 @@ class MediaPlaybackService :
   private fun canHandleTransportAction(): Boolean =
     !mpvAccessReleased && (activityForeground || !handingBackToActivity)
 
-  private fun currentNotificationStyle(): NotificationStyle =
-    advancedPreferences.notificationStyle
-      .get()
-      .takeIf { it.isSupportedOn(Build.VERSION.SDK_INT) }
-      ?: NotificationStyle.Media
-
-  private fun notificationsEnabled(): Boolean = currentNotificationStyle() != NotificationStyle.None
-
-  private fun useProgressNotification(): Boolean = currentNotificationStyle() == NotificationStyle.Progress
-
   /**
-  * A ProgressStyle notification and an active MediaSession are two independent System UI
-   * surfaces on Android 16. Publishing both makes one selected notification preference appear as
-   * two playback cards. Media Controls owns the MediaSession surface; Progress with Chapters owns
-   * only the foreground notification and keeps its transport actions on explicit PendingIntents.
+   * The MediaSession backs the media notification, which Android shows without the notification
+   * permission. It is active exactly while the service owns the foreground notification.
    */
   private fun syncMediaSessionVisibility() {
     if (!::mediaSession.isInitialized) return
-    mediaSession.isActive = foregroundReady && currentNotificationStyle() == NotificationStyle.Media
+    mediaSession.isActive = foregroundReady
   }
 
   private fun updateMediaSessionMetadata() {
@@ -1481,7 +1443,7 @@ class MediaPlaybackService :
           .setActions(actions)
           .setActiveQueueItemId(activeQueueItemId)
           .setState(state, positionMs, stateSpeed, updatedAt)
-      if (actions != 0L && currentNotificationStyle() == NotificationStyle.Media) {
+      if (actions != 0L) {
         val favoriteLabel = favoriteActionLabel()
         stateBuilder.addCustomAction(
           PlaybackStateCompat.CustomAction
@@ -1504,8 +1466,7 @@ class MediaPlaybackService :
   }
 
   /** Android 13+ media controls render and advance Media-style progress from the session. */
-  private fun systemAdvancesMediaPosition(): Boolean =
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && currentNotificationStyle() == NotificationStyle.Media
+  private fun systemAdvancesMediaPosition(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
   /** True once the system's extrapolated position is off, e.g. after a stall or a speed change. */
   private fun sessionPositionDrifted(now: Long): Boolean {
@@ -1515,11 +1476,6 @@ class MediaPlaybackService :
   }
 
   private fun updateNotification() {
-    if (!notificationsEnabled()) {
-      stopForegroundNotification()
-      stopSelf()
-      return
-    }
     if (!foregroundReady) return
 
     try {
@@ -1563,13 +1519,6 @@ class MediaPlaybackService :
       .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
       .setPriority(NotificationCompat.PRIORITY_LOW)
       .build()
-
-  private fun buildNotification(): Notification =
-    if (Build.VERSION.SDK_INT >= 36 && useProgressNotification()) {
-      buildModernNotification()
-    } else {
-      buildLegacyNotification()
-    }
 
   private fun buildContentIntent(): PendingIntent {
     val currentItem = PlaybackSession.queue.value.currentItem
@@ -1652,15 +1601,7 @@ class MediaPlaybackService :
       buildTransportIntent(ACTION_NOTIFICATION_NEXT, 1003),
     )
 
-  /** Existing Progress-with-Chapters favorite action. */
-  private fun favoriteAction() =
-    NotificationCompat.Action(
-      favoriteActionIcon(),
-      favoriteActionLabel(),
-      buildTransportIntent(ACTION_NOTIFICATION_FAVORITE, 1004),
-    )
-
-  /** Media notification favorite action, isolated from Progress-with-Chapters. */
+  /** Media notification favorite action. */
   private fun mediaFavoriteAction() =
     NotificationCompat.Action(
       favoriteActionIcon(),
@@ -1683,13 +1624,6 @@ class MediaPlaybackService :
       buildTransportIntent(ACTION_NOTIFICATION_CLOSE, 1006),
     )
 
-  private fun stopAction() =
-    NotificationCompat.Action(
-      Icons.Platform.Stop,
-      "Stop",
-      buildTransportIntent(ACTION_NOTIFICATION_STOP, 1006),
-    )
-
   private fun chapterContentText(): String {
     val chapterName =
       if (currentChapterIndex >= 0) {
@@ -1698,15 +1632,6 @@ class MediaPlaybackService :
         null
       }
     return chapterName ?: mediaArtist.ifBlank { getString(R.string.notification_playing) }
-  }
-
-  private fun chapterLabel(): String {
-    val chapterNumber = currentChapterIndex.takeIf { it in chapters.indices }?.plus(1)
-    return if (chapterNumber != null) {
-      getString(R.string.notification_chapter_counter, chapterNumber, chapters.size)
-    } else {
-      getString(R.string.notification_playing)
-    }
   }
 
   private fun playbackTimeText(): String {
@@ -1759,83 +1684,11 @@ class MediaPlaybackService :
   }
 
   /**
-   * Android 16+ (API 36): Progress-centric notification with chapter segment indicators.
-   * This style uses explicit notification actions instead of also advertising a MediaSession,
-   * which would make System UI render a second playback card.
+   * MediaStyle notification with a progress bar and chapter text, tied to the MediaSession so
+   * Android shows it without the notification permission. Uses the system notification surface
+   * instead of forcing a colorized card tint.
    */
-  @androidx.annotation.RequiresApi(36)
-  private fun buildModernNotification(): Notification {
-    val (maximum, position) = notificationProgress()
-    val title = mediaTitle.ifBlank { getString(R.string.player_unknown_video) }
-    val timeline = playbackTimeText()
-    val chapterText = if (chapters.isEmpty()) chapterContentText() else "${chapterLabel()}: ${chapterContentText()}"
-    val isDark =
-      resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK ==
-        android.content.res.Configuration.UI_MODE_NIGHT_YES
-    val progressColor = getColor(if (isDark) android.R.color.system_accent1_200 else android.R.color.system_accent1_600)
-    val style = NotificationCompat.ProgressStyle().setStyledByProgress(true)
-    if (maximum <= 0) {
-      style.addProgressSegment(NotificationCompat.ProgressStyle.Segment(100).setColor(progressColor))
-      style.setProgressIndeterminate(true)
-    } else {
-      val boundaries =
-        buildList {
-          add(0)
-          chapters.forEach { chapter ->
-            chapter.time
-              .takeIf { it.isFinite() && it >= 1f && it < maximum }
-              ?.let { add(it.toInt()) }
-          }
-          add(maximum)
-        }.distinct().sorted()
-      boundaries.zipWithNext().forEach { (start, end) ->
-        style.addProgressSegment(NotificationCompat.ProgressStyle.Segment(end - start).setColor(progressColor))
-        if (start > 0) {
-          style.addProgressPoint(NotificationCompat.ProgressStyle.Point(start).setColor(progressColor))
-        }
-      }
-      style.setProgress(position)
-    }
-
-    val builder =
-      NotificationCompat
-        .Builder(this, NOTIFICATION_CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_launcher_monochrome)
-        .setContentTitle(title)
-        .setContentText(timeline)
-        .setSubText(chapterText)
-        .setLargeIcon(thumbnail?.takeUnless { it.isRecycled })
-        .setContentIntent(buildContentIntent())
-        .setDeleteIntent(buildTransportIntent(ACTION_NOTIFICATION_STOP, 1005))
-        .setOngoing(!paused)
-        .setRequestPromotedOngoing(!BuildConfig.IS_PLAY_STORE_BUILD && !paused)
-        .setAutoCancel(false)
-        .setSilent(true)
-        .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
-        .setColor(DEFAULT_ACCENT_COLOR)
-        .setColorized(false)
-        .setPriority(NotificationCompat.PRIORITY_LOW)
-        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-        .setOnlyAlertOnce(true)
-        .setShowWhen(false)
-        .setStyle(style)
-        .addAction(prevAction())
-        .addAction(playPauseAction())
-        .addAction(nextAction())
-        .addAction(favoriteAction())
-        .addAction(stopAction())
-    if (maximum > 0) {
-      builder.setShortCriticalText("${position.toLong() * 100 / maximum}%")
-    }
-
-    return builder.build()
-  }
-
-  /**
-   * Pre-Android 16: Classic MediaStyle notification with linear progress bar and chapter text.
-   * Uses the system notification surface instead of forcing a colorized card tint.
-   */
-  private fun buildLegacyNotification(): Notification {
+  private fun buildNotification(): Notification {
     val (maximum, position) = notificationProgress()
 
     return NotificationCompat
@@ -1997,12 +1850,7 @@ class MediaPlaybackService :
       "time-pos" -> {
         currentPositionSeconds = value.takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
         val currentTime = SystemClock.elapsedRealtime()
-        val updateInterval =
-          if (useProgressNotification()) {
-            PROGRESS_NOTIFICATION_UPDATE_INTERVAL_MS
-          } else {
-            MEDIA_NOTIFICATION_UPDATE_INTERVAL_MS
-          }
+        val updateInterval = MEDIA_NOTIFICATION_UPDATE_INTERVAL_MS
         val elapsedSinceUpdate = (currentTime - lastNotificationUpdateTime).coerceAtLeast(0L)
         val expectedAdvance = elapsedSinceUpdate / 1000.0 * playbackSpeed.coerceAtLeast(0f)
         val positionJump = abs(currentPositionSeconds - lastPublishedPositionSeconds) > expectedAdvance + 3.0

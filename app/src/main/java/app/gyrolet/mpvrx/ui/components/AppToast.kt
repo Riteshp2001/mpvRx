@@ -127,8 +127,7 @@ class AppToast private constructor(
           R.string.jellyfin_open_trailer_error -> AppToastType.Error
           R.string.downloads_queued, R.string.downloads_started,
           R.string.playlist_zip_import_success -> AppToastType.Success
-          R.string.queue_requires_playback, R.string.video_swipe_recent_disabled,
-          R.string.notification_disabled_in_advanced_settings -> AppToastType.Warning
+          R.string.queue_requires_playback, R.string.video_swipe_recent_disabled -> AppToastType.Warning
           else -> AppToastType.Normal
         },
       )

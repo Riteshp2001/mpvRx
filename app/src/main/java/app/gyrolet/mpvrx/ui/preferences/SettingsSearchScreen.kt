@@ -291,7 +291,6 @@ object SettingsSearchScreen : ScrollableSettingsScreen {
                   stringResource(R.string.pref_folders_title),
                   stringResource(R.string.pref_audio),
                   stringResource(R.string.pref_video_background_playback_title),
-                  stringResource(R.string.pref_advanced_notification_style),
                   stringResource(R.string.ui_yt_dlp_streaming).takeIf { app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP },
                   stringResource(R.string.pref_advanced),
                 ).filterNotNull()

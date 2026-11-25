@@ -515,12 +515,7 @@
   <string name="notification_playing">Reproduciendo</string>
   <string name="notification_add_to_favorites">Añadir a Favoritos</string>
   <string name="notification_saved_to_favorites">Guardado en Favoritos</string>
-  <string name="notification_chapter_counter">Capítulo %1$d de %2$d</string>
   <string name="notification_playback_progress">%1$s transcurridos - %2$s restantes</string>
-  <string name="notification_permission_denied">Se necesita permiso de notificaciones para los controles de reproducción en segundo plano.</string>
-  <string name="notification_permission_disabled">Las notificaciones están desactivadas para mpvRx. Actívalas para mostrar los controles de reproducción.</string>
-  <string name="notification_disabled_in_advanced_settings">Activa las notificaciones en los ajustes avanzados para usar la reproducción en segundo plano.</string>
-  <string name="pref_advanced_notification_style">Estilo de notificación</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Usar búsqueda precisa</string>
   <!-- Folders Preferences -->
@@ -1281,7 +1276,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_file_permission_desc_playstore">Requerido para acceder y reproducir archivos de medios almacenados en tu dispositivo.</string>
   <string name="ui_file_permission_desc_all_files">Requerido para descubrir archivos de medios y subtítulos en tu dispositivo.</string>
   <string name="ui_notification_permission_title">Notificaciones</string>
-  <string name="ui_notification_permission_desc">Opcional. Requerido para controles de reproducción, estado en segundo plano y alertas de actualización.</string>
+  <string name="ui_notification_permission_desc">Opcional. Se usa para el progreso de las descargas y los avisos de actualización. Los controles de reproducción funcionan sin él.</string>
   <string name="ui_audio_record_permission_title">Grabación de audio</string>
   <string name="ui_audio_record_permission_desc">Opcional. Permite al visualizador leer niveles de sonido en directo.</string>
   <string name="ui_permission_granted">Concedido</string>

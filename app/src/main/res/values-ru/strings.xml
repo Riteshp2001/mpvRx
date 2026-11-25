@@ -517,12 +517,7 @@
   <string name="notification_playing">Воспроизводится</string>
   <string name="notification_add_to_favorites">Добавить в избранное</string>
   <string name="notification_saved_to_favorites">Сохранено в избранное</string>
-  <string name="notification_chapter_counter">Глава %1$d из %2$d</string>
   <string name="notification_playback_progress">Прошло %1$s - осталось %2$s</string>
-  <string name="notification_permission_denied">Для управления фоновым воспроизведением требуется разрешение на уведомления.</string>
-  <string name="notification_permission_disabled">Уведомления для mpvRx отключены. Включите их, чтобы показывать элементы управления воспроизведением.</string>
-  <string name="notification_disabled_in_advanced_settings">Включите уведомления в расширенных настройках для фонового воспроизведения.</string>
-  <string name="pref_advanced_notification_style">Стиль уведомлений</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Использовать точную перемотку</string>
   <!-- Folders Preferences -->
@@ -1303,7 +1298,7 @@
   <string name="ui_file_permission_desc_playstore">Требуется для доступа и воспроизведения медиафайлов на устройстве.</string>
   <string name="ui_file_permission_desc_all_files">Требуется для поиска медиафайлов и субтитров на устройстве.</string>
   <string name="ui_notification_permission_title">Уведомления</string>
-  <string name="ui_notification_permission_desc">Необязательно. Требуется для управления воспроизведением, работы в фоновом режиме и уведомлений об обновлениях.</string>
+  <string name="ui_notification_permission_desc">Необязательно. Используется для прогресса загрузок и уведомлений об обновлениях. Управление воспроизведением работает и без него.</string>
   <string name="ui_audio_record_permission_title">Запись аудио</string>
   <string name="ui_audio_record_permission_desc">Необязательно. Даёт визуализатору доступ к текущим уровням звука.</string>
   <string name="ui_permission_granted">Предоставлено</string>

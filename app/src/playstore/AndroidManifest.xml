@@ -11,9 +11,6 @@
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"
         tools:node="remove" />
-    <uses-permission
-        android:name="android.permission.POST_PROMOTED_NOTIFICATION"
-        tools:node="remove" />
 
     <application tools:remove="android:requestLegacyExternalStorage">
         <!-- Direct media URLs can still be shared to the player without extractor-site handlers. -->

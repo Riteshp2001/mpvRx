@@ -514,12 +514,7 @@
   <string name="notification_playing">再生中</string>
   <string name="notification_add_to_favorites">お気に入りに追加</string>
   <string name="notification_saved_to_favorites">お気に入りに保存しました</string>
-  <string name="notification_chapter_counter">チャプター %1$d / %2$d</string>
   <string name="notification_playback_progress">経過 %1$s - 残り %2$s</string>
-  <string name="notification_permission_denied">バックグラウンド再生の操作には通知権限が必要です。</string>
-  <string name="notification_permission_disabled">mpvRxの通知が無効です。再生操作を表示するには有効にしてください。</string>
-  <string name="notification_disabled_in_advanced_settings">バックグラウンド再生を使用するには、高度な設定で通知を有効にしてください。</string>
-  <string name="pref_advanced_notification_style">通知スタイル</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">高精度シークを使用</string>
   <!-- Folders Preferences -->
@@ -1270,7 +1265,7 @@
   <string name="ui_file_permission_desc_playstore">端末に保存されているメディアファイルにアクセスして再生するために必要です。</string>
   <string name="ui_file_permission_desc_all_files">端末上のメディアファイルや字幕ファイルを検出するために必要です。</string>
   <string name="ui_notification_permission_title">通知</string>
-  <string name="ui_notification_permission_desc">任意。再生コントロール、バックグラウンド状態、更新アラートに必要です。</string>
+  <string name="ui_notification_permission_desc">任意。ダウンロードの進行状況とアップデートの通知に使用します。再生コントロールは許可がなくても動作します。</string>
   <string name="ui_audio_record_permission_title">音声の録音</string>
   <string name="ui_audio_record_permission_desc">任意。ビジュアライザーがリアルタイムの音声レベルを取得します。</string>
   <string name="ui_permission_granted">許可済み</string>

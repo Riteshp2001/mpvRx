@@ -756,12 +756,7 @@
   <string name="notification_add_to_favorites">Add to Favorites</string>
   <string name="notification_saved_to_favorites">Saved to Favorites</string>
   <string name="notification_close">Close</string>
-  <string name="notification_chapter_counter">Chapter %1$d of %2$d</string>
   <string name="notification_playback_progress">%1$s elapsed - %2$s remaining</string>
-  <string name="notification_permission_denied">Notification permission is required for background playback controls.</string>
-  <string name="notification_permission_disabled">Notifications are disabled for mpvRx. Enable them to show playback controls.</string>
-  <string name="notification_disabled_in_advanced_settings">Enable notifications in Advanced Settings to use background playback.</string>
-  <string name="pref_advanced_notification_style">Notification style</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">Use precise seeking</string>
   <!-- Folders Preferences -->
@@ -1781,7 +1776,7 @@
   <string name="ui_file_permission_desc_playstore">Required to access and play media files stored on your device.</string>
   <string name="ui_file_permission_desc_all_files">Required to discover media and subtitle files on your device.</string>
   <string name="ui_notification_permission_title">Notifications</string>
-  <string name="ui_notification_permission_desc">Optional. Required for media playback controls, background status, and update alerts.</string>
+  <string name="ui_notification_permission_desc">Optional. Used for download progress and update alerts. Playback controls work without it.</string>
   <string name="ui_audio_record_permission_title">Record Audio</string>
   <string name="ui_audio_record_permission_desc">Optional. Lets audio visualizers read live sound levels.</string>
   <string name="ui_permission_granted">Granted</string>

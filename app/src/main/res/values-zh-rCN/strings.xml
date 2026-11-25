@@ -518,12 +518,7 @@
   <string name="notification_playing">正在播放</string>
   <string name="notification_add_to_favorites">添加到收藏</string>
   <string name="notification_saved_to_favorites">已保存到收藏</string>
-  <string name="notification_chapter_counter">第 %1$d 章，共 %2$d 章</string>
   <string name="notification_playback_progress">已播放 %1$s - 剩余 %2$s</string>
-  <string name="notification_permission_denied">后台播放控制需要通知权限。</string>
-  <string name="notification_permission_disabled">mpvRx 的通知已禁用。请启用通知以显示播放控制。</string>
-  <string name="notification_disabled_in_advanced_settings">请在高级设置中启用通知以使用后台播放。</string>
-  <string name="pref_advanced_notification_style">通知样式</string>
   <!-- Media Info Activity -->
   <string name="pref_player_use_precise_seeking">使用精确定位</string>
   <!-- Folders Preferences -->
@@ -1297,7 +1292,7 @@
   <string name="ui_file_permission_desc_playstore">访问和播放设备上存储的媒体文件所必需。</string>
   <string name="ui_file_permission_desc_all_files">自动搜索设备上的媒体和字幕文件所必需。</string>
   <string name="ui_notification_permission_title">通知</string>
-  <string name="ui_notification_permission_desc">可选。用于媒体播放控制、后台状态和更新提醒。</string>
+  <string name="ui_notification_permission_desc">可选。用于显示下载进度和更新提醒。播放控制无需此权限也能使用。</string>
   <string name="ui_audio_record_permission_title">录制音频</string>
   <string name="ui_audio_record_permission_desc">可选。允许可视化效果读取实时音频电平。</string>
   <string name="ui_permission_granted">已授权</string>

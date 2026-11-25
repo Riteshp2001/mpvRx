@@ -1415,24 +1415,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_advanced_notification_style,
-          summary = "Choose media controls, progress with chapters, or no playback notification.",
-          keywords =
-            listOf(
-              "notification",
-              "media controls",
-              "progress",
-              "chapters",
-              "no notification",
-              "hide notification",
-              "background playback",
-            ),
-          category = "Player",
-          screen = PlayerPreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_advanced_verbose_logging_title,
           summaryRes = R.string.pref_advanced_verbose_logging_summary,
           keywords = listOf("verbose", "logging", "debug", "output"),
@@ -2147,7 +2129,6 @@ object SearchablePreferences {
         category = "Advanced",
         screen = AdvancedPreferencesScreen,
         anchorItemIndex = 1,
-        SearchEntrySpec(R.string.pref_advanced_notification_style, listOf("notification", "style", "media", "compact")),
         SearchEntrySpec(R.string.pref_auto_backup_title, listOf("automatic", "backup", "settings", "restore", "folder")),
         SearchEntrySpec(R.string.pref_debug_log_size_title, listOf("debug", "log", "size", "limit", "storage")),
       )
