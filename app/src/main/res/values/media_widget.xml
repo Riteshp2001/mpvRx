@@ -3,16 +3,8 @@
     <color name="media_widget_background_light">#F4F6FA</color>
     <color name="media_widget_foreground_light">#171A1F</color>
     <color name="media_widget_secondary_light">#505661</color>
-    <color name="media_widget_scrim_light">#FFF4F6FA</color>
-    <color name="media_widget_scrim_middle_light">#EAF4F6FA</color>
-    <color name="media_widget_scrim_clear_light">#00F4F6FA</color>
     <color name="media_widget_pressed_light">#24171A1F</color>
     <color name="media_widget_background_dark">#1A1C21</color>
-    <color name="media_widget_foreground_dark">#F8FAFC</color>
-    <color name="media_widget_secondary_dark">#CCD1D9</color>
-    <color name="media_widget_scrim_dark">#FF15171B</color>
-    <color name="media_widget_scrim_middle_dark">#EA15171B</color>
-    <color name="media_widget_scrim_clear_dark">#0015171B</color>
     <color name="media_widget_pressed_dark">#30FFFFFF</color>
     <dimen name="media_widget_band_compact">88dp</dimen>
     <dimen name="media_widget_band_wide">64dp</dimen>
