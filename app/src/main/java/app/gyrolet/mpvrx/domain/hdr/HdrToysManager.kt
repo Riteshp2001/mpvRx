@@ -29,10 +29,10 @@ interface MpvShaderRuntime {
 /**
  * Manages the hdr-toys GLSL shader pipeline.
  *
- * On first use it copies all bundled hdr-toys shaders from assets into
+ * On first use it copies the bundled shaders of every [HdrToysProfile] from assets into
  * [Context.filesDir]/shaders/hdr-toys/ so that mpv can reference them via
- * the `~~/shaders/` config-dir prefix.  Subsequent calls reuse the cached
- * files unless they have been deleted.
+ * the `~~/shaders/` config-dir prefix, and deletes any other file there.  Subsequent
+ * calls reuse the cached files unless they have been deleted.
  *
  * Usage:
  *  - [initialize] — call once; safe to call repeatedly (idempotent).
@@ -44,15 +44,17 @@ class HdrToysManager(
   private val shaderRuntime: MpvShaderRuntime,
 ) {
   private var initialized = false
+  private val shadersRoot = File(context.filesDir, SHADERS_DIR)
 
   @Synchronized
   fun initialize(): Boolean {
     if (initialized && requiredShadersExist()) return true
 
     return runCatching {
-      val destination = File(context.filesDir, TARGET_DIR)
-      destination.mkdirs()
-      copyAssetDirectory(ASSET_DIR, destination)
+      HdrToysProfile.allShaderPaths.forEach { shaderPath ->
+        copyAssetFile("$SHADERS_DIR/$shaderPath", File(shadersRoot, shaderPath))
+      }
+      removeUnusedShaders()
       val ready = requiredShadersExist()
       initialized = ready
       ready
@@ -87,7 +89,7 @@ class HdrToysManager(
         runCatching { shaderRuntime.command("change-list", "glsl-shaders", "remove", shaderPath) }
       }
     HdrToysProfile.allShaderPaths.forEach { relPath ->
-      val absolutePath = File(context.filesDir, "shaders/$relPath").absolutePath
+      val absolutePath = File(shadersRoot, relPath).absolutePath
       runCatching { shaderRuntime.command("change-list", "glsl-shaders", "remove", absolutePath) }
     }
     runCatching {
@@ -105,24 +107,17 @@ class HdrToysManager(
 
   private fun requiredShadersExist(): Boolean =
     HdrToysProfile.allShaderPaths.all { shaderPath ->
-      val file = File(context.filesDir, "shaders/$shaderPath")
+      val file = File(shadersRoot, shaderPath)
       file.exists() && file.length() > 0L
     }
 
-  private fun copyAssetDirectory(
-    assetPath: String,
-    destination: File,
-  ) {
-    val children = context.assets.list(assetPath).orEmpty()
-    destination.mkdirs()
-    children.forEach { child ->
-      val childAssetPath = "$assetPath/$child"
-      val childDestination = File(destination, child)
-      val nestedChildren = context.assets.list(childAssetPath).orEmpty()
-      if (nestedChildren.isEmpty() && child.endsWith(".glsl")) {
-        copyAssetFile(childAssetPath, childDestination)
-      } else {
-        copyAssetDirectory(childAssetPath, childDestination)
+  /** Older versions copied every hdr-toys shader, most of which no profile uses. */
+  private fun removeUnusedShaders() {
+    File(shadersRoot, TARGET_DIR).walkBottomUp().forEach { file ->
+      val relativePath = file.relativeTo(shadersRoot).invariantSeparatorsPath
+      when {
+        file.isFile && relativePath !in HdrToysProfile.allShaderPaths -> file.delete()
+        file.isDirectory && file.list().isNullOrEmpty() -> file.delete()
       }
     }
   }
@@ -141,7 +136,7 @@ class HdrToysManager(
 
   private companion object {
     const val TAG = "HdrToysManager"
-    const val ASSET_DIR = "shaders/hdr-toys"
-    const val TARGET_DIR = "shaders/hdr-toys"
+    const val SHADERS_DIR = "shaders"
+    const val TARGET_DIR = "hdr-toys"
   }
 }

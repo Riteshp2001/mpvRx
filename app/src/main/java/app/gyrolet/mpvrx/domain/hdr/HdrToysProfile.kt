@@ -9,15 +9,14 @@
 
 package app.gyrolet.mpvrx.domain.hdr
 
+/** The hdr-toys shader chains of the HDR screen modes, as in upstream's hdr-toys.conf. */
 enum class HdrToysProfile(
-  val configSection: String,
   val targetPrim: String,
   val targetTrc: String,
   val shaderPaths: List<String>,
   val shaderOptions: List<Pair<String, String>> = emptyList(),
 ) {
   BT_2100_PQ(
-    configSection = "bt.2100-pq",
     targetPrim = "bt.2020",
     targetTrc = "pq",
     shaderPaths =
@@ -31,7 +30,6 @@ enum class HdrToysProfile(
     shaderOptions = listOf("auto_exposure_limit_positive" to "1.02"),
   ),
   BT_2100_HLG(
-    configSection = "bt.2100-hlg",
     targetPrim = "bt.2020",
     targetTrc = "hlg",
     shaderPaths =
@@ -44,7 +42,6 @@ enum class HdrToysProfile(
       ),
   ),
   BT_2020(
-    configSection = "bt.2020",
     targetPrim = "bt.2020",
     targetTrc = "bt.1886",
     shaderPaths =
@@ -52,25 +49,6 @@ enum class HdrToysProfile(
         "hdr-toys/transfer-function/bt1886_inv.glsl",
         "hdr-toys/gamut-mapping/bottosson.glsl",
         "hdr-toys/transfer-function/bt1886.glsl",
-      ),
-  ),
-  LINEAR(
-    configSection = "linear",
-    targetPrim = "bt.2020",
-    targetTrc = "linear",
-    shaderPaths =
-      listOf(
-        "hdr-toys/utils/clip_black.glsl",
-        "hdr-toys/utils/clip_alpha.glsl",
-        "hdr-toys/tone-mapping/astra.glsl",
-        "hdr-toys/gamut-mapping/bottosson.glsl",
-        "hdr-toys/transfer-function/bt1886.glsl",
-      ),
-    shaderOptions =
-      listOf(
-        "spatial_stable_level" to "0",
-        "temporal_stable_duration" to "0",
-        "enable_metering" to "1",
       ),
   ),
   ;

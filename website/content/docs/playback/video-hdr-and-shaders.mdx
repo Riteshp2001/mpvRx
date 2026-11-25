@@ -15,12 +15,12 @@ If a video fails, stutters, or shows corruption, remove custom shaders and decod
 
 ## HDR pipelines
 
-The bundled hdr-toys collection provides 77 GLSL shaders and four high-level modes:
+mpvRx bundles the hdr-toys shaders its profiles use, and offers four high-level modes:
 
 - BT.2100 PQ for HDR10-style sources
 - BT.2100 HLG
 - BT.2020 gamut mapping
-- Linear HDR, including optional SDR-to-HDR boosting
+- Linear HDR, mpv's own HDR output without hdr-toys
 
 Correct output depends on the source metadata, display capability, Android composition path, and renderer. Compare against the unmodified image before keeping a pipeline enabled globally.
 
