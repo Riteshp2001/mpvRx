@@ -18,8 +18,9 @@ import androidx.core.content.ContextCompat
 import app.gyrolet.mpvrx.BuildConfig
 
 /**
- * Asks again as soon as a granted permission is revoked, instead of leaving the user to find it in
- * system settings.
+ * Asks again as soon as storage access is revoked, instead of leaving the user to find it in
+ * system settings. The optional notification and audio-recording permissions are never asked for
+ * on startup; only the onboarding cards and the features that use them ask, when the user acts.
  *
  * Only a grant that was seen as granted and is missing now counts as a revocation, so a permission
  * the user never gave is not pushed at them. Each revocation is asked once; a prompt that was
@@ -98,7 +99,7 @@ object PermissionRecovery {
    * opens its settings page instead, and only when no dialog is launched in the same pass.
    */
   fun requestRevoked(activity: Activity, dialogLauncher: ActivityResultLauncher<Array<String>>) {
-    val pending = pendingRevocations(activity).filterNot { it == Kind.AUDIO }
+    val pending = pendingRevocations(activity).filter { it == Kind.STORAGE }
     if (pending.isEmpty()) return
     val dialogKinds = pending.filter { runtimePermission(it) != null }
     if (dialogKinds.isNotEmpty()) {

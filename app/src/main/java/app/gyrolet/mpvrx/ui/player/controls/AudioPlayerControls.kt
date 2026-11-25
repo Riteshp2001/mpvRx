@@ -652,7 +652,7 @@ private fun AudioVisualizerViewport(
 @Composable
 private fun AudioSpectrumCaptureEffect(
   enabled: Boolean,
-  requestPermission: Boolean,
+  visualizerOn: Boolean,
   features: AudioFeatures,
 ) {
   val context = LocalContext.current
@@ -674,12 +674,16 @@ private fun AudioSpectrumCaptureEffect(
       PackageManager.PERMISSION_GRANTED
   }
 
-  LaunchedEffect(requestPermission) {
+  // Opening the player never asks. Only turning the visualizer on asks, once per tap; without
+  // the permission the visualizer simply stays still.
+  var visualizerWasOn by remember { mutableStateOf(visualizerOn) }
+  LaunchedEffect(visualizerOn) {
     hasRecordPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
       PackageManager.PERMISSION_GRANTED
-    if (requestPermission && !hasRecordPermission) {
+    if (visualizerOn && !visualizerWasOn && !hasRecordPermission) {
       recordPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
+    visualizerWasOn = visualizerOn
   }
 
   DisposableEffect(enabled, hasRecordPermission, features) {
@@ -1193,7 +1197,7 @@ fun AudioPlayerControls(
         !isSheetOpen &&
         ((showVisualizer && !showInPlaceLyrics) ||
           (audioWavySeekbar && !isLyricsFullscreen)),
-    requestPermission = showVisualizer && !showInPlaceLyrics && !isLyricsFullscreen && !isSheetOpen && inAppSheet?.isSettledOpen != false,
+    visualizerOn = showVisualizer,
     features = visualizerFeatures,
   )
 
