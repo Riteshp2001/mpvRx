@@ -1804,10 +1804,8 @@ class PlayerActivity :
       return true
     }
     if (holdsAudioFocus) return true
-    if (audioFocusRequestActive) {
-      playbackDelayedForAudioFocus = true
-      return false
-    }
+    // Every caller is about to play. Asking again also takes focus back from an app that only
+    // borrowed it, so playing in mpvRx pauses the other app. A call still makes it fail or wait.
     val req = audioFocusRequest ?: return false
     val result = audioManager.requestAudioFocus(req)
     return when (result) {
@@ -4085,6 +4083,18 @@ class PlayerActivity :
       }
   }
 
+  /**
+   * Every start of playback on this screen takes audio focus so other apps pause, including a new
+   * file that starts on its own after an earlier pause released focus. If Android refuses (a
+   * call), playback pauses and resumes when focus comes back. The service owns focus while
+   * playback is detached from this screen.
+   */
+  private fun ensureAudioFocusWhilePlaying() {
+    if (audioPreferences.ignoreAudioFocus.get() || holdsAudioFocus || audioFocusRequest == null) return
+    if (!MediaPlaybackService.activityForeground || !ownsPlaybackSession() || isFinishing || isDestroyed) return
+    if (!requestAudioFocus()) PlaybackSession.setPropertyBoolean("pause", true)
+  }
+
   /** Audio and audiobooks always keep playing in the background. */
   private fun isAudioBackgroundPlayback(): Boolean =
     PlaybackSession.state.value.currentItem?.audiobook != null || isCurrentPlaybackAudio()
@@ -4839,6 +4849,7 @@ class PlayerActivity :
    * @param isPaused true if playback is paused, false if playing
    */
   private fun handlePauseStateChange(isPaused: Boolean) {
+    if (!isPaused) ensureAudioFocusWhilePlaying()
     updateKeepScreenOn(isPaused)
     updateMediaSessionPlaybackState(!isPaused)
     runCatching {

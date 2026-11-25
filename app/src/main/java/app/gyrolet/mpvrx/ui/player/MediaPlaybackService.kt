@@ -192,6 +192,9 @@ class MediaPlaybackService :
 
     internal fun takeAudioOwnershipForDetachedPlayback(): Boolean = activeInstance?.takeAudioOwnership() == true
 
+    /** A play action by the user: takes focus back even from an app that only borrowed it. */
+    internal fun reclaimAudioFocusForPlay(): Boolean = activeInstance?.takeAudioOwnership(reclaim = true) == true
+
     // In-app full player transport. It shares the detached owner's queue handling, notification
     // updates and forced state saves, exactly like the notification and media-session controls.
     internal fun skipToNextFromApp(): Boolean = activeInstance?.playNextFromSession() == true
@@ -897,7 +900,12 @@ class MediaPlaybackService :
     usesAudioBackgroundPlayback = isAudio
   }
 
-  fun takeAudioOwnership(): Boolean {
+  /**
+   * Takes audio focus so other apps pause while mpvRx plays. [reclaim] is for a play action by the
+   * user: it asks again even while another app has only borrowed focus (a short sound or the
+   * assistant), so mpvRx wins. During a phone call the request fails and playback waits.
+   */
+  fun takeAudioOwnership(reclaim: Boolean = false): Boolean {
     if (audioPreferences.ignoreAudioFocus.get()) {
       abandonAudioOwnership()
       return true
@@ -906,7 +914,7 @@ class MediaPlaybackService :
     // Do not request focus and bounce it back to PlayerActivity; that focus ping-pong is exactly
     // what can turn a notification tap into an unexpected pause.
     if (activityForeground || handingBackToActivity) return true
-    if (ownsAudioFocus) {
+    if (ownsAudioFocus && (hasAudioFocus || !reclaim)) {
       if (!hasAudioFocus) resumeAfterFocusGain = true
       return hasAudioFocus
     }
@@ -923,7 +931,13 @@ class MediaPlaybackService :
         .build()
         .also { audioFocusRequest = it }
     hasAudioFocus = audioManager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
-    ownsAudioFocus = hasAudioFocus
+    if (hasAudioFocus) {
+      ownsAudioFocus = true
+      resumeAfterFocusGain = false
+    } else if (ownsAudioFocus) {
+      // Still queued behind the borrower (a call); resume when it hands focus back.
+      resumeAfterFocusGain = true
+    }
     return hasAudioFocus
   }
 
@@ -983,7 +997,7 @@ class MediaPlaybackService :
   private fun handleMediaPlayAction(shouldPlay: Boolean) {
     when (gesturePreferences.mediaPlayGesture.get()) {
       SingleActionGesture.PlayPause -> {
-        if (shouldPlay && !PlaybackSession.state.value.surfaceAttached && !takeAudioOwnership()) return
+        if (shouldPlay && !PlaybackSession.state.value.surfaceAttached && !takeAudioOwnership(reclaim = true)) return
         PlaybackSession.setPropertyBoolean("pause", !shouldPlay)
         refreshTransportControls()
       }
@@ -1218,7 +1232,7 @@ class MediaPlaybackService :
   private fun togglePlaybackFromNotification() {
     if (!canHandleTransportAction()) return
     val shouldPlay = PlaybackSession.getPropertyBoolean("pause") != false
-    if (shouldPlay && !PlaybackSession.state.value.surfaceAttached && !takeAudioOwnership()) return
+    if (shouldPlay && !PlaybackSession.state.value.surfaceAttached && !takeAudioOwnership(reclaim = true)) return
     paused = !shouldPlay
     PlaybackSession.setPropertyBoolean("pause", paused)
     refreshTransportControls()
@@ -1856,6 +1870,12 @@ class MediaPlaybackService :
       "pause" -> {
         serviceScope.launch {
           paused = value
+          // Any start of detached playback, including a new song that starts on its own, takes
+          // audio focus so other apps pause. Without it (a call) playback waits instead.
+          if (!value && canHandleDetachedTransport() && !hasAudioFocus && !takeAudioOwnership()) {
+            paused = true
+            PlaybackSession.setPropertyBoolean("pause", true)
+          }
           updateMediaSessionPlaybackState()
           updateNotification()
           schedulePlaybackStateSave(force = true)

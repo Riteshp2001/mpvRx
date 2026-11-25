@@ -731,7 +731,8 @@ private class InAppMusicPlayerHost(
       if (activity.requestedOrientation != value) activity.requestedOrientation = value
     }
 
-  override fun requestAudioFocus(): Boolean = MediaPlaybackService.takeAudioOwnershipForDetachedPlayback()
+  // Only play actions ask, so a play here takes focus back from any other app.
+  override fun requestAudioFocus(): Boolean = MediaPlaybackService.reclaimAudioFocusForPlay()
 
   // Like a notification pause, the detached owner keeps focus while paused.
   override fun abandonAudioFocus() = Unit
