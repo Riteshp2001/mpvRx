@@ -550,21 +550,15 @@ object YtdlpManager {
           },
         javascriptRuntime = "quickjs:$quickJsPath",
       )
-    val resolvedOptions = YtdlpOptionsBuilder.build(settings)
+    val rawOptions = YtdlpOptionsBuilder.buildRawOptions(settings)
     val ua = ytdlPreferences.customUserAgent.get().ifBlank { YtdlpOptionsBuilder.DEFAULT_USER_AGENT }
-    // Always derive this from typed preferences so newly added format controls cannot
-    // be shadowed by an older cached generated string.
-    val ytdlFormat = resolvedOptions.format
-    if (ytdlFormat.isNotBlank()) {
-      PlaybackSession.setOptionString("ytdl-format", ytdlFormat)
-    }
+    PlaybackSession.setOptionString("ytdl-format", YtdlpOptionsBuilder.FORMAT)
 
     // Global User-Agent to avoid blocks at the network level
     PlaybackSession.setOptionString("user-agent", ua)
 
-    Log.d(TAG, "Setting ytdl-format to: $ytdlFormat")
-    Log.d(TAG, "Setting ytdl-raw-options to: ${resolvedOptions.rawOptions}")
-    PlaybackSession.setOptionString("ytdl-raw-options", resolvedOptions.rawOptions)
+    Log.d(TAG, "Setting ytdl-raw-options to: $rawOptions")
+    PlaybackSession.setOptionString("ytdl-raw-options", rawOptions)
     // mpv.conf is parsed during init and may replace script-opts. Refresh the bridge path
     // before web loads as well; mp.options observes script-opts changes on the live hook.
     applyMpvHookOptions(context)
