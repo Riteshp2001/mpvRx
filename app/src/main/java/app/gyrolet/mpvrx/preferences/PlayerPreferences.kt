@@ -166,8 +166,8 @@ class PlayerPreferences(
   val pipOnHomeGestureOnly = preferenceStore.getBoolean("auto_pip_home_gesture_only", false)
 
   /**
-   * Keeps a video playing after Home, an app switch or screen-off. Back still closes it, and audio
-   * always plays in the background.
+   * Keeps a video playing after Back, Home, an app switch or screen-off. Audio always plays in the
+   * background.
    */
   val videoBackgroundPlayback = preferenceStore.getBoolean("automatic_background_playback", false)
 

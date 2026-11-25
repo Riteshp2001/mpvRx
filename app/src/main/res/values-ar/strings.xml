@@ -491,7 +491,7 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_video_background_playback_title">التشغيل في الخلفية (مشغل الفيديو)</string>
-  <string name="pref_video_background_playback_summary">يواصل تشغيل الفيديو عند الانتقال إلى الشاشة الرئيسية أو التبديل إلى تطبيق آخر أو إطفاء الشاشة. يغلق زر الرجوع الفيديو دائمًا. اضغط مطولًا على زر التشغيل في الخلفية في المشغل لفعل ذلك مرة واحدة.</string>
+  <string name="pref_video_background_playback_summary">يواصل تشغيل الفيديو عند الضغط على زر الرجوع أو الانتقال إلى الشاشة الرئيسية أو التبديل إلى تطبيق آخر أو إطفاء الشاشة. اضغط مطولًا على زر التشغيل في الخلفية في المشغل لفعل ذلك مرة واحدة.</string>
   <string name="toast_background_playback_on">تم تشغيل التشغيل في الخلفية</string>
   <string name="toast_background_playback_off">تم إيقاف التشغيل في الخلفية</string>
   <string name="btn_label_background_playback_once">التشغيل في الخلفية مرة واحدة</string>

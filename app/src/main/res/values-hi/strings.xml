@@ -481,7 +481,7 @@
     <item quantity="other">%1$d सेकंड</item>
   </plurals>
   <string name="pref_video_background_playback_title">वीडियो प्लेयर बैकग्राउंड प्लेबैक</string>
-  <string name="pref_video_background_playback_summary">होम पर जाने, ऐप बदलने या स्क्रीन बंद करने पर भी वीडियो चलते रहें। बैक दबाने से वीडियो हमेशा बंद होता है। सिर्फ़ एक बार ऐसा करने के लिए प्लेयर में बैकग्राउंड बटन को देर तक दबाएँ।</string>
+  <string name="pref_video_background_playback_summary">बैक दबाने, होम पर जाने, ऐप बदलने या स्क्रीन बंद करने पर भी वीडियो चलते रहें। सिर्फ़ एक बार ऐसा करने के लिए प्लेयर में बैकग्राउंड बटन को देर तक दबाएँ।</string>
   <string name="toast_background_playback_on">बैकग्राउंड प्लेबैक चालू</string>
   <string name="toast_background_playback_off">बैकग्राउंड प्लेबैक बंद</string>
   <string name="btn_label_background_playback_once">एक बार बैकग्राउंड में चलाएँ</string>

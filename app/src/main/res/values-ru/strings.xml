@@ -489,7 +489,7 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_video_background_playback_title">Фоновое воспроизведение (Видеоплеер)</string>
-  <string name="pref_video_background_playback_summary">Видео продолжает воспроизводиться, когда вы переходите на главный экран, переключаетесь на другое приложение или выключаете экран. Кнопка «Назад» всегда закрывает видео. Чтобы сделать это один раз, удерживайте кнопку фонового воспроизведения в плеере.</string>
+  <string name="pref_video_background_playback_summary">Видео продолжает воспроизводиться, когда вы нажимаете «Назад», переходите на главный экран, переключаетесь на другое приложение или выключаете экран. Чтобы сделать это один раз, удерживайте кнопку фонового воспроизведения в плеере.</string>
   <string name="toast_background_playback_on">Фоновое воспроизведение включено</string>
   <string name="toast_background_playback_off">Фоновое воспроизведение выключено</string>
   <string name="btn_label_background_playback_once">Воспроизвести в фоне один раз</string>

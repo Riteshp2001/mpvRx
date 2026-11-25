@@ -62,6 +62,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.sheets.OnlineSubtitleSear
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaybackSpeedSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.ScopesSheet
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.SleepTimerSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.SubtitlesSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.VideoZoomSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.VideoQualitySheet
@@ -455,7 +456,7 @@ fun PlayerSheets(
       val sleepTimerTimeRemaining by viewModel.remainingTime.composeCollectAsState()
       MoreSheet(
         remainingTime = sleepTimerTimeRemaining,
-        onStartTimer = onStartSleepTimer,
+        onOpenSleepTimerSheet = { onShowSheet(Sheets.SleepTimer) },
         onDismissRequest = onDismissRequest,
         onEnterFiltersPanel = { onOpenPanel(Panels.VideoFilters) },
         onEnterLuaScriptsPanel = { onOpenPanel(Panels.LuaScripts) },
@@ -467,6 +468,15 @@ fun PlayerSheets(
         filtersEnabled = MpvConfigOverride.VIDEO_FILTERS.optionNames.any { it !in configOwnedOptions },
         equalizerEnabled = "af" !in configOwnedOptions,
         anime4KEnabled = MpvConfigControlledFeatures.ANIME4K.none(configOwnedOptions::contains),
+      )
+    }
+
+    Sheets.SleepTimer -> {
+      val sleepTimerTimeRemaining by viewModel.remainingTime.composeCollectAsState()
+      SleepTimerSheet(
+        remainingTime = sleepTimerTimeRemaining,
+        onStartTimer = onStartSleepTimer,
+        onDismissRequest = onDismissRequest,
       )
     }
 

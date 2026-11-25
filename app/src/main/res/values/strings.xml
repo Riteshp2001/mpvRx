@@ -682,7 +682,7 @@
   <string name="pref_ignore_audio_focus_title">Ignore audio focus</string>
   <string name="pref_ignore_audio_focus_summary">Keep audio and video playing alongside other apps without pausing or lowering volume</string>
   <string name="pref_video_background_playback_title">Video Player Background Playback</string>
-  <string name="pref_video_background_playback_summary">Keep videos playing after you go Home, switch apps or turn off the screen. Back always closes the video. Long-press the background button in the player to do this once.</string>
+  <string name="pref_video_background_playback_summary">Keep videos playing when you press Back, go Home, switch apps or turn off the screen. Long-press the background button in the player to do this once.</string>
   <string name="toast_background_playback_on">Background playback on</string>
   <string name="toast_background_playback_off">Background playback off</string>
   <string name="btn_label_background_playback_once">Play in the background once</string>

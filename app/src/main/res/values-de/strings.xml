@@ -487,7 +487,7 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_video_background_playback_title">Hintergrundwiedergabe (Video-Player)</string>
-  <string name="pref_video_background_playback_summary">Videos laufen weiter, wenn du zum Startbildschirm wechselst, eine andere App öffnest oder den Bildschirm ausschaltest. Zurück schließt das Video immer. Halte die Hintergrund-Taste im Player gedrückt, um das einmalig zu tun.</string>
+  <string name="pref_video_background_playback_summary">Videos laufen weiter, wenn du Zurück drückst, zum Startbildschirm wechselst, eine andere App öffnest oder den Bildschirm ausschaltest. Halte die Hintergrund-Taste im Player gedrückt, um das einmalig zu tun.</string>
   <string name="toast_background_playback_on">Hintergrundwiedergabe an</string>
   <string name="toast_background_playback_off">Hintergrundwiedergabe aus</string>
   <string name="btn_label_background_playback_once">Einmalig im Hintergrund abspielen</string>

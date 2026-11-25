@@ -1177,6 +1177,8 @@ class PlayerActivity :
   }
 
   private fun handleBackPress() {
+    // The service is already taking over; a second Back must not start or bind it again.
+    if (pendingBackNavigationBackgroundTransition) return
     returnToBrowserAfterMinimize = false
     // Dismiss overlays first; touch devices keep the controls hidden after closing one.
     if (viewModel.sheetShown.value != Sheets.None) {
@@ -1204,7 +1206,25 @@ class PlayerActivity :
       return
     }
 
-    if (isReady && gesturePreferences.confirmBackToExit.get()) {
+    // With auto-PiP on, Back shrinks a video into picture-in-picture instead of closing it. It keeps
+    // playing, so it is not an exit and skips the "press again to exit" check. Restricting auto-PiP
+    // to the home gesture keeps Back for leaving the player.
+    if (!isTelevision && !isMiniPlayerEnabled() &&
+      shouldEnterPipOnNavigation() &&
+      !playerPreferences.pipOnHomeGestureOnly.get() &&
+      enterPipModeSmoothly()
+    ) {
+      lastExitBackPressAtMs = null
+      return
+    }
+
+    // With video background playback on, Back keeps the video playing in the background and
+    // returns to the previous screen, like Home. That is not an exit either. Android TV has no
+    // notification shade to stop it from, so Back still closes the video there.
+    val videoContinuesInBackground =
+      !isTelevision && !isMiniPlayerEnabled() && isReady && playerPreferences.videoBackgroundPlayback.get()
+
+    if (!videoContinuesInBackground && isReady && gesturePreferences.confirmBackToExit.get()) {
       val now = android.os.SystemClock.elapsedRealtime()
       val previousPress = lastExitBackPressAtMs
       if (previousPress == null || now - previousPress !in 0L..2_000L) {
@@ -1215,17 +1235,6 @@ class PlayerActivity :
     }
     lastExitBackPressAtMs = null
 
-    // If mini player is enabled, back press within the app hands off playback to the mini player
-    // rather than entering PiP. If mini player is disabled, auto-PiP retains priority on Back
-    // unless the user restricted auto-PiP to the home gesture.
-    if (!isTelevision && !isMiniPlayerEnabled() &&
-      shouldEnterPipOnNavigation() &&
-      !playerPreferences.pipOnHomeGestureOnly.get() &&
-      enterPipModeSmoothly()
-    ) {
-      return
-    }
-
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       runCatching {
         setPictureInPictureParams(
@@ -1234,9 +1243,12 @@ class PlayerActivity :
       }
     }
 
-    // Audio hands the live session to the mini player on Back. A video always closes, even with
-    // background playback on; only Home or an app switch keeps it playing.
-    if (isMiniPlayerEnabled()) {
+    // Audio hands the live session to the mini player; a video with background playback on hands
+    // it to the background service. If the service cannot take over, the player closes.
+    if (isMiniPlayerEnabled() || videoContinuesInBackground) {
+      // A dialog that paused the player may have left a delayed service stop; it must not cut
+      // this hand-off short.
+      videoServiceEndJob?.cancel()
       if (startBackgroundPlayback()) {
         pendingBackNavigationBackgroundTransition = true
         startSheetCollapse()
@@ -8158,6 +8170,8 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
         if (failedBackgroundHandoff) {
           returnToBrowserAfterMinimize = false
           cancelSheetCollapse()
+          // Back turned auto-PiP off for the hand-off; the player stays, so turn it back on.
+          if (::pipHelper.isInitialized) pipHelper.updatePictureInPictureParams()
           Toast.makeText(this@PlayerActivity, R.string.toast_playback_load_failed, Toast.LENGTH_LONG).show()
         }
         endBackgroundPlayback()

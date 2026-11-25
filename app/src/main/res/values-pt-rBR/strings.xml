@@ -487,7 +487,7 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_video_background_playback_title">Reprodução em segundo plano (Reprodutor de Vídeo)</string>
-  <string name="pref_video_background_playback_summary">Continua reproduzindo vídeos ao ir para a tela inicial, trocar de app ou desligar a tela. Voltar sempre fecha o vídeo. Mantenha pressionado o botão de segundo plano do reprodutor para fazer isso uma única vez.</string>
+  <string name="pref_video_background_playback_summary">Continua reproduzindo vídeos ao tocar em Voltar, ir para a tela inicial, trocar de app ou desligar a tela. Mantenha pressionado o botão de segundo plano do reprodutor para fazer isso uma única vez.</string>
   <string name="toast_background_playback_on">Reprodução em segundo plano ativada</string>
   <string name="toast_background_playback_off">Reprodução em segundo plano desativada</string>
   <string name="btn_label_background_playback_once">Reproduzir em segundo plano uma vez</string>

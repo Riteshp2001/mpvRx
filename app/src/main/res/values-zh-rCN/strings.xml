@@ -488,7 +488,7 @@
   <string name="pref_ignore_audio_focus_title">忽略音频焦点</string>
   <string name="pref_ignore_audio_focus_summary">允许音频和视频与其他应用同时播放，不因音频焦点变化暂停或降低音量</string>
   <string name="pref_video_background_playback_title">后台播放（视频播放器）</string>
-  <string name="pref_video_background_playback_summary">返回主屏幕、切换应用或关闭屏幕时继续播放视频。返回键始终关闭视频。长按播放器中的后台播放按钮可单次在后台播放。</string>
+  <string name="pref_video_background_playback_summary">按返回键、返回主屏幕、切换应用或关闭屏幕时继续播放视频。长按播放器中的后台播放按钮可单次在后台播放。</string>
   <string name="toast_background_playback_on">后台播放已开启</string>
   <string name="toast_background_playback_off">后台播放已关闭</string>
   <string name="btn_label_background_playback_once">单次后台播放</string>

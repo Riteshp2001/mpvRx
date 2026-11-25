@@ -20,11 +20,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -42,17 +39,12 @@ import androidx.compose.material3.TimeInput
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog
-import androidx.compose.ui.window.DialogProperties
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
@@ -68,7 +60,7 @@ import org.koin.compose.koinInject
 @Composable
 fun MoreSheet(
   remainingTime: Int,
-  onStartTimer: (Int) -> Unit,
+  onOpenSleepTimerSheet: () -> Unit,
   onDismissRequest: () -> Unit,
   onEnterFiltersPanel: () -> Unit,
   onEnterLuaScriptsPanel: () -> Unit,
@@ -117,8 +109,7 @@ fun MoreSheet(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.End,
         ) {
-          var isSleepTimerDialogShown by remember { mutableStateOf(false) }
-          TextButton(onClick = { isSleepTimerDialogShown = true }) {
+          TextButton(onClick = onOpenSleepTimerSheet) {
             Row(
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
@@ -138,13 +129,6 @@ fun MoreSheet(
                         DateUtils.formatElapsedTime(remainingTime.toLong()),
                       )
                     },
-                )
-              }
-              if (isSleepTimerDialogShown) {
-                TimePickerDialog(
-                  remainingTime = remainingTime,
-                  onDismissRequest = { isSleepTimerDialogShown = false },
-                  onTimeSelect = onStartTimer,
                 )
               }
             }
@@ -311,11 +295,10 @@ private val sleepTimerPresets = listOf(15, 30, 45, 60)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun TimePickerDialog(
+fun SleepTimerSheet(
   onDismissRequest: () -> Unit,
-  onTimeSelect: (Int) -> Unit,
-  modifier: Modifier = Modifier,
-  remainingTime: Int = 0,
+  onStartTimer: (Int) -> Unit,
+  remainingTime: Int,
 ) {
   val state = rememberTimePickerState(
     remainingTime / 3600,
@@ -323,91 +306,71 @@ fun TimePickerDialog(
     is24Hour = true,
   )
 
-  AppAlertDialog(
+  PlayerSheet(
     onDismissRequest = onDismissRequest,
-    modifier = modifier.widthIn(max = 360.dp),
-    properties = DialogProperties(usePlatformDefaultWidth = false),
-    title = {
-      Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth(),
-      ) {
+    title = stringResource(R.string.timer_title),
+  ) {
+    Column(
+      modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+        .padding(horizontal = 20.dp, vertical = 12.dp),
+      verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+      Text(
+        text = stringResource(R.string.timer_picker_enter_timer),
+        style = MaterialTheme.typography.titleMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+      TimeInput(state = state)
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-          text = stringResource(R.string.timer_title), // "Sleep Timer"
-          style = MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          text = stringResource(R.string.ui_quick_presets),
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.primary,
         )
-        Spacer(Modifier.height(8.dp))
-        Text(
-          text = stringResource(R.string.timer_picker_enter_timer),
-          style = MaterialTheme.typography.headlineSmall,
-          color = MaterialTheme.colorScheme.onSurface,
-        )
-      }
-    },
-    text = {
-      Column(
-        modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-      ) {
-        TimeInput(state = state)
-
-        // Quick Presets
-        Column(
-          horizontalAlignment = Alignment.Start,
-          modifier = Modifier.fillMaxWidth(),
+        FlowRow(
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-          Text(
-            androidx.compose.ui.res
-              .stringResource(app.gyrolet.mpvrx.R.string.ui_quick_presets),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp),
-          )
-          FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-          ) {
-            sleepTimerPresets.forEach { minutes ->
-              FilterChip(
-                selected = false,
-                onClick = {
-                  onTimeSelect(minutes * 60)
-                  onDismissRequest()
-                },
-                label = { Text(stringResource(R.string.generic_minutes_short, minutes)) },
-                leadingIcon = null,
-                colors = FilterChipDefaults.filterChipColors(
-                  containerColor = playerSheetSelectionColor(false),
-                  selectedContainerColor = playerSheetSelectionColor(true),
-                  selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ),
-              )
-            }
+          sleepTimerPresets.forEach { minutes ->
+            FilterChip(
+              selected = false,
+              onClick = {
+                onStartTimer(minutes * 60)
+                onDismissRequest()
+              },
+              label = { Text(stringResource(R.string.generic_minutes_short, minutes)) },
+              leadingIcon = null,
+              colors = FilterChipDefaults.filterChipColors(
+                containerColor = playerSheetSelectionColor(false),
+                selectedContainerColor = playerSheetSelectionColor(true),
+                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+              ),
+            )
           }
         }
       }
-    },
-    dismissButton = {
-      TextButton(onClick = {
-        onTimeSelect(0)
-        onDismissRequest()
-      }) {
-        Text(stringResource(id = R.string.generic_reset))
-      }
-      TextButton(onClick = onDismissRequest) {
-        Text(stringResource(id = R.string.generic_cancel))
-      }
-    },
-    confirmButton = {
-      TextButton(
-        onClick = {
-          onTimeSelect(state.hour * 3600 + state.minute * 60)
-          onDismissRequest()
-        },
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
       ) {
-        Text(stringResource(id = R.string.generic_ok))
+        TextButton(onClick = {
+          onStartTimer(0)
+          onDismissRequest()
+        }) {
+          Text(stringResource(R.string.generic_reset))
+        }
+        TextButton(onClick = onDismissRequest) {
+          Text(stringResource(R.string.generic_cancel))
+        }
+        TextButton(
+          onClick = {
+            onStartTimer(state.hour * 3600 + state.minute * 60)
+            onDismissRequest()
+          },
+        ) {
+          Text(stringResource(R.string.generic_ok))
+        }
       }
-    },
-  )
+    }
+  }
 }

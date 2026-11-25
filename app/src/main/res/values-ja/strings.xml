@@ -486,7 +486,7 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_video_background_playback_title">バックグラウンド再生（ビデオプレイヤー）</string>
-  <string name="pref_video_background_playback_summary">ホームに戻る、アプリを切り替える、画面をオフにしたときも動画の再生を続けます。戻るボタンでは常に動画を閉じます。一度だけ行うには、プレーヤーのバックグラウンドボタンを長押しします。</string>
+  <string name="pref_video_background_playback_summary">戻るボタンを押す、ホームに戻る、アプリを切り替える、画面をオフにしたときも動画の再生を続けます。一度だけ行うには、プレーヤーのバックグラウンドボタンを長押しします。</string>
   <string name="toast_background_playback_on">バックグラウンド再生オン</string>
   <string name="toast_background_playback_off">バックグラウンド再生オフ</string>
   <string name="btn_label_background_playback_once">一度だけバックグラウンドで再生</string>

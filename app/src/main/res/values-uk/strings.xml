@@ -566,7 +566,7 @@
     <item quantity="other">%1$d секунд</item>
   </plurals>
   <string name="pref_video_background_playback_title">Фонове відтворення відеоплеєра</string>
-  <string name="pref_video_background_playback_summary">Відео продовжує відтворюватися, коли ви переходите на головний екран, перемикаєтеся на інший застосунок або вимикаєте екран. Кнопка «Назад» завжди закриває відео. Щоб зробити це один раз, утримуйте кнопку фонового відтворення в плеєрі.</string>
+  <string name="pref_video_background_playback_summary">Відео продовжує відтворюватися, коли ви натискаєте «Назад», переходите на головний екран, перемикаєтеся на інший застосунок або вимикаєте екран. Щоб зробити це один раз, утримуйте кнопку фонового відтворення в плеєрі.</string>
   <string name="toast_background_playback_on">Фонове відтворення увімкнено</string>
   <string name="toast_background_playback_off">Фонове відтворення вимкнено</string>
   <string name="btn_label_background_playback_once">Відтворити у фоні один раз</string>
