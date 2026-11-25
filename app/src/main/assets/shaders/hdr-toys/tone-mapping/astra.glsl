@@ -147,7 +147,7 @@
 0.0
 
 //!PARAM spatial_stable_level
-//!TYPE uint
+//!TYPE DEFINE
 //!MINIMUM 0
 //!MAXIMUM 5
 3
@@ -190,7 +190,9 @@
 //!VAR uint metered_median_i
 //!VAR uint metered_diffuse_white_i
 //!VAR uint metered_histogram[1024]
-//!VAR uint metered_coarse_histogram[64]
+//!VAR uint metered_histogram_count
+//!VAR uint metered_scene_median_bin
+//!VAR uint metered_scene_diffuse_white_bin
 //!VAR float metered_zone_average[144]
 //!VAR float metered_zone_spread[144]
 //!VAR float metered_zone_preview_weight[144]
@@ -200,22 +202,31 @@
 //!VAR uint metered_zones_valid
 //!STORAGE
 
-//!BUFFER METERED_TEMPORAL
-//!VAR float metered_reference_histogram[64]
-//!VAR float metered_previous_histogram[64]
-//!VAR uint metered_temporal_valid
-//!VAR uint metered_temporal_pts
-//!VAR uint metered_scene_adaptation_end_pts
-//!VAR uint metered_scene_fast_response
-//!VAR uint metered_scene_cut_detected
-//!VAR float metered_scene_speed
-//!VAR float metered_reference_zones[144]
-//!VAR uint metered_reference_zones_valid
-//!VAR float metered_response_evidence
-//!VAR float metered_response_direction
-//!VAR float metered_response_confidence
-//!VAR uint metered_response_candidate_active
-//!VAR uint metered_response_candidate_start_pts
+//!BUFFER SCENE_DSM
+//!VAR float dsm_weights[64]
+//!VAR float dsm_age[64]
+//!VAR float dsm_precision[256]
+//!VAR float dsm_information[256]
+//!VAR uint dsm_bank
+//!VAR uint dsm_count
+//!VAR uint dsm_valid
+//!VAR uint dsm_last_pts
+//!VAR float dsm_accepted_age
+//!STORAGE
+
+//!BUFFER SCENE_RESPONSE
+//!VAR float scene_new_probability
+//!VAR float scene_short_probability
+//!VAR float scene_confirmed_probability
+//!VAR float scene_fast_strength
+//!VAR float scene_discarded_mass
+//!VAR float scene_outlier_probability
+//!VAR float scene_change_log_bayes
+//!VAR uint scene_hard_cut
+//!VAR uint scene_bootstrap
+//!VAR uint scene_observation_pts
+//!VAR uint scene_observation_valid
+//!VAR uint scene_state_recovered
 //!STORAGE
 
 //!BUFFER EXPOSURE_TEMPORAL
@@ -223,12 +234,20 @@
 //!VAR float exposure_temporal_variance
 //!VAR uint exposure_temporal_pts
 //!VAR uint exposure_temporal_valid
+//!VAR uint exposure_protection_pts
+//!VAR uint exposure_protection_valid
+//!VAR uint exposure_protection_state
+//!VAR uint exposure_protection_run
+//!VAR float exposure_previous_target
+//!VAR uint exposure_target_valid
 //!STORAGE
 
 //!BUFFER CURVE_TEMPORAL
 //!VAR float curve_temporal_values[1024]
+//!VAR float curve_display_values[1024]
 //!VAR float curve_temporal_alpha
 //!VAR uint curve_temporal_reset
+//!VAR uint curve_temporal_bypass
 //!VAR uint curve_temporal_pts
 //!VAR uint curve_temporal_valid
 //!STORAGE
@@ -248,10 +267,6 @@
 //!VAR float output_reverse_max_jhk
 //!STORAGE
 
-//!BUFFER PREVIEW_VECTORSCOPE
-//!VAR uint preview_vectorscope_bins[36864]
-//!STORAGE
-
 //!BUFFER PREVIEW_METRICS
 //!VAR uint preview_metrics_count
 //!VAR float preview_metrics_max_width
@@ -261,8 +276,11 @@
 
 //!BUFFER PREVIEW_HISTOGRAM
 //!VAR float preview_histogram_current[64]
-//!VAR float preview_histogram_reference[64]
 //!VAR float preview_histogram_curve[256]
+//!STORAGE
+
+//!BUFFER PREVIEW_VECTORSCOPE
+//!VAR uint preview_vectorscope_bins[36864]
 //!STORAGE
 
 //!HOOK OUTPUT
@@ -273,7 +291,7 @@
 //!DESC metering (intensity map)
 
 // Keep the peak-metadata test aligned with resolve_metering_metrics().
-// Preview also runs metering, but does not force the resolver to use it.
+// Preview runs the metering chain without selecting its results for normal output.
 // BIND METERING gates consumers on the availability of the current map.
 // WHEN is evaluated before BIND; do not query a conditionally absent texture.
 // Keep the shader directive marker (two slashes followed by an exclamation
@@ -460,110 +478,189 @@ vec4 hook() { return vec4(sample_metering_downscaled(), 0.0, 1.0); }
 //!WIDTH METERING.w
 //!HEIGHT METERING.h
 //!WHEN spatial_stable_level 0 >
-//!DESC metering (spatial stabilization, blur, horizontal)
+//!COMPUTE 16 16 16 16
+//!DESC metering (spatial stabilization, blur)
 
-// Separable Gaussian blur on the 512x288 metering map.
-// Sigma is 1.25^(level - 1), truncated at ceil(3 * sigma) texels.
-// Pair adjacent taps with bilinear sampling; materialize both directions
-// so the histogram, zones, and statistics consume the same filtered map.
-// Keep this scalar kernel synchronized with the vertical pass.
-// [Efficient Gaussian blur with linear sampling](https://www.rastergrid.com/blog/2010/09/efficient-gaussian-blur-with-linear-sampling/)
+// One workgroup produces a 16x16 tile, including both separable directions.
+// Clamp the source halo before filtering and keep the horizontal intermediate
+// in shared FP32 memory, avoiding a second dispatch and intermediate texture.
+// Sigma is 1.25^(level - 1), truncated at ceil(3 * sigma). The normalized
+// coefficients below are evaluated in FP64 and rounded to shader floats.
+// DEFINE specializes the array extents and removes inactive kernel branches.
+// Keep filter_horizontal and filter_vertical coefficients synchronized.
 
-const float spatial_stable_sigma_base = 1.0;
-const float spatial_stable_sigma_ratio = 1.25;
-const float spatial_stable_reach = 3.0;
-const vec2 direction = vec2(1.0, 0.0);
+#if spatial_stable_level <= 1
+const int radius = 3;
+#elif spatial_stable_level == 2
+const int radius = 4;
+#elif spatial_stable_level == 3
+const int radius = 5;
+#elif spatial_stable_level == 4
+const int radius = 6;
+#else
+const int radius = 8;
+#endif
 
-float spatial_stable_weight(float tap, float variance) {
-    return exp(-0.5 * tap * tap / variance);
+
+const int tile_width = 16 + 2 * radius;
+shared vec2 tile[tile_width * tile_width];
+shared vec2 horizontal_tile[16 * tile_width];
+
+vec2 filter_horizontal(int center) {
+    const int stride = 1;
+#if spatial_stable_level <= 1
+    vec2 sum = tile[center] * 0.39905027965245493;
+    sum += (tile[center - 1 * stride] +
+            tile[center + 1 * stride]) * 0.24203622937611435;
+    sum += (tile[center - 2 * stride] +
+            tile[center + 2 * stride]) * 0.054005582622414498;
+    sum += (tile[center - 3 * stride] +
+            tile[center + 3 * stride]) * 0.0044330481752437459;
+#elif spatial_stable_level == 2
+    vec2 sum = tile[center] * 0.31922423439085301;
+    sum += (tile[center - 1 * stride] +
+            tile[center + 1 * stride]) * 0.2318043704135041;
+    sum += (tile[center - 2 * stride] +
+            tile[center + 2 * stride]) * 0.088756244369270459;
+    sum += (tile[center - 3 * stride] +
+            tile[center + 3 * stride]) * 0.017919576688438448;
+    sum += (tile[center - 4 * stride] +
+            tile[center + 4 * stride]) * 0.0019076913333604809;
+#elif spatial_stable_level == 3
+    vec2 sum = tile[center] * 0.25541096969073107;
+    sum += (tile[center - 1 * stride] +
+            tile[center + 1 * stride]) * 0.20811147917447398;
+    sum += (tile[center - 2 * stride] +
+            tile[center + 2 * stride]) * 0.11258110482738368;
+    sum += (tile[center - 3 * stride] +
+            tile[center + 3 * stride]) * 0.040434116389630952;
+    sum += (tile[center - 4 * stride] +
+            tile[center + 4 * stride]) * 0.0096414729606384107;
+    sum += (tile[center - 5 * stride] +
+            tile[center + 5 * stride]) * 0.0015263418025074776;
+#elif spatial_stable_level == 4
+    vec2 sum = tile[center] * 0.20441532859407782;
+    sum += (tile[center - 1 * stride] +
+            tile[center + 1 * stride]) * 0.17930384925879744;
+    sum += (tile[center - 2 * stride] +
+            tile[center + 2 * stride]) * 0.12100911201124059;
+    sum += (tile[center - 3 * stride] +
+            tile[center + 3 * stride]) * 0.062834598207420683;
+    sum += (tile[center - 4 * stride] +
+            tile[center + 4 * stride]) * 0.025103363688158426;
+    sum += (tile[center - 5 * stride] +
+            tile[center + 5 * stride]) * 0.0077164456396147515;
+    sum += (tile[center - 6 * stride] +
+            tile[center + 6 * stride]) * 0.001824966897729268;
+#else
+    vec2 sum = tile[center] * 0.16348116029814891;
+    sum += (tile[center - 1 * stride] +
+            tile[center + 1 * stride]) * 0.15032681281591539;
+    sum += (tile[center - 2 * stride] +
+            tile[center + 2 * stride]) * 0.11688066256203568;
+    sum += (tile[center - 3 * stride] +
+            tile[center + 3 * stride]) * 0.076839823134770308;
+    sum += (tile[center - 4 * stride] +
+            tile[center + 4 * stride]) * 0.042713732645968346;
+    sum += (tile[center - 5 * stride] +
+            tile[center + 5 * stride]) * 0.020076415263730153;
+    sum += (tile[center - 6 * stride] +
+            tile[center + 6 * stride]) * 0.0079788865860050892;
+    sum += (tile[center - 7 * stride] +
+            tile[center + 7 * stride]) * 0.0026812412389485853;
+    sum += (tile[center - 8 * stride] +
+            tile[center + 8 * stride]) * 0.00076184560355203445;
+#endif
+    return sum;
 }
 
-vec4 hook() {
-    // WHEN excludes level 0.
-    float sigma = spatial_stable_sigma_base * pow(
-        spatial_stable_sigma_ratio,
-        float(spatial_stable_level) - 1.0
-    );
-    float variance = sigma * sigma;
-    float last_tap = ceil(spatial_stable_reach * sigma);
+vec2 filter_vertical(int center) {
+    const int stride = 16;
+#if spatial_stable_level <= 1
+    vec2 sum = horizontal_tile[center] * 0.39905027965245493;
+    sum += (horizontal_tile[center - 1 * stride] +
+            horizontal_tile[center + 1 * stride]) * 0.24203622937611435;
+    sum += (horizontal_tile[center - 2 * stride] +
+            horizontal_tile[center + 2 * stride]) * 0.054005582622414498;
+    sum += (horizontal_tile[center - 3 * stride] +
+            horizontal_tile[center + 3 * stride]) * 0.0044330481752437459;
+#elif spatial_stable_level == 2
+    vec2 sum = horizontal_tile[center] * 0.31922423439085301;
+    sum += (horizontal_tile[center - 1 * stride] +
+            horizontal_tile[center + 1 * stride]) * 0.2318043704135041;
+    sum += (horizontal_tile[center - 2 * stride] +
+            horizontal_tile[center + 2 * stride]) * 0.088756244369270459;
+    sum += (horizontal_tile[center - 3 * stride] +
+            horizontal_tile[center + 3 * stride]) * 0.017919576688438448;
+    sum += (horizontal_tile[center - 4 * stride] +
+            horizontal_tile[center + 4 * stride]) * 0.0019076913333604809;
+#elif spatial_stable_level == 3
+    vec2 sum = horizontal_tile[center] * 0.25541096969073107;
+    sum += (horizontal_tile[center - 1 * stride] +
+            horizontal_tile[center + 1 * stride]) * 0.20811147917447398;
+    sum += (horizontal_tile[center - 2 * stride] +
+            horizontal_tile[center + 2 * stride]) * 0.11258110482738368;
+    sum += (horizontal_tile[center - 3 * stride] +
+            horizontal_tile[center + 3 * stride]) * 0.040434116389630952;
+    sum += (horizontal_tile[center - 4 * stride] +
+            horizontal_tile[center + 4 * stride]) * 0.0096414729606384107;
+    sum += (horizontal_tile[center - 5 * stride] +
+            horizontal_tile[center + 5 * stride]) * 0.0015263418025074776;
+#elif spatial_stable_level == 4
+    vec2 sum = horizontal_tile[center] * 0.20441532859407782;
+    sum += (horizontal_tile[center - 1 * stride] +
+            horizontal_tile[center + 1 * stride]) * 0.17930384925879744;
+    sum += (horizontal_tile[center - 2 * stride] +
+            horizontal_tile[center + 2 * stride]) * 0.12100911201124059;
+    sum += (horizontal_tile[center - 3 * stride] +
+            horizontal_tile[center + 3 * stride]) * 0.062834598207420683;
+    sum += (horizontal_tile[center - 4 * stride] +
+            horizontal_tile[center + 4 * stride]) * 0.025103363688158426;
+    sum += (horizontal_tile[center - 5 * stride] +
+            horizontal_tile[center + 5 * stride]) * 0.0077164456396147515;
+    sum += (horizontal_tile[center - 6 * stride] +
+            horizontal_tile[center + 6 * stride]) * 0.001824966897729268;
+#else
+    vec2 sum = horizontal_tile[center] * 0.16348116029814891;
+    sum += (horizontal_tile[center - 1 * stride] +
+            horizontal_tile[center + 1 * stride]) * 0.15032681281591539;
+    sum += (horizontal_tile[center - 2 * stride] +
+            horizontal_tile[center + 2 * stride]) * 0.11688066256203568;
+    sum += (horizontal_tile[center - 3 * stride] +
+            horizontal_tile[center + 3 * stride]) * 0.076839823134770308;
+    sum += (horizontal_tile[center - 4 * stride] +
+            horizontal_tile[center + 4 * stride]) * 0.042713732645968346;
+    sum += (horizontal_tile[center - 5 * stride] +
+            horizontal_tile[center + 5 * stride]) * 0.020076415263730153;
+    sum += (horizontal_tile[center - 6 * stride] +
+            horizontal_tile[center + 6 * stride]) * 0.0079788865860050892;
+    sum += (horizontal_tile[center - 7 * stride] +
+            horizontal_tile[center + 7 * stride]) * 0.0026812412389485853;
+    sum += (horizontal_tile[center - 8 * stride] +
+            horizontal_tile[center + 8 * stride]) * 0.00076184560355203445;
+#endif
+    return sum;
+}
 
-    // Combine adjacent taps at their weighted centroid.
-    vec2 sum = METERING_tex(METERING_pos).xy;
-    float weight_sum = 1.0;
-    for (uint pair = 1u; 2.0 * float(pair) <= last_tap + 1.0; pair++) {
-        float near_tap = 2.0 * float(pair) - 1.0;
-        float far_tap = near_tap + 1.0;
-        float near_weight = spatial_stable_weight(near_tap, variance);
-        float far_weight = far_tap <= last_tap
-            ? spatial_stable_weight(far_tap, variance)
-            : 0.0;
-
-        float pair_weight = near_weight + far_weight;
-        float pair_offset =
-            (near_tap * near_weight + far_tap * far_weight) / pair_weight;
-
-        sum += METERING_texOff( direction * pair_offset).xy * pair_weight;
-        sum += METERING_texOff(-direction * pair_offset).xy * pair_weight;
-        weight_sum += 2.0 * pair_weight;
+void hook() {
+    uint tid = gl_LocalInvocationIndex;
+    ivec2 origin = ivec2(gl_WorkGroupID.xy) * 16 - ivec2(radius);
+    for (uint i = tid; i < uint(tile_width * tile_width); i += 256u) {
+        ivec2 p = origin + ivec2(int(i) % tile_width, int(i) / tile_width);
+        p = clamp(p, ivec2(0), ivec2(METERING_size) - 1);
+        tile[i] = METERING_mul * texelFetch(METERING_raw, p, 0).xy;
     }
-
-    // Normalize to preserve constant inputs. Clamped sampling and positive
-    // weights keep the result within the input range.
-    return vec4(sum / weight_sum, 0.0, 1.0);
-}
-
-//!HOOK OUTPUT
-//!BIND METERING
-//!SAVE METERING
-//!COMPONENTS 2
-//!WIDTH METERING.w
-//!HEIGHT METERING.h
-//!WHEN spatial_stable_level 0 >
-//!DESC metering (spatial stabilization, blur, vertical)
-
-// Apply the horizontal pass's scalar kernel along the vertical axis.
-
-const float spatial_stable_sigma_base = 1.0;
-const float spatial_stable_sigma_ratio = 1.25;
-const float spatial_stable_reach = 3.0;
-const vec2 direction = vec2(0.0, 1.0);
-
-float spatial_stable_weight(float tap, float variance) {
-    return exp(-0.5 * tap * tap / variance);
-}
-
-vec4 hook() {
-    // WHEN excludes level 0.
-    float sigma = spatial_stable_sigma_base * pow(
-        spatial_stable_sigma_ratio,
-        float(spatial_stable_level) - 1.0
-    );
-    float variance = sigma * sigma;
-    float last_tap = ceil(spatial_stable_reach * sigma);
-
-    // Combine adjacent taps at their weighted centroid.
-    vec2 sum = METERING_tex(METERING_pos).xy;
-    float weight_sum = 1.0;
-    for (uint pair = 1u; 2.0 * float(pair) <= last_tap + 1.0; pair++) {
-        float near_tap = 2.0 * float(pair) - 1.0;
-        float far_tap = near_tap + 1.0;
-        float near_weight = spatial_stable_weight(near_tap, variance);
-        float far_weight = far_tap <= last_tap
-            ? spatial_stable_weight(far_tap, variance)
-            : 0.0;
-
-        float pair_weight = near_weight + far_weight;
-        float pair_offset =
-            (near_tap * near_weight + far_tap * far_weight) / pair_weight;
-
-        sum += METERING_texOff( direction * pair_offset).xy * pair_weight;
-        sum += METERING_texOff(-direction * pair_offset).xy * pair_weight;
-        weight_sum += 2.0 * pair_weight;
+    barrier();
+    for (uint i = tid; i < uint(16 * tile_width); i += 256u) {
+        int center = (int(i) / 16) * tile_width + int(i) % 16 + radius;
+        horizontal_tile[i] = filter_horizontal(center);
     }
-
-    // Normalize to preserve constant inputs. Clamped sampling and positive
-    // weights keep the result within the input range.
-    return vec4(sum / weight_sum, 0.0, 1.0);
+    barrier();
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(p, ivec2(METERING_size)))) return;
+    ivec2 local = ivec2(gl_LocalInvocationID.xy);
+    int center = (local.y + radius) * 16 + local.x;
+    imageStore(out_image, p, vec4(filter_vertical(center), 0.0, 1.0));
 }
 
 //!HOOK OUTPUT
@@ -573,7 +670,7 @@ vec4 hook() {
 //!WIDTH 1024
 //!HEIGHT 1
 //!COMPUTE 256 1 256 1
-//!DESC metering (histogram, init)
+//!DESC metering (initialize)
 
 void clear_metering_histogram_bin(uint index) {
     if (index < 1024u) {
@@ -597,7 +694,7 @@ void hook() {
 //!WIDTH METERING.w
 //!HEIGHT METERING.h
 //!COMPUTE 32 32 16 16
-//!DESC metering (histogram)
+//!DESC metering (histogram and matrix zones)
 
 shared uint shistogram[1024];
 shared uint smax_rgb;
@@ -684,35 +781,11 @@ void merge_workgroup_histogram(uint tid) {
     }
 }
 
-void hook() {
-    ivec2 block_base = ivec2(gl_WorkGroupID.xy) * 32;
-    ivec2 position = block_base + ivec2(gl_LocalInvocationID.xy) * 2;
-    vec4 intensities;
-    vec4 maxima;
-    fetch_metering_quad(position, intensities, maxima);
-    uint tid = gl_LocalInvocationIndex;
 
-    clear_workgroup_histogram(tid);
-    barrier();
-
-    accumulate_workgroup_metering(intensities, maxima);
-    barrier();
-
-    merge_workgroup_histogram(tid);
-}
-
-//!HOOK OUTPUT
-//!BIND METERING
-//!BIND METERED
-//!SAVE EMPTY
-//!WIDTH 256
-//!HEIGHT 144
-//!COMPUTE 16 16 16 16
-//!WHEN auto_exposure_anchor 0 > preview_metering + enable_metering 1 > *
-//!DESC metering (matrix zones)
-
-// METERING must exist. Run zones at metering level 2 when automatic
-// exposure has a positive anchor or the preview is enabled.
+// Each 32x32 source tile also supplies one 16x16 matrix zone. Keep the
+// filtered zone sample: averaging the histogram's FP32 texelFetch results
+// differs from hardware FP16 filtering near histogram thresholds.
+// The uniform gate below preserves the former matrix pass's scheduling.
 
 // A 256x144 analysis grid maps exactly to 16x9 workgroups. Each workgroup
 // builds a compact histogram for one image zone, then publishes a robust mean
@@ -749,11 +822,6 @@ shared uint zone_prefix[2][MATRIX_ZONE_HISTOGRAM_SIZE];
 shared uint zone_retained_count[MATRIX_ZONE_HISTOGRAM_SIZE];
 shared uint zone_low_bin;
 shared uint zone_high_bin;
-
-// Ordered-comparison sanitizer; see the metering intensity pass.
-float sanitize_bounded(float value, float lower_bound, float upper_bound) {
-    return value > lower_bound ? min(value, upper_bound) : lower_bound;
-}
 
 uint matrix_zone_value_code(float value) {
     // Reject NaN before the float-to-uint conversion per the file-wide
@@ -894,30 +962,44 @@ void publish_matrix_zone(uint tid, uint zone_index) {
     }
 }
 
-void analyze_matrix_zone() {
+void hook() {
     uint tid = gl_LocalInvocationIndex;
-    vec2 position = (vec2(gl_GlobalInvocationID.xy) + 0.5) /
-                    MATRIX_METERING_SIZE;
+    ivec2 position = ivec2(gl_WorkGroupID.xy) * 32 +
+                     ivec2(gl_LocalInvocationID.xy) * 2;
+    vec4 intensities;
+    vec4 maxima;
+    fetch_metering_quad(position, intensities, maxima);
+    bool matrix_enabled = enable_metering > 1u &&
+                          (auto_exposure_anchor > 0.0 || preview_metering > 0u);
 
-    clear_zone_histogram(tid);
+    clear_workgroup_histogram(tid);
+    if (matrix_enabled) {
+        clear_zone_histogram(tid);
+    }
     barrier();
 
-    float value = sample_matrix_metering(position);
-    uint value_code = matrix_zone_value_code(value);
-    atomicAdd(
-        zone_histogram[matrix_zone_histogram_bin(value_code)],
-        matrix_zone_packed_sample(value_code)
-    );
+    accumulate_workgroup_metering(intensities, maxima);
+    if (matrix_enabled) {
+        vec2 zone_position = (vec2(gl_GlobalInvocationID.xy) + 0.5) /
+                             MATRIX_METERING_SIZE;
+        float value = sample_matrix_metering(zone_position);
+        uint value_code = matrix_zone_value_code(value);
+        atomicAdd(
+            zone_histogram[matrix_zone_histogram_bin(value_code)],
+            matrix_zone_packed_sample(value_code)
+        );
+    }
     barrier();
 
-    uint zone_index = gl_WorkGroupID.y * MATRIX_ZONE_COLUMNS +
-                      gl_WorkGroupID.x;
-    if (zone_index < MATRIX_ZONE_COUNT) {
+    merge_workgroup_histogram(tid);
+    // This condition depends only on uniform parameters, so every invocation
+    // in the workgroup participates in the zone scan's barriers together.
+    if (matrix_enabled) {
+        uint zone_index = gl_WorkGroupID.y * MATRIX_ZONE_COLUMNS +
+                          gl_WorkGroupID.x;
         publish_matrix_zone(tid, zone_index);
     }
 }
-
-void hook() { analyze_matrix_zone(); }
 
 //!HOOK OUTPUT
 //!BIND METERING
@@ -938,8 +1020,6 @@ const float METERING_CODE_SCALE = 4095.0;
 const uint METERING_HISTOGRAM_SIZE = 1024u;
 const uint METERING_REDUCTION_SIZE = 256u;
 const uint METERING_BINS_PER_THREAD = 4u;
-const uint METERING_COARSE_HISTOGRAM_SIZE = 64u;
-const uint METERING_BLOCKS_PER_COARSE_BIN = 4u;
 const uint METERING_SAMPLE_COUNT = 512u * 288u;
 
 // The percentile family: BLACK and WHITE locate the extrema histogram
@@ -983,6 +1063,8 @@ shared uint black_bin;
 shared uint white_bin;
 shared uint median_bin;
 shared uint diffuse_white_bin;
+shared uint scene_median_bin;
+shared uint scene_diffuse_white_bin;
 
 shared vec2 matrix_partial[METERING_REDUCTION_SIZE];
 shared uvec4 matrix_active_bounds;
@@ -1384,20 +1466,6 @@ uint find_percentile_bin(
     return first + METERING_BINS_PER_THREAD - 1u;
 }
 
-void publish_coarse_histogram(uint tid) {
-    if (tid >= METERING_COARSE_HISTOGRAM_SIZE) {
-        return;
-    }
-
-    uint last_block = (tid + 1u) * METERING_BLOCKS_PER_COARSE_BIN - 1u;
-    uint first_block = tid * METERING_BLOCKS_PER_COARSE_BIN;
-    uint cumulative_before = first_block == 0u
-        ? 0u
-        : histogram_scan[0][first_block - 1u];
-    metered_coarse_histogram[tid] =
-        histogram_scan[0][last_block] - cumulative_before;
-}
-
 // A percentile of the declared sample count, floored at one sample so a
 // percentile that rounds to zero still selects a bin instead of none.
 uint percentile_target(uint sample_count, float percentile) {
@@ -1456,6 +1524,24 @@ void locate_percentiles(uint tid, uint first, uvec4 counts) {
             diffuse_white_target
         );
     }
+
+    // DSM uses the actual histogram count and bin centers on a 1024-step
+    // scale. Reuse this prefix scan without changing the exposure quantiles.
+    uint total = histogram_scan[0][METERING_REDUCTION_SIZE - 1u];
+    uint scene_median_target = percentile_target(total, 0.5);
+    uint scene_diffuse_white_target = percentile_target(total, 0.8);
+    if (cumulative_before < scene_median_target &&
+        cumulative >= scene_median_target) {
+        scene_median_bin = find_percentile_bin(
+            counts, first, cumulative_before, scene_median_target
+        );
+    }
+    if (cumulative_before < scene_diffuse_white_target &&
+        cumulative >= scene_diffuse_white_target) {
+        scene_diffuse_white_bin = find_percentile_bin(
+            counts, first, cumulative_before, scene_diffuse_white_target
+        );
+    }
 }
 
 void reduce_histogram_statistics(
@@ -1468,10 +1554,11 @@ void reduce_histogram_statistics(
         white_bin = METERING_HISTOGRAM_SIZE - 1u;
         median_bin = 0u;
         diffuse_white_bin = METERING_HISTOGRAM_SIZE - 1u;
+        scene_median_bin = 0u;
+        scene_diffuse_white_bin = 0u;
     }
 
     scan_histogram_blocks(tid, sum_histogram_block(counts));
-    publish_coarse_histogram(tid);
     locate_percentiles(tid, first, counts);
 
     uint global_total = histogram_scan[0][METERING_REDUCTION_SIZE - 1u];
@@ -1490,6 +1577,9 @@ void reduce_histogram_statistics(
 
     if (tid == 0u) {
         uint global_retained = global_targets.y - global_targets.x;
+        metered_histogram_count = global_total;
+        metered_scene_median_bin = scene_median_bin;
+        metered_scene_diffuse_white_bin = scene_diffuse_white_bin;
         histogram_average = average_partial[0] /
                             float(max(global_retained, 1u));
         metered_min_i = black_bin << 2u;
@@ -1538,466 +1628,394 @@ void hook() { reduce_metering_statistics(); }
 //!HOOK OUTPUT
 //!BIND METERING
 //!BIND METERED
-//!BIND METERED_TEMPORAL
+//!BIND SCENE_DSM
+//!BIND SCENE_RESPONSE
 //!SAVE EMPTY
 //!WIDTH 64
 //!HEIGHT 1
 //!COMPUTE 64 1 64 1
-//!WHEN temporal_stable_duration 0.0 >
-//!DESC metering (temporal stabilization)
+//!WHEN temporal_stable_duration 0 >
+//!DESC metering (scene adaptation)
 
-// METERED_TEMPORAL lifecycle:
-// Written by temporal metering; read by metadata only when its PTS matches
-// the current, selected measurements. A detected cut remains latched across
-// redraws of that PTS and is cleared on the next processed observation.
-// Exposure and curve consumers check their own PTS before acting on the cut,
-// so each history resets only once. Fast response instead lasts until its
-// adaptation deadline; zone confidence describes sustained spatial change.
+// Before-observation changepoints, diagonal known-variance Gaussian DSM.
+// https://proceedings.mlr.press/v202/altamirano23a.html
+//
+// The new-shot prior is fitted to shot-mean statistics in the eigenbasis of
+// their covariance: mu_w = U^T mu and precision = 1/eigenvalue. The rotation
+// keeps the observation noise isotropic, so the DSM update stays diagonal.
+// These constants are a first calibration from the first half of the
+// validation film; recalibrate on a multi-film corpus before treating them
+// as content-independent.
+const uint DSM_CAPACITY = 32u;
+const float DSM_SIGMA_SQUARED = 0.0625;
+// Diffusion scale in the rotated observation coordinates; independent of
+// the broad prior variance even though their current values coincide.
+const float DSM_DIFFUSION_SCALE_SQUARED = 9.0;
+const vec4 DSM_PRIOR_PRECISION = vec4(
+    20.0, 20.0, 12.07577751, 0.28347464
+);
+const vec4 DSM_PRIOR_INFORMATION = vec4(
+    -0.48453845, -4.1910885, -9.1981883, 0.45147989
+);
+const mat4 DSM_PRIOR_ROTATION = mat4(
+    vec4(0.7886, 0.3150, 0.2151, -0.4823),
+    vec4(-0.1829, -0.6728, 0.4965, -0.5170),
+    vec4(-0.0119, -0.2056, -0.8273, -0.5226),
+    vec4(-0.5870, 0.6370, 0.1510, -0.4763)
+);
+const float DSM_MATRIX_IMPUTATION_Z = 0.02433227;
+// A broad N(0,9) component keeps cuts to unusual shots detectable; the
+// empirical core alone would saturate both hypotheses at the outlier floor.
+const float DSM_PRIOR_BROAD_WEIGHT = 0.1;
+const float DSM_PRIOR_BROAD_VARIANCE = 9.0;
+const float DSM_OUTLIER_VARIANCE = 64.0;
+const float DSM_CONTAMINATION = 0.02;
+const float DSM_SHOT_SECONDS = 5.0;
+const float DSM_SHORT_SECONDS = 0.15;
+const float DSM_MAX_GAP = 1.0;
+const float DSM_PTS_EPSILON = 1e-6;
+const float DSM_CUT_PROBABILITY = 0.95;
 
-// One just-noticeable difference step on the PQ scale.
-const float JND = 1.0 / 720.0;
+shared vec4 dsm_z;
+shared vec4 dsm_precision_step;
+shared vec4 dsm_information_step;
+shared float dsm_logits[DSM_CAPACITY + 1u];
+shared float dsm_ages[DSM_CAPACITY + 1u];
+shared uint dsm_selected[DSM_CAPACITY];
+shared uint dsm_operation;
+shared uint dsm_old_count;
+shared uint dsm_next_count;
+shared uint dsm_read_bank;
+shared uint dsm_bad_history;
+shared float dsm_dt;
+shared float dsm_log_hazard;
+shared float dsm_log_kept;
+shared float dsm_log_outlier;
+shared float dsm_prior_normal;
+shared vec4 dsm_new_prior_precision;
+shared vec4 dsm_new_prior_information;
 
-// Scene analysis uses one-dimensional Wasserstein distance on the 64-bin PQ
-// distributions. The current frame is compared both with a slowly moving shot
-// reference and with the immediately previous frame: only an abrupt transition
-// resets the output histories immediately. The previous speed predicts change over
-// the elapsed PTS interval, so sustained ramps do not become cuts merely
-// because their per-observation distance grows with the sampling interval.
-
-const uint TEMPORAL_HISTOGRAM_SIZE = 64u;
-const uint TEMPORAL_HISTOGRAM_SAMPLE_COUNT = 512u * 288u;
-const float TEMPORAL_HISTOGRAM_CUT_THRESHOLD = 144 * JND;
-const float TEMPORAL_HISTOGRAM_FRAME_THRESHOLD = 72 * JND;
-const float TEMPORAL_HISTOGRAM_TIME_SCALE = 0.50;
-const float TEMPORAL_SCENE_SPEED_TIME_SCALE = 0.50;
-const float TEMPORAL_SCENE_ADAPTATION_TIME_SCALE = 0.50;
-// Minimum temporal time constant in seconds (approximately 4.17 ms),
-// shared by the reference blend and scene response intervals.
-const float TEMPORAL_MIN_TIME_CONSTANT = 1.0 / 240.0;
-const float TEMPORAL_PTS_EPSILON = 1e-6;
-
-const uint TEMPORAL_ZONE_COUNT = 144u;
-const float TEMPORAL_ZONE_DIFFERENCE_LOW = 4 * JND;
-const float TEMPORAL_ZONE_DIFFERENCE_HIGH = 32 * JND;
-const float TEMPORAL_ZONE_SUPPORT_LOW = 0.25;
-const float TEMPORAL_ZONE_SUPPORT_HIGH = 0.75;
-const float TEMPORAL_EVIDENCE_TIME_SCALE = 0.25;
-const float TEMPORAL_DIRECTION_DEADBAND = 0.05;
-const float TEMPORAL_DIRECTION_CONFIRM_TIME_SCALE = 0.125;
-
-const uint TEMPORAL_FRAME_SKIP = 0u;
-const uint TEMPORAL_FRAME_INITIALIZE = 1u;
-const uint TEMPORAL_FRAME_PROCESS = 2u;
-const uint TEMPORAL_REFERENCE_KEEP = 0u;
-const uint TEMPORAL_REFERENCE_BLEND = 1u;
-const uint TEMPORAL_REFERENCE_REPLACE = 2u;
-
-shared vec2 temporal_scan[2][TEMPORAL_HISTOGRAM_SIZE];
-shared uint temporal_frame_operation;
-shared uint temporal_reference_operation;
-shared float temporal_delta_time;
-shared float temporal_reference_alpha;
-shared vec4 temporal_partial[TEMPORAL_HISTOGRAM_SIZE];
-shared bool temporal_zone_reversed;
-shared uint temporal_zones_available;
-
-float pts_to_float(uint x) {
-    return uintBitsToFloat(x);
+bool dsm_finite(float x) {
+    return !isnan(x) && !isinf(x);
 }
 
-uint pts_to_uint(float x) {
-    return floatBitsToUint(x);
+float dsm_log_add_exp(float a, float b) {
+    float largest = max(a, b);
+    return largest + log(exp(a - largest) + exp(b - largest));
 }
 
-bool finite_float(float value) {
-    return !isnan(value) && !isinf(value);
+void dsm_clear_response() {
+    scene_new_probability = 0.0;
+    scene_short_probability = 0.0;
+    scene_confirmed_probability = 0.0;
+    scene_fast_strength = 0.0;
+    scene_discarded_mass = 0.0;
+    scene_outlier_probability = 0.0;
+    scene_change_log_bayes = 0.0;
+    scene_hard_cut = 0u;
+    scene_bootstrap = 0u;
+    scene_observation_valid = 0u;
+    scene_state_recovered = 0u;
+    scene_observation_pts = floatBitsToUint(PTS);
 }
 
-float temporal_alpha(float delta_time, float time_constant) {
-    return 1.0 - exp(
-        -delta_time / max(time_constant, TEMPORAL_MIN_TIME_CONSTANT)
-    );
-}
-
-float temporal_histogram_value(uint coarse_index) {
-    return float(metered_coarse_histogram[coarse_index]) /
-           float(TEMPORAL_HISTOGRAM_SAMPLE_COUNT);
-}
-
-void temporal_clear_zone_candidate() {
-    metered_response_candidate_active = 0u;
-    metered_response_candidate_start_pts = 0u;
-}
-
-void temporal_reset_zone_response() {
-    temporal_clear_zone_candidate();
-    metered_reference_zones_valid = 0u;
-    metered_response_evidence = 0.0;
-    metered_response_direction = 0.0;
-    metered_response_confidence = 0.0;
-}
-
-void temporal_set_scalar_state(uint histogram_valid) {
-    metered_temporal_valid = histogram_valid;
-    metered_scene_adaptation_end_pts = 0u;
-    metered_scene_fast_response = 0u;
-    metered_scene_cut_detected = 0u;
-    metered_scene_speed = 0.0;
-    temporal_reset_zone_response();
-}
-
-void temporal_initialize_frame() {
-    temporal_set_scalar_state(1u);
-    metered_temporal_pts = pts_to_uint(PTS);
-    temporal_frame_operation = TEMPORAL_FRAME_INITIALIZE;
-}
-
-vec2 temporal_measure_delta_and_update_previous(uint index, float current) {
-    vec2 delta = vec2(
-        current - metered_reference_histogram[index],
-        current - metered_previous_histogram[index]
-    );
-    metered_previous_histogram[index] = current;
-    return delta;
-}
-
-void temporal_scan_distribution_delta(uint tid, vec2 delta) {
-    temporal_scan[0][tid] = delta;
-    barrier();
-
-    // Ping-pong storage preserves the add order without a pre-write barrier.
-    // The fixed power-of-four size has an even number of rounds: bank 0 wins.
-    uint bank = 0u;
-    for (uint offset = 1u; offset < TEMPORAL_HISTOGRAM_SIZE; offset <<= 1u) {
-        vec2 inclusive = temporal_scan[bank][tid];
-        if (tid >= offset) {
-            inclusive += temporal_scan[bank][tid - offset];
-        }
-        temporal_scan[1u - bank][tid] = inclusive;
-        barrier();
-        bank = 1u - bank;
-    }
-}
-
-vec2 temporal_cdf_distance(uint tid) {
-    // Both normalized CDFs end at total probability one, so their last
-    // inclusive difference is zero. Wasserstein-1 therefore integrates only
-    // the first 63 boundaries.
-    // Each uniform PQ bin spans 1/64 of the normalized code-value axis.
-    return tid + 1u < TEMPORAL_HISTOGRAM_SIZE
-        ? abs(temporal_scan[0][tid]) /
-          float(TEMPORAL_HISTOGRAM_SIZE)
-        : vec2(0.0);
-}
-
-void temporal_reduce_statistics(uint index, vec2 distance, vec2 support) {
-    // Independent reductions share synchronization, not their arithmetic:
-    // preserve each component's original 32,16,...,1 addition tree.
-    temporal_partial[index] = vec4(distance, support);
-    barrier();
-    for (uint size = TEMPORAL_HISTOGRAM_SIZE >> 1u;
-         size > 0u; size >>= 1u) {
-        if (index < size) {
-            temporal_partial[index] += temporal_partial[index + size];
-        }
-        barrier();
-    }
-}
-
-float temporal_reference_blend_alpha(float delta_time) {
-    float time_constant = temporal_stable_duration *
-                          TEMPORAL_HISTOGRAM_TIME_SCALE;
-    return temporal_alpha(delta_time, time_constant);
-}
-
-vec2 temporal_update_zone_references(uint index, bool initialize) {
-    float alpha = initialize ? 1.0 : temporal_reference_blend_alpha(
-        temporal_delta_time
-    );
-    vec2 support = vec2(0.0);
-    for (uint zone = index; zone < TEMPORAL_ZONE_COUNT;
-         zone += TEMPORAL_HISTOGRAM_SIZE) {
-        float current = metered_zone_average[zone];
-        float reference = initialize ? current : metered_reference_zones[zone];
-        reference = finite_float(reference) ? reference : current;
-        float delta = current - reference;
-        float weight = smoothstep(
-            TEMPORAL_ZONE_DIFFERENCE_LOW,
-            TEMPORAL_ZONE_DIFFERENCE_HIGH,
-            abs(delta)
-        );
-        support += delta > 0.0 ? vec2(weight, 0.0) : vec2(0.0, weight);
-        metered_reference_zones[zone] = mix(reference, current, alpha);
-    }
-    return support;
-}
-
-void temporal_update_zone_evidence(bool initialize) {
-    vec2 support = temporal_partial[0].zw / float(TEMPORAL_ZONE_COUNT);
-    float balance = support.x - support.y;
-    float direction = abs(balance) > TEMPORAL_DIRECTION_DEADBAND
-        ? sign(balance) : 0.0;
-    float target = smoothstep(
-        TEMPORAL_ZONE_SUPPORT_LOW,
-        TEMPORAL_ZONE_SUPPORT_HIGH,
-        max(support.x, support.y)
-    );
-    float evidence = metered_response_evidence;
-    temporal_zone_reversed = false;
-    if (initialize || !finite_float(evidence)) {
-        evidence = 0.0;
-        metered_response_direction = 0.0;
-        temporal_clear_zone_candidate();
-    }
-
-    if (direction == 0.0) {
-        // Ambiguous support interrupts confirmation, but only decays evidence.
-        temporal_clear_zone_candidate();
-        target = 0.0;
-    } else if (metered_response_direction == 0.0 ||
-               direction == metered_response_direction) {
-        metered_response_direction = direction;
-        temporal_clear_zone_candidate();
-    } else {
-        // Do not turn a single opposite observation into a direction reset.
-        if (metered_response_candidate_active == 0u) {
-            metered_response_candidate_active = 1u;
-            metered_response_candidate_start_pts = pts_to_uint(PTS);
-        }
-        float elapsed = PTS - pts_to_float(metered_response_candidate_start_pts);
-        float confirmation_time = max(
-            temporal_stable_duration * TEMPORAL_DIRECTION_CONFIRM_TIME_SCALE,
-            TEMPORAL_MIN_TIME_CONSTANT
-        );
-        if (elapsed >= confirmation_time) {
-            evidence = 0.0;
-            metered_response_direction = direction;
-            temporal_zone_reversed = true;
-            temporal_clear_zone_candidate();
-        }
-        // Pending reversals decay old evidence; confirmed ones rebase below.
-        target = 0.0;
-    }
-    float response_alpha = initialize ? 1.0 : temporal_alpha(
-        temporal_delta_time,
-        temporal_stable_duration * TEMPORAL_EVIDENCE_TIME_SCALE
-    );
-    metered_response_evidence = mix(evidence, target, response_alpha);
-    metered_response_confidence = smoothstep(
-        0.5, 1.0, metered_response_evidence
-    );
-    metered_reference_zones_valid = 1u;
-}
-
-void temporal_rebase_zone_references(uint index) {
-    for (uint zone = index; zone < TEMPORAL_ZONE_COUNT;
-         zone += TEMPORAL_HISTOGRAM_SIZE) {
-        metered_reference_zones[zone] = metered_zone_average[zone];
-    }
-}
-
-// Scale the scene-change interval with the common minimum time constant.
-float temporal_scene_time(float time_scale) {
-    return max(
-        temporal_stable_duration * time_scale,
-        TEMPORAL_MIN_TIME_CONSTANT
-    );
-}
-
-void temporal_update_fast_response() {
-    if (metered_scene_fast_response == 0u) {
+void dsm_prepare() {
+    dsm_operation = 0u;
+    dsm_bad_history = 0u;
+    if (!dsm_finite(PTS)) {
+        dsm_valid = 0u;
+        dsm_clear_response();
         return;
     }
-
-    float end_pts = pts_to_float(metered_scene_adaptation_end_pts);
-    if (PTS >= end_pts) {
-        metered_scene_fast_response = 0u;
+    if (dsm_valid > 0u &&
+        abs(PTS - uintBitsToFloat(dsm_last_pts)) <= DSM_PTS_EPSILON) {
+        return;
     }
-}
+    dsm_clear_response();
 
-float temporal_expected_scene_distance() {
-    float speed = finite_float(metered_scene_speed)
-        ? max(metered_scene_speed, 0.0) : 0.0;
-    // Do not let old motion explain away arbitrarily large new transitions.
-    return min(speed * temporal_delta_time, TEMPORAL_HISTOGRAM_CUT_THRESHOLD);
-}
-
-bool temporal_detect_scene_cut(
-    float reference_distance,
-    float unexpected_distance
-) {
-    // Expected distance is nonnegative, so the residual also bounds frame distance.
-    return reference_distance > TEMPORAL_HISTOGRAM_CUT_THRESHOLD &&
-           unexpected_distance > TEMPORAL_HISTOGRAM_FRAME_THRESHOLD;
-}
-
-// Commit the accepted cut to metering state. Metadata translates this event
-// into exposure resets and reset instructions for the curve LUT pass.
-void temporal_accept_scene_cut() {
-    temporal_reset_zone_response();
-    metered_scene_cut_detected = 1u;
-    metered_scene_speed = 0.0;
-    metered_scene_adaptation_end_pts = pts_to_uint(
-        PTS + temporal_scene_time(TEMPORAL_SCENE_ADAPTATION_TIME_SCALE)
+    // BIND supplies current measurements, including those requested by preview.
+    // Metadata invalidates dormant history whenever this pass is disabled.
+    if (metered_histogram_count == 0u || !dsm_finite(metered_histogram_average) ||
+        metered_histogram_average < 0.0 || metered_histogram_average > 1.0) {
+        return;
+    }
+    uint p50 = metered_scene_median_bin;
+    uint p80 = metered_scene_diffuse_white_bin;
+    bool matrix_valid = metered_zones_valid > 0u &&
+                        metered_matrix_blend > 0.0 &&
+                        dsm_finite(metered_matrix_average) &&
+                        metered_matrix_average >= 0.0 && metered_matrix_average <= 1.0;
+    dsm_z = (vec4(metered_histogram_average,
+                  (float(p50) + 0.5) / 1024.0,
+                  (float(p80) + 0.5) / 1024.0,
+                  matrix_valid ? metered_matrix_average : 0.5) - 0.5) * 10.0;
+    // The matrix feature is highly correlated with the histogram average.
+    // When it is unavailable, use the conditional mean instead of zero-fill;
+    // the rotation mixes all four dimensions and cannot mask one of them.
+    if (!matrix_valid) {
+        dsm_z.w = dsm_z.x + DSM_MATRIX_IMPUTATION_Z;
+    }
+    dsm_z = DSM_PRIOR_ROTATION * dsm_z;
+    dsm_log_outlier = log(DSM_CONTAMINATION) - 0.5 * dot(vec4(1.0),
+        vec4(log(6.283185307179586 * DSM_OUTLIER_VARIANCE)) +
+        dsm_z * dsm_z / DSM_OUTLIER_VARIANCE
     );
-    metered_scene_fast_response = 1u;
-    temporal_reference_operation = TEMPORAL_REFERENCE_REPLACE;
+    vec4 a = 1.0 / (1.0 + dsm_z * dsm_z / DSM_DIFFUSION_SCALE_SQUARED);
+    vec4 derivative = -2.0 * dsm_z * a * a / DSM_DIFFUSION_SCALE_SQUARED;
+    // omega=sigma²/2: prec += a/sigma², information += a*z/sigma²-a'.
+    dsm_precision_step = a / DSM_SIGMA_SQUARED;
+    dsm_information_step = a * dsm_z / DSM_SIGMA_SQUARED - derivative;
+    dsm_dt = PTS - uintBitsToFloat(dsm_last_pts);
+    bool corrupt = dsm_valid > 0u && (dsm_count == 0u ||
+                   dsm_count > DSM_CAPACITY || dsm_bank > 1u ||
+                   !dsm_finite(dsm_dt) || !dsm_finite(dsm_accepted_age) ||
+                   dsm_accepted_age < 0.0);
+    bool reset = dsm_valid == 0u || corrupt || dsm_dt < 0.0 || dsm_dt > DSM_MAX_GAP;
+    scene_state_recovered = corrupt ? 1u : 0u;
+    dsm_operation = reset ? 1u : 2u;
+    dsm_old_count = reset ? 0u : dsm_count;
+    dsm_read_bank = reset ? 0u : dsm_bank;
+    if (!reset) {
+        float h = dsm_dt / DSM_SHOT_SECONDS;
+        float hazard = h < 0.001 ? h * (1.0 - h * 0.5 + h * h / 6.0)
+                                   : 1.0 - exp(-h);
+        dsm_log_hazard = log(max(hazard, 1e-12));
+    }
 }
 
-void temporal_update_scene_speed(float frame_distance, float expected_distance) {
-    float speed = finite_float(metered_scene_speed)
-        ? max(metered_scene_speed, 0.0) : 0.0;
-    // Winsorize positive innovations in distance units before learning the
-    // speed, limiting how strongly a flash outside the cut gate raises it.
-    float limited_distance = min(
-        frame_distance,
-        expected_distance + TEMPORAL_HISTOGRAM_FRAME_THRESHOLD
+float dsm_predictive(vec4 prec, vec4 information) {
+    vec4 variance = DSM_SIGMA_SQUARED + 1.0 / prec;
+    vec4 residual = dsm_z - information / prec;
+    float normal = -0.5 * dot(vec4(1.0),
+        log(6.283185307179586 * variance) + residual * residual / variance
+    ) + log(1.0 - DSM_CONTAMINATION);
+    return dsm_log_add_exp(normal, dsm_log_outlier);
+}
+
+// Predictive normal for a new shot: empirical core plus a broad component.
+// The broad component preserves the old N(0,9) tail for unusual shots; the
+// core lowers the normalization cost for typical shot changes.
+float dsm_prior_log_normal(vec4 w, out bool core) {
+    vec4 core_variance = 1.0 / DSM_PRIOR_PRECISION + DSM_SIGMA_SQUARED;
+    vec4 core_residual = w - DSM_PRIOR_INFORMATION / DSM_PRIOR_PRECISION;
+    float log_core = log(1.0 - DSM_PRIOR_BROAD_WEIGHT) - 0.5 * dot(vec4(1.0),
+        log(6.283185307179586 * core_variance) +
+        core_residual * core_residual / core_variance
     );
-    float observed_speed = max(limited_distance, 0.0) / temporal_delta_time;
-    float alpha = temporal_alpha(
-        temporal_delta_time, temporal_stable_duration * TEMPORAL_SCENE_SPEED_TIME_SCALE
+    float broad_variance = DSM_PRIOR_BROAD_VARIANCE + DSM_SIGMA_SQUARED;
+    float log_broad = log(DSM_PRIOR_BROAD_WEIGHT) - 0.5 * dot(vec4(1.0),
+        vec4(log(6.283185307179586 * broad_variance)) +
+        w * w / broad_variance
     );
-    metered_scene_speed = mix(speed, observed_speed, alpha);
+    core = log_core >= log_broad;
+    return dsm_log_add_exp(log_core, log_broad);
 }
 
-void temporal_process_distances(vec2 distance) {
-    float reference_distance = distance.x;
-    float frame_distance = distance.y;
-    // Predict from the old trend before learning the current observation.
-    float expected_distance = temporal_expected_scene_distance();
-    float unexpected_distance = frame_distance - expected_distance;
-    bool cut = temporal_stable_scene_change > 0 && temporal_detect_scene_cut(
-        reference_distance, unexpected_distance
-    );
-    if (cut) {
-        // Reset both output histories on the first detected discontinuity.
-        // Waiting for persistence would render the new shot with old mapping.
-        // A flash crossing these gates also resets; past brightness statistics
-        // alone cannot distinguish its first edge from a cut.
-        temporal_accept_scene_cut();
-        return;
-    }
-
-    temporal_update_scene_speed(frame_distance, expected_distance);
-    temporal_reference_operation = TEMPORAL_REFERENCE_BLEND;
-    temporal_reference_alpha = temporal_reference_blend_alpha(temporal_delta_time);
+// Choose the new-shot state prior by the normal-component responsibility.
+// This is a hard assignment, not a full posterior mixture; the state stays
+// one Gaussian per hypothesis.
+void dsm_set_prior() {
+    bool core;
+    dsm_prior_normal = dsm_prior_log_normal(dsm_z, core) +
+                       log(1.0 - DSM_CONTAMINATION);
+    dsm_new_prior_precision = core
+        ? DSM_PRIOR_PRECISION : vec4(1.0 / DSM_PRIOR_BROAD_VARIANCE);
+    dsm_new_prior_information = core
+        ? DSM_PRIOR_INFORMATION : vec4(0.0);
 }
 
-void temporal_prepare_frame() {
-    temporal_frame_operation = TEMPORAL_FRAME_SKIP;
-    temporal_reference_operation = TEMPORAL_REFERENCE_KEEP;
-    temporal_zones_available = metered_zones_valid;
-
-    if (!finite_float(PTS)) {
-        // Skip histogram learning on invalid PTS; the next finite PTS
-        // initializes the reference and previous-frame distributions.
-        temporal_set_scalar_state(0u);
+void dsm_candidate(uint index) {
+    if (index > dsm_old_count) {
         return;
     }
-
-    if (metered_temporal_valid == 0u) {
-        temporal_initialize_frame();
+    if (index == dsm_old_count) {
+        float q_prior = dsm_log_add_exp(dsm_prior_normal, dsm_log_outlier);
+        dsm_logits[index] = dsm_log_hazard + q_prior;
+        dsm_ages[index] = 0.0;
         return;
     }
-
-    float previous_pts = pts_to_float(metered_temporal_pts);
-    float delta_time = PTS - previous_pts;
-
-    // Redrawing the same video frame must not advance temporal state.
-    if (abs(delta_time) <= TEMPORAL_PTS_EPSILON) {
+    uint slot = dsm_read_bank * DSM_CAPACITY + index;
+    vec4 prec;
+    vec4 information;
+    bool valid = dsm_finite(dsm_weights[slot]) &&
+                 dsm_finite(dsm_age[slot]) && dsm_age[slot] >= 0.0;
+    for (uint d = 0u; d < 4u; d++) {
+        prec[d] = dsm_precision[slot * 4u + d];
+        information[d] = dsm_information[slot * 4u + d];
+        valid = valid && dsm_finite(prec[d]) && prec[d] > 0.0 &&
+                dsm_finite(information[d]);
+    }
+    if (!valid) {
+        atomicOr(dsm_bad_history, 1u);
         return;
     }
-
-    if (delta_time < 0.0 || delta_time > temporal_stable_duration) {
-        temporal_initialize_frame();
-        return;
-    }
-
-    metered_scene_cut_detected = 0u;
-    temporal_delta_time = delta_time;
-    metered_temporal_pts = pts_to_uint(PTS);
-    temporal_update_fast_response();
-    temporal_frame_operation = TEMPORAL_FRAME_PROCESS;
-}
-
-void temporal_initialize_histogram(uint index, float current) {
-    metered_reference_histogram[index] = current;
-    metered_previous_histogram[index] = current;
-}
-
-void temporal_update_reference_bin(uint index, float current) {
-    if (temporal_reference_operation == TEMPORAL_REFERENCE_BLEND) {
-        // Replace non-finite history instead of propagating it through mix().
-        float reference = metered_reference_histogram[index];
-        metered_reference_histogram[index] = finite_float(reference)
-            ? mix(reference, current, temporal_reference_alpha)
-            : current;
-    } else if (
-        temporal_reference_operation == TEMPORAL_REFERENCE_REPLACE
-    ) {
-        metered_reference_histogram[index] = current;
+    dsm_logits[index] = dsm_weights[slot] - dsm_dt / DSM_SHOT_SECONDS +
+                        dsm_predictive(prec, information);
+    // Ages avoid subtracting two large absolute timestamps for short runs.
+    dsm_ages[index] = dsm_age[slot] + dsm_dt;
+    if (!dsm_finite(dsm_logits[index]) || !dsm_finite(dsm_ages[index])) {
+        atomicOr(dsm_bad_history, 1u);
     }
 }
 
-void analyze_metering_temporally() {
-    uint index = gl_LocalInvocationIndex;
-
+void dsm_rank(uint index) {
     if (index == 0u) {
-        temporal_prepare_frame();
+        dsm_next_count = min(dsm_old_count + 1u, DSM_CAPACITY);
+        dsm_selected[0] = dsm_old_count;
     }
-    barrier();
-
-    if (temporal_frame_operation == TEMPORAL_FRAME_SKIP) {
+    if (index >= dsm_old_count) {
         return;
     }
-
-    bool zones_available = temporal_zones_available > 0u;
-    bool initialize = temporal_frame_operation == TEMPORAL_FRAME_INITIALIZE ||
-                      metered_reference_zones_valid == 0u;
-    vec2 support = zones_available
-        ? temporal_update_zone_references(index, initialize) : vec2(0.0);
-    float current = temporal_histogram_value(index);
-    bool process = temporal_frame_operation == TEMPORAL_FRAME_PROCESS;
-    vec2 distance = vec2(0.0);
-    if (process) {
-        vec2 delta = temporal_measure_delta_and_update_previous(index, current);
-        temporal_scan_distribution_delta(index, delta);
-        distance = temporal_cdf_distance(index);
+    // Each old hypothesis owns one unique rank; ties retain index order.
+    // Slot zero always retains the new hypothesis, regardless of its weight.
+    uint rank = 1u;
+    for (uint j = 0u; j < dsm_old_count; j++) {
+        if (dsm_logits[j] > dsm_logits[index] ||
+            (dsm_logits[j] == dsm_logits[index] && j < index)) {
+            rank++;
+        }
     }
-    if (process || zones_available) {
-        temporal_reduce_statistics(index, distance, support);
+    if (rank < DSM_CAPACITY) {
+        dsm_selected[rank] = index;
     }
+}
 
-    // Zone evidence still precedes cut acceptance, which may reset it.
-    if (index == 0u) {
-        if (zones_available) {
-            temporal_update_zone_evidence(initialize);
+void dsm_select() {
+    // Responsibility of the shared contamination component under the OLD
+    // mixture, before this observation is learned. This is not a cut probability.
+    float old_largest = dsm_logits[0];
+    for (uint i = 1u; i < dsm_old_count; i++) {
+        old_largest = max(old_largest, dsm_logits[i]);
+    }
+    float old_total = 0.0;
+    for (uint i = 0u; i < dsm_old_count; i++) {
+        old_total += exp(dsm_logits[i] - old_largest);
+    }
+    float log_old_predictive = old_largest + log(old_total) +
+                               dsm_dt / DSM_SHOT_SECONDS;
+    scene_outlier_probability = clamp(
+        exp(dsm_log_outlier - log_old_predictive), 0.0, 1.0
+    );
+    // Compare predictive explanations before the time-based cut prior. This
+    // evidence can drive temporary exposure protection without confirming a cut.
+    scene_change_log_bayes = dsm_logits[dsm_old_count] - dsm_log_hazard -
+                             log_old_predictive;
+
+    // The old candidates were already reduced for predictive evidence.
+    // Rescale that sum and add the new hypothesis instead of reducing again.
+    float new_logit = dsm_logits[dsm_old_count];
+    float largest = max(old_largest, new_logit);
+    float total = old_total * exp(old_largest - largest) +
+                  exp(new_logit - largest);
+    float log_total = largest + log(total);
+    float accepted_age = dsm_accepted_age + dsm_dt;
+    float short_mass = 0.0;
+    float confirmed_mass = 0.0;
+    for (uint i = 0u; i <= dsm_old_count; i++) {
+        float mass = exp(dsm_logits[i] - log_total);
+        if (dsm_ages[i] <= DSM_SHORT_SECONDS + DSM_PTS_EPSILON) {
+            short_mass += mass;
+            // Require a second observation and exclude every hypothesis
+            // already present when the last event (or bootstrap) was accepted.
+            if (dsm_ages[i] > DSM_PTS_EPSILON &&
+                dsm_ages[i] < accepted_age - DSM_PTS_EPSILON) {
+                confirmed_mass += mass;
+            }
+        }
+    }
+    scene_new_probability = clamp(exp(dsm_logits[dsm_old_count] - log_total), 0.0, 1.0);
+    scene_short_probability = clamp(short_mass, 0.0, 1.0);
+    scene_confirmed_probability = clamp(confirmed_mass, 0.0, 1.0);
+    scene_fast_strength = smoothstep(0.20, 0.80, scene_short_probability);
+    // A single-frame new-shot posterior cannot separate a cut from a
+    // one-frame flash once the prior is calibrated to shots rather than to
+    // arbitrary values. Require the second observation; the response layer
+    // already bridges the first new-scene frame.
+    scene_hard_cut = scene_confirmed_probability >= DSM_CUT_PROBABILITY ? 1u : 0u;
+    dsm_accepted_age = scene_hard_cut > 0u ? 0.0 : accepted_age;
+
+    float kept = 0.0;
+    for (uint i = 0u; i < dsm_next_count; i++) {
+        kept += exp(dsm_logits[dsm_selected[i]] - largest);
+    }
+    dsm_log_kept = largest + log(kept);
+    scene_discarded_mass = clamp(1.0 - kept / total, 0.0, 1.0);
+}
+
+void dsm_write(uint index) {
+    uint count = dsm_next_count;
+    if (index >= count) {
+        return;
+    }
+    uint selected = dsm_operation == 1u ? 0u : dsm_selected[index];
+    bool prior = dsm_operation == 1u || selected == dsm_old_count;
+    uint source = dsm_read_bank * DSM_CAPACITY + selected;
+    uint target = (1u - dsm_read_bank) * DSM_CAPACITY + index;
+    dsm_weights[target] = dsm_operation == 1u ? 0.0 :
+                          dsm_logits[selected] - dsm_log_kept;
+    dsm_age[target] = prior ? 0.0 : dsm_ages[selected];
+    for (uint d = 0u; d < 4u; d++) {
+        float prec = prior ? dsm_new_prior_precision[d]
+                           : dsm_precision[source * 4u + d];
+        float information = prior ? dsm_new_prior_information[d]
+                                  : dsm_information[source * 4u + d];
+        dsm_precision[target * 4u + d] = prec + dsm_precision_step[d];
+        dsm_information[target * 4u + d] = information + dsm_information_step[d];
+    }
+}
+
+void hook() {
+    uint tid = gl_LocalInvocationIndex;
+    if (tid == 0u) {
+        dsm_prepare();
+    }
+    barrier();
+    if (dsm_operation == 0u) {
+        return;
+    }
+    if (tid == 0u) {
+        dsm_set_prior();
+    }
+    barrier();
+    if (dsm_operation == 2u) {
+        dsm_candidate(tid);
+    }
+    barrier();
+    if (dsm_operation == 2u && dsm_bad_history == 0u) {
+        dsm_rank(tid);
+    }
+    barrier();
+    if (tid == 0u) {
+        if (dsm_bad_history > 0u) {
+            dsm_operation = 1u;
+            scene_state_recovered = 1u;
+        }
+        if (dsm_operation == 1u) {
+            dsm_next_count = 1u;
+            dsm_accepted_age = 0.0;
+            scene_bootstrap = 1u;
         } else {
-            temporal_reset_zone_response();
+            dsm_select();
         }
     }
     barrier();
-    if (zones_available && temporal_zone_reversed) {
-        temporal_rebase_zone_references(index);
-    }
-
-    if (!process) {
-        temporal_initialize_histogram(index, current);
-        return;
-    }
-    if (index == 0u) {
-        temporal_process_distances(temporal_partial[0].xy);
-    }
+    dsm_write(tid);
+    memoryBarrierBuffer();
     barrier();
-
-    temporal_update_reference_bin(index, current);
+    if (tid == 0u) {
+        dsm_bank = 1u - dsm_read_bank;
+        dsm_count = dsm_next_count;
+        dsm_last_pts = floatBitsToUint(PTS);
+        dsm_valid = 1u;
+        scene_observation_valid = 1u;
+    }
 }
 
-void hook() { analyze_metering_temporally(); }
 
 //!HOOK OUTPUT
 //!BIND METERED
-//!BIND METERED_TEMPORAL
+//!BIND SCENE_DSM
+//!BIND SCENE_RESPONSE
 //!BIND EXPOSURE_TEMPORAL
 //!BIND CURVE_TEMPORAL
 //!BIND METADATA
@@ -2022,8 +2040,7 @@ void hook() { analyze_metering_temporally(); }
 const float AUTO_EXPOSURE_WHITE_CONSTRAINT = 0.25;
 const float AUTO_EXPOSURE_HEADROOM_RETENTION = 0.5;
 
-// Match the temporal pass's minimum time constant for both the exposure
-// integrator and the curve LUT ramp.
+// Shared minimum time constant for the exposure integrator and curve LUT ramp.
 const float TEMPORAL_MIN_TIME_CONSTANT = 1.0 / 240.0;
 
 // Filter automatic exposure in its final EV domain so observation noise cannot
@@ -2037,8 +2054,17 @@ const float EXPOSURE_WOLF_OUTLIER_EV = 0.5;
 const float EXPOSURE_WOLF_VARIANCE_MIN = 1e-6;
 const float EXPOSURE_WOLF_VARIANCE_MAX = 1e6;
 
-// Fast-response window after a scene change: the duration scales the
-// stabilization interval and the time scale clamps the ramp.
+// Protect a large EV mismatch when new-scene prediction is at least 4x likelier.
+const float EXPOSURE_PROTECTION_LOG_BAYES = 1.3862943611198906;
+const float EXPOSURE_PROTECTION_TRIGGER_EV = 0.5;
+// A target step distinguishes a new shot from a filter still catching up.
+const float EXPOSURE_PROTECTION_TARGET_STEP_EV = 0.2;
+// Hold a first-frame bridge while the filter is still at least this far,
+// for at most this many consecutive frames.
+const float EXPOSURE_PROTECTION_HOLD_EV = 0.1;
+const uint EXPOSURE_PROTECTION_HOLD_FRAMES = 3u;
+
+// Scene probability selects the faster exposure and curve response scales.
 const float OUTPUT_TEMPORAL_SCENE_TIME_SCALE = 0.125;
 const float CURVE_TEMPORAL_RESPONSE_TIME_SCALE = 0.0625;
 
@@ -2462,36 +2488,118 @@ float resolve_exposure(MeteringMetrics metrics) {
     return calculate_auto_exposure(metrics);
 }
 
-// Resolve once per metadata pass. Only current, selected measurements may
-// influence output history; preview-only or stale metering must not do so.
-// Acceleration weight combining zone confidence and the post-cut fast window.
+// Resolve once per metadata pass. Preview may maintain scene diagnostics;
+// only selected measurements may drive normal output.
 float output_response_weight;
 bool output_scene_cut;
+bool output_scene_current;
+float output_change_log_bayes;
+bool output_exposure_protected;
+float exposure_pre_step_ev;
+bool exposure_pre_step_valid;
+
+void dsm_clear_response() {
+    scene_new_probability = 0.0;
+    scene_short_probability = 0.0;
+    scene_confirmed_probability = 0.0;
+    scene_fast_strength = 0.0;
+    scene_discarded_mass = 0.0;
+    scene_outlier_probability = 0.0;
+    scene_change_log_bayes = 0.0;
+    scene_hard_cut = 0u;
+    scene_bootstrap = 0u;
+    scene_observation_valid = 0u;
+    scene_state_recovered = 0u;
+    scene_observation_pts = floatBitsToUint(PTS);
+}
+
+void invalidate_exposure_protection() {
+    exposure_protection_valid = 0u;
+    exposure_protection_state = 0u;
+    exposure_protection_run = 0u;
+}
 
 void prepare_output_temporal_response() {
     output_response_weight = 0.0;
     output_scene_cut = false;
-    bool current = temporal_stable_duration > 0.0 &&
-                   measured_metering_enabled() && metered_temporal_valid > 0u &&
-                   finite_float(PTS) &&
-                   abs(PTS - uintBitsToFloat(metered_temporal_pts)) <=
+    output_scene_current = false;
+    output_change_log_bayes = 0.0;
+    output_exposure_protected = false;
+    bool temporal = temporal_stable_duration > 0.0;
+    bool measured = measured_metering_enabled();
+    if (!temporal || (!measured && preview_metering == 0u)) {
+        dsm_valid = 0u;
+        dsm_clear_response();
+    }
+    bool current = temporal && measured && temporal_stable_scene_change > 0u &&
+                   scene_observation_valid > 0u && finite_float(PTS) &&
+                   abs(PTS - uintBitsToFloat(scene_observation_pts)) <=
                        EXPOSURE_PTS_EPSILON;
     if (!current) {
+        // Policy/source changes may redraw the same PTS. Release the bridge
+        // before protect_auto_exposure() can reuse that frame's decision.
+        invalidate_exposure_protection();
         return;
     }
+    // Events stay latched for redraws; exposure/curve consume each PTS once.
+    output_scene_current = true;
+    output_scene_cut = scene_hard_cut > 0u;
+    output_response_weight = finite_float(scene_fast_strength)
+        ? clamp(scene_fast_strength, 0.0, 1.0) : 0.0;
+    output_change_log_bayes = finite_float(scene_change_log_bayes)
+        ? scene_change_log_bayes : 0.0;
+}
 
-    output_scene_cut = temporal_stable_scene_change > 0u &&
-                       metered_scene_cut_detected > 0u;
-    bool fast_response = temporal_stable_scene_change > 0u &&
-                         metered_scene_fast_response > 0u &&
-                         PTS < uintBitsToFloat(metered_scene_adaptation_end_pts);
-    output_response_weight = fast_response ? 1.0 : 0.0;
-    if (full_metering_enabled() && metered_reference_zones_valid > 0u &&
-        finite_float(metered_response_confidence)) {
-        output_response_weight = max(
-            output_response_weight, clamp(metered_response_confidence, 0.0, 1.0)
-        );
+float protect_auto_exposure(float filtered, float target, bool automatic) {
+    output_exposure_protected = false;
+    if (!automatic || !finite_float(target) || !finite_float(PTS)) {
+        invalidate_exposure_protection();
+        return filtered;
     }
+    uint pts_bits = floatBitsToUint(PTS);
+    // A repeated PTS must consume the same decision. The pre-step state is
+    // gone after the first dispatch updated the filter, so latch the result.
+    if (exposure_protection_valid > 0u && exposure_protection_pts == pts_bits) {
+        output_exposure_protected = exposure_protection_state > 0u;
+        return output_exposure_protected ? clamp(target, -64.0, 64.0) : filtered;
+    }
+    target = clamp(target, -64.0, 64.0);
+    // Compare the target with the exposure the filter held before this
+    // frame's WoLF update. The post-step value depends on the residual-
+    // dependent gain and on the cut direction, so it under-reports a jump
+    // whose ordinary step already closed half of the gap.
+    float residual = exposure_pre_step_valid
+        ? abs(exposure_pre_step_ev - target)
+        : abs(filtered - target);
+    // A target that did not step is a filter still catching up, not a new
+    // shot: do not bypass WoLF merely because the lag exceeds the trigger.
+    bool target_step = exposure_target_valid == 0u ||
+                       abs(target - exposure_previous_target) >=
+                           EXPOSURE_PROTECTION_TARGET_STEP_EV;
+    bool base = !output_scene_cut &&
+                target_step &&
+                output_change_log_bayes >= EXPOSURE_PROTECTION_LOG_BAYES &&
+                residual >= EXPOSURE_PROTECTION_TRIGGER_EV;
+    // Hold a first-frame bridge while the filter is still settling. The
+    // target is re-read every frame, so a returning flash follows its own
+    // target instead of staying at the transient level. The hold never
+    // starts on its own: a target that did not step stays filtered.
+    bool hold = !output_scene_cut &&
+                output_scene_current &&
+                exposure_pre_step_valid &&
+                exposure_protection_run > 0u &&
+                exposure_protection_run < EXPOSURE_PROTECTION_HOLD_FRAMES &&
+                residual >= EXPOSURE_PROTECTION_HOLD_EV;
+    output_exposure_protected = base || hold;
+    exposure_protection_run = output_exposure_protected
+        ? exposure_protection_run + 1u : 0u;
+    exposure_protection_pts = pts_bits;
+    exposure_protection_valid = 1u;
+    exposure_protection_state = output_exposure_protected ? 1u : 0u;
+    exposure_previous_target = target;
+    exposure_target_valid = 1u;
+    // Use the same EV as a confirmed cut, without writing the WoLF state.
+    return output_exposure_protected ? target : filtered;
 }
 
 float output_temporal_time_scale(float normal_scale, float response_scale) {
@@ -2513,6 +2621,11 @@ float reset_auto_exposure(float target) {
     exposure_temporal_variance = 1.0;
     exposure_temporal_pts = floatBitsToUint(PTS);
     exposure_temporal_valid = 1u;
+    // Zero is a valid PTS. Track latch validity independently so every reset
+    // starts a new decision, including a seek back to the beginning.
+    invalidate_exposure_protection();
+    exposure_previous_target = target;
+    exposure_target_valid = 1u;
     return target;
 }
 
@@ -2556,6 +2669,7 @@ float update_exposure_wolf_gain(float delta_time, float time_scale, float residu
 float stabilize_auto_exposure(float target, bool automatic) {
     // Clamp EV to the declared range; use neutral EV for a non-finite target.
     target = finite_float(target) ? clamp(target, -64.0, 64.0) : 0.0;
+    exposure_pre_step_valid = false;
     // Discard non-finite exposure history or timestamps.
     if (exposure_temporal_valid > 0u &&
         (!finite_float(exposure_temporal_ev) ||
@@ -2581,6 +2695,8 @@ float stabilize_auto_exposure(float target, bool automatic) {
 
     float delta_time = PTS - uintBitsToFloat(exposure_temporal_pts);
     if (abs(delta_time) <= EXPOSURE_PTS_EPSILON) {
+        exposure_pre_step_ev = exposure_temporal_ev;
+        exposure_pre_step_valid = true;
         return exposure_temporal_ev;
     }
 
@@ -2595,6 +2711,8 @@ float stabilize_auto_exposure(float target, bool automatic) {
     time_scale = output_temporal_time_scale(
         time_scale, OUTPUT_TEMPORAL_SCENE_TIME_SCALE
     );
+    exposure_pre_step_ev = exposure_temporal_ev;
+    exposure_pre_step_valid = true;
     float alpha = update_exposure_wolf_gain(
         delta_time, time_scale, target - exposure_temporal_ev
     );
@@ -2610,6 +2728,7 @@ void record_curve_temporal_pts() {
 
 void prepare_curve_temporal() {
     curve_temporal_reset = 1u;
+    curve_temporal_bypass = 0u;
 
     if (!finite_float(PTS)) {
         // Keep reset active on invalid PTS and on the next finite-PTS frame.
@@ -2620,6 +2739,15 @@ void prepare_curve_temporal() {
 
     if (temporal_stable_duration <= 0.0) {
         record_curve_temporal_pts();
+        return;
+    }
+
+    if (output_exposure_protected) {
+        // Render the protected frame with its own curve. Keep both the old
+        // LUT history and its timestamp for a flash return or a confirmed cut.
+        curve_temporal_bypass = 1u;
+        curve_temporal_reset = 0u;
+        curve_temporal_alpha = 0.0;
         return;
     }
 
@@ -2701,19 +2829,26 @@ void publish_output_lightness_range() {
 
 void update_metering_metadata() {
     prepare_output_temporal_response();
-    prepare_curve_temporal();
     publish_output_lightness_range();
 
     MeteringMetrics metrics = resolve_metering_metrics();
     publish_input_metering_metadata(metrics);
     float target_ev = resolve_exposure(metrics);
-    exposure_ev = stabilize_auto_exposure(
+    bool automatic = automatic_exposure_enabled(metrics);
+    float filtered_ev = stabilize_auto_exposure(target_ev, automatic);
+    float protected_ev = protect_auto_exposure(
+        filtered_ev,
         target_ev,
-        automatic_exposure_enabled(metrics)
+        automatic
     );
+    prepare_curve_temporal();
     // Apply manual EV compensation after smoothing so it stays immediate and
     // does not enter automatic-exposure history. Bound the combined exposure.
-    exposure_ev = clamp(exposure_ev + exposure_value_offset, -64.0, 64.0);
+    exposure_ev = clamp(
+        protected_ev + exposure_value_offset,
+        -64.0,
+        64.0
+    );
     exposure_scale = exp2(exposure_ev);
     apply_exposure_to_range(metrics, exposure_scale);
     publish_metering_metadata(metrics);
@@ -3242,6 +3377,13 @@ bool finite_float(float value) {
 }
 
 float stabilize_curve_value(int index, float target) {
+    if (curve_temporal_bypass > 0u) {
+        float value = finite_float(target) ? target : 0.0;
+        // Publish the curve actually displayed without overwriting the
+        // recoverable history used after a flash or a confirmed cut.
+        curve_display_values[index] = value;
+        return value;
+    }
     // Read history only when reset is inactive.
     bool history_valid = curve_temporal_reset == 0u &&
                          finite_float(curve_temporal_values[index]);
@@ -3252,6 +3394,7 @@ float stabilize_curve_value(int index, float target) {
 
     if (curve_temporal_reset > 0u || !history_valid) {
         curve_temporal_values[index] = target;
+        curve_display_values[index] = target;
         return target;
     }
 
@@ -3263,6 +3406,7 @@ float stabilize_curve_value(int index, float target) {
     // Fall back to the target if interpolation produces a non-finite value.
     value = finite_float(value) ? value : target;
     curve_temporal_values[index] = value;
+    curve_display_values[index] = value;
     return value;
 }
 
@@ -3868,12 +4012,9 @@ vec3 LAB_to_RGB(vec3 lab) {
 float sample_tone_curve_lut(float x) {
     float position = sanitize_bounded(x, 0.0, 1.0) *
                      float(CURVE_SIZE - 1);
-    int lower_index = int(floor(position));
-    int upper_index = min(lower_index + 1, CURVE_SIZE - 1);
-    float weight = fract(position);
-    float lower_value = fetch_atlas_raw(ivec2(lower_index, CURVE_ROW)).x;
-    float upper_value = fetch_atlas_raw(ivec2(upper_index, CURVE_ROW)).x;
-    return LUTS_mul * mix(lower_value, upper_value, weight);
+    // Stay on the curve row's texel centers; the sampler interpolates only X.
+    vec2 coordinates = (vec2(position, float(CURVE_ROW)) + 0.5) / LUTS_size;
+    return LUTS_mul * textureLod(LUTS_raw, coordinates, 0.0).x;
 }
 
 float sample_tone_curve_slope(float x) {
@@ -3883,15 +4024,17 @@ float sample_tone_curve_slope(float x) {
     int upper_index = lower_index + 1;
     float weight = position - float(lower_index);
 
-    // Use the full-precision, temporally stabilized source of the LUT.
-    // Differencing a half-float atlas could amplify quantization into bands.
-    float lower_value = curve_temporal_values[lower_index];
-    float upper_value = curve_temporal_values[upper_index];
+    // Use the full-precision curve actually displayed this frame. On a
+    // protected frame the LUT is generated from the target while the
+    // recoverable history stays at the previous shot, so differencing the
+    // history would weight chroma for a curve that is not displayed.
+    float lower_value = curve_display_values[lower_index];
+    float upper_value = curve_display_values[upper_index];
     float previous_value = lower_index > 0
-        ? curve_temporal_values[lower_index - 1]
+        ? curve_display_values[lower_index - 1]
         : 2.0 * lower_value - upper_value;
     float next_value = upper_index < CURVE_SIZE - 1
-        ? curve_temporal_values[upper_index + 1]
+        ? curve_display_values[upper_index + 1]
         : 2.0 * upper_value - lower_value;
 
     // Derivative of a cubic B-spline reconstruction: blend three secant
@@ -3961,16 +4104,10 @@ float sample_chroma_boundary(vec2 ab, float lightness) {
     float hue = fract(atan(ab.y, ab.x) / 6.283185307179586 + 1.0);
     ivec2 last_texel = ivec2(BOUNDARY_HUE_INTERVALS, BOUNDARY_LIGHTNESS_INTERVALS);
     vec2 position = vec2(hue, encode_output_lightness(lightness)) * vec2(last_texel);
-    ivec2 lower = ivec2(floor(position));
-    ivec2 upper = min(lower + ivec2(1), last_texel);
-    vec2 weight = fract(position);
-    float r00 = texelFetch(CHROMA_BOUNDARY_raw, lower, 0).x;
-    float r10 = texelFetch(CHROMA_BOUNDARY_raw, ivec2(upper.x, lower.y), 0).x;
-    float r01 = texelFetch(CHROMA_BOUNDARY_raw, ivec2(lower.x, upper.y), 0).x;
-    float r11 = texelFetch(CHROMA_BOUNDARY_raw, upper, 0).x;
-    float ratio = CHROMA_BOUNDARY_mul * mix(
-        mix(r00, r10, weight.x), mix(r01, r11, weight.x), weight.y
-    );
+    // The duplicated hue-zero column preserves interpolation across the seam.
+    vec2 coordinates = (position + 0.5) / CHROMA_BOUNDARY_size;
+    float ratio = CHROMA_BOUNDARY_mul *
+                  textureLod(CHROMA_BOUNDARY_raw, coordinates, 0.0).x;
     // Match LAB_to_lut_coordinates even if the Jhk lookup clamps at an end.
     return max(ratio, 0.0) * max(lightness, 1e-6);
 }
@@ -4071,7 +4208,6 @@ vec4 hook() {
 
 //!HOOK OUTPUT
 //!BIND METERED
-//!BIND METERED_TEMPORAL
 //!BIND METADATA
 //!BIND LUTS
 //!BIND PREVIEW_HISTOGRAM
@@ -4246,25 +4382,6 @@ float preview_histogram_count(vec2 source_interval) {
     return count;
 }
 
-float preview_reference_histogram_count(
-    vec2 source_interval,
-    float total
-) {
-    vec2 interval = source_interval * float(PREVIEW_HISTOGRAM_SIZE);
-    uvec2 bounds = histogram_interval_bounds(
-        interval,
-        PREVIEW_HISTOGRAM_SIZE
-    );
-    float count = 0.0;
-
-    for (uint i = bounds.x; i < bounds.y; i++) {
-        float overlap = histogram_bin_overlap(interval, i);
-        count += metered_reference_histogram[i] * total * overlap;
-    }
-
-    return count;
-}
-
 float preview_histogram_height(float count, float total) {
     return log2(1.0 + count) / max(log2(1.0 + total), 1e-6);
 }
@@ -4273,17 +4390,8 @@ void prepare_preview_histogram_bin(uint index) {
     float total = float(PREVIEW_HISTOGRAM_SAMPLE_COUNT);
     vec2 source_interval = preview_histogram_source_interval(index);
     float current_count = preview_histogram_count(source_interval);
-    bool temporal_reference_valid = temporal_stable_duration > 0.0 &&
-                                    metered_temporal_valid > 0u;
-    float reference_count = temporal_reference_valid
-        ? preview_reference_histogram_count(source_interval, total)
-        : current_count;
     preview_histogram_current[index] = preview_histogram_height(
         current_count,
-        total
-    );
-    preview_histogram_reference[index] = preview_histogram_height(
-        reference_count,
         total
     );
 }
@@ -4563,6 +4671,7 @@ void hook() {
 //!BIND METERING
 //!BIND METERED
 //!BIND METADATA
+//!BIND SCENE_RESPONSE
 //!BIND PREVIEW_VECTORSCOPE
 //!BIND PREVIEW_HISTOGRAM
 //!BIND PREVIEW_METRICS
@@ -4589,13 +4698,15 @@ const float SCALE = 4.0;
 const float LINE_H = CHAR_H + 2.0;
 const float GAP = 6.0 * SCALE;
 
-// The preview histogram uses the same 64-bin grouping as scene-change
-// detection. Cyan bars are the current frame, the orange trace is the
-// timestamp-smoothed reference, and the yellow curve is the J-domain LUT
-// transformed onto the same PQ horizontal and vertical axes.
+// Cyan bars show the current frame in 64 bins. The yellow curve is the
+// J-domain LUT transformed onto the same PQ horizontal and vertical axes.
 const uint PREVIEW_HISTOGRAM_SIZE = 64u;
 const float PREVIEW_HISTOGRAM_BIN_WIDTH = 4.0;
 const float PREVIEW_HISTOGRAM_EXTENT = 256.0;
+
+// A confirmed shot cut marks the histogram's upper-left corner.
+const float PREVIEW_CUT_MARKER_SIZE = 4.0 * SCALE;
+const float PREVIEW_CUT_MARKER_INSET = SCALE;
 
 // Normalize density to a fixed 128x128 reference grid.
 const uint PREVIEW_VECTORSCOPE_SIZE = 96u;
@@ -4765,6 +4876,20 @@ bool preview_panel_point(
     return true;
 }
 
+// Paint the histogram's upper-left corner while the current frame is a
+// confirmed shot cut.
+bool preview_cut_marker(vec2 local) {
+    return scene_hard_cut > 0u &&
+           all(greaterThanEqual(
+               local,
+               vec2(PREVIEW_CUT_MARKER_INSET)
+           )) &&
+           all(lessThan(
+               local,
+               vec2(PREVIEW_CUT_MARKER_INSET + PREVIEW_CUT_MARKER_SIZE)
+           ));
+}
+
 vec4 draw_histogram(vec2 px) {
     vec2 origin = vec2(MARGIN * SCALE);
     vec2 local;
@@ -4789,7 +4914,6 @@ vec4 draw_histogram(vec2 px) {
         uint(PREVIEW_HISTOGRAM_EXTENT) - 1u
     );
     float current_height = preview_histogram_current[index];
-    float reference_height = preview_histogram_reference[index];
     float plot_width = PREVIEW_HISTOGRAM_EXTENT - 2.0;
     float plot_height = PREVIEW_HISTOGRAM_EXTENT - 2.0;
     float pq_input = clamp((local.x - 1.0) / plot_width, 0.0, 1.0);
@@ -4807,16 +4931,16 @@ vec4 draw_histogram(vec2 px) {
         tint = vec3(0.12, 0.72, 0.92);
     }
 
-    if (abs(level - reference_height) <= 1.5 / plot_height) {
-        tint = vec3(1.0, 0.55, 0.12);
-    }
-
     if (abs(level - pq_input) <= 0.75 / plot_height) {
         tint = vec3(0.48);
     }
 
     if (abs(level - pq_output) <= 1.5 / plot_height) {
         tint = vec3(1.0, 0.78, 0.12);
+    }
+
+    if (preview_cut_marker(local)) {
+        tint = vec3(1.0, 0.0, 0.0);
     }
 
     return vec4(tint, 1.0);
