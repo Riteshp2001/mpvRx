@@ -473,6 +473,7 @@ class PlayerActivity :
   private var wasPlayingBeforePause = false // Track if video was playing before pause
   private var resumeAfterUnlockJob: Job? = null
   private var rendererAfterUnlockJob: Job? = null
+  private var videoServiceEndJob: Job? = null
   // On older Android versions, LifecycleRegistry publishes STARTED after onStart returns.
   private var playbackActivityStarted = false
   private var rendererRecoveryWakeLock: PowerManager.WakeLock? = null
@@ -2217,6 +2218,7 @@ class PlayerActivity :
       }
 
       saveVideoPlaybackState(fileName, immediate = true)
+      startVideoBackgroundServiceWhileVisible()
     }.onFailure { e ->
       Log.e(TAG, "Error during onPause", e)
     }
@@ -4045,6 +4047,44 @@ class PlayerActivity :
   /** Only audio hands off to the browser's mini player. */
   private fun isMiniPlayerEnabled(): Boolean = isCurrentPlaybackAudio()
 
+  /**
+   * As mpv-android does in onPause, a video that will keep playing starts its service while the
+   * player is still visible. Android always lets a visible app start a media foreground service,
+   * so its notification appears as soon as the player leaves. Audio already has its service.
+   * A pause that never reaches onStop (a dialog) ends it again when the player resumes.
+   */
+  private fun startVideoBackgroundServiceWhileVisible() {
+    if (isFinishing || isUserFinishing || isChangingConfigurations || !isReady) return
+    videoServiceEndJob?.cancel()
+    if (isInPictureInPictureMode || isInMultiWindowMode || isAudioBackgroundPlayback()) return
+    if (isBackgroundPlaybackSessionActive || externalDisplayManager?.isActive == true) return
+    if (!isBackgroundPlaybackEnabled()) return
+    if (startBackgroundPlayback()) isBackgroundPlaybackSessionActive = true
+  }
+
+  /**
+   * Ends a video's background service now that the player is on screen. A service that is still
+   * starting (a dialog paused the player for a moment) ends a second later, as in mpv-android:
+   * Android kills an app whose foreground service stops before it called startForeground.
+   */
+  private fun endVideoBackgroundServiceOnScreen() {
+    videoServiceEndJob?.cancel()
+    isBackgroundPlaybackSessionActive = false
+    if (MediaPlaybackService.isNotificationOwnerReady()) {
+      endBackgroundPlayback()
+      return
+    }
+    videoServiceEndJob =
+      lifecycleScope.launch {
+        delay(VIDEO_SERVICE_END_DELAY_MS)
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && !isBackgroundPlaybackSessionActive &&
+          !isAudioBackgroundPlayback() && !isInPictureInPictureMode
+        ) {
+          endBackgroundPlayback()
+        }
+      }
+  }
+
   /** Audio and audiobooks always keep playing in the background. */
   private fun isAudioBackgroundPlayback(): Boolean =
     PlaybackSession.state.value.currentItem?.audiobook != null || isCurrentPlaybackAudio()
@@ -4134,9 +4174,10 @@ class PlayerActivity :
     }
     // Every return path lands here, including unlocks that skip onStart. A video on screen drops
     // its background service and notification; audio keeps them for its controls.
-    if (!isAudioBackgroundPlayback() && !isInPictureInPictureMode && hasBackgroundPlaybackService()) {
-      endBackgroundPlayback()
-      isBackgroundPlaybackSessionActive = false
+    if (!isAudioBackgroundPlayback() && !isInPictureInPictureMode &&
+      (hasBackgroundPlaybackService() || isBackgroundPlaybackSessionActive)
+    ) {
+      endVideoBackgroundServiceOnScreen()
     }
     if (!player.isSurfaceReady) acquireRendererRecoveryWakeLock()
     player.attachSessionSurface()
@@ -9291,6 +9332,7 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
      */
     private const val MILLISECONDS_TO_SECONDS = 1000
     private const val RENDERER_RECOVERY_WAKE_TIMEOUT_MS = 20_000L
+    private const val VIDEO_SERVICE_END_DELAY_MS = 1_000L
 
     /**
      * Factor to divide subtitle and audio delays to convert from ms to seconds.

@@ -488,9 +488,14 @@ class MediaPlaybackService :
     // Ensure notification channel exists before starting foreground service
     createNotificationChannel(this)
 
-    // A bind can arrive before onStartCommand. Promote before session setup or any
-    // playback work so that cold starts also meet Android's foreground deadline.
+    // A bind can arrive before onStartCommand. Promote before any playback work so that cold
+    // starts also meet Android's foreground deadline. The session is created first (it reads
+    // no MPV state) so even this notification is the media notification.
+    setupMediaSession()
     if (!startForegroundNotification(useStartupNotification = true)) {
+      // Also turns the session back off, so media buttons cannot reach a service that never
+      // became foreground.
+      stopForegroundNotification()
       stopSelf()
     }
   }
@@ -657,8 +662,15 @@ class MediaPlaybackService :
 
     // Acknowledge EVERY startForegroundService request, including repeated starts and stop
     // actions. foregroundReady describes playback ownership, not the system's pending start.
-    // Reuse the last notification without querying MPV or rebuilding artwork on this path.
-    if (!startForegroundNotification(useStartupNotification = true)) {
+    // Reuse the last notification without querying MPV or rebuilding artwork on this path. The
+    // session exists first so even this first notification is the media notification.
+    setupMediaSession()
+    if (
+      !startForegroundNotification(
+        useStartupNotification = true,
+        startupTitle = intent?.getStringExtra("media_title"),
+      )
+    ) {
       stopForegroundNotification()
       stopSelf(startId)
       return START_NOT_STICKY
@@ -772,8 +784,11 @@ class MediaPlaybackService :
 
     refreshNotificationPalette()
 
+    // As in mpv-android, the session is active with its metadata and state before the media
+    // notification that points to it is posted.
     updateMediaSessionMetadata()
     updateMediaSessionPlaybackState()
+    mediaSession.isActive = true
 
     if (!startForegroundNotification()) {
       foregroundReady = false
@@ -789,7 +804,10 @@ class MediaPlaybackService :
   }
 
   @SuppressLint("ForegroundServiceType")
-  private fun startForegroundNotification(useStartupNotification: Boolean = false): Boolean =
+  private fun startForegroundNotification(
+    useStartupNotification: Boolean = false,
+    startupTitle: String? = null,
+  ): Boolean =
     try {
       val type =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -799,7 +817,7 @@ class MediaPlaybackService :
         }
       val notification =
         if (useStartupNotification) {
-          lastForegroundNotification ?: buildStartupNotification()
+          lastForegroundNotification ?: buildStartupNotification(startupTitle)
         } else {
           buildNotification()
         }
@@ -1508,17 +1526,59 @@ class MediaPlaybackService :
 
   // ==================== Notification Builders ====================
 
-  private fun buildStartupNotification(): Notification =
-    NotificationCompat
-      .Builder(this, NOTIFICATION_CHANNEL_ID)
-      .setContentTitle(getString(R.string.notification_channel_name))
-      .setSmallIcon(R.drawable.ic_launcher_monochrome)
-      .setOnlyAlertOnce(true)
-      .setOngoing(true)
-      .setSilent(true)
-      .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
-      .setPriority(NotificationCompat.PRIORITY_LOW)
-      .build()
+  /**
+   * The first foreground notification, posted before MPV is read. Without the notification
+   * permission Android shows only media notifications, so, as in mpv-android, it is already the
+   * media notification of an active session while something is loaded. A bind without live
+   * playback (a media browser client) keeps a plain placeholder, so no empty media control appears.
+   */
+  private fun buildStartupNotification(title: String?): Notification {
+    val builder =
+      NotificationCompat
+        .Builder(this, NOTIFICATION_CHANNEL_ID)
+        .setSmallIcon(R.drawable.ic_launcher_monochrome)
+        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        .setOnlyAlertOnce(true)
+        .setOngoing(true)
+        .setSilent(true)
+        .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+        .setPriority(NotificationCompat.PRIORITY_LOW)
+    if (!PlaybackSession.isInitialized || PlaybackSession.state.value.currentItem == null) {
+      return builder.setContentTitle(getString(R.string.notification_channel_name)).build()
+    }
+    setupMediaSession()
+    activateSessionForNotification()
+    val startupTitle =
+      title?.takeIf { it.isNotBlank() }?.let { FileTypeUtils.stripExtension(it) }
+        ?: mediaTitle.ifBlank { getString(R.string.notification_channel_name) }
+    return builder
+      .setContentTitle(startupTitle)
+      .setContentIntent(buildContentIntent())
+      .setStyle(
+        androidx.media.app.NotificationCompat
+          .MediaStyle()
+          .setMediaSession(mediaSession.sessionToken),
+      ).build()
+  }
+
+  /**
+   * System UI shows a media notification for an active session with a playback state. The full
+   * state follows once MPV is read; this one only uses the cached play/pause state.
+   */
+  private fun activateSessionForNotification() {
+    if (mediaSession.controller.playbackState == null) {
+      val state =
+        if (PlaybackSession.state.value.paused) PlaybackStateCompat.STATE_PAUSED else PlaybackStateCompat.STATE_PLAYING
+      mediaSession.setPlaybackState(
+        PlaybackStateCompat
+          .Builder()
+          .setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_STOP)
+          .setState(state, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1f)
+          .build(),
+      )
+    }
+    mediaSession.isActive = true
+  }
 
   private fun buildContentIntent(): PendingIntent {
     val currentItem = PlaybackSession.queue.value.currentItem
