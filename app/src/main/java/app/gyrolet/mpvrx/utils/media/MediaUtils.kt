@@ -14,7 +14,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.gyrolet.mpvrx.domain.media.model.Video
@@ -113,8 +112,12 @@ object MediaUtils {
         putExtra("audio_background_playback", true)
         putExtra("is_audio", true)
       }
+    // Music in the mini player always has its media notification. This runs from visible UI, which
+    // may always start a media foreground service.
     runCatching {
-      ContextCompat.startForegroundService(context, serviceIntent)
+      MediaPlaybackService.requestForegroundStart(context, serviceIntent)
+    }.onFailure { error ->
+      android.util.Log.e("MediaUtils", "Could not start the playback service for the mini player", error)
     }
   }
 
