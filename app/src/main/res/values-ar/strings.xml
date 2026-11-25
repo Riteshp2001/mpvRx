@@ -926,12 +926,15 @@
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (تجريبي)</string>
   <string name="hdr_mode_off">متوقف</string>
   <string name="hdr_mode_off_description">إخراج SDR عادي</string>
+  <string name="hdr_mode_linear_passthrough">تمرير خطي (hdr-toys)</string>
+  <string name="hdr_mode_linear_passthrough_short">تمرير خطي</string>
+  <string name="hdr_mode_linear_passthrough_description">يرسل HDR إلى هذه الشاشة. يعيّن Astra من hdr-toys درجات كل مقطع أولًا وفق ذروة سطوع الشاشة. يتطلب gpu-next مع Vulkan.</string>
   <string name="hdr_mode_bt2100_pq_description">PQ بنمط HDR10 مع تعيين درجات Astra وتعيين نطاق ألوان Bottosson</string>
   <string name="hdr_mode_bt2100_hlg_description">HLG HDR عبر سلسلة تأثيرات hdr-toys من Astra وBottosson</string>
   <string name="hdr_mode_bt2020_description">تحويل BT.2020 / BT.1886 باستخدام تعيين نطاق الألوان من hdr-toys</string>
   <string name="hdr_mode_linear">HDR خطي</string>
   <string name="hdr_mode_linear_short">خطي</string>
-  <string name="hdr_mode_linear_description">إخراج HDR الخطي عبر سلسلة تأثيرات hdr-toys من Astra وBottosson</string>
+  <string name="hdr_mode_linear_description">HDR خطي أصلي. يبقى تعيين الدرجات العكسي مفعّلًا ويُثبَّت تعيين الدرجات على Clip.</string>
   <string name="pref_section_support">الدعم</string>
   <string name="pref_section_updates">التحديثات</string>
   <string name="pref_section_system">النظام</string>

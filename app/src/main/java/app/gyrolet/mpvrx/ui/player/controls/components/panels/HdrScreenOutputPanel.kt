@@ -53,7 +53,7 @@ fun HdrScreenOutputPanel(
 ) {
   val mode by viewModel.hdrScreenMode.collectAsState()
   val pipelineReady by viewModel.isHdrScreenOutputPipelineReady.collectAsState()
-  val isLinearHdrAvailable by viewModel.isLinearHdrAvailable.collectAsState()
+  val isNativeHdrOutputAvailable by viewModel.isNativeHdrOutputAvailable.collectAsState()
 
   DraggablePanel(
     modifier = modifier,
@@ -72,13 +72,12 @@ fun HdrScreenOutputPanel(
         HdrPipelineUnavailableStatus()
       }
       // OFF is the default state controlled by the HDR toggle button, not shown here.
-      // Only the four selectable HDR modes are presented in the panel.
       Column(verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing)) {
         HdrScreenMode.selectableModes.forEachIndexed { index, option ->
           HdrModeOption(
             mode = option,
             selected = mode == option,
-            enabled = pipelineReady && (option != HdrScreenMode.LINEAR || isLinearHdrAvailable),
+            enabled = pipelineReady && (!option.needsNativeHdrOutput || isNativeHdrOutputAvailable),
             onClick = { viewModel.setHdrScreenMode(option) },
             shape = rememberConnectedShape(index, HdrScreenMode.selectableModes.size, ConnectedLayout.Vertical),
           )

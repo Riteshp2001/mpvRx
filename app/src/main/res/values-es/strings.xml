@@ -910,12 +910,15 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (Experimental)</string>
   <string name="hdr_mode_off">Desactivado</string>
   <string name="hdr_mode_off_description">Salida SDR normal</string>
+  <string name="hdr_mode_linear_passthrough">Paso directo lineal (hdr-toys)</string>
+  <string name="hdr_mode_linear_passthrough_short">Paso directo lineal</string>
+  <string name="hdr_mode_linear_passthrough_description">Envía HDR a esta pantalla. Astra de hdr-toys ajusta antes cada vídeo al brillo máximo de la pantalla. Requiere gpu-next con Vulkan.</string>
   <string name="hdr_mode_bt2100_pq_description">PQ tipo HDR10 con mapeo tonal Astra y mapeo de gama Bottosson</string>
   <string name="hdr_mode_bt2100_hlg_description">HDR HLG mediante la cadena de shaders Astra y Bottosson de hdr-toys</string>
   <string name="hdr_mode_bt2020_description">Conversión BT.2020 / BT.1886 mediante el mapeo de gama de hdr-toys</string>
   <string name="hdr_mode_linear">HDR lineal</string>
   <string name="hdr_mode_linear_short">Lineal</string>
-  <string name="hdr_mode_linear_description">Pipeline HDR lineal mediante la cadena de shaders Astra y Bottosson de hdr-toys</string>
+  <string name="hdr_mode_linear_description">HDR lineal nativo. El mapeo tonal inverso permanece activo y el mapeo tonal queda fijado en Clip.</string>
   <string name="pref_section_support">Soporte</string>
   <string name="pref_section_updates">Actualizaciones</string>
   <string name="pref_section_system">Sistema</string>

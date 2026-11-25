@@ -906,12 +906,15 @@
   <string name="pref_decoder_vulkan_experimental_title">Vulkan（試験的）</string>
   <string name="hdr_mode_off">オフ</string>
   <string name="hdr_mode_off_description">通常のSDR出力</string>
+  <string name="hdr_mode_linear_passthrough">リニアパススルー (hdr-toys)</string>
+  <string name="hdr_mode_linear_passthrough_short">リニアパススルー</string>
+  <string name="hdr_mode_linear_passthrough_description">この画面に HDR を送ります。先に hdr-toys の Astra が各動画を画面のピーク輝度に合わせてトーンマッピングします。gpu-next と Vulkan が必要です。</string>
   <string name="hdr_mode_bt2100_pq_description">AstraトーンマッピングとBottosson色域マッピングを使用したHDR10形式のPQ</string>
   <string name="hdr_mode_bt2100_hlg_description">hdr-toysのAstraおよびBottossonシェーダーチェーンによるHLG HDR</string>
   <string name="hdr_mode_bt2020_description">hdr-toysの色域マッピングを使用したBT.2020 / BT.1886変換</string>
   <string name="hdr_mode_linear">リニアHDR</string>
   <string name="hdr_mode_linear_short">リニア</string>
-  <string name="hdr_mode_linear_description">hdr-toys の Astra および Bottosson シェーダーによるリニア HDR パイプライン</string>
+  <string name="hdr_mode_linear_description">ネイティブのリニア HDR。逆トーンマッピングは常に有効で、トーンマッピングは Clip に固定されます。</string>
   <string name="pref_section_support">サポート</string>
   <string name="pref_section_updates">アップデート</string>
   <string name="pref_section_system">システム</string>

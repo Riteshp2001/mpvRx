@@ -970,12 +970,15 @@
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (Експериментально)</string>
   <string name="hdr_mode_off">Вимкнено</string>
   <string name="hdr_mode_off_description">Звичайний вивід SDR</string>
+  <string name="hdr_mode_linear_passthrough">Лінійний прямий вивід (hdr-toys)</string>
+  <string name="hdr_mode_linear_passthrough_short">Лінійний прямий вивід</string>
+  <string name="hdr_mode_linear_passthrough_description">Виводить HDR на цей екран. Спершу Astra з hdr-toys підлаштовує кожне відео під пікову яскравість екрана. Потрібен gpu-next з Vulkan.</string>
   <string name="hdr_mode_bt2100_pq_description">PQ у стилі HDR10 з тональним відображенням Astra та колірним охопленням Bottosson</string>
   <string name="hdr_mode_bt2100_hlg_description">HLG HDR через ланцюжок шейдерів hdr-toys Astra та Bottosson</string>
   <string name="hdr_mode_bt2020_description">Перетворення BT.2020 / BT.1886 з використанням охоплення hdr-toys</string>
   <string name="hdr_mode_linear">Лінійний HDR</string>
   <string name="hdr_mode_linear_short">Лінійний</string>
-  <string name="hdr_mode_linear_description">Лінійний конвеєр світла HDR із шейдерами hdr-toys Astra та Bottosson</string>
+  <string name="hdr_mode_linear_description">Нативний лінійний HDR. Зворотне тональне відображення лишається увімкненим, а тональне відображення зафіксовано на Clip.</string>
   <string name="pref_section_support">Підтримка</string>
   <string name="pref_section_updates">Оновлення</string>
   <string name="pref_section_system">Система</string>

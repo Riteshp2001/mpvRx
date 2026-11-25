@@ -1252,6 +1252,9 @@
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (Experimental)</string>
   <string name="hdr_mode_off">Off</string>
   <string name="hdr_mode_off_description">Normal SDR output</string>
+  <string name="hdr_mode_linear_passthrough">Linear Passthrough (hdr-toys)</string>
+  <string name="hdr_mode_linear_passthrough_short">Linear Passthrough</string>
+  <string name="hdr_mode_linear_passthrough_description">Sends HDR to this screen. hdr-toys Astra first tone maps each video to the peak brightness of the screen. Needs gpu-next with Vulkan.</string>
   <string name="hdr_mode_bt2100_pq" translatable="false">BT.2100 PQ</string>
   <string name="hdr_mode_pq_short" translatable="false">PQ</string>
   <string name="hdr_mode_bt2100_pq_description">HDR10-style PQ with Astra tone mapping and Bottosson gamut mapping</string>

@@ -107,7 +107,7 @@ mpvRx pushes the mpv-android experience further with deep customization, thermal
 | Feature | Description |
 |---|---|
 | **Shader-Based HDR Pipeline** | Powered by [hdr-toys](https://github.com/natural-harmonia-gropius/hdr-toys): Astra tone mapping and Bottosson gamut mapping, with the shader chains of its own profiles |
-| **Four HDR Modes** | BT.2100 PQ (HDR10), BT.2100 HLG, BT.2020 gamut mapping, Linear HDR |
+| **Five HDR Modes** | Linear Passthrough (hdr-toys HDR output, default), BT.2100 PQ (HDR10), BT.2100 HLG, BT.2020 gamut mapping, Linear HDR |
 | **SDR-to-HDR Boost** | Boost SDR content into HDR range when using Linear HDR pipeline |
 | **GPU Deband** | CPU (gradfun) or GPU deband with configurable iterations, threshold, range, grain |
 | **Smart Render Backend** | Auto-selects between OpenGL/Vulkan and gpu/gpu-next based on device support |

@@ -15,8 +15,11 @@ If a video fails, stutters, or shows corruption, remove custom shaders and decod
 
 ## HDR pipelines
 
-mpvRx bundles the hdr-toys shaders its profiles use, and offers four high-level modes:
+mpvRx bundles the hdr-toys shaders its profiles use, and offers five high-level modes:
 
+- Linear Passthrough (hdr-toys), the default: Astra tone maps each video to the screen's peak
+  brightness and sends it as PQ HDR, as hdr-toys recommends for HDR displays. Needs gpu-next with
+  Vulkan; without them HDR output uses BT.2100 PQ.
 - BT.2100 PQ for HDR10-style sources
 - BT.2100 HLG
 - BT.2020 gamut mapping

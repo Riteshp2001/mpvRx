@@ -9,6 +9,9 @@
 
 package app.gyrolet.mpvrx.ui.player
 
+import android.content.Context
+import android.hardware.display.DisplayManager
+import android.view.Display
 import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.hdr.HdrToysProfile
@@ -20,22 +23,32 @@ import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
  * Every mode below owns the mpv HDR/color-output state needed by its pipeline. Linear HDR requires
  * inverse tone mapping and clipping; the other modes restore automatic tone mapping.
  *
- * - [OFF]         — restore mpv's normal automatic SDR/HDR handling.
- * - [BT_2100_PQ]  — HDR10 hdr-toys pipeline.
- * - [BT_2100_HLG] — HLG hdr-toys pipeline.
- * - [BT_2020]     — BT.2020 hdr-toys gamut pipeline.
- * - [LINEAR]      — mpv-native gpu-next HDR path, without hdr-toys shaders.
+ * - [OFF]                — restore mpv's normal automatic SDR/HDR handling.
+ * - [LINEAR_PASSTHROUGH] — hdr-toys pipeline that sends PQ HDR to an HDR display.
+ * - [BT_2100_PQ]         — HDR10 hdr-toys pipeline.
+ * - [BT_2100_HLG]        — HLG hdr-toys pipeline.
+ * - [BT_2020]            — BT.2020 hdr-toys gamut pipeline.
+ * - [LINEAR]             — mpv-native gpu-next HDR path, without hdr-toys shaders.
  */
 enum class HdrScreenMode(
   @StringRes val titleRes: Int,
   @StringRes val shortTitleRes: Int,
   @StringRes val descriptionRes: Int,
   val hdrToysProfile: HdrToysProfile? = null,
+  /** Sends HDR to the display itself, which needs the gpu-next renderer with Vulkan. */
+  val needsNativeHdrOutput: Boolean = false,
 ) {
   OFF(
     titleRes = R.string.hdr_mode_off,
     shortTitleRes = R.string.hdr_mode_off,
     descriptionRes = R.string.hdr_mode_off_description,
+  ),
+  LINEAR_PASSTHROUGH(
+    titleRes = R.string.hdr_mode_linear_passthrough,
+    shortTitleRes = R.string.hdr_mode_linear_passthrough_short,
+    descriptionRes = R.string.hdr_mode_linear_passthrough_description,
+    hdrToysProfile = HdrToysProfile.LINEAR_PASSTHROUGH,
+    needsNativeHdrOutput = true,
   ),
   BT_2100_PQ(
     titleRes = R.string.hdr_mode_bt2100_pq,
@@ -59,14 +72,21 @@ enum class HdrScreenMode(
     titleRes = R.string.hdr_mode_linear,
     shortTitleRes = R.string.hdr_mode_linear_short,
     descriptionRes = R.string.hdr_mode_linear_description,
+    needsNativeHdrOutput = true,
   ),
   ;
 
   companion object {
-    val selectableModes = listOf(BT_2100_PQ, BT_2100_HLG, BT_2020, LINEAR)
+    val selectableModes = listOf(LINEAR_PASSTHROUGH, BT_2100_PQ, BT_2100_HLG, BT_2020, LINEAR)
 
-    // The lightest hdr-toys profile; also works on the legacy GPU renderer.
-    val defaultEnabledMode = BT_2020
+    /** HDR output starts in passthrough: modern phone screens show HDR well themselves. */
+    val defaultMode = LINEAR_PASSTHROUGH
+
+    /**
+     * Replaces a mode the renderer cannot run. hdr-toys' author recommends the BT.2100 PQ
+     * profile as the default chain, and it also works on the legacy GPU renderer.
+     */
+    val fallbackMode = BT_2100_PQ
   }
 }
 
@@ -90,10 +110,34 @@ private val HDR_OWNED_PROPERTIES =
     "glsl-shader-opts",
   )
 
+/**
+ * The brightness hdr-toys maps HDR output to: the display's desired peak, limited to the 1000 nits
+ * reference_white allows. A display that reports no HDR peak gets 1000, as hdr-toys' README uses.
+ */
+internal fun hdrToysDisplayPeakNits(context: Context): Int {
+  val peak =
+    runCatching {
+      context
+        .getSystemService(DisplayManager::class.java)
+        ?.getDisplay(Display.DEFAULT_DISPLAY)
+        ?.hdrCapabilities
+        ?.desiredMaxLuminance
+    }.getOrNull()
+  return if (peak != null && peak.isFinite() && peak > HDR_REFERENCE_WHITE_NITS) {
+    peak.toInt().coerceAtMost(HDR_TOYS_MAX_REFERENCE_WHITE_NITS)
+  } else {
+    HDR_TOYS_MAX_REFERENCE_WHITE_NITS
+  }
+}
+
+private const val HDR_REFERENCE_WHITE_NITS = 203
+private const val HDR_TOYS_MAX_REFERENCE_WHITE_NITS = 1000
+
 @Suppress("UNUSED_PARAMETER")
 internal fun hdrScreenOutputSettings(
   mode: HdrScreenMode,
   pipelineReady: Boolean,
+  displayPeakNits: Int = HDR_TOYS_MAX_REFERENCE_WHITE_NITS,
   boostSdrToHdr: Boolean = false,
 ): List<Pair<String, String>> {
   val activeMode = if (pipelineReady) mode else HdrScreenMode.OFF
@@ -101,7 +145,7 @@ internal fun hdrScreenOutputSettings(
     when (activeMode) {
       HdrScreenMode.OFF -> offSettings()
       HdrScreenMode.LINEAR -> linearHdrSettings()
-      else -> hdrToysSettings(activeMode.hdrToysProfile ?: HdrToysProfile.BT_2100_PQ)
+      else -> hdrToysSettings(activeMode.hdrToysProfile ?: HdrToysProfile.BT_2100_PQ, displayPeakNits)
     }
 
   // Defensive invariant for future modes: never allow a partial color-state profile to ship.
@@ -148,24 +192,28 @@ private fun offSettings(): List<Pair<String, String>> =
     shaderOptions = "",
   )
 
-private fun hdrToysSettings(profile: HdrToysProfile): List<Pair<String, String>> =
+private fun hdrToysSettings(
+  profile: HdrToysProfile,
+  displayPeakNits: Int,
+): List<Pair<String, String>> =
   commonSettings(
-    // hdr-toys owns transfer/gamut/tone processing in GLSL. Do not ask gpu-next to negotiate a
-    // second HDR output transform on top of the shader pipeline.
-    targetColorspaceHint = "no",
+    // hdr-toys owns transfer/gamut/tone processing in GLSL, and target-prim/target-trc match its
+    // input so mpv converts nothing. Only an HDR output profile hints its PQ result to the
+    // display; the others must not get a second HDR output transform from gpu-next.
+    targetColorspaceHint = if (profile.outputsHdr) "yes" else "no",
     targetColorspaceHintMode = "target",
     targetPrim = profile.targetPrim,
     targetTrc = profile.targetTrc,
     targetPeak = "auto",
     inverseToneMapping = "no",
     hdrComputePeak = "no",
-    shaderOptions = profile.shaderOptionsValue,
+    shaderOptions = profile.shaderOptionsValue(displayPeakNits),
   )
 
 private fun linearHdrSettings(): List<Pair<String, String>> =
   commonSettings(
     // Preserve the existing mpv-native HDR rendering policy, but reset every target value that a
-    // previous PQ/HLG/BT.2020 mode may have overridden. Without these resets Linear HDR depends on
+    // previous hdr-toys mode may have overridden. Without these resets Linear HDR depends on
     // mode history and can keep rendering with stale primaries/TRC after the UI says Linear.
     targetColorspaceHint = "yes",
     targetColorspaceHintMode = "target",
@@ -182,9 +230,10 @@ private fun linearHdrSettings(): List<Pair<String, String>> =
 fun applyHdrScreenOutputOptions(
   mode: HdrScreenMode,
   pipelineReady: Boolean,
+  displayPeakNits: Int,
   boostSdrToHdr: Boolean = false,
 ) {
-  hdrScreenOutputSettings(mode, pipelineReady, boostSdrToHdr).forEach { (property, value) ->
+  hdrScreenOutputSettings(mode, pipelineReady, displayPeakNits, boostSdrToHdr).forEach { (property, value) ->
     PlaybackSession.setOptionString(property, value)
   }
 }
@@ -192,17 +241,18 @@ fun applyHdrScreenOutputOptions(
 /**
  * Apply HDR settings during active playback.
  *
- * The settings list is complete for every mode, so OFF/Linear/PQ/HLG/BT.2020 transitions are
+ * The settings list is complete for every mode, so transitions between any two modes are
  * idempotent and independent of their previous state. gpu-next marks these options UPDATE_VIDEO,
  * therefore property writes trigger the renderer to rebuild its video output state.
  */
 fun applyHdrScreenOutputProperties(
   mode: HdrScreenMode,
   pipelineReady: Boolean,
+  displayPeakNits: Int,
   boostSdrToHdr: Boolean = false,
 ) {
   val changedOptions =
-    hdrScreenOutputSettings(mode, pipelineReady, boostSdrToHdr)
+    hdrScreenOutputSettings(mode, pipelineReady, displayPeakNits, boostSdrToHdr)
       .filter { (property, value) ->
         !MpvConfigOverridePolicy.isOwnedByMpvConf(property) &&
           PlaybackSession.getPropertyString(property) != value

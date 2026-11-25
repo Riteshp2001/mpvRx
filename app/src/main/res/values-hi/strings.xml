@@ -832,12 +832,15 @@
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (प्रायोगिक)</string>
   <string name="hdr_mode_off">बंद</string>
   <string name="hdr_mode_off_description">सामान्य SDR आउटपुट</string>
+  <string name="hdr_mode_linear_passthrough">लीनियर पासथ्रू (hdr-toys)</string>
+  <string name="hdr_mode_linear_passthrough_short">लीनियर पासथ्रू</string>
+  <string name="hdr_mode_linear_passthrough_description">इस स्क्रीन को HDR भेजता है। hdr-toys का Astra पहले हर वीडियो को स्क्रीन की अधिकतम चमक के अनुसार टोन मैप करता है। gpu-next और Vulkan ज़रूरी हैं।</string>
   <string name="hdr_mode_bt2100_pq_description">Astra टोन मैपिंग और Bottosson गैमट मैपिंग के साथ HDR10-स्टाइल PQ</string>
   <string name="hdr_mode_bt2100_hlg_description">hdr-toys Astra और Bottosson शेडर चेन के जरिए HLG HDR</string>
   <string name="hdr_mode_bt2020_description">hdr-toys गैमट मैपिंग का इस्तेमाल करके BT.2020 / BT.1886 कन्वर्शन</string>
   <string name="hdr_mode_linear">लीनियर HDR</string>
   <string name="hdr_mode_linear_short">लीनियर</string>
-  <string name="hdr_mode_linear_description">hdr-toys Astra और Bottosson शेडर के साथ लीनियर लाइट HDR पाइपलाइन</string>
+  <string name="hdr_mode_linear_description">नेटिव लीनियर HDR। इनवर्स टोन मैपिंग चालू रहती है और टोन मैपिंग Clip पर लॉक रहती है।</string>
   <string name="pref_section_support">सपोर्ट</string>
   <string name="pref_section_updates">अपडेट</string>
   <string name="pref_section_system">सिस्टम</string>

@@ -2447,7 +2447,9 @@ fun restartFromBeginning() {
 
   private val _isGpuNextEnabled = MutableStateFlow(decoderPreferences.gpuNext.get())
   private val _isVulkanEnabled = MutableStateFlow(decoderPreferences.useVulkan.get())
-  val isLinearHdrAvailable: StateFlow<Boolean> =
+
+  /** Whether the renderer can send HDR to the display, which modes with needsNativeHdrOutput need. */
+  val isNativeHdrOutputAvailable: StateFlow<Boolean> =
     combine(_isGpuNextEnabled, _isVulkanEnabled) { gpuNext, vulkan -> gpuNext && vulkan }
       .stateIn(viewModelScope, SharingStarted.Eagerly, _isGpuNextEnabled.value && _isVulkanEnabled.value)
 
@@ -7393,12 +7395,7 @@ fun restartFromBeginning() {
     val nextMode =
       if (_hdrScreenMode.value == HdrScreenMode.OFF) {
         val lastMode = decoderPreferences.lastHdrMode.get()
-        val targetMode = if (lastMode == HdrScreenMode.OFF) HdrScreenMode.defaultEnabledMode else lastMode
-        if (targetMode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
-          HdrScreenMode.defaultEnabledMode
-        } else {
-          targetMode
-        }
+        resolveHdrScreenMode(if (lastMode == HdrScreenMode.OFF) HdrScreenMode.defaultMode else lastMode)
       } else {
         HdrScreenMode.OFF
       }
@@ -7408,12 +7405,7 @@ fun restartFromBeginning() {
   fun setHdrScreenMode(mode: HdrScreenMode) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) return
     if (mode != HdrScreenMode.OFF && MediaCodecEmbed.blocks(appContext, R.string.btn_label_hdr)) return
-    val resolvedMode =
-      if (mode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
-        HdrScreenMode.defaultEnabledMode
-      } else {
-        mode
-      }
+    val resolvedMode = resolveHdrScreenMode(mode)
     val pipelineReady = isHdrScreenOutputAvailable(resolvedMode)
 
     _hdrScreenMode.value = resolvedMode
@@ -7432,7 +7424,10 @@ fun restartFromBeginning() {
   }
 
   private fun isHdrScreenOutputAvailable(mode: HdrScreenMode = _hdrScreenMode.value): Boolean =
-    mode != HdrScreenMode.LINEAR || isLinearHdrAvailable.value
+    !mode.needsNativeHdrOutput || isNativeHdrOutputAvailable.value
+
+  private fun resolveHdrScreenMode(mode: HdrScreenMode): HdrScreenMode =
+    if (isHdrScreenOutputAvailable(mode)) mode else HdrScreenMode.fallbackMode
 
   private fun initialHdrScreenMode(): HdrScreenMode {
     // MediaCodec embed bypasses the renderer that HDR modes configure.
@@ -7443,14 +7438,15 @@ fun restartFromBeginning() {
     if (savedMode == HdrScreenMode.OFF) {
       return HdrScreenMode.OFF
     }
-    return if (savedMode == HdrScreenMode.LINEAR &&
+    // Runs before isNativeHdrOutputAvailable exists, so read the renderer preferences directly.
+    return if (savedMode.needsNativeHdrOutput &&
       !(decoderPreferences.gpuNext.get() && decoderPreferences.useVulkan.get())
-    ) HdrScreenMode.defaultEnabledMode else savedMode
+    ) HdrScreenMode.fallbackMode else savedMode
   }
 
   private fun reconcileHdrModeWithRenderer() {
-    if (_hdrScreenMode.value == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
-      setHdrScreenMode(HdrScreenMode.defaultEnabledMode)
+    if (!isHdrScreenOutputAvailable()) {
+      setHdrScreenMode(HdrScreenMode.fallbackMode)
     } else {
       refreshHdrScreenOutputPipelineState()
     }
@@ -7473,7 +7469,7 @@ fun restartFromBeginning() {
     runCatching {
       val boostSdr = decoderPreferences.boostSdrToHdr.get()
       // Init-time options are already applied by MPVView. Runtime transitions only need properties.
-      applyHdrScreenOutputProperties(mode, pipelineReady, boostSdr)
+      applyHdrScreenOutputProperties(mode, pipelineReady, hdrToysDisplayPeakNits(appContext), boostSdr)
       applyHdrToysMode(mode, pipelineReady)
     }.onFailure { e ->
       Log.e(TAG, "Error applying HDR screen output: mode=$mode, pipelineReady=$pipelineReady", e)

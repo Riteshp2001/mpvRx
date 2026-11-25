@@ -15,6 +15,8 @@ enum class HdrToysProfile(
   val targetTrc: String,
   val shaderPaths: List<String>,
   val shaderOptions: List<Pair<String, String>> = emptyList(),
+  /** Ends in PQ for an HDR display, so mpv must hint the display instead of showing SDR. */
+  val outputsHdr: Boolean = false,
 ) {
   BT_2100_PQ(
     targetPrim = "bt.2020",
@@ -51,11 +53,40 @@ enum class HdrToysProfile(
         "hdr-toys/transfer-function/bt1886.glsl",
       ),
   ),
+
+  /**
+   * hdr-toys' recipe for an HDR display: the BT.2100 PQ chain, but Astra maps to the display's
+   * peak ([shaderOptionsValue] sets reference_white to it) and pq.glsl encodes PQ instead of
+   * BT.1886. The output stays BT.2020, so no gamut mapping is needed.
+   */
+  LINEAR_PASSTHROUGH(
+    targetPrim = "bt.2020",
+    targetTrc = "pq",
+    shaderPaths =
+      listOf(
+        "hdr-toys/utils/clip_both.glsl",
+        "hdr-toys/transfer-function/pq_inv.glsl",
+        "hdr-toys/tone-mapping/astra.glsl",
+        "hdr-toys/transfer-function/pq.glsl",
+      ),
+    shaderOptions =
+      listOf(
+        "auto_exposure_limit_positive" to "1.02",
+        "contrast_ratio" to "1000000",
+      ),
+    outputsHdr = true,
+  ),
   ;
 
-  /** Comma-separated key=value string passed to mpv's glsl-shader-opts. */
-  val shaderOptionsValue: String
-    get() = shaderOptions.joinToString(",") { (name, value) -> "$name=$value" }
+  /**
+   * Comma-separated key=value string passed to mpv's glsl-shader-opts. An HDR output profile maps
+   * reference white to [displayPeakNits].
+   */
+  fun shaderOptionsValue(displayPeakNits: Int): String {
+    val options =
+      if (outputsHdr) shaderOptions + ("reference_white" to displayPeakNits.toString()) else shaderOptions
+    return options.joinToString(",") { (name, value) -> "$name=$value" }
+  }
 
   /** Absolute mpv paths using the ~~/shaders/ config-dir prefix. */
   val mpvShaderPaths: List<String>

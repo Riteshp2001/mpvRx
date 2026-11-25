@@ -910,12 +910,15 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="pref_decoder_vulkan_experimental_title">Vulkan (Experimentell)</string>
   <string name="hdr_mode_off">Aus</string>
   <string name="hdr_mode_off_description">Normale SDR-Ausgabe</string>
+  <string name="hdr_mode_linear_passthrough">Lineare Durchleitung (hdr-toys)</string>
+  <string name="hdr_mode_linear_passthrough_short">Lineare Durchleitung</string>
+  <string name="hdr_mode_linear_passthrough_description">Sendet HDR an diesen Bildschirm. Astra von hdr-toys passt jedes Video zuvor an die Spitzenhelligkeit des Bildschirms an. Erfordert gpu-next mit Vulkan.</string>
   <string name="hdr_mode_bt2100_pq_description">HDR10-artiges PQ mit Astra-Tonemapping und Bottosson-Farbraumabbildung</string>
   <string name="hdr_mode_bt2100_hlg_description">HLG-HDR über die Astra- und Bottosson-Shader-Kette von hdr-toys</string>
   <string name="hdr_mode_bt2020_description">BT.2020-/BT.1886-Konvertierung mit hdr-toys-Farbraumabbildung</string>
   <string name="hdr_mode_linear">Lineares HDR</string>
   <string name="hdr_mode_linear_short">Linear</string>
-  <string name="hdr_mode_linear_description">Lineare HDR-Pipeline über die Astra- und Bottosson-Shader von hdr-toys</string>
+  <string name="hdr_mode_linear_description">Natives lineares HDR. Inverses Tonemapping bleibt aktiv und das Tonemapping ist auf Clip festgelegt.</string>
   <string name="pref_section_support">Unterstützung</string>
   <string name="pref_section_updates">Aktualisierungen</string>
   <string name="pref_section_system">System</string>

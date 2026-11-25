@@ -910,12 +910,15 @@
   <string name="pref_decoder_vulkan_experimental_title">Vulkan（实验性）</string>
   <string name="hdr_mode_off">关闭</string>
   <string name="hdr_mode_off_description">普通 SDR 输出</string>
+  <string name="hdr_mode_linear_passthrough">线性直通 (hdr-toys)</string>
+  <string name="hdr_mode_linear_passthrough_short">线性直通</string>
+  <string name="hdr_mode_linear_passthrough_description">向此屏幕输出 HDR。hdr-toys 的 Astra 会先按屏幕峰值亮度对每个视频进行色调映射。需要 gpu-next 和 Vulkan。</string>
   <string name="hdr_mode_bt2100_pq_description">采用 Astra 色调映射和 Bottosson 色域映射的 HDR10 风格 PQ</string>
   <string name="hdr_mode_bt2100_hlg_description">通过 hdr-toys 的 Astra 和 Bottosson 着色器链实现 HLG HDR</string>
   <string name="hdr_mode_bt2020_description">使用 hdr-toys 色域映射进行 BT.2020 / BT.1886 转换</string>
   <string name="hdr_mode_linear">线性 HDR</string>
   <string name="hdr_mode_linear_short">线性</string>
-  <string name="hdr_mode_linear_description">通过 hdr-toys 的 Astra 和 Bottosson 着色器链实现的线性 HDR</string>
+  <string name="hdr_mode_linear_description">原生线性 HDR。反向色调映射保持开启，色调映射固定为 Clip。</string>
   <string name="pref_section_support">支持</string>
   <string name="pref_section_updates">更新</string>
   <string name="pref_section_system">系统</string>
