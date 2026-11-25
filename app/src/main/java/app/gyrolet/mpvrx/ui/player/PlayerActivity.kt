@@ -1206,23 +1206,23 @@ class PlayerActivity :
       return
     }
 
-    // With auto-PiP on, Back shrinks a video into picture-in-picture instead of closing it. It keeps
-    // playing, so it is not an exit and skips the "press again to exit" check. Restricting auto-PiP
-    // to the home gesture keeps Back for leaving the player.
+    // With auto-PiP and "Back enters picture-in-picture" on, Back shrinks a video into PiP instead
+    // of closing it. It keeps playing, so it is not an exit and skips the "press again to exit" check.
     if (!isTelevision && !isMiniPlayerEnabled() &&
       shouldEnterPipOnNavigation() &&
-      !playerPreferences.pipOnHomeGestureOnly.get() &&
+      playerPreferences.pipOnBack.get() &&
       enterPipModeSmoothly()
     ) {
       lastExitBackPressAtMs = null
       return
     }
 
-    // With video background playback on, Back keeps the video playing in the background and
-    // returns to the previous screen, like Home. That is not an exit either. Android TV has no
-    // notification shade to stop it from, so Back still closes the video there.
+    // With video background playback and "Back keeps the video playing" on, Back keeps the video
+    // playing in the background and returns to the previous screen, like Home. That is not an exit
+    // either. Android TV has no notification shade to stop it from, so Back still closes it there.
     val videoContinuesInBackground =
-      !isTelevision && !isMiniPlayerEnabled() && isReady && playerPreferences.videoBackgroundPlayback.get()
+      !isTelevision && !isMiniPlayerEnabled() && isReady &&
+        playerPreferences.videoBackgroundPlayback.get() && playerPreferences.videoBackgroundOnBack.get()
 
     if (!videoContinuesInBackground && isReady && gesturePreferences.confirmBackToExit.get()) {
       val now = android.os.SystemClock.elapsedRealtime()

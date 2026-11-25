@@ -130,8 +130,8 @@
   <string name="pref_autoplay_next_video_summary_disabled">終了後も現在の動画に留まります</string>
   <string name="pref_auto_pip_title">自動ピクチャーインピクチャー</string>
   <string name="pref_auto_pip_summary">ホームまたは戻るを押したときに自動的にPIPモードへ移行します</string>
-  <string name="pref_auto_pip_home_only_title">ホームジェスチャーのみでPIP</string>
-  <string name="pref_auto_pip_home_only_summary">ホームジェスチャーまたはスワイプのみでPIPに移行し、戻るボタンはプレイヤーを閉じます</string>
+  <string name="pref_pip_on_back_title">戻るでピクチャー・イン・ピクチャー</string>
+  <string name="pref_pip_on_back_summary">戻るを押すと、動画を閉じずにフローティングウィンドウに縮小します。オフ：ホームでのみPiPになり、戻るでプレーヤーを閉じます。</string>
   <string name="pref_player_keep_screen_on_when_paused_title">一時停止中も画面をオンにする</string>
   <string name="pref_player_external_display_projection_title">外部ディスプレイへの投影</string>
   <string name="pref_player_external_display_projection_summary">スマートフォン画面を消し、HDMI・USB-C・無線ディスプレイで再生します。</string>
@@ -479,7 +479,9 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_video_background_playback_title">バックグラウンド再生（ビデオプレイヤー）</string>
-  <string name="pref_video_background_playback_summary">戻るボタンを押す、ホームに戻る、アプリを切り替える、画面をオフにしたときも動画の再生を続けます。一度だけ行うには、プレーヤーのバックグラウンドボタンを長押しします。</string>
+  <string name="pref_video_background_playback_summary">ホームに戻る、アプリを切り替える、画面をオフにしたときも動画の再生を続けます。一度だけ行うには、プレーヤーのバックグラウンドボタンを長押しします。</string>
+  <string name="pref_video_background_on_back_title">戻るでも動画を再生し続ける</string>
+  <string name="pref_video_background_on_back_summary">戻るを押すとリストに戻り、動画はバックグラウンドで再生を続けます。操作は通知から行えます。オフ：戻るで動画を閉じます。</string>
   <string name="toast_background_playback_on">バックグラウンド再生オン</string>
   <string name="toast_background_playback_off">バックグラウンド再生オフ</string>
   <string name="btn_label_background_playback_once">一度だけバックグラウンドで再生</string>

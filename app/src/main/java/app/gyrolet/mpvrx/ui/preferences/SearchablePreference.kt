@@ -379,9 +379,9 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_auto_pip_home_only_title,
-          summaryRes = R.string.pref_auto_pip_home_only_summary,
-          keywords = listOf("pip", "picture", "home", "gesture", "swipe", "back", "close"),
+          titleRes = R.string.pref_pip_on_back_title,
+          summaryRes = R.string.pref_pip_on_back_summary,
+          keywords = listOf("pip", "picture", "back", "button", "home", "gesture", "close"),
           category = "Player",
           screen = PlayerPreferencesScreen,
         ),
@@ -1233,6 +1233,15 @@ object SearchablePreferences {
           titleRes = R.string.pref_video_background_playback_title,
           summaryRes = R.string.pref_video_background_playback_summary,
           keywords = listOf("background", "playback", "video", "home", "screen off", "long press", "once"),
+          category = "Player",
+          screen = PlayerPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
+          titleRes = R.string.pref_video_background_on_back_title,
+          summaryRes = R.string.pref_video_background_on_back_summary,
+          keywords = listOf("background", "playback", "video", "back", "button", "close", "keep playing"),
           category = "Player",
           screen = PlayerPreferencesScreen,
         ),

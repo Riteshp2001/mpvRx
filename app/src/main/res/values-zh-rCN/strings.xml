@@ -130,8 +130,8 @@
   <string name="pref_autoplay_next_video_summary_disabled">结束时停留在当前视频</string>
   <string name="pref_auto_pip_title">自动画中画</string>
   <string name="pref_auto_pip_summary">按下主页键或返回键时自动进入 PIP 模式</string>
-  <string name="pref_auto_pip_home_only_title">仅主屏幕手势进入画中画</string>
-  <string name="pref_auto_pip_home_only_summary">仅主屏幕手势或滑动进入 PIP 模式；返回键将关闭播放器</string>
+  <string name="pref_pip_on_back_title">返回键进入画中画</string>
+  <string name="pref_pip_on_back_summary">按返回键时将视频缩小为悬浮窗口，而不是关闭。关闭后：只有返回主屏幕会进入画中画，返回键会关闭播放器。</string>
   <string name="pref_player_keep_screen_on_when_paused_title">暂停时保持屏幕常亮</string>
   <string name="pref_player_external_display_projection_title">外接显示投影</string>
   <string name="pref_player_external_display_projection_summary">关闭手机屏幕，在 HDMI、USB-C 或无线显示器上播放。</string>
@@ -481,7 +481,9 @@
   <string name="pref_ignore_audio_focus_title">忽略音频焦点</string>
   <string name="pref_ignore_audio_focus_summary">允许音频和视频与其他应用同时播放，不因音频焦点变化暂停或降低音量</string>
   <string name="pref_video_background_playback_title">后台播放（视频播放器）</string>
-  <string name="pref_video_background_playback_summary">按返回键、返回主屏幕、切换应用或关闭屏幕时继续播放视频。长按播放器中的后台播放按钮可单次在后台播放。</string>
+  <string name="pref_video_background_playback_summary">返回主屏幕、切换应用或关闭屏幕时继续播放视频。长按播放器中的后台播放按钮可单次在后台播放。</string>
+  <string name="pref_video_background_on_back_title">返回键时继续播放视频</string>
+  <string name="pref_video_background_on_back_summary">按返回键会回到列表，视频在后台继续播放，可在通知中控制。关闭后：返回键会关闭视频。</string>
   <string name="toast_background_playback_on">后台播放已开启</string>
   <string name="toast_background_playback_off">后台播放已关闭</string>
   <string name="btn_label_background_playback_once">单次后台播放</string>

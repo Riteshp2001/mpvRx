@@ -130,8 +130,8 @@
   <string name="pref_autoplay_next_video_summary_disabled">البقاء على الفيديو الحالي عند انتهائه</string>
   <string name="pref_auto_pip_title">صورة داخل صورة تلقائيًا</string>
   <string name="pref_auto_pip_summary">الدخول تلقائيًا إلى وضع PIP عند الضغط على الرئيسية أو الرجوع</string>
-  <string name="pref_auto_pip_home_only_title">صورة داخل صورة بإيماءة الرئيسية فقط</string>
-  <string name="pref_auto_pip_home_only_summary">إيماءة الرئيسية أو السحب فقط تُفعّل وضع PIP؛ زر الرجوع يغلق المشغّل</string>
+  <string name="pref_pip_on_back_title">زر الرجوع يفعّل صورة داخل صورة</string>
+  <string name="pref_pip_on_back_summary">يصغّر زر الرجوع الفيديو إلى نافذة عائمة بدلًا من إغلاقه. عند الإيقاف: الشاشة الرئيسية فقط تفعّل صورة داخل صورة ويغلق زر الرجوع المشغّل.</string>
   <string name="pref_player_keep_screen_on_when_paused_title">إبقاء الشاشة قيد التشغيل عند الإيقاف المؤقت</string>
   <string name="pref_player_external_display_projection_title">العرض على شاشة خارجية</string>
   <string name="pref_player_external_display_projection_summary">شغّل على شاشة HDMI أو USB-C أو لاسلكية مع إطفاء شاشة الهاتف.</string>
@@ -484,7 +484,9 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_video_background_playback_title">التشغيل في الخلفية (مشغل الفيديو)</string>
-  <string name="pref_video_background_playback_summary">يواصل تشغيل الفيديو عند الضغط على زر الرجوع أو الانتقال إلى الشاشة الرئيسية أو التبديل إلى تطبيق آخر أو إطفاء الشاشة. اضغط مطولًا على زر التشغيل في الخلفية في المشغل لفعل ذلك مرة واحدة.</string>
+  <string name="pref_video_background_playback_summary">يواصل تشغيل الفيديو عند الانتقال إلى الشاشة الرئيسية أو التبديل إلى تطبيق آخر أو إطفاء الشاشة. اضغط مطولًا على زر التشغيل في الخلفية في المشغل لفعل ذلك مرة واحدة.</string>
+  <string name="pref_video_background_on_back_title">زر الرجوع يُبقي الفيديو قيد التشغيل</string>
+  <string name="pref_video_background_on_back_summary">يعود زر الرجوع إلى القائمة ويستمر تشغيل الفيديو في الخلفية مع عناصر التحكم في الإشعار. عند الإيقاف: يغلق زر الرجوع الفيديو.</string>
   <string name="toast_background_playback_on">تم تشغيل التشغيل في الخلفية</string>
   <string name="toast_background_playback_off">تم إيقاف التشغيل في الخلفية</string>
   <string name="btn_label_background_playback_once">التشغيل في الخلفية مرة واحدة</string>

@@ -18,7 +18,9 @@ internal object TvSettingsPolicy {
     R.string.pref_audio_orientation_title,
     R.string.pref_floating_lyrics_title,
     R.string.pref_player_remember_brightness,
-    R.string.pref_auto_pip_home_only_title,
+    R.string.pref_pip_on_back_title,
+    // Back always closes a video on TV.
+    R.string.pref_video_background_on_back_title,
     R.string.pref_auto_pip_title,
     R.string.pref_player_autoplay_after_screen_unlock_title,
     R.string.pref_player_external_display_projection_title,

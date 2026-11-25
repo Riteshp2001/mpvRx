@@ -232,6 +232,25 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
 
               PreferenceDivider()
 
+              DevicePreference(R.string.pref_video_background_on_back_title) {
+                val videoBackgroundOnBack by preferences.videoBackgroundOnBack.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_video_background_on_back_title),
+                  value = videoBackgroundOnBack,
+                  onValueChange = preferences.videoBackgroundOnBack::set,
+                  enabled = videoBackgroundPlayback,
+                  title = { Text(stringResource(R.string.pref_video_background_on_back_title)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_video_background_on_back_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+
+                PreferenceDivider()
+              }
+
               DevicePreference(R.string.pref_player_external_display_projection_title) {
                 val externalDisplayProjection by preferences.externalDisplayProjection.collectAsState()
                 SwitchPreference(
@@ -340,17 +359,17 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                 PreferenceDivider()
               }
 
-              DevicePreference(R.string.pref_auto_pip_home_only_title) {
-                val pipOnHomeGestureOnly by preferences.pipOnHomeGestureOnly.collectAsState()
+              DevicePreference(R.string.pref_pip_on_back_title) {
+                val pipOnBack by preferences.pipOnBack.collectAsState()
                 SwitchPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_auto_pip_home_only_title),
-                  value = pipOnHomeGestureOnly,
-                  onValueChange = preferences.pipOnHomeGestureOnly::set,
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_pip_on_back_title),
+                  value = pipOnBack,
+                  onValueChange = preferences.pipOnBack::set,
                   enabled = autoPiPOnNavigation,
-                  title = { Text(stringResource(R.string.pref_auto_pip_home_only_title)) },
+                  title = { Text(stringResource(R.string.pref_pip_on_back_title)) },
                   summary = {
                     Text(
-                      stringResource(R.string.pref_auto_pip_home_only_summary),
+                      stringResource(R.string.pref_pip_on_back_summary),
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },

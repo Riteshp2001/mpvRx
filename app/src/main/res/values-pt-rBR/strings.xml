@@ -130,8 +130,8 @@
   <string name="pref_autoplay_next_video_summary_disabled">Permanecer no vídeo atual quando ele terminar</string>
   <string name="pref_auto_pip_title">Picture-in-Picture automático</string>
   <string name="pref_auto_pip_summary">Entrar automaticamente no modo PIP ao pressionar Início ou Voltar</string>
-  <string name="pref_auto_pip_home_only_title">PIP apenas com gesto de início</string>
-  <string name="pref_auto_pip_home_only_summary">Apenas o gesto de início ou deslizar ativa o PIP; o botão Voltar fecha o player</string>
+  <string name="pref_pip_on_back_title">Voltar ativa picture-in-picture</string>
+  <string name="pref_pip_on_back_summary">Voltar reduz o vídeo a uma janela flutuante em vez de fechá-lo. Desativado: só a tela inicial ativa o picture-in-picture e Voltar fecha o reprodutor.</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Manter a tela ligada quando pausado</string>
   <string name="pref_player_external_display_projection_title">Projeção em tela externa</string>
   <string name="pref_player_external_display_projection_summary">Reproduz em telas HDMI, USB-C ou sem fio com a tela do celular apagada.</string>
@@ -480,7 +480,9 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_video_background_playback_title">Reprodução em segundo plano (Reprodutor de Vídeo)</string>
-  <string name="pref_video_background_playback_summary">Continua reproduzindo vídeos ao tocar em Voltar, ir para a tela inicial, trocar de app ou desligar a tela. Mantenha pressionado o botão de segundo plano do reprodutor para fazer isso uma única vez.</string>
+  <string name="pref_video_background_playback_summary">Continua reproduzindo vídeos ao ir para a tela inicial, trocar de app ou desligar a tela. Mantenha pressionado o botão de segundo plano do reprodutor para fazer isso uma única vez.</string>
+  <string name="pref_video_background_on_back_title">Voltar mantém o vídeo tocando</string>
+  <string name="pref_video_background_on_back_summary">Voltar retorna à lista e o vídeo continua tocando em segundo plano, com os controles na notificação. Desativado: Voltar fecha o vídeo.</string>
   <string name="toast_background_playback_on">Reprodução em segundo plano ativada</string>
   <string name="toast_background_playback_off">Reprodução em segundo plano desativada</string>
   <string name="btn_label_background_playback_once">Reproduzir em segundo plano uma vez</string>

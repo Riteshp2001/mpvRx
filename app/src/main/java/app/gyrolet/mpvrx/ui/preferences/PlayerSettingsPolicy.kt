@@ -36,12 +36,14 @@ private val livePlayerSettings = setOf(
   R.string.pref_player_close_after_eof,
   // Read on every Home, app switch and screen-off.
   R.string.pref_video_background_playback_title,
+  // Read on every Back.
+  R.string.pref_video_background_on_back_title,
   R.string.pref_player_remember_brightness,
   R.string.pref_autoplay_next_video_title,
   // Applied when the next item loads.
   R.string.pref_keep_video_frame_title,
   R.string.pref_auto_pip_title,
-  R.string.pref_auto_pip_home_only_title,
+  R.string.pref_pip_on_back_title,
   R.string.pref_player_autoplay_after_screen_unlock_title,
   R.string.pref_player_orientation,
   R.string.pref_player_keep_screen_on_when_paused_title,

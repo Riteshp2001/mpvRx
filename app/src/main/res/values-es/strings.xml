@@ -130,8 +130,8 @@
   <string name="pref_autoplay_next_video_summary_disabled">Permanecer en el vídeo actual cuando termine</string>
   <string name="pref_auto_pip_title">Imagen en imagen automática</string>
   <string name="pref_auto_pip_summary">Entrar automáticamente en modo PIP al pulsar Inicio o Atrás</string>
-  <string name="pref_auto_pip_home_only_title">PIP solo con el gesto de inicio</string>
-  <string name="pref_auto_pip_home_only_summary">Solo el gesto de inicio o deslizar activa el modo PIP; el botón Atrás cierra el reproductor</string>
+  <string name="pref_pip_on_back_title">Atrás activa imagen en imagen</string>
+  <string name="pref_pip_on_back_summary">Atrás reduce el video a una ventana flotante en lugar de cerrarlo. Desactivado: solo Inicio activa imagen en imagen y Atrás cierra el reproductor.</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Mantener la pantalla encendida al pausar</string>
   <string name="pref_player_external_display_projection_title">Proyección en pantalla externa</string>
   <string name="pref_player_external_display_projection_summary">Reproduce en pantallas HDMI, USB-C o inalámbricas con la pantalla del móvil apagada.</string>
@@ -480,7 +480,9 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_video_background_playback_title">Reproducción en segundo plano (Reproductor de Video)</string>
-  <string name="pref_video_background_playback_summary">Sigue reproduciendo los videos al pulsar Atrás, ir a la pantalla de inicio, cambiar de app o apagar la pantalla. Mantén pulsado el botón de segundo plano del reproductor para hacerlo una sola vez.</string>
+  <string name="pref_video_background_playback_summary">Sigue reproduciendo los videos al ir a la pantalla de inicio, cambiar de app o apagar la pantalla. Mantén pulsado el botón de segundo plano del reproductor para hacerlo una sola vez.</string>
+  <string name="pref_video_background_on_back_title">Atrás sigue reproduciendo el video</string>
+  <string name="pref_video_background_on_back_summary">Atrás vuelve a la lista y el video sigue reproduciéndose en segundo plano, con los controles en la notificación. Desactivado: Atrás cierra el video.</string>
   <string name="toast_background_playback_on">Reproducción en segundo plano activada</string>
   <string name="toast_background_playback_off">Reproducción en segundo plano desactivada</string>
   <string name="btn_label_background_playback_once">Reproducir en segundo plano una vez</string>

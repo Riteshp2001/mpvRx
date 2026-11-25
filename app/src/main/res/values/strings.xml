@@ -198,8 +198,8 @@
   <string name="save_queue_as_playlist">Save queue as playlist</string>
   <string name="pref_auto_pip_title">Auto Picture-in-Picture</string>
   <string name="pref_auto_pip_summary">Automatically enter PIP mode when pressing home or back</string>
-  <string name="pref_auto_pip_home_only_title">PiP on home gesture only</string>
-  <string name="pref_auto_pip_home_only_summary">Only the home gesture or swipe enters PIP; the back button closes the player</string>
+  <string name="pref_pip_on_back_title">Back enters picture-in-picture</string>
+  <string name="pref_pip_on_back_summary">Back shrinks the video into a floating window instead of closing it. Off: only Home enters PiP and Back closes the player.</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Keep screen on when paused</string>
   <string name="pref_player_external_display_projection_title">External display projection</string>
   <string name="pref_player_external_display_projection_summary">Play on HDMI, USB-C or wireless displays with the phone screen off.</string>
@@ -675,7 +675,9 @@
   <string name="pref_ignore_audio_focus_title">Ignore audio focus</string>
   <string name="pref_ignore_audio_focus_summary">Keep audio and video playing alongside other apps without pausing or lowering volume</string>
   <string name="pref_video_background_playback_title">Video Player Background Playback</string>
-  <string name="pref_video_background_playback_summary">Keep videos playing when you press Back, go Home, switch apps or turn off the screen. Long-press the background button in the player to do this once.</string>
+  <string name="pref_video_background_playback_summary">Keep videos playing when you go Home, switch apps or turn off the screen. Long-press the background button in the player to do this once.</string>
+  <string name="pref_video_background_on_back_title">Back keeps the video playing</string>
+  <string name="pref_video_background_on_back_summary">Back returns to the list and the video keeps playing in the background, with controls in the notification. Off: Back closes the video.</string>
   <string name="toast_background_playback_on">Background playback on</string>
   <string name="toast_background_playback_off">Background playback off</string>
   <string name="btn_label_background_playback_once">Play in the background once</string>

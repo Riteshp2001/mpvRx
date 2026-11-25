@@ -130,8 +130,8 @@
   <string name="pref_autoplay_next_video_summary_disabled">Оставаться на текущем видео после его завершения</string>
   <string name="pref_auto_pip_title">Автоматический режим «Картинка в картинке»</string>
   <string name="pref_auto_pip_summary">Автоматически переходить в режим PIP при нажатии «Домой» или «Назад»</string>
-  <string name="pref_auto_pip_home_only_title">PIP только жестом «Домой»</string>
-  <string name="pref_auto_pip_home_only_summary">Только жест «Домой» или свайп включает режим PIP; кнопка «Назад» закрывает проигрыватель</string>
+  <string name="pref_pip_on_back_title">«Назад» включает «картинку в картинке»</string>
+  <string name="pref_pip_on_back_summary">Кнопка «Назад» сворачивает видео в плавающее окно, а не закрывает его. Выкл.: «картинку в картинке» включает только переход на главный экран, а «Назад» закрывает плеер.</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Не выключать экран во время паузы</string>
   <string name="pref_player_external_display_projection_title">Проекция на внешний дисплей</string>
   <string name="pref_player_external_display_projection_summary">Воспроизводить на HDMI, USB-C или беспроводном экране с выключенным экраном телефона.</string>
@@ -482,7 +482,9 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_video_background_playback_title">Фоновое воспроизведение (Видеоплеер)</string>
-  <string name="pref_video_background_playback_summary">Видео продолжает воспроизводиться, когда вы нажимаете «Назад», переходите на главный экран, переключаетесь на другое приложение или выключаете экран. Чтобы сделать это один раз, удерживайте кнопку фонового воспроизведения в плеере.</string>
+  <string name="pref_video_background_playback_summary">Видео продолжает воспроизводиться, когда вы переходите на главный экран, переключаетесь на другое приложение или выключаете экран. Чтобы сделать это один раз, удерживайте кнопку фонового воспроизведения в плеере.</string>
+  <string name="pref_video_background_on_back_title">«Назад» не останавливает видео</string>
+  <string name="pref_video_background_on_back_summary">Кнопка «Назад» возвращает к списку, а видео продолжает воспроизводиться в фоне с управлением в уведомлении. Выкл.: «Назад» закрывает видео.</string>
   <string name="toast_background_playback_on">Фоновое воспроизведение включено</string>
   <string name="toast_background_playback_off">Фоновое воспроизведение выключено</string>
   <string name="btn_label_background_playback_once">Воспроизвести в фоне один раз</string>
