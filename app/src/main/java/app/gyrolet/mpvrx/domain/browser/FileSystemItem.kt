@@ -31,6 +31,8 @@ sealed class FileSystemItem {
     val totalDuration: Long = 0L,
     val hasSubfolders: Boolean = false,
     val newCount: Int = 0,
+    /** A .nomedia (or other marker) or dot folder, or one inside it. */
+    val isHidden: Boolean = false,
   ) : FileSystemItem()
 
   @Immutable

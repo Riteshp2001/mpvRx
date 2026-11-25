@@ -332,6 +332,7 @@ fun FileSystemBrowserScreen(path: String? = null) {
           totalSize = folder.totalSize,
           totalDuration = folder.totalDuration,
           lastModified = folder.lastModified / 1000,
+          isHidden = folder.isHidden,
         )
       }
     },
@@ -1659,6 +1660,7 @@ private fun FileSystemBrowserContent(
                       totalSize = folder.totalSize,
                       totalDuration = folder.totalDuration,
                       lastModified = folder.lastModified / 1000,
+                      isHidden = folder.isHidden,
                     )
 
                   FolderCard(
@@ -1786,6 +1788,7 @@ private fun FileSystemBrowserContent(
                     totalSize = folder.totalSize,
                     totalDuration = folder.totalDuration,
                     lastModified = folder.lastModified / 1000,
+                    isHidden = folder.isHidden,
                   )
 
                 FolderCard(
@@ -2122,6 +2125,7 @@ private fun FileSystemSearchContent(
                       totalSize = folder.totalSize,
                       totalDuration = folder.totalDuration,
                       lastModified = folder.lastModified / 1000,
+                      isHidden = folder.isHidden,
                     )
 
                   FolderCard(
@@ -2210,6 +2214,7 @@ private fun FileSystemSearchContent(
                     totalSize = folder.totalSize,
                     totalDuration = folder.totalDuration,
                     lastModified = folder.lastModified / 1000,
+                    isHidden = folder.isHidden,
                   )
 
                 FolderCard(

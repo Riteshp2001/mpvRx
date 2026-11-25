@@ -1124,6 +1124,7 @@
   <string name="ui_unpin_videos">إلغاء تثبيت الفيديوهات</string>
   <string name="ui_pinned_video">فيديو مثبّت</string>
   <string name="ui_folder">مجلد</string>
+  <string name="ui_hidden_folder">مجلد مخفي (.nomedia)</string>
   <string name="ui_connect_automatically_on_app_launch">الاتصال تلقائيًا عند تشغيل التطبيق</string>
   <string name="ui_connecting">جارٍ الاتصال</string>
   <string name="ui_browse">تصفح</string>

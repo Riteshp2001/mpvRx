@@ -1092,6 +1092,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_unpin_videos">Desfijar videos</string>
   <string name="ui_pinned_video">Video fijado</string>
   <string name="ui_folder">Carpeta</string>
+  <string name="ui_hidden_folder">Carpeta oculta (.nomedia)</string>
   <string name="ui_connect_automatically_on_app_launch">Conectar automáticamente al iniciar la aplicación</string>
   <string name="ui_connecting">Conectando</string>
   <string name="ui_browse">Explorar</string>

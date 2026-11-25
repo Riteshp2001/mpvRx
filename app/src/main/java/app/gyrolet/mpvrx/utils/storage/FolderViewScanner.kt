@@ -720,6 +720,8 @@ object FolderViewScanner {
       totalSize = entity.totalSize,
       totalDuration = entity.totalDuration,
       lastModified = entity.lastModified,
+      // The index only holds hidden roots and the folders inside them.
+      isHidden = true,
     )
   }
 

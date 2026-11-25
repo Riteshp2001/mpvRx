@@ -259,6 +259,8 @@ fun FolderCard(
   // Remove the redundant folder name from the path
   val parentPath = folder.path.substringBeforeLast("/", folder.path)
 
+  val hiddenFolderLabel = androidx.compose.ui.res.stringResource(R.string.ui_hidden_folder)
+
   @Composable
   fun PinnedFolderBadge(modifier: Modifier = Modifier) {
     Surface(
@@ -414,6 +416,25 @@ fun FolderCard(
                     .align(Alignment.TopStart)
                     .padding(6.dp),
               )
+            }
+
+            // A .nomedia or dot folder, marked on its image in the corner the other badges leave free.
+            if (folder.isHidden) {
+              Box(
+                modifier =
+                  Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(6.dp)
+                    .cardOverlay()
+                    .padding(horizontal = 5.dp, vertical = 3.dp),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.VisibilityOff,
+                  contentDescription = hiddenFolderLabel,
+                  modifier = Modifier.size(12.dp),
+                  tint = Color.White,
+                )
+              }
             }
 
             if (showTotalDurationChip && folder.totalDuration > 0) {
@@ -585,8 +606,29 @@ fun FolderCard(
                 androidx.compose.foundation.layout.Arrangement
                   .spacedBy(4.dp),
             ) {
-              // Render custom chip content first if provided
               var hasChip = false
+              // A .nomedia or dot folder: the first chip, before counts, size and date.
+              if (folder.isHidden) {
+                Box(
+                  modifier =
+                    Modifier
+                      .background(
+                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                        AppShapeScale.small,
+                      ).padding(horizontal = 6.dp, vertical = 4.dp),
+                  contentAlignment = Alignment.Center,
+                ) {
+                  Icon(
+                    imageVector = Icons.RoundedFilled.VisibilityOff,
+                    contentDescription = hiddenFolderLabel,
+                    modifier = Modifier.size(14.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                  )
+                }
+                hasChip = true
+              }
+
+              // Render custom chip content first if provided
               if (customChipContent != null) {
                 customChipContent()
                 hasChip = true

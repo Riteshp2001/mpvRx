@@ -1092,6 +1092,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="ui_unpin_videos">Désépingler les vidéos</string>
   <string name="ui_pinned_video">Vidéo épinglée</string>
   <string name="ui_folder">Dossier</string>
+  <string name="ui_hidden_folder">Dossier masqué (.nomedia)</string>
   <string name="ui_connect_automatically_on_app_launch">Se connecter automatiquement au lancement de l’application</string>
   <string name="ui_connecting">Connexion…</string>
   <string name="ui_browse">Parcourir</string>

@@ -1108,6 +1108,7 @@
   <string name="ui_unpin_videos">Открепить видео</string>
   <string name="ui_pinned_video">Закреплённое видео</string>
   <string name="ui_folder">Папка</string>
+  <string name="ui_hidden_folder">Скрытая папка (.nomedia)</string>
   <string name="ui_connect_automatically_on_app_launch">Подключаться автоматически при запуске приложения</string>
   <string name="ui_connecting">Подключение</string>
   <string name="ui_browse">Обзор</string>

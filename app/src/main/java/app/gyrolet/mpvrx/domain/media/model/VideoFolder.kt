@@ -20,4 +20,6 @@ data class VideoFolder(
   val totalSize: Long = 0L,
   val totalDuration: Long = 0L, // in milliseconds
   val lastModified: Long = 0L,
+  /** Shown only by the hidden-folder scan: a .nomedia (or other marker) or dot folder MediaStore skips. */
+  val isHidden: Boolean = false,
 )

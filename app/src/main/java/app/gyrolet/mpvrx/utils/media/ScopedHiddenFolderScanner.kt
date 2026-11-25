@@ -159,6 +159,8 @@ object ScopedHiddenFolderScanner {
             totalSize = items.sumOf { it.size },
             totalDuration = 0L,
             lastModified = items.maxOfOrNull { it.dateModified } ?: 0L,
+            // Folders MediaStore also lists are dropped as local duplicates; the rest are hidden.
+            isHidden = true,
           )
         }
         WalkStep.Descend

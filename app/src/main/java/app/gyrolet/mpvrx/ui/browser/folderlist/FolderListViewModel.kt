@@ -332,7 +332,7 @@ class FolderListViewModel(
   private fun serializeFoldersToJson(folders: List<VideoFolder>): String {
     // Simple JSON serialization
     return folders.joinToString(separator = "|") { folder ->
-      "${folder.bucketId}::${folder.name}::${folder.path}::${folder.videoCount}::${folder.totalSize}::${folder.totalDuration}::${folder.lastModified}"
+      "${folder.bucketId}::${folder.name}::${folder.path}::${folder.videoCount}::${folder.totalSize}::${folder.totalDuration}::${folder.lastModified}::${if (folder.isHidden) 1 else 0}"
     }
   }
 
@@ -340,7 +340,8 @@ class FolderListViewModel(
     try {
       json.split("|").mapNotNull { item ->
         val parts = item.split("::")
-        if (parts.size == 7) {
+        // Entries saved before the hidden flag have 7 fields.
+        if (parts.size == 7 || parts.size == 8) {
           VideoFolder(
             bucketId = parts[0],
             name = parts[1],
@@ -349,6 +350,7 @@ class FolderListViewModel(
             totalSize = parts[4].toLongOrNull() ?: 0L,
             totalDuration = parts[5].toLongOrNull() ?: 0L,
             lastModified = parts[6].toLongOrNull() ?: 0L,
+            isHidden = parts.getOrNull(7) == "1",
           )
         } else {
           null
@@ -814,7 +816,8 @@ class FolderListViewModel(
                 cached.lastModified == folder.lastModified &&
                 cachedIsComplete
               ) {
-                cached
+                // Only the learned duration is reused; whether the folder is hidden is always fresh.
+                cached.copy(isHidden = folder.isHidden)
               } else {
                 needsEnrichment = true
                 folder

@@ -1092,6 +1092,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="ui_unpin_videos">Desafixar vídeos</string>
   <string name="ui_pinned_video">Vídeo fixado</string>
   <string name="ui_folder">Pasta</string>
+  <string name="ui_hidden_folder">Pasta oculta (.nomedia)</string>
   <string name="ui_connect_automatically_on_app_launch">Conectar automaticamente ao iniciar o app</string>
   <string name="ui_connecting">Conectando</string>
   <string name="ui_browse">Navegar</string>

@@ -1200,6 +1200,7 @@
   <string name="ui_unpin_videos">Відкріпити відео</string>
   <string name="ui_pinned_video">Закріплене відео</string>
   <string name="ui_folder">Папка</string>
+  <string name="ui_hidden_folder">Прихована папка (.nomedia)</string>
   <string name="ui_connect_automatically_on_app_launch">Під\'єднуватися автоматично під час запуску додатка</string>
   <string name="ui_connecting">Під\'єднання…</string>
   <string name="ui_browse">Огляд</string>

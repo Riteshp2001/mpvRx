@@ -1092,6 +1092,7 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_unpin_videos">Videos lösen</string>
   <string name="ui_pinned_video">Angeheftetes Video</string>
   <string name="ui_folder">Ordner</string>
+  <string name="ui_hidden_folder">Verborgener Ordner (.nomedia)</string>
   <string name="ui_connect_automatically_on_app_launch">Beim App-Start automatisch verbinden</string>
   <string name="ui_connecting">Verbindung wird hergestellt</string>
   <string name="ui_browse">Durchsuchen</string>
