@@ -139,11 +139,6 @@
   <string name="pref_auto_pip_summary">Entrar automáticamente en modo PIP al pulsar Inicio o Atrás</string>
   <string name="pref_auto_pip_home_only_title">PIP solo con el gesto de inicio</string>
   <string name="pref_auto_pip_home_only_summary">Solo el gesto de inicio o deslizar activa el modo PIP; el botón Atrás cierra el reproductor</string>
-  <string name="pref_enable_video_mini_player_title">Activar minireproductor de vídeo</string>
-  <string name="pref_enable_video_mini_player_summary">Minimizar la reproducción de vídeo en un minireproductor flotante al pulsar Atrás</string>
-  <string name="pref_video_mini_player_dependency_title">¿Activar la reproducción de vídeo en segundo plano?</string>
-  <string name="pref_video_mini_player_dependency_message">Requiere reproducción en segundo plano del reproductor de vídeo.</string>
-  <string name="pref_video_mini_player_dependency_confirm">Activar y continuar</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Mantener la pantalla encendida al pausar</string>
   <string name="pref_player_external_display_projection_title">Proyección en pantalla externa</string>
   <string name="pref_player_external_display_projection_summary">Reproduce en pantallas HDMI, USB-C o inalámbricas con la pantalla del móvil apagada.</string>

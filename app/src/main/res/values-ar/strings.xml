@@ -139,11 +139,6 @@
   <string name="pref_auto_pip_summary">الدخول تلقائيًا إلى وضع PIP عند الضغط على الرئيسية أو الرجوع</string>
   <string name="pref_auto_pip_home_only_title">صورة داخل صورة بإيماءة الرئيسية فقط</string>
   <string name="pref_auto_pip_home_only_summary">إيماءة الرئيسية أو السحب فقط تُفعّل وضع PIP؛ زر الرجوع يغلق المشغّل</string>
-  <string name="pref_enable_video_mini_player_title">تفعيل المشغل المصغر للفيديو</string>
-  <string name="pref_enable_video_mini_player_summary">تصغير تشغيل الفيديو إلى مشغل مصغر عائم عند الضغط على زر الرجوع</string>
-  <string name="pref_video_mini_player_dependency_title">تفعيل تشغيل الفيديو في الخلفية؟</string>
-  <string name="pref_video_mini_player_dependency_message">يتطلب تشغيل مشغل الفيديو في الخلفية.</string>
-  <string name="pref_video_mini_player_dependency_confirm">تفعيل والمتابعة</string>
   <string name="pref_player_keep_screen_on_when_paused_title">إبقاء الشاشة قيد التشغيل عند الإيقاف المؤقت</string>
   <string name="pref_player_external_display_projection_title">العرض على شاشة خارجية</string>
   <string name="pref_player_external_display_projection_summary">شغّل على شاشة HDMI أو USB-C أو لاسلكية مع إطفاء شاشة الهاتف.</string>

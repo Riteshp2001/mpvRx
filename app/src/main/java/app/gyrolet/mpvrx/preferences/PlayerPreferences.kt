@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.preferences
 
-import app.gyrolet.mpvrx.preferences.preference.DependentBooleanPreference
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
 import app.gyrolet.mpvrx.ui.player.AmbientStyle
@@ -165,9 +164,6 @@ class PlayerPreferences(
 
   // MX/VLC-style: only the home gesture auto-enters PiP; Back keeps its normal close/handoff.
   val pipOnHomeGestureOnly = preferenceStore.getBoolean("auto_pip_home_gesture_only", false)
-  private val videoBackgroundPlayback = preferenceStore.getBoolean("automatic_background_playback", false)
-  private val storedEnableVideoMiniPlayer = preferenceStore.getBoolean("enable_video_mini_player", false)
-  val enableVideoMiniPlayer = DependentBooleanPreference(storedEnableVideoMiniPlayer, videoBackgroundPlayback)
 
   /** Video background playback only continues for screen-off; closing the player or Home pauses it. */
   val videoBackgroundOnlyWhenScreenOff = preferenceStore.getBoolean("video_background_only_when_screen_off", false)
@@ -381,6 +377,12 @@ class PlayerPreferences(
 
   /** Animation duration multiplier (0.5 = twice as fast, 2.0 = twice as slow). */
   val animationSpeed = preferenceStore.getFloat("animation_speed", 1.0f)
+
+  init {
+    // The video mini player was removed; drop its stored switch.
+    val legacyVideoMiniPlayer = preferenceStore.getBoolean("enable_video_mini_player", false)
+    if (legacyVideoMiniPlayer.isSet()) legacyVideoMiniPlayer.delete()
+  }
 
   companion object {
     /** Sentinel for `lastSnapshotFolderId`; folder ids start at 1, so it cannot be a real folder. */

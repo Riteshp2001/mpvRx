@@ -4082,15 +4082,8 @@ class PlayerActivity :
     }
   }
 
-  private fun isMiniPlayerEnabled(): Boolean {
-    return if (isCurrentPlaybackAudio()) {
-      true
-    } else {
-      !isTelevision && playerPreferences.enableVideoMiniPlayer.get() &&
-        (audioPreferences.backgroundPlaybackBehavior.get() != app.gyrolet.mpvrx.preferences.BackgroundPlaybackBehavior.PerVideo ||
-          PlaybackSession.isVideoBackgroundPlaybackEnabled())
-    }
-  }
+  /** Only audio hands off to the browser's mini player. */
+  private fun isMiniPlayerEnabled(): Boolean = isCurrentPlaybackAudio()
 
   private fun isBackgroundPlaybackEnabled(): Boolean =
     if (PlaybackSession.state.value.currentItem?.audiobook != null) true

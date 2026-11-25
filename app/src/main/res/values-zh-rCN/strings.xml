@@ -139,11 +139,6 @@
   <string name="pref_auto_pip_summary">按下主页键或返回键时自动进入 PIP 模式</string>
   <string name="pref_auto_pip_home_only_title">仅主屏幕手势进入画中画</string>
   <string name="pref_auto_pip_home_only_summary">仅主屏幕手势或滑动进入 PIP 模式；返回键将关闭播放器</string>
-  <string name="pref_enable_video_mini_player_title">启用视频迷你播放器</string>
-  <string name="pref_enable_video_mini_player_summary">按返回键时将视频播放最小化为悬浮迷你播放器</string>
-  <string name="pref_video_mini_player_dependency_title">启用视频后台播放？</string>
-  <string name="pref_video_mini_player_dependency_message">需要启用视频播放器后台播放。</string>
-  <string name="pref_video_mini_player_dependency_confirm">启用并继续</string>
   <string name="pref_player_keep_screen_on_when_paused_title">暂停时保持屏幕常亮</string>
   <string name="pref_player_external_display_projection_title">外接显示投影</string>
   <string name="pref_player_external_display_projection_summary">关闭手机屏幕，在 HDMI、USB-C 或无线显示器上播放。</string>

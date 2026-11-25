@@ -17,7 +17,6 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
-import android.app.Activity
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -26,7 +25,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.Lifecycle
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -73,7 +71,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
-import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.ProvideLiquidGlassBackdrop
@@ -93,31 +90,19 @@ import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.AppWallpaperHost
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.ui.theme.rememberThemeTransitionState
-import android.view.SurfaceHolder
-import android.view.SurfaceView
-import androidx.compose.foundation.background
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.viewinterop.AndroidView
-import app.gyrolet.mpvrx.ui.player.MPVPipHelper
 import app.gyrolet.mpvrx.ui.player.InAppMusicPlayerSheet
 import app.gyrolet.mpvrx.ui.remote.RemotePairingPrompt
 import app.gyrolet.mpvrx.ui.player.LocalInAppMusicSheet
 import app.gyrolet.mpvrx.ui.player.coveredByInAppMusicSheet
 import app.gyrolet.mpvrx.ui.player.inAppMusicSheetMiniSource
 import app.gyrolet.mpvrx.ui.player.rememberInAppMusicSheetState
-import app.gyrolet.mpvrx.ui.player.PlaybackPhase
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerSheetDestination
 import app.gyrolet.mpvrx.ui.player.PlayerSheetTransitionOverlay
 import app.gyrolet.mpvrx.ui.player.PlayerSheetTransitions
 import app.gyrolet.mpvrx.ui.player.playerSheetBackdrop
 import app.gyrolet.mpvrx.ui.player.playerSheetMiniPlacement
-import app.gyrolet.mpvrx.ui.player.PlayerLifecyclePolicy
-import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
-import app.gyrolet.mpvrx.ui.player.TrackNode
-import app.gyrolet.mpvrx.ui.player.toObject
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalRootBackStack
 import app.gyrolet.mpvrx.ui.utils.ScreenNavDisplay
@@ -125,10 +110,8 @@ import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.utils.device.appUiScaleOverrideConfiguration
-import app.gyrolet.mpvrx.utils.media.fileExtension
 import app.gyrolet.mpvrx.utils.permission.PermissionRecovery
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
-import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import app.gyrolet.mpvrx.ui.update.UpdateSheet
 import app.gyrolet.mpvrx.ui.update.UpdateUiState
 import app.gyrolet.mpvrx.ui.update.UpdateViewModel
@@ -139,8 +122,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import androidx.lifecycle.lifecycleScope
-import kotlinx.serialization.json.Json
-import org.koin.android.ext.android.getKoin
 import org.koin.android.ext.android.inject
 
 private const val RENDERER_NOTICE_PREFERENCES = "renderer_build_notice"
@@ -152,13 +133,7 @@ private const val NON_VULKAN_NOTICE_SHOWN = "non_vulkan_notice_shown"
 open class MainActivity : AppCompatActivity() {
   private val appearancePreferences by inject<AppearancePreferences>()
   private val gesturePreferences by inject<GesturePreferences>()
-  private val playerPreferences by inject<PlayerPreferences>()
   private var appliedEdgeToEdgeDarkMode: Boolean? = null
-  private lateinit var pipHelper: MPVPipHelper
-  private var isPipMode by mutableStateOf(false)
-  private var wasInPipMode = false
-  private var pendingPipExitResolution = false
-  private var isExpandingFromPip by mutableStateOf(false)
   private var openUpdateSheet by mutableStateOf(false)
   private var mediaDiscoveryJob: Job? = null
   private var lastExitBackPressAt = 0L
@@ -214,12 +189,6 @@ open class MainActivity : AppCompatActivity() {
       onBackPressedDispatcher.addCallback(this, tvExitBackCallback)
     }
 
-    pipHelper = MPVPipHelper(
-      activity = this,
-      isAudioPlayer = { isCurrentMediaAudioOnly() },
-      isVideoLoaded = { isCurrentMediaVideoLoaded() },
-    )
-
     PermissionUtils.setMediaAccessLauncher(mediaAccessLauncher)
 
     applyEdgeToEdge(
@@ -234,10 +203,6 @@ open class MainActivity : AppCompatActivity() {
       // Set up theme and edge-to-edge display
       val dark by appearancePreferences.darkMode.collectAsState()
       val networkStreamingEnabled by appearancePreferences.showNetworkTab.collectAsState()
-      val sessionState by PlaybackSession.state.collectAsState()
-      val enableVideoMiniPlayer by playerPreferences.enableVideoMiniPlayer.collectAsState()
-      val autoPiPOnNavigation by playerPreferences.autoPiPOnNavigation.collectAsState()
-      val trackListNode by PlaybackSession.propNode["track-list"].collectAsState()
       val rendererNoticePreferences =
         remember { getSharedPreferences(RENDERER_NOTICE_PREFERENCES, MODE_PRIVATE) }
       var showRendererBuildNotice by remember {
@@ -247,16 +212,6 @@ open class MainActivity : AppCompatActivity() {
         )
       }
       val deviceSupportsVulkan = remember { VulkanCapabilities.isDeviceSupported(this@MainActivity) }
-
-      LaunchedEffect(
-        sessionState,
-        enableVideoMiniPlayer,
-        autoPiPOnNavigation,
-        trackListNode,
-        NavigationBarState.isMiniPlayerVisible,
-      ) {
-        pipHelper.updatePictureInPictureParams()
-      }
 
       val isSystemInDarkTheme = isSystemInDarkTheme()
       val isDarkMode =
@@ -290,93 +245,49 @@ open class MainActivity : AppCompatActivity() {
         }
       }
 
-      if (isPipMode || isExpandingFromPip) {
-        Box(
-          modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
-          contentAlignment = Alignment.Center,
-        ) {
-          if (isPipMode) {
-            AndroidView(
-              modifier = Modifier.fillMaxSize(),
-              factory = { viewContext ->
-                SurfaceView(viewContext).apply {
-                  setZOrderMediaOverlay(true)
-                  holder.addCallback(object : SurfaceHolder.Callback {
-                    override fun surfaceCreated(holder: SurfaceHolder) {
-                      PlaybackSession.bindSurface(
-                        surface = holder.surface,
-                        owner = this@apply,
-                        ownerIsActive = { MediaPlaybackService.isForegroundActive() },
-                      )
-                    }
-
-                    override fun surfaceChanged(
-                      holder: SurfaceHolder,
-                      format: Int,
-                      width: Int,
-                      height: Int,
-                    ) {
-                      if (holder.surface.isValid) {
-                        PlaybackSession.resizeSurface(width, height, owner = this@apply)
-                      }
-                    }
-
-                    override fun surfaceDestroyed(holder: SurfaceHolder) {
-                      PlaybackSession.unbindSurface(this@apply)
-                    }
-                  })
+      MpvrxTheme(transitionState = themeTransitionState) {
+        AppWallpaperHost {
+          val musicSheet = rememberInAppMusicSheetState()
+          // Reserve the system button area once for every destination and overlay.
+          // Consuming it here lets nested Scaffolds/sheets avoid adding it twice.
+          CompositionLocalProvider(LocalInAppMusicSheet provides musicSheet) {
+            Surface(
+              modifier = Modifier.fillMaxSize().windowInsetsPadding(
+                WindowInsets.tappableElement.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+              ),
+              color = Color.Transparent,
+            ) {
+              Navigator()
+            }
+          }
+          // Above the browser and outside its inset padding: the music player fills the window.
+          InAppMusicPlayerSheet(musicSheet)
+          RemotePairingPrompt()
+          if (showRendererBuildNotice) {
+            val acknowledgeNotice = {
+              rendererNoticePreferences.edit().putBoolean(NON_VULKAN_NOTICE_SHOWN, true).apply()
+              showRendererBuildNotice = false
+            }
+            AlertDialog(
+              onDismissRequest = acknowledgeNotice,
+              title = { Text(getString(R.string.renderer_build_notice_title)) },
+              text = {
+                Text(
+                  getString(
+                    if (deviceSupportsVulkan) {
+                      R.string.renderer_build_notice_supported_device
+                    } else {
+                      R.string.renderer_build_notice_unsupported_device
+                    },
+                  ),
+                )
+              },
+              confirmButton = {
+                TextButton(onClick = acknowledgeNotice) {
+                  Text(getString(R.string.generic_ok))
                 }
               },
             )
-          }
-        }
-      } else {
-        MpvrxTheme(transitionState = themeTransitionState) {
-          AppWallpaperHost {
-            val musicSheet = rememberInAppMusicSheetState()
-            // Reserve the system button area once for every destination and overlay.
-            // Consuming it here lets nested Scaffolds/sheets avoid adding it twice.
-            CompositionLocalProvider(LocalInAppMusicSheet provides musicSheet) {
-              Surface(
-                modifier = Modifier.fillMaxSize().windowInsetsPadding(
-                  WindowInsets.tappableElement.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
-                ),
-                color = Color.Transparent,
-              ) {
-                Navigator()
-              }
-            }
-            // Above the browser and outside its inset padding: the music player fills the window.
-            InAppMusicPlayerSheet(musicSheet)
-            RemotePairingPrompt()
-            if (showRendererBuildNotice) {
-              val acknowledgeNotice = {
-                rendererNoticePreferences.edit().putBoolean(NON_VULKAN_NOTICE_SHOWN, true).apply()
-                showRendererBuildNotice = false
-              }
-              AlertDialog(
-                onDismissRequest = acknowledgeNotice,
-                title = { Text(getString(R.string.renderer_build_notice_title)) },
-                text = {
-                  Text(
-                    getString(
-                      if (deviceSupportsVulkan) {
-                        R.string.renderer_build_notice_supported_device
-                      } else {
-                        R.string.renderer_build_notice_unsupported_device
-                      },
-                    ),
-                  )
-                },
-                confirmButton = {
-                  TextButton(onClick = acknowledgeNotice) {
-                    Text(getString(R.string.generic_ok))
-                  }
-                },
-              )
-            }
           }
         }
       }
@@ -397,23 +308,10 @@ open class MainActivity : AppCompatActivity() {
     super.attachBaseContext(newBase)
   }
 
-  override fun onStart() {
-    super.onStart()
-    pipHelper.updatePictureInPictureParams()
-  }
-
   override fun onResume() {
     super.onResume()
     PermissionRecovery.requestRevoked(this, runtimePermissionLauncher)
     refreshLauncherIcon()
-    pipHelper.updatePictureInPictureParams()
-    if (!isPipMode && (pendingPipExitResolution || wasInPipMode)) {
-      window.decorView.post {
-        if (!isFinishing && !isDestroyed && !isPipMode && (pendingPipExitResolution || wasInPipMode)) {
-          completePipExpansion()
-        }
-      }
-    }
     // The browser is visible again; drop the frozen copy kept for in-player gestures.
     PlayerSheetTransitions.clearBrowserCache()
     // Interactive again without the player having taken over, so its expansion is void.
@@ -438,169 +336,13 @@ open class MainActivity : AppCompatActivity() {
     super.onPause()
   }
 
-  override fun onWindowFocusChanged(hasFocus: Boolean) {
-    super.onWindowFocusChanged(hasFocus)
-    if (hasFocus && !isPipMode && (pendingPipExitResolution || wasInPipMode)) {
-      completePipExpansion()
-    }
-  }
-
-  override fun onUserLeaveHint() {
-    super.onUserLeaveHint()
-    val isServiceRunning = MediaPlaybackService.isForegroundActive()
-    val sessionState = PlaybackSession.state.value
-    val isMediaActive = isServiceRunning && sessionState.currentItem != null &&
-      NavigationBarState.isMiniPlayerVisible &&
-      sessionState.phase != PlaybackPhase.IDLE &&
-      sessionState.phase != PlaybackPhase.UNINITIALIZED &&
-      sessionState.phase != PlaybackPhase.ERROR
-    if (
-      playerPreferences.autoPiPOnNavigation.get() &&
-      isMediaActive &&
-      !isCurrentMediaAudioOnly() &&
-      !isPipMode
-    ) {
-      pipHelper.enterPipMode()
-    }
-  }
-
-  override fun onPictureInPictureModeChanged(
-    isInPictureInPictureMode: Boolean,
-    newConfig: Configuration,
-  ) {
-    super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-    this.isPipMode = isInPictureInPictureMode
-    pipHelper.onPictureInPictureModeChanged(isInPictureInPictureMode)
-    if (isInPictureInPictureMode) {
-      wasInPipMode = true
-      pendingPipExitResolution = false
-      isExpandingFromPip = false
-    } else if (wasInPipMode) {
-      isExpandingFromPip = true
-      schedulePipExitResolution()
-    }
-  }
-
-  private fun schedulePipExitResolution() {
-    pendingPipExitResolution = true
-    if (isFinishing || isDestroyed) {
-      stopPipPlayback()
-      return
-    }
-    if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && hasWindowFocus()) {
-      completePipExpansion()
-    }
-  }
-
-  private fun stopPipPlayback() {
-    val hadPipSession = wasInPipMode || pendingPipExitResolution
-    pendingPipExitResolution = false
-    wasInPipMode = false
-    isExpandingFromPip = false
-    if (hadPipSession) MediaPlaybackService.stopForTerminalDismissal()
-  }
-
-  private fun completePipExpansion() {
-    if (!pendingPipExitResolution && !wasInPipMode) return
-    pendingPipExitResolution = false
-    wasInPipMode = false
-    this.isPipMode = false
-    openPlayerFromPipMaximize()
-  }
-
-  private fun openPlayerFromPipMaximize() {
-    val sessionState = PlaybackSession.state.value
-    val currentItem = sessionState.currentItem ?: PlaybackSession.queue.value.currentItem
-    if (
-      currentItem == null ||
-      sessionState.phase == PlaybackPhase.IDLE ||
-      sessionState.phase == PlaybackPhase.UNINITIALIZED ||
-      sessionState.phase == PlaybackPhase.ERROR
-    ) {
-      isExpandingFromPip = false
-      return
-    }
-
-    val intent = Intent(this, PlayerActivity::class.java).apply {
-      action = MediaPlaybackService.ACTION_OPEN_PLAYER
-      putExtra("is_audio", isCurrentMediaAudioOnly())
-      putExtra("internal_launch", true)
-      putExtra("launch_source", "pip_maximize")
-      flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-    }
-    try {
-      startActivity(intent)
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        overrideActivityTransition(Activity.OVERRIDE_TRANSITION_OPEN, 0, 0)
-      } else {
-        @Suppress("DEPRECATION")
-        overridePendingTransition(0, 0)
-      }
-    } catch (e: Exception) {
-      Log.e("MainActivity", "Failed to launch PlayerActivity from PiP maximize", e)
-      isExpandingFromPip = false
-    }
-  }
-
   override fun onStop() {
     super.onStop()
     // The fullscreen window now covers the browser; its source mini player can leave composition.
     PlayerSheetTransitions.releaseExpansionHold()
-    pipHelper.onStop()
-    val powerManager = getSystemService(android.os.PowerManager::class.java)
-    val keyguardManager = getSystemService(android.app.KeyguardManager::class.java)
-    if (
-      PlayerLifecyclePolicy.shouldTreatStopAsPipDismissal(
-        wasInPictureInPictureMode = wasInPipMode,
-        isInPictureInPictureMode = isInPictureInPictureMode,
-        isActivityFinishing = isFinishing,
-        isChangingConfigurations = isChangingConfigurations,
-        isScreenOffOrLocked = powerManager?.isInteractive == false || keyguardManager?.isKeyguardLocked == true,
-        alreadyHandled = false,
-      )
-    ) {
-      stopPipPlayback()
-    }
-  }
-
-  private fun isCurrentMediaAudioOnly(): Boolean {
-    val sessionState = PlaybackSession.state.value
-    val currentItem = sessionState.currentItem ?: return true
-
-    val ext = (currentItem.originalUri.ifBlank { currentItem.title.orEmpty() }).fileExtension()
-    val mimeIsAudio = currentItem.mimeType?.startsWith("audio/", ignoreCase = true) == true
-    val extIsAudio = ext in FileTypeUtils.AUDIO_EXTENSIONS
-    val extIsVideo = ext in FileTypeUtils.VIDEO_EXTENSIONS
-
-    if (extIsVideo) return false
-    if (mimeIsAudio || extIsAudio) return true
-
-    val trackListNode = PlaybackSession.propNode["track-list"].value
-    if (trackListNode != null) {
-      val json: Json = getKoin().get()
-      val tracks = runCatching { trackListNode.toObject<List<TrackNode>>(json) }.getOrNull().orEmpty()
-      val hasRealVideo = tracks.any { it.isVideo && !it.isAlbumArtwork }
-      if (hasRealVideo) return false
-    }
-    return false
-  }
-
-  private fun isCurrentMediaVideoLoaded(): Boolean {
-    val isServiceRunning = MediaPlaybackService.isForegroundActive()
-    val sessionState = PlaybackSession.state.value
-    return isServiceRunning &&
-      sessionState.currentItem != null &&
-      NavigationBarState.isMiniPlayerVisible &&
-      sessionState.phase != PlaybackPhase.IDLE &&
-      sessionState.phase != PlaybackPhase.UNINITIALIZED &&
-      sessionState.phase != PlaybackPhase.ERROR
   }
 
   override fun onDestroy() {
-    if (!isChangingConfigurations) stopPipPlayback()
-    pendingPipExitResolution = false
-    wasInPipMode = false
-    isExpandingFromPip = false
     try {
       super.onDestroy()
     } catch (e: Exception) {

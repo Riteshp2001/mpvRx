@@ -44,7 +44,6 @@ private val livePlayerSettings = setOf(
   R.string.pref_keep_video_frame_title,
   R.string.pref_auto_pip_title,
   R.string.pref_auto_pip_home_only_title,
-  R.string.pref_enable_video_mini_player_title,
   R.string.pref_player_autoplay_after_screen_unlock_title,
   R.string.pref_player_orientation,
   R.string.pref_player_keep_screen_on_when_paused_title,

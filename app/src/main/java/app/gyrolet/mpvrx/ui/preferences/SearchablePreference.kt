@@ -1755,7 +1755,6 @@ object SearchablePreferences {
         screen = PlayerPreferencesScreen,
         anchorItemIndex = 1,
         SearchEntrySpec(R.string.pref_playlist_mode_title, listOf("playlist", "next", "previous", "navigation", "queue")),
-        SearchEntrySpec(R.string.pref_enable_video_mini_player_title, listOf("mini player", "video", "background", "continue")),
         SearchEntrySpec(R.string.ui_show_media_info_in_chooser, listOf("media info", "chooser", "open with", "system")),
       )
       addSearchEntries(

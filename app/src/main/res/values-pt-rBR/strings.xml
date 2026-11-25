@@ -139,11 +139,6 @@
   <string name="pref_auto_pip_summary">Entrar automaticamente no modo PIP ao pressionar Início ou Voltar</string>
   <string name="pref_auto_pip_home_only_title">PIP apenas com gesto de início</string>
   <string name="pref_auto_pip_home_only_summary">Apenas o gesto de início ou deslizar ativa o PIP; o botão Voltar fecha o player</string>
-  <string name="pref_enable_video_mini_player_title">Ativar Miniplayer de vídeo</string>
-  <string name="pref_enable_video_mini_player_summary">Minimizar a reprodução de vídeo em um Miniplayer flutuante ao pressionar Voltar</string>
-  <string name="pref_video_mini_player_dependency_title">Ativar reprodução de vídeo em segundo plano?</string>
-  <string name="pref_video_mini_player_dependency_message">Requer reprodução de vídeo em segundo plano.</string>
-  <string name="pref_video_mini_player_dependency_confirm">Ativar e continuar</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Manter a tela ligada quando pausado</string>
   <string name="pref_player_external_display_projection_title">Projeção em tela externa</string>
   <string name="pref_player_external_display_projection_summary">Reproduz em telas HDMI, USB-C ou sem fio com a tela do celular apagada.</string>

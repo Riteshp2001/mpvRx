@@ -152,7 +152,6 @@
             android:enableOnBackInvokedCallback="true"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
             android:resizeableActivity="true"
-            android:supportsPictureInPicture="true"
             android:theme="@style/Theme.mpvrx.Splash">
         </activity>
 
@@ -162,7 +161,6 @@
             android:enableOnBackInvokedCallback="true"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
             android:resizeableActivity="true"
-            android:supportsPictureInPicture="true"
             android:theme="@style/Theme.mpvrx.PurpleSplash" />
 
         <!-- Classic icon uses a separate launcher target so Android can render its matching
@@ -173,7 +171,6 @@
             android:enableOnBackInvokedCallback="true"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
             android:resizeableActivity="true"
-            android:supportsPictureInPicture="true"
             android:theme="@style/Theme.mpvrx.ClassicSplash" />
 
         <activity-alias

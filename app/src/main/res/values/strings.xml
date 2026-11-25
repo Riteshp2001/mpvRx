@@ -207,11 +207,6 @@
   <string name="pref_auto_pip_summary">Automatically enter PIP mode when pressing home or back</string>
   <string name="pref_auto_pip_home_only_title">PiP on home gesture only</string>
   <string name="pref_auto_pip_home_only_summary">Only the home gesture or swipe enters PIP; the back button closes the player</string>
-  <string name="pref_enable_video_mini_player_title">Enable Video Mini Player</string>
-  <string name="pref_enable_video_mini_player_summary">Minimize video playback into a floating Mini Player when pressing Back</string>
-  <string name="pref_video_mini_player_dependency_title">Enable video background playback?</string>
-  <string name="pref_video_mini_player_dependency_message">Requires Video Player Background Playback.</string>
-  <string name="pref_video_mini_player_dependency_confirm">Enable and continue</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Keep screen on when paused</string>
   <string name="pref_player_external_display_projection_title">External display projection</string>
   <string name="pref_player_external_display_projection_summary">Play on HDMI, USB-C or wireless displays with the phone screen off.</string>

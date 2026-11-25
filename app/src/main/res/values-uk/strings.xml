@@ -168,11 +168,6 @@
   <string name="pref_auto_pip_summary">Автоматично вмикати режим PiP під час натискання кнопок «Додому» або «Назад»</string>
   <string name="pref_auto_pip_home_only_title">PiP лише для жесту «Додому»</string>
   <string name="pref_auto_pip_home_only_summary">Лише жест «Додому» або проведення активує PiP; кнопка «Назад» закриває плеєр</string>
-  <string name="pref_enable_video_mini_player_title">Увімкнути міні-відеоплеєр</string>
-  <string name="pref_enable_video_mini_player_summary">Згортати відтворення відео у плаваючий мініплеєр після натискання «Назад»</string>
-  <string name="pref_video_mini_player_dependency_title">Увімкнути фонове відтворення відео?</string>
-  <string name="pref_video_mini_player_dependency_message">Потрібне фонове відтворення відеопрогравача.</string>
-  <string name="pref_video_mini_player_dependency_confirm">Увімкнути та продовжити</string>
   <string name="pref_player_keep_screen_on_when_paused_title">Не вимикати екран на паузі</string>
   <string name="pref_player_external_display_projection_title">Проєкція на зовнішній екран</string>
   <string name="pref_player_external_display_projection_summary">Відтворювати на HDMI, USB-C чи бездротовому екрані з вимкненим екраном телефона.</string>

@@ -17,8 +17,6 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.text.format.DateUtils
-import android.view.SurfaceHolder
-import android.view.SurfaceView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -43,8 +41,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -78,7 +74,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
@@ -98,7 +93,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.thumbnail.EmbeddedArtworkResolver
 import app.gyrolet.mpvrx.domain.thumbnail.getArtwork
@@ -108,7 +102,6 @@ import app.gyrolet.mpvrx.ui.player.MotionArtworkImage
 import app.gyrolet.mpvrx.ui.player.rememberMotionArtworkDrawable
 import app.gyrolet.mpvrx.presentation.components.LiquidGlassStyle
 import app.gyrolet.mpvrx.presentation.components.LiquidGlassSurface
-import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
 import app.gyrolet.mpvrx.ui.browser.rememberMiniPlayerShape
@@ -153,8 +146,6 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
   val isServiceRunning by MediaPlaybackService.foregroundActive.collectAsStateWithLifecycle()
   val context = LocalContext.current
   val sessionState by PlaybackSession.state.collectAsStateWithLifecycle()
-  val playerPreferences: PlayerPreferences = koinInject()
-  val enableVideoMiniPlayer by playerPreferences.enableVideoMiniPlayer.collectAsState()
 
   val backstack = LocalBackStack.current
   val currentScreen = backstack.lastOrNull()
@@ -177,9 +168,6 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
       DeclaredPlaybackMediaKind.UNKNOWN -> !hasRealVideo && (hasAlbumArt || tracks.any { it.isAudio })
     }
 
-  val isMiniPlayerAllowed = isAudioOnlyItem ||
-    (enableVideoMiniPlayer && !app.gyrolet.mpvrx.ui.tv.isTelevision())
-
   // A full-player collapse lands here before the service flips to foreground; showing the mini
   // player only after that would make it pop out and slide back in under the finished morph.
   val collapseHoldId = PlayerSheetTransitions.collapsedMediaId?.takeIf { it == currentItem?.stableId }
@@ -195,7 +183,7 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
 
   val hasActiveMedia = (isServiceRunning || collapseHoldId != null || expansionHoldId != null) && currentItem != null &&
     !isSettingsScreen &&
-    isMiniPlayerAllowed &&
+    isAudioOnlyItem &&
     sessionState.phase != PlaybackPhase.IDLE &&
     sessionState.phase != PlaybackPhase.STOPPING &&
     sessionState.phase != PlaybackPhase.UNINITIALIZED &&
@@ -267,10 +255,7 @@ fun MiniPlayer(modifier: Modifier = Modifier) {
   ) {
     MiniPlayerContent(
       context = context,
-      enableVideoMiniPlayer = enableVideoMiniPlayer,
       isAudioOnlyItem = isAudioOnlyItem,
-      hasRealVideo = hasRealVideo,
-      detachedPlaybackActive = isServiceRunning && expansionHoldId == null,
       onDismiss = dismissPlayer,
     )
   }
@@ -293,10 +278,7 @@ private val DismissSettleSpring = spring(
 @Composable
 private fun MiniPlayerContent(
   context: Context,
-  enableVideoMiniPlayer: Boolean,
   isAudioOnlyItem: Boolean,
-  hasRealVideo: Boolean,
-  detachedPlaybackActive: Boolean,
   onDismiss: () -> Unit,
 ) {
   val sessionState by PlaybackSession.state.collectAsStateWithLifecycle()
@@ -308,10 +290,6 @@ private fun MiniPlayerContent(
   val rawMediaTitle by PlaybackSession.propString["media-title"].collectAsStateWithLifecycle()
   val duration by PlaybackSession.propInt["duration"].collectAsStateWithLifecycle()
   val positionState = PlaybackSession.propInt["time-pos"].collectAsStateWithLifecycle()
-  val videoAspectRaw by PlaybackSession.propDouble["video-params/aspect"].collectAsStateWithLifecycle()
-  val videoWidth by PlaybackSession.propLong["video-params/w"].collectAsStateWithLifecycle()
-  val videoHeight by PlaybackSession.propLong["video-params/h"].collectAsStateWithLifecycle()
-  val videoRotate by PlaybackSession.propInt["video-params/rotate"].collectAsStateWithLifecycle()
   val loopA by PlaybackSession.propDouble["ab-loop-a"].collectAsStateWithLifecycle()
   val loopB by PlaybackSession.propDouble["ab-loop-b"].collectAsStateWithLifecycle()
   val isLoopASet = loopA?.let { it.isFinite() && it >= 0.0 } == true
@@ -340,11 +318,6 @@ private fun MiniPlayerContent(
       ?: currentItem?.title?.takeIf { it.isNotBlank() }
       ?: "Media Track"
 
-  // Service ownership changes before the Activity animation ends. Keep the same content/height
-  // through that handoff; changing to the audio row destroys the Surface and visibly resizes it.
-  val isVideoMode = !isAudioOnlyItem && enableVideoMiniPlayer &&
-    (hasRealVideo || currentItem?.declaredMediaKind() == DeclaredPlaybackMediaKind.VIDEO)
-
   val coverArtPath =
     currentItem?.originalUri?.takeIf { it.isNotBlank() }
       ?: currentItem?.playableUri?.takeIf { it.isNotBlank() }
@@ -358,7 +331,6 @@ private fun MiniPlayerContent(
   val coverArt = artwork?.bitmap
 
   val coroutineScope = rememberCoroutineScope()
-  val videoSurface = remember { arrayOfNulls<MiniPlayerSurfaceView>(1) }
   var dismissOffset by remember { mutableFloatStateOf(0f) }
   val dismissMotion = remember { arrayOfNulls<Job>(1) }
   // Once thrown, the card ignores further touches and is never pulled back by state changes.
@@ -391,7 +363,6 @@ private fun MiniPlayerContent(
       if (isAudioOnlyItem && musicSheet?.isAvailable == true) return@launch musicSheet.expand()
       val mediaId = PlaybackSession.state.value.currentItem?.stableId
       if (!PlayerSheetTransitions.holdExpansion(mediaId)) return@launch false
-      videoSurface[0]?.setPlaybackActive(false)
 
       fun openPlayer(sheetArrived: Boolean): Boolean {
         val intent = Intent(context, PlayerActivity::class.java).apply {
@@ -596,381 +567,197 @@ private fun MiniPlayerContent(
   ) {
     val progressColor = MaterialTheme.colorScheme.primary
 
-    if (isVideoMode) {
-      // mpv reports the pre-rotation shape; quarter-turned phone recordings are shown inverted,
-      // matching the PiP aspect calculation.
-      val sourceAspect = videoAspectRaw?.toFloat()?.takeIf { it.isFinite() && it > 0f }
-        ?: if ((videoWidth ?: 0L) > 0L && (videoHeight ?: 0L) > 0L) {
-          videoWidth!!.toFloat() / videoHeight!!.toFloat()
-        } else {
-          16f / 9f
+    // Audio Mini Player View
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .height(64.dp)
+        .drawBehind {
+          val progressFraction = progressFraction()
+          if (progressFraction > 0f) {
+            val playedWidth = size.width * progressFraction
+            drawRect(
+              color = progressColor.copy(alpha = 0.22f),
+              size = Size(
+                width = playedWidth,
+                height = size.height,
+              ),
+            )
+            // Blur and vibrancy wash out a flat fill, so mark the played boundary explicitly.
+            val edgeWidth = 2.dp.toPx().coerceAtMost(playedWidth)
+            drawRect(
+              color = progressColor.copy(alpha = 0.85f),
+              topLeft = Offset(x = playedWidth - edgeWidth, y = 0f),
+              size = Size(
+                width = edgeWidth,
+                height = size.height,
+              ),
+            )
+          }
         }
-      val rotation = ((videoRotate ?: 0) % 360 + 360) % 360
-      val aspect = if (rotation == 90 || rotation == 270) 1f / sourceAspect else sourceAspect
-
-      // Constrain aspect ratio between 0.5 (portrait) and 2.4 (ultrawide)
-      val safeAspect = aspect.coerceIn(0.5f, 2.39f)
-
-      Row(
+        .padding(horizontal = 8.dp, vertical = 4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      // Music Cover Art
+      Box(
         modifier = Modifier
-          .fillMaxWidth()
-          .height(76.dp)
-          .padding(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+          .size(40.dp)
+          .clip(RoundedCornerShape(10.dp))
+          .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center,
       ) {
-        // Video MPV Surface View Container
-        Box(
-          modifier = Modifier
-            .fillMaxHeight()
-            .aspectRatio(safeAspect)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color.Black),
-          contentAlignment = Alignment.Center,
-        ) {
-          AndroidView(
+        val artworkImageBitmap = remember(coverArt) { coverArt?.asImageBitmap() }
+        val animatedDrawable = rememberMotionArtworkDrawable(artwork?.motionArtwork)
+        if (animatedDrawable != null) {
+          MotionArtworkImage(
+            drawable = animatedDrawable,
+            isPlaying = isPlaying,
             modifier = Modifier.fillMaxSize(),
-            factory = { MiniPlayerSurfaceView(it).also { surface -> videoSurface[0] = surface } },
-            onReset = null,
-            update = { it.setPlaybackActive(detachedPlaybackActive) },
-            onRelease = {
-              it.releaseRenderer()
-              if (videoSurface[0] === it) videoSurface[0] = null
-            },
+          )
+        } else if (artworkImageBitmap != null) {
+          Image(
+            bitmap = artworkImageBitmap,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+          )
+        } else {
+          Icon(
+            imageVector = Icons.RoundedFilled.Audiotrack,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp),
           )
         }
+      }
 
-        Spacer(modifier = Modifier.width(10.dp))
+      Spacer(modifier = Modifier.width(8.dp))
 
-        // Title and Status
-        Column(
-          modifier = Modifier.weight(1f).then(tvOpenPlayer),
-          verticalArrangement = Arrangement.Center,
+      // Title & Track Status
+      Column(
+        modifier = Modifier.weight(1f).then(tvOpenPlayer),
+        verticalArrangement = Arrangement.Center,
+      ) {
+        key(currentItem?.stableId ?: currentItem?.originalUri ?: audiobook?.book?.id) {
+          Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMediumEmphasized,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = if (reduceMotion) Modifier else Modifier.basicMarquee(),
+          )
+        }
+        val statusText = when {
+          audiobook != null -> {
+            val author = audiobook.book.author.takeIf { it.isNotBlank() }
+            val durText = DateUtils.formatElapsedTime(audiobook.durationMs / 1000)
+            val posText = DateUtils.formatElapsedTime(totalPosSec().toLong())
+            val timeInfo = "$posText / $durText"
+            if (author != null) "$author • $timeInfo" else timeInfo
+          }
+          else -> stringResource(if (isPlaying) R.string.notification_playing else R.string.downloads_paused)
+        }
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-          key(currentItem?.stableId ?: currentItem?.originalUri) {
-            Text(
-              text = title,
-              style = MaterialTheme.typography.bodyMediumEmphasized,
-              color = MaterialTheme.colorScheme.onSurface,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-              modifier = if (reduceMotion) Modifier else Modifier.basicMarquee(),
+          if (isLoopASet || isLoopBSet) {
+            val loopDescription = stringResource(R.string.btn_label_ab_loop)
+            AbLoopIcon(
+              modifier = Modifier.size(20.dp).semantics { contentDescription = loopDescription },
+              tint = MaterialTheme.colorScheme.primary,
+              isASet = isLoopASet,
+              isBSet = isLoopBSet,
             )
           }
           Text(
-            text = stringResource(if (isPlaying) R.string.notification_playing else R.string.downloads_paused),
+            text = statusText,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
           )
         }
-
-        // Control Buttons
-        Row(
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-          IconButton(
-            onClick = {
-              actionHaptics.selection(true)
-             context.startService(
-                Intent(context, MediaPlaybackService::class.java).setAction(
-                  MediaPlaybackService.ACTION_NOTIFICATION_PLAY_PAUSE,
-                ),
-              )
-            },
-            modifier = Modifier.size(48.dp),
-          ) {
-            AnimatedIcon(
-              imageVector = if (isPlaying) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
-              contentDescription = stringResource(if (isPlaying) R.string.audiobook_pause else R.string.ui_play),
-              tint = MaterialTheme.colorScheme.onSurface,
-              modifier = Modifier.size(26.dp),
-              reduceMotion = reduceMotion,
-            )
-          }
-
-          IconButton(
-            onClick = { tossAway(towardCloseButton, velocity = 0f, anticipate = true) },
-            modifier = Modifier.size(48.dp),
-          ) {
-            Icon(
-              imageVector = Icons.RoundedFilled.Close,
-              contentDescription = stringResource(R.string.ui_close),
-              tint = MaterialTheme.colorScheme.onSurfaceVariant,
-              modifier = Modifier.size(18.dp),
-            )
-          }
-        }
       }
-    } else {
-      // Audio Mini Player View
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(64.dp)
-          .drawBehind {
-            val progressFraction = progressFraction()
-            if (progressFraction > 0f) {
-              val playedWidth = size.width * progressFraction
-              drawRect(
-                color = progressColor.copy(alpha = 0.22f),
-                size = Size(
-                  width = playedWidth,
-                  height = size.height,
-                ),
-              )
-              // Blur and vibrancy wash out a flat fill, so mark the played boundary explicitly.
-              val edgeWidth = 2.dp.toPx().coerceAtMost(playedWidth)
-              drawRect(
-                color = progressColor.copy(alpha = 0.85f),
-                topLeft = Offset(x = playedWidth - edgeWidth, y = 0f),
-                size = Size(
-                  width = edgeWidth,
-                  height = size.height,
-                ),
-              )
-            }
-          }
-          .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
+
+      Spacer(modifier = Modifier.width(4.dp))
+
+      IconButton(
+        onClick = {
+          actionHaptics.tick()
+          context.startService(
+            Intent(context, MediaPlaybackService::class.java).setAction(
+              MediaPlaybackService.ACTION_NOTIFICATION_PREVIOUS,
+            ),
+          )
+        },
+        enabled = previousAvailable && !tossed,
+        modifier = Modifier.size(48.dp),
       ) {
-        // Music Cover Art
-        Box(
-          modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-          contentAlignment = Alignment.Center,
-        ) {
-          val artworkImageBitmap = remember(coverArt) { coverArt?.asImageBitmap() }
-          val animatedDrawable = rememberMotionArtworkDrawable(artwork?.motionArtwork)
-          if (animatedDrawable != null) {
-            MotionArtworkImage(
-              drawable = animatedDrawable,
-              isPlaying = isPlaying,
-              modifier = Modifier.fillMaxSize(),
-            )
-          } else if (artworkImageBitmap != null) {
-            Image(
-              bitmap = artworkImageBitmap,
-              contentDescription = null,
-              contentScale = ContentScale.Crop,
-              modifier = Modifier.fillMaxSize(),
-            )
-          } else {
-            Icon(
-              imageVector = Icons.RoundedFilled.Audiotrack,
-              contentDescription = null,
-              tint = MaterialTheme.colorScheme.primary,
-              modifier = Modifier.size(24.dp),
-            )
-          }
-        }
+        Icon(
+          imageVector = Icons.RoundedFilled.SkipPrevious,
+          contentDescription = stringResource(R.string.pref_gesture_media_previous),
+          tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (previousAvailable) 1f else 0.38f),
+          modifier = Modifier.size(24.dp),
+        )
+      }
 
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Title & Track Status
-        Column(
-          modifier = Modifier.weight(1f).then(tvOpenPlayer),
-          verticalArrangement = Arrangement.Center,
-        ) {
-          key(currentItem?.stableId ?: currentItem?.originalUri ?: audiobook?.book?.id) {
-            Text(
-              text = title,
-              style = MaterialTheme.typography.bodyMediumEmphasized,
-              color = MaterialTheme.colorScheme.onSurface,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-              modifier = if (reduceMotion) Modifier else Modifier.basicMarquee(),
-            )
-          }
-          val statusText = when {
-            audiobook != null -> {
-              val author = audiobook.book.author.takeIf { it.isNotBlank() }
-              val durText = DateUtils.formatElapsedTime(audiobook.durationMs / 1000)
-              val posText = DateUtils.formatElapsedTime(totalPosSec().toLong())
-              val timeInfo = "$posText / $durText"
-              if (author != null) "$author • $timeInfo" else timeInfo
-            }
-            else -> stringResource(if (isPlaying) R.string.notification_playing else R.string.downloads_paused)
-          }
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-          ) {
-            if (isLoopASet || isLoopBSet) {
-              val loopDescription = stringResource(R.string.btn_label_ab_loop)
-              AbLoopIcon(
-                modifier = Modifier.size(20.dp).semantics { contentDescription = loopDescription },
-                tint = MaterialTheme.colorScheme.primary,
-                isASet = isLoopASet,
-                isBSet = isLoopBSet,
-              )
-            }
-            Text(
-              text = statusText,
-              style = MaterialTheme.typography.labelSmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-              modifier = Modifier.weight(1f),
-            )
-          }
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        IconButton(
-          onClick = {
-            actionHaptics.tick()
-            context.startService(
-              Intent(context, MediaPlaybackService::class.java).setAction(
-                MediaPlaybackService.ACTION_NOTIFICATION_PREVIOUS,
-              ),
-            )
-          },
-          enabled = previousAvailable && !tossed,
-          modifier = Modifier.size(48.dp),
-        ) {
-          Icon(
-            imageVector = Icons.RoundedFilled.SkipPrevious,
-            contentDescription = stringResource(R.string.pref_gesture_media_previous),
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (previousAvailable) 1f else 0.38f),
-            modifier = Modifier.size(24.dp),
+      IconButton(
+        onClick = {
+          actionHaptics.selection(true)
+          context.startService(
+            Intent(context, MediaPlaybackService::class.java).setAction(
+              MediaPlaybackService.ACTION_NOTIFICATION_PLAY_PAUSE,
+            ),
           )
-        }
+        },
+        enabled = !tossed,
+        modifier = Modifier.size(48.dp),
+      ) {
+        AnimatedIcon(
+          imageVector = if (isPlaying) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
+          contentDescription = stringResource(if (isPlaying) R.string.audiobook_pause else R.string.ui_play),
+          tint = MaterialTheme.colorScheme.onSurface,
+          modifier = Modifier.size(26.dp),
+          reduceMotion = reduceMotion,
+        )
+      }
 
-        IconButton(
-          onClick = {
-            actionHaptics.selection(true)
-            context.startService(
-              Intent(context, MediaPlaybackService::class.java).setAction(
-                MediaPlaybackService.ACTION_NOTIFICATION_PLAY_PAUSE,
-              ),
-            )
-          },
-          enabled = !tossed,
-          modifier = Modifier.size(48.dp),
-        ) {
-          AnimatedIcon(
-            imageVector = if (isPlaying) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
-            contentDescription = stringResource(if (isPlaying) R.string.audiobook_pause else R.string.ui_play),
-            tint = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.size(26.dp),
-            reduceMotion = reduceMotion,
+      IconButton(
+        onClick = {
+          actionHaptics.tick()
+          context.startService(
+            Intent(context, MediaPlaybackService::class.java).setAction(
+              MediaPlaybackService.ACTION_NOTIFICATION_NEXT,
+            ),
           )
-        }
+        },
+        enabled = nextAvailable && !tossed,
+        modifier = Modifier.size(48.dp),
+      ) {
+        Icon(
+          imageVector = Icons.RoundedFilled.SkipNext,
+          contentDescription = stringResource(R.string.pref_gesture_media_next),
+          tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (nextAvailable) 1f else 0.38f),
+          modifier = Modifier.size(24.dp),
+        )
+      }
 
-        IconButton(
-          onClick = {
-            actionHaptics.tick()
-            context.startService(
-              Intent(context, MediaPlaybackService::class.java).setAction(
-                MediaPlaybackService.ACTION_NOTIFICATION_NEXT,
-              ),
-            )
-          },
-          enabled = nextAvailable && !tossed,
-          modifier = Modifier.size(48.dp),
-        ) {
-          Icon(
-            imageVector = Icons.RoundedFilled.SkipNext,
-            contentDescription = stringResource(R.string.pref_gesture_media_next),
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = if (nextAvailable) 1f else 0.38f),
-            modifier = Modifier.size(24.dp),
-          )
-        }
-
-        // Close Action Button
-        IconButton(
-          onClick = { tossAway(towardCloseButton, velocity = 0f, anticipate = true) },
-          modifier = Modifier.size(48.dp),
-        ) {
-          Icon(
-            imageVector = Icons.RoundedFilled.Close,
-            contentDescription = stringResource(R.string.ui_close),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
-          )
-        }
+      // Close Action Button
+      IconButton(
+        onClick = { tossAway(towardCloseButton, velocity = 0f, anticipate = true) },
+        modifier = Modifier.size(48.dp),
+      ) {
+        Icon(
+          imageVector = Icons.RoundedFilled.Close,
+          contentDescription = stringResource(R.string.ui_close),
+          tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.size(18.dp),
+        )
       }
     }
-  }
-}
-
-/** A stable surface across the mini player's enter/exit animation and service handoff. */
-private class MiniPlayerSurfaceView(context: Context) : SurfaceView(context), SurfaceHolder.Callback {
-  private var playbackActive = false
-  private var previousSubtitleVisibility: Boolean? = null
-
-  init {
-    setZOrderMediaOverlay(true)
-    holder.addCallback(this)
-  }
-
-  fun setPlaybackActive(active: Boolean) {
-    playbackActive = active
-    if (active) {
-      attachIfReady()
-      if (PlaybackSession.isRendererReadyFor(this)) hideSubtitles()
-    } else {
-      restoreSubtitleVisibility()
-    }
-    // Keep the outgoing Surface until the fullscreen owner replaces it or Android destroys it.
-    // An ownership flag alone must not blank the source while its window is still visible.
-  }
-
-  private fun attachIfReady() {
-    if (!playbackActive || !isAttachedToWindow || !holder.surface.isValid ||
-      !MediaPlaybackService.isForegroundActive() || PlaybackSession.isSurfaceAttachedTo(this)
-    ) return
-    PlaybackSession.bindSurface(
-      surface = holder.surface,
-      width = width,
-      height = height,
-      owner = this,
-      ownerIsActive = { playbackActive && isAttachedToWindow && MediaPlaybackService.isForegroundActive() },
-      onRendererReady = {
-        if (playbackActive && MediaPlaybackService.isForegroundActive() && PlaybackSession.isRendererReadyFor(this)) {
-          hideSubtitles()
-          if (PlaybackSession.getPropertyBoolean("pause") == true) {
-            PlaybackSession.redrawVideoFrame()
-          }
-        }
-      },
-    )
-  }
-
-  private fun hideSubtitles() {
-    if (previousSubtitleVisibility != null) return
-    previousSubtitleVisibility = PlaybackSession.getPropertyBoolean("sub-visibility") ?: true
-    PlaybackSession.setPropertyBoolean("sub-visibility", false)
-  }
-
-  private fun restoreSubtitleVisibility() {
-    val previous = previousSubtitleVisibility ?: return
-    previousSubtitleVisibility = null
-    if (PlaybackSession.isSurfaceAttachedTo(this)) {
-      PlaybackSession.setPropertyBoolean("sub-visibility", previous)
-    }
-  }
-
-  fun releaseRenderer() {
-    playbackActive = false
-    restoreSubtitleVisibility()
-    PlaybackSession.unbindSurface(this)
-  }
-
-  override fun surfaceCreated(holder: SurfaceHolder) = attachIfReady()
-
-  override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-    if (!PlaybackSession.resizeSurface(width, height, this)) attachIfReady()
-  }
-
-  override fun surfaceDestroyed(holder: SurfaceHolder) {
-    // Retain the active flag: Android can recreate this Surface without a Compose update.
-    restoreSubtitleVisibility()
-    PlaybackSession.unbindSurface(this)
   }
 }
 

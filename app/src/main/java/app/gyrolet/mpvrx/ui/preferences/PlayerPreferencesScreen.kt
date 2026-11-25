@@ -98,7 +98,6 @@ object PlayerPreferencesScreen : ScrollableSettingsScreen {
     val television = app.gyrolet.mpvrx.ui.tv.isTelevision()
     var showTvSeekCustomDialog by remember { mutableStateOf(false) }
     var tvSeekCustomDraft by remember { mutableStateOf("") }
-    var showVideoMiniPlayerDependencyDialog by remember { mutableStateOf(false) }
     Scaffold(
       contentWindowInsets = settingsContentWindowInsets(),
       topBar = {
@@ -248,12 +247,6 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                     playbackState.phase in setOf(PlaybackPhase.LOADING, PlaybackPhase.READY, PlaybackPhase.BACKGROUND)),
                 onValueChange = { enabled ->
                   PlaybackSession.setVideoBackgroundPlaybackEnabled(enabled)
-                  if (!enabled) {
-                    if (backgroundPlaybackBehavior == BackgroundPlaybackBehavior.Remember) {
-                      preferences.enableVideoMiniPlayer.set(false)
-                    }
-                    showVideoMiniPlayerDependencyDialog = false
-                  }
                   if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
                     PackageManager.PERMISSION_GRANTED
@@ -454,34 +447,6 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                   summary = {
                     Text(
                       stringResource(R.string.pref_auto_pip_home_only_summary),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
-
-                PreferenceDivider()
-              }
-
-              DevicePreference(R.string.pref_enable_video_mini_player_title) {
-                val enableVideoMiniPlayer by preferences.enableVideoMiniPlayer.collectAsState()
-                SwitchPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_enable_video_mini_player_title),
-                  value = enableVideoMiniPlayer,
-                  onValueChange = { enabled ->
-                    when {
-                      !enabled -> preferences.enableVideoMiniPlayer.set(false)
-                      videoBackgroundPlayback || backgroundPlaybackBehavior == BackgroundPlaybackBehavior.PerVideo ->
-                        preferences.enableVideoMiniPlayer.set(true)
-                      else -> {
-                        preferences.enableVideoMiniPlayer.set(false)
-                        showVideoMiniPlayerDependencyDialog = true
-                      }
-                    }
-                  },
-                  title = { Text(stringResource(R.string.pref_enable_video_mini_player_title)) },
-                  summary = {
-                    Text(
-                      stringResource(R.string.pref_enable_video_mini_player_summary),
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },
@@ -1374,40 +1339,6 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
         },
         dismissButton = {
           TextButton(onClick = { showTvSeekCustomDialog = false }) {
-            Text(stringResource(R.string.generic_cancel))
-          }
-        },
-      )
-    }
-    if (showVideoMiniPlayerDependencyDialog) {
-      AlertDialog(
-        onDismissRequest = { showVideoMiniPlayerDependencyDialog = false },
-        title = { Text(stringResource(R.string.pref_video_mini_player_dependency_title)) },
-        text = { Text(stringResource(R.string.pref_video_mini_player_dependency_message)) },
-        confirmButton = {
-          TextButton(
-            onClick = {
-              PlaybackSession.setVideoBackgroundPlaybackEnabled(true)
-              preferences.enableVideoMiniPlayer.set(true)
-              showVideoMiniPlayerDependencyDialog = false
-              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-              ) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-              }
-            },
-          ) {
-            Text(stringResource(R.string.pref_video_mini_player_dependency_confirm))
-          }
-        },
-        dismissButton = {
-          TextButton(
-            onClick = {
-              preferences.enableVideoMiniPlayer.set(false)
-              showVideoMiniPlayerDependencyDialog = false
-            },
-          ) {
             Text(stringResource(R.string.generic_cancel))
           }
         },

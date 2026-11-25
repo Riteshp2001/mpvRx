@@ -178,7 +178,6 @@ fun GestureHandler(
   val rightTapGesture by gesturePreferences.rightSingleActionGesture.collectAsState()
   val centerVerticalSubtitlePositionGesture by gesturePreferences.centerVerticalSubtitlePositionGesture.collectAsState()
   val enableCenterSwipeUpGesture by gesturePreferences.enableCenterSwipeUpGesture.collectAsState()
-  val enableVideoMiniPlayer by playerPreferences.enableVideoMiniPlayer.collectAsState()
   val pinchToZoomSubtitles by gesturePreferences.pinchToZoomSubtitles.collectAsState()
   val secondarySubPinchZoomEnabled by subtitlesPreferences.secondarySubPinchZoom.collectAsState()
   val swipeSubtitlesToSeekDialog by gesturePreferences.swipeSubtitlesToSeekDialog.collectAsState()
@@ -623,7 +622,6 @@ fun GestureHandler(
           pinchToZoomSubtitles,
           secondarySubPinchZoomEnabled,
           enableCenterSwipeUpGesture,
-          enableVideoMiniPlayer,
           externalPanelShown,
           anyPanelShown,
           allowGesturesInPanels,
@@ -635,7 +633,6 @@ fun GestureHandler(
                 !statisticsScrolling &&
                 !centerVerticalSubtitlePositionGesture &&
                 !enableCenterSwipeUpGesture &&
-                !enableVideoMiniPlayer &&
                 multipleSpeedGesture <= 0f
             ) ||
             areControlsLocked || (anyPanelShown && !allowGesturesInPanels)
@@ -775,7 +772,6 @@ fun GestureHandler(
               }
 
             var gestureType: String? = null
-            var minimizeDistance = 0f
 
             try {
               do {
@@ -898,8 +894,6 @@ fun GestureHandler(
                           speedHoldPending = false
                           val isCenterTouch =
                             enableCenterSwipeUpGesture && startPosition.x in (size.width / 3f)..(size.width * 2f / 3f)
-                          val isMinimizeTouch = enableVideoMiniPlayer && !externalPanelShown &&
-                            !isVerticalGestureDeadZone && startPosition.x in (size.width / 3f)..(size.width * 2f / 3f)
                           if (statisticsScrolling && isVerticalDrag && !isVerticalGestureDeadZone &&
                             claimGesture(GestureOwner.VERTICAL)
                           ) {
@@ -913,9 +907,6 @@ fun GestureHandler(
                           ) {
                             longPressJob.cancel()
                             gestureType = "speed_control"
-                          } else if (isMinimizeTouch && isVerticalDrag && deltaY > 20f && claimGesture(GestureOwner.VERTICAL)) {
-                            longPressJob.cancel()
-                            gestureType = "minimize"
                           } else if (isCenterTouch && isVerticalDrag) {
                             longPressJob.cancel()
                             // The ancestor handles playlist swipes across the full center strip.
@@ -995,10 +986,6 @@ fun GestureHandler(
                             PlaybackSession.scrollStatisticsPage(lines)
                             statisticsRemainder -= lines * statisticsLineHeight
                           }
-                          change.consume()
-                        }
-                        "minimize" -> {
-                          minimizeDistance = deltaY.coerceAtLeast(0f)
                           change.consume()
                         }
                         "speed_control" -> {
@@ -1226,10 +1213,6 @@ fun GestureHandler(
               if (isSubtitleHoldActive) {
                 isSubtitleHoldActive = false
                 viewModel.playerUpdate.update { PlayerUpdates.None }
-              }
-
-              if (gestureType == "minimize" && minimizeDistance >= 80.dp.toPx()) {
-                if (viewModel.minimizeToMiniPlayer()) actionHaptics.pickup()
               }
 
               when (gestureType) {

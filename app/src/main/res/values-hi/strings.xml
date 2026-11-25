@@ -135,11 +135,6 @@
   <string name="pref_auto_pip_summary">होम या बैक दबाने पर अपने आप PIP मोड में जाएं</string>
   <string name="pref_auto_pip_home_only_title">केवल होम जेस्चर पर PIP</string>
   <string name="pref_auto_pip_home_only_summary">केवल होम जेस्चर या स्वाइप से PIP मोड शुरू होगा; बैक बटन प्लेयर बंद करेगा</string>
-  <string name="pref_enable_video_mini_player_title">वीडियो मिनी प्लेयर सक्षम करें</string>
-  <string name="pref_enable_video_mini_player_summary">बैक दबाने पर वीडियो प्लेबैक को फ़्लोटिंग मिनी प्लेयर में छोटा करें</string>
-  <string name="pref_video_mini_player_dependency_title">वीडियो बैकग्राउंड प्लेबैक सक्षम करें?</string>
-  <string name="pref_video_mini_player_dependency_message">वीडियो प्लेयर बैकग्राउंड प्लेबैक सक्षम होना चाहिए।</string>
-  <string name="pref_video_mini_player_dependency_confirm">सक्षम करें और जारी रखें</string>
   <string name="pref_player_keep_screen_on_when_paused_title">पॉज होने पर स्क्रीन ऑन रखें</string>
   <string name="pref_player_external_display_projection_title">बाहरी डिस्प्ले प्रोजेक्शन</string>
   <string name="pref_player_external_display_projection_summary">फ़ोन की स्क्रीन बंद रखकर HDMI, USB-C या वायरलेस डिस्प्ले पर चलाएँ।</string>
