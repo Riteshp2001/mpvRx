@@ -58,6 +58,15 @@ object TreeViewScanner {
     val newCount: Int = 0,
   )
 
+  /** A folder MediaStore does not index (a Play Store SAF grant), placed into the tree at its real path. */
+  data class ExtraFolder(
+    val path: String,
+    val videoCount: Int,
+    val totalSize: Long,
+    val totalDuration: Long,
+    val lastModified: Long,
+  )
+
   private data class VideoInfo(
     val displayName: String,
     val filePath: String,
@@ -106,6 +115,7 @@ object TreeViewScanner {
     maxAutoFlattenLevels: Int = -1,
     newLabelOverrides: Map<String, Boolean> = emptyMap(),
     blacklistedPaths: Set<String> = emptySet(),
+    extraFolders: List<ExtraFolder> = emptyList(),
   ): List<FolderData> =
     withContext(Dispatchers.IO) {
       val allFolders =
@@ -121,7 +131,7 @@ object TreeViewScanner {
 
       // Recompute recursive counts after removing blacklisted branches, otherwise their
       // old parent counters leave empty phantom folders visible in Tree view.
-      val visibleFolders = filterBlacklistedTree(context, allFolders, blacklistedPaths)
+      val visibleFolders = filterBlacklistedTree(context, withExtraFolders(context, allFolders, extraFolders), blacklistedPaths)
       getEffectiveChildren(parentPath, indexDirectChildren(visibleFolders), maxAutoFlattenLevels)
         .map(::toFolderData)
         .sortedBy { it.name.lowercase(Locale.getDefault()) }
@@ -136,9 +146,10 @@ object TreeViewScanner {
     showNewLabels: Boolean = false,
     thresholdDays: Int = 7,
     newLabelOverrides: Map<String, Boolean> = emptyMap(),
+    extraFolders: List<ExtraFolder> = emptyList(),
   ): FolderData? =
     withContext(Dispatchers.IO) {
-      val allFolders =
+      val treeFolders =
         getOrBuildTreeViewData(
           context = context,
           options = options,
@@ -148,6 +159,7 @@ object TreeViewScanner {
           thresholdDays = thresholdDays,
           newLabelOverrides = newLabelOverrides,
         )
+      val allFolders = withExtraFolders(context, treeFolders, extraFolders)
       val normalizedFolderPath = normalizeStoragePath(folderPath) ?: return@withContext null
       val folderKey = storagePathKey(normalizedFolderPath) ?: return@withContext null
 
@@ -828,6 +840,36 @@ object TreeViewScanner {
     } catch (e: Exception) {
       Log.w(TAG, "Error scanning: ${directory.absolutePath}", e)
     }
+  }
+
+  /**
+   * Places [extraFolders] into a copy of the tree, like [filterBlacklistedTree] never touching the
+   * cached one. A folder MediaStore already lists keeps its own counts.
+   */
+  private fun withExtraFolders(
+    context: Context,
+    allFolders: Map<String, FolderNode>,
+    extraFolders: List<ExtraFolder>,
+  ): Map<String, FolderNode> {
+    if (extraFolders.isEmpty()) return allFolders
+    val merged = linkedMapOf<String, FolderNode>()
+    for ((key, node) in allFolders) {
+      merged[key] = node.copy(isFlattened = false, hasDirectSubfolders = false)
+    }
+    for (extra in extraFolders) {
+      val path = normalizeStoragePath(extra.path) ?: continue
+      val key = storagePathKey(path) ?: continue
+      val node = merged.getOrPut(key) { FolderNode(path = path, name = leafStorageName(path)) }
+      if (node.directVideoCount > 0) continue
+      node.directVideoCount = extra.videoCount
+      node.directSize = extra.totalSize
+      node.directDuration = extra.totalDuration
+      node.directLastModified = extra.lastModified
+    }
+    buildParentHierarchy(merged)
+    markFlattenedFolders(merged, getStorageRootKeys(context))
+    merged.entries.removeIf { it.value.recursiveVideoCount <= 0 && !it.value.isFlattened }
+    return merged
   }
 
   /**

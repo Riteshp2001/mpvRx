@@ -70,6 +70,8 @@ class MediaLibraryViewModel(
   private val whitelistFlow = foldersPreferences.whitelistChanges()
   private val loadRequests = Channel<Boolean>(Channel.CONFLATED)
   private var enrichmentJob: Job? = null
+  // Library's own hidden-folder index refresh; see loadData.
+  private var hiddenIndexJob: Job? = null
   private val _videos = MutableStateFlow<List<Video>>(emptyList())
   val videos: StateFlow<List<Video>> =
     combine(
@@ -146,6 +148,7 @@ class MediaLibraryViewModel(
         hiddenPreferences.map { false },
       ).collectLatest { mediaChanged ->
         // Changing Library's scan policy must not destroy the saved Tree snapshot.
+        hiddenIndexJob?.cancel()
         MediaLibraryCache.clear(getApplication())
         MediaFileRepository.invalidateFolderCache()
         if (mediaChanged) MediaStoreGenerationGuard.invalidate(getApplication())
@@ -242,6 +245,23 @@ class MediaLibraryViewModel(
               throw cancelled
             } catch (error: Exception) {
               Log.w(tag, "Could not enrich media library", error)
+            }
+          }
+        }
+
+        // .nomedia folders come from Library's own index. Keep it current off the load queue and
+        // list again only when hidden folders were added, changed or removed; the next pass then
+        // finds nothing stale, so this settles.
+        if (foldersPreferences.hiddenScanEnabled(HiddenScanScope.LIBRARY) && hiddenIndexJob?.isActive != true) {
+          hiddenIndexJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+              if (MediaFileRepository.refreshLibraryHiddenFolders(getApplication(), includeAudioOverride = true)) {
+                loadRequests.trySend(false)
+              }
+            } catch (cancelled: CancellationException) {
+              throw cancelled
+            } catch (error: Exception) {
+              Log.w(tag, "Could not refresh hidden Library folders", error)
             }
           }
         }

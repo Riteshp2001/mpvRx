@@ -46,6 +46,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -292,6 +294,22 @@ class FileSystemBrowserViewModel(
         .collectLatest {
           loadCurrentDirectory()
         }
+    }
+
+    // Hidden-folder settings and Play Store folder grants change which folders the tree holds.
+    viewModelScope.launch {
+      merge(
+        foldersPreferences.includeNoMediaFolders.changes().drop(1).map { },
+        foldersPreferences.treeHiddenScanEnabled.changes().drop(1).map { },
+        foldersPreferences.sharedScanMarkedFolders.changes().drop(1).map { },
+        foldersPreferences.sharedScanDotFolders.changes().drop(1).map { },
+        foldersPreferences.hiddenFolderMarkerNames.changes().drop(1).map { },
+        foldersPreferences.sharedIgnoredMarkers.changes().drop(1).map { },
+        foldersPreferences.scopedHiddenFolderUris.changes().drop(1).map { },
+      ).collectLatest {
+        MediaFileRepository.invalidateTreeCache()
+        loadCurrentDirectory()
+      }
     }
 
     // The cached media topology is reusable; only the visible flatten depth changes.
