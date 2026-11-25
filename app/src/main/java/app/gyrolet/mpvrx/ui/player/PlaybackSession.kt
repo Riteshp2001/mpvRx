@@ -218,6 +218,9 @@ object PlaybackSession : MPVLib.EventObserver {
   }
 
   private val BUFFERING_STATUS_PROPERTIES = setOf("pause", "paused-for-cache", "seeking", "demuxer-via-network", "eof-reached")
+
+  /** The current seek's target is already cached; see [seekTargetIsCachedLocked]. */
+  @Volatile private var seekWaitsOnlyForDecoder = false
   private const val PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS = 180L
   private const val AMBIENT_SHADER_PREFIX = "ambient_"
   private const val AMBIENT_SHADER_SUFFIX = ".glsl"
@@ -2646,6 +2649,8 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     property: String,
     value: Long,
   ) {
+    // The player observes time-pos in whole seconds; see the Double overload.
+    if (property == "time-pos" && seekWaitsOnlyForDecoder) refreshBufferingState()
     if (shouldSuppressTimelineUpdate(property)) {
       propLong.emit(property, null)
       propInt.emit(property, null)
@@ -2680,6 +2685,9 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     property: String,
     value: Double,
   ) {
+    // mpv keeps `seeking` set while it works through queued seeks, so only the new target shows
+    // when a seek that started inside the cache moves outside it.
+    if (property == "time-pos" && seekWaitsOnlyForDecoder) refreshBufferingState()
     if (shouldSuppressTimelineUpdate(property)) {
       propDouble.emit(property, null)
       propFloat.emit(property, null)
@@ -2909,13 +2917,21 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
           loadedItem.playableUri == current.currentItem.playableUri &&
           !current.paused
       // Cheap flag reads first; the network check only runs while something is actually waiting.
+      var seekInCache = false
       val waiting =
         when {
           !canBuffer -> null
           MPVLib.getPropertyBoolean("paused-for-cache") == true -> BufferingReason.CACHE
-          MPVLib.getPropertyBoolean("seeking") == true -> BufferingReason.SEEKING
+          MPVLib.getPropertyBoolean("seeking") == true ->
+            if (seekTargetIsCachedLocked()) {
+              seekInCache = true
+              null
+            } else {
+              BufferingReason.SEEKING
+            }
           else -> null
         }
+      seekWaitsOnlyForDecoder = seekInCache
       val reason =
         waiting?.takeIf { MPVLib.getPropertyBoolean("eof-reached") != true && activeFileUsesNetworkLocked() }
       if (reason == BufferingReason.CACHE) {
@@ -2924,6 +2940,21 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         propDouble.emit("demuxer-cache-duration", MPVLib.getPropertyDouble("demuxer-cache-duration"))
       }
       updateState { it.copy(bufferingReason = reason) }
+    }
+  }
+
+  /**
+   * Whether mpv's current seek lands inside its demuxer cache, so it waits only for the decoder:
+   * an absolute seek (a swipe or seekbar scrub) decodes from the previous keyframe, and a swipe
+   * queues one after another. That is not buffering. While mpv seeks, time-pos is the seek target.
+   */
+  private fun seekTargetIsCachedLocked(): Boolean {
+    val target = MPVLib.getPropertyDouble("time-pos")?.takeIf { it.isFinite() } ?: return false
+    val ranges = MPVLib.getPropertyNode("demuxer-cache-state")?.get("seekable-ranges")?.asArray() ?: return false
+    return ranges.any { range ->
+      val start = range["start"]?.asDouble() ?: return@any false
+      val end = range["end"]?.asDouble() ?: return@any false
+      target in start..end
     }
   }
 
