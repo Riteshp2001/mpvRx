@@ -3237,7 +3237,6 @@ class PlayerActivity :
         val startedAt = android.os.SystemClock.elapsedRealtime()
         runCatching {
           syncBundledAssetsIfNeeded()
-          app.gyrolet.mpvrx.domain.fonts.MpvFontConfig.ensure(this@PlayerActivity)
           prepareUserMpvAssetsForStartup()
         }.onFailure { e -> Log.e(TAG, "Error copying MPV config and assets", e) }
         Log.d(TAG, "MPV startup assets prepared in ${android.os.SystemClock.elapsedRealtime() - startedAt} ms")
@@ -3609,15 +3608,18 @@ class PlayerActivity :
   }
 
   private fun syncBundledAssetsIfNeeded() {
+    removeLegacySubtitleFallbackFonts()
     val syncPrefs = getSharedPreferences("mpv_asset_sync", MODE_PRIVATE)
     val currentVersion =
       runCatching {
         PackageInfoCompat.getLongVersionCode(packageManager.getPackageInfo(packageName, 0))
       }.getOrDefault(-1L)
 
+    // mpvlib writes fonts.conf while copying the assets; libass finds no system fonts without it.
     val assetsAlreadyPrepared =
       File(filesDir, "mpv.conf").exists() &&
         File(filesDir, "input.conf").exists() &&
+        File(filesDir, "fonts.conf").exists() &&
         File(filesDir, "scripts").exists()
 
     if (assetsAlreadyPrepared && syncPrefs.getLong("bundled_assets_version", -1L) == currentVersion) {
@@ -3626,6 +3628,19 @@ class PlayerActivity :
 
     Utils.copyAssets(this@PlayerActivity)
     syncPrefs.edit().putLong("bundled_assets_version", currentVersion).apply()
+  }
+
+  /**
+   * Older versions downloaded subtitle fallback fonts and wrote their own fonts.conf to search
+   * them. mpvlib leaves a fonts.conf without its marker alone, so delete mpvRx's for mpvlib to
+   * write its own. A fonts.conf the user took over by removing the marker line stays.
+   */
+  private fun removeLegacySubtitleFallbackFonts() {
+    File(filesDir, LEGACY_FALLBACK_FONTS_DIRECTORY).takeIf(File::exists)?.deleteRecursively()
+    val fontsConf = File(filesDir, "fonts.conf")
+    if (fontsConf.isFile && fontsConf.bufferedReader().use { it.readLine() } == LEGACY_FONTS_CONF_MARKER) {
+      fontsConf.delete()
+    }
   }
 
   private fun scheduleDeferredSubtitleFontsSync() {
@@ -9461,6 +9476,8 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     private const val DEFERRED_MPV_ASSET_SYNC_DELAY_MS = 5_000L
     private const val LOCKED_CONTROLS_DOUBLE_BACK_TIMEOUT_MS = 2_000L
     private const val MPV_ASSET_SYNC_PREFERENCES = "mpv_asset_sync"
+    private const val LEGACY_FALLBACK_FONTS_DIRECTORY = "fallback-fonts"
+    private const val LEGACY_FONTS_CONF_MARKER = "<!-- Written by mpvRx. Remove this line to keep your own changes. -->"
     private const val USER_MPV_ASSET_SELECTION = "user_mpv_asset_selection_v1"
     private const val USER_MPV_ASSET_SCRIPTS = "user_mpv_asset_scripts_v1"
     private val deferredUserMpvAssetRefreshStarted = AtomicBoolean(false)

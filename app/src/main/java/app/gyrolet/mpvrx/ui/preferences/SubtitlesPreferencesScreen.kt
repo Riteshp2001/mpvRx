@@ -530,22 +530,6 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
 
               PreferenceDivider()
 
-              val autoDownloadFonts by preferences.autoDownloadFonts.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_auto_download_fonts),
-                value = autoDownloadFonts,
-                onValueChange = { preferences.autoDownloadFonts.set(it) },
-                title = { Text(stringResource(R.string.pref_subtitles_auto_download_fonts)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_subtitles_auto_download_fonts_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
               ExpressivePreferenceItem {
               Preference(
                 modifier = Modifier.settingsSearchTarget(R.string.reload_fonts),
