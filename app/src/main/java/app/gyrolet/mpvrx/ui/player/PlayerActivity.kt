@@ -1450,8 +1450,7 @@ class PlayerActivity :
           !isAudioOnly &&
           !isAmbientPipMode &&
           playbackReady &&
-          playbackState.surfaceAttached &&
-          statisticsPage == 0
+          playbackState.surfaceAttached
       val active = enabled && canShowAmbient && hasMargins
       val fadeMillis = if (AppMotion.playerReducedMotion()) 0 else 200
       val ambientFrame =
@@ -1480,8 +1479,10 @@ class PlayerActivity :
           },
         )
       MpvrxTheme {
+        // Statistics no longer hide Ambient; it only steps back so their text stays readable.
+        val fullOpacity = if (statisticsPage != 0) AMBIENT_OPACITY_WITH_STATISTICS else 1f
         val opacity = animateFloatAsState(
-          targetValue = if (active && ambientFrame.frame != null) 1f else 0f,
+          targetValue = if (active && ambientFrame.frame != null) fullOpacity else 0f,
           animationSpec = tween(fadeMillis),
           label = "youtubeAmbientOpacity",
         )
@@ -9358,6 +9359,10 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     private const val MILLISECONDS_TO_SECONDS = 1000
     private const val RENDERER_RECOVERY_WAKE_TIMEOUT_MS = 20_000L
     private const val VIDEO_SERVICE_END_DELAY_MS = 1_000L
+
+    // mpv draws the statistics into the video Surface, under the YouTube Ambient layer. While a
+    // page is open Ambient stays at this strength, so stats text in the painted margins reads through.
+    private const val AMBIENT_OPACITY_WITH_STATISTICS = 0.5f
 
     /**
      * Factor to divide subtitle and audio delays to convert from ms to seconds.
