@@ -103,7 +103,6 @@
   <string name="theme_cotton_candy">حلوى القطن</string>
   <string name="theme_doom">Doom</string>
   <string name="theme_green_apple">تفاحة خضراء</string>
-  <string name="theme_lavender">لافندر</string>
   <string name="theme_midnight">منتصف الليل</string>
   <string name="theme_mocha">موكا</string>
   <string name="theme_strawberry">فراولة</string>
@@ -497,8 +496,6 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_audio_background_playback_title">التشغيل في الخلفية (مشغل الصوت)</string>
-  <string name="toast_audio_background_playback_on">تم تفعيل تشغيل الصوت في الخلفية</string>
-  <string name="toast_audio_background_playback_off">تم تعطيل تشغيل الصوت في الخلفية</string>
   <string name="pref_audio_background_playback_summary">مواصلة تشغيل الصوت عند مغادرة مشغل الصوت أو إيقاف الشاشة</string>
   <string name="pref_video_background_playback_title">التشغيل في الخلفية (مشغل الفيديو)</string>
   <string name="pref_video_background_playback_summary">مواصلة تشغيل صوت الفيديو عند مغادرة مشغل الفيديو أو إيقاف الشاشة</string>
@@ -1182,7 +1179,6 @@
   <string name="ui_create_new_folder">إنشاء مجلد جديد</string>
   <string name="ui_folder_name">اسم المجلد</string>
   <string name="ui_go_back">رجوع</string>
-  <string name="ui_go_to_internal_storage">الانتقال إلى وحدة التخزين الداخلية</string>
   <string name="ui_create_folder">إنشاء مجلد</string>
   <string name="ui_ai_is_thinking">الذكاء الاصطناعي يفكّر...</string>
   <string name="ui_ai_rename">إعادة التسمية بالذكاء الاصطناعي</string>
@@ -2754,47 +2750,10 @@
   <string name="delete_size_unknown">الحجم غير معروف</string>
   <string name="delete_size_description">الحجم الإجمالي: %1$s</string>
 
-  <!-- Thumbnail information -->
-  <string name="media_info_tab_thumbnail">الصورة المصغرة</string>
-  <string name="thumbnail_preview_description">الصورة المصغرة المخزنة مؤقتًا لـ %1$s</string>
-  <string name="thumbnail_status_disk">مخزنة مؤقتًا على القرص</string>
-  <string name="thumbnail_status_memory">مخزنة مؤقتًا في الذاكرة</string>
-  <string name="thumbnail_status_unreadable">تعذر فك ترميز الصورة المخزنة مؤقتًا</string>
-  <string name="thumbnail_status_missing">لا توجد صورة مصغرة مخزنة مؤقتًا</string>
-  <string name="thumbnail_info_status">حالة التخزين المؤقت</string>
-  <string name="thumbnail_info_generator">سياسة إنشاء الصور المصغرة</string>
-  <string name="thumbnail_info_strategy">اختيار الإطار أو صورة الغلاف</string>
-  <string name="thumbnail_strategy_artwork">صورة غلاف الألبوم</string>
-  <string name="thumbnail_strategy_android">إطار يختاره Android</string>
-  <string name="thumbnail_info_quality">الجودة المحددة</string>
-  <string name="thumbnail_info_maximum">حد الأبعاد المحدد</string>
-  <string name="thumbnail_maximum_value">حتى %1$d بكسل في الجانب الأطول</string>
-  <string name="thumbnail_info_dimensions">أبعاد الصورة الفعلية</string>
-  <string name="thumbnail_dimensions_value">%1$d × %2$d بكسل</string>
-  <string name="thumbnail_info_format">تنسيق الصورة المخزنة مؤقتًا</string>
-  <string name="thumbnail_info_size">حجم الملف المخزن مؤقتًا</string>
-  <string name="thumbnail_info_memory">موجودة في ذاكرة متصفح الوسائط المؤقتة</string>
-  <string name="thumbnail_info_preview_memory">الذاكرة المستخدمة للمعاينة</string>
-  <string name="thumbnail_info_frame">موضع الإطار المحدد</string>
-  <string name="thumbnail_percent_value">%1$.1f%%</string>
-  <string name="thumbnail_info_jpeg_setting">إعداد ترميز JPEG في التطبيق</string>
-  <string name="thumbnail_jpeg_value">%1$d%%</string>
-  <string name="thumbnail_info_modified">آخر تحديث لملف التخزين المؤقت</string>
-  <string name="thumbnail_info_cache_path">مسار ملف التخزين المؤقت</string>
-  <string name="thumbnail_info_source">معرّف URI للمصدر</string>
-  <string name="thumbnail_yes">نعم</string>
-  <string name="thumbnail_no">لا</string>
-  <string name="thumbnail_refresh">تحديث المعلومات</string>
-  <string name="thumbnail_generate">إنشاء صورة مصغرة</string>
-  <string name="thumbnail_quality_note">هذه معاينة مخزّنة وليست إطارًا جديدًا. قد يكون حجمها أقل من الحد المختار.</string>
-  <string name="thumbnail_inspection_failed">تعذرت قراءة معلومات الصورة المصغرة. حاول التحديث.</string>
-  <string name="thumbnail_generation_unavailable">لم تُرجع طريقة الإنشاء المحددة صورة مصغرة لهذا الملف.</string>
-
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">اختر الوضع التلقائي أو الاستخراج المباشر أو MediaStore للصور المصغرة وأغلفة الأغاني المحلية</string>
   <string name="pref_thumbnail_generator_auto">تلقائي (الافتراضي)</string>
   <string name="pref_thumbnail_generator_auto_summary">استخدم صور Android أولًا، ثم Native عند غيابها. التبديل يمسح التخزين المؤقت.</string>
-  <string name="thumbnail_strategy_auto">MediaStore أولاً، ثم الاستخراج المباشر عند التعذر</string>
 
   <string name="update_download_failed">فشل التنزيل. اضغط على إعادة المحاولة للاستئناف.</string>
   <string name="update_install_failed">تعذّر فتح برنامج التثبيت. يمكنك المحاولة مجددًا.</string>
@@ -2802,7 +2761,6 @@
   <string name="update_checking_download">جارٍ التحقق من ملف APK الذي تم تنزيله…</string>
   <string name="update_check_failed">تعذّر التحقق من التحديثات. تحقق من الاتصال أو حاول لاحقًا.</string>
   <string name="update_auto_install">التنزيل والتثبيت تلقائيًا</string>
-  <string name="update_auto_install_summary">نزّل عبر شبكة غير محدودة وثبّت عند الخمول. قد يطلب Android الإذن.</string>
   <string name="update_download_and_install">تنزيل وتثبيت</string>
   <string name="update_background_downloading">جارٍ تنزيل تحديث التطبيق…</string>
   <string name="update_installing">جارٍ تثبيت التحديث…</string>
@@ -3236,5 +3194,4 @@
   <string name="floating_lyrics_dismiss">إخفاء حتى إعادة فتح mpvRx</string>
   <string name="floating_lyrics_turn_off">إيقاف الكلمات العائمة</string>
   <string name="floating_lyrics_never">أبداً</string>
-  <string name="floating_lyrics_no_lyrics">لا توجد كلمات متاحة</string>
 </resources>

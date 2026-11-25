@@ -103,7 +103,6 @@
   <string name="theme_cotton_candy">Сахарная вата</string>
   <string name="theme_doom">Doom</string>
   <string name="theme_green_apple">Зелёное яблоко</string>
-  <string name="theme_lavender">Лаванда</string>
   <string name="theme_midnight">Полночь</string>
   <string name="theme_mocha">Мокко</string>
   <string name="theme_strawberry">Клубника</string>
@@ -495,8 +494,6 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_audio_background_playback_title">Фоновое воспроизведение (Аудиоплеер)</string>
-  <string name="toast_audio_background_playback_on">Фоновое воспроизведение аудио включено</string>
-  <string name="toast_audio_background_playback_off">Фоновое воспроизведение аудио выключено</string>
   <string name="pref_audio_background_playback_summary">Продолжать воспроизведение аудио при выходе из аудиоплеера или выключении экрана</string>
   <string name="pref_video_background_playback_title">Фоновое воспроизведение (Видеоплеер)</string>
   <string name="pref_video_background_playback_summary">Продолжать воспроизведение звука видео при выходе из видеоплеера или выключении экрана</string>
@@ -1166,7 +1163,6 @@
   <string name="ui_create_new_folder">Создать новую папку</string>
   <string name="ui_folder_name">Имя папки</string>
   <string name="ui_go_back">Назад</string>
-  <string name="ui_go_to_internal_storage">Перейти во внутреннюю память</string>
   <string name="ui_create_folder">Создать папку</string>
   <string name="ui_ai_is_thinking">ИИ думает...</string>
   <string name="ui_ai_rename">Переименование с ИИ</string>
@@ -2704,47 +2700,10 @@
   <string name="delete_size_unknown">Размер неизвестен</string>
   <string name="delete_size_description">Общий размер: %1$s</string>
 
-  <!-- Thumbnail information -->
-  <string name="media_info_tab_thumbnail">Миниатюра</string>
-  <string name="thumbnail_preview_description">Кэшированная миниатюра для %1$s</string>
-  <string name="thumbnail_status_disk">Кэширована на диске</string>
-  <string name="thumbnail_status_memory">Кэширована в памяти</string>
-  <string name="thumbnail_status_unreadable">Не удалось декодировать кэшированное изображение</string>
-  <string name="thumbnail_status_missing">Нет кэшированной миниатюры</string>
-  <string name="thumbnail_info_status">Состояние кэша</string>
-  <string name="thumbnail_info_generator">Политика генерации</string>
-  <string name="thumbnail_info_strategy">Выбор кадра или обложки</string>
-  <string name="thumbnail_strategy_artwork">Обложка альбома</string>
-  <string name="thumbnail_strategy_android">Кадр, выбранный Android</string>
-  <string name="thumbnail_info_quality">Заданное качество</string>
-  <string name="thumbnail_info_maximum">Заданное ограничение размера</string>
-  <string name="thumbnail_maximum_value">До %1$d пикс. по длинной стороне</string>
-  <string name="thumbnail_info_dimensions">Фактические размеры изображения</string>
-  <string name="thumbnail_dimensions_value">%1$d × %2$d пикс.</string>
-  <string name="thumbnail_info_format">Формат кэшированного изображения</string>
-  <string name="thumbnail_info_size">Размер файла кэша</string>
-  <string name="thumbnail_info_memory">Есть в кэше памяти обозревателя</string>
-  <string name="thumbnail_info_preview_memory">Память для предпросмотра</string>
-  <string name="thumbnail_info_frame">Заданная позиция кадра</string>
-  <string name="thumbnail_percent_value">%1$.1f%%</string>
-  <string name="thumbnail_info_jpeg_setting">Настройка JPEG-кодировщика приложения</string>
-  <string name="thumbnail_jpeg_value">%1$d%%</string>
-  <string name="thumbnail_info_modified">Время обновления файла кэша</string>
-  <string name="thumbnail_info_cache_path">Путь к файлу кэша</string>
-  <string name="thumbnail_info_source">URI источника</string>
-  <string name="thumbnail_yes">Да</string>
-  <string name="thumbnail_no">Нет</string>
-  <string name="thumbnail_refresh">Обновить сведения</string>
-  <string name="thumbnail_generate">Создать миниатюру</string>
-  <string name="thumbnail_quality_note">Это кэшированное превью, а не новый кадр. Размер может быть меньше выбранного предела.</string>
-  <string name="thumbnail_inspection_failed">Не удалось прочитать сведения о миниатюре. Попробуйте обновить.</string>
-  <string name="thumbnail_generation_unavailable">Выбранный генератор не вернул миниатюру для этого файла.</string>
-
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">Выберите Авто, Native или MediaStore для локальных миниатюр и обложек песен</string>
   <string name="pref_thumbnail_generator_auto">Авто (по умолчанию)</string>
   <string name="pref_thumbnail_generator_auto_summary">Сначала миниатюры Android, затем Native, если их нет. Смена очищает кэш.</string>
-  <string name="thumbnail_strategy_auto">Сначала MediaStore, затем Native при неудаче</string>
 
   <string name="update_download_failed">Ошибка загрузки. Нажмите «Повторить», чтобы продолжить.</string>
   <string name="update_install_failed">Не удалось открыть установщик. Повторите попытку.</string>
@@ -2752,7 +2711,6 @@
   <string name="update_checking_download">Проверка загруженного APK…</string>
   <string name="update_check_failed">Не удалось проверить обновления. Проверьте подключение или повторите попытку позже.</string>
   <string name="update_auto_install">Автоматически скачивать и устанавливать</string>
-  <string name="update_auto_install_summary">Загружать в безлимитных сетях, ставить при простое. Android может запросить разрешение.</string>
   <string name="update_download_and_install">Скачать и установить</string>
   <string name="update_background_downloading">Скачивание обновления приложения…</string>
   <string name="update_installing">Установка обновления…</string>
@@ -3177,5 +3135,4 @@
   <string name="floating_lyrics_dismiss">Скрыть до следующего открытия mpvRx</string>
   <string name="floating_lyrics_turn_off">Выключить плавающие тексты</string>
   <string name="floating_lyrics_never">Никогда</string>
-  <string name="floating_lyrics_no_lyrics">Текст песни недоступен</string>
 </resources>

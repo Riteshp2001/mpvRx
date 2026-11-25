@@ -118,7 +118,6 @@
   <string name="theme_cotton_candy">Цукрова вата</string>
   <string name="theme_doom">Doom</string>
   <string name="theme_green_apple">Зелене яблуко</string>
-  <string name="theme_lavender">Лаванда</string>
   <string name="theme_midnight">Опівніч</string>
   <string name="theme_mocha">Мокко</string>
   <string name="theme_strawberry">Полуниця</string>
@@ -572,8 +571,6 @@
     <item quantity="other">%1$d секунд</item>
   </plurals>
   <string name="pref_audio_background_playback_title">Фонове відтворення аудіоплеєра</string>
-  <string name="toast_audio_background_playback_on">Фонове відтворення аудіо ввімкнено</string>
-  <string name="toast_audio_background_playback_off">Фонове відтворення аудіо вимкнено</string>
   <string name="pref_audio_background_playback_summary">Продовжувати відтворення аудіо під час виходу з аудіоплеєра або вимкнення екрана</string>
   <string name="pref_video_background_playback_title">Фонове відтворення відеоплеєра</string>
   <string name="pref_video_background_playback_summary">Продовжувати відтворення звуку відео під час виходу з відеоплеєра або вимкнення екрана</string>
@@ -1287,7 +1284,6 @@
   <string name="ui_create_new_folder">Створити нову папку</string>
   <string name="ui_folder_name">Назва папки</string>
   <string name="ui_go_back">Назад</string>
-  <string name="ui_go_to_internal_storage">Перейти до внутрішньої пам\'яті</string>
   <string name="ui_create_folder">Створити папку</string>
   <string name="ui_ai_is_thinking">ШІ роздумує…</string>
   <string name="ui_ai_rename">ШІ-перейменування</string>
@@ -2629,47 +2625,10 @@
   <string name="delete_size_unknown">Розмір невідомий</string>
   <string name="delete_size_description">Загальний розмір: %1$s</string>
 
-  <!-- Thumbnail information -->
-  <string name="media_info_tab_thumbnail">Мініатюра</string>
-  <string name="thumbnail_preview_description">Кешована мініатюра для %1$s</string>
-  <string name="thumbnail_status_disk">Кешована на диску</string>
-  <string name="thumbnail_status_memory">Кешована в пам’яті</string>
-  <string name="thumbnail_status_unreadable">Не вдалося декодувати кешоване зображення</string>
-  <string name="thumbnail_status_missing">Немає кешованої мініатюри</string>
-  <string name="thumbnail_info_status">Стан кешу</string>
-  <string name="thumbnail_info_generator">Політика створення</string>
-  <string name="thumbnail_info_strategy">Вибір кадру або обкладинки</string>
-  <string name="thumbnail_strategy_artwork">Обкладинка альбому</string>
-  <string name="thumbnail_strategy_android">Кадр, вибраний Android</string>
-  <string name="thumbnail_info_quality">Задана якість</string>
-  <string name="thumbnail_info_maximum">Задане обмеження розміру</string>
-  <string name="thumbnail_maximum_value">До %1$d пікс. на довшій стороні</string>
-  <string name="thumbnail_info_dimensions">Фактичні розміри зображення</string>
-  <string name="thumbnail_dimensions_value">%1$d × %2$d пікс.</string>
-  <string name="thumbnail_info_format">Формат кешованого зображення</string>
-  <string name="thumbnail_info_size">Розмір файлу кешу</string>
-  <string name="thumbnail_info_memory">Є в кеші пам’яті оглядача</string>
-  <string name="thumbnail_info_preview_memory">Пам’ять для попереднього перегляду</string>
-  <string name="thumbnail_info_frame">Задана позиція кадру</string>
-  <string name="thumbnail_percent_value">%1$.1f%%</string>
-  <string name="thumbnail_info_jpeg_setting">Налаштування JPEG-кодувальника застосунку</string>
-  <string name="thumbnail_jpeg_value">%1$d%%</string>
-  <string name="thumbnail_info_modified">Час оновлення файлу кешу</string>
-  <string name="thumbnail_info_cache_path">Шлях до файлу кешу</string>
-  <string name="thumbnail_info_source">URI джерела</string>
-  <string name="thumbnail_yes">Так</string>
-  <string name="thumbnail_no">Ні</string>
-  <string name="thumbnail_refresh">Оновити відомості</string>
-  <string name="thumbnail_generate">Створити мініатюру</string>
-  <string name="thumbnail_quality_note">Це кешований перегляд, а не новий кадр. Розмір може бути меншим за вибрану межу.</string>
-  <string name="thumbnail_inspection_failed">Не вдалося прочитати відомості про мініатюру. Спробуйте оновити.</string>
-  <string name="thumbnail_generation_unavailable">Вибраний генератор не повернув мініатюру для цього файлу.</string>
-
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">Виберіть автоматичний режим, пряме видобування або MediaStore для локальних мініатюр та обкладинок пісень</string>
   <string name="pref_thumbnail_generator_auto">Авто (за замовчуванням)</string>
   <string name="pref_thumbnail_generator_auto_summary">Спочатку мініатюри Android, потім Native, якщо їх немає. Зміна очищує кеш.</string>
-  <string name="thumbnail_strategy_auto">Спочатку MediaStore, потім пряме видобування у разі невдачі</string>
 
   <string name="update_download_failed">Помилка завантаження. Натисніть «Повторити», щоб продовжити.</string>
   <string name="update_install_failed">Не вдалося відкрити програму встановлення. Повторіть спробу.</string>
@@ -2677,7 +2636,6 @@
   <string name="update_checking_download">Перевірка завантаженого APK…</string>
   <string name="update_check_failed">Не вдалося перевірити оновлення. Перевірте з’єднання або повторіть спробу пізніше.</string>
   <string name="update_auto_install">Автоматично завантажувати й установлювати</string>
-  <string name="update_auto_install_summary">Завантажувати в безлімітних мережах, ставити під час простою. Android може запитати дозвіл.</string>
   <string name="update_download_and_install">Завантажити й установити</string>
   <string name="update_background_downloading">Завантаження оновлення застосунку…</string>
   <string name="update_installing">Установлення оновлення…</string>
@@ -3115,5 +3073,4 @@
   <string name="floating_lyrics_dismiss">Приховати до повторного відкриття mpvRx</string>
   <string name="floating_lyrics_turn_off">Вимкнути плаваючі тексти</string>
   <string name="floating_lyrics_never">Ніколи</string>
-  <string name="floating_lyrics_no_lyrics">Текст пісні недоступний</string>
 </resources>

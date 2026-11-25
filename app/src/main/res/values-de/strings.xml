@@ -103,7 +103,6 @@
   <string name="theme_cotton_candy">Zuckerwatte</string>
   <string name="theme_doom">Doom</string>
   <string name="theme_green_apple">Grüner Apfel</string>
-  <string name="theme_lavender">Lavendel</string>
   <string name="theme_midnight">Mitternacht</string>
   <string name="theme_mocha">Mokka</string>
   <string name="theme_strawberry">Erdbeere</string>
@@ -493,8 +492,6 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_audio_background_playback_title">Hintergrundwiedergabe (Audio-Player)</string>
-  <string name="toast_audio_background_playback_on">Audio-Hintergrundwiedergabe aktiviert</string>
-  <string name="toast_audio_background_playback_off">Audio-Hintergrundwiedergabe deaktiviert</string>
   <string name="pref_audio_background_playback_summary">Audio beim Verlassen des Audio-Players oder Ausschalten des Bildschirms weiterspielen</string>
   <string name="pref_video_background_playback_title">Hintergrundwiedergabe (Video-Player)</string>
   <string name="pref_video_background_playback_summary">Video-Audio beim Verlassen des Video-Players oder Ausschalten des Bildschirms weiterspielen</string>
@@ -1150,7 +1147,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="ui_create_new_folder">Neuen Ordner erstellen</string>
   <string name="ui_folder_name">Ordnername</string>
   <string name="ui_go_back">Zurück</string>
-  <string name="ui_go_to_internal_storage">Zum internen Speicher wechseln</string>
   <string name="ui_create_folder">Ordner erstellen</string>
   <string name="ui_ai_is_thinking">KI denkt nach...</string>
   <string name="ui_ai_rename">KI-Umbenennung</string>
@@ -2656,47 +2652,10 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="delete_size_unknown">Größe unbekannt</string>
   <string name="delete_size_description">Gesamtgröße: %1$s</string>
 
-  <!-- Thumbnail information -->
-  <string name="media_info_tab_thumbnail">Vorschaubild</string>
-  <string name="thumbnail_preview_description">Zwischengespeichertes Vorschaubild für %1$s</string>
-  <string name="thumbnail_status_disk">Auf dem Datenträger zwischengespeichert</string>
-  <string name="thumbnail_status_memory">Im Arbeitsspeicher zwischengespeichert</string>
-  <string name="thumbnail_status_unreadable">Zwischengespeichertes Bild konnte nicht dekodiert werden</string>
-  <string name="thumbnail_status_missing">Kein zwischengespeichertes Vorschaubild</string>
-  <string name="thumbnail_info_status">Cache-Status</string>
-  <string name="thumbnail_info_generator">Generierungsrichtlinie</string>
-  <string name="thumbnail_info_strategy">Auswahl von Einzelbild oder Cover</string>
-  <string name="thumbnail_strategy_artwork">Albumcover</string>
-  <string name="thumbnail_strategy_android">Von Android ausgewähltes Einzelbild</string>
-  <string name="thumbnail_info_quality">Eingestellte Qualität</string>
-  <string name="thumbnail_info_maximum">Eingestellte Größenbegrenzung</string>
-  <string name="thumbnail_maximum_value">Bis zu %1$d Pixel an der längsten Seite</string>
-  <string name="thumbnail_info_dimensions">Tatsächliche Bildabmessungen</string>
-  <string name="thumbnail_dimensions_value">%1$d × %2$d Pixel</string>
-  <string name="thumbnail_info_format">Format des zwischengespeicherten Bildes</string>
-  <string name="thumbnail_info_size">Größe der zwischengespeicherten Datei</string>
-  <string name="thumbnail_info_memory">Im Speichercache des Medienbrowsers vorhanden</string>
-  <string name="thumbnail_info_preview_memory">Speicherbedarf der Vorschau</string>
-  <string name="thumbnail_info_frame">Eingestellte Einzelbildposition</string>
-  <string name="thumbnail_percent_value">%1$.1f%%</string>
-  <string name="thumbnail_info_jpeg_setting">JPEG-Encodereinstellung der App</string>
-  <string name="thumbnail_jpeg_value">%1$d%%</string>
-  <string name="thumbnail_info_modified">Cache-Datei aktualisiert</string>
-  <string name="thumbnail_info_cache_path">Pfad der Cache-Datei</string>
-  <string name="thumbnail_info_source">Quell-URI</string>
-  <string name="thumbnail_yes">Ja</string>
-  <string name="thumbnail_no">Nein</string>
-  <string name="thumbnail_refresh">Informationen aktualisieren</string>
-  <string name="thumbnail_generate">Vorschaubild erzeugen</string>
-  <string name="thumbnail_quality_note">Dies ist das gespeicherte Vorschaubild, kein neues Frame. Es kann kleiner als dein Größenlimit sein.</string>
-  <string name="thumbnail_inspection_failed">Die Vorschaubildinformationen konnten nicht gelesen werden. Bitte aktualisieren.</string>
-  <string name="thumbnail_generation_unavailable">Die ausgewählte Generierungsmethode hat für diese Datei kein Vorschaubild geliefert.</string>
-
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">Automatisch, Direkte Extraktion oder MediaStore für lokale Vorschaubilder und Songcover wählen</string>
   <string name="pref_thumbnail_generator_auto">Automatisch (Standard)</string>
   <string name="pref_thumbnail_generator_auto_summary">Erst Android-Vorschaubilder, bei Bedarf Native. Wechsel leert den Cache.</string>
-  <string name="thumbnail_strategy_auto">Zuerst MediaStore, dann direkte Extraktion als Ausweichlösung</string>
 
   <string name="update_download_failed">Download fehlgeschlagen. Zum Fortsetzen auf Erneut versuchen tippen.</string>
   <string name="update_install_failed">Installationsprogramm konnte nicht geöffnet werden. Bitte erneut versuchen.</string>
@@ -2704,7 +2663,6 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="update_checking_download">Heruntergeladene APK wird geprüft…</string>
   <string name="update_check_failed">Updates konnten nicht geprüft werden. Verbindung prüfen oder später erneut versuchen.</string>
   <string name="update_auto_install">Automatisch herunterladen und installieren</string>
-  <string name="update_auto_install_summary">Über ungetaktete Netze laden, bei Leerlauf installieren. Android kann nach Erlaubnis fragen.</string>
   <string name="update_download_and_install">Herunterladen und installieren</string>
   <string name="update_background_downloading">App-Update wird heruntergeladen…</string>
   <string name="update_installing">Update wird installiert…</string>
@@ -3134,5 +3092,4 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="floating_lyrics_dismiss">Bis zum nächsten Öffnen von mpvRx ausblenden</string>
   <string name="floating_lyrics_turn_off">Schwebende Liedtexte ausschalten</string>
   <string name="floating_lyrics_never">Nie</string>
-  <string name="floating_lyrics_no_lyrics">Keine Liedtexte verfügbar</string>
 </resources>

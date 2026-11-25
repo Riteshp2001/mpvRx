@@ -103,7 +103,6 @@
   <string name="theme_cotton_candy">コットンキャンディ</string>
   <string name="theme_doom">Doom</string>
   <string name="theme_green_apple">グリーンアップル</string>
-  <string name="theme_lavender">ラベンダー</string>
   <string name="theme_midnight">ミッドナイト</string>
   <string name="theme_mocha">モカ</string>
   <string name="theme_strawberry">ストロベリー</string>
@@ -492,8 +491,6 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_audio_background_playback_title">バックグラウンド再生（オーディオプレイヤー）</string>
-  <string name="toast_audio_background_playback_on">音声のバックグラウンド再生をオンにしました</string>
-  <string name="toast_audio_background_playback_off">音声のバックグラウンド再生をオフにしました</string>
   <string name="pref_audio_background_playback_summary">オーディオプレイヤーを離れたり画面をオフにしても音声を再生し続ける</string>
   <string name="pref_video_background_playback_title">バックグラウンド再生（ビデオプレイヤー）</string>
   <string name="pref_video_background_playback_summary">ビデオプレイヤーを離れたり画面をオフにしても動画の音声を再生し続ける</string>
@@ -1142,7 +1139,6 @@
   <string name="ui_create_new_folder">新しいフォルダーを作成</string>
   <string name="ui_folder_name">フォルダー名</string>
   <string name="ui_go_back">戻る</string>
-  <string name="ui_go_to_internal_storage">内部ストレージへ移動</string>
   <string name="ui_create_folder">フォルダーを作成</string>
   <string name="ui_ai_is_thinking">AIが考えています...</string>
   <string name="ui_ai_rename">AI名前変更</string>
@@ -2632,47 +2628,10 @@
   <string name="delete_size_unknown">サイズ不明</string>
   <string name="delete_size_description">合計サイズ: %1$s</string>
 
-  <!-- Thumbnail information -->
-  <string name="media_info_tab_thumbnail">サムネイル</string>
-  <string name="thumbnail_preview_description">%1$s のキャッシュ済みサムネイル</string>
-  <string name="thumbnail_status_disk">ディスクにキャッシュ済み</string>
-  <string name="thumbnail_status_memory">メモリにキャッシュ済み</string>
-  <string name="thumbnail_status_unreadable">キャッシュされた画像をデコードできませんでした</string>
-  <string name="thumbnail_status_missing">キャッシュされたサムネイルはありません</string>
-  <string name="thumbnail_info_status">キャッシュの状態</string>
-  <string name="thumbnail_info_generator">生成ポリシー</string>
-  <string name="thumbnail_info_strategy">フレームまたはカバー画像の選択</string>
-  <string name="thumbnail_strategy_artwork">アルバムのカバー画像</string>
-  <string name="thumbnail_strategy_android">Android が選択したフレーム</string>
-  <string name="thumbnail_info_quality">設定された画質</string>
-  <string name="thumbnail_info_maximum">設定されたサイズ上限</string>
-  <string name="thumbnail_maximum_value">長辺が最大 %1$d ピクセル</string>
-  <string name="thumbnail_info_dimensions">実際の画像サイズ</string>
-  <string name="thumbnail_dimensions_value">%1$d × %2$d ピクセル</string>
-  <string name="thumbnail_info_format">キャッシュされた画像の形式</string>
-  <string name="thumbnail_info_size">キャッシュファイルのサイズ</string>
-  <string name="thumbnail_info_memory">メディアブラウザのメモリキャッシュに存在</string>
-  <string name="thumbnail_info_preview_memory">プレビューのメモリ使用量</string>
-  <string name="thumbnail_info_frame">設定されたフレーム位置</string>
-  <string name="thumbnail_percent_value">%1$.1f%%</string>
-  <string name="thumbnail_info_jpeg_setting">アプリの JPEG エンコーダ設定</string>
-  <string name="thumbnail_jpeg_value">%1$d%%</string>
-  <string name="thumbnail_info_modified">キャッシュファイルの更新日時</string>
-  <string name="thumbnail_info_cache_path">キャッシュファイルのパス</string>
-  <string name="thumbnail_info_source">ソース URI</string>
-  <string name="thumbnail_yes">はい</string>
-  <string name="thumbnail_no">いいえ</string>
-  <string name="thumbnail_refresh">情報を更新</string>
-  <string name="thumbnail_generate">サムネイルを生成</string>
-  <string name="thumbnail_quality_note">保存済みのプレビューで、新たな抽出は行いません。指定上限より小さい場合があります。</string>
-  <string name="thumbnail_inspection_failed">サムネイル情報を読み取れませんでした。更新してください。</string>
-  <string name="thumbnail_generation_unavailable">選択した生成方法では、このファイルのサムネイルを取得できませんでした。</string>
-
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">ローカルのサムネイルと曲のカバーに自動、Native、MediaStoreのいずれかを選択</string>
   <string name="pref_thumbnail_generator_auto">自動（デフォルト）</string>
   <string name="pref_thumbnail_generator_auto_summary">Androidを優先し、取得できなければネイティブ抽出。切り替えるとキャッシュを消去。</string>
-  <string name="thumbnail_strategy_auto">最初にMediaStore、取得できない場合はNative</string>
 
   <string name="update_download_failed">ダウンロードに失敗しました。「再試行」をタップすると再開します。</string>
   <string name="update_install_failed">インストーラーを開けませんでした。もう一度お試しください。</string>
@@ -2680,7 +2639,6 @@
   <string name="update_checking_download">ダウンロードした APK を確認中…</string>
   <string name="update_check_failed">更新を確認できませんでした。接続を確認するか、後でもう一度お試しください。</string>
   <string name="update_auto_install">自動でダウンロードしてインストール</string>
-  <string name="update_auto_install_summary">従量制でない回線で取得し、待機時にインストール。Androidが許可を求める場合があります。</string>
   <string name="update_download_and_install">ダウンロードしてインストール</string>
   <string name="update_background_downloading">アプリの更新をダウンロード中…</string>
   <string name="update_installing">更新をインストール中…</string>
@@ -3112,5 +3070,4 @@
   <string name="floating_lyrics_dismiss">mpvRxを再び開くまで非表示</string>
   <string name="floating_lyrics_turn_off">フローティング歌詞をオフ</string>
   <string name="floating_lyrics_never">今後表示しない</string>
-  <string name="floating_lyrics_no_lyrics">歌詞がありません</string>
 </resources>

@@ -103,7 +103,6 @@
   <string name="theme_cotton_candy">Algodón de azúcar</string>
   <string name="theme_doom">Doom</string>
   <string name="theme_green_apple">Manzana verde</string>
-  <string name="theme_lavender">Lavanda</string>
   <string name="theme_midnight">Medianoche</string>
   <string name="theme_mocha">Moca</string>
   <string name="theme_strawberry">Fresa</string>
@@ -493,8 +492,6 @@
   </plurals>
   <!-- Background Playback -->
   <string name="pref_audio_background_playback_title">Reproducción en segundo plano (Reproductor de Audio)</string>
-  <string name="toast_audio_background_playback_on">Reproducción de audio en segundo plano activada</string>
-  <string name="toast_audio_background_playback_off">Reproducción de audio en segundo plano desactivada</string>
   <string name="pref_audio_background_playback_summary">Mantener la reproducción al salir del reproductor de audio o apagar la pantalla</string>
   <string name="pref_video_background_playback_title">Reproducción en segundo plano (Reproductor de Video)</string>
   <string name="pref_video_background_playback_summary">Mantener el audio del video al salir del reproductor de video o apagar la pantalla</string>
@@ -1150,7 +1147,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="ui_create_new_folder">Crear nueva carpeta</string>
   <string name="ui_folder_name">Nombre de la carpeta</string>
   <string name="ui_go_back">Volver</string>
-  <string name="ui_go_to_internal_storage">Ir al almacenamiento interno</string>
   <string name="ui_create_folder">Crear carpeta</string>
   <string name="ui_ai_is_thinking">La IA está pensando...</string>
   <string name="ui_ai_rename">Cambio de nombre con IA</string>
@@ -2656,47 +2652,10 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="delete_size_unknown">Tamaño desconocido</string>
   <string name="delete_size_description">Tamaño total: %1$s</string>
 
-  <!-- Thumbnail information -->
-  <string name="media_info_tab_thumbnail">Miniatura</string>
-  <string name="thumbnail_preview_description">Miniatura en caché de %1$s</string>
-  <string name="thumbnail_status_disk">Almacenada en caché en disco</string>
-  <string name="thumbnail_status_memory">Almacenada en caché en memoria</string>
-  <string name="thumbnail_status_unreadable">No se pudo decodificar la imagen en caché</string>
-  <string name="thumbnail_status_missing">No hay ninguna miniatura en caché</string>
-  <string name="thumbnail_info_status">Estado de la caché</string>
-  <string name="thumbnail_info_generator">Política de generación</string>
-  <string name="thumbnail_info_strategy">Selección de fotograma o carátula</string>
-  <string name="thumbnail_strategy_artwork">Carátula del álbum</string>
-  <string name="thumbnail_strategy_android">Fotograma seleccionado por Android</string>
-  <string name="thumbnail_info_quality">Calidad configurada</string>
-  <string name="thumbnail_info_maximum">Límite de tamaño configurado</string>
-  <string name="thumbnail_maximum_value">Hasta %1$d píxeles en el lado más largo</string>
-  <string name="thumbnail_info_dimensions">Dimensiones reales de la imagen</string>
-  <string name="thumbnail_dimensions_value">%1$d × %2$d píxeles</string>
-  <string name="thumbnail_info_format">Formato de la imagen en caché</string>
-  <string name="thumbnail_info_size">Tamaño del archivo en caché</string>
-  <string name="thumbnail_info_memory">Presente en la caché de memoria del explorador</string>
-  <string name="thumbnail_info_preview_memory">Memoria de la vista previa</string>
-  <string name="thumbnail_info_frame">Posición de fotograma configurada</string>
-  <string name="thumbnail_percent_value">%1$.1f%%</string>
-  <string name="thumbnail_info_jpeg_setting">Ajuste del codificador JPEG de la aplicación</string>
-  <string name="thumbnail_jpeg_value">%1$d%%</string>
-  <string name="thumbnail_info_modified">Última actualización del archivo de caché</string>
-  <string name="thumbnail_info_cache_path">Ruta del archivo de caché</string>
-  <string name="thumbnail_info_source">URI de origen</string>
-  <string name="thumbnail_yes">Sí</string>
-  <string name="thumbnail_no">No</string>
-  <string name="thumbnail_refresh">Actualizar información</string>
-  <string name="thumbnail_generate">Generar miniatura</string>
-  <string name="thumbnail_quality_note">Es la vista previa en caché, no un fotograma nuevo. Puede ser menor que el límite elegido.</string>
-  <string name="thumbnail_inspection_failed">No se pudo leer la información de la miniatura. Prueba a actualizarla.</string>
-  <string name="thumbnail_generation_unavailable">El generador seleccionado no devolvió una miniatura para este archivo.</string>
-
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">Elige Automático, Extracción directa o MediaStore para las miniaturas y carátulas locales</string>
   <string name="pref_thumbnail_generator_auto">Automático (predeterminado)</string>
   <string name="pref_thumbnail_generator_auto_summary">Usa primero miniaturas de Android y luego Nativo si faltan. Cambiar borra la caché.</string>
-  <string name="thumbnail_strategy_auto">Primero MediaStore y después extracción directa como alternativa</string>
 
   <string name="update_download_failed">La descarga falló. Toca Reintentar para continuar.</string>
   <string name="update_install_failed">No se pudo abrir el instalador. Puedes volver a intentarlo.</string>
@@ -2704,7 +2663,6 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="update_checking_download">Comprobando el APK descargado…</string>
   <string name="update_check_failed">No se pudieron buscar actualizaciones. Comprueba la conexión o inténtalo más tarde.</string>
   <string name="update_auto_install">Descargar e instalar automáticamente</string>
-  <string name="update_auto_install_summary">Descarga en redes sin límite e instala en reposo. Android puede pedir permiso.</string>
   <string name="update_download_and_install">Descargar e instalar</string>
   <string name="update_background_downloading">Descargando actualización de la aplicación…</string>
   <string name="update_installing">Instalando actualización…</string>
@@ -3139,5 +3097,4 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="floating_lyrics_dismiss">Ocultar hasta volver a abrir mpvRx</string>
   <string name="floating_lyrics_turn_off">Desactivar letras flotantes</string>
   <string name="floating_lyrics_never">Nunca</string>
-  <string name="floating_lyrics_no_lyrics">No hay letras disponibles</string>
 </resources>

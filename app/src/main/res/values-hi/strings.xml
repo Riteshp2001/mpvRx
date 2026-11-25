@@ -101,7 +101,6 @@
   <string name="theme_cotton_candy">रुई की मिठाई</string>
   <string name="theme_doom">Doom</string>
   <string name="theme_green_apple">हरा सेब</string>
-  <string name="theme_lavender">लैवेंडर</string>
   <string name="theme_midnight">आधी रात</string>
   <string name="theme_mocha">मोका</string>
   <string name="theme_strawberry">स्ट्रॉबेरी</string>
@@ -487,8 +486,6 @@
     <item quantity="other">%1$d सेकंड</item>
   </plurals>
   <string name="pref_audio_background_playback_title">ऑडियो प्लेयर बैकग्राउंड प्लेबैक</string>
-  <string name="toast_audio_background_playback_on">ऑडियो का बैकग्राउंड प्लेबैक चालू है</string>
-  <string name="toast_audio_background_playback_off">ऑडियो का बैकग्राउंड प्लेबैक बंद है</string>
   <string name="pref_audio_background_playback_summary">ऑडियो प्लेयर से बाहर जाने या स्क्रीन बंद करने पर ऑडियो चलता रखें</string>
   <string name="pref_video_background_playback_title">वीडियो प्लेयर बैकग्राउंड प्लेबैक</string>
   <string name="pref_video_background_playback_summary">वीडियो प्लेयर से बाहर जाने या स्क्रीन बंद करने पर वीडियो का ऑडियो चलता रखें</string>
@@ -1072,7 +1069,6 @@
   <string name="ui_create_new_folder">नया फोल्डर बनाएं</string>
   <string name="ui_folder_name">फोल्डर नाम</string>
   <string name="ui_go_back">वापस जाएं</string>
-  <string name="ui_go_to_internal_storage">इंटरनल स्टोरेज पर जाएं</string>
   <string name="ui_create_folder">फोल्डर बनाएं</string>
   <string name="ui_ai_is_thinking">AI सोच रहा है...</string>
   <string name="ui_ai_rename">AI रिनेम</string>
@@ -2575,47 +2571,10 @@
   <string name="delete_size_unknown">आकार अज्ञात है</string>
   <string name="delete_size_description">कुल आकार: %1$s</string>
 
-  <!-- Thumbnail information -->
-  <string name="media_info_tab_thumbnail">थंबनेल</string>
-  <string name="thumbnail_preview_description">%1$s के लिए कैश किया गया थंबनेल</string>
-  <string name="thumbnail_status_disk">डिस्क पर कैश किया गया है</string>
-  <string name="thumbnail_status_memory">मेमोरी में कैश किया गया है</string>
-  <string name="thumbnail_status_unreadable">कैश की गई छवि को डिकोड नहीं किया जा सका</string>
-  <string name="thumbnail_status_missing">कोई कैश किया गया थंबनेल नहीं है</string>
-  <string name="thumbnail_info_status">कैश की स्थिति</string>
-  <string name="thumbnail_info_generator">थंबनेल बनाने की नीति</string>
-  <string name="thumbnail_info_strategy">फ़्रेम या कवर का चयन</string>
-  <string name="thumbnail_strategy_artwork">एल्बम कवर</string>
-  <string name="thumbnail_strategy_android">Android द्वारा चुना गया फ़्रेम</string>
-  <string name="thumbnail_info_quality">तय की गई गुणवत्ता</string>
-  <string name="thumbnail_info_maximum">तय की गई आकार सीमा</string>
-  <string name="thumbnail_maximum_value">सबसे लंबी भुजा पर अधिकतम %1$d पिक्सेल</string>
-  <string name="thumbnail_info_dimensions">छवि के वास्तविक आयाम</string>
-  <string name="thumbnail_dimensions_value">%1$d × %2$d पिक्सेल</string>
-  <string name="thumbnail_info_format">कैश की गई छवि का फ़ॉर्मैट</string>
-  <string name="thumbnail_info_size">कैश की गई फ़ाइल का आकार</string>
-  <string name="thumbnail_info_memory">मीडिया ब्राउज़र के मेमोरी कैश में मौजूद</string>
-  <string name="thumbnail_info_preview_memory">पूर्वावलोकन की मेमोरी</string>
-  <string name="thumbnail_info_frame">तय किया गया फ़्रेम स्थान</string>
-  <string name="thumbnail_percent_value">%1$.1f%%</string>
-  <string name="thumbnail_info_jpeg_setting">ऐप के JPEG एन्कोडर की सेटिंग</string>
-  <string name="thumbnail_jpeg_value">%1$d%%</string>
-  <string name="thumbnail_info_modified">कैश फ़ाइल का अंतिम अपडेट</string>
-  <string name="thumbnail_info_cache_path">कैश फ़ाइल का पथ</string>
-  <string name="thumbnail_info_source">स्रोत URI</string>
-  <string name="thumbnail_yes">हाँ</string>
-  <string name="thumbnail_no">नहीं</string>
-  <string name="thumbnail_refresh">जानकारी रीफ़्रेश करें</string>
-  <string name="thumbnail_generate">थंबनेल बनाएं</string>
-  <string name="thumbnail_quality_note">यह कैश में मौजूद पूर्वावलोकन है, नया फ़्रेम नहीं। इसका आकार चुनी सीमा से कम हो सकता है।</string>
-  <string name="thumbnail_inspection_failed">थंबनेल की जानकारी नहीं पढ़ी जा सकी। रीफ़्रेश करके देखें।</string>
-  <string name="thumbnail_generation_unavailable">चुने गए जनरेटर से इस फ़ाइल के लिए थंबनेल नहीं मिला।</string>
-
   <!-- Automatic thumbnail generation -->
   <string name="pref_appearance_thumbnail_generator_summary">स्थानीय थंबनेल और गानों के कवर के लिए ऑटो, सीधे फ़ाइल से या MediaStore चुनें</string>
   <string name="pref_thumbnail_generator_auto">ऑटो (डिफ़ॉल्ट)</string>
   <string name="pref_thumbnail_generator_auto_summary">पहले Android थंबनेल, न मिलने पर Native। बदलने पर कैश मिटता है।</string>
-  <string name="thumbnail_strategy_auto">पहले MediaStore, फिर सीधे फ़ाइल से</string>
 
   <string name="update_download_failed">डाउनलोड विफल हुआ। जारी रखने के लिए फिर कोशिश करें पर टैप करें।</string>
   <string name="update_install_failed">इंस्टॉलर नहीं खुल सका। आप फिर कोशिश कर सकते हैं।</string>
@@ -2623,7 +2582,6 @@
   <string name="update_checking_download">डाउनलोड किए गए APK की जाँच हो रही है…</string>
   <string name="update_check_failed">अपडेट की जाँच नहीं हो सकी। कनेक्शन जाँचें या बाद में फिर कोशिश करें।</string>
   <string name="update_auto_install">अपने आप डाउनलोड और इंस्टॉल करें</string>
-  <string name="update_auto_install_summary">अनमीटर्ड नेटवर्क पर डाउनलोड; खाली होने पर इंस्टॉल। Android अनुमति माँग सकता है।</string>
   <string name="update_download_and_install">डाउनलोड और इंस्टॉल करें</string>
   <string name="update_background_downloading">ऐप अपडेट डाउनलोड हो रहा है…</string>
   <string name="update_installing">अपडेट इंस्टॉल हो रहा है…</string>
@@ -3053,5 +3011,4 @@
   <string name="floating_lyrics_dismiss">mpvRx दोबारा खुलने तक छिपाएँ</string>
   <string name="floating_lyrics_turn_off">फ़्लोटिंग बोल बंद करें</string>
   <string name="floating_lyrics_never">कभी नहीं</string>
-  <string name="floating_lyrics_no_lyrics">गीत के बोल उपलब्ध नहीं हैं</string>
 </resources>
