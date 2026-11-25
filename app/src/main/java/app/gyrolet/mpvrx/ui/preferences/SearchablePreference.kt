@@ -1599,8 +1599,15 @@ object SearchablePreferences {
         anchorItemIndex = 3,
         SearchEntrySpec(R.string.pref_tree_flatten_depth_title, listOf("tree", "folder", "path", "flatten", "compression")),
         SearchEntrySpec(R.string.ui_dual_pane_view, listOf("tablet", "two pane", "split", "folder")),
-        SearchEntrySpec(R.string.ui_delete_folder_all_contents, listOf("delete", "folder", "all files", "media only")),
       )
+      if (!app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
+        addSearchEntries(
+          category = "Appearance",
+          screen = AppearancePreferencesScreen,
+          anchorItemIndex = 3,
+          SearchEntrySpec(R.string.ui_delete_folder_all_contents, listOf("delete", "folder", "all files", "media only")),
+        )
+      }
       addSearchEntries(
         category = "Appearance",
         screen = AppearancePreferencesScreen,

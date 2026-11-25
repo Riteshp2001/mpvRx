@@ -476,7 +476,9 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
 
           item {
             ExpressivePreferenceGroup {
-              val itemCount = 6
+              // Scoped storage (the Play Store build) never deletes folders, so it has no folder-delete mode.
+              val showDeleteFolderMode = !app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY
+              val itemCount = if (showDeleteFolderMode) 6 else 5
               val showUnplayedOldVideoLabel by preferences.showUnplayedOldVideoLabel.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_show_unplayed_old_video_label_title),
@@ -599,32 +601,34 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                 groupSize = itemCount,
               )
 
-              val deleteFolderAllContents by browserPreferences.deleteFolderAllContents.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_delete_folder_all_contents),
-                value = deleteFolderAllContents,
-                onValueChange = { browserPreferences.deleteFolderAllContents.set(it) },
-                title = {
-                  Text(
-                    androidx.compose.ui.res.stringResource(
-                      app.gyrolet.mpvrx.R.string.ui_delete_folder_all_contents,
-                    ),
-                  )
-                },
-                summary = {
-                  Text(
-                    text =
-                      if (deleteFolderAllContents) {
-                        "Deletes entire folder (all files)"
-                      } else {
-                        "Only media files (audio/video) are deleted"
-                      },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                groupIndex = 5,
-                groupSize = itemCount,
-              )
+              if (showDeleteFolderMode) {
+                val deleteFolderAllContents by browserPreferences.deleteFolderAllContents.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.ui_delete_folder_all_contents),
+                  value = deleteFolderAllContents,
+                  onValueChange = { browserPreferences.deleteFolderAllContents.set(it) },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res.stringResource(
+                        app.gyrolet.mpvrx.R.string.ui_delete_folder_all_contents,
+                      ),
+                    )
+                  },
+                  summary = {
+                    Text(
+                      text =
+                        if (deleteFolderAllContents) {
+                          "Deletes entire folder (all files)"
+                        } else {
+                          "Only media files (audio/video) are deleted"
+                        },
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  groupIndex = 5,
+                  groupSize = itemCount,
+                )
+              }
             }
           }
 
