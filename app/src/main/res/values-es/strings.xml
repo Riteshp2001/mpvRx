@@ -69,15 +69,8 @@
   <string name="pref_appearance_thumbnail_generation_summary">Elige la imagen integrada o un fotograma del vídeo.</string>
   <string name="pref_appearance_thumbnail_generation_change_title">¿Cambiar la estrategia de miniaturas?</string>
   <string name="pref_appearance_thumbnail_generation_change_summary">¿Borrar la caché de miniaturas y regenerarlas al navegar?</string>
-  <string name="pref_appearance_thumbnail_quality_title">Calidad de las miniaturas</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Límite: %1$d px. Las imágenes grandes usan más espacio y procesamiento.</string>
   <string name="pref_appearance_thumbnail_position_title">Posición del fotograma de la miniatura</string>
   <string name="pref_appearance_thumbnail_position_summary">Capturar el fotograma en el %1$d%% del vídeo</string>
-  <string name="pref_appearance_thumbnail_parallelism_title">Núcleos para miniaturas</string>
-  <string name="pref_appearance_thumbnail_parallelism_auto">Automático (%1$d de %2$d)</string>
-  <string name="pref_appearance_thumbnail_parallelism_value">%1$d de %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">Más hilos son más rápidos, pero pueden aumentar la memoria, el consumo y los tirones. Se recomienda Auto.</string>
-  <string name="pref_appearance_thumbnail_parallelism_warning">Supera los %1$d recomendados para este dispositivo. Redúcelo si las listas van lentas o la app se cierra en segundo plano.</string>
   <string name="pref_appearance_show_network_thumbnails_title">Mostrar miniaturas de red (experimental)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">Generar miniaturas para transmisiones de red (puede aumentar el uso de datos en redes móviles)</string>
   <string name="pref_nav_network_title">Mostrar pestaña Red</string>

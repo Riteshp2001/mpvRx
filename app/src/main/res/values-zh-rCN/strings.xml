@@ -69,15 +69,8 @@
   <string name="pref_appearance_thumbnail_generation_summary">选择内嵌封面或视频帧。</string>
   <string name="pref_appearance_thumbnail_generation_change_title">更改缩略图策略？</string>
   <string name="pref_appearance_thumbnail_generation_change_summary">清空缩略图缓存，并在浏览时重新生成？</string>
-  <string name="pref_appearance_thumbnail_quality_title">缩略图质量</string>
-  <string name="pref_appearance_thumbnail_quality_summary">缩略图上限：%1$d 像素。尺寸越大，存储和处理开销越高。</string>
   <string name="pref_appearance_thumbnail_position_title">缩略图帧位置</string>
   <string name="pref_appearance_thumbnail_position_summary">截取视频 %1$d%% 位置的画面</string>
-  <string name="pref_appearance_thumbnail_parallelism_title">缩略图处理核心数</string>
-  <string name="pref_appearance_thumbnail_parallelism_auto">自动（%1$d / %2$d）</string>
-  <string name="pref_appearance_thumbnail_parallelism_value">%1$d / %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">线程越多通常越快，但可能增加内存、耗电和卡顿。建议使用自动。</string>
-  <string name="pref_appearance_thumbnail_parallelism_warning">高于此设备推荐的 %1$d。如果列表卡顿或应用在后台被关闭，请调低此值。</string>
   <string name="pref_appearance_show_network_thumbnails_title">显示网络缩略图（实验性）</string>
   <string name="pref_appearance_show_network_thumbnails_summary">为网络流生成缩略图（可能会增加移动网络的数据用量）</string>
   <string name="pref_nav_network_title">显示“网络”标签页</string>

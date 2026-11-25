@@ -863,7 +863,6 @@ internal fun VideoListContent(
   val showExtensionField by browserPreferences.showExtensionField.collectAsState()
   val showDurationField by browserPreferences.showDurationField.collectAsState()
   val centerGridTitles by browserPreferences.centerGridTitles.collectAsState()
-  val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
   val thumbnailGenerator by browserPreferences.thumbnailGenerator.collectAsState()
   val swipeLeft by browserPreferences.videoSwipeLeft.collectAsState()
   val swipeRight by browserPreferences.videoSwipeRight.collectAsState()
@@ -890,7 +889,6 @@ internal fun VideoListContent(
       showExtensionField,
       showDurationField,
       centerGridTitles,
-      thumbnailQuality,
       thumbnailGenerator,
       swipeLeft,
       swipeRight,
@@ -910,7 +908,6 @@ internal fun VideoListContent(
         showExtensionField = showExtensionField,
         showDurationField = showDurationField,
         centerGridTitles = centerGridTitles,
-        thumbnailQuality = thumbnailQuality,
         thumbnailGenerator = thumbnailGenerator,
         swipeLeft = swipeLeft,
         swipeRight = swipeRight,

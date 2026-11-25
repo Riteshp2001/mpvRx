@@ -78,15 +78,8 @@
   <string name="pref_appearance_thumbnail_generation_summary">Виберіть вбудовану обкладинку або кадр відео.</string>
   <string name="pref_appearance_thumbnail_generation_change_title">Змінити стратегію створення мініатюр?</string>
   <string name="pref_appearance_thumbnail_generation_change_summary">Очистити кеш мініатюр і створювати їх знову під час перегляду?</string>
-  <string name="pref_appearance_thumbnail_quality_title">Якість мініатюр</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Межа мініатюр: %1$d px. Більшим зображенням потрібно більше пам’яті й обробки.</string>
   <string name="pref_appearance_thumbnail_position_title">Позиція кадру мініатюри</string>
   <string name="pref_appearance_thumbnail_position_summary">Захоплювати кадр на позначці %1$d%% тривалості відео</string>
-  <string name="pref_appearance_thumbnail_parallelism_title">Ядра для мініатюр</string>
-  <string name="pref_appearance_thumbnail_parallelism_auto">Авто (%1$d з %2$d)</string>
-  <string name="pref_appearance_thumbnail_parallelism_value">%1$d з %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">Більше потоків — швидше, але зростають витрати пам’яті, батареї й ризик ривків. Рекомендовано авто.</string>
-  <string name="pref_appearance_thumbnail_parallelism_warning">Більше за рекомендоване для цього пристрою (%1$d). Зменште, якщо списки гальмують або застосунок закривається у фоні.</string>
   <string name="pref_appearance_show_network_thumbnails_title">Мініатюри для мережевих потоків (експериментально)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">Створювати мініатюри для мережевих потоків (може збільшити витрати мобільного трафіку)</string>
   <string name="pref_nav_music_title">Вкладка «Музика»</string>

@@ -69,15 +69,8 @@
   <string name="pref_appearance_thumbnail_generation_summary">اختر غلافًا مضمّنًا أو إطارًا من الفيديو.</string>
   <string name="pref_appearance_thumbnail_generation_change_title">تغيير استراتيجية الصور المصغّرة؟</string>
   <string name="pref_appearance_thumbnail_generation_change_summary">مسح الصور المصغرة المخزنة وإعادة إنشائها أثناء التصفح؟</string>
-  <string name="pref_appearance_thumbnail_quality_title">جودة الصور المصغّرة</string>
-  <string name="pref_appearance_thumbnail_quality_summary">حد الصور المصغرة: %1$d بكسل. الصور الأكبر تستهلك مساحة ومعالجة أكثر.</string>
   <string name="pref_appearance_thumbnail_position_title">موضع إطار الصورة المصغّرة</string>
   <string name="pref_appearance_thumbnail_position_summary">التقاط الإطار عند %1$d%% من الفيديو</string>
-  <string name="pref_appearance_thumbnail_parallelism_title">أنوية معالجة الصور المصغرة</string>
-  <string name="pref_appearance_thumbnail_parallelism_auto">تلقائي (%1$d من %2$d)</string>
-  <string name="pref_appearance_thumbnail_parallelism_value">%1$d من %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">الخيوط الأكثر أسرع، لكنها قد تزيد الذاكرة واستهلاك البطارية والتقطّع. يُنصح بالتلقائي.</string>
-  <string name="pref_appearance_thumbnail_parallelism_warning">أعلى من القيمة الموصى بها لهذا الجهاز (%1$d). خفّضها إذا تباطأت القوائم أو أُغلق التطبيق في الخلفية.</string>
   <string name="pref_appearance_show_network_thumbnails_title">إظهار صور الشبكة المصغّرة (تجريبي)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">إنشاء صور مصغّرة لتدفقات الشبكة (قد يزيد استهلاك البيانات على شبكات الهاتف)</string>
   <string name="pref_nav_network_title">إظهار علامة تبويب الشبكة</string>

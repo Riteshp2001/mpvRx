@@ -136,11 +136,18 @@ class BrowserPreferences(
   val showVideoThumbnails = preferenceStore.getBoolean("show_video_thumbnails", !television)
   val thumbnailGenerator = preferenceStore.getEnum("thumbnail_generator", ThumbnailGenerator.Auto)
   val thumbnailMode = preferenceStore.getEnum("thumbnail_mode", ThumbnailMode.Smart)
-  val thumbnailQuality = preferenceStore.getEnum("thumbnail_quality", ThumbnailQuality.High)
   val thumbnailFramePosition = preferenceStore.getFloat("thumbnail_frame_position", 33f)
 
-  /** Thumbnails generated at the same time; 0 means Auto (a safe value for this device). */
-  val thumbnailParallelism = preferenceStore.getInt("thumbnail_parallelism", 0)
+  /** Set once the thumbnails capped by the retired quality setting have been cleared. */
+  val thumbnailCacheUncapped = preferenceStore.getBoolean("thumbnail_cache_uncapped", false)
+
+  init {
+    // Thumbnails always use the top quality and every core; drop the retired settings.
+    listOf(
+      preferenceStore.getString("thumbnail_quality"),
+      preferenceStore.getInt("thumbnail_parallelism"),
+    ).filter { it.isSet() }.forEach { it.delete() }
+  }
   val showSizeChip = preferenceStore.getBoolean("show_size_chip", false)
 
   // Metadata-dependent chips (disabled by default for better performance)
@@ -464,13 +471,4 @@ enum class ThumbnailMode {
         FrameAtPosition -> "Frame position"
         EmbeddedThumbnail -> "Embedded thumbnail"
       }
-}
-
-enum class ThumbnailQuality(
-  val maxSizePx: Int,
-  val displayName: String,
-) {
-  Balanced(720, "Balanced (720p)"),
-  High(1080, "High (1080p)"),
-  Ultra(1440, "Ultra (1440p)"),
 }

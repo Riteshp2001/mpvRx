@@ -68,15 +68,8 @@
   <string name="pref_appearance_thumbnail_generation_summary">एम्बेडेड कवर या वीडियो फ़्रेम चुनें।</string>
   <string name="pref_appearance_thumbnail_generation_change_title">थंबनेल रणनीति बदलें?</string>
   <string name="pref_appearance_thumbnail_generation_change_summary">कैश थंबनेल मिटाकर ब्राउज़ करते समय फिर बनाएँ?</string>
-  <string name="pref_appearance_thumbnail_quality_title">थंबनेल क्वालिटी</string>
-  <string name="pref_appearance_thumbnail_quality_summary">थंबनेल सीमा: %1$d px। बड़ी तस्वीरें अधिक स्टोरेज और प्रोसेसिंग लेती हैं।</string>
   <string name="pref_appearance_thumbnail_position_title">थंबनेल फ्रेम पोजीशन</string>
   <string name="pref_appearance_thumbnail_position_summary">वीडियो के %1$d%% पर फ्रेम कैप्चर करें</string>
-  <string name="pref_appearance_thumbnail_parallelism_title">थंबनेल प्रोसेसिंग कोर</string>
-  <string name="pref_appearance_thumbnail_parallelism_auto">स्वचालित (%2$d में से %1$d)</string>
-  <string name="pref_appearance_thumbnail_parallelism_value">%2$d में से %1$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">ज़्यादा थ्रेड तेज़ हैं, पर मेमोरी, बैटरी खपत और रुकावट बढ़ सकती है। Auto सुझाया जाता है।</string>
-  <string name="pref_appearance_thumbnail_parallelism_warning">इस डिवाइस के लिए सुझाए गए %1$d से ज़्यादा है। अगर सूचियाँ अटकें या ऐप बैकग्राउंड में बंद हो जाए, तो इसे कम करें।</string>
   <string name="pref_appearance_show_network_thumbnails_title">नेटवर्क थंबनेल दिखाएं (प्रायोगिक)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">नेटवर्क स्ट्रीम्स के लिए थंबनेल जनरेट करें (मोबाइल नेटवर्क पर डेटा उपयोग बढ़ सकता है)</string>
   <string name="pref_nav_network_title">नेटवर्क टैब दिखाएं</string>

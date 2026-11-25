@@ -1832,7 +1832,6 @@ private fun SearchResultsContent(
   val showExtensionField by browserPreferences.showExtensionField.collectAsState()
   val showDurationField by browserPreferences.showDurationField.collectAsState()
   val centerGridTitles by browserPreferences.centerGridTitles.collectAsState()
-  val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
   val thumbnailGenerator by browserPreferences.thumbnailGenerator.collectAsState()
   val swipeLeft by browserPreferences.videoSwipeLeft.collectAsState()
   val swipeRight by browserPreferences.videoSwipeRight.collectAsState()
@@ -1852,7 +1851,6 @@ private fun SearchResultsContent(
       showExtensionField,
       showDurationField,
       centerGridTitles,
-      thumbnailQuality,
       thumbnailGenerator,
       swipeLeft,
       swipeRight,
@@ -1872,7 +1870,6 @@ private fun SearchResultsContent(
         showExtensionField = showExtensionField,
         showDurationField = showDurationField,
         centerGridTitles = centerGridTitles,
-        thumbnailQuality = thumbnailQuality,
         thumbnailGenerator = thumbnailGenerator,
         swipeLeft = swipeLeft,
         swipeRight = swipeRight,

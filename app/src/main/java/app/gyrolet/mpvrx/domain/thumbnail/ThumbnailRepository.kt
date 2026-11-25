@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.domain.thumbnail
 
-import android.app.ActivityManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -69,6 +68,9 @@ private const val NETWORK_THUMBNAIL_FAILURE_RETRY_MS = 30_000L
 private const val LOCAL_THUMBNAIL_FAILURE_RETRY_MS = 60_000L
 private const val AUDIO_ARTWORK_SMALL_TIER_PX = 256
 
+// Audio artwork is cached at the smallest tier that covers the card; larger cards use their own size.
+private val AUDIO_ARTWORK_TIERS_PX = listOf(AUDIO_ARTWORK_SMALL_TIER_PX, MAX_THUMBNAIL_SIZE, 1024, 2048, 4096)
+
 private val LOWER_HEX_DIGITS = "0123456789abcdef".toCharArray()
 
 // Same text as joinToString { "%02x".format(it) } (cache file names depend on it), without a
@@ -120,24 +122,13 @@ class ThumbnailRepository(
   private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val maxConcurrentFolders = 3
 
-  /** Device default used when the setting is Auto: 1 on low-end devices, otherwise 2. */
-  internal val automaticParallelism: Int by lazy { resolveLocalGenerationParallelism() }
-
-  // Permits cannot be resized, so a changed setting swaps in new semaphores. Work already holding a
-  // permit finishes on the old ones, and new requests follow the new limit.
   private class WorkLimits(val parallelism: Int) {
     val generation = Semaphore(parallelism)
     // Cached JPEG decoding is CPU/memory work too; Dispatchers.IO alone allows dozens at once.
     val cachedReads = Semaphore(parallelism)
   }
 
-  @Volatile private var workLimits: WorkLimits? = null
-
-  private fun currentWorkLimits(): WorkLimits {
-    val wanted = effectiveThumbnailParallelism(browserPreferences.thumbnailParallelism.get(), automaticParallelism)
-    workLimits?.takeIf { it.parallelism == wanted }?.let { return it }
-    return WorkLimits(wanted).also { workLimits = it }
-  }
+  @Volatile private var workLimits = WorkLimits(thumbnailParallelism())
 
   private val networkGenerationSemaphore = Semaphore(1)
   private val maxFolderBatchSize = 12
@@ -210,7 +201,7 @@ class ThumbnailRepository(
                 }
               isNetworkUrl(video.path) -> null
               else ->
-                currentWorkLimits().generation.withPermit {
+                workLimits.generation.withPermit {
                   generateLocalThumbnail(video, widthPx, heightPx, generator, artworkTier)
                 }
             } ?: run {
@@ -269,7 +260,7 @@ class ThumbnailRepository(
   ): Bitmap? =
     withContext(Dispatchers.IO) {
       val revision = diskCacheLock.read { cacheRevision.value }
-      currentWorkLimits().cachedReads.withPermit {
+      workLimits.cachedReads.withPermit {
         if (isNetworkUrl(video.path) && !isNetworkThumbnailAllowed(video.path)) {
           return@withPermit null
         }
@@ -323,7 +314,6 @@ class ThumbnailRepository(
     withContext(Dispatchers.IO) {
       val network = isNetworkUrl(video.path)
       val generator = browserPreferences.thumbnailGenerator.get()
-      val quality = browserPreferences.thumbnailQuality.get()
       val indexedVideo = if (network) {
         video
       } else {
@@ -338,7 +328,7 @@ class ThumbnailRepository(
       val identities = listOf(indexedVideo, video, video.copy(duration = 0L)).distinct()
       val artworkTiers =
         if (!network && isAudioArtwork(video)) {
-          listOf(thumbnailMaxSize(), MAX_THUMBNAIL_SIZE, AUDIO_ARTWORK_SMALL_TIER_PX).distinct()
+          AUDIO_ARTWORK_TIERS_PX.asReversed()
         } else {
           listOf(0)
         }
@@ -371,7 +361,6 @@ class ThumbnailRepository(
         preview = preview,
         generator = if (network) ThumbnailGenerator.Native else generator,
         mode = browserPreferences.thumbnailMode.get(),
-        quality = quality,
         framePositionPercent = browserPreferences.thumbnailFramePosition.get(),
         width = bounds?.outWidth?.takeIf { it > 0 } ?: preview?.width,
         height = bounds?.outHeight?.takeIf { it > 0 } ?: preview?.height,
@@ -413,7 +402,7 @@ class ThumbnailRepository(
     ongoingOperations.values.forEach { it.cancel() }
     ongoingOperations.clear()
     // Cancelled native work can still hold its old permit until its decoder returns.
-    workLimits = null
+    workLimits = WorkLimits(thumbnailParallelism())
     diskVideoBaseKeyCache.clear()
     resolvedThumbnailKeys.evictAll()
     localMetadataCache.clear()
@@ -509,7 +498,7 @@ class ThumbnailRepository(
         repositoryScope.launch {
           var i = state.nextIndex
           while (i < filteredVideos.size) {
-            val batchEnd = (i + currentWorkLimits().parallelism).coerceAtMost(filteredVideos.size)
+            val batchEnd = (i + workLimits.parallelism).coerceAtMost(filteredVideos.size)
             coroutineScope {
               (i until batchEnd)
                 .map { index ->
@@ -596,12 +585,7 @@ class ThumbnailRepository(
   ): Int {
     if (isNetworkUrl(video.path) || !isAudioArtwork(video)) return 0
     val requested = maxOf(widthPx, heightPx)
-    val maxSize = thumbnailMaxSize()
-    return when {
-      requested <= AUDIO_ARTWORK_SMALL_TIER_PX -> AUDIO_ARTWORK_SMALL_TIER_PX
-      requested <= MAX_THUMBNAIL_SIZE -> MAX_THUMBNAIL_SIZE
-      else -> maxSize
-    }.coerceAtMost(maxSize)
+    return AUDIO_ARTWORK_TIERS_PX.firstOrNull { requested <= it } ?: requested
   }
 
   private fun thumbnailGeneratorCacheKey(video: Video, generator: ThumbnailGenerator): String =
@@ -770,7 +754,7 @@ class ThumbnailRepository(
       artworkTier > 0 || video.isAudio || video.mimeType.startsWith("audio/", ignoreCase = true) ||
         app.gyrolet.mpvrx.utils.storage.FileTypeUtils.isAudioFile(File(canonicalPath))
     val dimension =
-      if (artworkTier > 0) artworkTier else maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE).coerceAtMost(thumbnailMaxSize())
+      if (artworkTier > 0) artworkTier else maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE)
     fun fitRequest(bitmap: Bitmap): Bitmap =
       if (artworkTier > 0) bitmap.scaleToThumbnailMax(artworkTier) else scaleBitmap(bitmap, widthPx, heightPx)
 
@@ -780,7 +764,7 @@ class ThumbnailRepository(
       // source file. Auto therefore prefers the original embedded image and uses MediaStore only
       // when native extraction is unavailable. Explicit MediaStore mode remains Android-only.
       if (generator == ThumbnailGenerator.Auto && isAudio) {
-        embeddedArtwork = generateEmbeddedArtwork(video, artworkTier.takeIf { it > 0 } ?: thumbnailMaxSize())
+        embeddedArtwork = generateEmbeddedArtwork(video, dimension)
         embeddedArtwork?.let { return fitRequest(it) }
       }
       MediaStoreThumbnailLoader.load(context, video, canonicalPath, dimension, isAudio)?.let {
@@ -791,7 +775,7 @@ class ThumbnailRepository(
     }
 
     if (isAudio || mode == ThumbnailMode.Smart || mode == ThumbnailMode.EmbeddedThumbnail) {
-      (embeddedArtwork ?: generateEmbeddedArtwork(video, artworkTier.takeIf { it > 0 } ?: thumbnailMaxSize()))
+      (embeddedArtwork ?: generateEmbeddedArtwork(video, dimension))
         ?.let { return fitRequest(it) }
       if (isAudio) {
         return null
@@ -805,7 +789,7 @@ class ThumbnailRepository(
     return extractLocalVideoFrame(video, widthPx, heightPx)
   }
 
-  private fun generateEmbeddedArtwork(video: Video, maxSize: Int = thumbnailMaxSize()): Bitmap? {
+  private fun generateEmbeddedArtwork(video: Video, maxSize: Int): Bitmap? {
     val canonicalPath = canonicalLocalPath(video)
     // Some Android retrievers reject Matroska attachments or SAF providers. Their failure must
     // not prevent the independent container/sidecar artwork paths from being tried.
@@ -965,7 +949,7 @@ class ThumbnailRepository(
             EmbeddedArtworkResolver.decodeRetrieverArtwork(retriever, maxSize = artworkTier)?.scaleToThumbnailMax(artworkTier)
           } else {
             // The disk copy serves every card size, so decode at the same size as native frames.
-            val dimension = maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE).coerceAtMost(thumbnailMaxSize())
+            val dimension = maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE)
             extractFrameWithStrategy(
               retriever = retriever,
               strategy =
@@ -1014,7 +998,8 @@ class ThumbnailRepository(
         BitmapFactory.decodeFile(
           file.absolutePath,
           BitmapFactory.Options().apply {
-            inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight, thumbnailMaxSize(), widthPx, heightPx)
+            // Only the request bounds the decode; a stored thumbnail is already sized for its card.
+            inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight, Int.MAX_VALUE, widthPx, heightPx)
             // RGB_565 bands the gradients common in cover art; video frames tolerate it.
             inPreferredConfig = if (fullColor) Bitmap.Config.ARGB_8888 else Bitmap.Config.RGB_565
           },
@@ -1615,19 +1600,7 @@ class ThumbnailRepository(
   private fun thumbnailModeKey(): String =
     browserPreferences.thumbnailMode.get().thumbnailModeCacheKey(browserPreferences.thumbnailFramePosition.get())
 
-  private fun thumbnailQualityKey(): String = browserPreferences.thumbnailQuality.get().name
-
-  private fun thumbnailMaxSize(): Int = browserPreferences.thumbnailQuality.get().maxSizePx
-
-  private fun resolveLocalGenerationParallelism(): Int {
-    val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
-    return thumbnailParallelism(
-      lowRam = app.gyrolet.mpvrx.utils.device.DevicePerformance.isLowEnd || activityManager?.isLowRamDevice == true,
-      memoryClassMb = activityManager?.memoryClass ?: 0,
-      processorCount = Runtime.getRuntime().availableProcessors().coerceAtLeast(1),
-      sdkInt = Build.VERSION.SDK_INT,
-    )
-  }
+  private fun thumbnailQualityKey(): String = THUMBNAIL_QUALITY_KEY
 
   private suspend fun generateFastNetworkThumbnail(
     path: String,
@@ -1638,7 +1611,7 @@ class ThumbnailRepository(
       FastThumbnails.generateAsync(
         path,
         10.0,
-        maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE).coerceAtMost(thumbnailMaxSize()),
+        maxOf(widthPx, heightPx, MAX_THUMBNAIL_SIZE),
         useHwDec = false,
       )
     } catch (cancellation: CancellationException) {
@@ -1646,4 +1619,16 @@ class ThumbnailRepository(
     } catch (_: Exception) {
       null
     }
+
+  init {
+    // Thumbnails cached under the retired quality setting were capped at its size. Replace them
+    // once, as changing that setting did, instead of leaving them on disk.
+    if (!browserPreferences.thumbnailCacheUncapped.get()) {
+      repositoryScope.launch {
+        runCatching { clearThumbnailCache() }
+          .onSuccess { browserPreferences.thumbnailCacheUncapped.set(true) }
+          .onFailure { android.util.Log.w("ThumbnailRepository", "Could not clear capped thumbnails", it) }
+      }
+    }
+  }
 }

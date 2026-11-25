@@ -69,15 +69,8 @@
   <string name="pref_appearance_thumbnail_generation_summary">Escolha a capa integrada ou um quadro do vídeo.</string>
   <string name="pref_appearance_thumbnail_generation_change_title">Alterar a estratégia de miniaturas?</string>
   <string name="pref_appearance_thumbnail_generation_change_summary">Limpar as miniaturas em cache e recriá-las ao navegar?</string>
-  <string name="pref_appearance_thumbnail_quality_title">Qualidade das miniaturas</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Limite: %1$d px. Imagens maiores usam mais espaço e processamento.</string>
   <string name="pref_appearance_thumbnail_position_title">Posição do quadro da miniatura</string>
   <string name="pref_appearance_thumbnail_position_summary">Capturar o quadro em %1$d%% do vídeo</string>
-  <string name="pref_appearance_thumbnail_parallelism_title">Núcleos para miniaturas</string>
-  <string name="pref_appearance_thumbnail_parallelism_auto">Automático (%1$d de %2$d)</string>
-  <string name="pref_appearance_thumbnail_parallelism_value">%1$d de %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">Mais threads aceleram, mas podem aumentar memória, consumo de bateria e travamentos. Auto é recomendado.</string>
-  <string name="pref_appearance_thumbnail_parallelism_warning">Acima dos %1$d recomendados para este dispositivo. Diminua se as listas travarem ou o app for fechado em segundo plano.</string>
   <string name="pref_appearance_show_network_thumbnails_title">Mostrar miniaturas de rede (experimental)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">Gerar miniaturas para transmissões de rede (pode aumentar o uso de dados em redes móveis)</string>
   <string name="pref_nav_network_title">Mostrar aba Rede</string>

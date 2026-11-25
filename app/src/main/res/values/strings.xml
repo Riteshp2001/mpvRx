@@ -111,15 +111,8 @@
   <string name="pref_appearance_thumbnail_generation_summary">Choose embedded artwork or a video frame.</string>
   <string name="pref_appearance_thumbnail_generation_change_title">Change thumbnail strategy?</string>
   <string name="pref_appearance_thumbnail_generation_change_summary">Clear cached thumbnails and regenerate them as you browse?</string>
-  <string name="pref_appearance_thumbnail_quality_title">Thumbnail quality</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Thumbnail limit: %1$d px. Larger images use more storage and processing.</string>
   <string name="pref_appearance_thumbnail_position_title">Thumbnail frame position</string>
   <string name="pref_appearance_thumbnail_position_summary">Capture the frame at %1$d%% of the video</string>
-  <string name="pref_appearance_thumbnail_parallelism_title">Thumbnail processing cores</string>
-  <string name="pref_appearance_thumbnail_parallelism_auto">Auto (%1$d of %2$d)</string>
-  <string name="pref_appearance_thumbnail_parallelism_value">%1$d of %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">More threads are faster but may increase memory use, battery drain and stutter. Auto is recommended.</string>
-  <string name="pref_appearance_thumbnail_parallelism_warning">Higher than the %1$d recommended for this device. Lower it if lists lag or the app is closed in the background.</string>
   <string name="pref_appearance_show_network_thumbnails_title">Show network thumbnails (Experimental)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">Generate thumbnails for network streams (May increase data usage on mobile networks)</string>
   <string name="pref_nav_music_title">Show Music tab</string>

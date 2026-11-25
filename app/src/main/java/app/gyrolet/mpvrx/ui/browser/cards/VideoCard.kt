@@ -60,7 +60,6 @@ import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
-import app.gyrolet.mpvrx.preferences.ThumbnailQuality
 import app.gyrolet.mpvrx.preferences.VideoSwipeAction
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -92,7 +91,6 @@ data class VideoCardUiConfig(
   val showExtensionField: Boolean = true,
   val showDurationField: Boolean = true,
   val centerGridTitles: Boolean = false,
-  val thumbnailQuality: ThumbnailQuality = ThumbnailQuality.High,
   val swipeLeft: VideoSwipeAction = VideoSwipeAction.AddToPlaylist,
   val swipeRight: VideoSwipeAction = VideoSwipeAction.ToggleWatched,
   val thumbnailGenerator: app.gyrolet.mpvrx.preferences.ThumbnailGenerator = app.gyrolet.mpvrx.preferences.ThumbnailGenerator.Auto,
@@ -118,7 +116,6 @@ fun rememberVideoCardUiConfig(): VideoCardUiConfig {
   val showExtensionField by browserPreferences.showExtensionField.collectAsState()
   val showDurationFieldConfig by browserPreferences.showDurationField.collectAsState()
   val centerGridTitles by browserPreferences.centerGridTitles.collectAsState()
-  val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
   val thumbnailGenerator by browserPreferences.thumbnailGenerator.collectAsState()
   val swipeLeft by browserPreferences.videoSwipeLeft.collectAsState()
   val swipeRight by browserPreferences.videoSwipeRight.collectAsState()
@@ -138,7 +135,6 @@ fun rememberVideoCardUiConfig(): VideoCardUiConfig {
     showExtensionField,
     showDurationFieldConfig,
     centerGridTitles,
-    thumbnailQuality,
     thumbnailGenerator,
     swipeLeft,
     swipeRight,
@@ -158,7 +154,6 @@ fun rememberVideoCardUiConfig(): VideoCardUiConfig {
       showExtensionField = showExtensionField,
       showDurationField = showDurationFieldConfig,
       centerGridTitles = centerGridTitles,
-      thumbnailQuality = thumbnailQuality,
       thumbnailGenerator = thumbnailGenerator,
       swipeLeft = swipeLeft,
       swipeRight = swipeRight,
@@ -250,7 +245,6 @@ fun VideoCard(
   val maxLines = if (resolvedUiConfig.unlimitedNameLines) Int.MAX_VALUE else 2
 
   val showThumbnails = resolvedUiConfig.showThumbnails
-  val thumbnailQuality = resolvedUiConfig.thumbnailQuality
   val thumbnailGenerator = resolvedUiConfig.thumbnailGenerator
   val showFramerateInResolution = resolvedUiConfig.showFramerateInResolution
   val showCodecSupportIndicator = resolvedUiConfig.showCodecSupportIndicator
@@ -387,7 +381,6 @@ fun VideoCard(
               video.duration,
               resolvedThumbWidthPx,
               resolvedThumbHeightPx,
-              thumbnailQuality,
               thumbnailGenerator,
               thumbnailCacheRevision,
             ) {
@@ -737,7 +730,6 @@ fun VideoCard(
               video.duration,
               thumbWidthPx,
               thumbHeightPx,
-              thumbnailQuality,
               thumbnailGenerator,
               thumbnailCacheRevision,
             ) {

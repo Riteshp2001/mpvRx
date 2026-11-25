@@ -15,6 +15,12 @@ import kotlin.math.abs
 internal const val MAX_THUMBNAIL_SIZE = 512
 internal const val THUMBNAIL_JPEG_QUALITY = 90
 
+/**
+ * Cache-key name of thumbnail quality. Thumbnails have no size limit: each is decoded at the size
+ * its card shows. A new name keeps them apart from thumbnails capped by the old quality setting.
+ */
+internal const val THUMBNAIL_QUALITY_KEY = "Full"
+
 internal fun calculateThumbnailSampleSize(
   width: Int,
   height: Int,

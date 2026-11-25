@@ -110,7 +110,6 @@ fun PlaylistCard(
   val preferences = koinInject<BrowserPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
   val viewPreferences = preferences.playlistView
-  val thumbnailQuality by preferences.thumbnailQuality.collectAsState()
   val thumbnailMode by preferences.thumbnailMode.collectAsState()
   val thumbnailGenerator by preferences.thumbnailGenerator.collectAsState()
   val thumbnailCacheRevision by thumbnailRepository.cacheRevision.collectAsState()
@@ -160,7 +159,6 @@ fun PlaylistCard(
       firstItem?.licenseType,
       thumbnailWidthPx,
       thumbnailHeightPx,
-      thumbnailQuality,
       thumbnailMode,
       thumbnailGenerator,
       thumbnailCacheRevision,
@@ -193,7 +191,6 @@ fun PlaylistCard(
       secondItem?.licenseType,
       thumbnailWidthPx,
       thumbnailHeightPx,
-      thumbnailQuality,
       thumbnailMode,
       thumbnailGenerator,
       thumbnailCacheRevision,

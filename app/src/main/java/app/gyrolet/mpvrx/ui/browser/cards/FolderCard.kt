@@ -87,7 +87,6 @@ data class FolderCardUiConfig(
   val showFolderPath: Boolean = false,
   val centerGridTitles: Boolean = false,
   val showFolderThumbnails: Boolean = false,
-  val thumbnailQuality: app.gyrolet.mpvrx.preferences.ThumbnailQuality = app.gyrolet.mpvrx.preferences.ThumbnailQuality.High,
   val includeAudio: Boolean = false,
   val swipeLeft: VideoSwipeAction = VideoSwipeAction.AddToPlaylist,
   val swipeRight: VideoSwipeAction = VideoSwipeAction.ToggleWatched,
@@ -108,7 +107,6 @@ fun rememberFolderCardUiConfig(viewPreferences: BrowserPageViewPreferences? = nu
   val showFolderPath by browserPreferences.showFolderPath.collectAsState()
   val centerGridTitles by (viewPreferences?.centerGridTitles ?: browserPreferences.centerGridTitles).collectAsState()
   val showFolderThumbnails by (viewPreferences?.showThumbnails ?: browserPreferences.showFolderThumbnails).collectAsState()
-  val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
   val thumbnailGenerator by browserPreferences.thumbnailGenerator.collectAsState()
   val includeAudio by browserPreferences.includeAudioBrowser.collectAsState()
   val swipeLeft by browserPreferences.videoSwipeLeft.collectAsState()
@@ -123,7 +121,6 @@ fun rememberFolderCardUiConfig(viewPreferences: BrowserPageViewPreferences? = nu
     showFolderPath,
     centerGridTitles,
     showFolderThumbnails,
-    thumbnailQuality,
     thumbnailGenerator,
     includeAudio,
     swipeLeft,
@@ -138,7 +135,6 @@ fun rememberFolderCardUiConfig(viewPreferences: BrowserPageViewPreferences? = nu
       showFolderPath = showFolderPath,
       centerGridTitles = centerGridTitles,
       showFolderThumbnails = showFolderThumbnails,
-      thumbnailQuality = thumbnailQuality,
       thumbnailGenerator = thumbnailGenerator,
       includeAudio = includeAudio,
       swipeLeft = swipeLeft,
@@ -186,7 +182,6 @@ fun FolderCard(
   val showFolderPath = resolvedUiConfig.showFolderPath
   val centerGridTitles = resolvedUiConfig.centerGridTitles
   val showFolderThumbnails = resolvedUiConfig.showFolderThumbnails
-  val thumbnailQuality = resolvedUiConfig.thumbnailQuality
   val thumbnailGenerator = resolvedUiConfig.thumbnailGenerator
   val includeAudio = resolvedUiConfig.includeAudio
   val swipeLeft = resolvedUiConfig.swipeLeft
@@ -205,7 +200,6 @@ fun FolderCard(
     folder.bucketId,
     folder.path,
     showFolderThumbnails,
-    thumbnailQuality,
     thumbnailGenerator,
     thumbnailCacheRevision,
     isGridMode,

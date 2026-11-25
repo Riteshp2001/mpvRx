@@ -69,15 +69,8 @@
   <string name="pref_appearance_thumbnail_generation_summary">埋め込み画像または動画のフレームを選びます。</string>
   <string name="pref_appearance_thumbnail_generation_change_title">サムネイル生成方法を変更しますか？</string>
   <string name="pref_appearance_thumbnail_generation_change_summary">サムネイルキャッシュを消去し、閲覧時に再生成しますか？</string>
-  <string name="pref_appearance_thumbnail_quality_title">サムネイルの品質</string>
-  <string name="pref_appearance_thumbnail_quality_summary">サムネイル上限：%1$d px。大きいほど保存容量と処理量が増えます。</string>
   <string name="pref_appearance_thumbnail_position_title">サムネイルのフレーム位置</string>
   <string name="pref_appearance_thumbnail_position_summary">動画の%1$d%%の位置のフレームを取得します</string>
-  <string name="pref_appearance_thumbnail_parallelism_title">サムネイル処理コア数</string>
-  <string name="pref_appearance_thumbnail_parallelism_auto">自動（%2$d中%1$d）</string>
-  <string name="pref_appearance_thumbnail_parallelism_value">%2$d中%1$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">並列数を増やすと高速になりますが、メモリ・電池消費やカクつきが増える場合があります。自動を推奨。</string>
-  <string name="pref_appearance_thumbnail_parallelism_warning">この端末の推奨値（%1$d）を超えています。リストが重い場合やアプリがバックグラウンドで終了する場合は下げてください。</string>
   <string name="pref_appearance_show_network_thumbnails_title">ネットワークのサムネイルを表示（試験的）</string>
   <string name="pref_appearance_show_network_thumbnails_summary">ネットワークストリームのサムネイルを生成します（モバイルネットワークでのデータ使用量が増える場合があります）</string>
   <string name="pref_nav_network_title">ネットワークタブを表示</string>

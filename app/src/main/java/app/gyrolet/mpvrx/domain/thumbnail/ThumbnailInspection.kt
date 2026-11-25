@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.preferences.ThumbnailGenerator
 import app.gyrolet.mpvrx.preferences.ThumbnailMode
-import app.gyrolet.mpvrx.preferences.ThumbnailQuality
 
 /** Read-only snapshot of the selected thumbnail cache; inspecting never starts frame extraction. */
 internal data class ThumbnailInspection(
@@ -13,7 +12,6 @@ internal data class ThumbnailInspection(
   val preview: Bitmap?,
   val generator: ThumbnailGenerator,
   val mode: ThumbnailMode,
-  val quality: ThumbnailQuality,
   val framePositionPercent: Float,
   val width: Int?,
   val height: Int?,

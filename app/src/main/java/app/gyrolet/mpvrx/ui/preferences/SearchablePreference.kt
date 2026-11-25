@@ -222,15 +222,6 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.pref_appearance_thumbnail_quality_title,
-          summaryRes = R.string.pref_appearance_thumbnail_quality_summary,
-          keywords = listOf("thumbnail", "quality", "resolution", "720p", "1080p", "1440p", "storage"),
-          category = "Appearance",
-          screen = AppearancePreferencesScreen,
-        ),
-      )
-      add(
-        SearchablePreference(
           titleRes = R.string.pref_gesture_tap_thumbnail_to_select_title,
           summaryRes = R.string.pref_gesture_tap_thumbnail_to_select_summary,
           keywords = listOf("thumbnail", "selection", "select", "tap", "gesture"),
@@ -1609,10 +1600,6 @@ object SearchablePreferences {
           R.string.pref_appearance_thumbnail_position_title,
           listOf("thumbnail", "frame", "position", "percent", "preview"),
           R.string.pref_appearance_thumbnail_generation_title,
-        ),
-        SearchEntrySpec(
-          R.string.pref_appearance_thumbnail_parallelism_title,
-          listOf("thumbnail", "cores", "threads", "parallel", "cpu", "speed", "performance"),
         ),
       )
       addSearchEntries(

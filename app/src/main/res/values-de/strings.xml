@@ -69,15 +69,8 @@
   <string name="pref_appearance_thumbnail_generation_summary">Eingebettetes Cover oder Videoframe wählen.</string>
   <string name="pref_appearance_thumbnail_generation_change_title">Vorschaubild-Strategie ändern?</string>
   <string name="pref_appearance_thumbnail_generation_change_summary">Vorschaubild-Cache leeren und beim Browsen neu erzeugen?</string>
-  <string name="pref_appearance_thumbnail_quality_title">Vorschaubildqualität</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Vorschaubildlimit: %1$d px. Größere Bilder brauchen mehr Speicher und Rechenleistung.</string>
   <string name="pref_appearance_thumbnail_position_title">Bildposition des Vorschaubilds</string>
   <string name="pref_appearance_thumbnail_position_summary">Bild bei %1$d%% des Videos erfassen</string>
-  <string name="pref_appearance_thumbnail_parallelism_title">Prozessorkerne für Vorschaubilder</string>
-  <string name="pref_appearance_thumbnail_parallelism_auto">Automatisch (%1$d von %2$d)</string>
-  <string name="pref_appearance_thumbnail_parallelism_value">%1$d von %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">Mehr Threads sind schneller, können aber RAM, Akkuverbrauch und Ruckeln erhöhen. Auto wird empfohlen.</string>
-  <string name="pref_appearance_thumbnail_parallelism_warning">Höher als die für dieses Gerät empfohlenen %1$d. Verringere den Wert, wenn Listen ruckeln oder die App im Hintergrund beendet wird.</string>
   <string name="pref_appearance_show_network_thumbnails_title">Netzwerk-Vorschaubilder anzeigen (experimentell)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">Vorschaubilder für Netzwerkstreams erstellen (kann den Datenverbrauch in Mobilfunknetzen erhöhen)</string>
   <string name="pref_nav_network_title">Netzwerk-Tab anzeigen</string>

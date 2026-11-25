@@ -69,15 +69,8 @@
   <string name="pref_appearance_thumbnail_generation_summary">Выберите встроенную обложку или кадр видео.</string>
   <string name="pref_appearance_thumbnail_generation_change_title">Изменить стратегию миниатюр?</string>
   <string name="pref_appearance_thumbnail_generation_change_summary">Очистить кэш миниатюр и создавать их заново при просмотре?</string>
-  <string name="pref_appearance_thumbnail_quality_title">Качество миниатюр</string>
-  <string name="pref_appearance_thumbnail_quality_summary">Предел миниатюр: %1$d px. Большим изображениям нужно больше памяти и обработки.</string>
   <string name="pref_appearance_thumbnail_position_title">Позиция кадра миниатюры</string>
   <string name="pref_appearance_thumbnail_position_summary">Захватывать кадр на отметке %1$d%% видео</string>
-  <string name="pref_appearance_thumbnail_parallelism_title">Ядра для миниатюр</string>
-  <string name="pref_appearance_thumbnail_parallelism_auto">Авто (%1$d из %2$d)</string>
-  <string name="pref_appearance_thumbnail_parallelism_value">%1$d из %2$d</string>
-  <string name="pref_appearance_thumbnail_parallelism_dialog_summary">Больше потоков — быстрее, но выше расход памяти, батареи и риск рывков. Рекомендуется авто.</string>
-  <string name="pref_appearance_thumbnail_parallelism_warning">Больше рекомендованного для этого устройства (%1$d). Уменьшите, если списки тормозят или приложение закрывается в фоне.</string>
   <string name="pref_appearance_show_network_thumbnails_title">Показывать сетевые миниатюры (экспериментально)</string>
   <string name="pref_appearance_show_network_thumbnails_summary">Создавать миниатюры для сетевых потоков (может увеличить расход мобильного трафика)</string>
   <string name="pref_nav_network_title">Показывать вкладку «Сеть»</string>

@@ -1442,7 +1442,6 @@ private fun FileSystemBrowserContent(
   val showExtensionField by browserPreferences.showExtensionField.collectAsState()
   val showDurationField by browserPreferences.showDurationField.collectAsState()
   val centerGridTitles by browserPreferences.centerGridTitles.collectAsState()
-  val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
   val thumbnailGenerator by browserPreferences.thumbnailGenerator.collectAsState()
   val swipeLeft by browserPreferences.videoSwipeLeft.collectAsState()
   val swipeRight by browserPreferences.videoSwipeRight.collectAsState()
@@ -1462,7 +1461,6 @@ private fun FileSystemBrowserContent(
       showDurationField,
       centerGridTitles,
       showCodecSupportIndicator,
-      thumbnailQuality,
       thumbnailGenerator,
       swipeLeft,
       swipeRight,
@@ -1483,7 +1481,6 @@ private fun FileSystemBrowserContent(
         showExtensionField = showExtensionField,
         showDurationField = showDurationField && !archiveMode,
         centerGridTitles = centerGridTitles,
-        thumbnailQuality = thumbnailQuality,
         thumbnailGenerator = thumbnailGenerator,
         swipeLeft = swipeLeft,
         swipeRight = swipeRight,
@@ -1931,7 +1928,6 @@ private fun FileSystemSearchContent(
   val showExtensionField by browserPreferences.showExtensionField.collectAsState()
   val showDurationField by browserPreferences.showDurationField.collectAsState()
   val centerGridTitles by browserPreferences.centerGridTitles.collectAsState()
-  val thumbnailQuality by browserPreferences.thumbnailQuality.collectAsState()
   val thumbnailGenerator by browserPreferences.thumbnailGenerator.collectAsState()
   val swipeLeft by browserPreferences.videoSwipeLeft.collectAsState()
   val swipeRight by browserPreferences.videoSwipeRight.collectAsState()
@@ -1951,7 +1947,6 @@ private fun FileSystemSearchContent(
       showDurationField,
       centerGridTitles,
       showCodecSupportIndicator,
-      thumbnailQuality,
       thumbnailGenerator,
       swipeLeft,
       swipeRight,
@@ -1972,7 +1967,6 @@ private fun FileSystemSearchContent(
         showExtensionField = showExtensionField,
         showDurationField = showDurationField && !archiveMode,
         centerGridTitles = centerGridTitles,
-        thumbnailQuality = thumbnailQuality,
         thumbnailGenerator = thumbnailGenerator,
         swipeLeft = swipeLeft,
         swipeRight = swipeRight,
