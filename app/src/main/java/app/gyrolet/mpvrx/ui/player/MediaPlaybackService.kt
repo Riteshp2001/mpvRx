@@ -2392,8 +2392,23 @@ class MediaPlaybackService :
   }
 
   override fun onTaskRemoved(rootIntent: Intent?) {
-    Log.d(TAG, "Task removed - keeping foreground background playback active")
+    // A player still on screen (picture-in-picture lives in its own task) keeps playing when
+    // another mpvRx card is cleared.
+    if (activityForeground) {
+      super.onTaskRemoved(rootIntent)
+      return
+    }
+    // Clearing mpvRx from Recents ends its background playback, music as well as video.
+    Log.d(TAG, "Task removed - ending playback")
     savePlaybackStateBeforeTaskRemoval()
+    if (::mediaSession.isInitialized && !mpvAccessReleased) {
+      stopPlaybackAndService(force = true)
+    } else {
+      torrentStreamingEngine.stopStream()
+      PlaybackSession.stop(clearQueue = true)
+      stopForegroundNotification()
+      stopSelf()
+    }
     super.onTaskRemoved(rootIntent)
   }
 }
