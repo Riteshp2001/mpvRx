@@ -10,10 +10,10 @@
 package app.gyrolet.mpvrx.ui.player.anime4k
 
 import android.content.Context
-import android.util.Log
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.ThermalMonitor
+import app.gyrolet.mpvrx.utils.logging.Log
 
 internal data class Anime4KSelection(
   val mode: Anime4KManager.Mode,

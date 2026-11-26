@@ -10,7 +10,6 @@
 package app.gyrolet.mpvrx.ui.browser.medialibrary
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -26,6 +25,7 @@ import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.ui.browser.videolist.VideoWithPlaybackInfo
 import app.gyrolet.mpvrx.ui.browser.videolist.buildVideoWithPlaybackInfo
 import app.gyrolet.mpvrx.ui.browser.videolist.videoPlaybackIdentifiers
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.media.PlaybackStateOps

@@ -12,7 +12,7 @@ package app.gyrolet.mpvrx.domain.download
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.BuildConfig

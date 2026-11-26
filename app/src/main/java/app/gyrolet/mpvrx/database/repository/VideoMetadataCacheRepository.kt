@@ -11,10 +11,10 @@ package app.gyrolet.mpvrx.database.repository
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import app.gyrolet.mpvrx.database.dao.VideoMetadataDao
 import app.gyrolet.mpvrx.database.entities.VideoMetadataEntity
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
 import kotlinx.coroutines.Dispatchers

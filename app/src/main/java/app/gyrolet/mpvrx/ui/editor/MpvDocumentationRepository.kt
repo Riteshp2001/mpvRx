@@ -8,7 +8,7 @@
 package app.gyrolet.mpvrx.ui.editor
 
 import android.content.Context
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

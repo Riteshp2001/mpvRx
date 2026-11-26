@@ -8,8 +8,8 @@
 
 package app.gyrolet.mpvrx.data.artwork
 
-import android.util.Log
 import app.gyrolet.mpvrx.network.awaitResponse
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.IOException
 import java.util.Base64
 import java.util.concurrent.TimeUnit

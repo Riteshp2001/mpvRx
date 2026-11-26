@@ -11,10 +11,10 @@ package app.gyrolet.mpvrx.domain.download
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope

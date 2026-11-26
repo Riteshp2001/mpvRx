@@ -7,7 +7,6 @@ package app.gyrolet.mpvrx.ui.player.controls
 import android.content.Context
 import android.graphics.Matrix
 import android.graphics.SurfaceTexture
-import android.util.Log
 import android.view.TextureView
 import androidx.annotation.OptIn
 import androidx.compose.runtime.Composable
@@ -49,6 +48,7 @@ import app.gyrolet.mpvrx.data.artwork.MotionArtworkResolver
 import app.gyrolet.mpvrx.data.artwork.MotionArtworkSource
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject

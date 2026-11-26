@@ -12,7 +12,7 @@ package app.gyrolet.mpvrx.ui.player
 import android.content.Context
 import android.os.Build
 import android.os.PowerManager
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 
 /**
  * Utility object that wraps Android's [PowerManager.getThermalHeadroom] API

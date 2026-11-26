@@ -10,9 +10,9 @@
 package app.gyrolet.mpvrx.repository.ai
 
 import android.content.Context
-import android.util.Log
 import app.gyrolet.mpvrx.preferences.AiPreferences
 import app.gyrolet.mpvrx.preferences.AiProvider
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable

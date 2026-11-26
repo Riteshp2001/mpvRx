@@ -14,7 +14,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.view.Surface
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
@@ -31,6 +30,8 @@ import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
+import app.gyrolet.mpvrx.presentation.crash.AppLogging
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpCookies
 import `is`.xyz.mpv.MPVLib
@@ -186,6 +187,7 @@ object PlaybackSession : MPVLib.EventObserver {
       enqueue(coreEvent = property == STATISTICS_STATE_PROPERTY) { PlaybackSession.eventProperty(property, value) }
 
     override fun logMessage(prefix: String, level: Int, text: String) {
+      AppLogging.recordMpvMessage(prefix, level, text)
       if (prefix != "ytdl_hook" || level > MPVLib.MpvLogLevel.MPV_LOG_LEVEL_ERROR ||
         !YtdlpCookies.isAuthenticationError(text)
       ) return
@@ -623,6 +625,10 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         try {
           MPVLib.create(context.applicationContext)
           coreCreated = true
+          // Logging first: mpv starts delivering messages inside init(), including mpv.conf and
+          // script errors, and drops them when no log observer is attached yet.
+          val observer = NativeEventObserver().also { nativeObserver = it }
+          MPVLib.addLogObserver(observer)
           MPVLib.setOptionString("config", "yes")
           MPVLib.setOptionString("config-dir", configDir)
           MPVLib.setOptionString("gpu-shader-cache-dir", cacheDir)
@@ -644,11 +650,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
           MPVLib.setPropertyString("vo", "null")
           MPVLib.setPropertyString("force-window", "no")
           MPVLib.setPropertyString("idle", "yes")
-          NativeEventObserver().also { observer ->
-            nativeObserver = observer
-            MPVLib.addObserver(observer)
-            MPVLib.addLogObserver(observer)
-          }
+          MPVLib.addObserver(observer)
           reobserveTrackedProperties()
           observeProperties()
           initialized = true

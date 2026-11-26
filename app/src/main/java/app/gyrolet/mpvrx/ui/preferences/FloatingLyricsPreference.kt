@@ -8,7 +8,6 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +29,7 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.components.AppToast
 import app.gyrolet.mpvrx.ui.components.AppToastType
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
+import app.gyrolet.mpvrx.utils.logging.Log
 
 @Composable
 internal fun FloatingLyricsPreference(preferences: AudioPreferences) {

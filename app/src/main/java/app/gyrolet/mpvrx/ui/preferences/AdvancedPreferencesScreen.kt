@@ -61,7 +61,7 @@ import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
 import app.gyrolet.mpvrx.presentation.crash.CrashActivity
-import app.gyrolet.mpvrx.presentation.crash.DebugLogReader
+import app.gyrolet.mpvrx.presentation.crash.AppLogBuffer
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
@@ -1102,17 +1102,16 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
                   scope.launch(Dispatchers.IO) {
                     val deviceInfo = CrashActivity.collectDeviceInfo()
                     val deviceInfoBytes = deviceInfo.toByteArray(Charsets.UTF_8).size
-                    val logcat = DebugLogReader.trimTextToByteBudget(
-                      CrashActivity.collectLogcat(),
-                      (debugLogSizeMb.coerceIn(1, 10) * 1024 * 1024 - deviceInfoBytes - 64).coerceAtLeast(0),
+                    val appLog = AppLogBuffer.text(
+                      maxBytes = (debugLogSizeMb.coerceIn(1, 10) * 1024 * 1024 - deviceInfoBytes - 64).coerceAtLeast(0),
                     )
 
                     SafeClipboard.copyPlainText(
                       context = context,
                       label = "mpvrx_logs",
-                      text = CrashActivity.concatLogs(deviceInfo, null, logcat),
+                      text = CrashActivity.concatLogs(deviceInfo, null, appLog),
                     )
-                    CrashActivity.shareLogs(deviceInfo, null, logcat, activity)
+                    CrashActivity.shareLogs(deviceInfo, null, appLog, activity)
                   }
                 },
               )

@@ -11,10 +11,10 @@ package app.gyrolet.mpvrx.ui.cast
 
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
 import android.webkit.MimeTypeMap
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import app.gyrolet.mpvrx.utils.logging.Log
 import com.google.android.gms.cast.MediaInfo
 import com.google.android.gms.cast.MediaLoadRequestData
 import com.google.android.gms.cast.MediaMetadata

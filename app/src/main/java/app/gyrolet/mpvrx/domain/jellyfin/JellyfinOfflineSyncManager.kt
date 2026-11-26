@@ -15,7 +15,6 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.Uri
-import android.util.Log
 import app.gyrolet.mpvrx.database.dao.DownloadItemDao
 import app.gyrolet.mpvrx.database.entities.DownloadItemEntity
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
@@ -23,6 +22,7 @@ import app.gyrolet.mpvrx.domain.download.AppDownloadStatus
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.repository.JellyfinRepository
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope

@@ -12,7 +12,6 @@ package app.gyrolet.mpvrx.ui.browser.recentlyplayed
 import android.app.Application
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -21,6 +20,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import app.gyrolet.mpvrx.database.entities.RecentlyPlayedEntity
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import app.gyrolet.mpvrx.utils.storage.leafStorageName
 import app.gyrolet.mpvrx.domain.recentlyplayed.repository.RecentlyPlayedRepository

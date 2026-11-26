@@ -4,11 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.SystemClock
-import android.util.Log
 import app.gyrolet.mpvrx.database.dao.AudiobookDao
 import app.gyrolet.mpvrx.database.entities.Audiobook
 import app.gyrolet.mpvrx.database.entities.AudiobookChapter
 import app.gyrolet.mpvrx.database.entities.AudiobookChapterEntity
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred

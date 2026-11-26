@@ -9,8 +9,8 @@ import android.net.Uri
 import android.system.ErrnoException
 import android.system.Os
 import android.system.OsConstants
-import android.util.Log
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import `is`.xyz.mpv.Utils
 import java.io.File

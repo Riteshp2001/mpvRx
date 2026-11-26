@@ -4,7 +4,7 @@ import android.content.Context
 import android.hardware.display.DisplayManager
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 
 class ExternalDisplayManager(
   context: Context,

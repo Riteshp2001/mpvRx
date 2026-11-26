@@ -12,12 +12,12 @@ package app.gyrolet.mpvrx.ui.player.ytdlp
 import android.content.Context
 import android.net.Uri
 import android.system.Os
-import android.util.Log
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.network.AndroidCookieJar
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.CancellationException

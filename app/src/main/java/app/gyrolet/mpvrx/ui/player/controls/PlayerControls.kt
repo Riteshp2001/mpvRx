@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.player.controls
 
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 
 import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
@@ -22,7 +23,6 @@ import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility

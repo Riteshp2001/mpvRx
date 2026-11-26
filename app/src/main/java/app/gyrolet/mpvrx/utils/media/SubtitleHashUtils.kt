@@ -11,7 +11,7 @@ package app.gyrolet.mpvrx.utils.media
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream

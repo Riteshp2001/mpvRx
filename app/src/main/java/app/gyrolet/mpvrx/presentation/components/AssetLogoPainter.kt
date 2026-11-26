@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Picture
 import android.graphics.RectF
-import android.util.Log
 import android.util.LruCache
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,6 +21,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.utils.logging.Log
 import com.caverock.androidsvg.SVG
 import com.caverock.androidsvg.SVGParseException
 import kotlinx.coroutines.Dispatchers

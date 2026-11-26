@@ -4,7 +4,6 @@ package app.gyrolet.mpvrx.domain.update
 import android.content.Context
 import android.os.Build
 import android.os.SystemClock
-import android.util.Log
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
@@ -20,6 +19,7 @@ import androidx.work.workDataOf
 import app.gyrolet.mpvrx.App
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

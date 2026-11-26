@@ -10,12 +10,12 @@
 package app.gyrolet.mpvrx.data.navidrome
 
 import android.net.Uri
-import android.util.Log
 import app.gyrolet.mpvrx.domain.navidrome.NavidromeAlbum
 import app.gyrolet.mpvrx.domain.navidrome.NavidromeArtist
 import app.gyrolet.mpvrx.domain.navidrome.NavidromePlaylist
 import app.gyrolet.mpvrx.domain.navidrome.NavidromeServer
 import app.gyrolet.mpvrx.domain.navidrome.NavidromeSong
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

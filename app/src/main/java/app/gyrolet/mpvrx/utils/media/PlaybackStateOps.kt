@@ -9,13 +9,13 @@
 
 package app.gyrolet.mpvrx.utils.media
 
-import android.util.Log
 import app.gyrolet.mpvrx.database.MpvRxDatabase
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.ui.browser.videolist.videoPlaybackIdentifiers
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive

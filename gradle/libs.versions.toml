@@ -55,9 +55,11 @@ haze = "2.1.0"
 kyant = "2.0.1"
 kyant-shapes = "1.2.1"
 androidsvg = "1.4"
+timber = "5.0.1"
 
 [libraries]
 androidsvg = { module = "com.caverock:androidsvg-aar", version.ref = "androidsvg" }
+timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom-alpha", version.ref = "composeBom" }
 commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }

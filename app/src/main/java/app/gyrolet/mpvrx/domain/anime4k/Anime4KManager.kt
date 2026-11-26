@@ -162,10 +162,10 @@ class Anime4KManager(
 
       // Write the optimized shader code to the destination file
       destFile.writeText(optimizedContent)
-      android.util.Log.i("Anime4KManager", "Optimized and copied shader: $fileName")
+      app.gyrolet.mpvrx.utils.logging.Log.i("Anime4KManager", "Optimized and copied shader: $fileName")
       return true
     } catch (e: Exception) {
-      android.util.Log.e("Anime4KManager", "Failed to copy and optimize shader: $fileName", e)
+      app.gyrolet.mpvrx.utils.logging.Log.e("Anime4KManager", "Failed to copy and optimize shader: $fileName", e)
       return false
     }
   }

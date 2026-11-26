@@ -6,7 +6,6 @@ package app.gyrolet.mpvrx.utils.media
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.DataReader
 import androidx.media3.common.Format
@@ -24,6 +23,7 @@ import androidx.media3.extractor.PositionHolder
 import androidx.media3.extractor.SeekMap
 import androidx.media3.extractor.TrackOutput
 import androidx.media3.extractor.mkv.MatroskaExtractor
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive

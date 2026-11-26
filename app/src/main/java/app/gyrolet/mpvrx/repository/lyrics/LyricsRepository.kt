@@ -5,7 +5,6 @@
 package app.gyrolet.mpvrx.repository.lyrics
 
 import android.content.Context
-import android.util.Log
 import android.util.LruCache
 import app.gyrolet.mpvrx.data.lyrics.LrcLibApiService
 import app.gyrolet.mpvrx.data.lyrics.providers.BiniLyricsProvider
@@ -19,6 +18,7 @@ import app.gyrolet.mpvrx.domain.lyrics.LyricsProvider
 import app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType
 import app.gyrolet.mpvrx.domain.lyrics.LyricsTiming
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.EmbeddedLyricsExtractor
 import java.io.File
 import kotlinx.coroutines.CancellationException

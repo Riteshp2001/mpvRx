@@ -14,9 +14,9 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.os.Process
-import android.util.Log
 import android.net.Uri
 import android.util.LruCache
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

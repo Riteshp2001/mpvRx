@@ -7,9 +7,9 @@ package app.gyrolet.mpvrx.data.artwork
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.Log
 import android.util.LruCache
 import app.gyrolet.mpvrx.network.awaitResponse
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException

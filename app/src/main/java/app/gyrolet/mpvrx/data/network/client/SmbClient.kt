@@ -128,7 +128,7 @@ class SmbClient(
     } catch (cancellation: CancellationException) {
       throw cancellation
     } catch (_: Exception) {
-      android.util.Log.w("SmbClient", "SMB transport did not answer after idling; reconnecting")
+      app.gyrolet.mpvrx.utils.logging.Log.w("SmbClient", "SMB transport did not answer after idling; reconnecting")
       false
     }
   }
@@ -168,7 +168,7 @@ class SmbClient(
       throw e
     } catch (e: Exception) {
       if (isNetworkError(e)) {
-        android.util.Log.w("SmbClient", "SMB transport failed; reconnecting")
+        app.gyrolet.mpvrx.utils.logging.Log.w("SmbClient", "SMB transport failed; reconnecting")
 
         connectionMutex.withLock {
           if (session === sessionAtStart || !isConnected()) {
@@ -475,7 +475,7 @@ class SmbClient(
                     // streams; closing it here triggers TREE_DISCONNECT and breaks any
                     // sibling stream that is still reading.
                     runCatching { file.closeNoWait() }.onFailure { error ->
-                      android.util.Log.w("SmbClient", "Could not release SMB file handle", error)
+                      app.gyrolet.mpvrx.utils.logging.Log.w("SmbClient", "Could not release SMB file handle", error)
                     }
                   }
                 }

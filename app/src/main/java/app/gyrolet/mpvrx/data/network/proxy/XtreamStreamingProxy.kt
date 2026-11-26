@@ -9,10 +9,10 @@
 
 package app.gyrolet.mpvrx.data.network.proxy
 
-import android.util.Log
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.network.XtreamPlaybackUri
 import app.gyrolet.mpvrx.network.SharedHttpClient
+import app.gyrolet.mpvrx.utils.logging.Log
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope

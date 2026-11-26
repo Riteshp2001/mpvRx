@@ -6,7 +6,7 @@ package app.gyrolet.mpvrx.ui.browser.dialogs
 
 import android.content.ClipData
 import android.content.Intent
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState

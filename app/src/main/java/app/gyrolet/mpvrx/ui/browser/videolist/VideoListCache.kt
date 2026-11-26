@@ -5,9 +5,9 @@
 package app.gyrolet.mpvrx.ui.browser.videolist
 
 import android.content.Context
-import android.util.Log
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.ui.browser.medialibrary.MediaLibraryCache
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 
 /**

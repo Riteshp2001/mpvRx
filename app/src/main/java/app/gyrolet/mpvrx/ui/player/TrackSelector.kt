@@ -9,12 +9,12 @@
 
 package app.gyrolet.mpvrx.ui.player
 
-import android.util.Log
 import app.gyrolet.mpvrx.database.entities.PlaybackStateEntity
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.normalizePlaybackLanguageTag as languageTag
 import java.util.Locale
 import java.util.MissingResourceException

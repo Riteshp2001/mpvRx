@@ -225,9 +225,9 @@ internal class FloatingLyricsWindow(
     try {
       windows.removeViewImmediate(view)
     } catch (error: IllegalArgumentException) {
-      android.util.Log.w(TAG, "Floating lyrics window was already removed", error)
+      app.gyrolet.mpvrx.utils.logging.Log.w(TAG, "Floating lyrics window was already removed", error)
     } catch (error: SecurityException) {
-      android.util.Log.w(TAG, "Could not remove floating lyrics window", error)
+      app.gyrolet.mpvrx.utils.logging.Log.w(TAG, "Could not remove floating lyrics window", error)
     }
   }
 

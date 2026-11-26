@@ -5,7 +5,6 @@ package app.gyrolet.mpvrx.ui.mediainfo
 import android.net.Uri
 import android.text.format.DateUtils
 import android.text.format.Formatter
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -28,6 +27,7 @@ import app.gyrolet.mpvrx.ui.player.resolveAudioFormatInfo
 import app.gyrolet.mpvrx.ui.player.selectedVideoRangeBadges
 import app.gyrolet.mpvrx.ui.player.toObject
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

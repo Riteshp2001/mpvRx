@@ -3,7 +3,6 @@
 package app.gyrolet.mpvrx.ui.mediainfo
 
 import android.content.ActivityNotFoundException
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -46,6 +45,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaArtwork
 import app.gyrolet.mpvrx.utils.media.MediaArtworkOps
 import kotlinx.coroutines.Dispatchers

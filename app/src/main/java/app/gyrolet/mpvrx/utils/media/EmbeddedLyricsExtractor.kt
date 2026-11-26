@@ -7,10 +7,10 @@ package app.gyrolet.mpvrx.utils.media
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.util.Log
 import app.gyrolet.mpvrx.domain.lyrics.Lyrics
 import app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive

@@ -5,7 +5,7 @@ package app.gyrolet.mpvrx.presentation.crash
 
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
 

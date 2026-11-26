@@ -26,6 +26,9 @@ internal object CrashReportStore {
   private const val METADATA_FILE = "metadata.json"
   private const val MAX_PREVIEW_CHARS = 32 * 1024
 
+  /** Of the app log in a report; the newest lines are kept. */
+  const val MAX_APP_LOG_BYTES = 1024 * 1024
+
   /** A captured crash whose recovery screen has not been shown yet. */
   data class PendingReport(
     val reportId: String,
@@ -75,6 +78,12 @@ internal object CrashReportStore {
       } catch (error: Exception) {
         writer.appendLine("Thread snapshot unavailable: $error")
       }
+      writer.appendLine()
+      writer.appendLine("=== App log, this session ===")
+      writer.appendLine(
+        runCatching { AppLogBuffer.text(maxBytes = minOf(AppLogBuffer.maxBytes, MAX_APP_LOG_BYTES)) }
+          .getOrElse { "App log unavailable: $it" },
+      )
     }
     writeMetadata(
       directory,

@@ -117,7 +117,7 @@ object MediaUtils {
     runCatching {
       MediaPlaybackService.requestForegroundStart(context, serviceIntent)
     }.onFailure { error ->
-      android.util.Log.e("MediaUtils", "Could not start the playback service for the mini player", error)
+      app.gyrolet.mpvrx.utils.logging.Log.e("MediaUtils", "Could not start the playback service for the mini player", error)
     }
   }
 
@@ -257,7 +257,7 @@ object MediaUtils {
         }
         source is Uri -> source
         else -> {
-          android.util.Log.e("MediaUtils", "Unsupported source type: ${source::class.java}")
+          app.gyrolet.mpvrx.utils.logging.Log.e("MediaUtils", "Unsupported source type: ${source::class.java}")
           return
         }
       }
@@ -594,7 +594,7 @@ object MediaUtils {
     videos: List<Video>,
   ) {
     if (videos.isEmpty()) {
-      android.util.Log.w("MediaUtils", "Cannot share: video list is empty")
+      app.gyrolet.mpvrx.utils.logging.Log.w("MediaUtils", "Cannot share: video list is empty")
       return
     }
 
@@ -603,10 +603,10 @@ object MediaUtils {
         try {
           FileProvider.getUriForFile(context, "${context.packageName}.provider", File(v.path))
         } catch (e: IllegalArgumentException) {
-          android.util.Log.e("MediaUtils", "FileProvider failed for ${v.path}: ${e.message}")
+          app.gyrolet.mpvrx.utils.logging.Log.e("MediaUtils", "FileProvider failed for ${v.path}: ${e.message}")
           null
         } catch (e: Exception) {
-          android.util.Log.e("MediaUtils", "Failed to generate URI for ${v.path}", e)
+          app.gyrolet.mpvrx.utils.logging.Log.e("MediaUtils", "Failed to generate URI for ${v.path}", e)
           null
         }
       }
@@ -614,12 +614,12 @@ object MediaUtils {
     val uris = videos.mapNotNull { toSharableUri(it) }
 
     if (uris.isEmpty()) {
-      android.util.Log.w("MediaUtils", "Cannot share: no valid URIs generated for any videos")
+      app.gyrolet.mpvrx.utils.logging.Log.w("MediaUtils", "Cannot share: no valid URIs generated for any videos")
       return
     }
 
     if (uris.size < videos.size) {
-      android.util.Log.w("MediaUtils", "Only ${uris.size}/${videos.size} videos could be shared")
+      app.gyrolet.mpvrx.utils.logging.Log.w("MediaUtils", "Only ${uris.size}/${videos.size} videos could be shared")
     }
 
     val intent =

@@ -11,8 +11,8 @@ package app.gyrolet.mpvrx.ui.player
 
 import android.os.SystemClock
 import android.os.Trace
-import android.util.Log
 import app.gyrolet.mpvrx.BuildConfig
+import app.gyrolet.mpvrx.utils.logging.Log
 import `is`.xyz.mpv.MPVLib
 import `is`.xyz.mpv.MPVNode
 import java.util.concurrent.ConcurrentHashMap

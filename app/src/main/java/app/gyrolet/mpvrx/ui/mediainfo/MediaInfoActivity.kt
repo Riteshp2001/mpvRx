@@ -15,7 +15,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.text.format.Formatter
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent

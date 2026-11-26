@@ -4,8 +4,8 @@
 
 package app.gyrolet.mpvrx.domain.torrent
 
-import android.util.Log
 import app.gyrolet.mpvrx.data.network.proxy.HttpByteRange
+import app.gyrolet.mpvrx.utils.logging.Log
 import fi.iki.elonen.NanoHTTPD
 import org.libtorrent4j.Priority
 import org.libtorrent4j.TorrentHandle

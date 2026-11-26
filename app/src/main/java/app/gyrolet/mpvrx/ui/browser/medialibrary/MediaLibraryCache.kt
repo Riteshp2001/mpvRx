@@ -6,8 +6,8 @@ package app.gyrolet.mpvrx.ui.browser.medialibrary
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils

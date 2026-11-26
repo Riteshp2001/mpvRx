@@ -1,9 +1,9 @@
 package app.gyrolet.mpvrx.repository.lyrics
 
 import android.util.AtomicFile
-import android.util.Log
 import app.gyrolet.mpvrx.domain.lyrics.Lyrics
 import app.gyrolet.mpvrx.domain.lyrics.LyricsProvider
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.serialization.Serializable

@@ -7,7 +7,7 @@ import android.os.Build
 import android.os.FileObserver
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 
 /**

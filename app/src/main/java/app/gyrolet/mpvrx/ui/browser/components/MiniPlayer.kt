@@ -379,7 +379,7 @@ private fun MiniPlayerContent(
           context.startActivity(intent, ActivityOptions.makeCustomAnimation(context, enterAnimation, 0).toBundle())
         } catch (error: Exception) {
           PlayerSheetTransitions.releaseExpansionHold()
-          android.util.Log.e("MiniPlayer", "Unable to expand player", error)
+          app.gyrolet.mpvrx.utils.logging.Log.e("MiniPlayer", "Unable to expand player", error)
           return false
         }
         if (context is Activity && android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

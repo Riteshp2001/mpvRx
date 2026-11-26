@@ -5,7 +5,7 @@
 package app.gyrolet.mpvrx.utils.storage
 
 import android.content.Context
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 
 /**

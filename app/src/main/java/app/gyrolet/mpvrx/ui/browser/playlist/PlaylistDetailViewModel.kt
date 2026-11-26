@@ -11,7 +11,6 @@ package app.gyrolet.mpvrx.ui.browser.playlist
 
 import android.app.Application
 import android.os.SystemClock
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -35,6 +34,7 @@ import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.ui.player.extractLocalPath
 import app.gyrolet.mpvrx.ui.player.resolveUri
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval

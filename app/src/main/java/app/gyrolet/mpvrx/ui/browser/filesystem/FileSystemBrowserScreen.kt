@@ -11,7 +11,7 @@ package app.gyrolet.mpvrx.ui.browser.filesystem
 
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts

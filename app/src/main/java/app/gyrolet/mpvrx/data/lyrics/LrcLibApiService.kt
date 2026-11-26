@@ -4,11 +4,11 @@
 
 package app.gyrolet.mpvrx.data.lyrics
 
-import android.util.Log
 import app.gyrolet.mpvrx.data.lyrics.providers.LYRICS_AGENT
 import app.gyrolet.mpvrx.data.lyrics.providers.recordLyricsFailure
 import app.gyrolet.mpvrx.data.lyrics.providers.readLyricsResponse
 import app.gyrolet.mpvrx.network.awaitResponse
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

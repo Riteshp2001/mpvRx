@@ -10,8 +10,8 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import android.util.Log
 import app.gyrolet.mpvrx.utils.device.runAtLowThreadPriority
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext

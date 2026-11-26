@@ -7,9 +7,9 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.util.Log
 import app.gyrolet.mpvrx.domain.thumbnail.MatroskaEmbeddedArtworkExtractor
 import app.gyrolet.mpvrx.domain.thumbnail.calculateThumbnailSampleSize
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException

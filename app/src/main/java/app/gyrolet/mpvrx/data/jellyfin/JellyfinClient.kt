@@ -12,7 +12,6 @@ package app.gyrolet.mpvrx.data.jellyfin
 import android.content.Context
 import android.net.Uri
 import android.os.Build
-import android.util.Log
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.data.network.ServerUrlUtils
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinAuthResult
@@ -20,6 +19,7 @@ import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinPerson
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinUser
 import app.gyrolet.mpvrx.network.awaitResponse
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.PlaybackSubtitleTrack
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

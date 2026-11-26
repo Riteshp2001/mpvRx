@@ -4,10 +4,10 @@
 
 package app.gyrolet.mpvrx.data.lyrics.providers
 
-import android.util.Log
 import app.gyrolet.mpvrx.data.lyrics.LrcLibApiService
 import app.gyrolet.mpvrx.domain.lyrics.Lyrics
 import app.gyrolet.mpvrx.domain.lyrics.LyricsProvider
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext

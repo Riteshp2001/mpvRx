@@ -8,8 +8,8 @@ import android.net.nsd.NsdServiceInfo
 import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
-import android.util.Log
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

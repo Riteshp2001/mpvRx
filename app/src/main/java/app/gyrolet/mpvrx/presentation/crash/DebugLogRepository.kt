@@ -9,14 +9,27 @@
 
 package app.gyrolet.mpvrx.presentation.crash
 
+import android.content.Context
 import android.os.Process
-import java.io.BufferedReader
-import java.io.IOException
-import java.io.InputStreamReader
+import android.os.SystemClock
+import `is`.xyz.mpv.MPVLib
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import timber.log.Timber
+import java.io.BufferedWriter
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
+import java.io.PrintStream
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.atomic.AtomicLong
+import android.util.Log as AndroidLog
 
 internal enum class DebugLogLevel(
   val code: String,
@@ -29,160 +42,132 @@ internal enum class DebugLogLevel(
   Error("E", "Error"),
 }
 
+internal fun debugLogLevelOf(priority: Int): DebugLogLevel =
+  when {
+    priority <= AndroidLog.VERBOSE -> DebugLogLevel.Verbose
+    priority == AndroidLog.DEBUG -> DebugLogLevel.Debug
+    priority == AndroidLog.INFO -> DebugLogLevel.Info
+    priority == AndroidLog.WARN -> DebugLogLevel.Warn
+    else -> DebugLogLevel.Error
+  }
+
 internal data class DebugLogEntry(
-  val id: String,
+  /** Increases with every captured line, so it is a stable list key and orders entries. */
+  val id: Long,
   val timeMillis: Long,
-  val timestamp: String,
   val level: DebugLogLevel,
   val tag: String,
   val message: String,
-  val pid: Int? = null,
-  val tid: Int? = null,
-)
+  val pid: Int,
+  val tid: Int,
+) {
+  /** Time of day for the viewer. */
+  val timestamp: String get() = shortTimeFormat.get()!!.format(Date(timeMillis))
 
-internal data class DebugLogSnapshot(
-  val entries: List<DebugLogEntry>,
-  val source: String,
-  val rawLineCount: Int,
-)
+  /** One line in logcat's threadtime layout, for shared, saved and crash-report logs. */
+  fun toLogLine(): String =
+    "${longTimeFormat.get()!!.format(Date(timeMillis))} ${pid.toString().padStart(5)} ${tid.toString().padStart(5)} " +
+      "${level.code} ${tag.ifBlank { AppLogging.DEFAULT_TAG }}: $message"
+}
+
+private val shortTimeFormat = ThreadLocal.withInitial { SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()) }
+private val longTimeFormat = ThreadLocal.withInitial { SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.ROOT) }
 
 /**
- * Reads the current process' logcat in a device-tolerant way.
+ * Captures mpvRx's own log in-process, as it is written.
  *
- * Some vendor logcat binaries either do not support --pid or emit a slightly different
- * formatting even when a format is requested. The primary path uses Android's process filter;
- * if that produces no usable entries, a second pass reads a wider snapshot and filters the
- * parsed PID in-process. Unrecognised lines from the already PID-filtered primary command are
- * still surfaced instead of being silently discarded.
+ * The viewer used to read the app's lines back out of logcat, a ring buffer shared by every app and
+ * the system. It routinely came back incomplete or empty: the buffer is small and other apps push
+ * mpvRx's lines out, logd's spam filter drops the noisiest app (mpvRx while mpv logs), several
+ * vendors drop Debug/Verbose lines or disable app logging altogether, and mpv's own messages only
+ * reached it at Verbose level. Every logcat viewer library reads the same buffer, so none of them
+ * can do better.
+ *
+ * Here every line arrives directly: app code logs through [app.gyrolet.mpvrx.utils.logging.Log],
+ * a drop-in for android.util.Log that hands each line to Timber, whose trees write logcat (still
+ * useful with adb) and this buffer; mpv's messages come from its log callback, and System.out/err
+ * are copied line by line. None of these can be lost to another app or to the system. Lines only
+ * Android has (decoders, GPU driver, libraries) are added from logcat by [LogcatTap], best effort.
  */
-internal object DebugLogReader {
-  private const val MIN_RAW_LIMIT = 2_000
-  private const val MAX_RAW_LIMIT = 100_000
+internal object AppLogBuffer {
+  private const val MB = 1024 * 1024
+  private const val DEFAULT_CAPACITY_MB = 3
+  private const val MAX_ENTRIES = 100_000
 
-  private val threadTimePattern =
-    Regex(
-      """^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+(\d+)\s+(\d+)\s+([VDIWEF])\s+(.+?)\s*:\s?(.*)$""",
-    )
-  private val classicTimePattern =
-    Regex(
-      """^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+([VDIWEF])/([^\(]+)\(\s*(\d+)\):\s?(.*)$""",
-    )
-  private val epochPattern =
-    Regex(
-      """^(\d+(?:\.\d+)?)\s+(\d+)\s+(\d+)\s+([VDIWEF])\s+(.+?)\s*:\s?(.*)$""",
-    )
-  private val briefPattern =
-    Regex("""^([VDIWEF])/([^\(]+)\(\s*(\d+)\):\s?(.*)$""")
+  /** One huge line (a dumped response, say) must not push out the rest of the history. */
+  private const val MAX_MESSAGE_CHARS = 32 * 1024
 
-  fun readSnapshot(maxBytes: Int): DebugLogSnapshot {
-    val pid = Process.myPid()
-    val failures = mutableListOf<String>()
-    val primaryRawLimit = (maxBytes / 128).coerceIn(MIN_RAW_LIMIT, MAX_RAW_LIMIT)
-    val fallbackRawLimit = (primaryRawLimit * 2).coerceAtMost(MAX_RAW_LIMIT)
+  /** Time, ids, level and separators of an exported line. */
+  private const val LINE_OVERHEAD = 40
 
-    val primary =
-      runCommand(
-        listOf(
-          "logcat",
-          "--pid=$pid",
-          "-v",
-          "threadtime",
-          "-d",
-          "-t",
-          primaryRawLimit.toString(),
-        ),
-        maxBytes,
-      )
+  private val lock = Any()
+  private val entries = ArrayDeque<DebugLogEntry>()
+  private var usedBytes = 0L
+  private var capacityBytes = DEFAULT_CAPACITY_MB.toLong() * MB
+  private var nextId = 0L
+  private val pid = Process.myPid()
 
-    if (primary.exitCode == 0) {
-      val parsed = parseLines(primary.lines, expectedPid = pid, allowRawFallback = true)
-      if (parsed.isNotEmpty()) {
-        return DebugLogSnapshot(
-          entries = trimEntriesToByteBudget(parsed, maxBytes),
-          source = "process-filtered",
-          rawLineCount = primary.rawLineCount,
-        )
+  private val _revision = MutableStateFlow(0L)
+
+  /** Changes with every captured or cleared line. Collect it, then read [snapshot]. */
+  val revision: StateFlow<Long> = _revision.asStateFlow()
+
+  /** The history's size limit in bytes of exported text. */
+  val maxBytes: Int get() = synchronized(lock) { capacityBytes.toInt() }
+
+  fun record(
+    priority: Int,
+    tag: String,
+    message: String,
+    timeMillis: Long = System.currentTimeMillis(),
+    tid: Int = Process.myTid(),
+  ) {
+    val text =
+      if (message.length <= MAX_MESSAGE_CHARS) {
+        message
+      } else {
+        message.take(MAX_MESSAGE_CHARS) + "… (${message.length - MAX_MESSAGE_CHARS} more characters)"
       }
-    } else {
-      failures += primary.errorMessage("process-filtered logcat")
+    val entry: DebugLogEntry
+    synchronized(lock) {
+      entry = DebugLogEntry(++nextId, timeMillis, debugLogLevelOf(priority), tag, text, pid, tid)
+      entries.addLast(entry)
+      usedBytes += cost(entry)
+      trimLocked()
+      _revision.value = nextId
     }
-
-    val fallback =
-      runCommand(
-        listOf(
-          "logcat",
-          "-v",
-          "threadtime",
-          "-d",
-          "-t",
-          fallbackRawLimit.toString(),
-        ),
-        maxBytes,
-      )
-
-    if (fallback.exitCode == 0) {
-      val parsed = parseLines(fallback.lines, expectedPid = pid, allowRawFallback = false)
-      if (parsed.isNotEmpty()) {
-        return DebugLogSnapshot(
-          entries = trimEntriesToByteBudget(parsed, maxBytes),
-          source = "pid-fallback",
-          rawLineCount = fallback.rawLineCount,
-        )
-      }
-
-      // A successful command with no entries is not an error. Android can legitimately expose an
-      // empty current-process buffer immediately after process start or after a buffer clear.
-      return DebugLogSnapshot(
-        entries = emptyList(),
-        source = "empty",
-        rawLineCount = fallback.rawLineCount,
-      )
-    }
-
-    failures += fallback.errorMessage("fallback logcat")
-    throw IOException(failures.filter { it.isNotBlank() }.joinToString("; ").ifBlank { "Unable to read logcat" })
+    AppLogFile.enqueue(entry)
   }
 
-  private fun parseLines(
-    lines: List<String>,
-    expectedPid: Int?,
-    allowRawFallback: Boolean,
-  ): List<DebugLogEntry> {
-    if (lines.isEmpty()) return emptyList()
-
-    val now = System.currentTimeMillis()
-    val parsed = ArrayList<DebugLogEntry>(lines.size)
-    lines.forEachIndexed { index, line ->
-      if (line.isBlank() || line.startsWith("--------- beginning of")) return@forEachIndexed
-
-      val entry = parseKnownLine(line, now, index)
-      if (entry != null) {
-        if (expectedPid == null || entry.pid == null || entry.pid == expectedPid) {
-          parsed += entry
-        }
-      } else if (allowRawFallback) {
-        // The primary command is already --pid filtered. Preserve vendor-specific lines rather
-        // than presenting an empty screen just because a vendor changed logcat formatting.
-        parsed +=
-          DebugLogEntry(
-            id = buildEntryId(now, expectedPid, null, DebugLogLevel.Info, "logcat", line, index),
-            timeMillis = now,
-            timestamp = formatDisplayTime(now),
-            level = DebugLogLevel.Info,
-            tag = "logcat",
-            message = line,
-            pid = expectedPid,
-          )
-      }
+  /** The "Debug log size" setting bounds the history, and with it every log export. */
+  fun setCapacityMb(megabytes: Int) {
+    synchronized(lock) {
+      capacityBytes = megabytes.coerceIn(1, 10).toLong() * MB
+      trimLocked()
+      _revision.value = ++nextId
     }
-    return parsed
+    AppLogFile.setCapacityBytes(megabytes.coerceIn(1, 10) * MB)
   }
 
-  fun trimTextToByteBudget(text: String, maxBytes: Int): String {
-    if (text.toByteArray(Charsets.UTF_8).size <= maxBytes) return text
+  fun snapshot(): List<DebugLogEntry> = synchronized(lock) { entries.toList() }
+
+  fun clear() {
+    synchronized(lock) {
+      entries.clear()
+      usedBytes = 0L
+      _revision.value = ++nextId
+    }
+  }
+
+  /** The newest lines that fit in [maxBytes], oldest first. */
+  fun text(
+    entries: List<DebugLogEntry> = snapshot(),
+    maxBytes: Int = this.maxBytes,
+  ): String {
     val kept = ArrayDeque<String>()
     var used = 0
-    for (line in text.lineSequence().toList().asReversed()) {
+    for (entry in entries.asReversed()) {
+      val line = entry.toLogLine()
       val bytes = line.toByteArray(Charsets.UTF_8).size + 1
       if (used + bytes > maxBytes) break
       kept.addFirst(line)
@@ -191,185 +176,403 @@ internal object DebugLogReader {
     return kept.joinToString("\n")
   }
 
-  private fun trimEntriesToByteBudget(entries: List<DebugLogEntry>, maxBytes: Int): List<DebugLogEntry> {
-    val kept = ArrayDeque<DebugLogEntry>()
-    var used = 0
-    for (entry in entries.asReversed()) {
-      val bytes = buildString {
-        append(entry.timestamp)
-        entry.pid?.let { pid ->
-          append(' ').append(pid)
-          entry.tid?.let { tid -> append('/').append(tid) }
-        }
-        append(' ').append(entry.level.code).append('/').append(entry.tag).append(": ").append(entry.message).append('\n')
-      }.toByteArray(Charsets.UTF_8).size
-      if (used + bytes > maxBytes) break
-      kept.addFirst(entry)
-      used += bytes
-    }
-    return kept.toList()
-  }
+  private fun cost(entry: DebugLogEntry): Long = (entry.tag.length + entry.message.length + LINE_OVERHEAD).toLong()
 
-  private fun parseKnownLine(
-    line: String,
-    now: Long,
-    occurrence: Int,
-  ): DebugLogEntry? {
-    threadTimePattern.matchEntire(line)?.let { match ->
-      val timeMillis = parseAndroidTimestamp(match.groupValues[1], now) ?: now
-      val pid = match.groupValues[2].toIntOrNull()
-      val tid = match.groupValues[3].toIntOrNull()
-      val level = match.groupValues[4].toDebugLogLevel() ?: return null
-      val tag = match.groupValues[5].trim()
-      val message = match.groupValues[6]
-      return buildEntry(timeMillis, pid, tid, level, tag, message, occurrence)
-    }
-
-    classicTimePattern.matchEntire(line)?.let { match ->
-      val timeMillis = parseAndroidTimestamp(match.groupValues[1], now) ?: now
-      val level = match.groupValues[2].toDebugLogLevel() ?: return null
-      val tag = match.groupValues[3].trim()
-      val pid = match.groupValues[4].toIntOrNull()
-      val message = match.groupValues[5]
-      return buildEntry(timeMillis, pid, null, level, tag, message, occurrence)
-    }
-
-    epochPattern.matchEntire(line)?.let { match ->
-      val timeMillis = (match.groupValues[1].toDoubleOrNull()?.times(1_000.0))?.toLong() ?: now
-      val pid = match.groupValues[2].toIntOrNull()
-      val tid = match.groupValues[3].toIntOrNull()
-      val level = match.groupValues[4].toDebugLogLevel() ?: return null
-      val tag = match.groupValues[5].trim()
-      val message = match.groupValues[6]
-      return buildEntry(timeMillis, pid, tid, level, tag, message, occurrence)
-    }
-
-    briefPattern.matchEntire(line)?.let { match ->
-      val level = match.groupValues[1].toDebugLogLevel() ?: return null
-      val tag = match.groupValues[2].trim()
-      val pid = match.groupValues[3].toIntOrNull()
-      val message = match.groupValues[4]
-      return buildEntry(now, pid, null, level, tag, message, occurrence)
-    }
-
-    return null
-  }
-
-  private fun buildEntry(
-    timeMillis: Long,
-    pid: Int?,
-    tid: Int?,
-    level: DebugLogLevel,
-    tag: String,
-    message: String,
-    occurrence: Int,
-  ): DebugLogEntry =
-    DebugLogEntry(
-      id = buildEntryId(timeMillis, pid, tid, level, tag, message, occurrence),
-      timeMillis = timeMillis,
-      timestamp = formatDisplayTime(timeMillis),
-      level = level,
-      tag = tag,
-      message = message,
-      pid = pid,
-      tid = tid,
-    )
-
-  private fun runCommand(
-    command: List<String>,
-    maxBytes: Int,
-  ): CommandResult {
-    val process = ProcessBuilder(command).redirectErrorStream(true).start()
-    return try {
-      var rawLineCount = 0
-      var retainedBytes = 0
-      val lines = ArrayDeque<String>()
-      BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-        while (true) {
-          val line = reader.readLine() ?: break
-          rawLineCount++
-          val lineBytes = line.toByteArray(Charsets.UTF_8).size + 1
-          lines.addLast(line)
-          retainedBytes += lineBytes
-          while (retainedBytes > maxBytes && lines.isNotEmpty()) {
-            retainedBytes -= lines.removeFirst().toByteArray(Charsets.UTF_8).size + 1
-          }
-        }
-      }
-      CommandResult(process.waitFor(), lines.toList(), rawLineCount)
-    } finally {
-      process.destroy()
-    }
-  }
-
-  private data class CommandResult(
-    val exitCode: Int,
-    val lines: List<String>,
-    val rawLineCount: Int,
-  ) {
-    fun errorMessage(label: String): String {
-      val detail = lines.takeLast(3).joinToString(" ").trim()
-      return if (detail.isBlank()) "$label exited with code $exitCode" else "$label: $detail"
+  private fun trimLocked() {
+    while (entries.size > 1 && (usedBytes > capacityBytes || entries.size > MAX_ENTRIES)) {
+      usedBytes -= cost(entries.removeFirst())
     }
   }
 }
 
-private fun String.toDebugLogLevel(): DebugLogLevel? =
-  when (this) {
-    "V" -> DebugLogLevel.Verbose
-    "D" -> DebugLogLevel.Debug
-    "I" -> DebugLogLevel.Info
-    "W" -> DebugLogLevel.Warn
-    "E", "F" -> DebugLogLevel.Error
-    else -> null
+/**
+ * Writes the captured log to a file as it arrives. A native crash (libmpv, a decoder, the renderer)
+ * ends the process without any Java handler and takes the in-memory history with it; the file
+ * still holds that session's lines for the crash report on the next launch.
+ */
+internal object AppLogFile {
+  private const val DIRECTORY = "app-logs"
+  private const val CURRENT = "session.log"
+  private const val CURRENT_ROLLED = "session.1.log"
+  private const val PREVIOUS = "previous-session.log"
+  private const val PREVIOUS_ROLLED = "previous-session.1.log"
+  private const val PID_HEADER = "mpvRx app log, pid "
+  private const val QUEUE_CAPACITY = 20_000
+
+  /** Bounds what waits for the writer, in characters, whatever the length of single lines. */
+  private const val MAX_QUEUED_CHARS = 4L * 1024 * 1024
+  private const val MAX_RETRY_DELAY_MS = 60_000L
+
+  private val queue = LinkedBlockingQueue<DebugLogEntry>(QUEUE_CAPACITY)
+  private val queuedChars = AtomicLong()
+
+  @Volatile private var capacityBytes = 3 * 1024 * 1024
+
+  @Volatile private var started = false
+
+  @Volatile private var disabled = false
+
+  fun enqueue(entry: DebugLogEntry) {
+    if (disabled) return
+    // Lines from before start() wait here; past the bound, the file skips them but memory keeps them.
+    val chars = entry.chars()
+    if (queuedChars.get() + chars > MAX_QUEUED_CHARS) return
+    if (queue.offer(entry)) queuedChars.addAndGet(chars)
   }
 
-private fun buildEntryId(
-  timeMillis: Long,
-  pid: Int?,
-  tid: Int?,
-  level: DebugLogLevel,
-  tag: String,
-  message: String,
-  occurrence: Int,
-): String =
-  buildString {
-    append(timeMillis)
-    append(':')
-    append(pid ?: -1)
-    append(':')
-    append(tid ?: -1)
-    append(':')
-    append(level.code)
-    append(':')
-    append(tag.hashCode())
-    append(':')
-    append(message.hashCode())
-    append(':')
-    append(occurrence)
+  /** For processes that never [start], and when the file cannot be created. */
+  fun disable() {
+    disabled = true
+    queue.clear()
+    queuedChars.set(0L)
   }
 
-private fun parseAndroidTimestamp(
-  timestamp: String,
-  now: Long,
-): Long? =
-  runCatching {
-    val formatter = SimpleDateFormat("MM-dd HH:mm:ss.SSS", Locale.US)
-    val parsed = formatter.parse(timestamp) ?: return@runCatching null
-    val currentCalendar = Calendar.getInstance().apply { timeInMillis = now }
-    val parsedCalendar =
-      Calendar.getInstance().apply {
-        time = parsed
-        set(Calendar.YEAR, currentCalendar.get(Calendar.YEAR))
-      }
+  fun setCapacityBytes(bytes: Int) {
+    capacityBytes = bytes
+  }
 
-    // A log buffer can cross New Year. If assigning the current year makes the log appear more
-    // than a day in the future, it belongs to the previous year.
-    if (parsedCalendar.timeInMillis > now + 24L * 60L * 60L * 1_000L) {
-      parsedCalendar.add(Calendar.YEAR, -1)
+  /** Moves the last session's file aside for [previousSessionLog], then starts this one. Main process only. */
+  @Synchronized
+  fun start(context: Context) {
+    if (started) return
+    started = true
+    val directory = File(context.noBackupFilesDir, DIRECTORY)
+    runCatching {
+      check(directory.isDirectory || directory.mkdirs())
+      File(directory, PREVIOUS).delete()
+      File(directory, PREVIOUS_ROLLED).delete()
+      File(directory, CURRENT).renameTo(File(directory, PREVIOUS))
+      File(directory, CURRENT_ROLLED).renameTo(File(directory, PREVIOUS_ROLLED))
+    }.onFailure {
+      AndroidLog.w(AppLogging.DEFAULT_TAG, "Could not prepare the app log file", it)
+      disable()
+      return
     }
-    parsedCalendar.timeInMillis
-  }.getOrNull()
+    Thread({ writeLoop(directory) }, "mpvrx-log-writer").apply {
+      isDaemon = true
+      priority = Thread.MIN_PRIORITY
+      start()
+    }
+  }
 
-private fun formatDisplayTime(timeMillis: Long): String =
-  SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()).format(Date(timeMillis))
+  /**
+   * The log of the previous session if it was process [processId], newest lines last, within
+   * [maxBytes]. Null when that session left no log.
+   */
+  fun previousSessionLog(
+    context: Context,
+    processId: Int,
+    maxBytes: Int,
+  ): String? {
+    return runCatching {
+      val directory = File(context.noBackupFilesDir, DIRECTORY)
+      val log = File(directory, PREVIOUS).takeIf(File::isFile) ?: return null
+      val header = log.bufferedReader().use { it.readLine() }.orEmpty()
+      if (header.removePrefix(PID_HEADER).substringBefore(',').trim().toIntOrNull() != processId) return null
+      val text =
+        buildString {
+          sequenceOf(File(directory, PREVIOUS_ROLLED), log).filter(File::isFile).forEach { file ->
+            file.forEachLine { line -> if (!line.startsWith(PID_HEADER)) appendLine(line) }
+          }
+        }
+      tailWithinBytes(text, maxBytes).ifBlank { null }
+    }.getOrNull()
+  }
+
+  private fun writeLoop(directory: File) {
+    val current = File(directory, CURRENT)
+    var writer: BufferedWriter? = null
+    var written = 0L
+    var failures = 0
+    try {
+      while (true) {
+        // Released as soon as a line leaves the queue, whatever happens to it afterwards.
+        var entry: DebugLogEntry? = queue.take().also { queuedChars.addAndGet(-it.chars()) }
+        try {
+          val output = writer ?: open(current).also {
+            writer = it
+            written = current.length()
+          }
+          while (entry != null) {
+            val line = entry.toLogLine()
+            output.write(line)
+            output.newLine()
+            written += line.length + 1
+            entry = queue.poll()?.also { queuedChars.addAndGet(-it.chars()) }
+          }
+          // Flushed whenever the queue runs dry, so at most the lines still in flight are lost.
+          output.flush()
+          failures = 0
+          if (written > capacityBytes / 2) {
+            // Two halves keep the file within the log size without rewriting it.
+            writer = null
+            output.close()
+            val rolled = File(directory, CURRENT_ROLLED)
+            rolled.delete()
+            current.renameTo(rolled)
+          }
+        } catch (error: Exception) {
+          // Storage full or unavailable: drop the line in hand and try again later rather than
+          // stop for the rest of the session. Only logcat, as the app log would feed this writer again.
+          runCatching { writer?.close() }
+          writer = null
+          if (failures++ == 0) AndroidLog.w(AppLogging.DEFAULT_TAG, "Could not write the app log file", error)
+          Thread.sleep(minOf(MAX_RETRY_DELAY_MS, 1_000L shl minOf(failures, 6)))
+        }
+      }
+    } catch (_: InterruptedException) {
+      disable()
+    }
+  }
+
+  private fun DebugLogEntry.chars(): Long = (tag.length + message.length + 40).toLong()
+
+  private fun open(file: File): BufferedWriter {
+    val fresh = !file.exists() || file.length() == 0L
+    val writer = FileOutputStream(file, true).bufferedWriter(Charsets.UTF_8)
+    if (fresh) {
+      writer.write("$PID_HEADER${Process.myPid()}, started ${SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.ROOT).format(Date())}")
+      writer.newLine()
+    }
+    return writer
+  }
+
+  private fun tailWithinBytes(
+    text: String,
+    maxBytes: Int,
+  ): String {
+    if (text.toByteArray(Charsets.UTF_8).size <= maxBytes) return text
+    val kept = ArrayDeque<String>()
+    var used = 0
+    for (line in text.lines().asReversed()) {
+      val bytes = line.toByteArray(Charsets.UTF_8).size + 1
+      if (used + bytes > maxBytes) break
+      kept.addFirst(line)
+      used += bytes
+    }
+    return kept.joinToString("\n")
+  }
+}
+
+/**
+ * Routes the app log. [ensureInstalled] runs on the first log line of the process, before
+ * Application.onCreate if anything logs that early, so no line is ever written before the trees
+ * that receive it exist.
+ */
+internal object AppLogging {
+  const val DEFAULT_TAG = "mpvRx"
+
+  /** libmpv's native side; its messages arrive through [recordMpvMessage] instead. */
+  private const val MPV_NATIVE_TAG = "mpv"
+  private const val STDOUT_TAG = "System.out"
+  private const val STDERR_TAG = "System.err"
+  private const val MAX_APP_TAGS = 4096
+
+  /** Tags whose lines are captured in-process, so [LogcatTap] skips their logcat copies. */
+  private val appTags: MutableSet<String> =
+    ConcurrentHashMap.newKeySet<String>().apply { addAll(listOf(DEFAULT_TAG, MPV_NATIVE_TAG, STDOUT_TAG, STDERR_TAG)) }
+
+  @Volatile private var installed = false
+
+  fun ensureInstalled() {
+    if (installed) return
+    synchronized(this) {
+      if (installed) return
+      // BufferTree keeps the in-app copy and runs first, so a line's tag is known as the app's
+      // before its logcat copy exists. DebugTree writes logcat and splits lines longer than its
+      // 4 KB limit instead of truncating them.
+      Timber.plant(BufferTree, Timber.DebugTree())
+      // printStackTrace() and println() bypass Log; keep their lines too. No autoflush: flushing
+      // Android's original streams would log partial lines and, on older versions, blank ones.
+      runCatching {
+        System.setOut(PrintStream(LineCapturingStream(System.out, STDOUT_TAG, AndroidLog.INFO), false, "UTF-8"))
+        System.setErr(PrintStream(LineCapturingStream(System.err, STDERR_TAG, AndroidLog.WARN), false, "UTF-8"))
+      }
+      installed = true
+    }
+  }
+
+  fun isAppTag(tag: String): Boolean = tag in appTags
+
+  /** mpv messages, from its log callback. They reached logcat only at Verbose level, if at all. */
+  fun recordMpvMessage(
+    prefix: String,
+    level: Int,
+    text: String,
+  ) {
+    val priority =
+      when {
+        level <= MPVLib.MpvLogLevel.MPV_LOG_LEVEL_ERROR -> AndroidLog.ERROR
+        level <= MPVLib.MpvLogLevel.MPV_LOG_LEVEL_WARN -> AndroidLog.WARN
+        level <= MPVLib.MpvLogLevel.MPV_LOG_LEVEL_INFO -> AndroidLog.INFO
+        level <= MPVLib.MpvLogLevel.MPV_LOG_LEVEL_V -> AndroidLog.DEBUG
+        else -> AndroidLog.VERBOSE
+      }
+    AppLogBuffer.record(priority, "mpv/$prefix", text.trimEnd('\n'))
+  }
+
+  private object BufferTree : Timber.Tree() {
+    override fun isLoggable(
+      tag: String?,
+      priority: Int,
+    ): Boolean = true
+
+    override fun log(
+      priority: Int,
+      tag: String?,
+      message: String,
+      t: Throwable?,
+    ) {
+      val name = tag ?: DEFAULT_TAG
+      if (appTags.size < MAX_APP_TAGS) appTags.add(name)
+      AppLogBuffer.record(priority, name, message)
+    }
+  }
+}
+
+/** Passes everything on to [original] and records each complete line in the app log. */
+private class LineCapturingStream(
+  private val original: OutputStream,
+  private val tag: String,
+  private val priority: Int,
+) : OutputStream() {
+  private val line = ByteArrayOutputStream()
+
+  @Synchronized
+  override fun write(b: Int) {
+    original.write(b)
+    if (b == '\n'.code) endLine() else line.write(b)
+    if (line.size() > MAX_LINE_BYTES) endLine()
+  }
+
+  @Synchronized
+  override fun write(
+    b: ByteArray,
+    off: Int,
+    len: Int,
+  ) {
+    original.write(b, off, len)
+    var start = off
+    for (index in off until off + len) {
+      if (b[index] == '\n'.code.toByte()) {
+        line.write(b, start, index - start)
+        endLine()
+        start = index + 1
+      }
+    }
+    line.write(b, start, off + len - start)
+    if (line.size() > MAX_LINE_BYTES) endLine()
+  }
+
+  @Synchronized
+  override fun flush() = original.flush()
+
+  private fun endLine() {
+    val text = line.toString("UTF-8").trimEnd('\r')
+    line.reset()
+    if (text.isNotEmpty()) AppLogBuffer.record(priority, tag, text)
+  }
+
+  private companion object {
+    const val MAX_LINE_BYTES = 32 * 1024
+  }
+}
+
+/**
+ * While verbose logging is on, adds the lines Android itself logs for this process (hardware
+ * decoders, the GPU driver, the runtime, libraries that log directly) from logcat. Best effort:
+ * logcat is the only place those lines exist and it can drop them. The app's own and mpv's lines
+ * never depend on it; they are captured in-process, and their logcat copies are skipped here.
+ */
+internal object LogcatTap {
+  private const val MAX_QUICK_FAILURES = 5
+  private const val QUICK_FAILURE_MS = 10_000L
+
+  // logcat -v threadtime -v epoch: "1700000000.123  1234  5678 D Tag     : message"
+  private val linePattern = Regex("""^\s*(\d+)\.(\d{3})\s+\d+\s+(\d+)\s+([VDIWEFA])\s+(.*?)\s*: ?(.*)$""")
+
+  private var enabled = false
+  private var generation = 0
+  private var process: java.lang.Process? = null
+
+  @Synchronized
+  fun setEnabled(value: Boolean) {
+    if (value == enabled) return
+    enabled = value
+    generation++
+    process?.destroy()
+    process = null
+    if (value) {
+      val run = generation
+      Thread({ readLoop(run) }, "mpvrx-logcat-tap").apply {
+        isDaemon = true
+        priority = Thread.MIN_PRIORITY
+        start()
+      }
+    }
+  }
+
+  @Synchronized
+  private fun isCurrent(run: Int): Boolean = enabled && generation == run
+
+  private fun readLoop(run: Int) {
+    var quickFailures = 0
+    try {
+      while (isCurrent(run)) {
+        val startedAt = SystemClock.elapsedRealtime()
+        // "-T 1" first replays the newest older line. Lines stamped before this run started are
+        // skipped until the first live one; after that nothing is, as timestamps can arrive out
+        // of order and the clock can be changed.
+        val cutoff = System.currentTimeMillis()
+        var live = false
+        val child =
+          ProcessBuilder("logcat", "-v", "threadtime", "-v", "epoch", "--pid=${Process.myPid()}", "-T", "1")
+            .redirectErrorStream(true)
+            .start()
+        synchronized(this) {
+          if (!isCurrent(run)) {
+            child.destroy()
+            return
+          }
+          process = child
+        }
+        try {
+          child.inputStream.bufferedReader().forEachLine { text ->
+            val match = linePattern.matchEntire(text) ?: return@forEachLine
+            val (seconds, millis, tid, level, tag, message) = match.destructured
+            val time = seconds.toLong() * 1000 + millis.toLong()
+            if (!live) {
+              if (time < cutoff) return@forEachLine
+              live = true
+            }
+            if (AppLogging.isAppTag(tag)) return@forEachLine
+            AppLogBuffer.record(priorityOf(level[0]), tag, message, time, tid.toIntOrNull() ?: 0)
+          }
+        } catch (_: java.io.IOException) {
+          // Destroyed by setEnabled(false), or logcat went away.
+        } finally {
+          child.destroy()
+        }
+        if (!isCurrent(run)) return
+        // logcat ended on its own. Restart it, but give up on a device where it keeps failing.
+        quickFailures = if (SystemClock.elapsedRealtime() - startedAt < QUICK_FAILURE_MS) quickFailures + 1 else 0
+        if (quickFailures >= MAX_QUICK_FAILURES) {
+          AndroidLog.w(AppLogging.DEFAULT_TAG, "logcat keeps exiting; Android's own lines are left out of the app log")
+          return
+        }
+        Thread.sleep(1_000L * quickFailures)
+      }
+    } catch (error: Exception) {
+      AndroidLog.w(AppLogging.DEFAULT_TAG, "logcat is unavailable; Android's own lines are left out of the app log", error)
+    }
+  }
+
+  private fun priorityOf(level: Char): Int =
+    when (level) {
+      'V' -> AndroidLog.VERBOSE
+      'D' -> AndroidLog.DEBUG
+      'I' -> AndroidLog.INFO
+      'W' -> AndroidLog.WARN
+      else -> AndroidLog.ERROR
+    }
+}

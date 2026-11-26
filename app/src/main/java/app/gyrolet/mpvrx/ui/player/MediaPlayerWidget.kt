@@ -74,7 +74,7 @@ class MediaPlayerWidget : AppWidgetProvider() {
       } catch (cancelled: kotlinx.coroutines.CancellationException) {
         throw cancelled
       } catch (error: Exception) {
-        android.util.Log.w(TAG, "Unable to update media widget", error)
+        app.gyrolet.mpvrx.utils.logging.Log.w(TAG, "Unable to update media widget", error)
       }
     }
     scope.launch {
@@ -325,7 +325,7 @@ class MediaPlayerWidget : AppWidgetProvider() {
             RemoteViews(views(dimensions.landscape), views(dimensions.portrait))
           }
           runCatching { manager.updateAppWidget(id, remoteViews) }
-            .onFailure { error -> android.util.Log.w(TAG, "Unable to render media widget", error) }
+            .onFailure { error -> app.gyrolet.mpvrx.utils.logging.Log.w(TAG, "Unable to render media widget", error) }
         }
       }
 
@@ -823,7 +823,7 @@ class MediaPlayerPillWidget : AppWidgetProvider() {
         } catch (cancelled: kotlinx.coroutines.CancellationException) {
           throw cancelled
         } catch (error: Exception) {
-          android.util.Log.w(TAG, "Unable to update media pill widget", error)
+          app.gyrolet.mpvrx.utils.logging.Log.w(TAG, "Unable to update media pill widget", error)
         }
       }
     scope.launch {

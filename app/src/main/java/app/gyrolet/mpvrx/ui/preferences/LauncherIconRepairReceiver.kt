@@ -4,7 +4,7 @@ package app.gyrolet.mpvrx.ui.preferences
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 
 /** Repairs alias overrides after an app upgrade, without adding work to video startup. */
 class LauncherIconRepairReceiver : BroadcastReceiver() {

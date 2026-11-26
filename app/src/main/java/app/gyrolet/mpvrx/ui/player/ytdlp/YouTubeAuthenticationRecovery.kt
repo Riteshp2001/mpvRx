@@ -4,7 +4,6 @@ package app.gyrolet.mpvrx.ui.player.ytdlp
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +37,7 @@ import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

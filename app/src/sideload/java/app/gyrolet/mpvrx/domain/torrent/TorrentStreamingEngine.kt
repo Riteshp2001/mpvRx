@@ -8,7 +8,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
 import android.util.AtomicFile
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope

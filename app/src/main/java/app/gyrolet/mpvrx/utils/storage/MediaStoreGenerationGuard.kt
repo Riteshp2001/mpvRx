@@ -7,7 +7,7 @@ package app.gyrolet.mpvrx.utils.storage
 import android.content.Context
 import android.os.Build
 import android.provider.MediaStore
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 
 /**
  * Cheap "has the video or audio library changed?" signal, so cold boots can skip a rescan.

@@ -10,7 +10,6 @@
 package app.gyrolet.mpvrx.ui.browser.networkstreaming
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -31,6 +30,7 @@ import app.gyrolet.mpvrx.repository.wyzie.bestTmdbResult
 import app.gyrolet.mpvrx.data.jellyfin.JellyfinClient
 import app.gyrolet.mpvrx.ui.torrent.cleanSearchTitle
 import app.gyrolet.mpvrx.ui.torrent.tmdbImageUrl
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils

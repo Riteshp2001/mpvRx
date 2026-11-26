@@ -36,11 +36,11 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.DocumentsContract
 import android.provider.MediaStore
-import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.animation.PathInterpolator
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback

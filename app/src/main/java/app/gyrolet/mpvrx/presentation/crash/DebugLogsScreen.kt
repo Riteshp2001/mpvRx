@@ -12,7 +12,7 @@ package app.gyrolet.mpvrx.presentation.crash
 import android.content.Context
 import android.content.Intent
 import android.os.Process
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -80,13 +80,12 @@ import app.gyrolet.mpvrx.utils.media.openPersistedTreeDocument
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import java.io.File
 
-private const val DEBUG_LOG_POLL_INTERVAL_MS = 1_500L
+private const val DEBUG_LOG_REFRESH_MS = 500L
 private const val DEBUG_LOG_TAG = "MpvRxDebugLogs"
 private const val DEBUG_LOG_FILE_PREFIX = "mpvrx-debug-"
 private const val DEBUG_LOG_KEEP = 5
@@ -105,46 +104,24 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
 
   var query by remember { mutableStateOf("") }
   var selectedLevels by remember { mutableStateOf(DebugLogLevel.entries.toSet()) }
-  var liveEntries by remember { mutableStateOf<List<DebugLogEntry>>(emptyList()) }
+  var liveEntries by remember { mutableStateOf(AppLogBuffer.snapshot()) }
   var pausedEntries by remember { mutableStateOf<List<DebugLogEntry>?>(null) }
-  var expandedEntryIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+  var expandedEntryIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
   var isPaused by remember { mutableStateOf(false) }
   var autoScrollEnabled by remember { mutableStateOf(true) }
   var menuExpanded by remember { mutableStateOf(false) }
-  var clearedAt by remember { mutableStateOf(0L) }
-  var readError by remember { mutableStateOf<String?>(null) }
-  var hasLoadedOnce by remember { mutableStateOf(false) }
-  var readSource by remember { mutableStateOf("") }
 
-  // Generate one guaranteed app-side event before the first read. Besides being useful context,
-  // this makes it obvious when a vendor is preventing the app from reading its own logcat.
   LaunchedEffect(Unit) {
     Log.i(DEBUG_LOG_TAG, "Debug log viewer opened for pid=${Process.myPid()}")
   }
 
-  // Keep collecting while the UI is paused. Pause freezes the visible snapshot, not collection,
-  // so resuming catches up immediately instead of losing everything emitted while paused.
-  LaunchedEffect(clearedAt, logSizeMb) {
-    while (isActive) {
-      val result = withContext(Dispatchers.IO) {
-        runCatching { DebugLogReader.readSnapshot(logSizeMb.coerceIn(1, 10) * 1024 * 1024) }
-      }
-      result
-        .onSuccess { snapshot ->
-          val nextEntries = snapshot.entries.filter { it.timeMillis >= clearedAt }
-          // Some Android/vendor builds occasionally return an empty snapshot for one poll. Keep
-          // the last good snapshot instead of making the entire screen flash to an empty state.
-          if (nextEntries.isNotEmpty() || liveEntries.isEmpty()) {
-            liveEntries = nextEntries
-          }
-          readSource = snapshot.source
-          readError = null
-          hasLoadedOnce = true
-        }.onFailure { error ->
-          readError = error.message ?: "Unable to read app logs"
-          hasLoadedOnce = true
-        }
-      delay(DEBUG_LOG_POLL_INTERVAL_MS)
+  // The buffer is filled as lines are logged, so nothing here can come back empty or stale. Pause
+  // freezes the visible snapshot, not collection, so resuming shows everything logged meanwhile.
+  // The wait after each read caps list rebuilds while mpv or a scan logs heavily.
+  LaunchedEffect(Unit) {
+    AppLogBuffer.revision.collect {
+      liveEntries = withContext(Dispatchers.Default) { AppLogBuffer.snapshot() }
+      delay(DEBUG_LOG_REFRESH_MS)
     }
   }
 
@@ -188,7 +165,7 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
 
   fun allCapturedText(includeDeviceInfo: Boolean = false): String =
     buildDebugLogText(
-      entries = liveEntries,
+      entries = AppLogBuffer.snapshot(),
       includeDeviceInfo = includeDeviceInfo,
       maxBytes = logSizeMb.coerceIn(1, 10) * 1024 * 1024,
     )
@@ -203,13 +180,12 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
     }
   }
 
-  fun clearVisibleHistory() {
-    clearedAt = System.currentTimeMillis()
+  fun clearCapturedLogs() {
+    AppLogBuffer.clear()
     liveEntries = emptyList()
     pausedEntries = if (isPaused) emptyList() else null
     expandedEntryIds = emptySet()
     autoScrollEnabled = true
-    readError = null
   }
 
   Scaffold(
@@ -226,7 +202,7 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
             Text(
               text =
                 buildString {
-                  append(if (isPaused) "Paused" else if (readError != null) "Retrying" else "Live")
+                  append(if (isPaused) "Paused" else "Live")
                   append(" • ")
                   if (filteredEntries.size == sourceEntries.size) {
                     append(sourceEntries.size)
@@ -236,7 +212,6 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
                     append(" of ")
                     append(sourceEntries.size)
                   }
-                  if (readSource == "pid-fallback") append(" • compatibility mode")
                 },
               style = MaterialTheme.typography.labelMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -338,7 +313,7 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
                 enabled = sourceEntries.isNotEmpty(),
                 onClick = {
                   menuExpanded = false
-                  clearVisibleHistory()
+                  clearCapturedLogs()
                 },
               )
             }
@@ -427,38 +402,7 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
           }
         }
 
-        AnimatedVisibility(visible = readError != null && sourceEntries.isNotEmpty()) {
-          Surface(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.errorContainer,
-          ) {
-            Text(
-              text = "Logcat temporarily unavailable. Showing the last captured logs and retrying automatically.",
-              modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-          }
-        }
-
         when {
-          !hasLoadedOnce && sourceEntries.isEmpty() -> {
-            DebugLogMessageState(
-              title = "Loading logs…",
-              message = "Reading the current mpvRx process logcat.",
-            )
-          }
-          readError != null && sourceEntries.isEmpty() -> {
-            DebugLogMessageState(
-              title = "Unable to read logs",
-              message = "Android did not return the app logcat. mpvRx will keep retrying automatically.\n\n${readError.orEmpty()}",
-              isError = true,
-            )
-          }
           filteredEntries.isEmpty() -> {
             val hasActiveFilter = query.isNotBlank() || selectedLevels.size != DebugLogLevel.entries.size
             DebugLogMessageState(
@@ -517,7 +461,6 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
 private fun DebugLogMessageState(
   title: String,
   message: String,
-  isError: Boolean = false,
 ) {
   Box(
     modifier = Modifier.fillMaxSize(),
@@ -531,7 +474,7 @@ private fun DebugLogMessageState(
       Text(
         text = title,
         style = MaterialTheme.typography.titleMedium,
-        color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+        color = MaterialTheme.colorScheme.onSurface,
       )
       Text(
         text = message,
@@ -601,17 +544,9 @@ private fun DebugLogEntryCard(
         overflow = TextOverflow.Ellipsis,
       )
 
-      if (expanded && entry.pid != null) {
+      if (expanded) {
         Text(
-          text = buildString {
-            append("pid ")
-            append(entry.pid)
-            entry.tid?.let {
-              append(" • tid ")
-              append(it)
-            }
-            append(" • long-press to copy")
-          },
+          text = "pid ${entry.pid} • tid ${entry.tid} • long-press to copy",
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -652,24 +587,7 @@ private fun debugLogLevelColor(level: DebugLogLevel) =
     DebugLogLevel.Error -> MaterialTheme.colorScheme.error
   }
 
-private fun formatDebugLogEntry(entry: DebugLogEntry): String =
-  buildString {
-    append(entry.timestamp)
-    entry.pid?.let { pid ->
-      append(' ')
-      append(pid)
-      entry.tid?.let { tid ->
-        append('/')
-        append(tid)
-      }
-    }
-    append(' ')
-    append(entry.level.code)
-    append('/')
-    append(entry.tag.ifBlank { "unknown" })
-    append(": ")
-    append(entry.message)
-  }
+private fun formatDebugLogEntry(entry: DebugLogEntry): String = entry.toLogLine()
 
 private fun buildDebugLogText(
   entries: List<DebugLogEntry>,
@@ -679,13 +597,12 @@ private fun buildDebugLogText(
   if (entries.isEmpty()) return ""
   val prefix =
     if (includeDeviceInfo) {
-      "${CrashActivity.collectDeviceInfo()}\n\nLogcat:\n"
+      "${CrashActivity.collectDeviceInfo()}\n\nApp log:\n"
     } else {
       ""
     }
   val logBudget = (maxBytes - prefix.toByteArray(Charsets.UTF_8).size).coerceAtLeast(0)
-  val logs = entries.joinToString("\n", transform = ::formatDebugLogEntry)
-  return (prefix + DebugLogReader.trimTextToByteBudget(logs, logBudget)).trimEnd()
+  return (prefix + AppLogBuffer.text(entries, logBudget)).trimEnd()
 }
 
 private fun createDebugLogsShareFile(

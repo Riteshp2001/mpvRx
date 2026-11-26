@@ -13,7 +13,6 @@ import android.content.Context
 import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Bundle
-import android.util.Log
 import android.view.ViewTreeObserver
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -34,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme

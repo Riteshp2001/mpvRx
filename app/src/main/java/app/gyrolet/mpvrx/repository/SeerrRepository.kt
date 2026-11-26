@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.repository
 
-import android.util.Log
 import app.gyrolet.mpvrx.data.network.ServerUrlUtils
 import app.gyrolet.mpvrx.domain.seerr.CreateRequestBody
 import app.gyrolet.mpvrx.domain.seerr.JellyseerrRequest
@@ -26,6 +25,7 @@ import app.gyrolet.mpvrx.domain.seerr.SeerrSonarrServer
 import app.gyrolet.mpvrx.domain.seerr.SeerrSonarrServerResponse
 import app.gyrolet.mpvrx.network.awaitResponse
 import app.gyrolet.mpvrx.preferences.SeerrPreferences
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async

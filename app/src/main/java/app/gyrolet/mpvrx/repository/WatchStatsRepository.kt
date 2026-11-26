@@ -2,10 +2,10 @@ package app.gyrolet.mpvrx.repository
 
 import android.content.Context
 import android.util.AtomicFile
-import android.util.Log
 import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
 import app.gyrolet.mpvrx.ui.player.PlaybackItem
 import app.gyrolet.mpvrx.ui.player.declaredMediaKind
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId

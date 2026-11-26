@@ -256,9 +256,9 @@ object RecentlyPlayedOps {
     kotlin
       .runCatching {
         repository.updateFilePath(oldPath, newPath, newFileName)
-        android.util.Log.d("RecentlyPlayedOps", "Updated history: $oldPath -> $newPath")
+        app.gyrolet.mpvrx.utils.logging.Log.d("RecentlyPlayedOps", "Updated history: $oldPath -> $newPath")
       }.onFailure { e ->
-        android.util.Log.w("RecentlyPlayedOps", "Failed to update history path: ${e.message}")
+        app.gyrolet.mpvrx.utils.logging.Log.w("RecentlyPlayedOps", "Failed to update history path: ${e.message}")
       }
   }
 

@@ -5,11 +5,11 @@
 package app.gyrolet.mpvrx.data.lyrics
 
 import android.os.Build
-import android.util.Log
 import android.util.LruCache
 import app.gyrolet.mpvrx.domain.lyrics.Lyrics
 import app.gyrolet.mpvrx.domain.lyrics.SyncedLine
 import app.gyrolet.mpvrx.network.awaitResponse
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async

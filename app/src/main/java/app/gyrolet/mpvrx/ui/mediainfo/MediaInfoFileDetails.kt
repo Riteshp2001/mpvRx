@@ -10,9 +10,9 @@ import android.os.Build
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.text.format.DateUtils
-import android.util.Log
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.player.resolveLocalPath
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File

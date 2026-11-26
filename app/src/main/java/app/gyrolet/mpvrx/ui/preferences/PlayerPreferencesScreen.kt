@@ -440,7 +440,7 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                       PackageManager.DONT_KILL_APP,
                     )
                   } catch (e: Exception) {
-                    android.util.Log.e("PlayerPreferencesScreen", "Failed to set alias state", e)
+                    app.gyrolet.mpvrx.utils.logging.Log.e("PlayerPreferencesScreen", "Failed to set alias state", e)
                   }
                 },
                 title = {
@@ -481,7 +481,7 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                         PackageManager.DONT_KILL_APP,
                       )
                     } catch (e: Exception) {
-                      android.util.Log.e("PlayerPreferencesScreen", "Failed to set alias state", e)
+                      app.gyrolet.mpvrx.utils.logging.Log.e("PlayerPreferencesScreen", "Failed to set alias state", e)
                     }
                   },
                   title = { Text(stringResource(R.string.pref_player_web_stream_links_title)) },

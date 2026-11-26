@@ -12,7 +12,6 @@ package app.gyrolet.mpvrx.ui.browser.jellyfin
 import android.app.Application
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -43,6 +42,7 @@ import app.gyrolet.mpvrx.ui.browser.music.MusicSortField
 import app.gyrolet.mpvrx.ui.browser.music.MusicSortOrder
 import app.gyrolet.mpvrx.ui.browser.music.MusicViewMode
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

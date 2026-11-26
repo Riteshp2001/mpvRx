@@ -13,7 +13,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Typeface
 import android.net.Uri
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import com.github.k1rakishou.fsaf.FileManager
 import com.yubyf.truetypeparser.TTFFile
 import kotlinx.coroutines.Dispatchers

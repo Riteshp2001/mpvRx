@@ -21,7 +21,6 @@ import android.os.Bundle
 import android.os.Process
 import android.os.StrictMode
 import android.os.SystemClock
-import android.util.Log
 import androidx.compose.ui.AndroidComposeUiFlags
 import androidx.compose.ui.ExperimentalComposeUiApi
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
@@ -35,7 +34,11 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SettingsRestoreGuard
 import app.gyrolet.mpvrx.remote.TvInputDispatcher
 import app.gyrolet.mpvrx.remote.TvRemoteServer
+import app.gyrolet.mpvrx.presentation.crash.AppLogBuffer
+import app.gyrolet.mpvrx.presentation.crash.AppLogFile
+import app.gyrolet.mpvrx.presentation.crash.AppLogging
 import app.gyrolet.mpvrx.presentation.crash.CrashMonitor
+import app.gyrolet.mpvrx.presentation.crash.LogcatTap
 import app.gyrolet.mpvrx.domain.network.NetworkImageRepository
 import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.player.MediaPlayerWidget
@@ -46,6 +49,7 @@ import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.theme.AppTheme
 import app.gyrolet.mpvrx.ui.theme.DarkMode
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.memory.BitmapMemoryCaches
 import `is`.xyz.mpv.FastThumbnails
 import kotlinx.coroutines.CancellationException
@@ -120,6 +124,7 @@ class App :
 
   override fun attachBaseContext(base: android.content.Context) {
     super.attachBaseContext(base)
+    AppLogging.ensureInstalled()
     // Before content providers and onCreate run, so no startup crash escapes the handler. The
     // crash screen's own process keeps the platform handler, so a failing recovery cannot loop.
     if (CrashMonitor.currentProcessName() != "$packageName:crash") CrashMonitor.install(this)
@@ -143,6 +148,7 @@ class App :
           ?.firstOrNull { it.pid == Process.myPid() }?.processName
       }
     if (processName == "$packageName:crash") {
+      AppLogFile.disable()
       startKoin {
         androidContext(this@App)
         modules(PreferencesModule)
@@ -150,6 +156,8 @@ class App :
       return
     }
 
+    // Before anything reads the previous session's log (CrashMonitor.recordPreviousExits).
+    AppLogFile.start(this)
     configureDebugStrictMode()
 
     // Imports no longer revert later; drop any rollback an older version left behind.
@@ -168,6 +176,18 @@ class App :
     }
     if (!BuildConfig.MPV_SUPPORTS_VULKAN) {
       getKoin().get<DecoderPreferences>().useVulkan.set(false)
+    }
+    val advancedPreferences = getKoin().get<AdvancedPreferences>()
+    applicationScope.launch {
+      advancedPreferences.debugLogSizeMb.changes()
+        .distinctUntilChanged()
+        .collect { AppLogBuffer.setCapacityMb(it) }
+    }
+    // Verbose logging is for debugging, where decoder, GPU driver and library lines matter too.
+    applicationScope.launch {
+      advancedPreferences.verboseLogging.changes()
+        .distinctUntilChanged()
+        .collect { LogcatTap.setEnabled(it) }
     }
     registerActivityLifecycleCallbacks(this)
     if (BuildConfig.ENABLE_UPDATE_FEATURE) {

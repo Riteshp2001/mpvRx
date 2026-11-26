@@ -9,13 +9,13 @@
 
 package app.gyrolet.mpvrx.data.network.proxy
 
-import android.util.Log
 import app.gyrolet.mpvrx.data.network.client.NetworkClient
 import app.gyrolet.mpvrx.data.network.client.NetworkMimeTypes
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkPath
 import app.gyrolet.mpvrx.domain.network.encodeNetworkPathForUrl
 import app.gyrolet.mpvrx.repository.NetworkRepository
+import app.gyrolet.mpvrx.utils.logging.Log
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope

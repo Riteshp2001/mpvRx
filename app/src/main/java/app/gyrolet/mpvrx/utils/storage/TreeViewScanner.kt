@@ -12,8 +12,8 @@ package app.gyrolet.mpvrx.utils.storage
 import android.content.Context
 import android.os.Environment
 import android.provider.MediaStore
-import android.util.Log
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

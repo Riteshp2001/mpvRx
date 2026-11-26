@@ -10,10 +10,10 @@ import android.os.Build
 import android.os.Environment
 import android.os.SystemClock
 import android.provider.MediaStore
-import android.util.Log
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.ui.browser.medialibrary.MediaLibraryCache
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred

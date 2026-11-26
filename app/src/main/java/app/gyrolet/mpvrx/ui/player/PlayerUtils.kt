@@ -14,10 +14,10 @@ import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.MediaStore
-import android.util.Log
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.domain.network.XtreamPlaybackUri
 import app.gyrolet.mpvrx.ui.player.PlayerActivity.Companion.TAG
+import app.gyrolet.mpvrx.utils.logging.Log
 import `is`.xyz.mpv.MPVNode
 import `is`.xyz.mpv.Utils
 import kotlinx.serialization.json.Json

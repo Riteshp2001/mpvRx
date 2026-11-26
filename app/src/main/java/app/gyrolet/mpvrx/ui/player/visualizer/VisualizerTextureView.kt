@@ -8,10 +8,10 @@ import android.opengl.EGLExt
 import android.opengl.GLSurfaceView
 import android.os.Handler
 import android.os.HandlerThread
-import android.util.Log
 import android.view.Choreographer
 import android.view.TextureView
 import android.view.View
+import app.gyrolet.mpvrx.utils.logging.Log
 import javax.microedition.khronos.opengles.GL10
 
 internal interface VsyncRenderer : GLSurfaceView.Renderer {

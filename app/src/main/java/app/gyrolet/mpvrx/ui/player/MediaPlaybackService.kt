@@ -36,7 +36,6 @@ import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -62,6 +61,7 @@ import app.gyrolet.mpvrx.repository.lyrics.LyricsRepository
 import app.gyrolet.mpvrx.ui.components.AppToast
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.floating.FloatingLyricsController
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import `is`.xyz.mpv.MPVLib

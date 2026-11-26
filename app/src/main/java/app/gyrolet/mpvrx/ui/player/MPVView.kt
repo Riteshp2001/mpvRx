@@ -15,7 +15,6 @@ import android.hardware.display.DisplayManager
 import android.os.Environment
 import android.os.SystemClock
 import android.util.AttributeSet
-import android.util.Log
 import android.view.Display
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
@@ -44,6 +43,7 @@ import app.gyrolet.mpvrx.ui.player.anime4k.selectRuntimeStableAnime4K
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.toColorHexString
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.VideoCodecSupportInspector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

@@ -415,6 +415,7 @@ dependencies {
 
   implementation(libs.kotlinx.immutable.collections)
   implementation(libs.kotlinx.serialization.json)
+  implementation(libs.timber)
   implementation(libs.okhttp)
   implementation(libs.jsoup)
   implementation(libs.androidx.media3.common)

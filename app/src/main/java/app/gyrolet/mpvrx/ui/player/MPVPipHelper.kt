@@ -19,7 +19,6 @@ import android.content.IntentFilter
 import android.graphics.Rect
 import android.graphics.drawable.Icon
 import android.os.Build
-import android.util.Log
 import android.util.Rational
 import android.view.View
 import androidx.annotation.DrawableRes
@@ -27,6 +26,7 @@ import androidx.appcompat.app.AppCompatActivity
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+import app.gyrolet.mpvrx.utils.logging.Log
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 

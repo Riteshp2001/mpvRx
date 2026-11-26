@@ -9,9 +9,9 @@
 
 package app.gyrolet.mpvrx.ui.player
 
-import android.util.Log
 import app.gyrolet.mpvrx.network.SharedHttpClient
 import app.gyrolet.mpvrx.network.awaitResponse
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

@@ -12,8 +12,8 @@ package app.gyrolet.mpvrx.utils.device
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Log
 import app.gyrolet.mpvrx.BuildConfig
+import app.gyrolet.mpvrx.utils.logging.Log
 
 object VulkanCapabilities {
   private const val TAG = "VulkanCapabilities"

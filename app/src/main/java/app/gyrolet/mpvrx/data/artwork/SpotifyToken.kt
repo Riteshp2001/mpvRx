@@ -11,7 +11,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
-import android.util.Log
 import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
@@ -21,6 +20,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import app.gyrolet.mpvrx.network.awaitResponse
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.util.Base64
 import java.util.UUID
 import java.util.concurrent.TimeUnit

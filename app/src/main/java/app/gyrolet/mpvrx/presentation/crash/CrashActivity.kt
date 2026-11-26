@@ -181,7 +181,7 @@ class CrashActivity : AppCompatActivity() {
     suspend fun shareLogs(
       deviceInfo: String,
       exceptionString: String? = null,
-      logcat: String,
+      appLog: String,
       activity: Activity,
     ) {
       // Advanced Settings calls this without an exception. In that case open the
@@ -197,7 +197,7 @@ class CrashActivity : AppCompatActivity() {
       }
 
       val file = withContext(Dispatchers.IO) {
-        File(activity.cacheDir, "mpvrx_logs.txt").apply { writeText(concatLogs(deviceInfo, exceptionString, logcat)) }
+        File(activity.cacheDir, "mpvrx_logs.txt").apply { writeText(concatLogs(deviceInfo, exceptionString, appLog)) }
       }
       withContext(Dispatchers.Main) { shareReportFile(activity, file) }
     }
@@ -220,7 +220,7 @@ class CrashActivity : AppCompatActivity() {
     fun concatLogs(
       deviceInfo: String,
       crashLogs: String? = null,
-      logcat: String,
+      appLog: String,
     ): String =
       StringBuilder()
         .apply {
@@ -231,18 +231,9 @@ class CrashActivity : AppCompatActivity() {
             appendLine(crashLogs)
             appendLine()
           }
-          appendLine("Logcat:")
-          appendLine(logcat)
+          appendLine("App log:")
+          appendLine(appLog)
         }.toString()
-
-    fun collectLogcat(): String {
-      val process = ProcessBuilder("logcat", "-d", "-v", "threadtime").redirectErrorStream(true).start()
-      return try {
-        process.inputStream.bufferedReader().use { it.readText() }
-      } finally {
-        process.destroy()
-      }
-    }
 
     fun collectDeviceInfo(): String =
       """

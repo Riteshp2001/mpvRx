@@ -10,9 +10,9 @@
 package app.gyrolet.mpvrx.repository
 
 import android.content.Context
-import android.util.Log
 import app.gyrolet.mpvrx.network.awaitResponse
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

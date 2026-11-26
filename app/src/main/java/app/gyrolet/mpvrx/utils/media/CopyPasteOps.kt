@@ -18,11 +18,11 @@ import android.os.Environment
 import android.os.StatFs
 import android.provider.DocumentsContract
 import android.provider.MediaStore
-import android.util.Log
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.documentfile.provider.DocumentFile
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable

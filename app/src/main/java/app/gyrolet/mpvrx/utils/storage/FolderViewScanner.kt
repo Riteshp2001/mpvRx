@@ -12,10 +12,10 @@ package app.gyrolet.mpvrx.utils.storage
 import android.content.Context
 import android.os.Environment
 import android.provider.MediaStore
-import android.util.Log
 import app.gyrolet.mpvrx.database.dao.DirectoryScanDao
 import app.gyrolet.mpvrx.database.entities.DirectoryScanEntity
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable

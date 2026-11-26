@@ -18,12 +18,12 @@ import android.media.AudioManager
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.PowerManager
+import app.gyrolet.mpvrx.utils.logging.Log
 import `is`.xyz.mpv.MPVNode
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.util.DisplayMetrics
 import android.view.WindowManager
-import android.util.Log
 import android.view.inputmethod.InputMethodManager
 import android.webkit.MimeTypeMap
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
@@ -3512,12 +3512,12 @@ fun restartFromBeginning() {
                       loadCustomButtonsScript(File(path), target)
                     }
                   if (!loaded) {
-                    android.util.Log.w("PlayerViewModel", "Failed to load ${target.fileName}")
+                    app.gyrolet.mpvrx.utils.logging.Log.w("PlayerViewModel", "Failed to load ${target.fileName}")
                   }
                 }
               }
             } else {
-              android.util.Log.d("PlayerViewModel", "Deferring custom button scripts until MPV is ready")
+              app.gyrolet.mpvrx.utils.logging.Log.d("PlayerViewModel", "Deferring custom button scripts until MPV is ready")
             }
           } else {
             customButtonsScriptPaths = emptyMap()
@@ -3528,7 +3528,7 @@ fun restartFromBeginning() {
             }
           }
         } catch (e: Exception) {
-          android.util.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
+          app.gyrolet.mpvrx.utils.logging.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
         }
       }
   }
@@ -3556,7 +3556,7 @@ fun restartFromBeginning() {
 
           val file = File(scriptPath)
           if (!file.exists()) {
-            android.util.Log.w("PlayerViewModel", "${target.fileName} missing during $reason, rebuilding")
+            app.gyrolet.mpvrx.utils.logging.Log.w("PlayerViewModel", "${target.fileName} missing during $reason, rebuilding")
             rebuildNeeded = true
             break
           }
@@ -3566,7 +3566,7 @@ fun restartFromBeginning() {
               loadCustomButtonsScript(file, target)
             }
           if (!loaded) {
-            android.util.Log.w("PlayerViewModel", "${target.fileName} load failed during $reason")
+            app.gyrolet.mpvrx.utils.logging.Log.w("PlayerViewModel", "${target.fileName} load failed during $reason")
           }
         }
       }
@@ -3596,7 +3596,7 @@ fun restartFromBeginning() {
       PlaybackSession.command("load-script", file.absolutePath)
       true
     }.getOrElse {
-      android.util.Log.w("PlayerViewModel", "load-script failed for ${target.fileName}: ${it.message}")
+      app.gyrolet.mpvrx.utils.logging.Log.w("PlayerViewModel", "load-script failed for ${target.fileName}: ${it.message}")
       false
     }
   }
@@ -3947,7 +3947,7 @@ fun restartFromBeginning() {
               Intent.FLAG_GRANT_READ_URI_PERMISSION,
             )
           } catch (e: SecurityException) {
-            android.util.Log.i(
+            app.gyrolet.mpvrx.utils.logging.Log.i(
               "PlayerViewModel",
               "Persistent permission not taken for audio $uri",
             )
@@ -3972,7 +3972,7 @@ fun restartFromBeginning() {
         }
 
         if (!forRestore && audioTracks.value.any { it.externalFilename == path }) {
-          android.util.Log.d("PlayerViewModel", "Audio already loaded by MPV, skipping audio-add: $path")
+          app.gyrolet.mpvrx.utils.logging.Log.d("PlayerViewModel", "Audio already loaded by MPV, skipping audio-add: $path")
           return@withLock
         }
 
@@ -3998,7 +3998,7 @@ fun restartFromBeginning() {
             showToast("Failed to load audio: ${e.message}")
           }
         }
-        android.util.Log.e("PlayerViewModel", "Error adding audio", e)
+        app.gyrolet.mpvrx.utils.logging.Log.e("PlayerViewModel", "Error adding audio", e)
       }
     }
   }
@@ -4021,7 +4021,7 @@ fun restartFromBeginning() {
     subtitleAddMutex.withLock {
       val uriString = uri.toString()
       if (_externalSubtitles.contains(uriString)) {
-        android.util.Log.d("PlayerViewModel", "Subtitle already tracked, skipping: $uriString")
+        app.gyrolet.mpvrx.utils.logging.Log.d("PlayerViewModel", "Subtitle already tracked, skipping: $uriString")
         return@withLock
       }
 
@@ -4043,7 +4043,7 @@ fun restartFromBeginning() {
             )
           } catch (e: SecurityException) {
             // Permission already granted, not available, or not needed (e.g. from tree).
-            android.util.Log.i(
+            app.gyrolet.mpvrx.utils.logging.Log.i(
               "PlayerViewModel",
               "Persistent permission not taken for $uri (may already have it via tree)",
             )
@@ -4059,7 +4059,7 @@ fun restartFromBeginning() {
         // Check if MPV already auto-loaded this subtitle (prevents duplication)
         val existingTrack = subtitleTracks.value.find { it.externalFilename == mpvPath }
         if (existingTrack != null) {
-          android.util.Log.d("PlayerViewModel", "Subtitle already loaded by MPV, skipping sub-add: $mpvPath")
+          app.gyrolet.mpvrx.utils.logging.Log.d("PlayerViewModel", "Subtitle already loaded by MPV, skipping sub-add: $mpvPath")
           if (select) {
             withContext(Dispatchers.Main) {
               runCatching { PlaybackSession.setPropertyInt("sid", existingTrack.id) }
@@ -4586,7 +4586,7 @@ fun restartFromBeginning() {
           }
         }
       } catch (e: Exception) {
-        android.util.Log.e("PlayerViewModel", "Error scanning local subtitles: ${e.message}", e)
+        app.gyrolet.mpvrx.utils.logging.Log.e("PlayerViewModel", "Error scanning local subtitles: ${e.message}", e)
       }
 
       // Auto-select the first external subtitle if the video has no embedded subtitle track active
@@ -6903,7 +6903,7 @@ fun restartFromBeginning() {
 
       retriever.playlistMetadata()
     } catch (e: Exception) {
-      android.util.Log.e("PlayerViewModel", "Failed to get video metadata for $resolvedUri", e)
+      app.gyrolet.mpvrx.utils.logging.Log.e("PlayerViewModel", "Failed to get video metadata for $resolvedUri", e)
       "" to ""
     } finally {
       try {
@@ -6948,7 +6948,7 @@ fun restartFromBeginning() {
           )
           retriever.playlistMetadata()
         } catch (e: Exception) {
-          android.util.Log.w("PlayerViewModel", "Failed to get network video metadata", e)
+          app.gyrolet.mpvrx.utils.logging.Log.w("PlayerViewModel", "Failed to get network video metadata", e)
           "" to ""
         } finally {
           runCatching { retriever.release() }
@@ -7100,7 +7100,7 @@ fun restartFromBeginning() {
 
       null
     } catch (e: Exception) {
-      android.util.Log.w(
+      app.gyrolet.mpvrx.utils.logging.Log.w(
         "PlayerViewModel",
         "Failed to get metadata from MediaStore for $uri, will try MediaMetadataRetriever",
         e,

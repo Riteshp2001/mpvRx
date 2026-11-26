@@ -12,7 +12,7 @@ package app.gyrolet.mpvrx.utils.media
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 
 /**
  * Broadcast receiver that listens for media scanner events

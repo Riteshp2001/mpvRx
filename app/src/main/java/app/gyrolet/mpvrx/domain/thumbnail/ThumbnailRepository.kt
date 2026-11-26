@@ -1347,7 +1347,7 @@ class ThumbnailRepository(
           }
 
           if (hasRecentNetworkThumbnailFailure(identity)) {
-            android.util.Log.d("ThumbnailRepository", "Skipping network thumbnail (previously failed): $path")
+            app.gyrolet.mpvrx.utils.logging.Log.d("ThumbnailRepository", "Skipping network thumbnail (previously failed): $path")
             return@async null
           }
 
@@ -1378,7 +1378,7 @@ class ThumbnailRepository(
             }
 
           if (bitmap == null) {
-            android.util.Log.w("ThumbnailRepository", "All strategies failed for network stream $path")
+            app.gyrolet.mpvrx.utils.logging.Log.w("ThumbnailRepository", "All strategies failed for network stream $path")
             networkThumbnailFailedAt[identity] = SystemClock.elapsedRealtime()
             return@async null
           }
@@ -1432,7 +1432,7 @@ class ThumbnailRepository(
     revision: Long,
   ): Bitmap? {
     if (hasRecentNetworkThumbnailFailure(identity)) {
-      android.util.Log.d("ThumbnailRepository", "Skipping network thumbnail (previously failed): $path")
+      app.gyrolet.mpvrx.utils.logging.Log.d("ThumbnailRepository", "Skipping network thumbnail (previously failed): $path")
       return null
     }
 
@@ -1477,7 +1477,7 @@ class ThumbnailRepository(
       }
 
     if (bitmap == null) {
-      android.util.Log.w("ThumbnailRepository", "All strategies failed for network path $path")
+      app.gyrolet.mpvrx.utils.logging.Log.w("ThumbnailRepository", "All strategies failed for network path $path")
       networkThumbnailFailedAt[identity] = SystemClock.elapsedRealtime()
       return null
     }
@@ -1627,7 +1627,7 @@ class ThumbnailRepository(
       repositoryScope.launch {
         runCatching { clearThumbnailCache() }
           .onSuccess { browserPreferences.thumbnailCacheUncapped.set(true) }
-          .onFailure { android.util.Log.w("ThumbnailRepository", "Could not clear capped thumbnails", it) }
+          .onFailure { app.gyrolet.mpvrx.utils.logging.Log.w("ThumbnailRepository", "Could not clear capped thumbnails", it) }
       }
     }
   }

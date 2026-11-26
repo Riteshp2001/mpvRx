@@ -12,8 +12,8 @@ package app.gyrolet.mpvrx.ui.player
 import android.content.Context
 import android.util.AtomicFile
 import android.util.Base64
-import android.util.Log
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

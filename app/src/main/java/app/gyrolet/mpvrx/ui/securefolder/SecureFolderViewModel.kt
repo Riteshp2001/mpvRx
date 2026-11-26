@@ -10,7 +10,6 @@
 package app.gyrolet.mpvrx.ui.securefolder
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -20,6 +19,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.SecureMediaEntity
 import app.gyrolet.mpvrx.database.repository.SecureFolderRepository
 import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted

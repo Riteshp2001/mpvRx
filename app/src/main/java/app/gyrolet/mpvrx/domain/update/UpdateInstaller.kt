@@ -116,7 +116,7 @@ object UpdateInstaller {
         UpdateWork.update(context) { it.copy(stage = UpdateStage.READY, sessionId = -1, sessionToken = "") }
         throw cancelled
       } catch (error: Exception) {
-        android.util.Log.w("AppUpdate", "Installer session failed; using the system APK installer", error)
+        app.gyrolet.mpvrx.utils.logging.Log.w("AppUpdate", "Installer session failed; using the system APK installer", error)
         if (sessionId >= 0) runCatching { context.packageManager.packageInstaller.abandonSession(sessionId) }
         manualInstall(context, release, launch = !automatic && App.isInForeground)
       } finally {
@@ -147,7 +147,7 @@ object UpdateInstaller {
         } catch (cancelled: CancellationException) {
           throw cancelled
         } catch (error: Exception) {
-          android.util.Log.w("AppUpdate", "Installer confirmation failed; using the system APK installer", error)
+          app.gyrolet.mpvrx.utils.logging.Log.w("AppUpdate", "Installer confirmation failed; using the system APK installer", error)
           manualInstall(context, release)
         }
       }
@@ -202,7 +202,7 @@ object UpdateInstaller {
   }
 
   private fun installFailed(context: Context, error: Exception) {
-    android.util.Log.w("AppUpdate", "Could not install the update APK", error)
+    app.gyrolet.mpvrx.utils.logging.Log.w("AppUpdate", "Could not install the update APK", error)
     approvalIntent = null
     val current = UpdateWork.state(context).value
     if (current.sessionId >= 0) runCatching { context.packageManager.packageInstaller.abandonSession(current.sessionId) }
@@ -299,7 +299,7 @@ class UpdateInstallReceiver : BroadcastReceiver() {
         if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) UpdateInstaller.completed(context)
         else UpdateInstaller.onResult(context, intent)
       } catch (error: Exception) {
-        android.util.Log.w("AppUpdate", "Could not handle installer result", error)
+        app.gyrolet.mpvrx.utils.logging.Log.w("AppUpdate", "Could not handle installer result", error)
       } finally {
         pending.finish()
       }

@@ -9,8 +9,8 @@
 
 package app.gyrolet.mpvrx.utils.storage
 
-import android.util.Log
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 

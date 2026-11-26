@@ -11,7 +11,7 @@ package app.gyrolet.mpvrx.ui.browser.folderlist
 
 import android.content.Context
 import android.content.Intent
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -611,7 +611,7 @@ object FolderListScreen : Screen {
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
               throw cancelled
             } catch (error: Exception) {
-              android.util.Log.w("FolderListScreen", "Unable to check external folder changes", error)
+              app.gyrolet.mpvrx.utils.logging.Log.w("FolderListScreen", "Unable to check external folder changes", error)
             }
             resumed = false
             delay(10_000L)

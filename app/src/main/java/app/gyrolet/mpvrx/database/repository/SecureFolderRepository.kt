@@ -15,7 +15,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import android.util.Log
 import androidx.annotation.RequiresApi
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
@@ -23,6 +22,7 @@ import app.gyrolet.mpvrx.database.dao.SecureMediaDao
 import app.gyrolet.mpvrx.database.entities.SecureMediaEntity
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
 import app.gyrolet.mpvrx.utils.media.PlaybackStateOps
 import app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner

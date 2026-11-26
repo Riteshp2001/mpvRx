@@ -10,11 +10,11 @@
 package app.gyrolet.mpvrx.utils.media
 
 import android.net.Uri
-import android.util.Log
 import app.gyrolet.mpvrx.data.jellyfin.JellyfinClient
 import app.gyrolet.mpvrx.data.jellyfin.JellyfinClient.Companion.addJellyfinHeaders
 import app.gyrolet.mpvrx.network.SharedHttpClient
 import app.gyrolet.mpvrx.network.awaitResponse
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

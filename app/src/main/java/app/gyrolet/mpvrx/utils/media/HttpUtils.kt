@@ -10,7 +10,7 @@
 package app.gyrolet.mpvrx.utils.media
 
 import android.net.Uri
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException

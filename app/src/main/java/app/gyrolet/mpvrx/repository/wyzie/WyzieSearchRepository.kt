@@ -11,7 +11,6 @@ package app.gyrolet.mpvrx.repository.wyzie
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import app.gyrolet.mpvrx.network.awaitResponse
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
@@ -20,6 +19,7 @@ import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleFileStore
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleProvider
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchRequest
 import app.gyrolet.mpvrx.repository.subtitle.SubtitleProvider
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleStorageDirectory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

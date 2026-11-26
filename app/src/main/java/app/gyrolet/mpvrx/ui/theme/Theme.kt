@@ -13,7 +13,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Typeface
 import android.os.Build
-import android.util.Log
 import android.view.View
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.Animatable
@@ -67,6 +66,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.fonts.GoogleFontsRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.utils.logging.Log
 import org.koin.compose.koinInject
 import kotlin.math.hypot
 

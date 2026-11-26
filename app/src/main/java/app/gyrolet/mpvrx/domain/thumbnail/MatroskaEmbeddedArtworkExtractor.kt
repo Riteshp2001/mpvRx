@@ -13,7 +13,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.FileInputStream
 import java.io.IOException
 import java.nio.ByteBuffer

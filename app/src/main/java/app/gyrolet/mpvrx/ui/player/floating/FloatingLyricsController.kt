@@ -15,7 +15,6 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
-import android.util.Log
 import android.view.WindowManager
 import androidx.core.content.ContextCompat
 import androidx.palette.graphics.Palette
@@ -37,6 +36,7 @@ import app.gyrolet.mpvrx.ui.player.PlaybackItem
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackQueueReducer
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.LyricsUtils
 import com.google.android.material.color.utilities.Score
 import java.io.IOException

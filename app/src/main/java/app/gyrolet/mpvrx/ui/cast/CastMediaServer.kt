@@ -13,7 +13,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.util.Log
+import app.gyrolet.mpvrx.utils.logging.Log
 import fi.iki.elonen.NanoHTTPD
 import java.io.FilterInputStream
 import java.io.InputStream

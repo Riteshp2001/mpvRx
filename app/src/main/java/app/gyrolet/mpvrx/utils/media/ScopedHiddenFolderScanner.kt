@@ -7,9 +7,9 @@ import android.content.Context
 import android.net.Uri
 import android.os.Environment
 import android.provider.DocumentsContract
-import android.util.Log
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.storage.MediaScanOptions
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils

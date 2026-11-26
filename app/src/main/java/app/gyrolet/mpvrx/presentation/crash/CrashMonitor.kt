@@ -15,8 +15,8 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Process
 import android.provider.Settings
-import android.util.Log
 import androidx.annotation.RequiresApi
+import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -186,8 +186,9 @@ internal object CrashMonitor {
           "The app stopped while it was on screen, without a Java exception. Android " +
             "${Build.VERSION.RELEASE} keeps no exit reason, but this is almost always a native crash " +
             "(video decoder, renderer or libmpv) or the app being closed because it stopped responding. " +
-            "Logs from that session follow if Android still has them.",
+            "The app's own log of that session follows, then Android's logs if it still has them.",
         )
+        appendPreviousSessionLog(context, session.processId)
       }
     CrashReportStore.captureExits(
       context = context,
@@ -195,6 +196,17 @@ internal object CrashMonitor {
       details = details,
       processId = session.processId,
     )
+  }
+
+  /** The log file of the previous session, when it was process [processId]; it survives native crashes. */
+  private fun StringBuilder.appendPreviousSessionLog(
+    context: Context,
+    processId: Int,
+  ) {
+    val log = AppLogFile.previousSessionLog(context, processId, CrashReportStore.MAX_APP_LOG_BYTES) ?: return
+    appendLine()
+    appendLine("=== App log of that session ===")
+    appendLine(log)
   }
 
   /** Opens the recovery screen for a crash the user has not seen yet. */
@@ -254,6 +266,8 @@ internal object CrashMonitor {
             appendLine()
             appendLine(trace)
           }
+          // A Java crash report already holds the app log, taken by the exception handler.
+          if (exit.reason != ApplicationExitInfo.REASON_CRASH) appendPreviousSessionLog(context, exit.pid)
           appendLine()
         }
       }
