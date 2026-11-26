@@ -135,18 +135,4 @@ internal object PlayerLifecyclePolicy {
       !isChangingConfigurations &&
       !isScreenOffOrLocked &&
       !alreadyHandled
-
-  fun shouldStartBackgroundPlaybackOnStop(
-    backgroundPlaybackEnabled: Boolean,
-    backgroundPlaybackSessionActive: Boolean,
-    isUserFinishing: Boolean,
-    isFinishing: Boolean,
-    isInPictureInPictureMode: Boolean,
-    isScreenOffOrLocked: Boolean,
-  ): Boolean =
-    backgroundPlaybackEnabled &&
-      !backgroundPlaybackSessionActive &&
-      !isUserFinishing &&
-      !isFinishing &&
-      (!isInPictureInPictureMode || isScreenOffOrLocked)
 }

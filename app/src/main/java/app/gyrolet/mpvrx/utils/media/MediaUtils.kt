@@ -114,11 +114,7 @@ object MediaUtils {
       }
     // Music in the mini player always has its media notification. This runs from visible UI, which
     // may always start a media foreground service.
-    runCatching {
-      MediaPlaybackService.requestForegroundStart(context, serviceIntent)
-    }.onFailure { error ->
-      app.gyrolet.mpvrx.utils.logging.Log.e("MediaUtils", "Could not start the playback service for the mini player", error)
-    }
+    MediaPlaybackService.startBackground(context, serviceIntent)
   }
 
   private fun userScriptRuntimeNeedsReload(): Boolean {
