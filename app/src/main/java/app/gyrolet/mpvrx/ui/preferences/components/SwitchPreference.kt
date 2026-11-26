@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -33,8 +34,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.presentation.components.LocalCompactSheetControls
 import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.preferences.LocalInsidePreferenceCard
+import app.gyrolet.mpvrx.ui.preferences.LocalPlayerSettingsPanel
 import app.gyrolet.mpvrx.ui.preferences.PreferenceTileVisualState
 import app.gyrolet.mpvrx.ui.preferences.playerSettingSummary
 import app.gyrolet.mpvrx.ui.preferences.playerSettingAvailability
@@ -62,6 +65,7 @@ fun SwitchPreference(
   modifier: Modifier = Modifier,
   groupIndex: Int? = null,
   groupSize: Int? = null,
+  compact: Boolean = LocalPlayerSettingsPanel.current || LocalCompactSheetControls.current,
 ) {
   val availability = playerSettingAvailability(modifier)
   if (!availability.visible) return
@@ -145,12 +149,13 @@ fun SwitchPreference(
             indication = androidx.compose.material3.ripple(),
             onValueChange = updateValue,
           )
-          .padding(horizontal = 16.dp, vertical = 12.dp),
+          .then(if (compact) Modifier.heightIn(min = 48.dp) else Modifier)
+          .padding(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 8.dp else 12.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       if (icon != null) {
         Box(
-          modifier = Modifier.padding(end = 16.dp),
+          modifier = Modifier.padding(end = if (compact) 12.dp else 16.dp),
           contentAlignment = Alignment.Center,
         ) {
           icon()
@@ -161,8 +166,8 @@ fun SwitchPreference(
         modifier =
           Modifier
             .weight(1f)
-            .padding(end = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(end = if (compact) 12.dp else 16.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp),
       ) {
         ProvideTextStyle(value = titleStyle) {
           title()

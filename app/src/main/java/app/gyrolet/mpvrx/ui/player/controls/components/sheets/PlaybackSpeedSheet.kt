@@ -12,16 +12,17 @@ package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,9 +34,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioPreferences
@@ -47,7 +48,6 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
-import app.gyrolet.mpvrx.ui.theme.spacing
 import org.koin.compose.koinInject
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -78,67 +78,84 @@ fun PlaybackSpeedSheet(
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     title = stringResource(R.string.btn_label_speed),
+    leadingIcon = Icons.RoundedFilled.Speed,
+    customMaxWidth = 520.dp,
+    showDragHandle = false,
+    actions = {
+      PlayerSheetAction(
+        icon = Icons.RoundedFilled.Bookmark,
+        label = stringResource(R.string.player_sheets_speed_make_default),
+        onClick = { onMakeDefault(speed) },
+        enabled = speedControlEnabled,
+      )
+      PlayerSheetAction(
+        icon = Icons.RoundedFilled.Restore,
+        label = stringResource(R.string.generic_reset),
+        onClick = {
+          onResetDefault()
+          onResetPresets()
+          onSpeedChange(1f)
+        },
+        enabled = speedControlEnabled,
+      )
+    },
   ) {
     Column(
       modifier
+        .fillMaxWidth()
         .verticalScroll(rememberScrollState())
-        .padding(vertical = 4.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
+        .padding(horizontal = 12.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-      Text(
-        text = "${speed.toFixed(2)}x",
-        modifier = Modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.headlineMedium,
-        fontWeight = FontWeight.Bold,
-        textAlign = TextAlign.Center,
-      )
-
-      // Slider and +/- Buttons
-      Row(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .padding(horizontal = MaterialTheme.spacing.medium),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-      ) {
-        RepeatingIconButton(
-          onClick = { adjustSpeed((speed - 0.05f).coerceAtLeast(0.05f)) },
-          enabled = speedControlEnabled,
-          modifier = Modifier.size(48.dp),
-        ) {
-          Icon(Icons.RoundedFilled.Remove, null, modifier = Modifier.size(24.dp))
+      BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val stackValue = maxWidth < 240.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)
+        val valueLabel: @Composable () -> Unit = {
+          Text(
+            text = "${speed.toFixed(2)}x",
+            modifier = Modifier.widthIn(min = 48.dp),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+          )
         }
-
-        Slider(
-          value = speed,
-          onValueChange = {
-            // Snap to nearest 0.05
-            val snapped = (it * 20).roundToInt() / 20f
-            adjustSpeed(snapped)
-          },
-          valueRange = 0.1f..4.0f,
-          enabled = speedControlEnabled,
-          modifier =
-            Modifier
-              .weight(1f)
-              .tvFocusHighlight(MaterialTheme.shapes.small, enabled = speedControlEnabled),
-        )
-
-        RepeatingIconButton(
-          onClick = { adjustSpeed((speed + 0.05f).coerceAtMost(4.0f)) },
-          enabled = speedControlEnabled,
-          modifier = Modifier.size(48.dp),
-        ) {
-          Icon(Icons.RoundedFilled.Add, null, modifier = Modifier.size(24.dp))
+        Column {
+          if (stackValue) valueLabel()
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+          ) {
+            if (!stackValue) valueLabel()
+            RepeatingIconButton(
+              onClick = { adjustSpeed((speed - 0.05f).coerceAtLeast(0.05f)) },
+              enabled = speedControlEnabled,
+              modifier = Modifier.size(48.dp),
+            ) {
+              Icon(Icons.RoundedFilled.Remove, stringResource(R.string.player_speed_decrease), modifier = Modifier.size(22.dp))
+            }
+            Slider(
+              value = speed,
+              onValueChange = { adjustSpeed((it * 20).roundToInt() / 20f) },
+              valueRange = 0.1f..4f,
+              enabled = speedControlEnabled,
+              modifier = Modifier.weight(1f)
+                .tvFocusHighlight(MaterialTheme.shapes.small, enabled = speedControlEnabled),
+            )
+            RepeatingIconButton(
+              onClick = { adjustSpeed((speed + 0.05f).coerceAtMost(4f)) },
+              enabled = speedControlEnabled,
+              modifier = Modifier.size(48.dp),
+            ) {
+              Icon(Icons.RoundedFilled.Add, stringResource(R.string.player_speed_increase), modifier = Modifier.size(22.dp))
+            }
+          }
         }
       }
 
       // Chips and Add/Remove Button
       Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = MaterialTheme.spacing.medium),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
       ) {
         val defaultPresets =
           remember {
@@ -147,7 +164,7 @@ fun PlaybackSpeedSheet(
 
         LazyRow(
           modifier = Modifier.weight(1f),
-          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
           items(speedPresets, key = { it }) { presetSpeed ->
             val isDefault = defaultPresets.any { kotlin.math.abs(it - presetSpeed) < 0.001f }
@@ -210,30 +227,8 @@ fun PlaybackSpeedSheet(
         summary = { Text(stringResource(R.string.pref_audio_pitch_correction_summary)) },
         titleStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
         summaryStyle = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        compact = true,
       )
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-      ) {
-        TextButton(
-          modifier = Modifier.weight(1f, fill = false),
-          onClick = { onMakeDefault(speed) },
-          enabled = speedControlEnabled,
-        ) {
-          Text(stringResource(R.string.player_sheets_speed_make_default))
-        }
-        TextButton(
-          onClick = {
-            onResetDefault()
-            onResetPresets()
-            onSpeedChange(1.0f)
-          },
-          enabled = speedControlEnabled,
-        ) {
-          Text(stringResource(R.string.generic_reset))
-        }
-      }
     }
   }
 }

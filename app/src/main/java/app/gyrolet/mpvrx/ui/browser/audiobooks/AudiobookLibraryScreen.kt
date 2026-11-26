@@ -849,7 +849,6 @@ private fun AudiobookDetailsBottomSheet(
   ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
     animateEntrance = false,
-    shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
   ) {
     LazyColumn(

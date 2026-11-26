@@ -48,7 +48,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import app.gyrolet.mpvrx.ui.utils.NavigationPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -117,6 +116,7 @@ import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
+import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -889,6 +889,11 @@ fun MusicLibraryContent(
         selectedSongForOptions?.let { song ->
           ResponsiveBottomSheet(
             onDismissRequest = { selectedSongForOptions = null },
+            title = song.title,
+            subtitle = "${song.artist} • ${song.album}",
+            leadingContent = {
+              LocalAlbumArtImage(uri = song.albumArtUri, contentDescription = null, modifier = Modifier.size(36.dp).clip(AppShapeScale.small), audioSong = song)
+            },
           ) {
             Column(
               modifier = Modifier
@@ -896,25 +901,6 @@ fun MusicLibraryContent(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
             ) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                  modifier = Modifier
-                    .size(56.dp)
-                    .clip(AppShapeScale.medium)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                  contentAlignment = Alignment.Center
-                ) {
-                  LocalAlbumArtImage(uri = song.albumArtUri, contentDescription = null, modifier = Modifier.fillMaxSize(), audioSong = song)
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                  Text(text = song.title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                  Text(text = "${song.artist} • ${song.album}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-              }
-
-              HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-
               ListItem(
                 content = { Text("Play") },
                 leadingContent = { Icon(Icons.RoundedFilled.PlayArrow, contentDescription = null) },
@@ -1014,6 +1000,11 @@ fun MusicLibraryContent(
           }
           ResponsiveBottomSheet(
             onDismissRequest = { selectedAlbumForOptions = null },
+            title = album.title,
+            subtitle = "${album.artist} • ${albumSongs.size} tracks",
+            leadingContent = {
+              LocalAlbumArtImage(uri = album.albumArtUri, contentDescription = null, modifier = Modifier.size(36.dp).clip(AppShapeScale.small), audioSong = album.artworkSong)
+            },
           ) {
             Column(
               modifier = Modifier
@@ -1021,25 +1012,6 @@ fun MusicLibraryContent(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
             ) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                  modifier = Modifier
-                    .size(56.dp)
-                    .clip(AppShapeScale.medium)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                  contentAlignment = Alignment.Center
-                ) {
-                  LocalAlbumArtImage(uri = album.albumArtUri, contentDescription = null, modifier = Modifier.fillMaxSize(), audioSong = album.artworkSong)
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                  Text(text = album.title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                  Text(text = "${album.artist} • ${albumSongs.size} tracks", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-              }
-
-              HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-
               ListItem(
                 content = { Text("View Album Tracks") },
                 leadingContent = { Icon(Icons.RoundedFilled.Audiotrack, contentDescription = null) },
@@ -1087,6 +1059,9 @@ fun MusicLibraryContent(
           }
           ResponsiveBottomSheet(
             onDismissRequest = { selectedArtistForOptions = null },
+            title = artist.name,
+            subtitle = "${artistSongs.size} songs",
+            leadingContent = { ArtistAvatarImage(artistName = artist.name, modifier = Modifier.size(36.dp), iconSize = 20.dp) },
           ) {
             Column(
               modifier = Modifier
@@ -1094,17 +1069,6 @@ fun MusicLibraryContent(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
             ) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                ArtistAvatarImage(artistName = artist.name, modifier = Modifier.size(56.dp), iconSize = 28.dp)
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                  Text(text = artist.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                  Text(text = "${artistSongs.size} songs", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-              }
-
-              HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-
               ListItem(
                 content = { Text("View Artist Songs") },
                 leadingContent = { Icon(Icons.RoundedFilled.Person, contentDescription = null) },
@@ -1149,6 +1113,8 @@ fun MusicLibraryContent(
         selectedPlaylistForOptions?.let { playlist ->
           ResponsiveBottomSheet(
             onDismissRequest = { selectedPlaylistForOptions = null },
+            title = playlist.name,
+            leadingIcon = Icons.RoundedFilled.PlaylistPlay,
           ) {
             Column(
               modifier = Modifier
@@ -1156,14 +1122,6 @@ fun MusicLibraryContent(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
             ) {
-              Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.RoundedFilled.PlaylistPlay, contentDescription = null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(text = playlist.name, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-              }
-
-              HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
-
               ListItem(
                 content = { Text("Open Playlist") },
                 leadingContent = { Icon(Icons.RoundedFilled.PlaylistPlay, contentDescription = null) },
@@ -2544,59 +2502,25 @@ private fun AlbumDetailSheet(
   onSongLongClick: (MusicSong) -> Unit,
   onPlayAlbum: () -> Unit
 ) {
-  ResponsiveBottomSheet(onDismissRequest = onDismiss) {
+  ResponsiveBottomSheet(
+    onDismissRequest = onDismiss,
+    title = album.title,
+    subtitle = "${album.artist} • ${songs.size} Tracks",
+    leadingContent = {
+      LocalAlbumArtImage(
+        uri = album.albumArtUri,
+        audioSong = album.artworkSong,
+        contentDescription = null,
+        modifier = Modifier.size(36.dp).clip(AppShapeScale.small),
+      )
+    },
+    actions = { PlayerSheetAction(Icons.RoundedFilled.PlayArrow, stringResource(R.string.ui_play), onPlayAlbum) },
+  ) {
     Column(
       modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        Box(
-          modifier = Modifier
-            .size(64.dp)
-            .clip(AppShapeScale.medium)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-          contentAlignment = Alignment.Center
-        ) {
-          LocalAlbumArtImage(
-            uri = album.albumArtUri,
-            audioSong = album.artworkSong,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize()
-          )
-        }
-
-        Spacer(modifier = Modifier.width(14.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-          Text(
-            text = album.title,
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-          )
-          Text(
-            text = album.artist,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-          Text(
-            text = "${songs.size} Tracks",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary
-          )
-        }
-
-        Button(onClick = onPlayAlbum) {
-          Icon(imageVector = Icons.RoundedFilled.PlayArrow, contentDescription = null)
-          Spacer(modifier = Modifier.width(4.dp))
-          Text("Play")
-        }
-      }
-
-      Spacer(modifier = Modifier.height(16.dp))
-
       val sessionState by PlaybackSession.state.collectAsStateWithLifecycle()
       val playingUri = sessionState.currentItem?.originalUri
 
@@ -2635,45 +2559,18 @@ private fun ArtistDetailSheet(
   onSongLongClick: (MusicSong) -> Unit,
   onPlayArtist: () -> Unit
 ) {
-  ResponsiveBottomSheet(onDismissRequest = onDismiss) {
+  ResponsiveBottomSheet(
+    onDismissRequest = onDismiss,
+    title = artist.name,
+    subtitle = "${songs.size} Songs",
+    leadingContent = { ArtistAvatarImage(artistName = artist.name, modifier = Modifier.size(36.dp), iconSize = 20.dp) },
+    actions = { PlayerSheetAction(Icons.RoundedFilled.PlayArrow, stringResource(R.string.music_play_all), onPlayArtist) },
+  ) {
     Column(
       modifier = Modifier
         .fillMaxWidth()
         .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-      ) {
-        ArtistAvatarImage(
-          artistName = artist.name,
-          modifier = Modifier.size(64.dp),
-          iconSize = 32.dp
-        )
-
-        Spacer(modifier = Modifier.width(14.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-          Text(
-            text = artist.name,
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-          )
-          Text(
-            text = "${songs.size} Songs",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-          )
-        }
-
-        Button(onClick = onPlayArtist) {
-          Icon(imageVector = Icons.RoundedFilled.PlayArrow, contentDescription = null)
-          Spacer(modifier = Modifier.width(4.dp))
-          Text("Play All")
-        }
-      }
-
-      Spacer(modifier = Modifier.height(16.dp))
-
       val sessionState by PlaybackSession.state.collectAsStateWithLifecycle()
       val playingUri = sessionState.currentItem?.originalUri
 

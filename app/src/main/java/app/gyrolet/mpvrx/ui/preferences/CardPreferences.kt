@@ -112,7 +112,7 @@ fun PreferenceCard(
   Column(
     modifier = modifier
       .fillMaxWidth()
-      .padding(horizontal = 16.dp, vertical = if (playerPanel) 0.dp else 8.dp)
+      .padding(horizontal = if (playerPanel) 12.dp else 16.dp, vertical = if (playerPanel) 0.dp else 8.dp)
       .then(if (lowEnd || reduceMotion) Modifier else Modifier.animateContentSize(AppMotion.IntSizeSpring)),
   ) {
     val columnScope = this

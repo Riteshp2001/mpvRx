@@ -14,7 +14,6 @@ import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import android.content.res.Configuration
 import android.text.format.DateUtils
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -22,7 +21,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -43,13 +41,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
+import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
+import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.anime4k.Anime4KUiState
@@ -83,138 +82,52 @@ fun MoreSheet(
   PlayerSheet(
     onDismissRequest,
     modifier,
+    title = stringResource(R.string.player_sheets_more_title),
+    scrollHeaderActions = true,
+    actions = {
+      val timerLabel = if (remainingTime == 0) {
+        stringResource(R.string.timer_title)
+      } else {
+        stringResource(R.string.timer_remaining, DateUtils.formatElapsedTime(remainingTime.toLong()))
+      }
+      MoreHeaderAction(Icons.RoundedFilled.Timer, timerLabel, showActionLabels, onOpenSleepTimerSheet)
+      if (onEnterEqualizerSheet != null) {
+        MoreHeaderAction(
+          Icons.RoundedFilled.Equalizer,
+          stringResource(R.string.btn_label_equalizer),
+          showActionLabels,
+          onEnterEqualizerSheet,
+          enabled = equalizerEnabled,
+        )
+      }
+      MoreHeaderAction(
+        Icons.RoundedFilled.Tune,
+        stringResource(R.string.player_sheets_filters_title),
+        showActionLabels,
+        onEnterFiltersPanel,
+        enabled = filtersEnabled,
+      )
+      MoreHeaderAction(
+        Icons.RoundedFilled.Code,
+        if (selectedLuaScripts.isEmpty()) "Scripts" else "Scripts (${selectedLuaScripts.size})",
+        showActionLabels,
+        onEnterLuaScriptsPanel,
+        enabled = mpvConfStorageLocation.isNotBlank(),
+        highlighted = enableLuaScripts && selectedLuaScripts.isNotEmpty(),
+      )
+      if (onEnterSettingsPanel != null) {
+        MoreHeaderAction(Icons.RoundedFilled.Settings, stringResource(R.string.ui_settings), showActionLabels, onEnterSettingsPanel)
+      }
+    },
   ) {
     Column(
       modifier =
         Modifier
           .fillMaxWidth()
           .verticalScroll(rememberScrollState())
-          .padding(horizontal = 20.dp, vertical = 8.dp),
-      verticalArrangement = Arrangement.spacedBy(16.dp),
+          .padding(horizontal = 16.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Text(
-          text = stringResource(R.string.player_sheets_more_title),
-          style = MaterialTheme.typography.titleLarge,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.widthIn(max = 140.dp).padding(end = 8.dp),
-        )
-        Row(
-          modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState(), reverseScrolling = true),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.End,
-        ) {
-          TextButton(onClick = onOpenSleepTimerSheet) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            ) {
-              Icon(
-                imageVector = Icons.RoundedFilled.Timer,
-                contentDescription = stringResource(R.string.timer_title),
-              )
-              if (showActionLabels) {
-                Text(
-                  text =
-                    if (remainingTime == 0) {
-                      stringResource(R.string.timer_title)
-                    } else {
-                      stringResource(
-                        R.string.timer_remaining,
-                        DateUtils.formatElapsedTime(remainingTime.toLong()),
-                      )
-                    },
-                )
-              }
-            }
-          }
-          if (onEnterEqualizerSheet != null) {
-            TextButton(onClick = onEnterEqualizerSheet, enabled = equalizerEnabled) {
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-              ) {
-                Icon(
-                  imageVector = Icons.RoundedFilled.Equalizer,
-                  contentDescription = stringResource(id = R.string.btn_label_equalizer),
-                )
-                if (showActionLabels) {
-                  Text(text = stringResource(id = R.string.btn_label_equalizer))
-                }
-              }
-            }
-          }
-          TextButton(onClick = onEnterFiltersPanel, enabled = filtersEnabled) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            ) {
-              Icon(
-                imageVector = Icons.RoundedFilled.Tune,
-                contentDescription = stringResource(id = R.string.player_sheets_filters_title),
-              )
-              if (showActionLabels) {
-                Text(text = stringResource(id = R.string.player_sheets_filters_title))
-              }
-            }
-          }
-          TextButton(
-            onClick = onEnterLuaScriptsPanel,
-            enabled = mpvConfStorageLocation.isNotBlank(),
-          ) {
-            Row(
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            ) {
-              Icon(
-                imageVector = Icons.RoundedFilled.Code,
-                contentDescription = "Scripts",
-                tint =
-                  if (enableLuaScripts && selectedLuaScripts.isNotEmpty()) {
-                    MaterialTheme.colorScheme.primary
-                  } else {
-                    LocalContentColor.current
-                  },
-              )
-              if (showActionLabels) {
-                Text(
-                  text =
-                    if (selectedLuaScripts.isEmpty()) {
-                      "Scripts"
-                    } else {
-                      "Scripts (${selectedLuaScripts.size})"
-                    },
-                  color =
-                    if (enableLuaScripts && selectedLuaScripts.isNotEmpty()) {
-                      MaterialTheme.colorScheme.primary
-                    } else {
-                      LocalContentColor.current
-                    },
-                )
-              }
-            }
-          }
-          if (onEnterSettingsPanel != null) {
-            TextButton(onClick = onEnterSettingsPanel) {
-              Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-              ) {
-                Icon(
-                  imageVector = Icons.RoundedFilled.Settings,
-                  contentDescription = stringResource(R.string.player_settings_open),
-                )
-                if (showActionLabels) Text(stringResource(R.string.ui_settings))
-              }
-            }
-          }
-        }
-      }
       Text(
         text = stringResource(R.string.player_sheets_stats_page_title),
         style = MaterialTheme.typography.titleMedium,
@@ -286,6 +199,31 @@ fun MoreSheet(
             )
           }
         }
+      }
+    }
+  }
+}
+
+@Composable
+private fun MoreHeaderAction(
+  icon: AppIcon,
+  label: String,
+  showLabel: Boolean,
+  onClick: () -> Unit,
+  enabled: Boolean = true,
+  highlighted: Boolean = false,
+) {
+  if (!showLabel) {
+    PlayerSheetAction(icon, label, onClick, enabled = enabled, highlighted = highlighted)
+  } else {
+    TextButton(onClick = onClick, enabled = enabled) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+      ) {
+        val color = if (enabled && highlighted) MaterialTheme.colorScheme.primary else LocalContentColor.current
+        Icon(icon, contentDescription = null, tint = color)
+        Text(label, color = color, maxLines = 1)
       }
     }
   }

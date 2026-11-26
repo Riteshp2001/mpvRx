@@ -115,27 +115,17 @@ fun PlaylistActionSheet(
       onDismiss()
     },
     modifier = modifier,
+    title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_playlist_options),
+    leadingIcon = Icons.RoundedFilled.PlaylistPlay,
   ) {
     Column(
       modifier =
         Modifier
           .fillMaxWidth()
-          .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 16.dp)
+          .padding(horizontal = 16.dp, vertical = 12.dp)
           .verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      // Title
-      Text(
-        text =
-          androidx.compose.ui.res
-            .stringResource(app.gyrolet.mpvrx.R.string.ui_playlist_options),
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Medium,
-        color = MaterialTheme.colorScheme.onSurface,
-      )
-
-      Spacer(modifier = Modifier.height(4.dp))
-
       Card(
         onClick = { zipPickerLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/x-zip", "application/octet-stream")) },
         enabled = !isImportingZip,

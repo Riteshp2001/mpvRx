@@ -14,7 +14,6 @@ package app.gyrolet.mpvrx.ui.player.controls.components.panels
 import app.gyrolet.mpvrx.ui.liquidglass.playerGlassSurfaceEnabled
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -27,15 +26,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -53,21 +49,18 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetDragHandle
-import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
+import app.gyrolet.mpvrx.presentation.components.PlayerSheetHeader
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
 import app.gyrolet.mpvrx.ui.liquidglass.playerGlassSurface
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.tv.isTelevision
 import kotlin.math.roundToInt
@@ -168,7 +161,7 @@ fun DraggablePanel(
       Column(Modifier.fillMaxWidth()) {
         if (canDrag) {
           Box(Modifier.fillMaxWidth().then(dragModifier)) {
-            PlayerSheetDragHandle()
+            PlayerSheetDragHandle(compact = header != null)
           }
         }
         if (header != null) {
@@ -210,24 +203,7 @@ fun DraggablePanelHeader(
   modifier: Modifier = Modifier,
   leadingContent: (@Composable () -> Unit)? = null,
 ) {
-  Row(
-    modifier = modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    leadingContent?.invoke()
-    Text(
-      text = title,
-      style = MaterialTheme.typography.titleMediumEmphasized,
-      modifier = Modifier.weight(1f).semantics { heading() },
-      maxLines = 2,
-      overflow = TextOverflow.Ellipsis,
-    )
-    IconButton(
-      onClick = onDismissRequest,
-      modifier = Modifier.size(48.dp).tvFocusHighlight(MaterialTheme.shapes.medium),
-    ) {
-      Icon(Icons.RoundedFilled.Close, contentDescription = stringResource(R.string.ui_close), modifier = Modifier.size(22.dp))
-    }
+  PlayerSheetHeader(title = title, modifier = modifier, leadingContent = leadingContent) {
+    PlayerSheetAction(Icons.RoundedFilled.Close, stringResource(R.string.ui_close), onDismissRequest)
   }
 }

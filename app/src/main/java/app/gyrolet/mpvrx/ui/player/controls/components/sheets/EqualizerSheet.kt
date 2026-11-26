@@ -72,6 +72,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.components.themedSegmentedButtonColors
+import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
@@ -167,33 +168,23 @@ fun EqualizerSheet(
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     modifier = modifier.tvFocusGroup(),
+    title = stringResource(R.string.btn_label_equalizer),
+    leadingIcon = Icons.RoundedFilled.Equalizer,
+    actions = {
+      IconSwitch(
+        checked = state.isEnabled,
+        onCheckedChange = onEnabledChanged,
+        modifier = Modifier.tvInitialFocus(initialFocusRequester)
+          .tvFocusHighlight(RoundedCornerShape(12.dp), focusedScale = 1.04f),
+      )
+    },
   ) {
     Column(
       modifier =
         Modifier
           .fillMaxWidth()
-          .padding(start = 20.dp, end = 20.dp, top = 8.dp),
+          .padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Text(
-          text = stringResource(R.string.btn_label_equalizer),
-          style = MaterialTheme.typography.titleLarge,
-          fontWeight = FontWeight.Bold,
-          color = MaterialTheme.colorScheme.onSurface,
-          modifier = Modifier.weight(1f),
-        )
-        IconSwitch(
-          checked = state.isEnabled,
-          onCheckedChange = onEnabledChanged,
-          modifier = Modifier.tvInitialFocus(initialFocusRequester)
-            .tvFocusHighlight(RoundedCornerShape(12.dp), focusedScale = 1.04f),
-        )
-      }
-
       SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
         listOf(R.string.equalizer_tab_tone, R.string.equalizer_tab_bands, R.string.autoeq_title).forEachIndexed { index, title ->
           SegmentedButton(
@@ -214,7 +205,7 @@ fun EqualizerSheet(
         modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
           .verticalScroll(scrollState).padding(bottom = 16.dp),
       ) {
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         if (showAutoEq) {
           AutoEqControls(
@@ -239,7 +230,7 @@ fun EqualizerSheet(
         }
 
         HorizontalDivider(
-          modifier = Modifier.padding(vertical = 24.dp),
+          modifier = Modifier.padding(vertical = 12.dp),
           color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
         )
 

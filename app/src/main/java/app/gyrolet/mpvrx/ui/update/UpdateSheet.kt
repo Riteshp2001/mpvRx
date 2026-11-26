@@ -9,9 +9,7 @@
 
 package app.gyrolet.mpvrx.ui.update
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.FlowRow
@@ -21,9 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -44,7 +40,6 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.domain.update.Release
-import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.tv.tvScrollWhenFocusCannotMove
 import com.mikepenz.markdown.m3.Markdown
@@ -71,10 +66,20 @@ fun UpdateSheet(
   val release = state.release
   val asset = state.asset
   val busy = state.isDownloading || state.isInstalling
+  val latestVersion = release?.let { releaseVersion(it) }
 
   ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
     dismissEnabled = !busy,
+    title = stringResource(
+      when {
+        state.readyToInstall -> R.string.update_ready_to_install
+        latestVersion.isNullOrBlank() -> R.string.pref_section_updates
+        else -> R.string.update_available
+      },
+    ),
+    subtitle = latestVersion?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.update_version_format, it) },
+    leadingIcon = if (state.readyToInstall) Icons.RoundedFilled.SystemUpdate else Icons.RoundedFilled.NewReleases,
   ) {
     val notesScroll = rememberScrollState()
     Column(
@@ -82,14 +87,10 @@ fun UpdateSheet(
         Modifier
           .fillMaxWidth()
           .navigationBarsPadding()
-          .padding(horizontal = 24.dp)
+          .padding(horizontal = 16.dp)
           // TV: Up/Down scroll the release notes once focus has nowhere else to go.
           .tvScrollWhenFocusCannotMove(notesScroll),
     ) {
-      SheetHeader(
-        isInstallReady = state.readyToInstall,
-        latestVersion = release?.let { releaseVersion(it) }.orEmpty(),
-      )
       Column(
         modifier = Modifier.weight(1f, fill = false).verticalScroll(notesScroll),
       ) {
@@ -197,50 +198,6 @@ fun UpdateSheet(
 }
 
 private fun releaseVersion(release: Release): String = release.tagName.removePrefix("v")
-
-@Composable
-private fun SheetHeader(
-  isInstallReady: Boolean,
-  latestVersion: String,
-) {
-  Row(verticalAlignment = Alignment.CenterVertically) {
-    Box(
-      modifier =
-        Modifier
-          .size(44.dp)
-          .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
-      contentAlignment = Alignment.Center,
-    ) {
-      Icon(
-        imageVector =
-          if (isInstallReady) Icons.RoundedFilled.SystemUpdate else Icons.RoundedFilled.NewReleases,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-        modifier = Modifier.size(24.dp),
-      )
-    }
-    Spacer(modifier = Modifier.width(12.dp))
-    Column {
-      Text(
-        text =
-          stringResource(
-            when {
-              isInstallReady -> R.string.update_ready_to_install
-              latestVersion.isBlank() -> R.string.pref_section_updates
-              else -> R.string.update_available
-            },
-          ),
-        style = MaterialTheme.typography.titleLarge,
-        color = MaterialTheme.colorScheme.onSurface,
-      )
-      Text(
-        text = if (latestVersion.isBlank()) "" else stringResource(R.string.update_version_format, latestVersion),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-      )
-    }
-  }
-}
 
 @Composable
 private fun VersionTransitionRow(

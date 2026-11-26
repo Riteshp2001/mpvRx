@@ -21,14 +21,17 @@ import androidx.compose.animation.rememberSplineBasedDecay
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.gestures.DraggableAnchors
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -36,6 +39,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.offset
@@ -45,10 +49,12 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.ZeroCornerSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +78,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -127,6 +134,10 @@ fun PlayerSheet(
   scrimAlpha: Float = 0.5f,
   dragToDismiss: Boolean = true,
   confirmDismiss: () -> Boolean = { true },
+  leadingIcon: AppIcon? = null,
+  subtitle: String? = null,
+  showDragHandle: Boolean = true,
+  scrollHeaderActions: Boolean = false,
   content: @Composable () -> Unit,
 ) {
   val window = sheetWindow()
@@ -255,9 +266,7 @@ fun PlayerSheet(
         },
       contentAlignment = Alignment.BottomCenter,
     ) {
-      val sheetShape =
-        if (television) MaterialTheme.shapes.extraLargeIncreased
-        else MaterialTheme.shapes.extraLargeIncreased.copy(bottomEnd = ZeroCornerSize, bottomStart = ZeroCornerSize)
+      val sheetShape = bottomAttachedSheetShape(television)
       val baseContainerColor = surfaceColor ?: MaterialTheme.colorScheme.surfaceContainerHigh
       val canDrag = !television && dragToDismiss
       val dragEnabled = canDrag && opened && !closing
@@ -314,12 +323,18 @@ fun PlayerSheet(
           ) { resize ->
             SheetOpeningHandle(
               resize = resize,
-              showDragHandle = canDrag || (!television && title != null),
+              showDragHandle = showDragHandle && canDrag,
               gesturesEnabled = canDrag,
               resizeEnabled = opened && !closing,
             )
             if (title != null) {
-              PlayerSheetHeader(title = title, actions = actions)
+              PlayerSheetHeader(
+                title = title,
+                subtitle = subtitle,
+                actions = actions,
+                leadingContent = { SheetHeaderIcon(leadingIcon) },
+                scrollActions = scrollHeaderActions,
+              )
             }
             Box(Modifier.fillMaxWidth().weight(1f, fill = false)) {
               content()
@@ -391,10 +406,11 @@ fun PlayerSheet(
 fun PlayerSheetDragHandle(
   modifier: Modifier = Modifier,
   visible: Boolean = true,
+  compact: Boolean = false,
 ) {
   Box(
     modifier.fillMaxWidth()
-      .padding(top = 12.dp, bottom = 12.dp),
+      .padding(top = if (compact) 8.dp else 12.dp, bottom = if (compact) 6.dp else 12.dp),
     contentAlignment = Alignment.Center,
   ) {
     Box(
@@ -407,33 +423,75 @@ fun PlayerSheetDragHandle(
   }
 }
 
+@Composable
+internal fun SheetHeaderIcon(icon: AppIcon?) {
+  if (icon != null) Icon(icon, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun bottomAttachedSheetShape(television: Boolean): Shape {
+  val shape = MaterialTheme.shapes.extraLargeIncreased
+  return if (television) shape else shape.copy(bottomStart = ZeroCornerSize, bottomEnd = ZeroCornerSize)
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun PlayerSheetHeader(
   title: String,
   modifier: Modifier = Modifier,
+  leadingContent: (@Composable () -> Unit)? = null,
+  subtitle: String? = null,
+  titleContent: (@Composable () -> Unit)? = null,
+  scrollActions: Boolean = false,
   actions: @Composable RowScope.() -> Unit = {},
 ) {
-  Row(
-    modifier = modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 4.dp, bottom = 2.dp),
-    horizontalArrangement = Arrangement.spacedBy(6.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    if (title.isNotBlank()) {
-      Text(
-        text = title,
-        modifier = Modifier.weight(1f).semantics { heading() },
-        style = MaterialTheme.typography.titleLargeEmphasized,
-        color = MaterialTheme.colorScheme.onSurface,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-      )
-    } else {
-      Spacer(Modifier.weight(1f))
-    }
+  Column(modifier.fillMaxWidth()) {
     Row(
+      modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 16.dp, end = 4.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
       verticalAlignment = Alignment.CenterVertically,
-      content = actions,
+    ) {
+      leadingContent?.invoke()
+      if (title.isNotBlank() || titleContent != null || subtitle != null) {
+        val titleWidth = if (scrollActions) Modifier.widthIn(max = 120.dp) else Modifier.weight(1f)
+        Column(titleWidth.padding(vertical = 6.dp)) {
+          if (titleContent != null) {
+            titleContent()
+          } else if (title.isNotBlank()) {
+            Text(
+              text = title,
+              modifier = Modifier.semantics { heading() },
+              style = MaterialTheme.typography.titleMediumEmphasized,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+          if (subtitle != null) {
+            Text(
+              text = subtitle,
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+        }
+      } else {
+        Spacer(Modifier.weight(1f))
+      }
+      Row(
+        modifier = if (scrollActions) {
+          Modifier.weight(1f).horizontalScroll(rememberScrollState(), reverseScrolling = true)
+        } else Modifier,
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+        content = actions,
+      )
+    }
+    HorizontalDivider(
+      modifier = Modifier.padding(horizontal = 12.dp),
+      color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
     )
   }
 }
@@ -474,6 +532,7 @@ fun PlayerSheetAction(
   label: String,
   onClick: () -> Unit,
   enabled: Boolean = true,
+  highlighted: Boolean = false,
 ) {
   TooltipBox(
     positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
@@ -486,7 +545,12 @@ fun PlayerSheetAction(
       shapes = IconButtonDefaults.shapes(),
       modifier = Modifier.size(48.dp).tvFocusHighlight(MaterialTheme.shapes.medium),
     ) {
-      Icon(icon, contentDescription = label, modifier = Modifier.size(22.dp))
+      Icon(
+        icon,
+        contentDescription = label,
+        modifier = Modifier.size(22.dp),
+        tint = if (enabled && highlighted) MaterialTheme.colorScheme.primary else androidx.compose.material3.LocalContentColor.current,
+      )
     }
   }
 }

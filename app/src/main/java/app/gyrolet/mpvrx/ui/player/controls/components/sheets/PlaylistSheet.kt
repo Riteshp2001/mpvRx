@@ -35,7 +35,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,11 +65,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
+import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
@@ -342,6 +343,22 @@ fun PlaylistSheet(
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     modifier = Modifier.fillMaxWidth(),
+    title = stringResource(if (playingItemIndex >= 0) R.string.ui_now_playing else R.string.player_up_next_title),
+    subtitle = pluralStringResource(R.plurals.playlist_item_count_value, totalCount, totalCount),
+    leadingIcon = Icons.RoundedFilled.QueueMusic,
+    actions = {
+      onOpenSleepTimer?.let {
+        PlayerSheetAction(Icons.RoundedFilled.Timer, stringResource(R.string.timer_title), it)
+      }
+      PlayerSheetAction(Icons.RoundedFilled.PlaylistAdd, stringResource(R.string.save_queue_as_playlist), { showAddToPlaylistDialog = true })
+      if (!isPortrait) {
+        PlayerSheetAction(
+          if (isListMode) Icons.RoundedFilled.GridView else Icons.RoundedFilled.ViewList,
+          stringResource(if (isListMode) R.string.playlist_view_grid else R.string.playlist_view_list),
+          { isListMode = !isListMode },
+        )
+      }
+    },
     customMaxWidth =
       if (!isPortrait && !isListMode && configuration.smallestScreenWidthDp >= 600) {
         1280.dp
@@ -359,82 +376,6 @@ fun PlaylistSheet(
           horizontal = if (!isListMode) MaterialTheme.spacing.medium else 0.dp,
         ),
     ) {
-        // Header showing current playlist info with toggle button
-        val currentItem = playlist.getOrNull(playingItemIndex)
-        Row(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .padding(
-                horizontal = if (isListMode) MaterialTheme.spacing.medium else 0.dp,
-                vertical = MaterialTheme.spacing.small,
-              ),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-            modifier = Modifier.weight(1f),
-          ) {
-            if (currentItem != null) {
-              Text(
-                text =
-                  androidx.compose.ui.res
-                    .stringResource(app.gyrolet.mpvrx.R.string.ui_now_playing),
-                style =
-                  MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = accentColor,
-                  ),
-              )
-              Text(
-                text = "•",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-              )
-            }
-            Text(
-              text = "$totalCount items",
-              style = MaterialTheme.typography.bodyMedium,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          }
-
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-          ) {
-            if (onOpenSleepTimer != null) {
-              IconButton(onClick = onOpenSleepTimer) {
-                Icon(Icons.RoundedFilled.Timer, contentDescription = stringResource(R.string.timer_title))
-              }
-            }
-            IconButton(
-              onClick = { showAddToPlaylistDialog = true },
-            ) {
-              Icon(
-                imageVector = Icons.RoundedFilled.PlaylistAdd,
-                contentDescription = stringResource(R.string.save_queue_as_playlist),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-              )
-            }
-
-            // Toggle button for list/grid view (only in landscape) — v2.5.0 behavior
-            if (!isPortrait) {
-              IconButton(
-                onClick = { isListMode = !isListMode },
-              ) {
-                Icon(
-                  imageVector = if (isListMode) Icons.RoundedFilled.GridView else Icons.RoundedFilled.ViewList,
-                  contentDescription = if (isListMode) "Switch to Grid View" else "Switch to List View",
-                  tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-              }
-            }
-          }
-        }
-
         // Conditional rendering based on view mode
         if (isListMode) {
           // Vertical list mode (original implementation)

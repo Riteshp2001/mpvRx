@@ -47,8 +47,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -150,6 +148,8 @@ internal fun ConnectionEditorSheet(
   ResponsiveBottomSheet(
     onDismissRequest = dismiss,
     modifier = modifier,
+    title = title,
+    leadingIcon = Icons.RoundedFilled.BringYourOwnIp,
     containerColor = MaterialTheme.colorScheme.surfaceContainer,
   ) {
     Column(
@@ -158,15 +158,9 @@ internal fun ConnectionEditorSheet(
           .fillMaxWidth()
           .imePadding()
           .verticalScroll(rememberScrollState())
-          .padding(horizontal = 24.dp, vertical = 8.dp),
+          .padding(horizontal = 16.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      Text(
-        text = title,
-        modifier = Modifier.semantics { heading() },
-        style = MaterialTheme.typography.headlineSmallEmphasized,
-      )
-
       OutlinedTextField(
         value = name,
         onValueChange = { name = it },

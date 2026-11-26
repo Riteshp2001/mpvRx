@@ -278,7 +278,6 @@ fun JellyfinDetailSheet(
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     contentColor = MaterialTheme.colorScheme.onSurface,
     showDragHandle = false,
-    shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp),
   ) {
     Column(
       modifier =

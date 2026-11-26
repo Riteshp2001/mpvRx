@@ -1718,6 +1718,8 @@ private fun CompressorSettingsSheet(
   }
 
   ResponsiveBottomSheet(
+    title = stringResource(R.string.compressor_settings),
+    leadingIcon = Icons.RoundedFilled.Settings,
     onDismissRequest = {
       editingPreset = null
       editingTargetPreset = null
@@ -1732,16 +1734,9 @@ private fun CompressorSettingsSheet(
         Modifier
           .fillMaxWidth()
           .verticalScroll(rememberScrollState())
-          .padding(horizontal = 20.dp)
-          .padding(bottom = 32.dp),
+          .padding(horizontal = 16.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      Text(
-        stringResource(R.string.compressor_settings),
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-      )
-
       Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,

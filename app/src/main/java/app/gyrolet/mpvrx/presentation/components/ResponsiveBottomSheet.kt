@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitVerticalTouchSlopOrCancellation
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,14 +18,16 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -40,12 +44,14 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.dismiss
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.tv.TvSafeArea
 import app.gyrolet.mpvrx.ui.tv.isTelevision
@@ -60,7 +66,7 @@ internal data class SheetWindow(val width: Dp, val height: Dp, val television: B
     television -> minOf((width - TvSafeArea.Horizontal * 2).coerceAtLeast(0.dp), preferredWidth ?: 960.dp)
     large -> minOf(width - 48.dp, preferredWidth ?: if (landscape) 1000.dp else 840.dp)
     landscape -> preferredWidth ?: minOf(width - 48.dp, 640.dp)
-    else -> preferredWidth ?: Dp.Unspecified
+    else -> Dp.Unspecified
   }
 
   fun maxHeight(availableHeight: Dp, keyboardVisible: Boolean): Dp =
@@ -95,6 +101,8 @@ internal class CenteredSheetInsets(private val insets: WindowInsets) : WindowIns
 }
 
 internal data class SheetResize(val expanded: Boolean, val setExpanded: (Boolean) -> Unit)
+
+internal val LocalCompactSheetControls = staticCompositionLocalOf { false }
 
 @Composable
 private fun Modifier.sheetExpandDrag(resize: SheetResize): Modifier {
@@ -158,7 +166,9 @@ internal fun ResponsiveSheetContent(
         layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
       },
   ) {
-    content(if (canResize) SheetResize(expanded) { expanded = it } else null)
+    CompositionLocalProvider(LocalCompactSheetControls provides true) {
+      content(if (canResize) SheetResize(expanded) { expanded = it } else null)
+    }
   }
 }
 
@@ -168,26 +178,33 @@ internal fun SheetOpeningHandle(
   showDragHandle: Boolean,
   gesturesEnabled: Boolean = true,
   resizeEnabled: Boolean = gesturesEnabled,
+  compact: Boolean = true,
 ) {
   if (resize != null || showDragHandle) {
     PlayerSheetDragHandle(
       modifier = if (resize != null && resizeEnabled) Modifier.sheetExpandDrag(resize) else Modifier,
       visible = gesturesEnabled || (resize != null && resizeEnabled),
+      compact = compact,
     )
   }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun ResponsiveBottomSheet(
   onDismissRequest: () -> Unit,
   modifier: Modifier = Modifier,
   animateEntrance: Boolean = true,
   dismissEnabled: Boolean = true,
-  shape: Shape = BottomSheetDefaults.ExpandedShape,
-  containerColor: Color = BottomSheetDefaults.ContainerColor,
+  shape: Shape = bottomAttachedSheetShape(sheetWindow().television),
+  containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
   contentColor: Color = contentColorFor(containerColor),
   showDragHandle: Boolean = true,
+  title: String? = null,
+  leadingIcon: AppIcon? = null,
+  leadingContent: (@Composable () -> Unit)? = null,
+  subtitle: String? = null,
+  actions: @Composable RowScope.() -> Unit = {},
   content: @Composable ColumnScope.() -> Unit,
 ) {
   val window = sheetWindow()
@@ -204,6 +221,7 @@ internal fun ResponsiveBottomSheet(
   ModalBottomSheet(
     onDismissRequest = { if (canDismiss) onDismiss() },
     modifier = modifier.semantics {
+      if (!title.isNullOrBlank()) paneTitle = title
       if (dismissEnabled) {
         dismiss(closeLabel) {
           scope.launch {
@@ -234,19 +252,23 @@ internal fun ResponsiveBottomSheet(
     ResponsiveSheetContent(
       window = window,
       reservedTopInsets = WindowInsets.safeDrawing,
-      modifier = if (window.television) {
-        Modifier.padding(vertical = TvSafeArea.Vertical)
-      } else {
-        Modifier.padding(top = 4.dp)
-      },
+      modifier = if (window.television) Modifier.padding(vertical = TvSafeArea.Vertical) else Modifier,
     ) { resize ->
       SheetOpeningHandle(
         resize = resize,
-        showDragHandle = showDragHandle && !window.television,
+        showDragHandle = showDragHandle && !window.television && dismissEnabled,
         gesturesEnabled = dismissEnabled,
         resizeEnabled = dismissEnabled && sheetState.currentValue == SheetValue.Expanded &&
           sheetState.targetValue == SheetValue.Expanded && !sheetState.isAnimationRunning,
       )
+      if (title != null) {
+        PlayerSheetHeader(
+          title = title,
+          leadingContent = leadingContent ?: { SheetHeaderIcon(leadingIcon) },
+          subtitle = subtitle,
+          actions = actions,
+        )
+      }
       content()
     }
   }

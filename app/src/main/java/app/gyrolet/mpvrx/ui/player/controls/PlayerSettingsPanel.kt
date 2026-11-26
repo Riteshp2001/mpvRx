@@ -44,11 +44,9 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.paneTitle
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -56,6 +54,8 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
+import app.gyrolet.mpvrx.presentation.components.PlayerSheetHeader
 import app.gyrolet.mpvrx.ui.components.InlineSearchBar
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -187,7 +187,7 @@ internal fun PlayerSettingsPanel(
       DraggablePanel(
         modifier = Modifier.semantics { paneTitle = resources.getString(R.string.player_settings_title) },
         scrollContent = false,
-        portraitHeightFraction = 0.94f,
+        portraitHeightFraction = if (searchMode || backStack.lastOrNull() != PlayerSettingsHome) 0.94f else 0.80f,
         maxPanelWidth = 520.dp,
         header = {
           val current = backStack.lastOrNull()
@@ -245,7 +245,6 @@ internal fun PlayerSettingsPanel(
                   SettingsPanelHome(categories, query, { query = it }, backStack, requestSearchFocus = true) {
                     searchMode = false
                     query = ""
-                    query = ""
                     keyboard?.hide()
                   }
                 }
@@ -266,20 +265,17 @@ private fun SettingsPanelHeader(
   onSearch: (() -> Unit)?,
   onClose: () -> Unit,
 ) {
-  Row(Modifier.fillMaxWidth().padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+  PlayerSheetHeader(title = title, leadingContent = {
     if (canGoBack) {
-      IconButton(onClick = onBack) { Icon(Icons.RoundedFilled.ArrowBack, stringResource(R.string.back)) }
+      PlayerSheetAction(Icons.RoundedFilled.ArrowBack, stringResource(R.string.back), onBack)
     } else {
-      Icon(Icons.RoundedFilled.Settings, null, Modifier.padding(horizontal = 10.dp).size(20.dp))
+      Icon(Icons.RoundedFilled.Settings, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
     }
-    Text(
-      title, Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleMedium,
-      maxLines = 2, overflow = TextOverflow.Ellipsis,
-    )
+  }) {
     if (onSearch != null) {
-      IconButton(onClick = onSearch) { Icon(Icons.RoundedFilled.Search, stringResource(R.string.settings_search_title)) }
+      PlayerSheetAction(Icons.RoundedFilled.Search, stringResource(R.string.settings_search_title), onSearch)
     }
-    IconButton(onClick = onClose) { Icon(Icons.RoundedFilled.Close, stringResource(R.string.player_settings_close)) }
+    PlayerSheetAction(Icons.RoundedFilled.Close, stringResource(R.string.player_settings_close), onClose)
   }
 }
 
@@ -372,8 +368,8 @@ private fun SettingsPanelHome(
     }
     LazyColumn(
       modifier = Modifier.weight(1f),
-      contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-      verticalArrangement = Arrangement.spacedBy(4.dp),
+      contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+      verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
       if (query.isNotBlank()) {
         if (results.isEmpty()) item {
@@ -414,10 +410,10 @@ private fun SettingsPanelHome(
             shape = rememberConnectedShape(index, categories.size, ConnectedLayout.Vertical),
             color = playerGlassContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh),
           ) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 16.dp),
-              verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-              Icon(category.icon, null, Modifier.size(24.dp))
-              Text(stringResource(category.title), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 8.dp),
+              verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+              Icon(category.icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+              Text(stringResource(category.title), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
               Icon(Icons.RoundedFilled.ChevronRight, null, Modifier.size(20.dp))
             }
           }
@@ -458,13 +454,13 @@ private fun SettingsResultRow(
     color = playerGlassContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh),
   ) {
     Row(
-      Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(start = 16.dp, end = 4.dp),
+      Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = 12.dp, end = 4.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Column(Modifier.weight(1f).padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+      Column(Modifier.weight(1f).padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
           entry.titleRes?.let { resources.getString(it) } ?: entry.title.orEmpty(),
-          style = MaterialTheme.typography.bodyLarge,
+          style = MaterialTheme.typography.bodyMedium,
         )
         Text(stringResource(searchCategoryTitleRes(entry.category)),
           style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
