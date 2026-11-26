@@ -2554,7 +2554,7 @@
   <string name="watch_stats_media_breakdown">التوزيع حسب الوسائط</string>
   <string name="watch_stats_overall_playback">إجمالي التشغيل</string>
   <string name="network_server_no_matches">لا توجد عناوين مطابقة. يمكنك إدخال عنوان يدويًا.</string>
-  <string name="network_server_none_found">لم يُعثر على خوادم تعلن عن نفسها. تحقق من اتصال الجهازين بالشبكة نفسها، ثم أعد المحاولة أو أدخل العنوان يدويًا.</string>
+  <string name="network_server_none_found">لم يُعثر على خوادم. تحقق من اتصال الجهازين بالشبكة نفسها، ثم أعد المحاولة أو أدخل العنوان يدويًا.</string>
   <string name="network_server_saved">عنوان محفوظ</string>
   <string name="network_server_nearby">خادم قريب</string>
   <string name="network_server_this_device">هذا الجهاز على الشبكة المحلية</string>
@@ -2563,7 +2563,7 @@
   <string name="network_server_scan">ابحث عن خوادم قريبة</string>
   <string name="network_server_scanning">جارٍ البحث عن خوادم قريبة…</string>
   <string name="network_server_scan_unavailable">الاكتشاف غير متاح أو غير مكتمل. اختر عنوانًا محفوظًا أو أدخل عنوانًا.</string>
-  <string name="network_server_discovery_hint">يعثر على خوادم الشبكة المعلَنة. عناوين الأجهزة اختصارات؛ أدخل بيانات الدخول أدناه.</string>
+  <string name="network_server_discovery_hint">يعثر على خوادم SMB وFTP وSFTP وWebDAV وDLNA في شبكتك. عناوين الأجهزة اختصارات؛ أدخل بيانات الدخول أدناه.</string>
   <string name="network_smb_username_hint">استخدم اسم المستخدم أو DOMAIN\\username لحساب ضمن نطاق.</string>
   <string name="pref_playstore_hidden_title">المجلدات المخفية المختارة</string>
   <string name="pref_playstore_hidden_summary">اختر مجلدًا لتضمين وسائطه ومجلداته الفرعية.</string>

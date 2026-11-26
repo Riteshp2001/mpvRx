@@ -2452,7 +2452,7 @@
   <string name="watch_stats_media_breakdown">メディア別の内訳</string>
   <string name="watch_stats_overall_playback">全体の再生状況</string>
   <string name="network_server_no_matches">一致するアドレスはありません。手動で入力できます。</string>
-  <string name="network_server_none_found">サービスを公開しているサーバーが見つかりませんでした。両方の端末が同じネットワークに接続されていることを確認して再試行するか、アドレスを手動で入力してください。</string>
+  <string name="network_server_none_found">サーバーが見つかりませんでした。両方の端末が同じネットワークに接続されていることを確認して再試行するか、アドレスを手動で入力してください。</string>
   <string name="network_server_saved">保存済みのアドレス</string>
   <string name="network_server_nearby">近くのサーバー</string>
   <string name="network_server_this_device">ローカルネットワーク上のこの端末</string>
@@ -2461,7 +2461,7 @@
   <string name="network_server_scan">近くのサーバーを検索</string>
   <string name="network_server_scanning">近くのサーバーを検索中…</string>
   <string name="network_server_scan_unavailable">検出機能を利用できないか、検出が完了していません。保存済みのアドレスを選ぶか、手動で入力してください。</string>
-  <string name="network_server_discovery_hint">LANで公開されたサーバーを検出。端末アドレスはショートカットです。認証情報は下に入力します。</string>
+  <string name="network_server_discovery_hint">LAN上のSMB・FTP・SFTP・WebDAV・DLNAサーバーを検出。端末アドレスはショートカットです。認証情報は下に入力します。</string>
   <string name="network_smb_username_hint">ユーザー名を入力してください。ドメインアカウントの場合は DOMAIN\\username を使用してください。</string>
   <string name="pref_playstore_hidden_title">選択した隠しフォルダー</string>
   <string name="pref_playstore_hidden_summary">メディアとサブフォルダーを含めるフォルダーを選択してください。</string>

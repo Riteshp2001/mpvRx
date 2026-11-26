@@ -2479,7 +2479,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="watch_stats_media_breakdown">Detalhamento por mídia</string>
   <string name="watch_stats_overall_playback">Reprodução total</string>
   <string name="network_server_no_matches">Nenhum endereço correspondente. Você ainda pode digitar um.</string>
-  <string name="network_server_none_found">Nenhum servidor anunciado encontrado. Verifique se os dois dispositivos estão na mesma rede, tente novamente ou digite o endereço manualmente.</string>
+  <string name="network_server_none_found">Nenhum servidor encontrado. Verifique se os dois dispositivos estão na mesma rede, tente novamente ou digite o endereço manualmente.</string>
   <string name="network_server_saved">Endereço salvo</string>
   <string name="network_server_nearby">Servidor próximo</string>
   <string name="network_server_this_device">Este dispositivo na rede local</string>
@@ -2488,7 +2488,7 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="network_server_scan">Encontrar servidores próximos</string>
   <string name="network_server_scanning">Procurando servidores próximos…</string>
   <string name="network_server_scan_unavailable">A descoberta está indisponível ou incompleta. Escolha um endereço salvo ou digite um.</string>
-  <string name="network_server_discovery_hint">Encontra servidores anunciados na rede local. Endereços são atalhos; informe as credenciais abaixo.</string>
+  <string name="network_server_discovery_hint">Encontra servidores SMB, FTP, SFTP, WebDAV e DLNA na rede local. Endereços são atalhos; informe as credenciais abaixo.</string>
   <string name="network_smb_username_hint">Use seu nome de usuário ou DOMAIN\\username para uma conta de domínio.</string>
   <string name="pref_playstore_hidden_title">Pastas ocultas selecionadas</string>
   <string name="pref_playstore_hidden_summary">Escolha uma pasta para incluir sua mídia e subpastas.</string>

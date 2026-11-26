@@ -2829,7 +2829,7 @@
   <string name="pref_gesture_show_seekbar_horizontal_title">Show seekbar when controls are hidden</string>
   <string name="pref_gesture_show_seekbar_horizontal_summary">Show the seekbar during swipe seeking, even with controls hidden.</string>
   <string name="network_server_no_matches">No matching addresses. You can still type one.</string>
-  <string name="network_server_none_found">No advertised servers found. Check that both devices are on the same network, try again, or enter the address manually.</string>
+  <string name="network_server_none_found">No servers found. Check that both devices are on the same network, try again, or enter the address manually.</string>
   <string name="network_server_saved">Saved address</string>
   <string name="network_server_nearby">Nearby server</string>
   <string name="network_server_this_device">This device on the local network</string>
@@ -2838,7 +2838,7 @@
   <string name="network_server_scan">Find nearby servers</string>
   <string name="network_server_scanning">Looking for nearby servers…</string>
   <string name="network_server_scan_unavailable">Discovery is unavailable or incomplete. Choose a saved address or type one.</string>
-  <string name="network_server_discovery_hint">Finds advertised LAN servers. Device addresses are shortcuts; enter credentials below.</string>
+  <string name="network_server_discovery_hint">Finds SMB, FTP, SFTP, WebDAV and DLNA servers on your network. Device addresses are shortcuts; enter credentials below.</string>
   <string name="network_smb_share_folder">Share / folder (optional)</string>
   <string name="network_dlna_description_path">Device description path</string>
   <string name="network_dlna_description_hint">Find a nearby DLNA server, or enter its device description URL and path.</string>

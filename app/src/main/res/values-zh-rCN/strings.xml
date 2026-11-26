@@ -2454,7 +2454,7 @@
   <string name="watch_stats_media_breakdown">媒体分类统计</string>
   <string name="watch_stats_overall_playback">总体播放统计</string>
   <string name="network_server_no_matches">没有匹配的地址。您仍可手动输入。</string>
-  <string name="network_server_none_found">未找到广播服务的服务器。请确认两台设备处于同一网络后重试，或手动输入地址。</string>
+  <string name="network_server_none_found">未找到服务器。请确认两台设备处于同一网络后重试，或手动输入地址。</string>
   <string name="network_server_saved">已保存的地址</string>
   <string name="network_server_nearby">附近的服务器</string>
   <string name="network_server_this_device">此设备在局域网中的地址</string>
@@ -2463,7 +2463,7 @@
   <string name="network_server_scan">查找附近的服务器</string>
   <string name="network_server_scanning">正在查找附近的服务器…</string>
   <string name="network_server_scan_unavailable">发现功能不可用或未完成。请选择已保存的地址，或手动输入。</string>
-  <string name="network_server_discovery_hint">查找局域网中广播的服务器。设备地址仅为快捷入口；请在下方输入凭据。</string>
+  <string name="network_server_discovery_hint">查找局域网中的 SMB、FTP、SFTP、WebDAV 和 DLNA 服务器。设备地址仅为快捷入口；请在下方输入凭据。</string>
   <string name="network_smb_username_hint">使用您的用户名；域账户请使用 DOMAIN\\username。</string>
   <string name="pref_playstore_hidden_title">已选择的隐藏文件夹</string>
   <string name="pref_playstore_hidden_summary">选择一个文件夹，以包含其中的媒体和子文件夹。</string>

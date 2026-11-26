@@ -2472,7 +2472,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="watch_stats_media_breakdown">Desglose por contenido</string>
   <string name="watch_stats_overall_playback">Reproducción total</string>
   <string name="network_server_no_matches">No hay direcciones coincidentes. Puedes escribir una manualmente.</string>
-  <string name="network_server_none_found">No se encontraron servidores anunciados. Comprueba que ambos dispositivos estén en la misma red, inténtalo de nuevo o introduce la dirección manualmente.</string>
+  <string name="network_server_none_found">No se encontraron servidores. Comprueba que ambos dispositivos estén en la misma red, inténtalo de nuevo o introduce la dirección manualmente.</string>
   <string name="network_server_saved">Dirección guardada</string>
   <string name="network_server_nearby">Servidor cercano</string>
   <string name="network_server_this_device">Este dispositivo en la red local</string>
@@ -2481,7 +2481,7 @@ Reinicia la aplicación para que se apliquen todos los cambios.</string>
   <string name="network_server_scan">Buscar servidores cercanos</string>
   <string name="network_server_scanning">Buscando servidores cercanos…</string>
   <string name="network_server_scan_unavailable">La detección no está disponible o está incompleta. Elige una dirección guardada o escribe una.</string>
-  <string name="network_server_discovery_hint">Busca servidores anunciados en la red local. Las direcciones son accesos directos; introduce credenciales abajo.</string>
+  <string name="network_server_discovery_hint">Busca servidores SMB, FTP, SFTP, WebDAV y DLNA en la red local. Las direcciones son accesos directos; introduce credenciales abajo.</string>
   <string name="network_smb_username_hint">Usa tu nombre de usuario o DOMAIN\\username para una cuenta de dominio.</string>
   <string name="pref_playstore_hidden_title">Carpetas ocultas seleccionadas</string>
   <string name="pref_playstore_hidden_summary">Elige una carpeta para incluir su contenido multimedia y sus subcarpetas.</string>

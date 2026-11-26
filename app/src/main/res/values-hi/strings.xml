@@ -2391,7 +2391,7 @@
   <string name="watch_stats_media_breakdown">मीडिया के अनुसार विवरण</string>
   <string name="watch_stats_overall_playback">कुल प्लेबैक</string>
   <string name="network_server_no_matches">कोई मेल खाता पता नहीं। आप खुद पता दर्ज कर सकते हैं।</string>
-  <string name="network_server_none_found">कोई प्रकाशित सर्वर नहीं मिला। जाँचें कि दोनों डिवाइस एक ही नेटवर्क पर हैं, फिर कोशिश करें या पता खुद दर्ज करें।</string>
+  <string name="network_server_none_found">कोई सर्वर नहीं मिला। जाँचें कि दोनों डिवाइस एक ही नेटवर्क पर हैं, फिर कोशिश करें या पता खुद दर्ज करें।</string>
   <string name="network_server_saved">सहेजा गया पता</string>
   <string name="network_server_nearby">आस-पास का सर्वर</string>
   <string name="network_server_this_device">स्थानीय नेटवर्क पर यह डिवाइस</string>
@@ -2400,7 +2400,7 @@
   <string name="network_server_scan">आस-पास के सर्वर खोजें</string>
   <string name="network_server_scanning">आस-पास के सर्वर खोज रहे हैं…</string>
   <string name="network_server_scan_unavailable">खोज उपलब्ध नहीं है या अधूरी है। सहेजा गया पता चुनें या खुद दर्ज करें।</string>
-  <string name="network_server_discovery_hint">LAN पर घोषित सर्वर खोजता है। डिवाइस पते शॉर्टकट हैं; लॉगिन जानकारी नीचे दें।</string>
+  <string name="network_server_discovery_hint">LAN पर SMB, FTP, SFTP, WebDAV और DLNA सर्वर खोजता है। डिवाइस पते शॉर्टकट हैं; लॉगिन जानकारी नीचे दें।</string>
   <string name="network_smb_username_hint">अपना उपयोगकर्ता नाम दर्ज करें या डोमेन खाते के लिए DOMAIN\\username इस्तेमाल करें।</string>
   <string name="pref_playstore_hidden_title">चुने हुए छिपे फ़ोल्डर</string>
   <string name="pref_playstore_hidden_summary">मीडिया और उपफ़ोल्डर शामिल करने के लिए फ़ोल्डर चुनें।</string>

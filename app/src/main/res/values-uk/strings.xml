@@ -2437,7 +2437,7 @@
   <string name="watch_stats_media_breakdown">Розподіл за медіа</string>
   <string name="watch_stats_overall_playback">Загальне відтворення</string>
   <string name="network_server_no_matches">Немає відповідних адрес. Ви можете ввести адресу вручну.</string>
-  <string name="network_server_none_found">Сервери, що оголошують про себе, не знайдено. Переконайтеся, що обидва пристрої в одній мережі, спробуйте знову або введіть адресу вручну.</string>
+  <string name="network_server_none_found">Серверів не знайдено. Переконайтеся, що обидва пристрої в одній мережі, спробуйте знову або введіть адресу вручну.</string>
   <string name="network_server_saved">Збережена адреса</string>
   <string name="network_server_nearby">Сервер поблизу</string>
   <string name="network_server_this_device">Цей пристрій у локальній мережі</string>
@@ -2446,7 +2446,7 @@
   <string name="network_server_scan">Знайти сервери поблизу</string>
   <string name="network_server_scanning">Пошук серверів поблизу…</string>
   <string name="network_server_scan_unavailable">Виявлення недоступне або не завершене. Виберіть збережену адресу або введіть нову.</string>
-  <string name="network_server_discovery_hint">Знаходить оголошені LAN-сервери. Адреси пристроїв — ярлики; введіть облікові дані нижче.</string>
+  <string name="network_server_discovery_hint">Знаходить SMB-, FTP-, SFTP-, WebDAV- і DLNA-сервери в локальній мережі. Адреси пристроїв — ярлики; введіть облікові дані нижче.</string>
   <string name="network_smb_username_hint">Використовуйте ім’я користувача або DOMAIN\\username для доменного облікового запису.</string>
   <string name="pref_playstore_hidden_title">Вибрані приховані папки</string>
   <string name="pref_playstore_hidden_summary">Виберіть папку, щоб включити її медіа та підпапки.</string>

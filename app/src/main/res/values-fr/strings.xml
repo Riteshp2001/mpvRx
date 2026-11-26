@@ -2472,7 +2472,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="watch_stats_media_breakdown">Répartition par média</string>
   <string name="watch_stats_overall_playback">Lecture globale</string>
   <string name="network_server_no_matches">Aucune adresse correspondante. Vous pouvez toujours en saisir une.</string>
-  <string name="network_server_none_found">Aucun serveur annoncé trouvé. Vérifiez que les deux appareils sont sur le même réseau, réessayez ou saisissez l’adresse manuellement.</string>
+  <string name="network_server_none_found">Aucun serveur trouvé. Vérifiez que les deux appareils sont sur le même réseau, réessayez ou saisissez l’adresse manuellement.</string>
   <string name="network_server_saved">Adresse enregistrée</string>
   <string name="network_server_nearby">Serveur à proximité</string>
   <string name="network_server_this_device">Cet appareil sur le réseau local</string>
@@ -2481,7 +2481,7 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="network_server_scan">Rechercher des serveurs à proximité</string>
   <string name="network_server_scanning">Recherche de serveurs à proximité…</string>
   <string name="network_server_scan_unavailable">La détection est indisponible ou incomplète. Choisissez une adresse enregistrée ou saisissez-en une.</string>
-  <string name="network_server_discovery_hint">Détecte les serveurs annoncés sur le réseau local. Les adresses sont des raccourcis ; identifiants ci-dessous.</string>
+  <string name="network_server_discovery_hint">Détecte les serveurs SMB, FTP, SFTP, WebDAV et DLNA du réseau local. Les adresses sont des raccourcis ; identifiants ci-dessous.</string>
   <string name="network_smb_username_hint">Utilisez votre nom d’utilisateur ou DOMAIN\\username pour un compte de domaine.</string>
   <string name="pref_playstore_hidden_title">Dossiers masqués sélectionnés</string>
   <string name="pref_playstore_hidden_summary">Choisissez un dossier pour inclure ses médias et ses sous-dossiers.</string>

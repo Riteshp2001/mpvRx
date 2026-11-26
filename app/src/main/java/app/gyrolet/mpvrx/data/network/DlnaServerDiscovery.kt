@@ -33,6 +33,10 @@ import okhttp3.Request
 
 /** Foreground SSDP discovery; sockets and HTTP requests are bounded to the active scan. */
 internal class DlnaServerDiscovery(context: Context) {
+  private companion object {
+    const val MAX_DESCRIPTION_ATTEMPTS = 2
+  }
+
   private val manager = context.applicationContext.getSystemService(ConnectivityManager::class.java)
   private val http = SharedHttpClient.derive { callTimeout(3, TimeUnit.SECONDS) }
 
@@ -75,6 +79,9 @@ internal class DlnaServerDiscovery(context: Context) {
         val target = InetAddress.getByName("239.255.255.250")
         val end = System.nanoTime() + TimeUnit.SECONDS.toNanos(6)
         var nextSearch = 0L
+        // Routers, TVs and casting devices answer ssdp:all on every search too; two looks at each
+        // description (one may time out) are enough to tell they have no ContentDirectory.
+        val failures = HashMap<String, Int>()
         while (currentCoroutineContext().isActive && System.nanoTime() < end && seen.size < 100) {
           if (System.nanoTime() >= nextSearch) {
             searches.forEach { message -> runCatching { socket.send(DatagramPacket(message, message.size, target, 1900)) } }
@@ -90,7 +97,9 @@ internal class DlnaServerDiscovery(context: Context) {
             } else null
           }.firstOrNull()?.toHttpUrlOrNull() ?: continue
           if (location.username.isNotEmpty() || location.password.isNotEmpty() ||
-            location.query != null || location.fragment != null || seen.contains(location.toString())) continue
+            location.query != null || location.fragment != null || seen.contains(location.toString()) ||
+            (failures[location.toString()] ?: 0) >= MAX_DESCRIPTION_ATTEMPTS
+          ) continue
           val path = runCatching { NetworkPath.from(location.pathSegments.joinToString("/")).value }.getOrNull() ?: continue
           val suggestion = runCatching {
             val request = Request.Builder().url(location).get().build()
@@ -104,7 +113,11 @@ internal class DlnaServerDiscovery(context: Context) {
               )
             }
           }.getOrNull()
-          if (suggestion != null) seen.add(location.toString())
+          if (suggestion != null) {
+            seen.add(location.toString())
+          } else {
+            failures[location.toString()] = (failures[location.toString()] ?: 0) + 1
+          }
           if (suggestion != null && currentCoroutineContext().isActive) onServer(suggestion)
         }
       }

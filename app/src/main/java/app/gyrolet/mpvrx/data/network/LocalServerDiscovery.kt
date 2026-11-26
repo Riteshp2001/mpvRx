@@ -63,7 +63,11 @@ data class ServerDiscoveryState(
   val unavailable: Boolean = false,
 )
 
-/** A bounded, foreground-only DNS-SD search. No credentials, subnet sweep or application startup work. */
+/**
+ * A bounded, foreground-only search: DNS-SD, SSDP for DLNA, and a sweep of the local subnet for
+ * SMB, FTP, SFTP and WebDAV servers, which mostly never advertise themselves. No credentials or
+ * application startup work.
+ */
 class LocalServerDiscovery(context: Context) {
   private val context = context.applicationContext
 
@@ -111,8 +115,14 @@ class LocalServerDiscovery(context: Context) {
     var multicastLock: WifiManager.MulticastLock? = null
     var unavailable = false
 
+    fun snapshot(): List<ServerSuggestion> {
+      // A server found both ways keeps its advertised entry and name: the field keeps the first
+      // of each address, so swept entries come last.
+      val (swept, advertised) = results.entries.partition { it.key.startsWith(SWEEP_KEY_PREFIX) }
+      return advertised.map { it.value } + swept.map { it.value }
+    }
     fun emit() {
-      if (!closed.get()) trySend(ServerDiscoveryState(results.values.toList(), true, unavailable))
+      if (!closed.get()) trySend(ServerDiscoveryState(snapshot(), true, unavailable))
     }
     fun serviceKey(info: NsdServiceInfo) = "${info.serviceType}:${info.serviceName}"
     fun next() {
@@ -130,7 +140,8 @@ class LocalServerDiscovery(context: Context) {
             if (closed.get()) return@post
             resolving = null
             if (key in found) {
-              val type = serviceInfo.serviceType.trimEnd('.').lowercase()
+              // Resolved services report "._smb._tcp" on many Android versions, found ones "_smb._tcp.".
+              val type = serviceInfo.serviceType.trim('.').lowercase()
               val protocol = SERVICE_TYPES[type]
               val address = if (Build.VERSION.SDK_INT >= 34) {
                 serviceInfo.hostAddresses.firstOrNull { it is Inet4Address }
@@ -166,9 +177,10 @@ class LocalServerDiscovery(context: Context) {
     }
 
     var dlnaScan: Job? = null
+    var sweepScan: Job? = null
 
     val finish = Runnable {
-      trySend(ServerDiscoveryState(results.values.toList(), unavailable = unavailable))
+      trySend(ServerDiscoveryState(snapshot(), unavailable = unavailable))
       close()
     }
     handler.post {
@@ -188,6 +200,16 @@ class LocalServerDiscovery(context: Context) {
           handler.post {
             if (!closed.get()) {
               results["dlna:${server.host}:${server.port}:${server.path}"] = server
+              emit()
+            }
+          }
+        }
+      }
+      sweepScan = launch(Dispatchers.IO) {
+        LanServiceScanner(context).scan { server ->
+          handler.post {
+            if (!closed.get()) {
+              results["$SWEEP_KEY_PREFIX${server.protocol}:${server.host}:${server.port}:${server.useHttps}"] = server
               emit()
             }
           }
@@ -234,6 +256,7 @@ class LocalServerDiscovery(context: Context) {
     awaitClose {
       closed.set(true)
       dlnaScan?.cancel()
+      sweepScan?.cancel()
       handler.post {
         handler.removeCallbacks(finish)
         listeners.forEach { runCatching { manager.stopServiceDiscovery(it) } }
@@ -249,6 +272,7 @@ class LocalServerDiscovery(context: Context) {
   companion object {
     private const val SCAN_DURATION_MS = 12_000L
     private const val MAX_SERVICES = 100
+    private const val SWEEP_KEY_PREFIX = "sweep:"
     private val SERVICE_TYPES = linkedMapOf(
       "_smb._tcp" to NetworkProtocol.SMB,
       "_ftp._tcp" to NetworkProtocol.FTP,

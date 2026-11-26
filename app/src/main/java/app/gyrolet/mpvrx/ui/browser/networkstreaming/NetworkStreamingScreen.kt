@@ -789,22 +789,30 @@ private fun LocalNetworkContent(
 ) {
   val navBarHeight = app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight.current
   val bottomOverlayClearance = navBarHeight
+  // With a remote, the first D-pad stop is a saved connection (or bookmark) to browse rather than
+  // the stream URL field; the field moves below them (#1035).
+  val streamLinkLast =
+    app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(LocalContext.current) &&
+      (connections.isNotEmpty() || bookmarks.isNotEmpty())
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
     contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = bottomOverlayClearance + 16.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
     // 1. Stream Link Section (URL input & recent streams with Save to Media action)
-    item {
-      StreamLinkSection(
-        recentLinks = recentLinks,
-        isPreparing = isPreparingLink,
-        onPlayLink = onPlayLink,
-        onPlayRecent = onPlayRecent,
-        onSaveToTorrent = onSaveToMedia,
-        onDeleteRecent = onDeleteRecent,
-      )
+    val streamLinkItem: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+      item(key = "stream_link_section") {
+        StreamLinkSection(
+          recentLinks = recentLinks,
+          isPreparing = isPreparingLink,
+          onPlayLink = onPlayLink,
+          onPlayRecent = onPlayRecent,
+          onSaveToTorrent = onSaveToMedia,
+          onDeleteRecent = onDeleteRecent,
+        )
+      }
     }
+    if (!streamLinkLast) streamLinkItem()
 
     if (bookmarks.isNotEmpty()) {
       item {
@@ -843,6 +851,8 @@ private fun LocalNetworkContent(
         )
       }
     }
+
+    if (streamLinkLast) streamLinkItem()
   }
 }
 
@@ -1075,6 +1085,7 @@ private fun StreamLinkSection(
 ) {
   val context = LocalContext.current
   val keyboardController = LocalSoftwareKeyboardController.current
+  val isTelevision = app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(context)
   val playStreamContentDescription = stringResource(R.string.ui_play_stream)
   var linkUrl by rememberSaveable { mutableStateOf("") }
 
@@ -1178,7 +1189,8 @@ private fun StreamLinkSection(
               focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
               unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
             ),
-          keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+          // A remote passing over the field must not raise the keyboard; OK on it still does.
+          keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go, showKeyboardOnFocus = !isTelevision),
           keyboardActions =
             KeyboardActions(
               onGo = { playCurrentLink() },
