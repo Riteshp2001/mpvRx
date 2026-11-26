@@ -27,6 +27,7 @@ import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.di.DatabaseModule
 import app.gyrolet.mpvrx.di.FileManagerModule
 import app.gyrolet.mpvrx.di.PreferencesModule
+import app.gyrolet.mpvrx.domain.kodi.KodiIntegration
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
@@ -86,6 +87,9 @@ class App :
   private val imageCacheCleanupStarted = AtomicBoolean(false)
   private val settingsAutoBackupRunning = AtomicBoolean(false)
   private var startedActivityCount = 0
+  private val inKodiProcess by lazy {
+    KodiIntegration.isKodiProcess(CrashMonitor.currentProcessName(), packageName)
+  }
   private val mediaStoreLiveMonitor by lazy { app.gyrolet.mpvrx.utils.media.MediaStoreLiveMonitor(this, applicationScope) }
 
   private data class WidgetAppearanceState(
@@ -124,6 +128,8 @@ class App :
 
   override fun attachBaseContext(base: android.content.Context) {
     super.attachBaseContext(base)
+    // The embedded Kodi's process runs only Kodi, which owns it and exits it on quit.
+    if (inKodiProcess) return
     AppLogging.ensureInstalled()
     // Before content providers and onCreate run, so no startup crash escapes the handler. The
     // crash screen's own process keeps the platform handler, so a failing recovery cannot loop.
@@ -133,6 +139,7 @@ class App :
   @OptIn(ExperimentalComposeUiApi::class)
   override fun onCreate() {
     super.onCreate()
+    if (inKodiProcess) return
     app.gyrolet.mpvrx.utils.device.DevicePerformance.init(this)
 
     // Material3 alpha29 brings Compose UI 1.13.0-alpha01, which re-enables out-of-frame
@@ -268,17 +275,20 @@ class App :
 
   override fun onTrimMemory(level: Int) {
     super.onTrimMemory(level)
+    if (inKodiProcess) return
     BitmapMemoryCaches.trimMemory(level)
   }
 
   @Suppress("DEPRECATION")
   override fun onLowMemory() {
     super.onLowMemory()
+    if (inKodiProcess) return
     BitmapMemoryCaches.trimMemory(ComponentCallbacks2.TRIM_MEMORY_COMPLETE)
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
+    if (inKodiProcess) return
     PlaybackSession.updateStatisticsLanguage(this)
     MediaPlayerWidget.requestUpdate(this)
   }

@@ -16,6 +16,7 @@ import android.os.Looper
 import android.os.Process
 import android.provider.Settings
 import androidx.annotation.RequiresApi
+import app.gyrolet.mpvrx.domain.kodi.KodiIntegration
 import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 import java.text.SimpleDateFormat
@@ -245,9 +246,15 @@ internal object CrashMonitor {
     if (checkedAt < 0L) return
 
     val crashProcess = "${context.packageName}:crash"
+    // The embedded Kodi ends its own process, and its failures are not mpvRx crashes.
     val abnormal =
       exits
-        .filter { it.timestamp > checkedAt && it.pid != Process.myPid() && it.processName != crashProcess }
+        .filter {
+          it.timestamp > checkedAt &&
+            it.pid != Process.myPid() &&
+            it.processName != crashProcess &&
+            !KodiIntegration.isKodiProcess(it.processName, context.packageName)
+        }
         .filter(::isAbnormal)
         .sortedBy(ApplicationExitInfo::getTimestamp)
     if (abnormal.isEmpty()) return
