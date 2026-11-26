@@ -441,6 +441,12 @@ For a local build, extract the AAR from the linked artifact and pass it to Gradl
 You can also set `mpvlibKodiAar=/path/to/kodi-release.aar` in `local.properties`. Kodi is licensed
 GPL-2.0-or-later and Kodi® is a trademark of the XBMC Foundation; review both before distributing this variant.
 
+Known limitations:
+
+- Kodi starts handed-over media from the beginning; its `ACTION_VIEW` handling takes no start position.
+- Kodi 21's libraries are aligned for 4 KB pages, so they don't load on devices running with 16 KB pages.
+- mpvRx and Kodi each keep a media session, so media keys go to whichever of them played last.
+
 ### APK Variants
 
 | Variant | Description |
