@@ -155,9 +155,10 @@ fun GestureHandler(
   // Subtitle tuning leaves the uncovered video interactive; panel controls own their hit region.
   val allowGesturesInPanels = !settingsPanelShown &&
     (allowPanelGesturesPreference || (subtitlePanelShown && !externalPanelShown))
-  val playlistSwipeBlocked by rememberUpdatedState(anyPanelShown && !allowGesturesInPanels)
   val currentExternalPanelShown by rememberUpdatedState(externalPanelShown)
-  val currentOnDismissExternalPanel by rememberUpdatedState(onDismissExternalPanel)
+  // Panels may allow ordinary playback gestures, but the playlist must never replace them.
+  fun isPlaylistSwipeBlocked() = currentExternalPanelShown || viewModel.panelShown.value != Panels.None ||
+    viewModel.sheetShown.value != Sheets.None
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
   val duration by PlaybackSession.propInt["duration"].collectAsState()
   val position by PlaybackSession.propInt["time-pos"].collectAsState()
@@ -368,7 +369,7 @@ fun GestureHandler(
     awaitEachGesture {
       val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
       if (
-        playlistSwipeBlocked || viewModel.sheetShown.value != Sheets.None ||
+        isPlaylistSwipeBlocked() ||
         down.position.x !in (size.width / 3f)..(size.width * 2f / 3f) ||
         !viewModel.hasPlaylistSupport()
       ) {
@@ -388,8 +389,7 @@ fun GestureHandler(
 
           if (!playlistSwipeStarted) {
             if (
-              !change.pressed || gestureOwner != null || playlistSwipeBlocked ||
-              viewModel.sheetShown.value != Sheets.None
+              !change.pressed || gestureOwner != null || isPlaylistSwipeBlocked()
             ) {
               break
             }
@@ -410,8 +410,6 @@ fun GestureHandler(
             viewModel.playlistSwipeOffset.value = drag.y
             viewModel.sheetShown.update { Sheets.Playlist }
             viewModel.hideControls()
-            viewModel.panelShown.update { Panels.None }
-            if (currentExternalPanelShown) currentOnDismissExternalPanel()
           }
 
           viewModel.playlistSwipeOffset.value = drag.y

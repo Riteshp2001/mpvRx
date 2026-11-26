@@ -14,10 +14,12 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.Surface
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import app.gyrolet.mpvrx.BuildConfig
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.data.network.proxy.XtreamStreamingProxy
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
@@ -31,6 +33,7 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.presentation.crash.AppLogging
+import app.gyrolet.mpvrx.ui.components.AppToast
 import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpCookies
@@ -328,6 +331,13 @@ object PlaybackSession : MPVLib.EventObserver {
   }
   private val observers = CopyOnWriteArraySet<MPVLib.EventObserver>()
   private val _state = MutableStateFlow(PlaybackSessionState())
+  private val sleepTimerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+  private var sleepTimerJob: Job? = null
+  private val _sleepTimerRemaining = MutableStateFlow(0)
+  val sleepTimerRemaining = _sleepTimerRemaining.asStateFlow()
+  private val _sleepAtSongEnd = MutableStateFlow(false)
+  val sleepAtSongEnd = _sleepAtSongEnd.asStateFlow()
+  private var sleepTimerEofGeneration: Long? = null
   private val _queue = MutableStateFlow(PlaybackQueueState())
   private val _videoZoom = MutableStateFlow(0f)
   private val _videoPanX = MutableStateFlow(0f)
@@ -1088,6 +1098,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
 
   fun stop(clearQueue: Boolean = true) {
     withCore(Unit) {
+      clearSleepTimerLocked()
       clearSessionBatteryMeasurementLocked()
       AudiobookPlayback.capture()
       loadedPlaybackItem = null
@@ -1251,6 +1262,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
   }
 
   private fun destroyLocked(nativeShutdown: Boolean = false) {
+    clearSleepTimerLocked()
     clearSessionBatteryMeasurementLocked()
     resetStatisticsState()
     val nextGeneration = _state.value.generation + 1L
@@ -1592,6 +1604,8 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       beginPlaybackTransitionAudioGuardLocked(canRestore = true)
 
       val generation = _state.value.generation + 1L
+      _sleepAtSongEnd.value = false
+      sleepTimerEofGeneration = null
       val initialPosition = initialPositionSeconds?.takeIf { it.isFinite() && it > 0.0 }
       pendingPositionRestoreGeneration =
         generation.takeIf {
@@ -2227,6 +2241,73 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     MPVLib.setPropertyDouble("speed", speed.coerceIn(0.1f, 4f).toDouble())
   }
 
+  fun startSleepTimer(seconds: Int) = withCore(Unit) {
+    clearSleepTimerLocked()
+    if (seconds <= 0 || _state.value.currentItem == null) return@withCore
+    _sleepTimerRemaining.value = seconds
+    val deadline = SystemClock.elapsedRealtime() + seconds * 1_000L
+    sleepTimerJob = sleepTimerScope.launch {
+      while (true) {
+        val remaining = (deadline - SystemClock.elapsedRealtime()).coerceAtLeast(0L)
+        val expired = withCore(true) {
+          if (sleepTimerJob !== coroutineContext[Job]) return@withCore true
+          _sleepTimerRemaining.value = ((remaining + 999L) / 1_000L).toInt()
+          if (remaining == 0L) {
+            sleepTimerJob = null
+            finishSleepTimerLocked()
+          }
+          remaining == 0L
+        }
+        if (expired) break
+        delay((remaining - 1L) % 1_000L + 1L)
+      }
+    }
+  }
+
+  fun startSleepTimerAtSongEnd() = withCore(Unit) {
+    val current = _state.value
+    if (current.currentItem == null || current.currentItem.audiobook != null ||
+      current.phase !in setOf(PlaybackPhase.LOADING, PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+    ) return@withCore
+    clearSleepTimerLocked()
+    if (current.phase != PlaybackPhase.LOADING && MPVLib.getPropertyBoolean("eof-reached") == true &&
+      MPVLib.getPropertyDouble("duration")?.let { duration ->
+        duration > 0 && (MPVLib.getPropertyDouble("time-pos") ?: 0.0) >= duration - 2.0
+      } == true
+    ) {
+      sleepTimerEofGeneration = current.generation
+      finishSleepTimerLocked()
+    } else {
+      _sleepAtSongEnd.value = true
+    }
+  }
+
+  /** Runs before repeat or queue advance, whichever playback owner receives EOF. */
+  internal fun handleSleepTimerEndOfSong(generation: Long): Boolean = withCore(false) {
+    if (!isCurrentGeneration(generation)) return@withCore false
+    // keep-open and END_FILE can both report the same EOF, including across an owner handoff.
+    if (sleepTimerEofGeneration == generation) return@withCore true
+    if (!_sleepAtSongEnd.value) return@withCore false
+    _sleepAtSongEnd.value = false
+    sleepTimerEofGeneration = generation
+    finishSleepTimerLocked()
+    true
+  }
+
+  private fun clearSleepTimerLocked() {
+    sleepTimerJob?.cancel()
+    sleepTimerJob = null
+    _sleepTimerRemaining.value = 0
+    _sleepAtSongEnd.value = false
+  }
+
+  private fun finishSleepTimerLocked() {
+    setPropertyBoolean("pause", true)
+    applicationContext?.let { context ->
+      AppToast.makeText(context, R.string.toast_sleep_timer_ended, AppToast.LENGTH_SHORT).show()
+    }
+  }
+
   fun setPropertyBoolean(
     property: String,
     value: Boolean,
@@ -2670,6 +2751,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     val effectiveValue =
       if (property == "pause" && _state.value.phase == PlaybackPhase.LOADING) _state.value.paused else value
     if (property == "pause") updateState { it.copy(paused = effectiveValue) }
+    if (property == "eof-reached" && !value) sleepTimerEofGeneration = null
     propBoolean.emit(property, effectiveValue)
     if (property in BUFFERING_STATUS_PROPERTIES) refreshBufferingState()
     observerSnapshot().forEach { observer -> runCatching { observer.eventProperty(property, effectiveValue) } }

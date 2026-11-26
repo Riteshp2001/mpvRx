@@ -2734,15 +2734,11 @@ fun AudioPlayerControls(
         val centerCount = if (isAudiobook) 3 else 4
         BoxWithConstraints(Modifier.fillMaxWidth()) {
           val showPlaylistButton = !isTablet
-          val endWidth = minOf(barHeight, maxWidth * 0.15f)
+          val endCount = 1 + (if (showPlaylistButton) 1 else 0) + (if (isAudiobook) 0 else 1)
+          val endWidth = minOf(barHeight, maxWidth * (if (endCount == 3) 0.13f else 0.15f))
           val outerSpacing = if (maxWidth < 280.dp) 4.dp else 8.dp
           val centerSpacing = if (maxWidth < 320.dp) 2.dp else 4.dp
-          val centerWidth =
-            if (showPlaylistButton) {
-              (maxWidth - endWidth * 2f - outerSpacing * 2f).coerceAtLeast(0.dp)
-            } else {
-              (maxWidth - endWidth - outerSpacing).coerceAtLeast(0.dp)
-            }
+          val centerWidth = (maxWidth - (endWidth + outerSpacing) * endCount.toFloat()).coerceAtLeast(0.dp)
           val centerCellWidth =
             ((centerWidth - centerSpacing * (centerCount - 1).toFloat()) / centerCount.toFloat()).coerceAtLeast(0.dp)
           val iconSize = minOf(if (isCompactLandscape) 20.dp else 22.dp, centerCellWidth * 0.72f)
@@ -2862,6 +2858,26 @@ fun AudioPlayerControls(
                     modifier = Modifier.size(iconSize),
                   )
                 }
+              }
+            }
+            if (!isAudiobook) {
+              val remaining = PlaybackSession.sleepTimerRemaining.collectAsStateWithLifecycle()
+              val endOfSong = PlaybackSession.sleepAtSongEnd.collectAsStateWithLifecycle()
+              val timerActive by remember(remaining, endOfSong) {
+                derivedStateOf { remaining.value > 0 || endOfSong.value }
+              }
+              ExpressiveTransportSideButton(
+                size = barHeight,
+                modifier = Modifier.width(endWidth),
+                active = timerActive,
+                onClick = { onOpenSheet(Sheets.MusicSleepTimer); actionHaptics.confirm() },
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Timer,
+                  contentDescription = stringResource(R.string.timer_title),
+                  tint = if (timerActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+                  modifier = Modifier.size(endIconSize),
+                )
               }
             }
             if (showPlaylistButton) {

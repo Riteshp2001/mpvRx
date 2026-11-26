@@ -2351,9 +2351,7 @@ fun restartFromBeginning() {
   val currentAspectRatio: StateFlow<Double> = _currentAspectRatio.asStateFlow()
 
   // Timer
-  private var timerJob: Job? = null
-  private val _remainingTime = MutableStateFlow(0)
-  val remainingTime: StateFlow<Int> = _remainingTime.asStateFlow()
+  val remainingTime = PlaybackSession.sleepTimerRemaining
 
   // Media title for subtitle association
   var currentMediaTitle: String = ""
@@ -3897,21 +3895,7 @@ fun restartFromBeginning() {
 
   // ==================== Timer ====================
 
-  fun startTimer(seconds: Int) {
-    timerJob?.cancel()
-    _remainingTime.value = seconds
-    if (seconds < 1) return
-
-    timerJob =
-      viewModelScope.launch {
-        for (time in seconds downTo 0) {
-          _remainingTime.value = time
-          delay(1000)
-        }
-        PlaybackSession.setPropertyBoolean("pause", true)
-        showToast(appContext.getString(R.string.toast_sleep_timer_ended))
-      }
-  }
+  fun startTimer(seconds: Int) = PlaybackSession.startSleepTimer(seconds)
 
   // ==================== Decoder ====================
 

@@ -163,6 +163,7 @@ enum class Sheets {
   Decoders,
   More,
   SleepTimer,
+  MusicSleepTimer,
   VideoZoom,
   AspectRatios,
   Playlist,

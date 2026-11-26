@@ -276,6 +276,7 @@ fun PlaylistSheet(
   swipeOffset: Float = 0f,
   isAudioOnly: Boolean = false,
   modifier: Modifier = Modifier,
+  onOpenSleepTimer: (() -> Unit)? = null,
 ) {
   val configuration = LocalConfiguration.current
   val thumbnailRepository = koinInject<ThumbnailRepository>()
@@ -404,6 +405,11 @@ fun PlaylistSheet(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
           ) {
+            if (onOpenSleepTimer != null) {
+              IconButton(onClick = onOpenSleepTimer) {
+                Icon(Icons.RoundedFilled.Timer, contentDescription = stringResource(R.string.timer_title))
+              }
+            }
             IconButton(
               onClick = { showAddToPlaylistDialog = true },
             ) {

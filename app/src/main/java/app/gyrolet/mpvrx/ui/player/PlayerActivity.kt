@@ -4764,6 +4764,7 @@ class PlayerActivity :
     if (durationSecs > 0 && positionSecs < durationSecs - 2) return
     if (fileName.isNotBlank()) saveVideoPlaybackState(fileName, immediate = true)
 
+    if (PlaybackSession.handleSleepTimerEndOfSong(PlaybackSession.state.value.generation)) return
     val isAudiobook = PlaybackSession.state.value.currentItem?.audiobook != null
     if (AudiobookPlayback.handleEndOfFile()) return
     val repeatMode = if (isAudiobook) RepeatMode.OFF else viewModel.repeatMode.value

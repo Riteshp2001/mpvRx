@@ -58,6 +58,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaybackBookmarkEd
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.DecodersSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.FrameNavigationSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.MoreSheet
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.MusicSleepTimerSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.OnlineSubtitleSearchSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaybackSpeedSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistSheet
@@ -141,6 +142,7 @@ fun PlayerSheets(
 
   when (sheetShown) {
     Sheets.None -> {}
+    Sheets.MusicSleepTimer -> MusicSleepTimerSheet(onDismissRequest)
     Sheets.MediaInfo -> PlaybackMediaInfoSheet(onDismissRequest)
     Sheets.BookmarkEditor -> PlaybackBookmarkEditor(viewModel, { onShowSheet(Sheets.Chapters) }, onDismissRequest)
     Sheets.AudiobookRewind,
@@ -611,6 +613,7 @@ fun PlayerSheets(
             isSwipeActive = isPlaylistSwipeActive,
             swipeOffset = playlistSwipeOffset,
             isAudioOnly = isAudioOnly,
+            onOpenSleepTimer = if (isAudioOnly) ({ onShowSheet(Sheets.MusicSleepTimer) }) else null,
           )
         }
       }
