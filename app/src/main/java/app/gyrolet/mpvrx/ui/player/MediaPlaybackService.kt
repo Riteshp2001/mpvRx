@@ -154,7 +154,7 @@ class MediaPlaybackService :
 
     /** Removes the notification now and stops the service once no foreground start is pending. */
     internal fun requestStop(context: Context) {
-      activeInstance?.stopForegroundNotification()
+      activeInstance?.stopForegroundNotification("the player ended playback")
       if (trackedStartsPending > 0) {
         stopAfterTrackedStarts = true
       } else {
@@ -162,6 +162,9 @@ class MediaPlaybackService :
           .onFailure { error -> Log.e(TAG, "Could not stop the playback service", error) }
       }
     }
+
+    /** A foreground start is on its way and will post the notification (no stop waits behind it). */
+    internal fun isForegroundStartPending(): Boolean = trackedStartsPending > 0 && !stopAfterTrackedStarts
 
     private val _foregroundActive = MutableStateFlow(false)
     internal val foregroundActive = _foregroundActive.asStateFlow()
@@ -345,7 +348,8 @@ class MediaPlaybackService :
   private var currentPositionSeconds: Double = 0.0
   private var mediaDurationSeconds: Double = 0.0
   private var lastThumbnailSource: WeakReference<Bitmap>? = null
-  private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+  // Replaced when a released instance is re-armed for new playback (rearmAfterMpvRelease).
+  private var serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
   private var playbackStateSaveJob: Job? = null
   // Only touched from the libmpv event thread.
   private var positionJumpPublishJob: Job? = null
@@ -353,6 +357,8 @@ class MediaPlaybackService :
   private var favoriteActionJob: Job? = null
   private val mediaFavoriteActionMutex = Mutex()
   @Volatile private var mpvAccessReleased = false
+  // Detached during an mpv shutdown; kept to attach again when the instance is re-armed.
+  private var sessionCallback: MediaSessionCompat.Callback? = null
   @Volatile private var isCurrentFavorite = false
   private var usesAudioBackgroundPlayback = false
     set(value) {
@@ -588,7 +594,7 @@ class MediaPlaybackService :
               (phase == PlaybackPhase.IDLE && state.currentItem == null) ||
               (phase == PlaybackPhase.ERROR && canHandleDetachedTransport())
           if (ended) {
-            stopForegroundNotification()
+            stopForegroundNotification("playback ended (phase=$phase, item=${state.currentItem != null})")
             stopSelf()
             return@collect
           }
@@ -622,7 +628,7 @@ class MediaPlaybackService :
         if (!enabled && !isAudio && canHandleDetachedTransport() && externalDisplayWakeLock?.isHeld != true) {
           Log.d(TAG, "Video background playback disabled; stopping service")
           stopDetachedPlaybackIfNeeded()
-          stopForegroundNotification()
+          stopForegroundNotification("video background playback was switched off")
           stopSelf()
         }
       }
@@ -704,9 +710,13 @@ class MediaPlaybackService :
 
     setupMediaSession()
     val session = PlaybackSession.state.value
-    val hasPlayback =
-      !stopRequested && !mpvAccessReleased && PlaybackSession.isInitialized && session.currentItem != null &&
+    val sessionHasMedia =
+      PlaybackSession.isInitialized && session.currentItem != null &&
         session.phase in setOf(PlaybackPhase.LOADING, PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+    // The closing player stops the session in the same turn as it releases this instance, so media
+    // found here is a new player's, not the released one's.
+    if (mpvAccessReleased && !stopRequested && sessionHasMedia) rearmAfterMpvRelease()
+    val hasPlayback = !stopRequested && !mpvAccessReleased && sessionHasMedia
 
     if (hasPlayback) {
       // Observers apply the current queue item to the session synchronously (Main.immediate), so
@@ -731,14 +741,17 @@ class MediaPlaybackService :
     // what lets Android show it without the notification permission.
     publishSession(active = hasPlayback)
     if (!startForegroundNotification()) {
-      stopForegroundNotification()
+      stopForegroundNotification("startForeground failed")
       stopSelf(startId)
       return START_NOT_STICKY
     }
     if (!hasPlayback) {
       // stopSelf(startId) keeps the service for a start that is already queued behind this one.
-      Log.d(TAG, "No playback to show (stopRequested=$stopRequested); ending the service")
-      stopForegroundNotification()
+      val reason =
+        "no playback to show (stopRequested=$stopRequested, released=$mpvAccessReleased, " +
+          "initialized=${PlaybackSession.isInitialized}, item=${session.currentItem != null}, phase=${session.phase})"
+      Log.d(TAG, "Ending the service: $reason")
+      stopForegroundNotification(reason)
       stopSelf(startId)
       return START_NOT_STICKY
     }
@@ -1265,7 +1278,7 @@ class MediaPlaybackService :
         .build(),
     )
     abandonAudioOwnership()
-    stopForegroundNotification()
+    stopForegroundNotification("playback was closed")
     stopSelf()
     // Close from the notification shade while the full player is on screen closes that player too,
     // instead of leaving it on an emptied session.
@@ -1414,7 +1427,7 @@ class MediaPlaybackService :
                 ACTION_NOTIFICATION_CLOSE -> stopPlaybackAndService(force = true)
               }
             }
-          },
+          }.also { sessionCallback = it },
         )
 
         setPlaybackToLocal(AudioManager.STREAM_MUSIC)
@@ -1733,7 +1746,9 @@ class MediaPlaybackService :
     return builder.setStyle(style).build()
   }
 
-  private fun stopForegroundNotification() {
+  private fun stopForegroundNotification(reason: String) {
+    // Every removal is logged with its cause, so a missing notification can be traced in Debug logs.
+    if (foregroundReady) Log.d(TAG, "Media notification removed: $reason")
     foregroundReady = false
     if (::mediaSession.isInitialized) mediaSession.isActive = false
     runCatching {
@@ -2162,6 +2177,27 @@ class MediaPlaybackService :
     floatingLyrics = null
   }
 
+  /**
+   * Undoes [releaseMpvAccessBeforeShutdown] for new playback. A closing player releases this
+   * instance before it stops the core, and a player that binds or starts right after (a new file,
+   * a restarted script runtime) can keep that same instance alive. It used to refuse every start
+   * from then on, so that player's media played without any notification.
+   */
+  private fun rearmAfterMpvRelease() {
+    Log.d(TAG, "Re-arming the playback service for new playback")
+    mpvAccessReleased = false
+    serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    // startPlaybackObservers() adds the mpv observer, receivers and collectors again.
+    playbackObserversStarted = false
+    if (noisyReceiverRegistered) {
+      runCatching { unregisterReceiver(noisyReceiver) }
+      noisyReceiverRegistered = false
+    }
+    detachedRestoreGeneration = 0L
+    if (::mediaSession.isInitialized) sessionCallback?.let { mediaSession.setCallback(it) }
+    updatePlaybackWakeLock()
+  }
+
   override fun onDestroy() {
     val detachedGeneration =
       if (mpvAccessReleased || activityForeground || handingBackToActivity || activeInstance !== this) {
@@ -2240,7 +2276,7 @@ class MediaPlaybackService :
     } else {
       torrentStreamingEngine.stopStream()
       PlaybackSession.stop(clearQueue = true)
-      stopForegroundNotification()
+      stopForegroundNotification("the task was removed from Recents")
       stopSelf()
     }
     super.onTaskRemoved(rootIntent)
