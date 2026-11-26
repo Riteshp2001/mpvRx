@@ -3055,4 +3055,5 @@
   <string name="floating_lyrics_dismiss">Приховати до повторного відкриття mpvRx</string>
   <string name="floating_lyrics_turn_off">Вимкнути плаваючі тексти</string>
   <string name="floating_lyrics_never">Ніколи</string>
+  <string name="toast_media_file_missing">Цей файл більше не існує; список буде оновлено.</string>
 </resources>

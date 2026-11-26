@@ -378,7 +378,7 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
         putExtra(PlayerActivity.EXTRA_VIDEO_ROTATION, video.rotation)
       }
     ContainerGeometryProbe.prefetch(video.path, video.width, video.height, video.rotation, isAudio)
-    context.startActivity(intent)
+    app.gyrolet.mpvrx.utils.media.MediaUtils.startPlayer(context, intent)
   }
 
   BackHandler(enabled = selectionManager.isInSelectionMode || isSearching || (isFabExpanded.value && !quickPlayFabDirect)) {

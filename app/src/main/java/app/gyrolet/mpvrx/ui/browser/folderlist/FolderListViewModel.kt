@@ -28,6 +28,7 @@ import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils.StorageOps
 import app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
+import app.gyrolet.mpvrx.utils.storage.MediaIndexing
 import app.gyrolet.mpvrx.utils.storage.MediaStoreGenerationGuard
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -574,6 +575,10 @@ class FolderListViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       loadVideoFolders()
       app.gyrolet.mpvrx.utils.storage.UnindexedVideoDiscovery.refresh(getApplication(), force = true)
+    }
+    // A finished download the scanner has not reached yet used to need several refreshes (#1032).
+    viewModelScope.launch(Dispatchers.IO) {
+      MediaIndexing.indexAndNotify(getApplication(), MediaIndexing.recentPlayableFiles())
     }
   }
 

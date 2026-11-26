@@ -85,7 +85,7 @@ object MediaUtils {
     val selectedIndex = startIndex.coerceIn(queueItems.indices)
     if (userScriptRuntimeNeedsReload()) {
       val token = PreparedPlaybackLaunchStore.stage(queueItems, selectedIndex, isExplicitQueue = true)
-      context.startActivity(Intent(context, PlayerActivity::class.java)
+      startPlayer(context, Intent(context, PlayerActivity::class.java)
         .setAction(Intent.ACTION_VIEW)
         .setData(Uri.parse(queueItems[selectedIndex].originalUri))
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_SINGLE_TOP)
@@ -185,8 +185,52 @@ object MediaUtils {
       }
     ContainerGeometryProbe.prefetch(localPlaybackPath(selected), selected.width, selected.height, selected.rotation, selected.isAudio)
     PlaybackPerformanceTrace.mark("OPEN_REQUEST", "source=$launchSource queue=${videos.size}")
-    context.startActivity(intent)
+    startPlayer(context, intent)
   }
+
+  /**
+   * Opens the player. A list may still show a file deleted by another app until it refreshes;
+   * Android then refuses to grant its MediaStore entry and startActivity throws, which crashed
+   * the browser (#1032). Such a file is reported missing and every list refreshes instead.
+   */
+  internal fun startPlayer(
+    context: Context,
+    intent: Intent,
+  ) {
+    try {
+      context.startActivity(intent)
+      return
+    } catch (error: SecurityException) {
+      val uri = intent.data
+      if (uri == null || !isStillReadable(context, uri)) {
+        app.gyrolet.mpvrx.utils.logging.Log.w("MediaUtils", "Not opening $uri: the file no longer exists", error)
+        app.gyrolet.mpvrx.ui.components.AppToast
+          .makeText(context, app.gyrolet.mpvrx.R.string.toast_media_file_missing, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG)
+          .show()
+        MediaLibraryEvents.notifyChanged()
+        return
+      }
+      app.gyrolet.mpvrx.utils.logging.Log.w("MediaUtils", "Opening $uri without forwarding its read grant", error)
+    }
+    // The player runs as this app, so it reads what the app can read without a grant of its own.
+    intent.removeFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+    runCatching { context.startActivity(intent) }
+      .onFailure { error -> app.gyrolet.mpvrx.utils.logging.Log.e("MediaUtils", "Could not open the player", error) }
+  }
+
+  private fun isStillReadable(
+    context: Context,
+    uri: Uri,
+  ): Boolean =
+    when (uri.scheme?.lowercase()) {
+      "file" -> uri.path?.let { File(it).isFile } == true
+      "content" ->
+        runCatching {
+          context.contentResolver.query(uri, arrayOf(android.provider.BaseColumns._ID), null, null, null)
+            ?.use { it.moveToFirst() } == true
+        }.getOrDefault(false)
+      else -> true
+    }
 
   /**
    * Play video content from any source.
@@ -379,7 +423,7 @@ object MediaUtils {
       "OPEN_REQUEST",
       "source=${launchSource ?: (if (videoSource != null) "library" else "direct")} kind=${if (videoSource != null) "video" else (playbackUri.scheme ?: "path")}",
     )
-    context.startActivity(intent)
+    startPlayer(context, intent)
   }
 
   internal fun playbackIdentity(video: Video): String =

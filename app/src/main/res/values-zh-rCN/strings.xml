@@ -3052,4 +3052,5 @@
   <string name="floating_lyrics_dismiss">隐藏到下次打开 mpvRx</string>
   <string name="floating_lyrics_turn_off">关闭悬浮歌词</string>
   <string name="floating_lyrics_never">不再显示</string>
+  <string name="toast_media_file_missing">此文件已不存在，列表将刷新。</string>
 </resources>

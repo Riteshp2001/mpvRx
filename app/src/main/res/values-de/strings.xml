@@ -3074,4 +3074,5 @@ Bitte starten Sie die App neu, damit alle Änderungen wirksam werden.</string>
   <string name="floating_lyrics_dismiss">Bis zum nächsten Öffnen von mpvRx ausblenden</string>
   <string name="floating_lyrics_turn_off">Schwebende Liedtexte ausschalten</string>
   <string name="floating_lyrics_never">Nie</string>
+  <string name="toast_media_file_missing">Diese Datei existiert nicht mehr; die Liste wird aktualisiert.</string>
 </resources>

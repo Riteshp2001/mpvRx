@@ -3052,4 +3052,5 @@
   <string name="floating_lyrics_dismiss">mpvRxを再び開くまで非表示</string>
   <string name="floating_lyrics_turn_off">フローティング歌詞をオフ</string>
   <string name="floating_lyrics_never">今後表示しない</string>
+  <string name="toast_media_file_missing">このファイルは存在しません。一覧を更新します。</string>
 </resources>

@@ -30,10 +30,10 @@ import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.media.PlaybackStateOps
 import app.gyrolet.mpvrx.utils.storage.FolderViewScanner
+import app.gyrolet.mpvrx.utils.storage.MediaIndexing
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -171,6 +171,7 @@ class VideoListViewModel(
   private val tag = "VideoListViewModel"
   private var scopedMetadataJob: Job? = null
   @Volatile private var loadVideosJob: Job? = null
+  private var folderIndexingJob: Job? = null
   private val liveFolderWatcher = VisibleDirectoryWatcher { MediaLibraryEvents.notifyChanged() }
 
   fun startWatching() {
@@ -230,10 +231,19 @@ class VideoListViewModel(
     MediaFileRepository.clearCache()
     FolderViewScanner.clearCache()
 
-    // Trigger media scan before loading to ensure MediaStore is up-to-date
-    if (!ZipArchiveMedia.isBrowserPath(bucketId) && !ScopedHiddenFolderScanner.isScopedFolder(bucketId)) triggerMediaScan()
-
+    // Lists from MediaStore now, then again once the scanner has caught up with this folder: a
+    // just-finished download used to need several refreshes to show up (#1032).
     loadVideos(forceFileSystemCheck = true)
+    if (!ZipArchiveMedia.isBrowserPath(bucketId) && !ScopedHiddenFolderScanner.isScopedFolder(bucketId)) {
+      folderIndexingJob?.cancel()
+      folderIndexingJob =
+        viewModelScope.launch(Dispatchers.IO) {
+          val paths = MediaIndexing.playableFilesIn(bucketId)
+          if (paths.isEmpty()) return@launch
+          MediaIndexing.scan(getApplication(), paths)
+          loadVideos(forceFileSystemCheck = true)
+        }
+    }
   }
 
   private fun loadVideos(forceFileSystemCheck: Boolean = false) {
@@ -295,8 +305,7 @@ class VideoListViewModel(
 
         if (videoList.isEmpty() && !archiveFolder && !ScopedHiddenFolderScanner.isScopedFolder(bucketId)) {
           Log.d(tag, "No videos found for bucket $bucketId - attempting media rescan")
-          triggerMediaScan()
-          delay(1000)
+          MediaIndexing.scan(getApplication(), MediaIndexing.playableFilesIn(bucketId), timeoutMs = 3_000L)
           var retryVideoList =
             MediaFileRepository.getVideosInFolder(
               getApplication(),
@@ -512,67 +521,6 @@ class VideoListViewModel(
         Log.e(tag, "Failed to update watched state for ${video.displayName}", error)
         loadPlaybackInfo(_videos.value)
       }
-    }
-  }
-
-  private fun triggerMediaScan() {
-    if (ZipArchiveMedia.isBrowserPath(bucketId) || ScopedHiddenFolderScanner.isScopedFolder(bucketId)) return
-    try {
-      // Trigger a targeted media scan for the specific folder
-      val folder = File(bucketId)
-
-      if (folder.exists() && folder.isDirectory) {
-        // Scan all video files in the folder
-        val videoFiles =
-          folder.listFiles { file ->
-            file.isFile &&
-              file.extension.lowercase() in
-              listOf(
-                "mp4",
-                "mkv",
-                "avi",
-                "mov",
-                "wmv",
-                "flv",
-                "webm",
-                "m4v",
-                "3gp",
-                "mpg",
-                "mpeg",
-                "ts",
-                "m2ts",
-              )
-          }
-
-        if (!videoFiles.isNullOrEmpty()) {
-          val filePaths = videoFiles.map { it.absolutePath }.toTypedArray()
-
-          android.media.MediaScannerConnection.scanFile(
-            getApplication(),
-            filePaths,
-            null, // Let MediaScanner detect MIME types
-          ) { path, uri ->
-            Log.d(tag, "Media scan completed for: $path -> $uri")
-          }
-
-          Log.d(tag, "Triggered media scan for ${filePaths.size} files in: $bucketId")
-        } else {
-          Log.d(tag, "No video files found in folder: $bucketId")
-        }
-      } else {
-        // Fallback to scanning external storage root
-        val externalStorage = android.os.Environment.getExternalStorageDirectory()
-        android.media.MediaScannerConnection.scanFile(
-          getApplication(),
-          arrayOf(externalStorage.absolutePath),
-          arrayOf("video/*"),
-        ) { path, uri ->
-          Log.d(tag, "Media scan completed for: $path -> $uri")
-        }
-        Log.d(tag, "Triggered media scan for: ${externalStorage.absolutePath}")
-      }
-    } catch (e: Exception) {
-      Log.e(tag, "Failed to trigger media scan", e)
     }
   }
 

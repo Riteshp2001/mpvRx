@@ -29,6 +29,7 @@ import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.media.PlaybackStateOps
+import app.gyrolet.mpvrx.utils.storage.MediaIndexing
 import app.gyrolet.mpvrx.utils.storage.MediaStoreGenerationGuard
 import app.gyrolet.mpvrx.utils.storage.UnindexedVideoDiscovery
 import kotlinx.coroutines.CancellationException
@@ -328,6 +329,10 @@ class MediaLibraryViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       UnindexedVideoDiscovery.refresh(getApplication(), force = true)
       loadRequests.trySend(true)
+    }
+    // A finished download the scanner has not reached yet used to need several refreshes (#1032).
+    viewModelScope.launch(Dispatchers.IO) {
+      MediaIndexing.indexAndNotify(getApplication(), MediaIndexing.recentPlayableFiles())
     }
   }
 

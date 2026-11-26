@@ -3074,4 +3074,5 @@ Reinicie o aplicativo para que todas as alterações entrem em vigor.</string>
   <string name="floating_lyrics_dismiss">Ocultar até reabrir o mpvRx</string>
   <string name="floating_lyrics_turn_off">Desativar letras flutuantes</string>
   <string name="floating_lyrics_never">Nunca</string>
+  <string name="toast_media_file_missing">Este arquivo não existe mais; a lista será atualizada.</string>
 </resources>

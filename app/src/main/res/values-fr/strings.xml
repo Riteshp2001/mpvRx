@@ -3093,4 +3093,5 @@ Veuillez redémarrer l’application pour appliquer toutes les modifications.</s
   <string name="floating_lyrics_dismiss">Masquer jusqu’à la réouverture de mpvRx</string>
   <string name="floating_lyrics_turn_off">Désactiver les paroles flottantes</string>
   <string name="floating_lyrics_never">Jamais</string>
+  <string name="toast_media_file_missing">Ce fichier n’existe plus ; la liste va être actualisée.</string>
 </resources>
