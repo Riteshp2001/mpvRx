@@ -279,11 +279,11 @@ internal class AppleMusicArtworkRepository(client: OkHttpClient) : MotionArtwork
               (url.encodedPath.endsWith(".m3u8", ignoreCase = true) || url.encodedPath.endsWith(".mp4", ignoreCase = true))
           }
       }.distinct().map { MotionArtworkRendition(it, hls = !it.substringBefore('?').endsWith(".mp4", ignoreCase = true)) }
-      // Square first for the cover; the tall cut is Apple's own full-screen framing and the last retry.
+      // Square first; the tall cut, Apple's own full-screen framing, is the last retry.
       val square = renditions("motionDetailSquare", "motionSquareVideo1x1", "motionDetailRaw")
       val tall = renditions("motionDetailTall", "motionTallVideo3x4")
       val all = (square + tall).distinct()
-      return all.takeIf { it.isNotEmpty() }?.let { RemoteMotionArtwork(MotionArtworkSource.APPLE_MUSIC, it, portrait = tall) }
+      return all.takeIf { it.isNotEmpty() }?.let { RemoteMotionArtwork(MotionArtworkSource.APPLE_MUSIC, it) }
     }
 
     private fun JsonObject.obj(key: String): JsonObject? = get(key) as? JsonObject

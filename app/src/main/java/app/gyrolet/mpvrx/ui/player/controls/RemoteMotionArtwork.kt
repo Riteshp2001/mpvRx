@@ -58,14 +58,13 @@ private const val FADE_IN_MS = 320L
 /**
  * Online motion artwork over the still cover. Providers are tried in order; when every
  * rendition of one fails to play, the next provider is asked, and the still cover remains
- * if none succeeds. [portraitLayout] prefers a provider's tall cut for full-window use.
+ * if none succeeds.
  */
 @Composable
 internal fun RemoteMotionArtwork(
   query: MotionArtworkQuery,
   isPlaying: Boolean,
   modifier: Modifier = Modifier,
-  portraitLayout: Boolean = false,
 ) {
   val resolver = koinInject<MotionArtworkResolver>()
   val preferences = koinInject<AudioPreferences>()
@@ -102,11 +101,10 @@ internal fun RemoteMotionArtwork(
   val lifecycleState by lifecycleOwner.lifecycle.currentStateAsState()
   if (lifecycleState.isAtLeast(Lifecycle.State.STARTED)) {
     artwork?.let { result ->
-      val renditions = remember(result, portraitLayout) { result.renditionsFor(portraitLayout) }
-      key(renditions) {
+      key(result.renditions) {
         MotionArtworkVideo(
           source = result.source,
-          renditions = renditions,
+          renditions = result.renditions,
           isPlaying = isPlaying,
           modifier = modifier,
           onExhausted = {

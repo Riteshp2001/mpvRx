@@ -715,7 +715,6 @@ private fun CoverArtCardImage(
   localMotionArtworkUri: String? = null,
   isPlaying: Boolean = false,
   remoteMotionQuery: MotionArtworkQuery? = null,
-  portraitMotion: Boolean = false,
   modifier: Modifier = Modifier,
 ) {
   val context = LocalContext.current
@@ -784,7 +783,6 @@ private fun CoverArtCardImage(
       RemoteMotionArtwork(
         query = remoteMotionQuery,
         isPlaying = isPlaying,
-        portraitLayout = portraitMotion,
         modifier = Modifier.fillMaxSize(),
       )
     }
@@ -895,9 +893,9 @@ private fun ImmersiveArtworkBackground(
           artworkUrl = artworkUrl,
           motionArtwork = motionArtwork.takeUnless { reducedMotion },
           localMotionArtworkUri = localMotionArtworkUri.takeUnless { reducedMotion },
+          // The square cut, centre-cropped to fill the background. Providers' tall cuts often
+          // inset the square cover on a plain backdrop, which left a small clip in a blank area.
           remoteMotionQuery = remoteMotionQuery.takeUnless { reducedMotion },
-          // The full-window background takes the provider's tall cut, as BitChord's player does.
-          portraitMotion = !landscape,
           isPlaying = isPlaying && !reducedMotion,
         )
       }
@@ -1478,16 +1476,27 @@ fun AudioPlayerControls(
   )
   val artworkRevision by koinInject<app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository>().cacheRevision.collectAsState()
   var activeCoverOverride by remember(artworkRevision) { mutableStateOf<Bitmap?>(null) }
+  // A swipe changes the track on release and its card then slides home. Until the new track's
+  // own art arrives, that card keeps showing the cover it was dragged in with.
+  val swipeHandoff = remember { ArtworkSwipeHandoff() }
   LaunchedEffect(queueState.currentItem?.queueEntryId, albumArtBitmap) {
+    if (swipeHandoff.inFlight && (albumArtBitmap == null || albumArtBitmap === swipeHandoff.outgoingArtwork)) {
+      return@LaunchedEffect
+    }
     activeCoverOverride = null
   }
   val animatableOffsetX = remember { Animatable(0f) }
   val haptic = rememberAppHaptics()
   LaunchedEffect(queueState.currentItem?.queueEntryId, showImmersiveArtwork, isPortrait) {
-    animatableOffsetX.snapTo(0f)
+    if (!swipeHandoff.inFlight) animatableOffsetX.snapTo(0f)
   }
   val nextItem = remember(queueState) { PlaybackQueueReducer.peekNext(queueState) }
   val prevItem = remember(queueState) { PlaybackQueueReducer.peekPrevious(queueState) }
+  // Read by the swipe gesture, which must not restart (and drop a drag in progress) whenever the
+  // queue is republished, as it is several times while a new track's metadata and artwork load.
+  val latestNextItem by rememberUpdatedState(nextItem)
+  val latestPrevItem by rememberUpdatedState(prevItem)
+  val latestAlbumArt by rememberUpdatedState(albumArtBitmap)
   val nextCoverBitmap = rememberAudioAlbumArt(nextItem?.originalUri, nextItem?.artworkUri)
   val prevCoverBitmap = rememberAudioAlbumArt(prevItem?.originalUri, prevItem?.artworkUri)
   val swipeNextCoverBitmap by rememberUpdatedState(nextCoverBitmap ?: albumArtBitmap)
@@ -1789,7 +1798,7 @@ fun AudioPlayerControls(
                 modifier = Modifier
                   .fillMaxHeight()
                   .fillMaxWidth(if (isTablet) (if (isTabletPortrait) 0.92f else 0.88f) else if (isPortrait) 0.88f else 1f)
-                  .pointerInput(viewModel, queueState, showVisualizer, stride, showImmersiveArtwork, isAudiobook, isPortrait, containerWidthPx) {
+                  .pointerInput(viewModel, showVisualizer, stride, showImmersiveArtwork, isAudiobook, isPortrait, containerWidthPx) {
                     if (showVisualizer || isAudiobook || swipeWidth <= 0f) return@pointerInput
                     detectHorizontalDragGestures(
                       onDragStart = {
@@ -1798,38 +1807,46 @@ fun AudioPlayerControls(
                       onDragEnd = {
                         val threshold = (if (showImmersiveArtwork && !isPortrait) containerWidthPx else swipeWidth) * 0.25f
                         val dragVal = animatableOffsetX.value
-                        coroutineScope.launch {
-                          if (dragVal < -threshold && nextItem != null) {
-                            haptic.pickup()
-                            animatableOffsetX.animateTo(
-                              targetValue = -stride,
-                              animationSpec = swipeAnimationSpec,
-                            )
-                            activeCoverOverride = swipeNextCoverBitmap
-                            animatableOffsetX.snapTo(0f)
-                            if (viewModel.hasPlaylistSupport()) {
-                              viewModel.playNext()
-                            } else {
-                              runCatching { PlaybackSession.command("playlist-next") }
+                        // +1 next, -1 previous, 0 back to rest.
+                        val direction =
+                          when {
+                            dragVal < -threshold && latestNextItem != null -> 1
+                            dragVal > threshold && latestPrevItem != null -> -1
+                            else -> 0
+                          }
+                        if (direction == 0) {
+                          coroutineScope.launch {
+                            animatableOffsetX.animateTo(targetValue = 0f, animationSpec = swipeAnimationSpec)
+                          }
+                        } else {
+                          haptic.pickup()
+                          // The track changes the moment the card is let go. It used to change only
+                          // once the slide had settled, and the next swipe stopped that slide and
+                          // with it the change, leaving the player stuck on the old track.
+                          val token = swipeHandoff.begin(latestAlbumArt)
+                          activeCoverOverride = if (direction > 0) swipeNextCoverBitmap else swipePrevCoverBitmap
+                          coroutineScope.launch {
+                            try {
+                              // The card that came in is the current one now; it slides home from
+                              // where it was let go instead of jumping.
+                              animatableOffsetX.snapTo(dragVal + direction * stride)
+                              if (direction > 0) {
+                                if (viewModel.hasPlaylistSupport()) {
+                                  viewModel.playNext()
+                                } else {
+                                  runCatching { PlaybackSession.command("playlist-next") }
+                                }
+                              } else {
+                                if (viewModel.hasPlaylistSupport()) {
+                                  viewModel.playPrevious()
+                                } else {
+                                  runCatching { PlaybackSession.command("playlist-prev") }
+                                }
+                              }
+                              animatableOffsetX.animateTo(targetValue = 0f, animationSpec = swipeAnimationSpec)
+                            } finally {
+                              if (swipeHandoff.end(token)) activeCoverOverride = null
                             }
-                          } else if (dragVal > threshold && prevItem != null) {
-                            haptic.pickup()
-                            animatableOffsetX.animateTo(
-                              targetValue = stride,
-                              animationSpec = swipeAnimationSpec,
-                            )
-                            activeCoverOverride = swipePrevCoverBitmap
-                            animatableOffsetX.snapTo(0f)
-                            if (viewModel.hasPlaylistSupport()) {
-                              viewModel.playPrevious()
-                            } else {
-                              runCatching { PlaybackSession.command("playlist-prev") }
-                            }
-                          } else {
-                            animatableOffsetX.animateTo(
-                              targetValue = 0f,
-                              animationSpec = swipeAnimationSpec,
-                            )
                           }
                         }
                       },
@@ -1844,7 +1861,7 @@ fun AudioPlayerControls(
                           val target = animatableOffsetX.value + dragAmount
                           animatableOffsetX.snapTo(
                             if (showImmersiveArtwork) {
-                              target.coerceIn(if (nextItem != null) -stride else 0f, if (prevItem != null) stride else 0f)
+                              target.coerceIn(if (latestNextItem != null) -stride else 0f, if (latestPrevItem != null) stride else 0f)
                             } else {
                               target
                             },
@@ -3905,4 +3922,30 @@ private fun String.stripAudioExtension(): String {
   if (dotIndex <= 0) return this
   val ext = substring(dotIndex + 1)
   return if (ext.length in 2..5 && ext.none { it.isWhitespace() }) substring(0, dotIndex) else this
+}
+
+/** The latest artwork swipe that has changed the track while its card still slides home. */
+private class ArtworkSwipeHandoff {
+  var inFlight = false
+    private set
+
+  /** The cover shown before the swipe; the track's art still being this means it has not loaded yet. */
+  var outgoingArtwork: Bitmap? = null
+    private set
+
+  private var token = 0
+
+  fun begin(outgoing: Bitmap?): Int {
+    inFlight = true
+    outgoingArtwork = outgoing
+    return ++token
+  }
+
+  /** Ends the swipe [token] started; false when a later swipe has taken over. */
+  fun end(token: Int): Boolean {
+    if (token != this.token) return false
+    inFlight = false
+    outgoingArtwork = null
+    return true
+  }
 }

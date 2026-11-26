@@ -91,7 +91,7 @@ internal class SpotifyArtworkRepository(
     val uri = searchViaPathfinder(query, bearer) ?: searchViaRest(query, bearer) ?: return Lookup(null)
     val url = canvasUrl(uri, bearer) ?: return Lookup(null)
     val rendition = MotionArtworkRendition(url, hls = false)
-    return Lookup(RemoteMotionArtwork(MotionArtworkSource.SPOTIFY, listOf(rendition), portrait = listOf(rendition)))
+    return Lookup(RemoteMotionArtwork(MotionArtworkSource.SPOTIFY, listOf(rendition)))
   }
 
   private fun searchTerm(query: MotionArtworkQuery): String =

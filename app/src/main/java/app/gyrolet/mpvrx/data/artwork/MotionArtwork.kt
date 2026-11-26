@@ -18,17 +18,13 @@ internal enum class MotionArtworkSource { APPLE_MUSIC, TIDAL, SPOTIFY }
 internal data class MotionArtworkRendition(val url: String, val hls: Boolean)
 
 /**
- * [renditions] are square-first for a square cover; [portrait] holds the tall cut that fills a
- * full-window background without heavy cropping, when the provider has one.
+ * [renditions] in order of preference, square cuts first: every surface centre-crops the clip to
+ * fill it, and providers' tall cuts often inset the square cover on a plain backdrop.
  */
 internal data class RemoteMotionArtwork(
   val source: MotionArtworkSource,
   val renditions: List<MotionArtworkRendition>,
-  val portrait: List<MotionArtworkRendition> = emptyList(),
-) {
-  fun renditionsFor(portraitLayout: Boolean): List<MotionArtworkRendition> =
-    if (portraitLayout && portrait.isNotEmpty()) (portrait + renditions).distinct() else renditions
-}
+)
 
 internal interface MotionArtworkProvider {
   suspend fun find(query: MotionArtworkQuery): RemoteMotionArtwork?

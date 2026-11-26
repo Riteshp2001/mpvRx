@@ -751,11 +751,26 @@ fun RenderPlayerButton(
 
     PlayerButton.AUDIO_TRACK -> {
       val outputConfigOwned = isMpvOptionOwnedByConfig("audio-delay")
+      val filtersConfigOwned = isMpvOptionOwnedByConfig("af")
+      val audioPreferences = koinInject<AudioPreferences>()
+      val normalization by audioPreferences.volumeNormalization.collectAsState()
+      val compression by audioPreferences.drcEnabled.collectAsState()
+      val spatial by audioPreferences.spatialAudio.collectAsState()
+      // Every audio filter lives in mpv's chain: these switches, the equalizer, AutoEq, reversed
+      // stereo, and any filter mpv.conf or a script adds. Like subtitles, the button shows it.
+      val audioFilters by PlaybackSession.propString["af"].collectAsState()
+      val audioProcessingActive =
+        !audioFilters.isNullOrBlank() || (!filtersConfigOwned && (normalization || compression || spatial))
       ControlsButton(
         Icons.RoundedFilled.Audiotrack,
         onClick = { onOpenSheet(Sheets.AudioTracks) },
         onLongClick = { if (!outputConfigOwned) onOpenPanel(Panels.AudioDelay) },
-        color = if (borderless) controlColor else buttonContentColor,
+        color = when {
+          audioProcessingActive -> MaterialTheme.colorScheme.primary
+          borderless -> controlColor
+          else -> buttonContentColor
+        },
+        active = audioProcessingActive,
         modifier = Modifier.size(buttonSize),
       )
     }
