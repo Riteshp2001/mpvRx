@@ -411,6 +411,29 @@ For help, reproducible bug reports, or feature suggestions, start with the [supp
 | `playstore` | Google Play distribution using the Standard engine, scoped storage, and Play-managed updates |
 | `noVulkan` | Vulkan-free native distribution, packaged as a universal APK |
 | `fongmi` | Alternate native distribution with MediaCodec/Vulkan support, packaged as a universal APK |
+| `kodi` | Experimental: the `standard` build plus an embedded Kodi (see below). Not published |
+
+### Kodi Variant (experimental)
+
+The `kodi` variant (`applicationId` suffix `.kodi`) bundles Kodi 21.3's engine from the
+[`mpvlib-kodi` AAR](https://github.com/Riteshp2001/mpvlibAndroid/tree/kodi/kodi), built on mpvlibAndroid's
+`kodi` branch from the official Kodi Android releases. Kodi keeps its own interface and runs in the
+app's `:kodi` process, because `libkodi.so` runs its own event loop and exits its process when you quit
+Kodi; mpvRx keeps running.
+
+- **Open Kodi**: the TV icon in the home top bar.
+- **Play with Kodi**: select one video in a browser, or use the player's **More** sheet.
+
+Kodi publishes no `x86_64` libraries, so this variant has no `x86_64` APK; x86_64 devices use the `x86` one.
+Until an AAR release exists, build it with `./gradlew :kodi:assembleRelease` on mpvlibAndroid's `kodi`
+branch and pass it to Gradle:
+
+```sh
+./gradlew -PtargetAbi=arm64-v8a -PmpvlibKodiAar=/path/to/kodi-release.aar :app:assembleKodiDebug
+```
+
+You can also set `mpvlibKodiAar=/path/to/kodi-release.aar` in `local.properties`. Kodi is licensed
+GPL-2.0-or-later and Kodi® is a trademark of the XBMC Foundation; review both before distributing this variant.
 
 ### APK Variants
 
