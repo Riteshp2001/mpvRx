@@ -998,17 +998,6 @@ class PlayerActivity :
         }
       }
     }
-
-    lifecycleScope.launch {
-      viewModel.chapters
-        .map { chapters -> chapters.map { ChapterNode(time = it.start, title = it.name) } }
-        .distinctUntilChanged()
-        .collect { chapterNodes ->
-          mediaPlaybackService?.setChapters(
-            chapterNodes,
-          )
-        }
-    }
   }
 
   override fun attachBaseContext(newBase: Context?) {
@@ -2903,8 +2892,7 @@ class PlayerActivity :
   private fun hasAttachableNotificationSession(): Boolean {
     if (intent.action != MediaPlaybackService.ACTION_OPEN_PLAYER) return false
     val state = PlaybackSession.state.value
-    return state.currentItem != null &&
-      state.phase in setOf(PlaybackPhase.LOADING, PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+    return MediaNotificationPolicy.isAttachableSession(state.currentItem != null, state.phase)
   }
 
   private fun attachToSavedPlaybackSessionIfValid(sourceIntent: Intent = intent): Boolean {
@@ -2931,7 +2919,7 @@ class PlayerActivity :
   private fun attachToPlaybackSession(sourceIntent: Intent): Boolean {
     val sessionState = PlaybackSession.state.value
     val currentItem = sessionState.currentItem ?: PlaybackSession.queue.value.currentItem ?: return false
-    if (sessionState.phase !in setOf(PlaybackPhase.LOADING, PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) return false
+    if (!MediaNotificationPolicy.isAttachableSession(hasCurrentItem = true, phase = sessionState.phase)) return false
 
     val queueState = PlaybackSession.queue.value
     playlist = queueState.items.map { item -> Uri.parse(item.originalUri) }
@@ -2964,9 +2952,11 @@ class PlayerActivity :
         }
         putExtra("internal_launch", true)
         val isAudio =
-          sourceIntent.getBooleanExtra("is_audio", false) ||
-            sourceIntent.getBooleanExtra("media_library_audio", false) ||
-            currentItem.mimeType?.startsWith("audio/") == true
+          MediaNotificationPolicy.isAudioReentry(
+            isAudioExtra = sourceIntent.getBooleanExtra("is_audio", false),
+            mediaLibraryAudio = sourceIntent.getBooleanExtra("media_library_audio", false),
+            itemMimeType = currentItem.mimeType,
+          )
         putExtra("is_audio", isAudio)
         putExtra("media_library_audio", isAudio)
         currentItem.networkSource?.let { source ->
@@ -6237,16 +6227,19 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
         // In that case the live-session attach cannot succeed. Convert the notification payload
         // into a normal media launch instead of returning to the stale video that this Activity
         // displayed previously.
-        val fallbackUri = intent.getStringExtra("uri")?.takeIf { it.isNotBlank() }
-        if (fallbackUri == null) {
+        val fallback =
+          MediaNotificationPolicy.fallbackLaunch(
+            uri = intent.getStringExtra("uri"),
+            isAudio = intent.getBooleanExtra("is_audio", false),
+          )
+        if (fallback == null) {
           Log.w(TAG, "Notification re-entry had neither an attachable session nor a fallback URI")
           return
         }
         intent =
           Intent(intent).apply {
             action = Intent.ACTION_VIEW
-            data = Uri.parse(fallbackUri)
-            if (type.isNullOrBlank() && getBooleanExtra("is_audio", false)) type = "audio/*"
+            setDataAndType(Uri.parse(fallback.uri), fallback.mimeType)
           }
       }
     }
@@ -8472,7 +8465,6 @@ private suspend fun restorePlaybackPosition(state: PlaybackStateEntity?, loadGen
     )
     // Mirror playlist state into the service so the notification tap-intent can restore it
     service.setPlaylistInfo(isAudio = isCurrentPlaybackAudio())
-    service.setChapters(viewModel.chapters.value.map { ChapterNode(time = it.start, title = it.name) })
 
     if (!updateThumbnail || !isReady || thumbnailKey.isBlank()) return
     if (thumbnailKey == lastBackgroundThumbnailKey || thumbnailKey == pendingBackgroundThumbnailKey) return
