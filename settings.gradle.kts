@@ -38,6 +38,24 @@ dependencyResolutionManagement {
         includeGroup("app.gyrolet.mpvlib")
       }
     }
+    // The embedded Kodi AAR. Its kodi-v* tags stay out of mpvlibAndroid's v*.*.* release workflow.
+    exclusiveContent {
+      forRepository {
+        ivy {
+          name = "mpvlibKodiGitHubReleases"
+          url = uri("https://github.com/Riteshp2001/mpvlibAndroid/releases/download")
+          patternLayout {
+            artifact("kodi-v[revision]/[artifact]-[revision].[ext]")
+          }
+          metadataSources {
+            artifact()
+          }
+        }
+      }
+      filter {
+        includeGroup("app.gyrolet.mpvlib.kodi")
+      }
+    }
     maven(url = "https://www.jitpack.io") {
       content {
         // Only use JitPack for specific dependencies to avoid unnecessary checks

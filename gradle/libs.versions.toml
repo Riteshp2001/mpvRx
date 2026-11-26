@@ -44,6 +44,10 @@ seeker = "2.0.1"
 markdownRenderer = "0.46.0"
 mediainfo = "1.0.2"
 mpvlib = "1.1.8.9"
+mpvlibKodi = "21.3.0"
+androidxTvprovider = "1.1.0"
+# Kodi's Java glue needs Gson; sora-editor's TextMate support already brings this version.
+gson = "2.14.0"
 googleCast = "23.0.0"
 androidxBiometric = "1.4.0-rc01"
 kmpVibrate = "1.1.0"
@@ -90,6 +94,9 @@ mediainfo-lib = { module = "io.github.marlboro-advance:mediainfo-android", versi
 mpvlib-standard = { module = "app.gyrolet.mpvlib:mpvlib", version.ref = "mpvlib" }
 mpvlib-no-vulkan = { module = "app.gyrolet.mpvlib:mpvlib-no-vulkan", version.ref = "mpvlib" }
 mpvlib-fongmi = { module = "app.gyrolet.mpvlib:mpvlib-fongmi", version.ref = "mpvlib" }
+mpvlib-kodi = { module = "app.gyrolet.mpvlib.kodi:mpvlib-kodi", version.ref = "mpvlibKodi" }
+androidx-tvprovider = { module = "androidx.tvprovider:tvprovider", version.ref = "androidxTvprovider" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 
 google-material = { module = "com.google.android.material:material", version.ref = "googleMaterial" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
