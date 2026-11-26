@@ -411,7 +411,7 @@ For help, reproducible bug reports, or feature suggestions, start with the [supp
 | `playstore` | Google Play distribution using the Standard engine, scoped storage, and Play-managed updates |
 | `noVulkan` | Vulkan-free native distribution, packaged as a universal APK |
 | `fongmi` | Alternate native distribution with MediaCodec/Vulkan support, packaged as a universal APK |
-| `kodi` | Experimental: the `standard` build plus an embedded Kodi (see below). Not published |
+| `kodi` | Experimental: the `standard` build plus an embedded Kodi. APKs are available from the Kodi CI workflow |
 
 ### Kodi Variant (experimental)
 
@@ -425,8 +425,14 @@ Kodi; mpvRx keeps running.
 - **Play with Kodi**: select one video in a browser, or use the player's **More** sheet.
 
 Kodi publishes no `x86_64` libraries, so this variant has no `x86_64` APK; x86_64 devices use the `x86` one.
-Until an AAR release exists, build it with `./gradlew :kodi:assembleRelease` on mpvlibAndroid's `kodi`
-branch and pass it to Gradle:
+The **Kodi CI/CD Build** workflow runs on pushes to `kodi` and can be run manually on that branch.
+Each run verifies and uses the [pinned mpvlib-kodi Actions artifact](https://github.com/Riteshp2001/mpvlibAndroid/actions/runs/45860767410/artifacts/15138446870)
+to build mpvRx from source. Download the universal, arm64-v8a, armeabi-v7a and x86 APKs from the run's
+**Artifacts** section. APKs are signed when the repository's release signing secrets are configured.
+If the workflow token cannot access the upstream artifact, set `MPVLIB_ACTIONS_TOKEN` to a token with
+Actions read access to `Riteshp2001/mpvlibAndroid`. The pinned artifact expires on February 24, 2027.
+
+For a local build, extract the AAR from the linked artifact and pass it to Gradle:
 
 ```sh
 ./gradlew -PtargetAbi=arm64-v8a -PmpvlibKodiAar=/path/to/kodi-release.aar :app:assembleKodiDebug

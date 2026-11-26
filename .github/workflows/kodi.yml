@@ -1,0 +1,112 @@
+name: Kodi CI/CD Build
+
+on:
+  push:
+    branches: [kodi]
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: kodi-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/kodi'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download pinned Kodi AAR
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.MPVLIB_ACTIONS_TOKEN || github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          # https://github.com/Riteshp2001/mpvlibAndroid/actions/runs/45860767410/artifacts/15138446870
+          curl --fail --silent --show-error --location --retry 3 \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --output mpvlib-kodi.zip \
+            https://api.github.com/repos/Riteshp2001/mpvlibAndroid/actions/artifacts/15138446870/zip
+          echo 'dea871468a8d60887162ce412866ee397fc43c1b18dd9ae2f8664f91878a5411  mpvlib-kodi.zip' | sha256sum --check --strict
+          unzip -p mpvlib-kodi.zip mpvlib-kodi-21.3.0.aar > mpvlib-kodi-21.3.0.aar
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Install compile SDK
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.2"'
+
+      - name: Build Kodi release APKs
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleKodiRelease --stacktrace --no-daemon --max-workers=2 \
+            -PtargetAbi=arm64-v8a,armeabi-v7a,x86 \
+            "-PmpvlibKodiAar=$RUNNER_TEMP/mpvlib-kodi-21.3.0.aar"
+
+      - name: Verify and stage Kodi APKs
+        shell: bash
+        env:
+          SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          out_dir=app/build/outputs/apk/kodi/release
+          mkdir -p kodi-apks
+          if [[ -n "$SIGNING_KEYSTORE" ]]; then
+            : "${SIGNING_KEY_ALIAS:?Missing signing alias}" \
+              "${SIGNING_STORE_PASSWORD:?Missing signing store password}" \
+              "${KEY_PASSWORD:?Missing signing key password}"
+            keystore="$RUNNER_TEMP/kodi.keystore"
+            trap 'rm -f "$keystore"' EXIT
+            printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > "$keystore"
+            apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          fi
+
+          for abi in universal arm64-v8a armeabi-v7a x86; do
+            base="app-kodi-$abi-release"
+            apk="$out_dir/$base-unsigned.apk"
+            [[ -f "$apk" ]] || apk="$out_dir/$base.apk"
+            unzip -Z1 "$apk" assets/kodi/kodi-assets.zip
+            if [[ "$abi" == universal ]]; then
+              for native_abi in arm64-v8a armeabi-v7a x86; do
+                unzip -Z1 "$apk" "lib/$native_abi/libkodi.so"
+              done
+            else
+              unzip -Z1 "$apk" "lib/$abi/libkodi.so"
+            fi
+
+            if [[ -n "$SIGNING_KEYSTORE" ]]; then
+              "$apksigner" sign --ks "$keystore" --ks-key-alias "$SIGNING_KEY_ALIAS" \
+                --ks-pass env:SIGNING_STORE_PASSWORD --key-pass env:KEY_PASSWORD \
+                --out "kodi-apks/$base.apk" "$apk"
+              "$apksigner" verify "kodi-apks/$base.apk"
+            else
+              cp "$apk" kodi-apks/
+            fi
+          done
+
+      - name: Upload Kodi APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: mpvRx-kodi-${{ github.sha }}
+          path: kodi-apks/*.apk
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
