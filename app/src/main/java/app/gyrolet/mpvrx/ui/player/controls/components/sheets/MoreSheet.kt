@@ -66,6 +66,7 @@ fun MoreSheet(
   onEnterLuaScriptsPanel: () -> Unit,
   onEnterEqualizerSheet: (() -> Unit)? = null,
   onEnterSettingsPanel: (() -> Unit)? = null,
+  onPlayWithKodi: (() -> Unit)? = null,
   anime4KUiState: Anime4KUiState,
   onAnime4KModeSelected: (Anime4KManager.Mode) -> Unit,
   filtersEnabled: Boolean = true,
@@ -210,6 +211,21 @@ fun MoreSheet(
                   contentDescription = stringResource(R.string.player_settings_open),
                 )
                 if (showActionLabels) Text(stringResource(R.string.ui_settings))
+              }
+            }
+          }
+          // Last, so it is in view: the row opens scrolled to its end.
+          if (onPlayWithKodi != null) {
+            TextButton(onClick = onPlayWithKodi) {
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.SmartDisplay,
+                  contentDescription = stringResource(R.string.kodi_play_with),
+                )
+                if (showActionLabels) Text(stringResource(R.string.kodi_play_with))
               }
             }
           }

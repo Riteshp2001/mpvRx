@@ -103,6 +103,7 @@ import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
 import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
+import app.gyrolet.mpvrx.ui.browser.components.KodiTopBarActions
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
@@ -670,6 +671,14 @@ fun FileSystemBrowserScreen(path: String? = null) {
             onSelectAll = { selectionManager.selectAll() },
             onInvertSelection = { selectionManager.invertSelection() },
             onDeselectAll = { selectionManager.clear() },
+            additionalActions = {
+              KodiTopBarActions(
+                isInSelectionMode = isInSelectionMode,
+                showOpenKodi = isAppRoot,
+                selectedVideo = selectedVideos.singleOrNull()?.takeIf { selectedFolders.isEmpty() },
+                onPlayStarted = { selectionManager.clear() },
+              )
+            },
           )
         }
       },

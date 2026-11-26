@@ -89,6 +89,7 @@ import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
 import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
+import app.gyrolet.mpvrx.ui.browser.components.KodiTopBarActions
 import app.gyrolet.mpvrx.ui.browser.components.mediaItemMotion
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
@@ -431,6 +432,14 @@ data class VideoListScreen(
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
+          additionalActions = {
+            KodiTopBarActions(
+              isInSelectionMode = selectionManager.isInSelectionMode,
+              showOpenKodi = false,
+              selectedVideo = selectedVideos.singleOrNull(),
+              onPlayStarted = { selectionManager.clear() },
+            )
+          },
           onMoveToSecureClick = {
             if (!secureFolderPreferences.isPinSet()) {
               backstack.navigateTo(SecureFolderGateScreen)

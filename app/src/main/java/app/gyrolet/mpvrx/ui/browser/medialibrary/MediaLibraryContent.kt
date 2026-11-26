@@ -82,6 +82,7 @@ import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
 import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
+import app.gyrolet.mpvrx.ui.browser.components.KodiTopBarActions
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.toPlaylistCandidates
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
@@ -477,6 +478,14 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
           onSelectAll = { selectionManager.selectAll() },
           onInvertSelection = { selectionManager.invertSelection() },
           onDeselectAll = { selectionManager.clear() },
+          additionalActions = {
+            KodiTopBarActions(
+              isInSelectionMode = selectionManager.isInSelectionMode,
+              selectedVideo =
+                if (selectionManager.isSingleSelection) selectionManager.getSelectedItems().singleOrNull() else null,
+              onPlayStarted = { selectionManager.clear() },
+            )
+          },
           onMoveToSecureClick = {
             if (!secureFolderPreferences.isPinSet()) {
               backstack.navigateTo(SecureFolderGateScreen)
