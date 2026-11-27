@@ -69,6 +69,7 @@ import app.gyrolet.mpvrx.ui.browser.cards.VideoSwipeSurface
 import app.gyrolet.mpvrx.ui.browser.cards.animatedSelectionColor
 import app.gyrolet.mpvrx.ui.browser.cards.mediaCardClickable
 import app.gyrolet.mpvrx.ui.browser.cards.rememberMediaSelectionShape
+import app.gyrolet.mpvrx.ui.browser.cards.rememberSwipeActions
 import app.gyrolet.mpvrx.ui.icons.AnimatedIcon
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -113,12 +114,14 @@ fun SharedMusicTrackListItem(
   val selectionShape = rememberMediaSelectionShape(isSelected, false, selectionNeighbors)
   val cardShape = if (!isSelected && shape != null) shape else selectionShape
   val preferences = koinInject<BrowserPreferences>()
-  val leftAction by preferences.videoSwipeLeft.collectAsState()
-  val rightAction by preferences.videoSwipeRight.collectAsState()
+  val videoLeftAction by preferences.videoSwipeLeft.collectAsState()
+  val videoRightAction by preferences.videoSwipeRight.collectAsState()
+  val (leftAction, rightAction) = rememberSwipeActions(true, videoLeftAction, videoRightAction)
   VideoSwipeSurface(
     identity = swipeIdentity,
     leftAction = leftAction,
     rightAction = rightAction,
+    isAudio = true,
     isWatched = isWatched,
     enabled = !isSelected && onSwipeAction != null,
     onAction = onSwipeAction,

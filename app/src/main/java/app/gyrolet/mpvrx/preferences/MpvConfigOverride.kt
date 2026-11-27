@@ -166,6 +166,7 @@ enum class MpvConfigOverride(
         "sub-pos",
         "sub-margin-x",
         "sub-scale-by-window",
+        "sub-scale-with-window",
         "sub-use-margins",
         "sub-ass-override",
         "sub-ass-justify",
@@ -306,6 +307,9 @@ object MpvConfigControlledFeatures {
   val SUBTITLE_TRACK_SELECTION = setOf("slang")
 
   val SUBTITLE_DISCOVERY = setOf("sub-auto", "sub-file-paths", "subs-fallback")
+
+  // One toggle owns both: margins keep subtitles in the video, and video-relative size makes them zoom.
+  val SUBTITLE_ZOOM_WITH_VIDEO = setOf("sub-use-margins", "sub-scale-with-window")
 
   val VIDEO_ZOOM = setOf("video-zoom")
 

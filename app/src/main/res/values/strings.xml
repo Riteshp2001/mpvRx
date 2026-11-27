@@ -394,6 +394,8 @@
   <string name="pref_audio">Audio</string>
   <string name="pref_audio_summary">Ambient mode, visualizer style, audio channels, pitch correction</string>
   <string name="pref_audio_orientation_title">Audio player orientation</string>
+  <string name="pref_audio_dual_pane_for_tablet_title">Dual-pane music player on tablets</string>
+  <string name="pref_audio_dual_pane_for_tablet_summary">Show the queue and lyrics in a side panel beside the music player.</string>
   <string name="pref_audio_pitch_correction_title">Enable audio pitch correction</string>
   <string name="pref_audio_pitch_correction_summary">Keep the original pitch when playback speed changes.</string>
   <string name="pref_audio_volume_normalization_title">Volume normalization</string>
@@ -578,10 +580,10 @@
   <string name="cover_art_size">Cover Art Size</string>
   <string name="player_sheets_sub_force_rtl">Force RTL direction</string>
   <string name="player_sheets_sub_force_rtl_summary">Use right-to-left layout for Arabic, Hebrew, and other RTL subtitle scripts</string>
-  <string name="player_sheets_sub_scale_by_window">Scale by window</string>
-  <string name="player_sheets_sub_scale_by_window_summary">Scale subtitle size with the window; keep subtitles inside the video\'s safe-area margins</string>
   <string name="player_sheets_sub_blend_with_video">Blend subtitles with video</string>
   <string name="player_sheets_sub_blend_with_video_summary">When ambient mode is on, draw subtitles with the video instead of over the ambient area</string>
+  <string name="player_sheets_sub_zoom_with_video">Zoom subtitles with video</string>
+  <string name="player_sheets_sub_zoom_with_video_summary">On: subtitles stay inside the video and zoom with it. Off: subtitles keep their size and can sit in the black bars</string>
   <string name="player_sheets_sub_scale">Scale</string>
   <string name="player_sheets_sub_position">Position</string>
   <string name="player_sheets_sub_primary_scale">Primary subtitle scale</string>
@@ -2543,6 +2545,8 @@
   <string name="wallpaper_save_failed">Could not save the wallpaper. Please choose the image again.</string>
   <string name="pref_haptic_feedback_title">Haptic feedback</string>
   <string name="pref_haptic_feedback_summary">Feedback for selections, dragging and adjustments. Follows system settings.</string>
+  <string name="pref_main_page_swipes_title">Swipe between pages</string>
+  <string name="pref_main_page_swipes_summary">Swipe between main pages like Home, Music and Profile. Turn off to switch pages only with the navigation buttons.</string>
   <string name="pref_nested_tab_swipes_title">Swipe between inner tabs</string>
   <string name="pref_nested_tab_swipes_summary">Swipe between sub-tabs in Music, Network and Recents.</string>
 
@@ -2592,6 +2596,10 @@
   <string name="pref_video_swipe_change">Change</string>
   <string name="pref_video_swipe_zone_width">Swipe zone width</string>
   <string name="pref_video_swipe_zone_percent">Swipe zone: %1$d%%</string>
+  <string name="pref_video_swipe_separate_audio">Separate audio and video actions</string>
+  <string name="pref_video_swipe_separate_audio_summary">Use different swipe actions for audio and video items</string>
+  <string name="pref_video_swipe_target_video">Video</string>
+  <string name="pref_video_swipe_target_audio">Audio</string>
   <string name="video_swipe_delete_title">Delete videos?</string>
   <string name="video_swipe_delete_message">Permanently delete \"%1$s\"? This cannot be undone.</string>
   <string name="video_swipe_delete_folder_message">Permanently delete %1$d videos in \"%2$s\" and its subfolders? Other files and folders will be kept. This cannot be undone.</string>

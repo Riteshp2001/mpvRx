@@ -360,6 +360,23 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
                   PreferenceDivider()
                 }
 
+                DevicePreference(R.string.pref_audio_dual_pane_for_tablet_title) {
+                  val dualPaneForTablet by preferences.dualPaneForTablet.collectAsState()
+                  SwitchPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_audio_dual_pane_for_tablet_title),
+                    value = dualPaneForTablet,
+                    onValueChange = { preferences.dualPaneForTablet.set(it) },
+                    title = { Text(stringResource(R.string.pref_audio_dual_pane_for_tablet_title)) },
+                    summary = {
+                      Text(
+                        stringResource(R.string.pref_audio_dual_pane_for_tablet_summary),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
+                  PreferenceDivider()
+                }
+
                 val audioAmbientMode by preferences.audioAmbientMode.collectAsState()
                 SwitchPreference(
                   modifier = Modifier.settingsSearchTarget(R.string.pref_audio_ambient_mode_title),

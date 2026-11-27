@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 
@@ -108,7 +109,7 @@ private val liveAudioSettings =
 private val liveSubtitleSettings =
   setOf(
     R.string.player_sheets_sub_override_ass,
-    R.string.player_sheets_sub_scale_by_window,
+    R.string.player_sheets_sub_zoom_with_video,
     R.string.pref_subtitles_secondary_pinch_zoom,
     // These configure the next manual search, which can be performed in the current video.
     R.string.pref_subtitle_search_title,
@@ -169,7 +170,7 @@ private val settingNativeOptions =
         "sub-pos",
         "secondary-sub-pos",
       ),
-    R.string.player_sheets_sub_scale_by_window to setOf("sub-scale-by-window", "sub-use-margins"),
+    R.string.player_sheets_sub_zoom_with_video to MpvConfigControlledFeatures.SUBTITLE_ZOOM_WITH_VIDEO,
     R.string.pref_subtitles_secondary_pinch_zoom to setOf("sub-scale", "secondary-sub-scale"),
     R.string.pref_decoder_try_hw_dec_title to setOf("hwdec", "hwdec-codecs"),
     R.string.pref_decoder_mediacodec_embed_title to setOf("vo", "hwdec"),
@@ -197,7 +198,13 @@ internal fun isLivePlayerSetting(
   when (screen) {
     is ControlLayoutEditorScreen -> true
     PlayerControlsPreferencesScreen, PersistentStatusBarPreferencesScreen -> true
-    GesturePreferencesScreen -> key !in setOf(R.string.pref_video_swipe_title, R.string.pref_nested_tab_swipes_title)
+    GesturePreferencesScreen ->
+      key !in
+        setOf(
+          R.string.pref_video_swipe_title,
+          R.string.pref_main_page_swipes_title,
+          R.string.pref_nested_tab_swipes_title,
+        )
     PlayerPreferencesScreen -> key in livePlayerSettings
     AudioPreferencesScreen -> key in liveAudioSettings
     SubtitlesPreferencesScreen -> key in liveSubtitleSettings

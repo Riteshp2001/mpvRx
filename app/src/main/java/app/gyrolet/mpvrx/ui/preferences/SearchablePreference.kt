@@ -602,10 +602,28 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_main_page_swipes_title,
+          summaryRes = R.string.pref_main_page_swipes_summary,
+          keywords = listOf("swipe", "page", "pages", "navigation", "buttons", "home", "music", "profile"),
+          category = "Gestures",
+          screen = GesturePreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_nested_tab_swipes_title,
           keywords = listOf("swipe", "nested", "inner", "tabs", "navigation", "music", "network", "recents"),
           category = "Gestures",
           screen = GesturePreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
+          titleRes = R.string.pref_video_swipe_separate_audio,
+          summaryRes = R.string.pref_video_swipe_separate_audio_summary,
+          keywords = listOf("swipe", "audio", "video", "music", "separate", "action"),
+          category = "Gestures",
+          screen = VideoSwipePreferencesScreen,
         ),
       )
       add(
@@ -1087,9 +1105,9 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.player_sheets_sub_scale_by_window,
-          summaryRes = R.string.player_sheets_sub_scale_by_window_summary,
-          keywords = listOf("scale", "window", "subtitle", "size", "resize", "fit"),
+          titleRes = R.string.player_sheets_sub_zoom_with_video,
+          summaryRes = R.string.player_sheets_sub_zoom_with_video_summary,
+          keywords = listOf("zoom", "video", "subtitle", "black bars", "margins", "letterbox", "size"),
           category = "Subtitles",
           screen = SubtitlesPreferencesScreen,
         ),
@@ -1205,6 +1223,15 @@ object SearchablePreferences {
         SearchablePreference(
           titleRes = R.string.pref_audio_orientation_title,
           keywords = listOf("audio", "music", "orientation", "portrait", "landscape", "auto", "rotate"),
+          category = "Audio",
+          screen = AudioPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
+          titleRes = R.string.pref_audio_dual_pane_for_tablet_title,
+          summaryRes = R.string.pref_audio_dual_pane_for_tablet_summary,
+          keywords = listOf("tablet", "music", "player", "layout", "dual pane", "single pane", "sidebar"),
           category = "Audio",
           screen = AudioPreferencesScreen,
         ),
@@ -2939,7 +2966,7 @@ object SearchablePreferences {
       R.string.pref_anime4k_darken_title,
       R.string.pref_anime4k_thin_title,
       R.string.pref_anime4k_deblur_title,
-      R.string.player_sheets_sub_scale_by_window,
+      R.string.player_sheets_sub_zoom_with_video,
       R.string.pref_subtitles_secondary_pinch_zoom,
       R.string.pref_subtitles_fonts_dir,
       R.string.pref_subtitles_font_title,

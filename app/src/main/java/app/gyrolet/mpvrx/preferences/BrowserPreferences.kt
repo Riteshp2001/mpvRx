@@ -66,6 +66,21 @@ class BrowserPreferences(
       DEFAULT_VIDEO_SWIPE_ZONE_PERCENT,
     )
 
+  // Audio rows reuse the video swipe actions unless the user separates them.
+  val separateAudioSwipeActions = preferenceStore.getBoolean("separate_audio_swipe_actions", false)
+  val audioSwipeRight = preferenceStore.getEnum("audio_swipe_right", VideoSwipeAction.ToggleWatched)
+  val audioSwipeLeft = preferenceStore.getEnum("audio_swipe_left", VideoSwipeAction.AddToPlaylist)
+  val audioSwipeRightZonePercent =
+    preferenceStore.getInt(
+      "audio_swipe_right_zone_percent",
+      DEFAULT_VIDEO_SWIPE_ZONE_PERCENT,
+    )
+  val audioSwipeLeftZonePercent =
+    preferenceStore.getInt(
+      "audio_swipe_left_zone_percent",
+      DEFAULT_VIDEO_SWIPE_ZONE_PERCENT,
+    )
+
   val playlistSortType = preferenceStore.getEnum("playlist_sort_type", PlaylistSortType.Original)
   val playlistSortOrder = preferenceStore.getEnum("playlist_sort_order", SortOrder.Ascending)
   val playlistItemSortType = preferenceStore.getEnum("playlist_item_sort_type", PlaylistSortType.Original)

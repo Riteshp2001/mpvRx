@@ -27,7 +27,7 @@ class DecoderPreferences(
   val mediaCodecEmbed = preferenceStore.getBoolean("mediacodec_embed", false)
   val gpuNext = preferenceStore.getBoolean("gpu_next")
   val useVulkan = preferenceStore.getBoolean("use_vulkan", false)
-  val hdrScreenOutput = preferenceStore.getBoolean("hdr_screen_output", true)
+  val hdrScreenOutput = preferenceStore.getBoolean("hdr_screen_output", false)
   val hdrScreenMode = preferenceStore.getEnum("hdr_screen_mode", HdrScreenMode.defaultMode)
   val lastHdrMode = preferenceStore.getEnum("hdr_last_selected_mode", HdrScreenMode.defaultMode)
 

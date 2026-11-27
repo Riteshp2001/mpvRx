@@ -35,8 +35,6 @@ enum class HdrScreenMode(
   @StringRes val shortTitleRes: Int,
   @StringRes val descriptionRes: Int,
   val hdrToysProfile: HdrToysProfile? = null,
-  /** Sends HDR to the display itself, which needs the gpu-next renderer with Vulkan. */
-  val needsNativeHdrOutput: Boolean = false,
 ) {
   OFF(
     titleRes = R.string.hdr_mode_off,
@@ -48,7 +46,6 @@ enum class HdrScreenMode(
     shortTitleRes = R.string.hdr_mode_linear_passthrough_short,
     descriptionRes = R.string.hdr_mode_linear_passthrough_description,
     hdrToysProfile = HdrToysProfile.LINEAR_PASSTHROUGH,
-    needsNativeHdrOutput = true,
   ),
   BT_2100_PQ(
     titleRes = R.string.hdr_mode_bt2100_pq,
@@ -72,23 +69,38 @@ enum class HdrScreenMode(
     titleRes = R.string.hdr_mode_linear,
     shortTitleRes = R.string.hdr_mode_linear_short,
     descriptionRes = R.string.hdr_mode_linear_description,
-    needsNativeHdrOutput = true,
   ),
   ;
 
   companion object {
     val selectableModes = listOf(LINEAR_PASSTHROUGH, BT_2100_PQ, BT_2100_HLG, BT_2020, LINEAR)
 
-    /** HDR output starts in passthrough: modern phone screens show HDR well themselves. */
+    /** Preferred mode when HDR output is enabled for the first time. */
     val defaultMode = LINEAR_PASSTHROUGH
-
-    /**
-     * Replaces a mode the renderer cannot run. hdr-toys' author recommends the BT.2100 PQ
-     * profile as the default chain, and it also works on the legacy GPU renderer.
-     */
-    val fallbackMode = BT_2100_PQ
   }
 }
+
+internal fun HdrScreenMode.isSupportedBy(
+  videoOutput: String,
+  gpuApi: String,
+): Boolean =
+  when (this) {
+    HdrScreenMode.OFF -> true
+    HdrScreenMode.LINEAR, HdrScreenMode.LINEAR_PASSTHROUGH -> videoOutput == "gpu-next" && gpuApi == "vulkan"
+    // Astra exceeds the legacy GPU renderer's 16-parameter limit.
+    HdrScreenMode.BT_2100_PQ, HdrScreenMode.BT_2100_HLG -> videoOutput == "gpu-next"
+    HdrScreenMode.BT_2020 -> videoOutput == "gpu" || videoOutput == "gpu-next"
+  }
+
+internal fun HdrScreenMode.resolveForRenderer(
+  videoOutput: String,
+  gpuApi: String,
+): HdrScreenMode =
+  when {
+    isSupportedBy(videoOutput, gpuApi) -> this
+    HdrScreenMode.BT_2100_PQ.isSupportedBy(videoOutput, gpuApi) -> HdrScreenMode.BT_2100_PQ
+    else -> HdrScreenMode.OFF
+  }
 
 /**
  * All mpv options owned by the HDR mode controller.
@@ -136,21 +148,19 @@ private const val HDR_TOYS_MAX_REFERENCE_WHITE_NITS = 1000
 @Suppress("UNUSED_PARAMETER")
 internal fun hdrScreenOutputSettings(
   mode: HdrScreenMode,
-  pipelineReady: Boolean,
   displayPeakNits: Int = HDR_TOYS_MAX_REFERENCE_WHITE_NITS,
   boostSdrToHdr: Boolean = false,
 ): List<Pair<String, String>> {
-  val activeMode = if (pipelineReady) mode else HdrScreenMode.OFF
   val settings =
-    when (activeMode) {
+    when (mode) {
       HdrScreenMode.OFF -> offSettings()
       HdrScreenMode.LINEAR -> linearHdrSettings()
-      else -> hdrToysSettings(activeMode.hdrToysProfile ?: HdrToysProfile.BT_2100_PQ, displayPeakNits)
+      else -> hdrToysSettings(checkNotNull(mode.hdrToysProfile), displayPeakNits)
     }
 
   // Defensive invariant for future modes: never allow a partial color-state profile to ship.
   check(settings.map { it.first }.toSet() == HDR_OWNED_PROPERTIES.toSet()) {
-    "Incomplete HDR output settings for $activeMode"
+    "Incomplete HDR output settings for $mode"
   }
   return settings
 }
@@ -229,11 +239,10 @@ private fun linearHdrSettings(): List<Pair<String, String>> =
 /** Apply HDR settings as mpv init-time options (before playback starts). */
 fun applyHdrScreenOutputOptions(
   mode: HdrScreenMode,
-  pipelineReady: Boolean,
   displayPeakNits: Int,
   boostSdrToHdr: Boolean = false,
 ) {
-  hdrScreenOutputSettings(mode, pipelineReady, displayPeakNits, boostSdrToHdr).forEach { (property, value) ->
+  hdrScreenOutputSettings(mode, displayPeakNits, boostSdrToHdr).forEach { (property, value) ->
     PlaybackSession.setOptionString(property, value)
   }
 }
@@ -247,12 +256,11 @@ fun applyHdrScreenOutputOptions(
  */
 fun applyHdrScreenOutputProperties(
   mode: HdrScreenMode,
-  pipelineReady: Boolean,
   displayPeakNits: Int,
   boostSdrToHdr: Boolean = false,
 ) {
   val changedOptions =
-    hdrScreenOutputSettings(mode, pipelineReady, displayPeakNits, boostSdrToHdr)
+    hdrScreenOutputSettings(mode, displayPeakNits, boostSdrToHdr)
       .filter { (property, value) ->
         !MpvConfigOverridePolicy.isOwnedByMpvConf(property) &&
           PlaybackSession.getPropertyString(property) != value

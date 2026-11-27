@@ -396,8 +396,6 @@
   <string name="player_sheets_sub_primary_position">主字幕位置</string>
   <string name="player_sheets_secondary_sub_scale">次字幕缩放</string>
   <string name="player_sheets_secondary_sub_position">次字幕位置</string>
-  <string name="player_sheets_sub_scale_by_window">按窗口缩放</string>
-  <string name="player_sheets_sub_scale_by_window_summary">随窗口缩放字幕大小，并将其置于视频的安全边距内</string>
   <string name="player_sheets_sub_blend_with_video">将字幕与视频混合</string>
   <string name="player_sheets_sub_blend_with_video_summary">环境模式开启时，将字幕绘制在视频中，而不是环境区域上方</string>
   <string name="player_sheets_sub_scale">缩放</string>

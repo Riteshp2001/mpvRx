@@ -62,6 +62,7 @@ import app.gyrolet.mpvrx.domain.fonts.GoogleFontsRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.DEFAULT_SUBTITLE_FONT_FAMILY
 import app.gyrolet.mpvrx.preferences.LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.AppPickerSheet
@@ -404,20 +405,16 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
               if (app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV) {
                 PreferenceDivider()
 
-                val scaleByWindow by preferences.scaleByWindow.collectAsState()
+                val zoomWithVideo by preferences.zoomSubtitlesWithVideo.collectAsState()
                 SwitchPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.player_sheets_sub_scale_by_window),
-                  value = scaleByWindow,
-                  enabled =
-                    setOf(
-                      "sub-scale-by-window",
-                      "sub-use-margins",
-                    ).none(configOwnedOptions::contains),
-                  onValueChange = { preferences.scaleByWindow.set(it) },
-                  title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
+                  modifier = Modifier.settingsSearchTarget(R.string.player_sheets_sub_zoom_with_video),
+                  value = zoomWithVideo,
+                  enabled = MpvConfigControlledFeatures.SUBTITLE_ZOOM_WITH_VIDEO.none(configOwnedOptions::contains),
+                  onValueChange = { preferences.zoomSubtitlesWithVideo.set(it) },
+                  title = { Text(stringResource(R.string.player_sheets_sub_zoom_with_video)) },
                   summary = {
                     Text(
-                      stringResource(R.string.player_sheets_sub_scale_by_window_summary),
+                      stringResource(R.string.player_sheets_sub_zoom_with_video_summary),
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },

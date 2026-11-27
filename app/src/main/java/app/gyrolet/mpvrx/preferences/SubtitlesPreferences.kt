@@ -65,7 +65,7 @@ class SubtitlesPreferences(
 
   val overrideAssSubs = preferenceStore.getBoolean("sub_override_ass")
   val forceRtlSubtitles = preferenceStore.getBoolean("sub_force_ltr", false)
-  val scaleByWindow = preferenceStore.getBoolean("sub_scale_by_window", true)
+  val zoomSubtitlesWithVideo = preferenceStore.getBoolean("sub_zoom_with_video", false)
   val blendSubtitlesWithVideo = preferenceStore.getBoolean("sub_blend_with_video", false)
 
   val defaultSubDelay = preferenceStore.getInt("sub_default_delay")

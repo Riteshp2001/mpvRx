@@ -4831,7 +4831,6 @@ class PlayerActivity :
     if (!mpvInitialized) return
     updateOrientationForWindow()
     viewModel.onOrientationChanged()
-    applySubtitleWindowing(newConfig.orientation == Configuration.ORIENTATION_PORTRAIT)
     if (isReady) {
       handleConfigurationChange()
     }
@@ -5645,7 +5644,7 @@ class PlayerActivity :
     PlaybackSession.setPropertyString("sub-border-color", borderColor)
     PlaybackSession.setPropertyString("sub-back-color", backgroundColor)
     PlaybackSession.setPropertyString("sub-shadow-color", shadowColor)
-    applySubtitleWindowing(resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT)
+    applySubtitleWindowing()
     applySubtitleScales()
 
     applySubtitleLayout(

@@ -396,8 +396,6 @@
   <string name="player_sheets_sub_primary_position">Положение основных субтитров</string>
   <string name="player_sheets_secondary_sub_scale">Масштаб вторичных субтитров</string>
   <string name="player_sheets_secondary_sub_position">Положение вторичных субтитров</string>
-  <string name="player_sheets_sub_scale_by_window">Масштабировать по окну</string>
-  <string name="player_sheets_sub_scale_by_window_summary">Масштабировать размер субтитров по размеру окна и размещать их в защитных полях видео</string>
   <string name="player_sheets_sub_blend_with_video">Смешивать субтитры с видео</string>
   <string name="player_sheets_sub_blend_with_video_summary">Когда включён фоновый режим, рисовать субтитры вместе с видео, а не поверх фоновой области</string>
   <string name="player_sheets_sub_scale">Масштаб</string>
