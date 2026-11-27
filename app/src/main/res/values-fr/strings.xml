@@ -396,6 +396,8 @@
   <string name="player_sheets_sub_primary_position">Position des sous-titres principaux</string>
   <string name="player_sheets_secondary_sub_scale">Échelle des sous-titres secondaires</string>
   <string name="player_sheets_secondary_sub_position">Position des sous-titres secondaires</string>
+  <string name="player_sheets_sub_scale_by_window">Mise à l’échelle selon la fenêtre</string>
+  <string name="player_sheets_sub_scale_by_window_summary">Redimensionne la taille des sous-titres avec la fenêtre et les place dans les marges de sécurité de la vidéo</string>
   <string name="player_sheets_sub_blend_with_video">Fusionner les sous-titres avec la vidéo</string>
   <string name="player_sheets_sub_blend_with_video_summary">Lorsque le mode ambiant est activé, dessiner les sous-titres avec la vidéo plutôt que sur la zone ambiante</string>
   <string name="player_sheets_sub_scale">Échelle</string>

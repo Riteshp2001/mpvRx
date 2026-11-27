@@ -1105,9 +1105,9 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.player_sheets_sub_zoom_with_video,
-          summaryRes = R.string.player_sheets_sub_zoom_with_video_summary,
-          keywords = listOf("zoom", "video", "subtitle", "black bars", "margins", "letterbox", "size"),
+          titleRes = R.string.player_sheets_sub_scale_by_window,
+          summaryRes = R.string.player_sheets_sub_scale_by_window_summary,
+          keywords = listOf("scale", "window", "subtitle", "size", "resize", "fit"),
           category = "Subtitles",
           screen = SubtitlesPreferencesScreen,
         ),
@@ -2966,7 +2966,7 @@ object SearchablePreferences {
       R.string.pref_anime4k_darken_title,
       R.string.pref_anime4k_thin_title,
       R.string.pref_anime4k_deblur_title,
-      R.string.player_sheets_sub_zoom_with_video,
+      R.string.player_sheets_sub_scale_by_window,
       R.string.pref_subtitles_secondary_pinch_zoom,
       R.string.pref_subtitles_fonts_dir,
       R.string.pref_subtitles_font_title,

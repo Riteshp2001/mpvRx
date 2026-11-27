@@ -13,6 +13,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.media.AudioManager
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -3304,8 +3305,14 @@ class PlayerViewModel(
       }
     }
     viewModelScope.launch(playbackStateDispatcher) {
-      subtitlesPreferences.zoomSubtitlesWithVideo.changes().distinctUntilChanged().drop(1).collect { enabled ->
-        if (mpvCoreReadyState.value) applySubtitleWindowing(enabled)
+      subtitlesPreferences.scaleByWindow.changes().distinctUntilChanged().drop(1).collect { enabled ->
+        if (mpvCoreReadyState.value) {
+          val configuration = (host?.context ?: appContext).resources.configuration
+          applySubtitleWindowing(
+            isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT,
+            scaleByWindow = enabled,
+          )
+        }
       }
     }
 

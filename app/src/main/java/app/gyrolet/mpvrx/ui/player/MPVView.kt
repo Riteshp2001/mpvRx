@@ -10,6 +10,7 @@
 package app.gyrolet.mpvrx.ui.player
 
 import android.content.Context
+import android.content.res.Configuration
 import android.hardware.display.DisplayManager
 import android.os.Environment
 import android.os.SystemClock
@@ -1011,7 +1012,11 @@ class MPVView(
     val subDelay = (subtitlesPreferences.defaultSubDelay.get() / 1000.0).toString()
     val subSpeed = subtitlesPreferences.defaultSubSpeed.get().toString()
 
-    val windowOptions = subtitleWindowOptions(subtitlesPreferences.zoomSubtitlesWithVideo.get())
+    val windowOptions =
+      subtitleWindowOptions(
+        scaleByWindow = subtitlesPreferences.scaleByWindow.get(),
+        isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT,
+      )
     val blendMode = subtitleBlendMode()
 
     return buildList {

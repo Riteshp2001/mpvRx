@@ -471,6 +471,8 @@
   <string name="cover_art_size">Розмір обкладинки</string>
   <string name="player_sheets_sub_force_rtl">Примусовий напрямок RTL</string>
   <string name="player_sheets_sub_force_rtl_summary">Використовувати розмітку справа наліво для арабської мови, івриту та інших RTL-субтитрів</string>
+  <string name="player_sheets_sub_scale_by_window">Масштабувати за вікном</string>
+  <string name="player_sheets_sub_scale_by_window_summary">Масштабувати розмір субтитрів разом із вікном; утримувати субтитри в безпечних межах відео</string>
   <string name="player_sheets_sub_blend_with_video">Поєднувати субтитри з відео</string>
   <string name="player_sheets_sub_blend_with_video_summary">У фоновому підсвічуванні малювати субтитри разом із відео, а не поверх фонової зони</string>
   <string name="player_sheets_sub_scale">Масштаб</string>

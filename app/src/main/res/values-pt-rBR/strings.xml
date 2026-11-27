@@ -396,6 +396,8 @@
   <string name="player_sheets_sub_primary_position">Posição da legenda principal</string>
   <string name="player_sheets_secondary_sub_scale">Escala da legenda secundária</string>
   <string name="player_sheets_secondary_sub_position">Posição da legenda secundária</string>
+  <string name="player_sheets_sub_scale_by_window">Dimensionar pela janela</string>
+  <string name="player_sheets_sub_scale_by_window_summary">Dimensiona o tamanho da legenda com a janela e as posiciona nas margens seguras do vídeo</string>
   <string name="player_sheets_sub_blend_with_video">Misturar legendas com o vídeo</string>
   <string name="player_sheets_sub_blend_with_video_summary">Quando o modo ambiente estiver ativado, desenhar as legendas junto ao vídeo em vez de sobre a área ambiente</string>
   <string name="player_sheets_sub_scale">Escala</string>

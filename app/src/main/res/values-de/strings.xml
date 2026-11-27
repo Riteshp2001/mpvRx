@@ -396,6 +396,8 @@
   <string name="player_sheets_sub_primary_position">Position primärer Untertitel</string>
   <string name="player_sheets_secondary_sub_scale">Skalierung sekundärer Untertitel</string>
   <string name="player_sheets_secondary_sub_position">Position sekundärer Untertitel</string>
+  <string name="player_sheets_sub_scale_by_window">An Fenster skalieren</string>
+  <string name="player_sheets_sub_scale_by_window_summary">Skaliert die Untertitelgröße mit dem Fenster und platziert sie in den sicheren Rändern des Videos</string>
   <string name="player_sheets_sub_blend_with_video">Untertitel mit Video mischen</string>
   <string name="player_sheets_sub_blend_with_video_summary">Bei aktiviertem Umgebungsmodus Untertitel zusammen mit dem Video statt über dem Umgebungsbereich zeichnen</string>
   <string name="player_sheets_sub_scale">Skalierung</string>

@@ -22,18 +22,23 @@ private val subtitlesPreferences by lazy {
 
 fun clampSubtitlePosition(position: Int): Int = position.coerceIn(MIN_SUBTITLE_POSITION, MAX_SUBTITLE_POSITION)
 
-/**
- * Zoom with video keeps subtitles inside the video rectangle and sizes them from the video, so they
- * follow zoom and never enter black bars. Otherwise mpv may place them in the bars at window size.
- */
-fun subtitleWindowOptions(zoomWithVideo: Boolean): List<Pair<String, String>> =
+/** Let mpv track the video rectangle as its aspect, crop and surface size change. */
+fun subtitleWindowOptions(
+  scaleByWindow: Boolean,
+  isPortrait: Boolean,
+): List<Pair<String, String>> =
   listOf(
-    "sub-use-margins" to if (zoomWithVideo) "no" else "yes",
-    "sub-scale-with-window" to if (zoomWithVideo) "no" else "yes",
+    "sub-scale-by-window" to if (scaleByWindow) "yes" else "no",
+    // Keep the fixed-size preference meaningful; mpv does not support both scale flags being no.
+    "sub-scale-with-window" to if (isPortrait && scaleByWindow) "no" else "yes",
+    "sub-use-margins" to if (!isPortrait && scaleByWindow) "yes" else "no",
   )
 
-fun applySubtitleWindowing(zoomWithVideo: Boolean = subtitlesPreferences.zoomSubtitlesWithVideo.get()) {
-  subtitleWindowOptions(zoomWithVideo).forEach { (property, value) ->
+fun applySubtitleWindowing(
+  isPortrait: Boolean,
+  scaleByWindow: Boolean = subtitlesPreferences.scaleByWindow.get(),
+) {
+  subtitleWindowOptions(scaleByWindow, isPortrait).forEach { (property, value) ->
     if (PlaybackSession.getPropertyString(property) != value) {
       PlaybackSession.setPropertyString(property, value)
     }
