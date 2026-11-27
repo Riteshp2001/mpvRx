@@ -44,7 +44,7 @@ seeker = "2.0.1"
 markdownRenderer = "0.46.0"
 mediainfo = "1.0.2"
 mpvlib = "1.1.8.9"
-mpvlibKodi = "21.3.0-engine.1"
+mpvlibKodi = "21.3.0-engine.3"
 androidxTvprovider = "1.1.0"
 # Kodi's Java glue needs Gson; sora-editor's TextMate support already brings this version.
 gson = "2.14.0"
