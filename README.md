@@ -411,28 +411,35 @@ For help, reproducible bug reports, or feature suggestions, start with the [supp
 | `playstore` | Google Play distribution using the Standard engine, scoped storage, and Play-managed updates |
 | `noVulkan` | Vulkan-free native distribution, packaged as a universal APK |
 | `fongmi` | Alternate native distribution with MediaCodec/Vulkan support, packaged as a universal APK |
-| `kodi` | Experimental: the `standard` build plus an embedded Kodi. APKs are available from the Kodi CI workflow |
+| `kodi` | Experimental: plays with Kodi's engine instead of mpv, in the same player. APKs are available from the Kodi CI workflow |
 
 ### Kodi Variant (experimental)
 
-The `kodi` variant (`applicationId` suffix `.kodi`) bundles Kodi 21.3's engine from the
-[`mpvlib-kodi` AAR](https://github.com/Riteshp2001/mpvlibAndroid/tree/kodi/kodi), built on mpvlibAndroid's
-`kodi` branch from the official Kodi Android releases. Kodi keeps its own interface and runs in the
-app's `:kodi` process, because `libkodi.so` runs its own event loop and exits its process when you quit
-Kodi; mpvRx keeps running.
+The `kodi` variant (`applicationId` suffix `.kodi`) plays with Kodi 21.3's engine instead of libmpv,
+behind mpvRx's own player screen and controls. The
+[`mpvlib-kodi` AAR](https://github.com/Riteshp2001/mpvlibAndroid/tree/kodi/kodi) runs Kodi headless in
+the app's `:kodi` process: Kodi shows no interface of its own, renders video and subtitles into mpvRx's
+player, and mpvRx controls it with the commands and properties it sends to mpv.
 
-- **Open Kodi**: the TV icon in the home top bar.
-- **Play with Kodi**: select one video in a browser, or use the player's **More** sheet.
+- Playback controls, audio and subtitle tracks, chapters, speed, A-B loop, audio and subtitle delay,
+  volume boost, zoom, aspect ratio, brightness, contrast and the subtitle style work as with mpv.
+  Settings and controls for features only mpv has (scripts, shaders, filters, statistics, ...) are hidden.
+- **Settings > Decoder > Kodi engine**: direct video output (MediaCodec renders straight to the screen,
+  so HDR10, HDR10+, HLG and Dolby Vision keep their HDR), HDR output, tone mapping of HDR video when it
+  isn't passed through, Dolby Vision compatibility mode, and whether to keep Dolby Vision and HDR10+
+  metadata.
+- Kodi 21 renders with OpenGL ES; it has no Vulkan renderer.
 
 Kodi publishes no `x86_64` libraries, so this variant has no `x86_64` APK; x86_64 devices use the `x86` one.
-The **Kodi CI/CD Build** workflow runs on pushes to `kodi` and can be run manually on that branch.
-Each run verifies and uses the [pinned mpvlib-kodi Actions artifact](https://github.com/Riteshp2001/mpvlibAndroid/actions/runs/45860767410/artifacts/15138446870)
-to build mpvRx from source. Download the universal, arm64-v8a, armeabi-v7a and x86 APKs from the run's
-**Artifacts** section. APKs are signed when the repository's release signing secrets are configured.
-If the workflow token cannot access the upstream artifact, set `MPVLIB_ACTIONS_TOKEN` to a token with
-Actions read access to `Riteshp2001/mpvlibAndroid`. The pinned artifact expires on February 24, 2027.
 
-For a local build, extract the AAR from the linked artifact and pass it to Gradle:
+Gradle downloads the AAR from mpvlibAndroid's `kodi-v<mpvlibKodi>` prerelease (`mpvlibKodi` in
+`gradle/libs.versions.toml`), which mpvlibAndroid's `kodi` workflow builds from Kodi's sources with the
+engine patches. The **Kodi CI/CD Build** workflow runs on pushes to `kodi`: it checks the AAR against
+the release checksum and the engine patches in the APKs' Kodi libraries. Download the universal,
+arm64-v8a, armeabi-v7a and x86 APKs from the run's **Artifacts** section. APKs are signed when the
+repository's release signing secrets are configured.
+
+To build with an AAR you built yourself, pass it to Gradle:
 
 ```sh
 ./gradlew -PtargetAbi=arm64-v8a -PmpvlibKodiAar=/path/to/kodi-release.aar :app:assembleKodiDebug
@@ -441,11 +448,8 @@ For a local build, extract the AAR from the linked artifact and pass it to Gradl
 You can also set `mpvlibKodiAar=/path/to/kodi-release.aar` in `local.properties`. Kodi is licensed
 GPL-2.0-or-later and Kodi® is a trademark of the XBMC Foundation; review both before distributing this variant.
 
-Known limitations:
-
-- Kodi starts handed-over media from the beginning; its `ACTION_VIEW` handling takes no start position.
-- Kodi 21's libraries are aligned for 4 KB pages, so they don't load on devices running with 16 KB pages.
-- mpvRx and Kodi each keep a media session, so media keys go to whichever of them played last.
+Known limitation: Kodi 21's libraries are aligned for 4 KB pages, so they don't load on devices running
+with 16 KB pages.
 
 ### APK Variants
 
