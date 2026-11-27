@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -67,10 +68,7 @@ fun SubtitlesMiscellaneousCard(
   val configOwnedOptions = currentMpvConfigOverrideOptions()
   val layoutOptions = setOf("sub-ass-override", "secondary-sub-ass-override", "sub-pos", "secondary-sub-pos")
   val scaleOptions = setOf("sub-scale", "secondary-sub-scale")
-  // mpv has no secondary-sub-scale-by-window / secondary-sub-use-margins — secondary
-  // inherits the primary windowing behavior.
-  val scaleByWindowOptions =
-    setOf("sub-scale-by-window", "sub-scale-with-window", "sub-use-margins")
+  val scaleByWindowOptions = MpvConfigControlledFeatures.SUBTITLE_WINDOW_SCALING
   val blendOptions = setOf("blend-subtitles")
   val bidiOptions = setOf("sub-vsfilter-bidi-compat")
   val showShift = FongMiMpv.isBuildSupported

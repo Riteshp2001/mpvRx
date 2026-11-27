@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 
@@ -169,7 +170,7 @@ private val settingNativeOptions =
         "sub-pos",
         "secondary-sub-pos",
       ),
-    R.string.player_sheets_sub_scale_by_window to setOf("sub-scale-by-window", "sub-use-margins"),
+    R.string.player_sheets_sub_scale_by_window to MpvConfigControlledFeatures.SUBTITLE_WINDOW_SCALING,
     R.string.pref_subtitles_secondary_pinch_zoom to setOf("sub-scale", "secondary-sub-scale"),
     R.string.pref_decoder_try_hw_dec_title to setOf("hwdec", "hwdec-codecs"),
     R.string.pref_decoder_mediacodec_embed_title to setOf("vo", "hwdec"),

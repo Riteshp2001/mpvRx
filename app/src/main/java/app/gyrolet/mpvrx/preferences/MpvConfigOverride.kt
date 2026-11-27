@@ -166,6 +166,7 @@ enum class MpvConfigOverride(
         "sub-pos",
         "sub-margin-x",
         "sub-scale-by-window",
+        "sub-scale-with-window",
         "sub-use-margins",
         "sub-ass-override",
         "sub-ass-justify",
@@ -306,6 +307,9 @@ object MpvConfigControlledFeatures {
   val SUBTITLE_TRACK_SELECTION = setOf("slang")
 
   val SUBTITLE_DISCOVERY = setOf("sub-auto", "sub-file-paths", "subs-fallback")
+
+  // Margin placement can be owned by mpv.conf independently of subtitle scaling.
+  val SUBTITLE_WINDOW_SCALING = setOf("sub-scale-by-window", "sub-scale-with-window")
 
   val VIDEO_ZOOM = setOf("video-zoom")
 
