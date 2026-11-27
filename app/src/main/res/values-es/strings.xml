@@ -396,8 +396,6 @@
   <string name="player_sheets_sub_primary_position">Posición de subtítulos principales</string>
   <string name="player_sheets_secondary_sub_scale">Escala de subtítulos secundarios</string>
   <string name="player_sheets_secondary_sub_position">Posición de subtítulos secundarios</string>
-  <string name="player_sheets_sub_scale_by_window">Escalar según la ventana</string>
-  <string name="player_sheets_sub_scale_by_window_summary">Escala el tamaño de los subtítulos con la ventana y los coloca dentro de los márgenes seguros del vídeo</string>
   <string name="player_sheets_sub_blend_with_video">Mezclar subtítulos con el vídeo</string>
   <string name="player_sheets_sub_blend_with_video_summary">Cuando el modo ambiente esté activo, dibujar los subtítulos con el vídeo en lugar de sobre el área ambiente</string>
   <string name="player_sheets_sub_scale">Escala</string>

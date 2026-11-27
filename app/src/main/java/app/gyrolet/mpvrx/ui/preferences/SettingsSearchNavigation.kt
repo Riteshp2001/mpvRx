@@ -230,7 +230,7 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.pref_preferred_languages, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_subtitles_autoload_title, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.player_sheets_sub_override_ass, itemIndex = 1),
-        SettingsSearchListAnchor(titleRes = R.string.player_sheets_sub_scale_by_window, itemIndex = 1),
+        SettingsSearchListAnchor(titleRes = R.string.player_sheets_sub_zoom_with_video, itemIndex = 1),
         SettingsSearchListAnchor(titleRes = R.string.pref_subtitles_fonts_dir, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_subtitles_font_title, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_subtitle_search_title, itemIndex = 5),

@@ -580,10 +580,10 @@
   <string name="cover_art_size">Cover Art Size</string>
   <string name="player_sheets_sub_force_rtl">Force RTL direction</string>
   <string name="player_sheets_sub_force_rtl_summary">Use right-to-left layout for Arabic, Hebrew, and other RTL subtitle scripts</string>
-  <string name="player_sheets_sub_scale_by_window">Scale by window</string>
-  <string name="player_sheets_sub_scale_by_window_summary">Scale subtitle size with the window; keep subtitles inside the video\'s safe-area margins</string>
   <string name="player_sheets_sub_blend_with_video">Blend subtitles with video</string>
   <string name="player_sheets_sub_blend_with_video_summary">When ambient mode is on, draw subtitles with the video instead of over the ambient area</string>
+  <string name="player_sheets_sub_zoom_with_video">Zoom subtitles with video</string>
+  <string name="player_sheets_sub_zoom_with_video_summary">On: subtitles stay inside the video and zoom with it. Off: subtitles keep their size and can sit in the black bars</string>
   <string name="player_sheets_sub_scale">Scale</string>
   <string name="player_sheets_sub_position">Position</string>
   <string name="player_sheets_sub_primary_scale">Primary subtitle scale</string>

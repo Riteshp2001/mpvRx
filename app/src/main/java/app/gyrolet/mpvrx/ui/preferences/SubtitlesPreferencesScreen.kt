@@ -404,16 +404,16 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
 
               PreferenceDivider()
 
-              val scaleByWindow by preferences.scaleByWindow.collectAsState()
+              val zoomWithVideo by preferences.zoomSubtitlesWithVideo.collectAsState()
               SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.player_sheets_sub_scale_by_window),
-                value = scaleByWindow,
-                enabled = MpvConfigControlledFeatures.SUBTITLE_WINDOW_SCALING.none(configOwnedOptions::contains),
-                onValueChange = { preferences.scaleByWindow.set(it) },
-                title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
+                modifier = Modifier.settingsSearchTarget(R.string.player_sheets_sub_zoom_with_video),
+                value = zoomWithVideo,
+                enabled = MpvConfigControlledFeatures.SUBTITLE_ZOOM_WITH_VIDEO.none(configOwnedOptions::contains),
+                onValueChange = { preferences.zoomSubtitlesWithVideo.set(it) },
+                title = { Text(stringResource(R.string.player_sheets_sub_zoom_with_video)) },
                 summary = {
                   Text(
-                    stringResource(R.string.player_sheets_sub_scale_by_window_summary),
+                    stringResource(R.string.player_sheets_sub_zoom_with_video_summary),
                     color = MaterialTheme.colorScheme.outline,
                   )
                 },

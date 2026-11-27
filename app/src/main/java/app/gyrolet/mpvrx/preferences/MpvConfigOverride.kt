@@ -308,8 +308,8 @@ object MpvConfigControlledFeatures {
 
   val SUBTITLE_DISCOVERY = setOf("sub-auto", "sub-file-paths", "subs-fallback")
 
-  // Margin placement can be owned by mpv.conf independently of subtitle scaling.
-  val SUBTITLE_WINDOW_SCALING = setOf("sub-scale-by-window", "sub-scale-with-window")
+  // One toggle owns both: margins keep subtitles in the video, and video-relative size makes them zoom.
+  val SUBTITLE_ZOOM_WITH_VIDEO = setOf("sub-use-margins", "sub-scale-with-window")
 
   val VIDEO_ZOOM = setOf("video-zoom")
 

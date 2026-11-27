@@ -1105,9 +1105,9 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
-          titleRes = R.string.player_sheets_sub_scale_by_window,
-          summaryRes = R.string.player_sheets_sub_scale_by_window_summary,
-          keywords = listOf("scale", "window", "subtitle", "size", "resize", "fit"),
+          titleRes = R.string.player_sheets_sub_zoom_with_video,
+          summaryRes = R.string.player_sheets_sub_zoom_with_video_summary,
+          keywords = listOf("zoom", "video", "subtitle", "black bars", "margins", "letterbox", "size"),
           category = "Subtitles",
           screen = SubtitlesPreferencesScreen,
         ),

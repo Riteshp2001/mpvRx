@@ -109,7 +109,7 @@ private val liveAudioSettings =
 private val liveSubtitleSettings =
   setOf(
     R.string.player_sheets_sub_override_ass,
-    R.string.player_sheets_sub_scale_by_window,
+    R.string.player_sheets_sub_zoom_with_video,
     R.string.pref_subtitles_secondary_pinch_zoom,
     // These configure the next manual search, which can be performed in the current video.
     R.string.pref_subtitle_search_title,
@@ -170,7 +170,7 @@ private val settingNativeOptions =
         "sub-pos",
         "secondary-sub-pos",
       ),
-    R.string.player_sheets_sub_scale_by_window to MpvConfigControlledFeatures.SUBTITLE_WINDOW_SCALING,
+    R.string.player_sheets_sub_zoom_with_video to MpvConfigControlledFeatures.SUBTITLE_ZOOM_WITH_VIDEO,
     R.string.pref_subtitles_secondary_pinch_zoom to setOf("sub-scale", "secondary-sub-scale"),
     R.string.pref_decoder_try_hw_dec_title to setOf("hwdec", "hwdec-codecs"),
     R.string.pref_decoder_mediacodec_embed_title to setOf("vo", "hwdec"),
