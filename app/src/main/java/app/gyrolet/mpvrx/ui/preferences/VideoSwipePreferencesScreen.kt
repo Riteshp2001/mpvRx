@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.VideoSwipeAction
+import app.gyrolet.mpvrx.preferences.isAudioCompatible
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.AppPickerSheet
 import app.gyrolet.mpvrx.ui.browser.cards.containerColor
@@ -99,6 +100,8 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
       if (editingAudio) preferences.audioSwipeLeftZonePercent else preferences.videoSwipeLeftZonePercent
     val right by rightPreference.collectAsState()
     val left by leftPreference.collectAsState()
+    val rightAction = if (editingAudio && !right.isAudioCompatible) VideoSwipeAction.None else right
+    val leftAction = if (editingAudio && !left.isAudioCompatible) VideoSwipeAction.None else left
     val rightZonePercent by rightZonePreference.collectAsState()
     val leftZonePercent by leftZonePreference.collectAsState()
     val backStack = LocalBackStack.current
@@ -146,8 +149,12 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
                 onValueChange = { enabled ->
                   if (enabled && !preferences.separateAudioSwipeActions.get()) {
                     // Start the audio set from the current video set so enabling it changes nothing yet.
-                    preferences.audioSwipeRight.set(preferences.videoSwipeRight.get())
-                    preferences.audioSwipeLeft.set(preferences.videoSwipeLeft.get())
+                    preferences.audioSwipeRight.set(
+                      preferences.videoSwipeRight.get().let { if (it.isAudioCompatible) it else VideoSwipeAction.None },
+                    )
+                    preferences.audioSwipeLeft.set(
+                      preferences.videoSwipeLeft.get().let { if (it.isAudioCompatible) it else VideoSwipeAction.None },
+                    )
                     preferences.audioSwipeRightZonePercent.set(preferences.videoSwipeRightZonePercent.get())
                     preferences.audioSwipeLeftZonePercent.set(preferences.videoSwipeLeftZonePercent.get())
                   }
@@ -198,7 +205,7 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
           ) {
             SwipeDirectionPreference(
               right = true,
-              action = right,
+              action = rightAction,
               zonePercent = rightZonePercent,
               onZonePercentChange = { rightZonePreference.set(it) },
               isAudio = editingAudio,
@@ -214,7 +221,7 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
           ) {
             SwipeDirectionPreference(
               right = false,
-              action = left,
+              action = leftAction,
               zonePercent = leftZonePercent,
               onZonePercentChange = { leftZonePreference.set(it) },
               isAudio = editingAudio,
@@ -227,7 +234,7 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
     }
 
     editingRight?.let { isRight ->
-      val selectedAction = if (isRight) right else left
+      val selectedAction = if (isRight) rightAction else leftAction
       AppPickerSheet(
         onDismissRequest = { editingRight = null },
         title =
@@ -241,7 +248,7 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
         },
       ) {
         Column(Modifier.selectableGroup()) {
-          VideoSwipeAction.entries.forEach { action ->
+          VideoSwipeAction.entries.filter { !editingAudio || it.isAudioCompatible }.forEach { action ->
             Row(
               modifier =
                 Modifier

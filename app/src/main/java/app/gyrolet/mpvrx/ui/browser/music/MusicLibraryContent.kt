@@ -130,7 +130,6 @@ import app.gyrolet.mpvrx.ui.browser.components.addVideosToPlaybackQueue
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
 import app.gyrolet.mpvrx.ui.browser.components.mediaItemMotion
 import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
-import app.gyrolet.mpvrx.ui.browser.components.rememberSwipePlaybackInfo
 import app.gyrolet.mpvrx.ui.browser.components.rememberVideoSwipeActions
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
@@ -1539,12 +1538,6 @@ private fun SongsTabContent(
         }
       }
     } else {
-      // Built off the main thread: converting a whole library in composition stalled a frame each
-      // time the list was published, which happens twice during a scan.
-      val swipeVideos by produceState(initialValue = emptyList<Video>(), songs) {
-        value = withContext(Dispatchers.Default) { songs.map { it.toVideo() } }
-      }
-      val swipePlaybackInfo = rememberSwipePlaybackInfo(swipeVideos)
       val swipeActions = rememberVideoSwipeActions(audioOnly = true, onChanged = onSongsChanged)
       LazyColumn(
         state = listState,
@@ -1555,7 +1548,6 @@ private fun SongsTabContent(
         items(count = songs.size, key = { index -> songs[index].id }) { index ->
           val song = songs[index]
           val video = remember(song) { song.toVideo() }
-          val isWatched = swipePlaybackInfo[song.path]?.isWatched ?: false
           SongListItem(
             song = song,
             modifier = mediaItemMotion(),
@@ -1568,13 +1560,12 @@ private fun SongsTabContent(
             coverArtSizeDp = coverArtSizeDp,
             onClick = { onSongClick(song) },
             onLongClick = { onSongLongClick(song) },
-            isWatched = isWatched,
             onSwipeAction =
               if (selectionManager.isInSelectionMode || !song.path.startsWith('/')) {
                 null
               } else {
                 { action ->
-                  swipeActions.video(video, isWatched, action)
+                  swipeActions.video(video, false, action)
                 }
               },
           )
@@ -1728,7 +1719,6 @@ private fun SongListItem(
   coverArtSizeDp: Int = 48,
   onClick: () -> Unit,
   onLongClick: (() -> Unit)? = null,
-  isWatched: Boolean? = null,
   onSwipeAction: ((VideoSwipeAction) -> Unit)? = null,
   modifier: Modifier = Modifier,
 ) {
@@ -1746,7 +1736,6 @@ private fun SongListItem(
     onClick = onClick,
     onLongClick = onLongClick,
     swipeIdentity = song.path,
-    isWatched = isWatched,
     onSwipeAction = onSwipeAction,
   )
 }

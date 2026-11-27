@@ -402,24 +402,6 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
                 },
               )
 
-              PreferenceDivider()
-
-              val scaleByWindow by preferences.scaleByWindow.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.player_sheets_sub_scale_by_window),
-                value = scaleByWindow,
-                enabled = MpvConfigControlledFeatures.SUBTITLE_WINDOW_SCALING.none(configOwnedOptions::contains),
-                onValueChange = { preferences.scaleByWindow.set(it) },
-                title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.player_sheets_sub_scale_by_window_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
 
               val secondaryPinchZoom by preferences.secondarySubPinchZoom.collectAsState()
               SwitchPreference(

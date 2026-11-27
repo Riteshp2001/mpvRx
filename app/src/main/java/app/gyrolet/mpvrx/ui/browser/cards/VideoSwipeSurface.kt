@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.VideoSwipeAction
+import app.gyrolet.mpvrx.preferences.isAudioCompatible
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -126,7 +127,12 @@ internal fun rememberSwipeActions(
   val separateAudio by preferences.separateAudioSwipeActions.collectAsState()
   val audioLeft by preferences.audioSwipeLeft.collectAsState()
   val audioRight by preferences.audioSwipeRight.collectAsState()
-  return if (separateAudio) audioLeft to audioRight else videoLeft to videoRight
+  fun audioAction(action: VideoSwipeAction) = if (action.isAudioCompatible) action else VideoSwipeAction.None
+  return if (separateAudio) {
+    audioAction(audioLeft) to audioAction(audioRight)
+  } else {
+    audioAction(videoLeft) to audioAction(videoRight)
+  }
 }
 
 @Composable

@@ -1011,11 +1011,6 @@ class MPVView(
     val subDelay = (subtitlesPreferences.defaultSubDelay.get() / 1000.0).toString()
     val subSpeed = subtitlesPreferences.defaultSubSpeed.get().toString()
 
-    val windowOptions =
-      subtitleWindowOptions(
-        scaleByWindow = subtitlesPreferences.scaleByWindow.get(),
-        isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT,
-      )
     val blendMode = subtitleBlendMode()
 
     return buildList {
@@ -1062,7 +1057,6 @@ class MPVView(
       add("sub-back-radius" to subtitlesPreferences.backgroundRadius.get().toString())
       add("sub-scale" to subtitlesPreferences.subScale.get().toString())
       add("sub-pos" to clampSubtitlePosition(subtitlesPreferences.subPos.get()).toString())
-      addAll(windowOptions)
       // Secondary has its own position/scale only.
       add("secondary-sub-scale" to subtitlesPreferences.secondarySubScale.get().toString())
       add(

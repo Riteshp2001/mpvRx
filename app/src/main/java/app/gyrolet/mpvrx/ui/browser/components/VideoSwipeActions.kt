@@ -26,6 +26,7 @@ import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.preferences.isAudioCompatible
 import app.gyrolet.mpvrx.preferences.VideoSwipeAction
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.repository.MediaFileRepository
@@ -256,7 +257,9 @@ internal fun rememberVideoSwipeActions(
   }
 
   val perform: (SwipeTarget, VideoSwipeAction) -> Unit = { target, action ->
-    when (action) {
+    if (audioOnly && !action.isAudioCompatible) {
+      Unit
+    } else when (action) {
       VideoSwipeAction.None -> Unit
       VideoSwipeAction.Delete -> deleteTarget = target
       VideoSwipeAction.AddToPlaylist -> playlistTarget = target
