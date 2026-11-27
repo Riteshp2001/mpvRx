@@ -3253,7 +3253,4 @@
   <string name="floating_lyrics_turn_off">Turn off floating lyrics</string>
   <string name="floating_lyrics_never">Never</string>
   <string name="toast_media_file_missing">This file no longer exists; the list will refresh.</string>
-  <string name="kodi_open">Open Kodi</string>
-  <string name="kodi_play_with">Play with Kodi</string>
-  <string name="kodi_cannot_play">Kodi can\'t open this item</string>
 </resources>

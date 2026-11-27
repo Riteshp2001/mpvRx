@@ -109,7 +109,6 @@ import app.gyrolet.mpvrx.ui.browser.cards.mediaSelectionNeighbors
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
-import app.gyrolet.mpvrx.ui.browser.components.KodiTopBarActions
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
 import app.gyrolet.mpvrx.ui.browser.components.mediaItemMotion
 import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
@@ -825,9 +824,6 @@ object FolderListScreen : Screen {
                 onSelectAll = { selectionManager.selectAll() },
                 onInvertSelection = { selectionManager.invertSelection() },
                 onDeselectAll = { selectionManager.clear() },
-                additionalActions = {
-                  KodiTopBarActions(isInSelectionMode = selectionManager.isInSelectionMode)
-                },
                 onMoveToSecureClick = {
                   if (!secureFolderPreferences.isPinSet()) {
                     backstack.navigateTo(SecureFolderGateScreen)

@@ -33,7 +33,6 @@ import app.gyrolet.mpvrx.domain.download.DownloadLocations
 import app.gyrolet.mpvrx.domain.download.DownloadMetadata
 import app.gyrolet.mpvrx.domain.download.DownloadSources
 import app.gyrolet.mpvrx.domain.download.YtdlpDownloadEngine
-import app.gyrolet.mpvrx.domain.kodi.KodiIntegration
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverride
@@ -504,7 +503,6 @@ fun PlayerSheets(
       // Read here: an active sleep timer ticks every second, and collecting it in PlayerControls
       // re-ran the entire controls tree on each tick even while this sheet was closed.
       val sleepTimerTimeRemaining by viewModel.remainingTime.composeCollectAsState()
-      val kodiAvailable = remember(context) { KodiIntegration.isAvailable(context) }
       MoreSheet(
         remainingTime = sleepTimerTimeRemaining,
         onOpenSleepTimerSheet = { onShowSheet(Sheets.SleepTimer) },
@@ -514,20 +512,6 @@ fun PlayerSheets(
         onEnterSettingsPanel =
           if (!isTelevision && !isAudioOnly) ({ onOpenPanel(Panels.PlayerSettings) }) else null,
         onEnterEqualizerSheet = { onShowSheet(Sheets.Equalizer) },
-        onPlayWithKodi =
-          if (kodiAvailable) {
-            {
-              val item = app.gyrolet.mpvrx.ui.player.PlaybackSession.state.value.currentItem
-              if (item != null && KodiIntegration.play(context, item)) {
-                viewModel.pause()
-                onDismissRequest()
-              } else {
-                Toast.makeText(context, R.string.kodi_cannot_play, Toast.LENGTH_SHORT).show()
-              }
-            }
-          } else {
-            null
-          },
         anime4KUiState = anime4KUiState,
         onAnime4KModeSelected = viewModel::selectAnime4KMode,
         filtersEnabled = MpvConfigOverride.VIDEO_FILTERS.optionNames.any { it !in configOwnedOptions },

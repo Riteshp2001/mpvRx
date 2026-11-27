@@ -64,7 +64,6 @@ fun MoreSheet(
   onEnterLuaScriptsPanel: () -> Unit,
   onEnterEqualizerSheet: (() -> Unit)? = null,
   onEnterSettingsPanel: (() -> Unit)? = null,
-  onPlayWithKodi: (() -> Unit)? = null,
   anime4KUiState: Anime4KUiState,
   onAnime4KModeSelected: (Anime4KManager.Mode) -> Unit,
   filtersEnabled: Boolean = true,
@@ -122,14 +121,6 @@ fun MoreSheet(
           stringResource(R.string.ui_settings),
           showActionLabels,
           onEnterSettingsPanel,
-        )
-      }
-      if (onPlayWithKodi != null) {
-        MoreHeaderAction(
-          Icons.RoundedFilled.SmartDisplay,
-          stringResource(R.string.kodi_play_with),
-          showActionLabels,
-          onPlayWithKodi,
         )
       }
     },
