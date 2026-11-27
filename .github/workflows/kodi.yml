@@ -65,7 +65,9 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x ./gradlew
+          # Packaging Kodi's libraries into four APKs needs more than the default 2 GB heap.
           ./gradlew :app:assembleKodiRelease --stacktrace --no-daemon --max-workers=2 \
+            "-Dorg.gradle.jvmargs=-Xmx6g -Xms512m -XX:ReservedCodeCacheSize=256m -Dfile.encoding=UTF-8" \
             -PtargetAbi=arm64-v8a,armeabi-v7a,x86
 
       - name: Verify the engine in the APKs
