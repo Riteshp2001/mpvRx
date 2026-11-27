@@ -3253,4 +3253,19 @@
   <string name="floating_lyrics_turn_off">Turn off floating lyrics</string>
   <string name="floating_lyrics_never">Never</string>
   <string name="toast_media_file_missing">This file no longer exists; the list will refresh.</string>
+  <string name="pref_kodi_engine_title">Kodi engine</string>
+  <string name="pref_kodi_direct_video_title">Direct video output</string>
+  <string name="pref_kodi_direct_video_summary">Kodi decodes with MediaCodec straight to the screen: HDR10, HLG and Dolby Vision keep their HDR. Subtitles are drawn on a layer above the video. Brightness, contrast and tone mapping need the OpenGL output. Applies to the next video.</string>
+  <string name="pref_kodi_hdr_output_title">HDR output</string>
+  <string name="pref_kodi_hdr_output_summary">Switch an HDR display to HDR for HDR videos. When off, Kodi tone maps HDR videos.</string>
+  <string name="pref_kodi_tone_mapping_title">Tone mapping</string>
+  <string name="pref_kodi_tone_mapping_off">Off</string>
+  <string name="pref_kodi_tone_mapping_reinhard">Reinhard</string>
+  <string name="pref_kodi_tone_mapping_aces">ACES</string>
+  <string name="pref_kodi_tone_mapping_hable">Hable</string>
+  <string name="pref_kodi_dovi_compatibility_title">Dolby Vision compatibility mode</string>
+  <string name="pref_kodi_dovi_compatibility_summary">Plays Dolby Vision profile 7 as profile 8.1, which more devices support.</string>
+  <string name="pref_kodi_allow_dolby_vision_title">Keep Dolby Vision metadata</string>
+  <string name="pref_kodi_allow_hdr10_plus_title">Keep HDR10+ metadata</string>
+  <string name="pref_kodi_hdr_metadata_summary">Turn off if your device or display has problems with this format.</string>
 </resources>

@@ -113,6 +113,7 @@ import app.gyrolet.mpvrx.ui.player.components.rememberVideoAmbientFrame
 import app.gyrolet.mpvrx.ui.player.controls.PlayerControls
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.toColorHexString
 import app.gyrolet.mpvrx.ui.player.controls.tvScrubStepSeconds
+import app.gyrolet.mpvrx.ui.player.engine.PlayerCore
 import app.gyrolet.mpvrx.ui.player.ytdlp.YouTubeAuthenticationRecovery
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.remote.RemotePairingPrompt
@@ -1346,7 +1347,7 @@ class PlayerActivity :
           decoderPreferences.dolbyVisionDirect.changes(),
           decoderPreferences.mediaCodecEmbed.changes(),
         ) { dolbyVisionDirect, mediaCodecEmbed ->
-          DolbyVisionDirect.wantsOsdOverlay(dolbyVisionDirect, mediaCodecEmbed)
+          PlayerCore.wantsOsdOverlay(dolbyVisionDirect, mediaCodecEmbed)
         }.distinctUntilChanged().collect { player.setOsdOverlay(it) }
       }
       lifecycleScope.launch {
@@ -7136,7 +7137,8 @@ class PlayerActivity :
     val isRemote =
       item.networkSource != null ||
         sourceSchemes.any { scheme -> scheme in setOf("http", "https", "rtsp", "rtmp", "magnet", "torrent") }
-    return if (isRemote) NETWORK_PLAYBACK_LOAD_TIMEOUT_MS else LOCAL_PLAYBACK_LOAD_TIMEOUT_MS
+    val timeout = if (isRemote) NETWORK_PLAYBACK_LOAD_TIMEOUT_MS else LOCAL_PLAYBACK_LOAD_TIMEOUT_MS
+    return timeout + PlayerCore.startupAllowanceMs
   }
 
   /**

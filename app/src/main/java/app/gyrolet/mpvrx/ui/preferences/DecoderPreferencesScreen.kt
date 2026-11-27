@@ -50,6 +50,7 @@ import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.DolbyVisionProfile7
+import app.gyrolet.mpvrx.preferences.KodiToneMapping
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverride
 import app.gyrolet.mpvrx.preferences.VulkanFrameImport
@@ -137,26 +138,28 @@ object DecoderPreferencesScreen : ScrollableSettingsScreen {
 
           item {
             PreferenceCard {
-              val profile by preferences.profile.collectAsState()
-              val currentProfile = MPVProfile.fromValue(profile)
-              ExpressivePreferenceItem {
-                ListPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_profile_title),
-                  value = currentProfile,
-                  onValueChange = { preferences.profile.set(it.value) },
-                  values = MPVProfile.entries,
-                  enabled = !profileConfigOwned,
-                  title = { Text(stringResource(R.string.pref_decoder_profile_title)) },
-                  summary = {
-                    Text(
-                      currentProfile.displayName,
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
-              }
+              if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+                val profile by preferences.profile.collectAsState()
+                val currentProfile = MPVProfile.fromValue(profile)
+                ExpressivePreferenceItem {
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_profile_title),
+                    value = currentProfile,
+                    onValueChange = { preferences.profile.set(it.value) },
+                    values = MPVProfile.entries,
+                    enabled = !profileConfigOwned,
+                    title = { Text(stringResource(R.string.pref_decoder_profile_title)) },
+                    summary = {
+                      Text(
+                        currentProfile.displayName,
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
+                }
 
-              PreferenceDivider()
+                PreferenceDivider()
+              }
 
               val tryHWDecoding by preferences.tryHWDecoding.collectAsState()
               val mediaCodecEmbed by preferences.mediaCodecEmbed.collectAsState()
@@ -185,6 +188,9 @@ object DecoderPreferencesScreen : ScrollableSettingsScreen {
                 title = { Text(stringResource(R.string.pref_decoder_try_hw_dec_title)) },
                 summary = forcedOnByMediaCodecEmbed.takeIf { mediaCodecEmbed },
               )
+
+              // Everything below configures libmpv's video output, renderer and shaders.
+              if (!BuildConfig.PLAYER_ENGINE_IS_MPV) return@PreferenceCard
 
               PreferenceDivider()
 
@@ -682,9 +688,102 @@ object DecoderPreferencesScreen : ScrollableSettingsScreen {
               )
             }
           }
+
+          if (!BuildConfig.PLAYER_ENGINE_IS_MPV) {
+            if (!embeddedInPlayer) {
+              item {
+                PreferenceSectionHeader(
+                  position = PreferenceSectionPosition.Single,
+                  title = stringResource(R.string.pref_kodi_engine_title),
+                )
+              }
+            }
+
+            item { KodiEnginePreferences(preferences) }
+          }
         }
       }
     }
+  }
+}
+
+/** The kodi distribution's video output: Kodi's direct MediaCodec output, HDR and Dolby Vision. */
+@Composable
+private fun KodiEnginePreferences(preferences: DecoderPreferences) {
+  PreferenceCard {
+    val directVideo by preferences.mediaCodecEmbed.collectAsState()
+    SwitchPreference(
+      modifier = Modifier.settingsSearchTarget(R.string.pref_kodi_direct_video_title),
+      value = directVideo,
+      onValueChange = { preferences.mediaCodecEmbed.set(it) },
+      title = { Text(stringResource(R.string.pref_kodi_direct_video_title)) },
+      summary = { Text(stringResource(R.string.pref_kodi_direct_video_summary)) },
+    )
+
+    PreferenceDivider()
+
+    val hdrOutput by preferences.hdrScreenOutput.collectAsState()
+    SwitchPreference(
+      modifier = Modifier.settingsSearchTarget(R.string.pref_kodi_hdr_output_title),
+      value = hdrOutput,
+      onValueChange = { preferences.hdrScreenOutput.set(it) },
+      title = { Text(stringResource(R.string.pref_kodi_hdr_output_title)) },
+      summary = { Text(stringResource(R.string.pref_kodi_hdr_output_summary)) },
+    )
+
+    PreferenceDivider()
+
+    val toneMapping by preferences.kodiToneMapping.collectAsState()
+    ExpressivePreferenceItem {
+      ListPreference(
+        modifier = Modifier.settingsSearchTarget(R.string.pref_kodi_tone_mapping_title),
+        value = toneMapping,
+        onValueChange = { preferences.kodiToneMapping.set(it) },
+        values = KodiToneMapping.entries,
+        valueToText = { AnnotatedString(stringResource(it.titleRes)) },
+        enabled = !directVideo,
+        title = { Text(stringResource(R.string.pref_kodi_tone_mapping_title)) },
+        summary = {
+          Text(
+            stringResource(toneMapping.titleRes),
+            color = MaterialTheme.colorScheme.outline,
+          )
+        },
+      )
+    }
+
+    PreferenceDivider()
+
+    val doviCompatibility by preferences.kodiDolbyVisionCompatibility.collectAsState()
+    SwitchPreference(
+      modifier = Modifier.settingsSearchTarget(R.string.pref_kodi_dovi_compatibility_title),
+      value = doviCompatibility,
+      onValueChange = { preferences.kodiDolbyVisionCompatibility.set(it) },
+      title = { Text(stringResource(R.string.pref_kodi_dovi_compatibility_title)) },
+      summary = { Text(stringResource(R.string.pref_kodi_dovi_compatibility_summary)) },
+    )
+
+    PreferenceDivider()
+
+    val allowDolbyVision by preferences.kodiAllowDolbyVision.collectAsState()
+    SwitchPreference(
+      modifier = Modifier.settingsSearchTarget(R.string.pref_kodi_allow_dolby_vision_title),
+      value = allowDolbyVision,
+      onValueChange = { preferences.kodiAllowDolbyVision.set(it) },
+      title = { Text(stringResource(R.string.pref_kodi_allow_dolby_vision_title)) },
+      summary = { Text(stringResource(R.string.pref_kodi_hdr_metadata_summary)) },
+    )
+
+    PreferenceDivider()
+
+    val allowHdr10Plus by preferences.kodiAllowHdr10Plus.collectAsState()
+    SwitchPreference(
+      modifier = Modifier.settingsSearchTarget(R.string.pref_kodi_allow_hdr10_plus_title),
+      value = allowHdr10Plus,
+      onValueChange = { preferences.kodiAllowHdr10Plus.set(it) },
+      title = { Text(stringResource(R.string.pref_kodi_allow_hdr10_plus_title)) },
+      summary = { Text(stringResource(R.string.pref_kodi_hdr_metadata_summary)) },
+    )
   }
 }
 

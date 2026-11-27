@@ -16,6 +16,7 @@ import android.os.Looper
 import android.os.Process
 import android.provider.Settings
 import androidx.annotation.RequiresApi
+import app.gyrolet.mpvrx.ui.player.engine.EngineProcess
 import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.File
 import java.text.SimpleDateFormat
@@ -267,10 +268,15 @@ internal object CrashMonitor {
     if (checkedAt < 0L) return
 
     val crashProcess = "${context.packageName}:crash"
+    // The playback engine's process ends itself; the player reports its failures.
     val abnormal =
       exits
-        .filter { it.timestamp > checkedAt && it.pid != Process.myPid() && it.processName != crashProcess }
-        .filter(::isAbnormal)
+        .filter {
+          it.timestamp > checkedAt &&
+            it.pid != Process.myPid() &&
+            it.processName != crashProcess &&
+            !EngineProcess.isEngineProcess(it.processName, context.packageName)
+        }.filter(::isAbnormal)
         .sortedBy(ApplicationExitInfo::getTimestamp)
     if (abnormal.isEmpty()) return
 

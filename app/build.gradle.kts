@@ -35,30 +35,6 @@ abstract class SmbRpcExceptionCompatibility : AsmClassVisitorFactory<Instrumenta
     )
 }
 
-// libkodi.so creates two of Kodi's Java classes by "<applicationId>.<class>" name, while the AAR
-// compiles them into org.xbmc.kodi (where their natives are registered). Kodi variants get
-// subclasses in their own package.
-abstract class GenerateKodiHostClasses : DefaultTask() {
-  @get:Input
-  abstract val applicationId: Property<String>
-
-  @get:OutputDirectory
-  abstract val outputDirectory: DirectoryProperty
-
-  @TaskAction
-  fun generate() {
-    val packageName = applicationId.get()
-    val root = outputDirectory.get().asFile
-    root.deleteRecursively()
-    val packageDir = root.resolve(packageName.replace('.', '/')).apply { mkdirs() }
-    listOf("XBMCInputDeviceListener", "XBMCBroadcastReceiver").forEach { name ->
-      packageDir.resolve("$name.java").writeText(
-        "package $packageName;\n\npublic class $name extends org.xbmc.kodi.$name {}\n",
-      )
-    }
-  }
-}
-
 val localProperties =
   Properties().apply {
     val localFile = rootProject.file("local.properties")
@@ -80,9 +56,10 @@ val universalOnlyDistributions = setOf("noVulkan", "fongmi", "playstore")
 // Distributions outside Google Play. Play forbids downloaded executable code (yt-dlp) and torrent
 // streaming, so only these flavors enable yt-dlp and ship yt-dlp and libtorrent native payloads.
 val sideloadDistributions = setOf("standard", "noVulkan", "fongmi", "kodi")
-// The kodi flavor bundles the mpvlib-kodi AAR: Kodi's native libraries and Java glue, run in a ":kodi"
-// process. A local AAR (-PmpvlibKodiAar=<path> or mpvlibKodiAar in local.properties) replaces the
-// GitHub release download.
+// Distributions that play with libmpv (src/mpvEngine). The kodi distribution plays with Kodi
+// (src/kodi): the mpvlib-kodi AAR runs it headless in a ":kodi" process. A local AAR
+// (-PmpvlibKodiAar=<path> or mpvlibKodiAar in local.properties) replaces the GitHub release download.
+val mpvEngineDistributions = setOf("standard", "playstore", "noVulkan", "fongmi")
 val mpvlibKodiAar = project.findProperty("mpvlibKodiAar")?.toString() ?: localProperties.getProperty("mpvlibKodiAar")
 // Kodi publishes no x86_64 libraries. A kodi APK carrying mpv's x86_64 libraries would make x86_64
 // devices install those without libkodi.so, so it ships none and they use the 32-bit x86 libraries.
@@ -160,6 +137,7 @@ android {
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
       buildConfigField("String", "UPDATE_APK_VARIANT", "\"standard\"")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
+      buildConfigField("boolean", "PLAYER_ENGINE_IS_MPV", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
       // FongMi's mpv ships the GPU motion interpolation core.
@@ -181,6 +159,7 @@ android {
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
       buildConfigField("String", "UPDATE_APK_VARIANT", "\"standard\"")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "true")
+      buildConfigField("boolean", "PLAYER_ENGINE_IS_MPV", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
       // FongMi's mpv ships the GPU motion interpolation core.
@@ -200,6 +179,7 @@ android {
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
       buildConfigField("String", "UPDATE_APK_VARIANT", "\"no-vulkan\"")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
+      buildConfigField("boolean", "PLAYER_ENGINE_IS_MPV", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
       // FongMi's mpv ships the GPU motion interpolation core.
@@ -219,6 +199,7 @@ android {
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "true")
       buildConfigField("String", "UPDATE_APK_VARIANT", "\"fongmi\"")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
+      buildConfigField("boolean", "PLAYER_ENGINE_IS_MPV", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "true")
       // FongMi's mpv ships the GPU motion interpolation core.
@@ -232,7 +213,7 @@ android {
       buildConfigField("boolean", "MPV_SUPPORTS_FONGMI_EXTENSIONS", "true")
     }
 
-    // The standard engine plus an embedded Kodi, opened from mpvRx and run in its own process.
+    // Plays with Kodi instead of libmpv, behind the same player UI. libmpv still makes thumbnails.
     create("kodi") {
       dimension = "distribution"
       // A separate package, so it installs beside the standard build.
@@ -242,7 +223,9 @@ android {
       buildConfigField("boolean", "ENABLE_UPDATE_FEATURE", "false")
       buildConfigField("String", "UPDATE_APK_VARIANT", "\"kodi\"")
       buildConfigField("boolean", "SCOPED_STORAGE_ONLY", "false")
-      buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "true")
+      buildConfigField("boolean", "PLAYER_ENGINE_IS_MPV", "false")
+      // Kodi renders with OpenGL ES.
+      buildConfigField("boolean", "MPV_SUPPORTS_VULKAN", "false")
       buildConfigField("boolean", "MPV_SUPPORTS_MEDIACODEC_VULKAN", "false")
       // FongMi's mpv ships the GPU motion interpolation core.
       buildConfigField("boolean", "MPV_SUPPORTS_MOTION_INTERPOLATION", "false")
@@ -259,7 +242,6 @@ android {
       val enableYtdlp = name in sideloadDistributions
       buildConfigField("boolean", "ENABLE_YTDLP", enableYtdlp.toString())
       buildConfigField("boolean", "ENABLE_TORRENT", enableYtdlp.toString())
-      buildConfigField("boolean", "ENABLE_KODI", (name == "kodi").toString())
       if (enableYtdlp) proguardFile("src/sideload/proguard-rules.pro")
       externalNativeBuild {
         cmake {
@@ -278,6 +260,9 @@ android {
         assets.directories.add("src/ytdlp/assets")
         jniLibs.directories.add("src/ytdlp/jniLibs")
       }
+    }
+    mpvEngineDistributions.forEach { flavor ->
+      getByName(flavor).kotlin.directories.add("src/mpvEngine/java")
     }
   }
 
@@ -385,20 +370,7 @@ androidComponents {
       variant.productFlavors.any { (dimension, flavor) ->
         dimension == "distribution" && flavor == "kodi"
       }
-    if (bundlesKodi) {
-      val jniLibs = variant.packaging.jniLibs
-      jniLibs.excludes.add("lib/$kodiMissingAbi/**")
-      val generateKodiHostClasses =
-        tasks.register<GenerateKodiHostClasses>(
-          "generate${variant.name.replaceFirstChar(Char::uppercase)}KodiHostClasses",
-        ) {
-          applicationId.set(variant.applicationId)
-        }
-      variant.sources.java?.addGeneratedSourceDirectory(
-        generateKodiHostClasses,
-        GenerateKodiHostClasses::outputDirectory,
-      )
-    }
+    if (bundlesKodi) variant.packaging.jniLibs.excludes.add("lib/$kodiMissingAbi/**")
 
     variant.outputs.forEach { output ->
       val abi =

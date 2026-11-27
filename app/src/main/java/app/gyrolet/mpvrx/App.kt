@@ -47,6 +47,7 @@ import app.gyrolet.mpvrx.ui.player.PlaybackPerformanceTrace
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
+import app.gyrolet.mpvrx.ui.player.engine.EngineProcess
 import app.gyrolet.mpvrx.ui.theme.AppTheme
 import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.utils.logging.Log
@@ -90,6 +91,9 @@ class App :
   private val imageCacheCleanupStarted = AtomicBoolean(false)
   private val settingsAutoBackupRunning = AtomicBoolean(false)
   private var startedActivityCount = 0
+  private val inEngineProcess by lazy {
+    EngineProcess.isEngineProcess(CrashMonitor.currentProcessName(), packageName)
+  }
   private val mediaStoreLiveMonitor by lazy {
     app.gyrolet.mpvrx.utils.media
       .MediaStoreLiveMonitor(this, applicationScope)
@@ -133,6 +137,8 @@ class App :
 
   override fun attachBaseContext(base: android.content.Context) {
     super.attachBaseContext(base)
+    // The playback engine's process (kodi distribution) runs nothing of the app.
+    if (inEngineProcess) return
     AppLogging.ensureInstalled()
     // Before content providers and onCreate run, so no startup crash escapes the handler. The
     // crash screen's own process keeps the platform handler, so a failing recovery cannot loop.
@@ -142,6 +148,7 @@ class App :
   @OptIn(ExperimentalComposeUiApi::class)
   override fun onCreate() {
     super.onCreate()
+    if (inEngineProcess) return
     app.gyrolet.mpvrx.utils.device.DevicePerformance
       .init(this)
 
@@ -284,17 +291,20 @@ class App :
 
   override fun onTrimMemory(level: Int) {
     super.onTrimMemory(level)
+    if (inEngineProcess) return
     BitmapMemoryCaches.trimMemory(level)
   }
 
   @Suppress("DEPRECATION")
   override fun onLowMemory() {
     super.onLowMemory()
+    if (inEngineProcess) return
     BitmapMemoryCaches.trimMemory(ComponentCallbacks2.TRIM_MEMORY_COMPLETE)
   }
 
   override fun onConfigurationChanged(newConfig: Configuration) {
     super.onConfigurationChanged(newConfig)
+    if (inEngineProcess) return
     PlaybackSession.updateStatisticsLanguage(this)
     MediaPlayerWidget.requestUpdate(this)
   }

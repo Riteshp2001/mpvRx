@@ -41,6 +41,7 @@ import app.gyrolet.mpvrx.ui.player.anime4k.applyAnime4KStabilityOptions
 import app.gyrolet.mpvrx.ui.player.anime4k.clearAnime4KShaders
 import app.gyrolet.mpvrx.ui.player.anime4k.selectRuntimeStableAnime4K
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.toColorHexString
+import app.gyrolet.mpvrx.ui.player.engine.PlayerCore
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import app.gyrolet.mpvrx.utils.logging.Log
@@ -127,7 +128,7 @@ class MPVView(
         mediaCodecEmbed = mediaCodecEmbed,
       ),
     )
-    setOsdOverlay(DolbyVisionDirect.wantsOsdOverlay(decoderPreferences.dolbyVisionDirect.get(), mediaCodecEmbed))
+    setOsdOverlay(PlayerCore.wantsOsdOverlay(decoderPreferences.dolbyVisionDirect.get(), mediaCodecEmbed))
   }
 
   /** A slow Surface must not prevent the media load and its watchdog from starting. */

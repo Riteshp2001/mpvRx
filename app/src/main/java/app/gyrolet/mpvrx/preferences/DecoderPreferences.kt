@@ -38,6 +38,19 @@ class DecoderPreferences(
   /** FongMi build: how hardware-decoded frames are imported into Vulkan. */
   val vulkanFrameImport = preferenceStore.getEnum("vulkan_frame_import", VulkanFrameImport.Auto)
 
+  // Kodi engine (kodi distribution). mediaCodecEmbed selects Kodi's direct MediaCodec output and
+  // hdrScreenOutput Kodi's display HDR mode (winsystem.ishdrdisplay).
+
+  /** videoplayer.convertdovi: Dolby Vision profile 7 is played as profile 8.1. */
+  val kodiDolbyVisionCompatibility = preferenceStore.getBoolean("kodi_dolby_vision_compatibility", false)
+
+  /** videoplayer.allowedhdrformats: dynamic HDR metadata kept in the video bitstream. */
+  val kodiAllowDolbyVision = preferenceStore.getBoolean("kodi_allow_dolby_vision", true)
+  val kodiAllowHdr10Plus = preferenceStore.getBoolean("kodi_allow_hdr10_plus", true)
+
+  /** How Kodi's OpenGL renderer maps HDR video to an SDR output. */
+  val kodiToneMapping = preferenceStore.getEnum("kodi_tone_mapping", KodiToneMapping.Reinhard)
+
   /** Boost SDR content into the HDR range when using the Linear HDR pipeline. */
   val boostSdrToHdr = preferenceStore.getBoolean("boost_sdr_to_hdr", true)
   val useYUV420P = preferenceStore.getBoolean("use_yuv420p", false)
