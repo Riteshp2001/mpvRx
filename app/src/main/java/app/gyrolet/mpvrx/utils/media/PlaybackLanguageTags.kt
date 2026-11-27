@@ -10,7 +10,12 @@ import java.util.MissingResourceException
 internal fun normalizePlaybackLanguageTag(value: String): String? {
   val tag = value.trim().lowercase(Locale.ROOT).replace('_', '-')
   val base = playbackLanguageCodes[tag.substringBefore('-')] ?: return null
-  return base + tag.substringAfter('-', "").takeIf(String::isNotEmpty)?.let { "-$it" }.orEmpty()
+  return base +
+    tag
+      .substringAfter('-', "")
+      .takeIf(String::isNotEmpty)
+      ?.let { "-$it" }
+      .orEmpty()
 }
 
 private val playbackLanguageCodes: Map<String, String> by lazy {
@@ -27,11 +32,30 @@ private val playbackLanguageCodes: Map<String, String> by lazy {
     }
     putAll(
       mapOf(
-        "alb" to "sq", "arm" to "hy", "baq" to "eu", "bur" to "my", "chi" to "zh",
-        "cze" to "cs", "dut" to "nl", "fre" to "fr", "geo" to "ka", "ger" to "de",
-        "gre" to "el", "ice" to "is", "mac" to "mk", "mao" to "mi", "may" to "ms",
-        "per" to "fa", "rum" to "ro", "slo" to "sk", "tib" to "bo", "wel" to "cy",
-        "jp" to "ja", "iw" to "he", "in" to "id", "ji" to "yi",
+        "alb" to "sq",
+        "arm" to "hy",
+        "baq" to "eu",
+        "bur" to "my",
+        "chi" to "zh",
+        "cze" to "cs",
+        "dut" to "nl",
+        "fre" to "fr",
+        "geo" to "ka",
+        "ger" to "de",
+        "gre" to "el",
+        "ice" to "is",
+        "mac" to "mk",
+        "mao" to "mi",
+        "may" to "ms",
+        "per" to "fa",
+        "rum" to "ro",
+        "slo" to "sk",
+        "tib" to "bo",
+        "wel" to "cy",
+        "jp" to "ja",
+        "iw" to "he",
+        "in" to "id",
+        "ji" to "yi",
       ),
     )
   }

@@ -16,33 +16,36 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.presentation.components.LocalCompactSheetControls
 import app.gyrolet.mpvrx.ui.components.IconSwitch
-import app.gyrolet.mpvrx.ui.preferences.LocalInsidePreferenceCard
-import app.gyrolet.mpvrx.ui.preferences.PreferenceTileVisualState
-import app.gyrolet.mpvrx.ui.preferences.playerSettingSummary
-import app.gyrolet.mpvrx.ui.preferences.playerSettingAvailability
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.preferences.LocalInsidePreferenceCard
+import app.gyrolet.mpvrx.ui.preferences.LocalPlayerSettingsPanel
+import app.gyrolet.mpvrx.ui.preferences.PreferenceTileVisualState
+import app.gyrolet.mpvrx.ui.preferences.playerSettingAvailability
+import app.gyrolet.mpvrx.ui.preferences.playerSettingSummary
 import app.gyrolet.mpvrx.ui.theme.AppMotion
-import app.gyrolet.mpvrx.ui.theme.appPressFeedback
-import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.rememberLowEndDevice
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
@@ -62,6 +65,7 @@ fun SwitchPreference(
   modifier: Modifier = Modifier,
   groupIndex: Int? = null,
   groupSize: Int? = null,
+  compact: Boolean = LocalPlayerSettingsPanel.current || LocalCompactSheetControls.current,
 ) {
   val availability = playerSettingAvailability(modifier)
   if (!availability.visible) return
@@ -86,36 +90,41 @@ fun SwitchPreference(
     }
   }
   val insideConnectedCard = LocalInsidePreferenceCard.current
-  val shape = when {
-    insideConnectedCard -> MaterialTheme.shapes.small
-    groupIndex != null && groupSize != null -> rememberConnectedShape(
-      index = groupIndex,
-      itemCount = groupSize,
-      layout = ConnectedLayout.Vertical,
-      pressed = pressed && canChange,
-      selected = value,
-      reduceMotion = lowEnd || AppMotion.shouldReduceMotion(),
-    )
-    else -> MaterialTheme.shapes.large
-  }
+  val shape =
+    when {
+      insideConnectedCard -> MaterialTheme.shapes.small
+      groupIndex != null && groupSize != null ->
+        rememberConnectedShape(
+          index = groupIndex,
+          itemCount = groupSize,
+          layout = ConnectedLayout.Vertical,
+          pressed = pressed && canChange,
+          selected = value,
+          reduceMotion = lowEnd || AppMotion.shouldReduceMotion(),
+        )
+      else -> MaterialTheme.shapes.large
+    }
   // Inside a connected PreferenceCard the parent owns all tile fills, including selection.
   // Standalone switches still draw their own animated tonal surfaces.
-  val containerColor = animatedConnectedContainerColor(
-    selected = value,
-    pressed = pressed && !insideConnectedCard && groupIndex != null,
-    enabled = canChange,
-    containerColor = when {
-      insideConnectedCard -> Color.Transparent
-      groupIndex != null -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f)
-      else -> MaterialTheme.colorScheme.surfaceContainerLow
-    },
-    selectedContainerColor = when {
-      insideConnectedCard -> Color.Transparent
-      groupIndex != null -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.90f)
-      else -> MaterialTheme.colorScheme.secondaryContainer
-    },
-    reduceMotion = lowEnd || AppMotion.shouldReduceMotion(),
-  )
+  val containerColor =
+    animatedConnectedContainerColor(
+      selected = value,
+      pressed = pressed && !insideConnectedCard && groupIndex != null,
+      enabled = canChange,
+      containerColor =
+        when {
+          insideConnectedCard -> Color.Transparent
+          groupIndex != null -> MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.90f)
+          else -> MaterialTheme.colorScheme.surfaceContainerLow
+        },
+      selectedContainerColor =
+        when {
+          insideConnectedCard -> Color.Transparent
+          groupIndex != null -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.90f)
+          else -> MaterialTheme.colorScheme.secondaryContainer
+        },
+      reduceMotion = lowEnd || AppMotion.shouldReduceMotion(),
+    )
   Surface(
     modifier =
       modifier
@@ -126,8 +135,7 @@ fun SwitchPreference(
           } else {
             Modifier
           },
-        )
-        .tvFocusHighlight(shape, enabled = canChange, focusedScale = 1.01f),
+        ).tvFocusHighlight(shape, enabled = canChange, focusedScale = 1.01f),
     shape = shape,
     color = containerColor,
   ) {
@@ -135,8 +143,17 @@ fun SwitchPreference(
       modifier =
         Modifier
           .fillMaxWidth()
-          .then(if (lowEnd) Modifier else Modifier.appPressFeedback(interactionSource, enabled = canChange, pressedScale = 0.99f))
-          .clip(shape)
+          .then(
+            if (lowEnd) {
+              Modifier
+            } else {
+              Modifier.appPressFeedback(
+                interactionSource,
+                enabled = canChange,
+                pressedScale = 0.99f,
+              )
+            },
+          ).clip(shape)
           .toggleable(
             value = value,
             enabled = canChange,
@@ -144,13 +161,13 @@ fun SwitchPreference(
             interactionSource = interactionSource,
             indication = androidx.compose.material3.ripple(),
             onValueChange = updateValue,
-          )
-          .padding(horizontal = 16.dp, vertical = 12.dp),
+          ).then(if (compact) Modifier.heightIn(min = 48.dp) else Modifier)
+          .padding(horizontal = if (compact) 12.dp else 16.dp, vertical = if (compact) 8.dp else 12.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       if (icon != null) {
         Box(
-          modifier = Modifier.padding(end = 16.dp),
+          modifier = Modifier.padding(end = if (compact) 12.dp else 16.dp),
           contentAlignment = Alignment.Center,
         ) {
           icon()
@@ -161,8 +178,8 @@ fun SwitchPreference(
         modifier =
           Modifier
             .weight(1f)
-            .padding(end = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(end = if (compact) 12.dp else 16.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 2.dp else 4.dp),
       ) {
         ProvideTextStyle(value = titleStyle) {
           title()

@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +42,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.spacing
 import java.text.DecimalFormatSymbols
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 @Composable
 fun OutlinedNumericChooser(
@@ -128,6 +128,7 @@ fun OutlinedNumericChooser(
   enabled: Boolean = true,
 ) {
   assert(max > min) { "min can't be larger than max ($min > $max)" }
+
   fun formatValue(number: Float): String =
     valueFormatter?.invoke(number) ?: number.toString().dropLastWhile { it == '0' }.dropLastWhile { it == '.' }
 
@@ -138,10 +139,11 @@ fun OutlinedNumericChooser(
   val symbols = remember(locales) { DecimalFormatSymbols.getInstance(locales[0]) }
   val numericText = normalizeNumericInput(valueString, symbols)
   val enteredValue = numericText.toFloatOrNull()?.takeIf { it.isFinite() }
-  val invalidInput = when (numericText) {
-    "", "-", "+", ".", "-.", "+." -> false
-    else -> enteredValue == null
-  }
+  val invalidInput =
+    when (numericText) {
+      "", "-", "+", ".", "-.", "+." -> false
+      else -> enteredValue == null
+    }
   val displayedValue = enteredValue ?: value
 
   LaunchedEffect(value, focused) {
@@ -155,19 +157,20 @@ fun OutlinedNumericChooser(
   }
 
   val allowNegative = min < 0f
-  val inputInterceptor = remember(allowNegative) {
-    PlatformTextInputInterceptor { request, nextHandler ->
-      nextHandler.startInputMethod(
-        PlatformTextInputMethodRequest { attributes ->
-          val connection = request.createInputConnection(attributes)
-          if (allowNegative) attributes.inputType = attributes.inputType or InputType.TYPE_NUMBER_FLAG_SIGNED
-          attributes.imeOptions = attributes.imeOptions or
-            EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_FLAG_NO_FULLSCREEN
-          connection
-        },
-      )
+  val inputInterceptor =
+    remember(allowNegative) {
+      PlatformTextInputInterceptor { request, nextHandler ->
+        nextHandler.startInputMethod(
+          PlatformTextInputMethodRequest { attributes ->
+            val connection = request.createInputConnection(attributes)
+            if (allowNegative) attributes.inputType = attributes.inputType or InputType.TYPE_NUMBER_FLAG_SIGNED
+            attributes.imeOptions = attributes.imeOptions or
+              EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_FLAG_NO_FULLSCREEN
+            connection
+          },
+        )
+      }
     }
-  }
 
   Row(
     modifier,
@@ -216,11 +219,16 @@ fun OutlinedNumericChooser(
   }
 }
 
-private fun normalizeNumericInput(text: String, symbols: DecimalFormatSymbols): String =
-  text.trim().map { character ->
-    when (character) {
-      symbols.decimalSeparator, ',' -> '.'
-      symbols.minusSign, '\u2212' -> '-'
-      else -> character.digitToIntOrNull()?.digitToChar() ?: character
-    }
-  }.joinToString("")
+private fun normalizeNumericInput(
+  text: String,
+  symbols: DecimalFormatSymbols,
+): String =
+  text
+    .trim()
+    .map { character ->
+      when (character) {
+        symbols.decimalSeparator, ',' -> '.'
+        symbols.minusSign, '\u2212' -> '-'
+        else -> character.digitToIntOrNull()?.digitToChar() ?: character
+      }
+    }.joinToString("")

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 package app.gyrolet.mpvrx.ui.torrent
 
@@ -53,18 +53,22 @@ internal fun TorrentDownloadButton(
   val active = download?.isActive == true
   val completed = download?.isPlayable == true
   val retry = download?.status == AppDownloadStatus.FAILED || download?.status == AppDownloadStatus.CANCELLED
-  val label = when {
-    completed -> stringResource(R.string.downloads_downloaded)
-    download?.status == AppDownloadStatus.RUNNING ->
-      stringResource(R.string.torrent_picker_download_progress, download.entity.progress)
-    active -> stringResource(R.string.downloads_queued)
-    retry -> stringResource(R.string.downloads_retry)
-    else -> stringResource(R.string.downloads_download)
-  }
+  val label =
+    when {
+      completed -> stringResource(R.string.downloads_downloaded)
+      download?.status == AppDownloadStatus.RUNNING ->
+        stringResource(R.string.torrent_picker_download_progress, download.entity.progress)
+      active -> stringResource(R.string.downloads_queued)
+      retry -> stringResource(R.string.downloads_retry)
+      else -> stringResource(R.string.downloads_download)
+    }
   val enabled = !active && !completed
   val onClick = {
-    if (retry && download != null) manager.retry(download.id)
-    else manager.enqueueTorrent(source, fileIndex, fileName, fileSize, title, posterUrl)
+    if (retry && download != null) {
+      manager.retry(download.id)
+    } else {
+      manager.enqueueTorrent(source, fileIndex, fileName, fileSize, title, posterUrl)
+    }
   }
   val indicator: @Composable () -> Unit = {
     when {
@@ -79,11 +83,12 @@ internal fun TorrentDownloadButton(
           CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         }
       }
-      else -> Icon(
-        if (completed) Icons.RoundedFilled.Check else Icons.RoundedFilled.Download,
-        contentDescription = null,
-        modifier = Modifier.size(20.dp),
-      )
+      else ->
+        Icon(
+          if (completed) Icons.RoundedFilled.Check else Icons.RoundedFilled.Download,
+          contentDescription = null,
+          modifier = Modifier.size(20.dp),
+        )
     }
   }
   if (showLabel) {
@@ -102,8 +107,11 @@ internal fun TorrentDownloadButton(
       onClick = onClick,
       enabled = enabled,
       shapes = IconButtonDefaults.shapes(),
-      modifier = modifier.size(48.dp).tvFocusHighlight(MaterialTheme.shapes.large, enabled)
-        .semantics { contentDescription = label },
+      modifier =
+        modifier
+          .size(48.dp)
+          .tvFocusHighlight(MaterialTheme.shapes.large, enabled)
+          .semantics { contentDescription = label },
     ) {
       indicator()
     }

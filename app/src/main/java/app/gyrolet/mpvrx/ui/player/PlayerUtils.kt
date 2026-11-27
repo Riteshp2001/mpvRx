@@ -35,17 +35,6 @@ private object StoragePaths {
 }
 
 /**
- * Resolves content:// URIs to paths MPV can play.
- *
- * Tries multiple resolution strategies because Android's storage system varies by:
- * - Android version (pre-10, 10+, 11+ with scoped storage)
- * - Storage type (internal, external SD, SAF documents)
- * - Content provider implementation
- *
- * Falls back to file descriptor if real path cannot be determined.
- */
-
-/**
  * Extracts a direct local filesystem path from a content:// URI if it exists.
  * This is useful to bypass scoped storage / document provider permissions when we have MANAGE_EXTERNAL_STORAGE.
  */
@@ -65,6 +54,7 @@ internal fun Uri.extractLocalPath(): String? {
   return null
 }
 
+/** Resolves a content URI to a path or file descriptor MPV can play. */
 internal fun Uri.openContentFd(
   context: Context,
   allowFdFallback: Boolean = true,

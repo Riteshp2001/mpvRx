@@ -54,7 +54,8 @@ internal object FabPlacement {
 
   @Composable
   fun overlayButton(clearance: Dp): Modifier =
-    Modifier.windowInsetsPadding(overlayInsets())
+    Modifier
+      .windowInsetsPadding(overlayInsets())
       .then(padding(extraSpacing = ScaffoldSpacing + MenuSpacing, clearance = clearance))
 
   @Composable
@@ -65,8 +66,9 @@ internal object FabPlacement {
   private fun padding(
     extraSpacing: Dp,
     clearance: Dp = LocalNavigationBarHeight.current,
-  ): Modifier = Modifier.padding(
-    end = LocalFabTrailingInset.current + extraSpacing,
-    bottom = clearance.coerceAtLeast(0.dp) + extraSpacing,
-  )
+  ): Modifier =
+    Modifier.padding(
+      end = LocalFabTrailingInset.current + extraSpacing,
+      bottom = clearance.coerceAtLeast(0.dp) + extraSpacing,
+    )
 }

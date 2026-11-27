@@ -10,31 +10,31 @@
 package app.gyrolet.mpvrx.ui.browser.networkstreaming
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import app.gyrolet.mpvrx.data.jellyfin.JellyfinClient
 import app.gyrolet.mpvrx.database.entities.NetworkStreamEntryEntity
 import app.gyrolet.mpvrx.database.repository.NetworkStreamEntryRepository
 import app.gyrolet.mpvrx.domain.network.ConnectionStatus
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.torrent.isTorrentSource
 import app.gyrolet.mpvrx.domain.torrent.parseMagnet
+import app.gyrolet.mpvrx.preferences.NetworkBookmarkPreferences
 import app.gyrolet.mpvrx.repository.JellyfinRepository
 import app.gyrolet.mpvrx.repository.NetworkRepository
-import app.gyrolet.mpvrx.preferences.NetworkBookmarkPreferences
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
 import app.gyrolet.mpvrx.repository.wyzie.WyzieTmdbResult
 import app.gyrolet.mpvrx.repository.wyzie.bestTmdbResult
-import app.gyrolet.mpvrx.data.jellyfin.JellyfinClient
 import app.gyrolet.mpvrx.ui.torrent.cleanSearchTitle
 import app.gyrolet.mpvrx.ui.torrent.tmdbImageUrl
 import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils
-import android.net.Uri
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -107,26 +107,29 @@ class NetworkStreamingViewModel(
     streamEntryRepository
       .observeRecentNormalEntries()
       .map { entries ->
-        if (app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP) entries else
+        if (app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP) {
+          entries
+        } else {
           entries.filterNot { HttpUtils.isYouTubeUrl(it.canonicalSourceUri) }
-      }
-      .stateIn(
+        }
+      }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList(),
       )
 
   val torrentFiles: StateFlow<List<NetworkStreamEntryEntity>> =
-    (if (app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) {
-      streamEntryRepository.observeTorrentFileEntries()
-    } else {
-      flowOf(emptyList<NetworkStreamEntryEntity>())
-    })
-      .stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList(),
-      )
+    (
+      if (app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) {
+        streamEntryRepository.observeTorrentFileEntries()
+      } else {
+        flowOf(emptyList<NetworkStreamEntryEntity>())
+      }
+    ).stateIn(
+      scope = viewModelScope,
+      started = SharingStarted.WhileSubscribed(5000),
+      initialValue = emptyList(),
+    )
 
   val torrentGroups: StateFlow<List<TorrentStreamGroup>> =
     torrentFiles
@@ -312,7 +315,10 @@ class NetworkStreamingViewModel(
           releaseYear = jellyfinMatch.productionYear?.toString(),
           mediaType = if (jellyfinMatch.isSeries) "tv" else "movie",
         )
-        Log.d(ENRICHMENT_TAG, "artwork fallback (jellyfin) raw=\"$fallbackTitle\" query=\"$query\" match=\"${jellyfinMatch.name}\"")
+        Log.d(
+          ENRICHMENT_TAG,
+          "artwork fallback (jellyfin) raw=\"$fallbackTitle\" query=\"$query\" match=\"${jellyfinMatch.name}\"",
+        )
         return
       }
     }
@@ -362,7 +368,11 @@ class NetworkStreamingViewModel(
         }
       } else {
         val betterTitle = HttpUtils.extractFilenameFromUrl(source)
-        if (betterTitle != null && !HttpUtils.isLikelyJunkTitle(betterTitle) && betterTitle != initialTitle && betterTitle != uri?.host) {
+        if (betterTitle != null &&
+          !HttpUtils.isLikelyJunkTitle(betterTitle) &&
+          betterTitle != initialTitle &&
+          betterTitle != uri?.host
+        ) {
           streamEntryRepository.saveNormalEntry(
             canonicalSourceUri = source,
             fileName = betterTitle,
@@ -397,7 +407,10 @@ class NetworkStreamingViewModel(
     }
   }
 
-  fun saveLinkToMedia(url: String, customTitle: String? = null) {
+  fun saveLinkToMedia(
+    url: String,
+    customTitle: String? = null,
+  ) {
     val source = url.trim()
     if (source.isBlank()) return
     viewModelScope.launch {
@@ -419,7 +432,11 @@ class NetworkStreamingViewModel(
         }
       } else {
         val betterTitle = HttpUtils.extractFilenameFromUrl(source)
-        if (betterTitle != null && !HttpUtils.isLikelyJunkTitle(betterTitle) && betterTitle != initialTitle && betterTitle != uri?.host) {
+        if (betterTitle != null &&
+          !HttpUtils.isLikelyJunkTitle(betterTitle) &&
+          betterTitle != initialTitle &&
+          betterTitle != uri?.host
+        ) {
           streamEntryRepository.saveNormalEntry(
             canonicalSourceUri = source,
             fileName = betterTitle,
@@ -501,7 +518,11 @@ class NetworkStreamingViewModel(
               MediaInfoParser.compareMediaFiles(e1.fileName, e1.fileIndex, e2.fileName, e2.fileIndex)
             }
           val newestEntry = groupEntries.maxBy { it.updatedAt }
-          val infoHash = newestEntry.infoHash?.trim()?.lowercase()?.takeIf(String::isNotEmpty)
+          val infoHash =
+            newestEntry.infoHash
+              ?.trim()
+              ?.lowercase()
+              ?.takeIf(String::isNotEmpty)
           val groupTitle = groupEntries.firstNotNullOfOrNull { it.groupTitle?.takeIf(String::isNotBlank) }
           val posterUrl = groupEntries.firstNotNullOfOrNull { it.posterUrl?.takeIf(String::isNotBlank) }
           val backdropUrl = groupEntries.firstNotNullOfOrNull { it.backdropUrl?.takeIf(String::isNotBlank) }
@@ -524,8 +545,7 @@ class NetworkStreamingViewModel(
             releaseYear = releaseYear,
             mediaType = mediaType,
           )
-        }
-        .sortedWith(
+        }.sortedWith(
           compareByDescending<TorrentStreamGroup> { it.updatedAt }
             .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
         )
@@ -541,28 +561,35 @@ class NetworkStreamingViewModel(
         ?.let { return it }
 
       runCatching {
-        android.net.Uri.parse(source).lastPathSegment
+        android.net.Uri
+          .parse(source)
+          .lastPathSegment
           ?.substringAfterLast('/')
           ?.removeSuffix(".torrent")
           ?.trim()
-      }.getOrNull()?.takeIf {
-        it.isNotEmpty() &&
-          !it.startsWith("magnet:", ignoreCase = true) &&
-          !looksLikeHash(it) &&
-          !looksLikeGarbage(it)
-      }?.let { return it }
+      }.getOrNull()
+        ?.takeIf {
+          it.isNotEmpty() &&
+            !it.startsWith("magnet:", ignoreCase = true) &&
+            !looksLikeHash(it) &&
+            !looksLikeGarbage(it)
+        }?.let { return it }
 
       commonRoot(files)
         ?.takeIf { !looksLikeHash(it) && !looksLikeGarbage(it) }
         ?.let { return it }
 
-      files.firstOrNull()?.fileName
+      files
+        .firstOrNull()
+        ?.fileName
         ?.let { extractNameFromFileName(it) }
         ?.trim()
         ?.takeIf(String::isNotEmpty)
         ?.let { return it }
 
-      files.singleOrNull()?.fileName
+      files
+        .singleOrNull()
+        ?.fileName
         ?.substringBeforeLast('.', missingDelimiterValue = files.single().fileName)
         ?.trim()
         ?.takeIf { it.isNotEmpty() && !looksLikeHash(it) && !looksLikeGarbage(it) }
@@ -588,10 +615,11 @@ class NetworkStreamingViewModel(
     }
 
     private fun extractNameFromFileName(fileName: String): String? {
-      val cleaned = fileName
-        .substringBeforeLast('.')
-        .replace(Regex("[\\[\\]_-]"), " ")
-        .trim()
+      val cleaned =
+        fileName
+          .substringBeforeLast('.')
+          .replace(Regex("[\\[\\]_-]"), " ")
+          .trim()
 
       val seasonEpisodeMatch = Regex("(?i)\\b[Ss](\\d{1,2})[\\s.:_-]*[Ee](\\d{1,4})\\b").find(cleaned)
       if (seasonEpisodeMatch != null) {
@@ -611,7 +639,10 @@ class NetworkStreamingViewModel(
         if (beforeMatch.isNotEmpty()) return beforeMatch
       }
 
-      val qualityMatch = Regex("(?i)\\b(4K|2160p|1080p|720p|480p|HDR|HDRip|WEBRip|BluRay|BRRip|DVDRip)\\b").find(cleaned)
+      val qualityMatch =
+        Regex(
+          "(?i)\\b(4K|2160p|1080p|720p|480p|HDR|HDRip|WEBRip|BluRay|BRRip|DVDRip)\\b",
+        ).find(cleaned)
       if (qualityMatch != null) {
         val beforeMatch = cleaned.substring(0, qualityMatch.range.first).trim(' ', '-', ':', '.')
         if (beforeMatch.isNotEmpty()) return beforeMatch

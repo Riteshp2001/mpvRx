@@ -92,7 +92,7 @@ fun subtitleFontChoices(
           familyName = entry.familyName,
         )
       }
-    ).distinctBy { it.label }
+  ).distinctBy { it.label }
     .sortedBy { it.label.lowercase(Locale.ROOT) }
 }
 
@@ -106,15 +106,21 @@ suspend fun loadCustomFontEntries(context: Context): List<CustomFontEntry> =
     val fontsDir = File(context.filesDir, "fonts")
     if (!fontsDir.isDirectory) return@withContext emptyList()
 
-    fontsDir.listFiles()
+    fontsDir
+      .listFiles()
       ?.asSequence()
       ?.filter { it.isFile && it.extension.lowercase(Locale.ROOT) in setOf("ttf", "otf", "ttc") }
       ?.mapNotNull { file ->
-        val name = runCatching {
-          file.inputStream().use { stream ->
-            TTFFile.open(stream).families.values.firstOrNull()?.trim()
-          }
-        }.getOrNull()?.takeIf(String::isNotEmpty)
+        val name =
+          runCatching {
+            file.inputStream().use { stream ->
+              TTFFile
+                .open(stream)
+                .families.values
+                .firstOrNull()
+                ?.trim()
+            }
+          }.getOrNull()?.takeIf(String::isNotEmpty)
         if (name != null) {
           CustomFontEntry(name, file)
         } else {
@@ -125,10 +131,8 @@ suspend fun loadCustomFontEntries(context: Context): List<CustomFontEntry> =
             null
           }
         }
-      }
-      ?.sortedWith(
+      }?.sortedWith(
         compareBy<CustomFontEntry>({ it.familyName.lowercase(Locale.ROOT) }, { it.file.name.lowercase(Locale.ROOT) }),
-      )
-      ?.toList()
+      )?.toList()
       .orEmpty()
   }

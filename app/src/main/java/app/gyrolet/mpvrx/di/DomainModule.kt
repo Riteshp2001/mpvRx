@@ -108,15 +108,45 @@ val domainModule =
       app.gyrolet.mpvrx.domain.syncplay
         .SyncplayManager(androidContext())
     }
-    single { app.gyrolet.mpvrx.data.lyrics.LrcLibApiService(get()) }
-    single { app.gyrolet.mpvrx.data.artwork.AppleMusicArtworkRepository(get()) }
-    single { app.gyrolet.mpvrx.data.artwork.TidalArtworkRepository(get()) }
-    single { app.gyrolet.mpvrx.data.artwork.SpotifyToken(androidContext(), get(), get()) }
-    single { app.gyrolet.mpvrx.data.artwork.SpotifyArtworkRepository(get(), get()) }
-    single { app.gyrolet.mpvrx.data.artwork.MotionArtworkResolver(get(), get(), get()) }
-    single { app.gyrolet.mpvrx.data.artwork.HighQualityArtworkRepository(androidContext(), get(), get()) }
-    single { app.gyrolet.mpvrx.data.lyrics.LyricsTranslationService(get()) }
-    single { app.gyrolet.mpvrx.repository.lyrics.LyricsRepository(androidContext(), get(), get()) }
+    single {
+      app.gyrolet.mpvrx.data.lyrics
+        .LrcLibApiService(get())
+    }
+    single {
+      app.gyrolet.mpvrx.data.artwork
+        .AppleMusicArtworkRepository(get())
+    }
+    single {
+      app.gyrolet.mpvrx.data.artwork
+        .TidalArtworkRepository(get())
+    }
+    single {
+      app.gyrolet.mpvrx.data.artwork
+        .SpotifyToken(androidContext(), get(), get())
+    }
+    single {
+      app.gyrolet.mpvrx.data.artwork
+        .SpotifyArtworkRepository(get(), get())
+    }
+    single {
+      app.gyrolet.mpvrx.data.artwork
+        .MotionArtworkResolver(get(), get(), get())
+    }
+    single {
+      app.gyrolet.mpvrx.data.artwork
+        .HighQualityArtworkRepository(androidContext(), get(), get())
+    }
+    single {
+      app.gyrolet.mpvrx.data.lyrics
+        .LyricsTranslationService(get())
+    }
+    single {
+      app.gyrolet.mpvrx.repository.lyrics
+        .LyricsRepository(androidContext(), get(), get())
+    }
     single { TorrentStreamingEngine(androidContext()) }
-    single { app.gyrolet.mpvrx.repository.SeerrRepository(get(), get(), get()) }
+    single {
+      app.gyrolet.mpvrx.repository
+        .SeerrRepository(get(), get(), get())
+    }
   }

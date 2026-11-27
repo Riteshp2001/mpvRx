@@ -16,9 +16,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
-import app.gyrolet.mpvrx.preferences.BrowserPreferences
-import app.gyrolet.mpvrx.preferences.BrowserPageViewPreferences
 import app.gyrolet.mpvrx.preferences.AudiobookSortType
+import app.gyrolet.mpvrx.preferences.BrowserPageViewPreferences
+import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.FolderSortType
 import app.gyrolet.mpvrx.preferences.FolderViewMode
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
@@ -68,22 +68,28 @@ fun PlaylistSortDialog(
   val landscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
   val columnsPreference = if (landscape) landscapeColumnsPreference else portraitColumnsPreference
   val requestedColumns by columnsPreference.collectAsState()
-  val maxColumns = app.gyrolet.mpvrx.ui.browser.playlist.playlistGridColumnLimit(
-    availableWidthDp ?: configuration.screenWidthDp,
-    isLibrary,
-  )
+  val maxColumns =
+    app.gyrolet.mpvrx.ui.browser.playlist.playlistGridColumnLimit(
+      availableWidthDp ?: configuration.screenWidthDp,
+      isLibrary,
+    )
   val columns = if (requestedColumns > 0) requestedColumns.coerceIn(1, maxColumns) else maxColumns
-  val labels = PlaylistSortType.entries.associateWith { type ->
-    stringResource(app.gyrolet.mpvrx.ui.browser.playlist.playlistSortLabelRes(type))
-  }
-  val types = buildList {
-    add(PlaylistSortType.Original)
-    add(PlaylistSortType.Name)
-    add(PlaylistSortType.Location)
-    add(PlaylistSortType.DateAdded)
-    add(if (isLibrary) PlaylistSortType.ItemCount else PlaylistSortType.LastPlayed)
-    if (isM3uPlaylist) add(PlaylistSortType.Category)
-  }
+  val labels =
+    PlaylistSortType.entries.associateWith { type ->
+      stringResource(
+        app.gyrolet.mpvrx.ui.browser.playlist
+          .playlistSortLabelRes(type),
+      )
+    }
+  val types =
+    buildList {
+      add(PlaylistSortType.Original)
+      add(PlaylistSortType.Name)
+      add(PlaylistSortType.Location)
+      add(PlaylistSortType.DateAdded)
+      add(if (isLibrary) PlaylistSortType.ItemCount else PlaylistSortType.LastPlayed)
+      if (isM3uPlaylist) add(PlaylistSortType.Category)
+    }
   val ascendingLabel = stringResource(R.string.playlist_sort_ascending)
   val descendingLabel = stringResource(R.string.playlist_sort_descending)
 
@@ -96,95 +102,125 @@ fun PlaylistSortDialog(
     sortOrderAsc = sortOrder.isAscending,
     onSortOrderChange = { orderPreference.set(if (it) SortOrder.Ascending else SortOrder.Descending) },
     types = types.map(labels::getValue),
-    icons = types.map { type ->
-      when (type) {
-        PlaylistSortType.Original, PlaylistSortType.ItemCount -> Icons.RoundedFilled.PlaylistPlay
-        PlaylistSortType.Name -> Icons.RoundedFilled.Title
-        PlaylistSortType.Location, PlaylistSortType.Category -> Icons.RoundedFilled.Folder
-        PlaylistSortType.DateAdded -> Icons.RoundedFilled.CalendarToday
-        PlaylistSortType.LastPlayed -> Icons.RoundedFilled.AccessTime
-      }
-    },
+    icons =
+      types.map { type ->
+        when (type) {
+          PlaylistSortType.Original, PlaylistSortType.ItemCount -> Icons.RoundedFilled.PlaylistPlay
+          PlaylistSortType.Name -> Icons.RoundedFilled.Title
+          PlaylistSortType.Location, PlaylistSortType.Category -> Icons.RoundedFilled.Folder
+          PlaylistSortType.DateAdded -> Icons.RoundedFilled.CalendarToday
+          PlaylistSortType.LastPlayed -> Icons.RoundedFilled.AccessTime
+        }
+      },
     getLabelForType = { type, _ ->
       if (type == labels[PlaylistSortType.Name]) "A-Z" to "Z-A" else ascendingLabel to descendingLabel
     },
-    layoutModeSelector = ViewModeSelector(
-      label = stringResource(R.string.playlist_layout),
-      firstOptionLabel = stringResource(R.string.playlist_view_list),
-      secondOptionLabel = stringResource(R.string.playlist_view_grid),
-      firstOptionIcon = Icons.RoundedFilled.ViewList,
-      secondOptionIcon = Icons.RoundedFilled.GridView,
-      isFirstOptionSelected = layoutMode == MediaLayoutMode.LIST,
-      onViewModeChange = { viewPreferences.layoutMode.set(if (it) MediaLayoutMode.LIST else MediaLayoutMode.GRID) },
-    ),
-    visibilityToggles = buildList {
-      add(
-        VisibilityToggle(
-          stringResource(R.string.pref_appearance_category_thumbnails), showThumbnails, thumbnailPreference::set,
-        ),
-      )
-      add(
-        VisibilityToggle(
-          stringResource(R.string.playlist_full_names), fullNames, viewPreferences.unlimitedNameLines::set,
-        ),
-      )
-      add(
-        VisibilityToggle(stringResource(R.string.playlist_location), showLocation, viewPreferences.showLocation::set),
-      )
-      if (isLibrary) {
-        add(
-          VisibilityToggle(stringResource(R.string.playlist_item_count), showCount, viewPreferences.showItemCount::set),
-        )
-      } else if (!isM3uPlaylist) {
+    layoutModeSelector =
+      ViewModeSelector(
+        label = stringResource(R.string.playlist_layout),
+        firstOptionLabel = stringResource(R.string.playlist_view_list),
+        secondOptionLabel = stringResource(R.string.playlist_view_grid),
+        firstOptionIcon = Icons.RoundedFilled.ViewList,
+        secondOptionIcon = Icons.RoundedFilled.GridView,
+        isFirstOptionSelected = layoutMode == MediaLayoutMode.LIST,
+        onViewModeChange = { viewPreferences.layoutMode.set(if (it) MediaLayoutMode.LIST else MediaLayoutMode.GRID) },
+      ),
+    visibilityToggles =
+      buildList {
         add(
           VisibilityToggle(
-            stringResource(R.string.playlist_extension), showExtension, viewPreferences.showExtensionField::set,
+            stringResource(R.string.pref_appearance_category_thumbnails),
+            showThumbnails,
+            thumbnailPreference::set,
           ),
-        )
-        addAll(mediaDetailsToggles(viewPreferences, isAudio))
-      }
-      if (isM3uPlaylist) {
-        add(
-          VisibilityToggle(stringResource(R.string.playlist_category), showCategory, viewPreferences.showCategory::set),
         )
         add(
           VisibilityToggle(
-            stringResource(R.string.playlist_stream_details), showStreamDetails, viewPreferences.showStreamDetails::set,
+            stringResource(R.string.playlist_full_names),
+            fullNames,
+            viewPreferences.unlimitedNameLines::set,
           ),
         )
-      }
+        add(
+          VisibilityToggle(stringResource(R.string.playlist_location), showLocation, viewPreferences.showLocation::set),
+        )
+        if (isLibrary) {
+          add(
+            VisibilityToggle(
+              stringResource(R.string.playlist_item_count),
+              showCount,
+              viewPreferences.showItemCount::set,
+            ),
+          )
+        } else if (!isM3uPlaylist) {
+          add(
+            VisibilityToggle(
+              stringResource(R.string.playlist_extension),
+              showExtension,
+              viewPreferences.showExtensionField::set,
+            ),
+          )
+          addAll(mediaDetailsToggles(viewPreferences, isAudio))
+        }
+        if (isM3uPlaylist) {
+          add(
+            VisibilityToggle(
+              stringResource(R.string.playlist_category),
+              showCategory,
+              viewPreferences.showCategory::set,
+            ),
+          )
+          add(
+            VisibilityToggle(
+              stringResource(R.string.playlist_stream_details),
+              showStreamDetails,
+              viewPreferences.showStreamDetails::set,
+            ),
+          )
+        }
+        if (layoutMode == MediaLayoutMode.GRID) {
+          add(
+            VisibilityToggle(
+              stringResource(R.string.playlist_center_titles),
+              centerTitles,
+              viewPreferences.centerGridTitles::set,
+            ),
+          )
+        }
+      },
+    manualGridToggle =
       if (layoutMode == MediaLayoutMode.GRID) {
-        add(
-          VisibilityToggle(
-            stringResource(R.string.playlist_center_titles), centerTitles, viewPreferences.centerGridTitles::set,
-          ),
+        VisibilityToggle(
+          label = stringResource(R.string.playlist_manual_grid),
+          checked = manualGrid,
+          onCheckedChange = { enabled ->
+            if (enabled && requestedColumns <= 0) columnsPreference.set(columns)
+            viewPreferences.manualGridColumnsEnabled.set(enabled)
+          },
         )
-      }
-    },
-    manualGridToggle = if (layoutMode == MediaLayoutMode.GRID) {
-      VisibilityToggle(
-        label = stringResource(R.string.playlist_manual_grid),
-        checked = manualGrid,
-        onCheckedChange = { enabled ->
-          if (enabled && requestedColumns <= 0) columnsPreference.set(columns)
-          viewPreferences.manualGridColumnsEnabled.set(enabled)
-        },
-      )
-    } else null,
-    videoGridColumnSelector = when {
-      isAudio && layoutMode == MediaLayoutMode.LIST -> coverArtSizeSelector(audioCoverArtSize, viewPreferences.audioCoverArtSize::set)
-      layoutMode == MediaLayoutMode.GRID && manualGrid && maxColumns > 1 ->
-        GridColumnSelector(
-          label = stringResource(
-            if (landscape) R.string.playlist_columns_landscape else R.string.playlist_columns_portrait,
-          ),
-          currentValue = columns,
-          onValueChange = columnsPreference::set,
-          valueRange = 1f..maxColumns.toFloat(),
-          steps = maxColumns - 2,
-        )
-      else -> null
-    },
+      } else {
+        null
+      },
+    videoGridColumnSelector =
+      when {
+        isAudio && layoutMode == MediaLayoutMode.LIST ->
+          coverArtSizeSelector(
+            audioCoverArtSize,
+            viewPreferences.audioCoverArtSize::set,
+          )
+        layoutMode == MediaLayoutMode.GRID && manualGrid && maxColumns > 1 ->
+          GridColumnSelector(
+            label =
+              stringResource(
+                if (landscape) R.string.playlist_columns_landscape else R.string.playlist_columns_portrait,
+              ),
+            currentValue = columns,
+            onValueChange = columnsPreference::set,
+            valueRange = 1f..maxColumns.toFloat(),
+            steps = maxColumns - 2,
+          )
+        else -> null
+      },
   )
 }
 
@@ -231,16 +267,19 @@ fun RecentSortDialog(
   val columnsPreference = if (landscape) viewPreferences.gridColumnsLandscape else viewPreferences.gridColumnsPortrait
   val requestedColumns by columnsPreference.collectAsState()
   val isTelevision =
-    app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(androidx.compose.ui.platform.LocalContext.current)
-  val maxColumns = app.gyrolet.mpvrx.ui.browser.recentlyplayed.recentGridColumns(
-    availableWidthDp ?: configuration.screenWidthDp,
-    isTelevision = isTelevision,
-  )
+    app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+      .isTelevision(androidx.compose.ui.platform.LocalContext.current)
+  val maxColumns =
+    app.gyrolet.mpvrx.ui.browser.recentlyplayed.recentGridColumns(
+      availableWidthDp ?: configuration.screenWidthDp,
+      isTelevision = isTelevision,
+    )
   val columns = if (requestedColumns > 0) requestedColumns.coerceIn(1, maxColumns) else maxColumns
-  val labels = mapOf(
-    RecentSortType.LastPlayed to stringResource(R.string.video_swipe_last_played),
-    RecentSortType.Name to stringResource(R.string.ui_name),
-  )
+  val labels =
+    mapOf(
+      RecentSortType.LastPlayed to stringResource(R.string.video_swipe_last_played),
+      RecentSortType.Name to stringResource(R.string.ui_name),
+    )
   val ascendingLabel = stringResource(R.string.playlist_sort_ascending)
   val descendingLabel = stringResource(R.string.playlist_sort_descending)
 
@@ -259,67 +298,79 @@ fun RecentSortDialog(
     getLabelForType = { type, _ ->
       if (type == labels[RecentSortType.Name]) "A-Z" to "Z-A" else ascendingLabel to descendingLabel
     },
-    layoutModeSelector = ViewModeSelector(
-      label = stringResource(R.string.playlist_layout),
-      firstOptionLabel = stringResource(R.string.playlist_view_list),
-      secondOptionLabel = stringResource(R.string.playlist_view_grid),
-      firstOptionIcon = Icons.RoundedFilled.ViewList,
-      secondOptionIcon = Icons.RoundedFilled.GridView,
-      isFirstOptionSelected = layoutMode == MediaLayoutMode.LIST,
-      onViewModeChange = { viewPreferences.layoutMode.set(if (it) MediaLayoutMode.LIST else MediaLayoutMode.GRID) },
-    ),
-    visibilityToggles = buildList {
-      add(
-        VisibilityToggle(
-          stringResource(R.string.pref_appearance_category_thumbnails),
-          showThumbnails,
-          viewPreferences.showThumbnails::set,
-        ),
-      )
-      add(
-        VisibilityToggle(
-          stringResource(R.string.playlist_full_names), fullNames, viewPreferences.unlimitedNameLines::set,
-        ),
-      )
-      add(
-        VisibilityToggle(
-          stringResource(R.string.playlist_extension), showExtension, viewPreferences.showExtensionField::set,
-        ),
-      )
-      add(
-        VisibilityToggle(stringResource(R.string.ui_duration), showDuration, viewPreferences.showDurationField::set),
-      )
-      addAll(mediaDetailsToggles(viewPreferences, isAudioTab, includeDuration = false))
-      add(
-        VisibilityToggle(stringResource(R.string.playlist_item_count), showCount, viewPreferences.showItemCount::set),
-      )
-      if (layoutMode == MediaLayoutMode.GRID) {
+    layoutModeSelector =
+      ViewModeSelector(
+        label = stringResource(R.string.playlist_layout),
+        firstOptionLabel = stringResource(R.string.playlist_view_list),
+        secondOptionLabel = stringResource(R.string.playlist_view_grid),
+        firstOptionIcon = Icons.RoundedFilled.ViewList,
+        secondOptionIcon = Icons.RoundedFilled.GridView,
+        isFirstOptionSelected = layoutMode == MediaLayoutMode.LIST,
+        onViewModeChange = { viewPreferences.layoutMode.set(if (it) MediaLayoutMode.LIST else MediaLayoutMode.GRID) },
+      ),
+    visibilityToggles =
+      buildList {
         add(
           VisibilityToggle(
-            stringResource(R.string.playlist_center_titles), centerTitles, viewPreferences.centerGridTitles::set,
+            stringResource(R.string.pref_appearance_category_thumbnails),
+            showThumbnails,
+            viewPreferences.showThumbnails::set,
           ),
         )
-      }
-    },
-    manualGridToggle = if (layoutMode == MediaLayoutMode.GRID) {
-      VisibilityToggle(
-        label = stringResource(R.string.playlist_manual_grid),
-        checked = manualGrid,
-        onCheckedChange = { enabled ->
-          if (enabled && requestedColumns <= 0) columnsPreference.set(columns)
-          viewPreferences.manualGridColumnsEnabled.set(enabled)
-        },
-      )
-    } else null,
+        add(
+          VisibilityToggle(
+            stringResource(R.string.playlist_full_names),
+            fullNames,
+            viewPreferences.unlimitedNameLines::set,
+          ),
+        )
+        add(
+          VisibilityToggle(
+            stringResource(R.string.playlist_extension),
+            showExtension,
+            viewPreferences.showExtensionField::set,
+          ),
+        )
+        add(
+          VisibilityToggle(stringResource(R.string.ui_duration), showDuration, viewPreferences.showDurationField::set),
+        )
+        addAll(mediaDetailsToggles(viewPreferences, isAudioTab, includeDuration = false))
+        add(
+          VisibilityToggle(stringResource(R.string.playlist_item_count), showCount, viewPreferences.showItemCount::set),
+        )
+        if (layoutMode == MediaLayoutMode.GRID) {
+          add(
+            VisibilityToggle(
+              stringResource(R.string.playlist_center_titles),
+              centerTitles,
+              viewPreferences.centerGridTitles::set,
+            ),
+          )
+        }
+      },
+    manualGridToggle =
+      if (layoutMode == MediaLayoutMode.GRID) {
+        VisibilityToggle(
+          label = stringResource(R.string.playlist_manual_grid),
+          checked = manualGrid,
+          onCheckedChange = { enabled ->
+            if (enabled && requestedColumns <= 0) columnsPreference.set(columns)
+            viewPreferences.manualGridColumnsEnabled.set(enabled)
+          },
+        )
+      } else {
+        null
+      },
     videoGridColumnSelector =
       when {
         isAudioTab && layoutMode == MediaLayoutMode.LIST ->
           coverArtSizeSelector(audioCoverArtSize, viewPreferences.audioCoverArtSize::set)
         layoutMode == MediaLayoutMode.GRID && manualGrid && maxColumns > 1 ->
           GridColumnSelector(
-            label = stringResource(
-              if (landscape) R.string.playlist_columns_landscape else R.string.playlist_columns_portrait,
-            ),
+            label =
+              stringResource(
+                if (landscape) R.string.playlist_columns_landscape else R.string.playlist_columns_portrait,
+              ),
             currentValue = columns,
             onValueChange = columnsPreference::set,
             valueRange = 1f..maxColumns.toFloat(),
@@ -352,11 +403,13 @@ private fun mediaDetailsToggles(
     }
     add(VisibilityToggle("Size", size, preferences.showSizeChip::set))
     if (!isAudio) {
-      add(VisibilityToggle(
-        stringResource(R.string.grayscale_watched_thumbnails),
-        grayscaleWatchedThumbnails,
-        preferences.grayscaleWatchedThumbnails::set,
-      ))
+      add(
+        VisibilityToggle(
+          stringResource(R.string.grayscale_watched_thumbnails),
+          grayscaleWatchedThumbnails,
+          preferences.grayscaleWatchedThumbnails::set,
+        ),
+      )
       add(VisibilityToggle("Resolution", resolution, preferences.showResolutionChip::set))
       add(VisibilityToggle("Framerate", framerate, preferences.showFramerateInResolution::set))
       add(VisibilityToggle("Subtitle Indicator", subtitles, preferences.showSubtitleIndicator::set))
@@ -421,7 +474,8 @@ fun FolderSortDialog(
   val usableVideoWidth = videoPaneWidth - (contentHorizontalPadding * 2) - itemSpacing
 
   val isTelevision =
-    app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(androidx.compose.ui.platform.LocalContext.current)
+    app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+      .isTelevision(androidx.compose.ui.platform.LocalContext.current)
   val folderMinWidth = if (isTelevision) 160.dp else 90.dp
   val videoMinWidth = if (isTelevision) 240.dp else 130.dp
   val dynamicFolderColumns = (usableFolderWidth / folderMinWidth).toInt().coerceAtLeast(1)
@@ -444,12 +498,20 @@ fun FolderSortDialog(
       if (pref > 0) pref else dynamicVideoColumns
     }
 
-  val maxFolderColumns = if (pickerMode) {
-    app.gyrolet.mpvrx.ui.browser.playlist.playlistGridColumnLimit(screenWidthDp.value.toInt(), true)
-  } else maxOf(if (isTablet || isLandscape) 8 else 4, dynamicFolderColumns + 3).coerceIn(4, 16)
-  val maxVideoColumns = if (pickerMode) {
-    app.gyrolet.mpvrx.ui.browser.playlist.playlistGridColumnLimit(screenWidthDp.value.toInt())
-  } else maxOf(if (isTablet || isLandscape) 8 else 4, dynamicVideoColumns + 3).coerceIn(4, 16)
+  val maxFolderColumns =
+    if (pickerMode) {
+      app.gyrolet.mpvrx.ui.browser.playlist
+        .playlistGridColumnLimit(screenWidthDp.value.toInt(), true)
+    } else {
+      maxOf(if (isTablet || isLandscape) 8 else 4, dynamicFolderColumns + 3).coerceIn(4, 16)
+    }
+  val maxVideoColumns =
+    if (pickerMode) {
+      app.gyrolet.mpvrx.ui.browser.playlist
+        .playlistGridColumnLimit(screenWidthDp.value.toInt())
+    } else {
+      maxOf(if (isTablet || isLandscape) 8 else 4, dynamicVideoColumns + 3).coerceIn(4, 16)
+    }
 
   // The Music > Folders tab embeds the album-style folder list regardless of the Home screen's
   // selected folder view. Its controls must therefore read and update the album-view preferences,
@@ -578,41 +640,50 @@ fun FolderSortDialog(
             ),
         )
       },
-    layoutModeSelector = if (fixedLayoutMode == null) {
-      ViewModeSelector(
-        label = "Layout",
-        firstOptionLabel = "List",
-        secondOptionLabel = "Grid",
-        firstOptionIcon = Icons.RoundedFilled.ViewList,
-        secondOptionIcon = Icons.RoundedFilled.GridView,
-        isFirstOptionSelected = activeLayoutMode == MediaLayoutMode.LIST,
-        onViewModeChange = { isFirstOption ->
-          val newLayout = if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
-          if (isAlbumView) {
-            browserPreferences.folderViewFolderLayoutMode.set(newLayout)
-            if (!separateFolderVideoLayout) {
-              browserPreferences.folderViewVideoLayoutMode.set(newLayout)
-            }
-          } else {
-            browserPreferences.mediaLayoutMode.set(newLayout)
-          }
-        },
-        checkboxLabel =
-          if (isAlbumView && activeLayoutMode == MediaLayoutMode.GRID) stringResource(R.string.only_for_folder_list) else null,
-        isCheckboxChecked = separateFolderVideoLayout,
-        onCheckboxChange =
-          if (isAlbumView && activeLayoutMode == MediaLayoutMode.GRID) {
-            { checked ->
-              browserPreferences.separateFolderVideoLayout.set(checked)
-              if (!checked) {
-                browserPreferences.folderViewVideoLayoutMode.set(browserPreferences.folderViewFolderLayoutMode.get())
+    layoutModeSelector =
+      if (fixedLayoutMode == null) {
+        ViewModeSelector(
+          label = "Layout",
+          firstOptionLabel = "List",
+          secondOptionLabel = "Grid",
+          firstOptionIcon = Icons.RoundedFilled.ViewList,
+          secondOptionIcon = Icons.RoundedFilled.GridView,
+          isFirstOptionSelected = activeLayoutMode == MediaLayoutMode.LIST,
+          onViewModeChange = { isFirstOption ->
+            val newLayout = if (isFirstOption) MediaLayoutMode.LIST else MediaLayoutMode.GRID
+            if (isAlbumView) {
+              browserPreferences.folderViewFolderLayoutMode.set(newLayout)
+              if (!separateFolderVideoLayout) {
+                browserPreferences.folderViewVideoLayoutMode.set(newLayout)
               }
+            } else {
+              browserPreferences.mediaLayoutMode.set(newLayout)
             }
-          } else {
-            null
           },
-      )
-    } else null,
+          checkboxLabel =
+            if (isAlbumView &&
+              activeLayoutMode == MediaLayoutMode.GRID
+            ) {
+              stringResource(R.string.only_for_folder_list)
+            } else {
+              null
+            },
+          isCheckboxChecked = separateFolderVideoLayout,
+          onCheckboxChange =
+            if (isAlbumView && activeLayoutMode == MediaLayoutMode.GRID) {
+              { checked ->
+                browserPreferences.separateFolderVideoLayout.set(checked)
+                if (!checked) {
+                  browserPreferences.folderViewVideoLayoutMode.set(browserPreferences.folderViewFolderLayoutMode.get())
+                }
+              }
+            } else {
+              null
+            },
+        )
+      } else {
+        null
+      },
     visibilityToggles =
       buildList {
         add(
@@ -785,7 +856,8 @@ fun VideoSortDialog(
   val usableVideoWidth = videoPaneWidth - (contentHorizontalPadding * 2) - itemSpacing
 
   val isTelevision =
-    app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(androidx.compose.ui.platform.LocalContext.current)
+    app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+      .isTelevision(androidx.compose.ui.platform.LocalContext.current)
   val folderMinWidth = if (isTelevision) 160.dp else 90.dp
   val videoMinWidth = if (isTelevision) 240.dp else 130.dp
   val dynamicFolderColumns = (usableFolderWidth / folderMinWidth).toInt().coerceAtLeast(1)
@@ -808,16 +880,26 @@ fun VideoSortDialog(
       if (pref > 0) pref else dynamicVideoColumns
     }
 
-  val maxFolderColumns = if (pickerMode) {
-    app.gyrolet.mpvrx.ui.browser.playlist.playlistGridColumnLimit(screenWidthDp.value.toInt(), true)
-  } else maxOf(if (isTablet || isLandscape) 8 else 4, dynamicFolderColumns + 3).coerceIn(4, 16)
-  val maxVideoColumns = if (pickerMode) {
-    app.gyrolet.mpvrx.ui.browser.playlist.playlistGridColumnLimit(screenWidthDp.value.toInt())
-  } else maxOf(if (isTablet || isLandscape) 8 else 4, dynamicVideoColumns + 3).coerceIn(4, 16)
+  val maxFolderColumns =
+    if (pickerMode) {
+      app.gyrolet.mpvrx.ui.browser.playlist
+        .playlistGridColumnLimit(screenWidthDp.value.toInt(), true)
+    } else {
+      maxOf(if (isTablet || isLandscape) 8 else 4, dynamicFolderColumns + 3).coerceIn(4, 16)
+    }
+  val maxVideoColumns =
+    if (pickerMode) {
+      app.gyrolet.mpvrx.ui.browser.playlist
+        .playlistGridColumnLimit(screenWidthDp.value.toInt())
+    } else {
+      maxOf(if (isTablet || isLandscape) 8 else 4, dynamicVideoColumns + 3).coerceIn(4, 16)
+    }
 
   val folderGridColumnSelector =
-    if (isFolderView && activeLayoutMode == MediaLayoutMode.GRID &&
-      manualGridColumnsEnabled && maxFolderColumns > 1
+    if (isFolderView &&
+      activeLayoutMode == MediaLayoutMode.GRID &&
+      manualGridColumnsEnabled &&
+      maxFolderColumns > 1
     ) {
       GridColumnSelector(
         label = "Folder (${if (isLandscape) "Landscape" else "Portrait"})",
@@ -907,7 +989,7 @@ fun VideoSortDialog(
       }
     },
     viewModeSelector =
-      if (enableViewModeOptions)
+      if (enableViewModeOptions) {
         MultiViewModeSelector(
           label = "View Mode",
           options =
@@ -932,9 +1014,11 @@ fun VideoSortDialog(
               ),
             ),
         )
-      else null,
+      } else {
+        null
+      },
     layoutModeSelector =
-      if (enableLayoutModeOptions && fixedLayoutMode == null)
+      if (enableLayoutModeOptions && fixedLayoutMode == null) {
         ViewModeSelector(
           label = "Layout",
           firstOptionLabel = "List",
@@ -954,7 +1038,13 @@ fun VideoSortDialog(
             }
           },
           checkboxLabel =
-            if (isFolderView && activeLayoutMode == MediaLayoutMode.GRID) stringResource(R.string.only_for_video_list) else null,
+            if (isFolderView &&
+              activeLayoutMode == MediaLayoutMode.GRID
+            ) {
+              stringResource(R.string.only_for_video_list)
+            } else {
+              null
+            },
           isCheckboxChecked = separateFolderVideoLayout,
           onCheckboxChange =
             if (isFolderView && activeLayoutMode == MediaLayoutMode.GRID) {
@@ -968,7 +1058,9 @@ fun VideoSortDialog(
               null
             },
         )
-      else null,
+      } else {
+        null
+      },
     visibilityToggles =
       buildList {
         add(
@@ -1196,7 +1288,8 @@ fun FileSystemSortDialog(
   val usableWidth = screenWidthDp - (contentHorizontalPadding * 2) - itemSpacing
 
   val isTelevision =
-    app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(androidx.compose.ui.platform.LocalContext.current)
+    app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+      .isTelevision(androidx.compose.ui.platform.LocalContext.current)
   val folderMinWidth = if (isTelevision) 160.dp else 90.dp
   val videoMinWidth = if (isTelevision) 240.dp else 130.dp
   val dynamicFolderColumns = (usableWidth / folderMinWidth).toInt().coerceAtLeast(1)
@@ -1545,7 +1638,8 @@ fun NetworkSortDialog(
   val itemSpacing = 2.dp
   val usableWidth = screenWidthDp - (contentHorizontalPadding * 2) - itemSpacing
   val isTelevision =
-    app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(androidx.compose.ui.platform.LocalContext.current)
+    app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+      .isTelevision(androidx.compose.ui.platform.LocalContext.current)
   val videoMinWidth = if (isTelevision) 240.dp else 130.dp
   val dynamicVideoColumns = (usableWidth / videoMinWidth).toInt().coerceAtLeast(1)
 
@@ -1780,7 +1874,8 @@ fun MusicSortDialog(
       when (type) {
         MusicSortField.TITLE.displayName,
         MusicSortField.ARTIST.displayName,
-        MusicSortField.ALBUM.displayName -> Pair("A-Z", "Z-A")
+        MusicSortField.ALBUM.displayName,
+        -> Pair("A-Z", "Z-A")
         MusicSortField.DURATION.displayName -> Pair("Shortest", "Longest")
         MusicSortField.DATE_ADDED.displayName -> Pair("Oldest", "Newest")
         MusicSortField.YEAR.displayName -> Pair("Oldest", "Newest")
@@ -1935,7 +2030,8 @@ fun AudiobookSortDialog(
     getLabelForType = { type, _ ->
       when (type) {
         AudiobookSortType.Title.displayName,
-        AudiobookSortType.Author.displayName -> Pair("A-Z", "Z-A")
+        AudiobookSortType.Author.displayName,
+        -> Pair("A-Z", "Z-A")
         AudiobookSortType.Duration.displayName -> Pair("Shortest", "Longest")
         AudiobookSortType.Progress.displayName -> Pair("Least", "Most")
         AudiobookSortType.LastPlayed.displayName -> Pair("Oldest", "Newest")
@@ -1958,4 +2054,3 @@ fun AudiobookSortDialog(
     showSortOptions = true,
   )
 }
-

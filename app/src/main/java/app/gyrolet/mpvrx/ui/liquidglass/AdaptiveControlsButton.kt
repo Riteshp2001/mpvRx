@@ -22,14 +22,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.kyant.shapes.Capsule
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
 import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -37,18 +36,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.AnimatedIcon
+import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.player.controls.LocalPlayerButtonsClickEvent
 import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonAlpha
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalBorderlessPlayerControls
@@ -58,15 +57,21 @@ import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonBorderColor
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContainerColor
 import app.gyrolet.mpvrx.ui.player.controls.components.playerButtonContentColor
 import app.gyrolet.mpvrx.ui.player.controls.components.stableNumericWidth
-import app.gyrolet.mpvrx.ui.player.controls.components.withTabularDigits
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
-import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.player.controls.components.withTabularDigits
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.appPressFeedback
+import app.gyrolet.mpvrx.ui.theme.spacing
 import com.kyant.backdrop.Backdrop
+import com.kyant.shapes.Capsule
 
-private data class PlayerControlCornerSize(val fraction: Float) : CornerSize {
-  override fun toPx(shapeSize: Size, density: Density): Float = shapeSize.minDimension * fraction
+private data class PlayerControlCornerSize(
+  val fraction: Float,
+) : CornerSize {
+  override fun toPx(
+    shapeSize: Size,
+    density: Density,
+  ): Float = shapeSize.minDimension * fraction
 }
 
 @Composable
@@ -128,18 +133,23 @@ fun AdaptiveControlsButton(
         imageVector = icon,
         contentDescription = title ?: text,
         tint = LocalContentColor.current,
-        modifier = Modifier.size(PlayerLiquidTokens.IconSize).graphicsLayer {
-          scaleX = iconScale
-          scaleY = iconScale
-        },
+        modifier =
+          Modifier.size(PlayerLiquidTokens.IconSize).graphicsLayer {
+            scaleX = iconScale
+            scaleY = iconScale
+          },
         reduceMotion = AppMotion.playerReducedMotion(),
       )
     }
     if (text != null) {
       Text(
         text = text,
-        style = if (active != null) MaterialTheme.typography.labelLargeEmphasized.withTabularDigits()
-          else MaterialTheme.typography.labelLargeEmphasized,
+        style =
+          if (active != null) {
+            MaterialTheme.typography.labelLargeEmphasized.withTabularDigits()
+          } else {
+            MaterialTheme.typography.labelLargeEmphasized
+          },
         color = LocalContentColor.current,
         maxLines = 1,
         modifier = if (active != null) Modifier.stableNumericWidth(text) else Modifier,
@@ -174,8 +184,13 @@ fun AdaptiveControlsContainer(
   val reduceMotion = AppMotion.playerReducedMotion()
   val resolvedTint =
     color.takeUnless { it == Color.Unspecified }
-      ?: if (borderless) LocalContentColor.current
-      else if (liquidGlassEnabled) PlayerLiquidTokens.contentColor else playerButtonContentColor()
+      ?: if (borderless) {
+        LocalContentColor.current
+      } else if (liquidGlassEnabled) {
+        PlayerLiquidTokens.contentColor
+      } else {
+        playerButtonContentColor()
+      }
   val backgroundLevel = LocalPlayerButtonsOpacity.current
   val resolvedSurface =
     if (liquidGlassEnabled) {
@@ -194,10 +209,11 @@ fun AdaptiveControlsContainer(
     label = "playerControlContentTint",
   )
   val renderLiquidGlass = liquidGlassEnabled && useGlass && !borderless
-  val buttonShape = rememberPlayerControlShape(
-    active,
-    if (horizontalPadding != null && horizontalPadding > 0.dp) Capsule() else CircleShape,
-  )
+  val buttonShape =
+    rememberPlayerControlShape(
+      active,
+      if (horizontalPadding != null && horizontalPadding > 0.dp) Capsule() else CircleShape,
+    )
   // Above the default level the glass tint thickens toward opaque; below it the whole glass fades.
   val glassLayerAlpha = PlayerButtonAlpha.glassLayer(backgroundLevel)
   val controlModifier =
@@ -207,8 +223,11 @@ fun AdaptiveControlsContainer(
       .tvFocusHighlight(buttonShape, isInteractive && enabled, clipToShape = !renderLiquidGlass)
       .then(if (isInteractive) Modifier.minimumInteractiveComponentSize() else Modifier)
       .then(
-        if (isInteractive && active != null) Modifier.semantics { selected = active }
-        else Modifier,
+        if (isInteractive && active != null) {
+          Modifier.semantics { selected = active }
+        } else {
+          Modifier
+        },
       )
 
   if (renderLiquidGlass) {
@@ -261,8 +280,7 @@ fun AdaptiveControlsContainer(
             enabled = isInteractive && enabled,
             pressedScale = 0.94f,
             reduceMotion = reduceMotion,
-          )
-          .clip(buttonShape)
+          ).clip(buttonShape)
           .then(
             if (isInteractive) {
               Modifier.combinedClickable(

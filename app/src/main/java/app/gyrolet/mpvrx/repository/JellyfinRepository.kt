@@ -15,6 +15,7 @@ import app.gyrolet.mpvrx.database.entities.JellyfinServerEntity
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinAuthResult
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
+import app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinUser
 import app.gyrolet.mpvrx.utils.media.PlaybackSubtitleTrack
 import kotlinx.coroutines.flow.Flow
@@ -27,30 +28,24 @@ class JellyfinRepository(
   val allServers: Flow<List<JellyfinServer>> =
     dao.getAllServers().map { list -> list.map { it.toDomain() } }
 
-  suspend fun getServerById(id: Long): JellyfinServer? =
-    dao.getServerById(id)?.toDomain()
+  suspend fun getServerById(id: Long): JellyfinServer? = dao.getServerById(id)?.toDomain()
 
-  suspend fun saveServer(server: JellyfinServer): Long =
-    dao.insert(JellyfinServerEntity.fromDomain(server))
+  suspend fun saveServer(server: JellyfinServer): Long = dao.insert(JellyfinServerEntity.fromDomain(server))
 
-  suspend fun updateServer(server: JellyfinServer) =
-    dao.update(JellyfinServerEntity.fromDomain(server))
+  suspend fun updateServer(server: JellyfinServer) = dao.update(JellyfinServerEntity.fromDomain(server))
 
-  suspend fun deleteServer(server: JellyfinServer) =
-    dao.delete(JellyfinServerEntity.fromDomain(server))
+  suspend fun deleteServer(server: JellyfinServer) = dao.delete(JellyfinServerEntity.fromDomain(server))
 
   suspend fun authenticate(
     serverUrl: String,
     username: String,
     password: String,
-  ): Result<JellyfinAuthResult> =
-    client.authenticate(serverUrl, username, password)
+  ): Result<JellyfinAuthResult> = client.authenticate(serverUrl, username, password)
 
   suspend fun validateToken(
     serverUrl: String,
     token: String,
-  ): Result<JellyfinUser> =
-    client.validateToken(serverUrl, token)
+  ): Result<JellyfinUser> = client.validateToken(serverUrl, token)
 
   suspend fun getLibraries(server: JellyfinServer): Result<List<JellyfinItem>> =
     client.getUserLibraries(server.serverUrl, server.userId, server.accessToken)
@@ -58,8 +53,7 @@ class JellyfinRepository(
   suspend fun getResumeItems(
     server: JellyfinServer,
     limit: Int = 16,
-  ): Result<List<JellyfinItem>> =
-    client.getResumeItems(server.serverUrl, server.userId, server.accessToken, limit)
+  ): Result<List<JellyfinItem>> = client.getResumeItems(server.serverUrl, server.userId, server.accessToken, limit)
 
   suspend fun getLatestMedia(
     server: JellyfinServer,
@@ -72,8 +66,7 @@ class JellyfinRepository(
   suspend fun getSuggestions(
     server: JellyfinServer,
     limit: Int = 16,
-  ): Result<List<JellyfinItem>> =
-    client.getSuggestions(server.serverUrl, server.userId, limit, server.accessToken)
+  ): Result<List<JellyfinItem>> = client.getSuggestions(server.serverUrl, server.userId, limit, server.accessToken)
 
   suspend fun getSimilarItems(
     server: JellyfinServer,
@@ -85,20 +78,17 @@ class JellyfinRepository(
   suspend fun getItem(
     server: JellyfinServer,
     itemId: String,
-  ): Result<JellyfinItem> =
-    client.getItem(server.serverUrl, server.userId, itemId, server.accessToken)
+  ): Result<JellyfinItem> = client.getItem(server.serverUrl, server.userId, itemId, server.accessToken)
 
   suspend fun deleteItem(
     server: JellyfinServer,
     itemId: String,
-  ): Result<Unit> =
-    client.deleteItem(server.serverUrl, itemId, server.accessToken)
+  ): Result<Unit> = client.deleteItem(server.serverUrl, itemId, server.accessToken)
 
   suspend fun getPerson(
     server: JellyfinServer,
     personName: String,
-  ): Result<JellyfinItem> =
-    client.getPerson(server.serverUrl, server.userId, personName, server.accessToken)
+  ): Result<JellyfinItem> = client.getPerson(server.serverUrl, server.userId, personName, server.accessToken)
 
   suspend fun getPersonMedia(
     server: JellyfinServer,
@@ -112,8 +102,7 @@ class JellyfinRepository(
   suspend fun getStudios(
     server: JellyfinServer,
     limit: Int = 100,
-  ): Result<List<JellyfinItem>> =
-    client.getStudios(server.serverUrl, server.userId, server.accessToken, limit)
+  ): Result<List<JellyfinItem>> = client.getStudios(server.serverUrl, server.userId, server.accessToken, limit)
 
   suspend fun getItems(
     server: JellyfinServer,
@@ -121,7 +110,7 @@ class JellyfinRepository(
     artistIds: String? = null,
     searchTerm: String? = null,
     sortBy: app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy.NAME,
-    sortOrder: app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder.ASCENDING,
+    sortOrder: JellyfinSortOrder = JellyfinSortOrder.ASCENDING,
     isPlayed: Boolean? = null,
     isFavorite: Boolean? = null,
     genres: String? = null,
@@ -152,7 +141,7 @@ class JellyfinRepository(
     server: JellyfinServer,
     parentId: String? = null,
     sortBy: app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortBy.NAME,
-    sortOrder: app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder = app.gyrolet.mpvrx.domain.jellyfin.JellyfinSortOrder.ASCENDING,
+    sortOrder: JellyfinSortOrder = JellyfinSortOrder.ASCENDING,
     startIndex: Int = 0,
     limit: Int = 500,
     albumArtistsOnly: Boolean = false,
@@ -231,11 +220,15 @@ class JellyfinRepository(
     item: JellyfinItem,
     maxWidth: Int = 400,
   ): String {
-    val targetItemId = if (item.primaryImageTag.isNullOrBlank() && !item.albumId.isNullOrBlank() && !item.albumPrimaryImageTag.isNullOrBlank()) {
-      item.albumId
-    } else {
-      item.id
-    }
+    val targetItemId =
+      if (item.primaryImageTag.isNullOrBlank() &&
+        !item.albumId.isNullOrBlank() &&
+        !item.albumPrimaryImageTag.isNullOrBlank()
+      ) {
+        item.albumId
+      } else {
+        item.id
+      }
     val targetTag = item.primaryImageTag ?: item.albumPrimaryImageTag
     return client.getImageUrl(
       serverUrl = server.serverUrl,

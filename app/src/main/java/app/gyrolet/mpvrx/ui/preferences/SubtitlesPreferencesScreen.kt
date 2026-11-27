@@ -11,10 +11,9 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import android.content.Intent
 import android.net.Uri
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
-import androidx.annotation.StringRes
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,7 +28,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,11 +38,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState as collectFlowAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,26 +77,31 @@ import app.gyrolet.mpvrx.repository.wyzie.WyzieSources
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSourcesResponse
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.player.defaultSubtitleFontDisplayName
+import app.gyrolet.mpvrx.ui.preferences.components.PreferenceAction
+import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.CustomFontEntry
 import app.gyrolet.mpvrx.utils.media.copyFontsFromDirectory
 import app.gyrolet.mpvrx.utils.media.loadCustomFontEntries
-import app.gyrolet.mpvrx.utils.media.subtitleFontChoices
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleStorageDirectory
+import app.gyrolet.mpvrx.utils.media.subtitleFontChoices
 import com.github.k1rakishou.fsaf.FileManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import org.koin.compose.koinInject
+import androidx.compose.runtime.collectAsState as collectFlowAsState
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as TextField
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
-import app.gyrolet.mpvrx.ui.preferences.components.PreferenceAction
 import app.gyrolet.mpvrx.ui.preferences.components.AppPreference as Preference
 import app.gyrolet.mpvrx.ui.preferences.components.AppTextFieldPreference as TextFieldPreference
-import org.koin.compose.koinInject
 
 @Serializable
 object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
@@ -264,13 +264,19 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
           customFonts =
             loadCustomFontEntries(context)
               .filterNot { googleFontsRepository.isManagedMpvFont(it.file) }
-              .filter { it.familyName != DEFAULT_SUBTITLE_FONT_FAMILY && it.familyName != LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY }
+              .filter {
+                it.familyName != DEFAULT_SUBTITLE_FONT_FAMILY &&
+                  it.familyName != LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY
+              }
         }
 
         val fontChoices =
           remember(downloadedGoogleFonts, customFonts) {
             subtitleFontChoices(downloadedGoogleFonts, customFonts)
-              .filter { it.familyName != DEFAULT_SUBTITLE_FONT_FAMILY && it.familyName != LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY }
+              .filter {
+                it.familyName != DEFAULT_SUBTITLE_FONT_FAMILY &&
+                  it.familyName != LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY
+              }
           }
         val availableFonts = fontChoices.map { it.label }
         val effectiveDefaultFont = DEFAULT_SUBTITLE_FONT_FAMILY
@@ -307,7 +313,8 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
         ) {
           // === GENERAL SECTION ===
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.First, 
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.First,
               title = stringResource(R.string.general),
               modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles),
             )
@@ -317,44 +324,44 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
             PreferenceCard {
               val preferredLanguages by preferences.preferredLanguages.collectAsState()
               ExpressivePreferenceItem {
-              TextFieldPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_preferred_languages),
-                value = preferredLanguages,
-                enabled = "slang" !in configOwnedOptions,
-                onValueChange = preferences.preferredLanguages::set,
-                textToValue = { input ->
-                  input
-                    .split(",")
-                    .map { it.trim().lowercase() }
-                    .filter { it.isNotEmpty() }
-                    .joinToString(",")
-                },
-                title = { Text(stringResource(R.string.pref_preferred_languages)) },
-                summary = {
-                  if (preferredLanguages.isNotBlank()) {
-                    Text(
-                      preferredLanguages,
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  } else {
-                    Text(
-                      stringResource(R.string.not_set_video_default),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  }
-                },
-                textField = { value, onValueChange, _ ->
-                  Column {
-                    Text(stringResource(R.string.enter_subtitle_title_preferences))
-                    TextField(
-                      value,
-                      onValueChange,
-                      modifier = Modifier.fillMaxWidth(),
-                      placeholder = { Text(stringResource(R.string.subtitle_title_preferences_placeholder)) },
-                    )
-                  }
-                },
-              )
+                TextFieldPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_preferred_languages),
+                  value = preferredLanguages,
+                  enabled = "slang" !in configOwnedOptions,
+                  onValueChange = preferences.preferredLanguages::set,
+                  textToValue = { input ->
+                    input
+                      .split(",")
+                      .map { it.trim().lowercase() }
+                      .filter { it.isNotEmpty() }
+                      .joinToString(",")
+                  },
+                  title = { Text(stringResource(R.string.pref_preferred_languages)) },
+                  summary = {
+                    if (preferredLanguages.isNotBlank()) {
+                      Text(
+                        preferredLanguages,
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    } else {
+                      Text(
+                        stringResource(R.string.not_set_video_default),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    }
+                  },
+                  textField = { value, onValueChange, _ ->
+                    Column {
+                      Text(stringResource(R.string.enter_subtitle_title_preferences))
+                      TextField(
+                        value,
+                        onValueChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text(stringResource(R.string.subtitle_title_preferences_placeholder)) },
+                      )
+                    }
+                  },
+                )
               }
 
               PreferenceDivider()
@@ -436,160 +443,170 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
 
           // === FONT SECTION ===
           if (!playerPanel) {
-          item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_subtitle_fonts))
-          }
-
-          item {
-            PreferenceCard {
-              ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_fonts_dir),
-                enabled = "sub-fonts-dir" !in configOwnedOptions,
-                title = { Text(stringResource(R.string.pref_subtitles_fonts_dir)) },
-                summary = {
-                  val folderSummary =
-                    if (fontsFolder.isBlank()) {
-                      stringResource(R.string.pref_subtitles_font_directory_summary)
-                    } else {
-                      val displayPath =
-                        runCatching { getSimplifiedPathFromUri(fontsFolder) }
-                          .getOrElse { Uri.decode(fontsFolder) ?: fontsFolder }
-                      stringResource(R.string.pref_subtitles_font_directory_selected, displayPath)
-                    }
-                  Text(
-                    text = folderSummary,
-                    color = MaterialTheme.colorScheme.outline,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                  )
-                },
-                icon = {
-                  Icon(
-                    Icons.RoundedFilled.Folder,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                  )
-                },
-                onClick = { fontFolderPicker.launch(null) },
+            item {
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Middle,
+                title = stringResource(R.string.pref_section_subtitle_fonts),
               )
-              }
+            }
 
-              PreferenceDivider()
-
-              val effectiveSelected =
-                selectedFont.takeUnless {
-                  it.isBlank() ||
-                    it == DEFAULT_SUBTITLE_FONT_FAMILY ||
-                    it == LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY
-                }.orEmpty()
-              val fontValues = (listOf("") + availableFonts + listOf(effectiveSelected).filter(String::isNotBlank)).distinct()
-              // Keep the clicked filename highlighted when multiple files advertise the
-              // same family. mpv itself continues to receive the real family name.
-              var preferredFontLabel by rememberSaveable { mutableStateOf("") }
-              fun familyForLabel(label: String): String =
-                fontChoices.firstOrNull { it.label == label }?.familyName ?: label
-              val fontValue =
-                preferredFontLabel.takeIf { it in fontValues && familyForLabel(it) == effectiveSelected }
-                  ?: fontValues.firstOrNull { familyForLabel(it) == effectiveSelected }.orEmpty()
-              val fontLabel = fontValue.ifBlank { defaultSubtitleFontDisplayName(effectiveDefaultFont) }
-
-              ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_font_title),
-                value = fontValue,
-                enabled = "sub-font" !in configOwnedOptions,
-                onValueChange = { label ->
-                  preferredFontLabel = label
-                  preferences.font.set(familyForLabel(label))
-                },
-                values = fontValues,
-                valueToText = {
-                  AnnotatedString(it.ifBlank { context.getString(R.string.pref_subtitles_font_default) })
-                },
-                title = { Text(stringResource(R.string.pref_subtitles_font_title)) },
-                summary = {
-                  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                      stringResource(R.string.pref_subtitles_font_summary, fontLabel),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                    Text(
-                      if (availableFonts.isEmpty()) {
-                        stringResource(R.string.pref_subtitles_font_no_custom)
-                      } else {
-                        stringResource(R.string.fonts_loaded, fontChoices.size)
-                      },
-                      color = MaterialTheme.colorScheme.outline,
-                      style = MaterialTheme.typography.bodySmall,
-                    )
-                  }
-                },
-              )
-              }
-
-              PreferenceDivider()
-
-              ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.reload_fonts),
-                title = { Text(stringResource(R.string.reload_fonts)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.reload_fonts_summary),
-                    color = MaterialTheme.colorScheme.outline,
+            item {
+              PreferenceCard {
+                ExpressivePreferenceItem {
+                  Preference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_fonts_dir),
+                    enabled = "sub-fonts-dir" !in configOwnedOptions,
+                    title = { Text(stringResource(R.string.pref_subtitles_fonts_dir)) },
+                    summary = {
+                      val folderSummary =
+                        if (fontsFolder.isBlank()) {
+                          stringResource(R.string.pref_subtitles_font_directory_summary)
+                        } else {
+                          val displayPath =
+                            runCatching { getSimplifiedPathFromUri(fontsFolder) }
+                              .getOrElse { Uri.decode(fontsFolder) ?: fontsFolder }
+                          stringResource(R.string.pref_subtitles_font_directory_selected, displayPath)
+                        }
+                      Text(
+                        text = folderSummary,
+                        color = MaterialTheme.colorScheme.outline,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                      )
+                    },
+                    icon = {
+                      Icon(
+                        Icons.RoundedFilled.Folder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                      )
+                    },
+                    onClick = { fontFolderPicker.launch(null) },
                   )
-                },
-                icon = {
-                  Icon(
-                    Icons.RoundedFilled.Refresh,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                  )
-                },
-                enabled = fontsFolder.isNotBlank(),
-                onClick = { reloadFontsFrom(fontsFolder) },
-                action = PreferenceAction.None,
-              )
-              }
+                }
 
-              if (fontsFolder.isNotBlank() || customFonts.isNotEmpty()) {
+                PreferenceDivider()
+
+                val effectiveSelected =
+                  selectedFont
+                    .takeUnless {
+                      it.isBlank() ||
+                        it == DEFAULT_SUBTITLE_FONT_FAMILY ||
+                        it == LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY
+                    }.orEmpty()
+                val fontValues =
+                  (
+                    listOf(
+                      "",
+                    ) + availableFonts + listOf(effectiveSelected).filter(String::isNotBlank)
+                  ).distinct()
+                // Keep the clicked filename highlighted when multiple files advertise the
+                // same family. mpv itself continues to receive the real family name.
+                var preferredFontLabel by rememberSaveable { mutableStateOf("") }
+
+                fun familyForLabel(label: String): String =
+                  fontChoices.firstOrNull { it.label == label }?.familyName ?: label
+                val fontValue =
+                  preferredFontLabel.takeIf { it in fontValues && familyForLabel(it) == effectiveSelected }
+                    ?: fontValues.firstOrNull { familyForLabel(it) == effectiveSelected }.orEmpty()
+                val fontLabel = fontValue.ifBlank { defaultSubtitleFontDisplayName(effectiveDefaultFont) }
+
+                ExpressivePreferenceItem {
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_font_title),
+                    value = fontValue,
+                    enabled = "sub-font" !in configOwnedOptions,
+                    onValueChange = { label ->
+                      preferredFontLabel = label
+                      preferences.font.set(familyForLabel(label))
+                    },
+                    values = fontValues,
+                    valueToText = {
+                      AnnotatedString(it.ifBlank { context.getString(R.string.pref_subtitles_font_default) })
+                    },
+                    title = { Text(stringResource(R.string.pref_subtitles_font_title)) },
+                    summary = {
+                      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                          stringResource(R.string.pref_subtitles_font_summary, fontLabel),
+                          color = MaterialTheme.colorScheme.outline,
+                        )
+                        Text(
+                          if (availableFonts.isEmpty()) {
+                            stringResource(R.string.pref_subtitles_font_no_custom)
+                          } else {
+                            stringResource(R.string.fonts_loaded, fontChoices.size)
+                          },
+                          color = MaterialTheme.colorScheme.outline,
+                          style = MaterialTheme.typography.bodySmall,
+                        )
+                      }
+                    },
+                  )
+                }
+
                 PreferenceDivider()
 
                 ExpressivePreferenceItem {
-                Preference(
-                  title = {
-                    Text(
-                      stringResource(R.string.clear_font_directory),
-                      color = MaterialTheme.colorScheme.error,
+                  Preference(
+                    modifier = Modifier.settingsSearchTarget(R.string.reload_fonts),
+                    title = { Text(stringResource(R.string.reload_fonts)) },
+                    summary = {
+                      Text(
+                        stringResource(R.string.reload_fonts_summary),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                    icon = {
+                      Icon(
+                        Icons.RoundedFilled.Refresh,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                      )
+                    },
+                    enabled = fontsFolder.isNotBlank(),
+                    onClick = { reloadFontsFrom(fontsFolder) },
+                    action = PreferenceAction.None,
+                  )
+                }
+
+                if (fontsFolder.isNotBlank() || customFonts.isNotEmpty()) {
+                  PreferenceDivider()
+
+                  ExpressivePreferenceItem {
+                    Preference(
+                      title = {
+                        Text(
+                          stringResource(R.string.clear_font_directory),
+                          color = MaterialTheme.colorScheme.error,
+                        )
+                      },
+                      icon = {
+                        Icon(
+                          Icons.RoundedFilled.Clear,
+                          contentDescription = null,
+                          tint = MaterialTheme.colorScheme.error,
+                        )
+                      },
+                      onClick = {
+                        preferences.fontsFolder.set("")
+                        preferences.font.set("")
+                        scope.launch(Dispatchers.IO) {
+                          googleFontsRepository.clearImportedMpvFonts()
+                          googleFontsRepository.syncMpvFonts(appFontFamily)
+                          withContext(Dispatchers.Main) { fontRefreshKey++ }
+                        }
+                      },
                     )
-                  },
-                  icon = {
-                    Icon(
-                      Icons.RoundedFilled.Clear,
-                      contentDescription = null,
-                      tint = MaterialTheme.colorScheme.error,
-                    )
-                  },
-                  onClick = {
-                    preferences.fontsFolder.set("")
-                    preferences.font.set("")
-                    scope.launch(Dispatchers.IO) {
-                      googleFontsRepository.clearImportedMpvFonts()
-                      googleFontsRepository.syncMpvFonts(appFontFamily)
-                      withContext(Dispatchers.Main) { fontRefreshKey++ }
-                    }
-                  },
-                )
+                  }
                 }
               }
             }
           }
-
-          }
           // === ONLINE SUBTITLE SECTION ===
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Last, 
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Last,
               title = stringResource(R.string.pref_section_subtitle_search),
               modifier = Modifier.settingsSearchTarget(R.string.pref_subtitle_search_title),
             )
@@ -600,20 +617,20 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
               var showClearDialog by remember { mutableStateOf(false) }
 
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_search_mode_title),
-                value = onlineSubtitleSearchMode,
-                onValueChange = preferences.onlineSubtitleSearchMode::set,
-                values = OnlineSubtitleSearchMode.values().toList(),
-                valueToText = { AnnotatedString(it.displayName) },
-                title = { Text(stringResource(R.string.pref_subtitles_search_mode_title)) },
-                summary = {
-                  Text(
-                    onlineSubtitleSearchMode.displayName,
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_search_mode_title),
+                  value = onlineSubtitleSearchMode,
+                  onValueChange = preferences.onlineSubtitleSearchMode::set,
+                  values = OnlineSubtitleSearchMode.values().toList(),
+                  valueToText = { AnnotatedString(it.displayName) },
+                  title = { Text(stringResource(R.string.pref_subtitles_search_mode_title)) },
+                  summary = {
+                    Text(
+                      onlineSubtitleSearchMode.displayName,
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               PreferenceDivider()
@@ -682,26 +699,26 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
                 }
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_subtitle_sources_title),
-                title = { Text(stringResource(R.string.pref_subtitle_sources_title)) },
-                summary = {
-                  val summaryText =
-                    if (wyzieSources.isEmpty() || wyzieSources.contains("all")) {
-                      stringResource(R.string.pref_all_sources)
-                    } else {
-                      wyzieSources
-                        .mapNotNull {
-                          displayNamesMap[it] ?: it.replaceFirstChar { c ->
-                            c.uppercase()
-                          }
-                        }.joinToString(", ")
-                    }
-                  Text(summaryText, color = MaterialTheme.colorScheme.outline)
-                },
-                onClick = { showSourcesDialog = true },
-                action = PreferenceAction.Dialog,
-              )
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_subtitle_sources_title),
+                  title = { Text(stringResource(R.string.pref_subtitle_sources_title)) },
+                  summary = {
+                    val summaryText =
+                      if (wyzieSources.isEmpty() || wyzieSources.contains("all")) {
+                        stringResource(R.string.pref_all_sources)
+                      } else {
+                        wyzieSources
+                          .mapNotNull {
+                            displayNamesMap[it] ?: it.replaceFirstChar { c ->
+                              c.uppercase()
+                            }
+                          }.joinToString(", ")
+                      }
+                    Text(summaryText, color = MaterialTheme.colorScheme.outline)
+                  },
+                  onClick = { showSourcesDialog = true },
+                  action = PreferenceAction.Dialog,
+                )
               }
 
               if (showSourcesDialog) {
@@ -735,67 +752,85 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
                     }
                   },
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                      PlayerSheetSearchField(
-                        query = sourceSearch,
-                        onQueryChange = { sourceSearch = it },
-                        placeholder = stringResource(R.string.subtitle_source_search_hint),
-                        modifier = Modifier.padding(bottom = 8.dp),
-                      )
-                      sourcesResponse?.key?.let { keyInfo ->
-                        val keyType = keyInfo.type?.replaceFirstChar { it.uppercase() }
+                  Column(modifier = Modifier.fillMaxWidth()) {
+                    PlayerSheetSearchField(
+                      query = sourceSearch,
+                      onQueryChange = { sourceSearch = it },
+                      placeholder = stringResource(R.string.subtitle_source_search_hint),
+                      modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    sourcesResponse?.key?.let { keyInfo ->
+                      val keyType =
+                        keyInfo.type?.replaceFirstChar { it.uppercase() }
                           ?: stringResource(R.string.generic_unknown)
-                        val badgeColor = if (keyInfo.valid) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
-                        val badgeTextColor = if (keyInfo.valid) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+                      val badgeColor =
+                        if (keyInfo.valid) {
+                          MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                          MaterialTheme.colorScheme.errorContainer
+                        }
+                      val badgeTextColor =
+                        if (keyInfo.valid) {
+                          MaterialTheme.colorScheme.onPrimaryContainer
+                        } else {
+                          MaterialTheme.colorScheme.onErrorContainer
+                        }
 
-                        Row(
-                          modifier = Modifier.padding(bottom = 8.dp),
-                          verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                          SuggestionChip(
-                            onClick = {},
-                            enabled = false,
-                            label = { Text(stringResource(R.string.pref_api_key_type, keyType)) },
-                            colors =
-                              SuggestionChipDefaults.suggestionChipColors(
-                                containerColor = badgeColor,
-                                labelColor = badgeTextColor,
-                              ),
+                      Row(
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                      ) {
+                        SuggestionChip(
+                          onClick = {},
+                          enabled = false,
+                          label = { Text(stringResource(R.string.pref_api_key_type, keyType)) },
+                          colors =
+                            SuggestionChipDefaults.suggestionChipColors(
+                              containerColor = badgeColor,
+                              labelColor = badgeTextColor,
+                            ),
+                        )
+                      }
+                    }
+
+                    if (sourcesError != null && sourcesResponse == null) {
+                      Text(
+                        text = sourcesError ?: stringResource(R.string.subtitle_sources_load_error),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(vertical = 16.dp),
+                      )
+                    } else {
+                      val allItems =
+                        sourcesResponse?.tiered ?: WyzieSources.ALL.filterKeys { it != "all" }.map { (key, value) ->
+                          WyzieSourceItem(
+                            key = key,
+                            name = value,
+                            tier = if (key == "charlie" || key == "lima") "free" else "paid",
+                            tags = emptyList(),
+                            available = true,
                           )
                         }
-                      }
-
-                      if (sourcesError != null && sourcesResponse == null) {
-                        Text(
-                          text = sourcesError ?: stringResource(R.string.subtitle_sources_load_error),
-                          color = MaterialTheme.colorScheme.error,
-                          style = MaterialTheme.typography.bodyMedium,
-                          modifier = Modifier.padding(vertical = 16.dp),
-                        )
-                      } else {
-                        val allItems =
-                          sourcesResponse?.tiered ?: WyzieSources.ALL.filterKeys { it != "all" }.map { (key, value) ->
-                            WyzieSourceItem(
-                              key = key,
-                              name = value,
-                              tier = if (key == "charlie" || key == "lima") "free" else "paid",
-                              tags = emptyList(),
-                              available = true,
-                            )
+                      val items =
+                        if (sourceSearch.isBlank()) {
+                          allItems
+                        } else {
+                          allItems.filter { item ->
+                            item.name.contains(sourceSearch, ignoreCase = true) ||
+                              item.key.contains(sourceSearch, ignoreCase = true) ||
+                              item.tags.any { it.contains(sourceSearch, ignoreCase = true) }
                           }
-                        val items = if (sourceSearch.isBlank()) allItems else allItems.filter { item ->
-                          item.name.contains(sourceSearch, ignoreCase = true) ||
-                            item.key.contains(sourceSearch, ignoreCase = true) ||
-                            item.tags.any { it.contains(sourceSearch, ignoreCase = true) }
                         }
 
-                        val freeItems = items.filter { it.tier.lowercase() == "free" }
-                        val paidItems = items.filter { it.tier.lowercase() == "paid" }
-                        val showAllSources = sourceSearch.isBlank() ||
+                      val freeItems = items.filter { it.tier.lowercase() == "free" }
+                      val paidItems = items.filter { it.tier.lowercase() == "paid" }
+                      val showAllSources =
+                        sourceSearch.isBlank() ||
                           allSourcesLabel.contains(sourceSearch, ignoreCase = true)
 
-                        LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
-                          if (showAllSources) item {
+                      LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
+                        if (showAllSources) {
+                          item {
                             val isAllChecked = wyzieSources.isEmpty() || wyzieSources.contains("all")
                             Row(
                               modifier =
@@ -818,178 +853,179 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
                             }
                             PreferenceDivider()
                           }
+                        }
 
-                          // Free Sources Group
-                          if (freeItems.isNotEmpty()) {
-                            item {
-                              Text(
-                                text =
-                                  androidx.compose.ui.res.stringResource(
-                                    app.gyrolet.mpvrx.R.string.ui_free_sources,
-                                  ),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(vertical = 8.dp),
-                              )
-                            }
-                            items(freeItems.size, key = { freeItems[it].key }) { index ->
-                              val item = freeItems[index]
-                              val checked = !wyzieSources.contains("all") && wyzieSources.contains(item.key)
-                              Row(
-                                modifier =
-                                  Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                      val newSet = wyzieSources.toMutableSet()
-                                      newSet.remove("all")
-                                      if (checked) {
-                                        newSet.remove(item.key)
-                                      } else {
-                                        newSet.add(item.key)
-                                      }
-                                      if (newSet.isEmpty()) newSet.add("all")
-                                      preferences.wyzieSources.set(newSet)
-                                    }.padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                              ) {
-                                Checkbox(
-                                  checked = checked,
-                                  onCheckedChange = null,
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                  Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(text = item.name.replaceFirstChar { it.uppercase() })
-
-                                    item.tags.forEach { tag ->
-                                      Spacer(modifier = Modifier.width(6.dp))
-                                      Text(
-                                        text = tag,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier =
-                                          Modifier
-                                            .background(
-                                              color = MaterialTheme.colorScheme.secondaryContainer,
-                                              shape = MaterialTheme.shapes.extraSmall,
-                                            ).padding(horizontal = 4.dp, vertical = 2.dp),
-                                      )
+                        // Free Sources Group
+                        if (freeItems.isNotEmpty()) {
+                          item {
+                            Text(
+                              text =
+                                androidx.compose.ui.res.stringResource(
+                                  app.gyrolet.mpvrx.R.string.ui_free_sources,
+                                ),
+                              style = MaterialTheme.typography.labelMedium,
+                              color = MaterialTheme.colorScheme.primary,
+                              modifier = Modifier.padding(vertical = 8.dp),
+                            )
+                          }
+                          items(freeItems.size, key = { freeItems[it].key }) { index ->
+                            val item = freeItems[index]
+                            val checked = !wyzieSources.contains("all") && wyzieSources.contains(item.key)
+                            Row(
+                              modifier =
+                                Modifier
+                                  .fillMaxWidth()
+                                  .clickable {
+                                    val newSet = wyzieSources.toMutableSet()
+                                    newSet.remove("all")
+                                    if (checked) {
+                                      newSet.remove(item.key)
+                                    } else {
+                                      newSet.add(item.key)
                                     }
+                                    if (newSet.isEmpty()) newSet.add("all")
+                                    preferences.wyzieSources.set(newSet)
+                                  }.padding(vertical = 8.dp),
+                              verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                              Checkbox(
+                                checked = checked,
+                                onCheckedChange = null,
+                              )
+                              Spacer(modifier = Modifier.width(8.dp))
+                              Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                  Text(text = item.name.replaceFirstChar { it.uppercase() })
+
+                                  item.tags.forEach { tag ->
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                      text = tag,
+                                      style = MaterialTheme.typography.bodySmall,
+                                      color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                      modifier =
+                                        Modifier
+                                          .background(
+                                            color = MaterialTheme.colorScheme.secondaryContainer,
+                                            shape = MaterialTheme.shapes.extraSmall,
+                                          ).padding(horizontal = 4.dp, vertical = 2.dp),
+                                    )
                                   }
                                 }
                               }
                             }
                           }
+                        }
 
-                          // Paid Sources Group
-                          if (paidItems.isNotEmpty()) {
-                            item {
-                              Text(
-                                text =
-                                  androidx.compose.ui.res.stringResource(
-                                    app.gyrolet.mpvrx.R.string.ui_paid_sources,
-                                  ),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(vertical = 8.dp),
-                              )
-                            }
-                            items(paidItems.size, key = { paidItems[it].key }) { index ->
-                              val item = paidItems[index]
-                              val checked = !wyzieSources.contains("all") && wyzieSources.contains(item.key)
-                              val isAvailable = item.available
+                        // Paid Sources Group
+                        if (paidItems.isNotEmpty()) {
+                          item {
+                            Text(
+                              text =
+                                androidx.compose.ui.res.stringResource(
+                                  app.gyrolet.mpvrx.R.string.ui_paid_sources,
+                                ),
+                              style = MaterialTheme.typography.labelMedium,
+                              color = MaterialTheme.colorScheme.primary,
+                              modifier = Modifier.padding(vertical = 8.dp),
+                            )
+                          }
+                          items(paidItems.size, key = { paidItems[it].key }) { index ->
+                            val item = paidItems[index]
+                            val checked = !wyzieSources.contains("all") && wyzieSources.contains(item.key)
+                            val isAvailable = item.available
 
-                              Row(
-                                modifier =
-                                  Modifier
-                                    .fillMaxWidth()
-                                    .clickable(enabled = isAvailable) {
-                                      val newSet = wyzieSources.toMutableSet()
-                                      newSet.remove("all")
-                                      if (checked) {
-                                        newSet.remove(item.key)
-                                      } else {
-                                        newSet.add(item.key)
-                                      }
-                                      if (newSet.isEmpty()) newSet.add("all")
-                                      preferences.wyzieSources.set(newSet)
-                                    }.padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                              ) {
-                                Checkbox(
-                                  checked = checked,
-                                  onCheckedChange = null,
-                                  enabled = isAvailable,
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                  Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                      text = item.name.replaceFirstChar { it.uppercase() },
-                                      color =
-                                        if (isAvailable) {
-                                          MaterialTheme.colorScheme.onSurface
-                                        } else {
-                                          MaterialTheme.colorScheme.onSurface
-                                            .copy(
-                                              alpha = 0.6f,
-                                            )
-                                        },
-                                    )
-
-                                    item.tags.forEach { tag ->
-                                      Spacer(modifier = Modifier.width(6.dp))
-                                      Text(
-                                        text = tag,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                        modifier =
-                                          Modifier
-                                            .background(
-                                              color = MaterialTheme.colorScheme.secondaryContainer,
-                                              shape = MaterialTheme.shapes.extraSmall,
-                                            ).padding(horizontal = 4.dp, vertical = 2.dp),
-                                      )
+                            Row(
+                              modifier =
+                                Modifier
+                                  .fillMaxWidth()
+                                  .clickable(enabled = isAvailable) {
+                                    val newSet = wyzieSources.toMutableSet()
+                                    newSet.remove("all")
+                                    if (checked) {
+                                      newSet.remove(item.key)
+                                    } else {
+                                      newSet.add(item.key)
                                     }
-                                  }
-                                  if (!isAvailable) {
+                                    if (newSet.isEmpty()) newSet.add("all")
+                                    preferences.wyzieSources.set(newSet)
+                                  }.padding(vertical = 8.dp),
+                              verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                              Checkbox(
+                                checked = checked,
+                                onCheckedChange = null,
+                                enabled = isAvailable,
+                              )
+                              Spacer(modifier = Modifier.width(8.dp))
+                              Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                  Text(
+                                    text = item.name.replaceFirstChar { it.uppercase() },
+                                    color =
+                                      if (isAvailable) {
+                                        MaterialTheme.colorScheme.onSurface
+                                      } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                          .copy(
+                                            alpha = 0.6f,
+                                          )
+                                      },
+                                  )
+
+                                  item.tags.forEach { tag ->
+                                    Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                      text =
-                                        androidx.compose.ui.res.stringResource(
-                                          app.gyrolet.mpvrx.R.string.ui_restricted_requires_paid_api_key,
-                                        ),
+                                      text = tag,
                                       style = MaterialTheme.typography.bodySmall,
-                                      color = MaterialTheme.colorScheme.error,
+                                      color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                      modifier =
+                                        Modifier
+                                          .background(
+                                            color = MaterialTheme.colorScheme.secondaryContainer,
+                                            shape = MaterialTheme.shapes.extraSmall,
+                                          ).padding(horizontal = 4.dp, vertical = 2.dp),
                                     )
                                   }
                                 }
-
                                 if (!isAvailable) {
-                                  Icon(
-                                    imageVector = Icons.RoundedFilled.Lock,
-                                    contentDescription =
+                                  Text(
+                                    text =
                                       androidx.compose.ui.res.stringResource(
-                                        app.gyrolet.mpvrx.R.string.ui_restricted,
+                                        app.gyrolet.mpvrx.R.string.ui_restricted_requires_paid_api_key,
                                       ),
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(16.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error,
                                   )
                                 }
                               }
+
+                              if (!isAvailable) {
+                                Icon(
+                                  imageVector = Icons.RoundedFilled.Lock,
+                                  contentDescription =
+                                    androidx.compose.ui.res.stringResource(
+                                      app.gyrolet.mpvrx.R.string.ui_restricted,
+                                    ),
+                                  tint = MaterialTheme.colorScheme.error,
+                                  modifier = Modifier.size(16.dp),
+                                )
+                              }
                             }
                           }
-                          if (!showAllSources && freeItems.isEmpty() && paidItems.isEmpty()) {
-                            item {
-                              Text(
-                                text = stringResource(R.string.generic_no_matching_options),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                              )
-                            }
+                        }
+                        if (!showAllSources && freeItems.isEmpty() && paidItems.isEmpty()) {
+                          item {
+                            Text(
+                              text = stringResource(R.string.generic_no_matching_options),
+                              color = MaterialTheme.colorScheme.onSurfaceVariant,
+                              modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                            )
                           }
                         }
                       }
                     }
+                  }
                 }
               }
 
@@ -1049,7 +1085,12 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
                     fontWeight = FontWeight.Bold,
                   )
                   Icon(
-                    imageVector = if (showAdvanced) Icons.RoundedFilled.KeyboardArrowUp else Icons.RoundedFilled.KeyboardArrowDown,
+                    imageVector =
+                      if (showAdvanced) {
+                        Icons.RoundedFilled.KeyboardArrowUp
+                      } else {
+                        Icons.RoundedFilled.KeyboardArrowDown
+                      },
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                   )
@@ -1136,19 +1177,19 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
               PreferenceDivider()
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_clear_downloads),
-                title = {
-                  Text(
-                    stringResource(R.string.pref_subtitles_clear_downloads),
-                    color = MaterialTheme.colorScheme.error,
-                  )
-                },
-                summary = { Text(stringResource(R.string.pref_subtitles_clear_downloads_summary)) },
-                onClick = { showClearDialog = true },
-                action = PreferenceAction.Dialog,
-                enabled = subtitleSaveFolder.isNotBlank(),
-              )
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_clear_downloads),
+                  title = {
+                    Text(
+                      stringResource(R.string.pref_subtitles_clear_downloads),
+                      color = MaterialTheme.colorScheme.error,
+                    )
+                  },
+                  summary = { Text(stringResource(R.string.pref_subtitles_clear_downloads_summary)) },
+                  onClick = { showClearDialog = true },
+                  action = PreferenceAction.Dialog,
+                  enabled = subtitleSaveFolder.isNotBlank(),
+                )
               }
 
               if (showClearDialog) {
@@ -1252,25 +1293,30 @@ fun MultiChoicePreference(
   var query by rememberSaveable { mutableStateOf("") }
 
   ExpressivePreferenceItem {
-  Preference(
-    modifier = modifier,
-    title = title,
-    summary = summary,
-    onClick = { showDialog = true },
-    action = PreferenceAction.Dialog,
-  )
+    Preference(
+      modifier = modifier,
+      title = title,
+      summary = summary,
+      onClick = { showDialog = true },
+      action = PreferenceAction.Dialog,
+    )
   }
 
   if (showDialog) {
     val valuesList = values.toList()
-    val filteredValues = remember(values, valueDescriptions, query) {
-      val normalized = query.trim()
-      if (normalized.isEmpty()) valuesList else valuesList.filter { (key, label) ->
-        key.contains(normalized, ignoreCase = true) ||
-          label.contains(normalized, ignoreCase = true) ||
-          valueDescriptions[key]?.contains(normalized, ignoreCase = true) == true
+    val filteredValues =
+      remember(values, valueDescriptions, query) {
+        val normalized = query.trim()
+        if (normalized.isEmpty()) {
+          valuesList
+        } else {
+          valuesList.filter { (key, label) ->
+            key.contains(normalized, ignoreCase = true) ||
+              label.contains(normalized, ignoreCase = true) ||
+              valueDescriptions[key]?.contains(normalized, ignoreCase = true) == true
+          }
+        }
       }
-    }
     AppPickerSheet(
       onDismissRequest = {
         showDialog = false
@@ -1304,57 +1350,57 @@ fun MultiChoicePreference(
         } else {
           LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
             items(count = filteredValues.size, key = { index -> filteredValues[index].first }) { index ->
-            val entry = filteredValues[index]
-            val key = entry.first
-            val checked =
-              if (hasAllOption && (selectedValues.isEmpty() || selectedValues.contains("all"))) {
-                key == "all" || (key in additiveWithAll && key in selectedValues)
-              } else {
-                selectedValues.contains(key)
-              }
+              val entry = filteredValues[index]
+              val key = entry.first
+              val checked =
+                if (hasAllOption && (selectedValues.isEmpty() || selectedValues.contains("all"))) {
+                  key == "all" || (key in additiveWithAll && key in selectedValues)
+                } else {
+                  selectedValues.contains(key)
+                }
 
-            Row(
-              modifier =
-                Modifier
-                  .fillMaxWidth()
-                  .clickable {
-                    val newSet = selectedValues.toMutableSet()
-                    if (hasAllOption) {
-                      if (key == "all") {
-                        val retainedAdditiveValues = newSet.intersect(additiveWithAll)
-                        newSet.clear()
-                        newSet.add("all")
-                        newSet.addAll(retainedAdditiveValues)
-                      } else if (key in additiveWithAll) {
-                        if (checked) newSet.remove(key) else newSet.add(key)
+              Row(
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                      val newSet = selectedValues.toMutableSet()
+                      if (hasAllOption) {
+                        if (key == "all") {
+                          val retainedAdditiveValues = newSet.intersect(additiveWithAll)
+                          newSet.clear()
+                          newSet.add("all")
+                          newSet.addAll(retainedAdditiveValues)
+                        } else if (key in additiveWithAll) {
+                          if (checked) newSet.remove(key) else newSet.add(key)
+                        } else {
+                          newSet.remove("all")
+                          if (checked) newSet.remove(key) else newSet.add(key)
+                          if (newSet.isEmpty()) newSet.add("all")
+                        }
                       } else {
-                        newSet.remove("all")
                         if (checked) newSet.remove(key) else newSet.add(key)
-                        if (newSet.isEmpty()) newSet.add("all")
                       }
-                    } else {
-                      if (checked) newSet.remove(key) else newSet.add(key)
-                    }
-                    onValuesChange(newSet)
-                  }.padding(vertical = 8.dp),
-              verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Checkbox(
-                checked = checked,
-                onCheckedChange = null,
-              )
-              Spacer(modifier = Modifier.width(8.dp))
-              Column(modifier = Modifier.weight(1f)) {
-                Text(text = entry.second)
-                valueDescriptions[key]?.let { description ->
-                  Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                  )
+                      onValuesChange(newSet)
+                    }.padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Checkbox(
+                  checked = checked,
+                  onCheckedChange = null,
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                  Text(text = entry.second)
+                  valueDescriptions[key]?.let { description ->
+                    Text(
+                      text = description,
+                      style = MaterialTheme.typography.bodySmall,
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                  }
                 }
               }
-            }
             }
           }
         }
@@ -1382,81 +1428,84 @@ private fun SubtitleApiKeyPreference(
   var showApiKey by rememberSaveable(spec.sourceKey) { mutableStateOf(false) }
 
   ExpressivePreferenceItem {
-  TextFieldPreference(
-    modifier = modifier.settingsSearchTarget(spec.titleRes),
-    value = spec.value,
-    onValueChange = spec.onValueChange,
-    textToValue = { it.trim() },
-    title = { Text(stringResource(spec.titleRes)) },
-    summary = {
-      Text(
-        text =
-          stringResource(
-            if (spec.value.isBlank()) {
-              R.string.pref_subtitle_api_key_summary_required
-            } else {
-              R.string.pref_subtitle_api_key_summary_saved
-            },
-            spec.providerName,
-          ),
-        color = if (spec.value.isBlank()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
-      )
-    },
-    textField = { value, onValueChange, _ ->
-      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    TextFieldPreference(
+      modifier = modifier.settingsSearchTarget(spec.titleRes),
+      value = spec.value,
+      onValueChange = spec.onValueChange,
+      textToValue = { it.trim() },
+      title = { Text(stringResource(spec.titleRes)) },
+      summary = {
         Text(
           text =
-            spec.dialogTextRes?.let { stringResource(it) }
-              ?: stringResource(R.string.pref_subtitle_api_key_dialog_text, spec.providerName),
+            stringResource(
+              if (spec.value.isBlank()) {
+                R.string.pref_subtitle_api_key_summary_required
+              } else {
+                R.string.pref_subtitle_api_key_summary_saved
+              },
+              spec.providerName,
+            ),
+          color = if (spec.value.isBlank()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
         )
-        TextField(
-          value = value,
-          onValueChange = onValueChange,
-          modifier = Modifier.fillMaxWidth(),
-          placeholder = {
-            Text(
-              spec.placeholderRes?.let { stringResource(it) }
-                ?: stringResource(R.string.pref_subtitle_api_key_placeholder),
-            )
-          },
-          singleLine = true,
-          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-          visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
-          trailingIcon = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              IconButton(
-                onClick = {
-                  val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
-                  val clip = clipboard?.primaryClip
-                  val pastedValue =
-                    clip
-                      ?.takeIf { it.itemCount > 0 }
-                      ?.getItemAt(0)
-                      ?.coerceToText(context)
-                      ?.toString()
-                      ?.trim()
-                  if (!pastedValue.isNullOrBlank()) {
-                    onValueChange(androidx.compose.ui.text.input.TextFieldValue(pastedValue))
-                  }
-                },
-              ) {
-                Icon(
-                  imageVector = Icons.RoundedFilled.ContentPaste,
-                  contentDescription = stringResource(R.string.pref_paste_api_key, spec.providerName),
-                )
+      },
+      textField = { value, onValueChange, _ ->
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+          Text(
+            text =
+              spec.dialogTextRes?.let { stringResource(it) }
+                ?: stringResource(R.string.pref_subtitle_api_key_dialog_text, spec.providerName),
+          )
+          TextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+              Text(
+                spec.placeholderRes?.let { stringResource(it) }
+                  ?: stringResource(R.string.pref_subtitle_api_key_placeholder),
+              )
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                  onClick = {
+                    val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                    val clip = clipboard?.primaryClip
+                    val pastedValue =
+                      clip
+                        ?.takeIf { it.itemCount > 0 }
+                        ?.getItemAt(0)
+                        ?.coerceToText(context)
+                        ?.toString()
+                        ?.trim()
+                    if (!pastedValue.isNullOrBlank()) {
+                      onValueChange(
+                        androidx.compose.ui.text.input
+                          .TextFieldValue(pastedValue),
+                      )
+                    }
+                  },
+                ) {
+                  Icon(
+                    imageVector = Icons.RoundedFilled.ContentPaste,
+                    contentDescription = stringResource(R.string.pref_paste_api_key, spec.providerName),
+                  )
+                }
+                IconButton(onClick = { showApiKey = !showApiKey }) {
+                  Icon(
+                    imageVector = if (showApiKey) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility,
+                    contentDescription =
+                      stringResource(if (showApiKey) R.string.generic_hide_key else R.string.generic_show_key),
+                  )
+                }
               }
-              IconButton(onClick = { showApiKey = !showApiKey }) {
-                Icon(
-                  imageVector = if (showApiKey) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility,
-                  contentDescription =
-                    stringResource(if (showApiKey) R.string.generic_hide_key else R.string.generic_show_key),
-                )
-              }
-            }
-          },
-        )
-      }
-    },
-  )
+            },
+          )
+        }
+      },
+    )
   }
 }

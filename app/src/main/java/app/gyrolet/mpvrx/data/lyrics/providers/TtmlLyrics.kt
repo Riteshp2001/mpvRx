@@ -65,9 +65,10 @@ internal object TtmlLyrics {
           harden(XMLConstants.FEATURE_SECURE_PROCESSING)
           runCatching { isExpandEntityReferences = false }
         }
-      val builder = factory.newDocumentBuilder().apply {
-        setEntityResolver { _, _ -> InputSource(StringReader("")) }
-      }
+      val builder =
+        factory.newDocumentBuilder().apply {
+          setEntityResolver { _, _ -> InputSource(StringReader("")) }
+        }
       val document = builder.parse(InputSource(StringReader(content)))
       val paragraphs = document.getElementsByTagName("p")
       val lines = ArrayList<TimedLine>(paragraphs.length)

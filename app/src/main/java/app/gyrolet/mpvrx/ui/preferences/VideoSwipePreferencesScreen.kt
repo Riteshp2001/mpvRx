@@ -27,7 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -65,8 +64,8 @@ import app.gyrolet.mpvrx.ui.browser.cards.icon
 import app.gyrolet.mpvrx.ui.browser.cards.labelRes
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
@@ -76,6 +75,7 @@ import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
+import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 
 @Serializable
 object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
@@ -113,7 +113,11 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
       LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize().padding(padding).then(highlight),
-        contentPadding = settingsContentPadding(androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp)),
+        contentPadding =
+          settingsContentPadding(
+            androidx.compose.foundation.layout
+              .PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+          ),
         verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
       ) {
         item(key = "right-swipe") {
@@ -153,9 +157,10 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
       val selectedAction = if (isRight) right else left
       AppPickerSheet(
         onDismissRequest = { editingRight = null },
-        title = stringResource(
-          if (isRight) R.string.pref_video_swipe_choose_right else R.string.pref_video_swipe_choose_left,
-        ),
+        title =
+          stringResource(
+            if (isRight) R.string.pref_video_swipe_choose_right else R.string.pref_video_swipe_choose_left,
+          ),
         actions = {
           TextButton(onClick = { editingRight = null }) {
             Text(stringResource(R.string.generic_cancel))
@@ -165,14 +170,17 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
         Column(Modifier.selectableGroup()) {
           VideoSwipeAction.entries.forEach { action ->
             Row(
-              modifier = Modifier.fillMaxWidth()
-                .selectable(selected = action == selectedAction, role = Role.RadioButton) {
-                  if (action != selectedAction) {
-                    if (isRight) preferences.videoSwipeRight.set(action) else preferences.videoSwipeLeft.set(action)
-                    haptics.selection(true)
-                  }
-                  editingRight = null
-                }.heightIn(min = 56.dp).padding(vertical = 8.dp),
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .selectable(selected = action == selectedAction, role = Role.RadioButton) {
+                    if (action != selectedAction) {
+                      if (isRight) preferences.videoSwipeRight.set(action) else preferences.videoSwipeLeft.set(action)
+                      haptics.selection(true)
+                    }
+                    editingRight = null
+                  }.heightIn(min = 56.dp)
+                  .padding(vertical = 8.dp),
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -203,12 +211,13 @@ private fun SwipeDirectionPreference(
   val zoneLabel = stringResource(R.string.pref_video_swipe_zone_width)
   val zoneValue = stringResource(R.string.update_progress_percent, effectiveZonePercent)
   val zoneSteps = zoneRange.last - zoneRange.first - 1
-  val haptics = rememberAdjustmentHaptics(
-    zoneRange.first.toFloat(),
-    zoneRange.last.toFloat(),
-    zoneSteps,
-    listOf(BrowserPreferences.DEFAULT_VIDEO_SWIPE_ZONE_PERCENT.toFloat()),
-  )
+  val haptics =
+    rememberAdjustmentHaptics(
+      zoneRange.first.toFloat(),
+      zoneRange.last.toFloat(),
+      zoneSteps,
+      listOf(BrowserPreferences.DEFAULT_VIDEO_SWIPE_ZONE_PERCENT.toFloat()),
+    )
   Column(modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
       Column(Modifier.weight(1f)) {
@@ -244,10 +253,11 @@ private fun SwipeDirectionPreference(
           haptics.move(configuredZonePercent.toFloat(), updatedPercent.toFloat())
         }
       },
-      modifier = Modifier.fillMaxWidth().semantics {
-        contentDescription = zoneLabel
-        stateDescription = zoneValue
-      },
+      modifier =
+        Modifier.fillMaxWidth().semantics {
+          contentDescription = zoneLabel
+          stateDescription = zoneValue
+        },
       valueRange = zoneRange.first.toFloat()..zoneRange.last.toFloat(),
       steps = zoneSteps,
       enabled = zoneEnabled,
@@ -256,7 +266,11 @@ private fun SwipeDirectionPreference(
 }
 
 @Composable
-private fun SwipeActionPreview(right: Boolean, action: VideoSwipeAction, zonePercent: Int) {
+private fun SwipeActionPreview(
+  right: Boolean,
+  action: VideoSwipeAction,
+  zonePercent: Int,
+) {
   val density = LocalDensity.current
   val offset by animateFloatAsState(
     targetValue = if (action == VideoSwipeAction.None) 0f else with(density) { 76.dp.toPx() } * if (right) 1f else -1f,
@@ -272,29 +286,36 @@ private fun SwipeActionPreview(right: Boolean, action: VideoSwipeAction, zonePer
   Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))) {
     Text(
       text = stringResource(R.string.pref_video_swipe_zone_percent, zonePercent),
-      modifier = Modifier.fillMaxWidth()
-        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-        .drawBehind {
-          val zoneWidth = size.width * zonePercent / 100f
-          drawRect(
-            color = zoneColor,
-            topLeft = Offset(if (right) 0f else size.width - zoneWidth, 0f),
-            size = Size(zoneWidth, size.height),
-          )
-        }.padding(horizontal = 12.dp, vertical = 8.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+          .drawBehind {
+            val zoneWidth = size.width * zonePercent / 100f
+            drawRect(
+              color = zoneColor,
+              topLeft = Offset(if (right) 0f else size.width - zoneWidth, 0f),
+              size = Size(zoneWidth, size.height),
+            )
+          }.padding(horizontal = 12.dp, vertical = 8.dp),
       style = MaterialTheme.typography.labelLarge,
       color = MaterialTheme.colorScheme.onSurface,
       textAlign = if (right) TextAlign.Left else TextAlign.Right,
     )
     Box(
-      Modifier.fillMaxWidth().height(88.dp).background(background).clearAndSetSemantics { },
+      Modifier
+        .fillMaxWidth()
+        .height(88.dp)
+        .background(background)
+        .clearAndSetSemantics { },
     ) {
       Crossfade(
         targetState = action,
         animationSpec = AppMotion.spatial(AppMotion.Effect.Alpha, snap()),
-        modifier = Modifier
-          .align(if (right) AbsoluteAlignment.CenterLeft else AbsoluteAlignment.CenterRight)
-          .width(76.dp),
+        modifier =
+          Modifier
+            .align(if (right) AbsoluteAlignment.CenterLeft else AbsoluteAlignment.CenterRight)
+            .width(76.dp),
         label = "swipePreviewAction",
       ) { previewAction ->
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -302,8 +323,12 @@ private fun SwipeActionPreview(right: Boolean, action: VideoSwipeAction, zonePer
         }
       }
       Row(
-        modifier = Modifier.fillMaxSize().graphicsLayer { translationX = offset }
-          .background(MaterialTheme.colorScheme.surfaceContainerLow).padding(16.dp),
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .graphicsLayer { translationX = offset }
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
       ) {
@@ -316,7 +341,9 @@ private fun SwipeActionPreview(right: Boolean, action: VideoSwipeAction, zonePer
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Box(Modifier.fillMaxWidth(0.85f).height(8.dp).background(MaterialTheme.colorScheme.outlineVariant))
           Box(
-            Modifier.fillMaxWidth(0.55f).height(6.dp)
+            Modifier
+              .fillMaxWidth(0.55f)
+              .height(6.dp)
               .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
           )
         }

@@ -11,7 +11,6 @@ package app.gyrolet.mpvrx.ui.downloads
 
 import android.content.Intent
 import android.net.Uri
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -42,7 +41,6 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -81,11 +79,11 @@ import app.gyrolet.mpvrx.domain.download.AppDownloadStatus
 import app.gyrolet.mpvrx.domain.download.YtdlpDownloadEngine
 import app.gyrolet.mpvrx.domain.download.formatBytes
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
+import app.gyrolet.mpvrx.domain.thumbnail.getArtwork
 import app.gyrolet.mpvrx.preferences.DownloadPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
-import app.gyrolet.mpvrx.domain.thumbnail.getArtwork
 import app.gyrolet.mpvrx.ui.browser.states.EmptyState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -95,12 +93,14 @@ import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.MediaUtils
-import java.io.File
-import java.util.Locale
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import java.io.File
+import java.util.Locale
 import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 @Serializable
 object DownloadsScreen : Screen {
@@ -138,16 +138,19 @@ object DownloadsScreen : Screen {
 
     var pendingDelete by remember { mutableStateOf<AppDownload?>(null) }
 
-    val counts = DownloadFilter.entries.associateWith { category ->
-      downloads.count { category.matches(it) } + ytdlpJobs.count { category.matches(it) }
-    }
+    val counts =
+      DownloadFilter.entries.associateWith { category ->
+        downloads.count { category.matches(it) } + ytdlpJobs.count { category.matches(it) }
+      }
     val search = query.trim()
-    val matchingDownloads = downloads.filter {
-      filter.matches(it) && (it.displayTitle.contains(search, true) || it.entity.fileName.contains(search, true))
-    }
-    val matchingYtdlp = ytdlpJobs.filter {
-      filter.matches(it) && (it.title.contains(search, true) || it.outputFile.orEmpty().contains(search, true))
-    }
+    val matchingDownloads =
+      downloads.filter {
+        filter.matches(it) && (it.displayTitle.contains(search, true) || it.entity.fileName.contains(search, true))
+      }
+    val matchingYtdlp =
+      ytdlpJobs.filter {
+        filter.matches(it) && (it.title.contains(search, true) || it.outputFile.orEmpty().contains(search, true))
+      }
 
     Scaffold(
       topBar = {
@@ -207,8 +210,26 @@ object DownloadsScreen : Screen {
           item(key = "empty") {
             EmptyState(
               icon = Icons.RoundedFilled.FileDownload,
-              title = stringResource(if (downloads.isEmpty() && ytdlpJobs.isEmpty()) R.string.downloads_empty else R.string.ui_no_results_found),
-              message = stringResource(if (downloads.isEmpty() && ytdlpJobs.isEmpty()) R.string.downloads_empty_hint else R.string.downloads_no_matches_hint),
+              title =
+                stringResource(
+                  if (downloads.isEmpty() &&
+                    ytdlpJobs.isEmpty()
+                  ) {
+                    R.string.downloads_empty
+                  } else {
+                    R.string.ui_no_results_found
+                  },
+                ),
+              message =
+                stringResource(
+                  if (downloads.isEmpty() &&
+                    ytdlpJobs.isEmpty()
+                  ) {
+                    R.string.downloads_empty_hint
+                  } else {
+                    R.string.downloads_no_matches_hint
+                  },
+                ),
               modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
             )
           }
@@ -244,7 +265,9 @@ object DownloadsScreen : Screen {
         val completedYtdlp = matchingYtdlp.filter { it.state == YtdlpDownloadEngine.JobState.SUCCESS }
         val completedCount = completedDownloads.size + completedYtdlp.size
         if (completedDownloads.isNotEmpty() || completedYtdlp.isNotEmpty()) {
-          item(key = "completed_header") { SectionHeader(stringResource(R.string.downloads_completed_section), completedCount) }
+          item(
+            key = "completed_header",
+          ) { SectionHeader(stringResource(R.string.downloads_completed_section), completedCount) }
           itemsIndexed(completedYtdlp, key = { _, job -> "ytdlp_done_${job.id}" }) { index, job ->
             CompletedRow(
               title = job.title,
@@ -269,13 +292,14 @@ object DownloadsScreen : Screen {
               shape = rememberConnectedShape(index + completedYtdlp.size, completedCount, ConnectedLayout.Vertical),
               posterUrl = download.entity.posterUrl,
               mediaPath = download.file.absolutePath,
-              subtitle = buildString {
-                append(download.entity.fileName)
-                if (download.entity.totalBytes > 0) {
-                  append("  •  ")
-                  append(formatBytes(download.entity.totalBytes))
-                }
-              },
+              subtitle =
+                buildString {
+                  append(download.entity.fileName)
+                  if (download.entity.totalBytes > 0) {
+                    append("  •  ")
+                    append(formatBytes(download.entity.totalBytes))
+                  }
+                },
               playable = download.isPlayable,
               onPlay = {
                 MediaUtils.playFile(
@@ -353,26 +377,32 @@ object DownloadsScreen : Screen {
   }
 }
 
-private enum class DownloadFilter(val label: Int) {
+private enum class DownloadFilter(
+  val label: Int,
+) {
   ALL(R.string.downloads_all),
   ACTIVE(R.string.downloads_active_section),
   COMPLETED(R.string.downloads_completed_section),
   ATTENTION(R.string.downloads_attention_section),
   ;
 
-  fun matches(download: AppDownload): Boolean = when (this) {
-    ALL -> true
-    ACTIVE -> download.isActive
-    COMPLETED -> download.isCompleted
-    ATTENTION -> download.status == AppDownloadStatus.FAILED || download.status == AppDownloadStatus.CANCELLED
-  }
+  fun matches(download: AppDownload): Boolean =
+    when (this) {
+      ALL -> true
+      ACTIVE -> download.isActive
+      COMPLETED -> download.isCompleted
+      ATTENTION -> download.status == AppDownloadStatus.FAILED || download.status == AppDownloadStatus.CANCELLED
+    }
 
-  fun matches(job: YtdlpDownloadEngine.Job): Boolean = when (this) {
-    ALL -> true
-    ACTIVE -> job.isActive
-    COMPLETED -> job.state == YtdlpDownloadEngine.JobState.SUCCESS
-    ATTENTION -> job.state == YtdlpDownloadEngine.JobState.FAILED || job.state == YtdlpDownloadEngine.JobState.CANCELLED
-  }
+  fun matches(job: YtdlpDownloadEngine.Job): Boolean =
+    when (this) {
+      ALL -> true
+      ACTIVE -> job.isActive
+      COMPLETED -> job.state == YtdlpDownloadEngine.JobState.SUCCESS
+      ATTENTION ->
+        job.state == YtdlpDownloadEngine.JobState.FAILED ||
+          job.state == YtdlpDownloadEngine.JobState.CANCELLED
+    }
 }
 
 @Composable
@@ -394,13 +424,24 @@ private fun DownloadOverview(
           val isSelected = category == filter
           Surface(
             onClick = { onSelect(category) },
-            modifier = Modifier.weight(1f).fillMaxHeight().semantics {
-              selected = isSelected
-              role = Role.RadioButton
-            },
+            modifier =
+              Modifier.weight(1f).fillMaxHeight().semantics {
+                selected = isSelected
+                role = Role.RadioButton
+              },
             shape = rememberConnectedShape(row * 2 + column, 4, ConnectedLayout.Grid, columns = 2),
-            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+            color =
+              if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+              } else {
+                MaterialTheme.colorScheme.surfaceContainer
+              },
+            contentColor =
+              if (isSelected) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+              } else {
+                MaterialTheme.colorScheme.onSurface
+              },
           ) {
             Column(
               modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -421,10 +462,16 @@ private fun DownloadOverview(
 }
 
 @Composable
-private fun SectionHeader(title: String, count: Int) {
+private fun SectionHeader(
+  title: String,
+  count: Int,
+) {
   Row(
-    modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 14.dp, bottom = 6.dp)
-      .semantics { heading() },
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(start = 8.dp, end = 8.dp, top = 14.dp, bottom = 6.dp)
+        .semantics { heading() },
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
@@ -436,7 +483,11 @@ private fun SectionHeader(title: String, count: Int) {
       modifier = Modifier.weight(1f),
     )
     Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.secondaryContainer) {
-      Text(count.toString(), Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = MaterialTheme.typography.labelLarge)
+      Text(
+        count.toString(),
+        Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+        style = MaterialTheme.typography.labelLarge,
+      )
     }
   }
 }
@@ -500,7 +551,10 @@ private fun DownloadLocationCard(
 }
 
 @Composable
-private fun DownloadThumbnail(posterUrl: String?, mediaPath: String?) {
+private fun DownloadThumbnail(
+  posterUrl: String?,
+  mediaPath: String?,
+) {
   val repository = koinInject<ThumbnailRepository>()
   val revision by repository.cacheRevision.collectAsState()
   val generator by koinInject<app.gyrolet.mpvrx.preferences.BrowserPreferences>().thumbnailGenerator.collectAsState()
@@ -510,14 +564,19 @@ private fun DownloadThumbnail(posterUrl: String?, mediaPath: String?) {
   val localThumbnail by produceState<ImageBitmap?>(null, mediaPath, widthPx, heightPx, generator, revision) {
     value = null
     if (!mediaPath.isNullOrBlank()) {
-      val audio = mediaPath.substringAfterLast('.', "").lowercase() in app.gyrolet.mpvrx.utils.storage.FileTypeUtils.AUDIO_EXTENSIONS
+      val audio =
+        mediaPath.substringAfterLast('.', "").lowercase() in
+          app.gyrolet.mpvrx.utils.storage.FileTypeUtils.AUDIO_EXTENSIONS
       value = repository.getArtwork(mediaPath, isAudio = audio, widthPx = widthPx, heightPx = heightPx)?.asImageBitmap()
     }
   }
   Box(
-    modifier = Modifier.width(88.dp).aspectRatio(16f / 9f)
-      .clip(RoundedCornerShape(16.dp))
-      .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+    modifier =
+      Modifier
+        .width(88.dp)
+        .aspectRatio(16f / 9f)
+        .clip(RoundedCornerShape(16.dp))
+        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
     contentAlignment = Alignment.Center,
   ) {
     Icon(
@@ -560,10 +619,16 @@ private fun DownloadMediaRow(
   Card(
     modifier = Modifier.fillMaxWidth(),
     shape = shape,
-    colors = CardDefaults.cardColors(
-      containerColor = if (isError) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerLow,
-      contentColor = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface,
-    ),
+    colors =
+      CardDefaults.cardColors(
+        containerColor =
+          if (isError) {
+            MaterialTheme.colorScheme.errorContainer
+          } else {
+            MaterialTheme.colorScheme.surfaceContainerLow
+          },
+        contentColor = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface,
+      ),
   ) {
     Column(
       modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -588,7 +653,12 @@ private fun DownloadMediaRow(
           Text(
             text = subtitle,
             style = MaterialTheme.typography.bodySmall,
-            color = if (isError) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            color =
+              if (isError) {
+                MaterialTheme.colorScheme.onErrorContainer
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              },
             maxLines = if (isError) 4 else 2,
             overflow = TextOverflow.Ellipsis,
           )
@@ -628,8 +698,10 @@ private fun ActiveDownloadRow(
     posterUrl = download.entity.posterUrl,
     isError = status == AppDownloadStatus.FAILED,
     progress = (download.entity.progress / 100f).takeIf { status == AppDownloadStatus.RUNNING },
-    indeterminate = status == AppDownloadStatus.QUEUED ||
-      status == AppDownloadStatus.RUNNING && download.entity.totalBytes <= 0,
+    indeterminate =
+      status == AppDownloadStatus.QUEUED ||
+        status == AppDownloadStatus.RUNNING &&
+        download.entity.totalBytes <= 0,
   ) {
     if (status == AppDownloadStatus.FAILED || status == AppDownloadStatus.CANCELLED) {
       FilledTonalIconButton(onClick = onRetry) {
@@ -639,7 +711,10 @@ private fun ActiveDownloadRow(
     IconButton(onClick = onCancel) {
       Icon(
         Icons.RoundedFilled.Close,
-        contentDescription = stringResource(if (download.isActive) R.string.downloads_cancel else R.string.downloads_remove_entry),
+        contentDescription =
+          stringResource(
+            if (download.isActive) R.string.downloads_cancel else R.string.downloads_remove_entry,
+          ),
       )
     }
   }
@@ -660,8 +735,10 @@ private fun YtdlpJobRow(
     posterUrl = job.posterUrl,
     isError = job.state == YtdlpDownloadEngine.JobState.FAILED,
     progress = (job.progressPercent / 100f).takeIf { job.state == YtdlpDownloadEngine.JobState.RUNNING },
-    indeterminate = job.state == YtdlpDownloadEngine.JobState.QUEUED ||
-      job.state == YtdlpDownloadEngine.JobState.RUNNING && job.progressPercent <= 0f,
+    indeterminate =
+      job.state == YtdlpDownloadEngine.JobState.QUEUED ||
+        job.state == YtdlpDownloadEngine.JobState.RUNNING &&
+        job.progressPercent <= 0f,
   ) {
     when (job.state) {
       YtdlpDownloadEngine.JobState.FAILED, YtdlpDownloadEngine.JobState.CANCELLED -> {
@@ -703,7 +780,14 @@ private fun CompletedRow(
       Icon(
         Icons.RoundedFilled.PlayArrow,
         contentDescription = stringResource(R.string.downloads_play),
-        tint = if (playable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+        tint =
+          if (playable) {
+            MaterialTheme.colorScheme.primary
+          } else {
+            MaterialTheme.colorScheme.onSurface.copy(
+              alpha = 0.38f,
+            )
+          },
       )
     }
     IconButton(onClick = onDelete) {
@@ -722,7 +806,10 @@ private fun downloadStatusLine(
     AppDownloadStatus.QUEUED -> stringResource(R.string.downloads_queued)
     AppDownloadStatus.FAILED ->
       stringResource(R.string.downloads_failed) +
-        entity.failureReason?.takeIf { it.isNotBlank() }?.let { ": $it" }.orEmpty()
+        entity.failureReason
+          ?.takeIf { it.isNotBlank() }
+          ?.let { ": $it" }
+          .orEmpty()
     AppDownloadStatus.CANCELLED -> stringResource(R.string.downloads_cancelled)
     AppDownloadStatus.SUCCESS -> stringResource(R.string.downloads_downloaded)
     AppDownloadStatus.RUNNING ->

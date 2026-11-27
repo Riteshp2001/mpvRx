@@ -137,7 +137,12 @@ fun saveLowPresetConfig(
 ) = saveQualityPresetConfig(prefs, KEY_PRESET_LOW, config)
 
 fun clearSavedQualityPresets(prefs: SharedPreferences) {
-  prefs.edit().remove(KEY_PRESET_HIGH).remove(KEY_PRESET_MEDIUM).remove(KEY_PRESET_LOW).apply()
+  prefs
+    .edit()
+    .remove(KEY_PRESET_HIGH)
+    .remove(KEY_PRESET_MEDIUM)
+    .remove(KEY_PRESET_LOW)
+    .apply()
 }
 
 fun saveTargetSizePresets(
@@ -159,8 +164,9 @@ fun saveTargetSizePresets(
 }
 
 fun loadTargetSizePresets(prefs: SharedPreferences): List<TargetSizePreset> {
-  val str = prefs.getString(KEY_TARGET_SIZE_PRESETS, null)
-    ?: return defaultTargetSizePresets.sortedBy { it.sizeMb }
+  val str =
+    prefs.getString(KEY_TARGET_SIZE_PRESETS, null)
+      ?: return defaultTargetSizePresets.sortedBy { it.sizeMb }
   return try {
     if (str.startsWith("[")) {
       val array = JSONArray(str)
@@ -179,19 +185,22 @@ fun loadTargetSizePresets(prefs: SharedPreferences): List<TargetSizePreset> {
       list.ifEmpty { defaultTargetSizePresets }.sortedBy { it.sizeMb }
     } else {
       // Legacy split parser fallback
-      str.split(";\n", ";").mapNotNull { itemStr ->
-        val parts = itemStr.trim().split("|")
-        if (parts.size >= 4) {
-          TargetSizePreset(
-            id = parts[0],
-            sizeMb = parts[1].toFloat(),
-            label = parts[2],
-            isCustom = parts[3].trim().toBoolean(),
-          )
-        } else {
-          null
-        }
-      }.ifEmpty { defaultTargetSizePresets }.sortedBy { it.sizeMb }
+      str
+        .split(";\n", ";")
+        .mapNotNull { itemStr ->
+          val parts = itemStr.trim().split("|")
+          if (parts.size >= 4) {
+            TargetSizePreset(
+              id = parts[0],
+              sizeMb = parts[1].toFloat(),
+              label = parts[2],
+              isCustom = parts[3].trim().toBoolean(),
+            )
+          } else {
+            null
+          }
+        }.ifEmpty { defaultTargetSizePresets }
+        .sortedBy { it.sizeMb }
     }
   } catch (_: Exception) {
     defaultTargetSizePresets.sortedBy { it.sizeMb }

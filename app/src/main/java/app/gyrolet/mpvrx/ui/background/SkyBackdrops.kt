@@ -11,10 +11,14 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-/* Night-sky family: Space, Particles, Constellation. */
+// Night-sky family: Space, Particles, Constellation.
 
 /** Three layers of stars sliding at different speeds, two faint nebulae, and a comet every few seconds. */
-internal fun DrawScope.drawSpace(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawSpace(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   val base = min(w, h)
@@ -24,12 +28,24 @@ internal fun DrawScope.drawSpace(t: Float, tilt: Offset, p: BackdropPalette) {
   val n1 = Offset(w * (0.25f + 0.05f * sin(t * 0.03f)), h * 0.30f) + Offset(tilt.x * 8.dp.toPx(), tilt.y * 8.dp.toPx())
   val n2 = Offset(w * (0.80f + 0.05f * cos(t * 0.025f)), h * 0.72f) + Offset(tilt.x * 8.dp.toPx(), tilt.y * 8.dp.toPx())
   drawCircle(
-    brush = Brush.radialGradient(listOf(p.primary.copy(alpha = 0.16f), Color.Transparent), center = n1, radius = base * 0.75f),
+    brush =
+      Brush.radialGradient(
+        listOf(p.primary.copy(alpha = 0.16f), Color.Transparent),
+        center = n1,
+        radius =
+          base * 0.75f,
+      ),
     radius = base * 0.75f,
     center = n1,
   )
   drawCircle(
-    brush = Brush.radialGradient(listOf(p.tertiary.copy(alpha = 0.13f), Color.Transparent), center = n2, radius = base * 0.7f),
+    brush =
+      Brush.radialGradient(
+        listOf(p.tertiary.copy(alpha = 0.13f), Color.Transparent),
+        center = n2,
+        radius =
+          base * 0.7f,
+      ),
     radius = base * 0.7f,
     center = n2,
   )
@@ -65,7 +81,12 @@ internal fun DrawScope.drawSpace(t: Float, tilt: Offset, p: BackdropPalette) {
     val tail = Offset(head.x - dir.x * base * 0.22f, head.y - dir.y * base * 0.22f)
     val fade = smoothstep(0f, 0.15f, u) * smoothstep(1f, 0.7f, u)
     drawLine(
-      brush = Brush.linearGradient(listOf(Color.Transparent, starColor.copy(alpha = 0.9f * fade)), start = tail, end = head),
+      brush =
+        Brush.linearGradient(
+          listOf(Color.Transparent, starColor.copy(alpha = 0.9f * fade)),
+          start = tail,
+          end = head,
+        ),
       start = tail,
       end = head,
       strokeWidth = 1.8.dp.toPx(),
@@ -75,20 +96,31 @@ internal fun DrawScope.drawSpace(t: Float, tilt: Offset, p: BackdropPalette) {
   }
 }
 
-private fun mote(i: Int, u: Float, w: Float, h: Float): Offset {
+private fun mote(
+  i: Int,
+  u: Float,
+  w: Float,
+  h: Float,
+): Offset {
   val sway = 0.12f * sin(u * TAU * 1.4f + i * 1.9f)
   return Offset(w * (0.04f + 0.92f * hash01(i, 3) + sway), h * (1.06f - 1.12f * u))
 }
 
 /** Glowing motes that rise on a wavering path, each leaving a short comet-like trail. */
-internal fun DrawScope.drawParticles(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawParticles(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   for (i in 0 until backdropCount(38, minimum = 22, maximum = 52)) {
     val depth = 0.35f + 0.65f * hash01(i, 6)
     val u = fract(hash01(i, 1) + t * (0.012f + 0.024f * hash01(i, 2)))
     val head = mote(i, u, w, h) + Offset(tilt.x * 24.dp.toPx() * depth, tilt.y * 24.dp.toPx() * depth)
-    val tail = mote(i, (u - 0.035f).coerceAtLeast(0f), w, h) + Offset(tilt.x * 24.dp.toPx() * depth, tilt.y * 24.dp.toPx() * depth)
+    val tail =
+      mote(i, (u - 0.035f).coerceAtLeast(0f), w, h) +
+        Offset(tilt.x * 24.dp.toPx() * depth, tilt.y * 24.dp.toPx() * depth)
     val life = smoothstep(0f, 0.15f, u) * smoothstep(1f, 0.82f, u)
     val color = p.accent(i)
     val r = (1.1f + 1.8f * depth).dp.toPx()
@@ -116,7 +148,12 @@ internal fun DrawScope.drawParticles(t: Float, tilt: Offset, p: BackdropPalette)
 }
 
 /** Slowly wandering stars joined by lines while they are near each other, a living star-map. */
-internal fun DrawScope.drawConstellation(t: Float, tilt: Offset, p: BackdropPalette, drawing: BackdropDrawingState) {
+internal fun DrawScope.drawConstellation(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+  drawing: BackdropDrawingState,
+) {
   val w = size.width
   val h = size.height
   // The working buffers have a fixed maximum; previews only need a subset.
@@ -134,7 +171,8 @@ internal fun DrawScope.drawConstellation(t: Float, tilt: Offset, p: BackdropPale
     xs[i] = fx * w + shift.x
     ys[i] = fy * h + shift.y
     // fade at the wrap seam so a star never visibly jumps from one edge to the other
-    vis[i] = smoothstep(0f, 0.06f, fx) * smoothstep(1f, 0.94f, fx) * smoothstep(0f, 0.06f, fy) * smoothstep(1f, 0.94f, fy)
+    vis[i] =
+      smoothstep(0f, 0.06f, fx) * smoothstep(1f, 0.94f, fx) * smoothstep(0f, 0.06f, fy) * smoothstep(1f, 0.94f, fy)
   }
   for (i in 0 until count) {
     for (j in i + 1 until count) {

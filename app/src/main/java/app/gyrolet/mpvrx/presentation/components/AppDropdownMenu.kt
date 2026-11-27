@@ -1,37 +1,37 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.presentation.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.draw.clip
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
 import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
-import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
 import app.gyrolet.mpvrx.ui.theme.appPressFeedback
-import androidx.compose.ui.window.PopupProperties
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 
 @Composable
 fun AppDropdownMenu(
@@ -49,11 +49,18 @@ fun AppDropdownMenu(
   content: @Composable ColumnScope.() -> Unit,
 ) {
   androidx.compose.material3.DropdownMenu(
-    expanded = expanded, onDismissRequest = onDismissRequest,
+    expanded = expanded,
+    onDismissRequest = onDismissRequest,
     modifier = modifier.heightIn(max = AppComboBoxDefaults.MenuMaxHeight).widthIn(min = 200.dp, max = 320.dp),
-    offset = offset, scrollState = scrollState, properties = properties, shape = shape,
-    containerColor = containerColor, tonalElevation = tonalElevation, shadowElevation = shadowElevation,
-    border = border, content = content,
+    offset = offset,
+    scrollState = scrollState,
+    properties = properties,
+    shape = shape,
+    containerColor = containerColor,
+    tonalElevation = tonalElevation,
+    shadowElevation = shadowElevation,
+    border = border,
+    content = content,
   )
 }
 
@@ -77,23 +84,32 @@ fun AppDropdownMenuItem(
   val pressed by interactionSource.collectIsPressedAsState()
   // A popup has one rounded outer shell. Its inner rows use small shared corners;
   // when the item positions are known the exposed group corners stay expressive.
-  val rowShape = if (index != null && itemCount != null && itemCount > 0 && index in 0 until itemCount) {
-    rememberConnectedShape(
-      index, itemCount, ConnectedLayout.Vertical, tokens = AppConnectedControlShapeTokens,
-      pressed = pressed && enabled, selected = selected,
+  val rowShape =
+    if (index != null && itemCount != null && itemCount > 0 && index in 0 until itemCount) {
+      rememberConnectedShape(
+        index,
+        itemCount,
+        ConnectedLayout.Vertical,
+        tokens = AppConnectedControlShapeTokens,
+        pressed = pressed && enabled,
+        selected = selected,
+      )
+    } else {
+      RoundedCornerShape(6.dp)
+    }
+  val rowColor =
+    animatedConnectedContainerColor(
+      selected = selected,
+      pressed = pressed,
+      enabled = enabled,
+      containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
     )
-  } else {
-    RoundedCornerShape(6.dp)
-  }
-  val rowColor = animatedConnectedContainerColor(
-    selected = selected,
-    pressed = pressed,
-    enabled = enabled,
-    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-  )
   val contentColor =
-    if (selected) MaterialTheme.colorScheme.onSecondaryContainer
-    else MaterialTheme.colorScheme.onSurface
+    if (selected) {
+      MaterialTheme.colorScheme.onSecondaryContainer
+    } else {
+      MaterialTheme.colorScheme.onSurface
+    }
 
   DropdownMenuItem(
     text = text,
@@ -109,10 +125,11 @@ fun AppDropdownMenuItem(
     leadingIcon = leadingIcon,
     trailingIcon = trailingIcon,
     contentPadding = PaddingValues(horizontal = 14.dp),
-    colors = MenuDefaults.itemColors(
-      textColor = contentColor,
-      leadingIconColor = contentColor,
-      trailingIconColor = contentColor,
-    ),
+    colors =
+      MenuDefaults.itemColors(
+        textColor = contentColor,
+        leadingIconColor = contentColor,
+        trailingIconColor = contentColor,
+      ),
   )
 }

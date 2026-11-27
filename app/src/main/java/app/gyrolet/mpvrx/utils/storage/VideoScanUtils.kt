@@ -56,8 +56,7 @@ object VideoScanUtils : KoinComponent {
    */
   private const val DIRECT_CHILD_SELECTION = "LOWER(%1\$s) LIKE ? AND LOWER(%1\$s) NOT LIKE ?"
 
-  private fun directChildSelectionArgs(folderKey: String): Array<String> =
-    arrayOf("$folderKey/%", "$folderKey/%/%")
+  private fun directChildSelectionArgs(folderKey: String): Array<String> = arrayOf("$folderKey/%", "$folderKey/%/%")
 
   // Extensions where MediaStore duration is unreliable (returns 0)
   private val MEDIASTORE_DURATION_UNRELIABLE = setOf("ts", "mts", "m2ts")
@@ -105,9 +104,12 @@ object VideoScanUtils : KoinComponent {
         try {
           val file = File(v.path)
           if (!app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && !file.exists()) continue
-          val meta = if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
-            metadataCache.getOrExtractContentMetadata(v)
-          } else metadataCache.getOrExtractMetadata(file, v.uri, v.displayName)
+          val meta =
+            if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
+              metadataCache.getOrExtractContentMetadata(v)
+            } else {
+              metadataCache.getOrExtractMetadata(file, v.uri, v.displayName)
+            }
           if (meta != null && meta.durationMs > 0L) {
             videosMap[key] =
               v.copy(
@@ -132,7 +134,8 @@ object VideoScanUtils : KoinComponent {
         scanVideosFromFileSystem(context, folder, videosMap, options, noMediaPathFilter, keyResolver)
       }
 
-      videosMap.values.filter(options::includesVideo)
+      videosMap.values
+        .filter(options::includesVideo)
         .sortedBy { it.displayName.lowercase(Locale.getDefault()) }
     }
 
@@ -186,80 +189,80 @@ object VideoScanUtils : KoinComponent {
           queryVideos(baseProjection)
         }
       cursor?.use { cursor ->
-          val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
-          val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
-          val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
-          val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
-          val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
-          val dateModifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED)
-          val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
-          val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE)
-          val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH)
-          val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT)
-          val rotationColumn = cursor.getColumnIndex(videoRotationColumn)
-          val folderResolver = MediaFolderResolver(noMediaPathFilter)
-          val existenceCache = FolderListingExistenceCache()
+        val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+        val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+        val dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATA)
+        val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
+        val durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
+        val dateModifiedColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED)
+        val dateAddedColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_ADDED)
+        val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.MIME_TYPE)
+        val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.WIDTH)
+        val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.HEIGHT)
+        val rotationColumn = cursor.getColumnIndex(videoRotationColumn)
+        val folderResolver = MediaFolderResolver(noMediaPathFilter)
+        val existenceCache = FolderListingExistenceCache()
 
-          while (cursor.moveToNext()) {
-            currentCoroutineContext().ensureActive()
-            val path = cursor.getString(dataColumn)?.takeIf { it.isNotBlank() } ?: continue
-            val file = File(path)
+        while (cursor.moveToNext()) {
+          currentCoroutineContext().ensureActive()
+          val path = cursor.getString(dataColumn)?.takeIf { it.isNotBlank() } ?: continue
+          val file = File(path)
 
-            if (!FileTypeUtils.isVideoFile(file)) continue
-            // Only direct children
-            val folder = folderResolver.resolve(file.parent) ?: continue
-            if (folder.key != normalizedFolderKey || folder.excluded) continue
-            if (!app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && !existenceCache.exists(file)) continue
-            val normalizedPath = normalizeStoragePath(path) ?: continue
+          if (!FileTypeUtils.isVideoFile(file)) continue
+          // Only direct children
+          val folder = folderResolver.resolve(file.parent) ?: continue
+          if (folder.key != normalizedFolderKey || folder.excluded) continue
+          if (!app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && !existenceCache.exists(file)) continue
+          val normalizedPath = normalizeStoragePath(path) ?: continue
 
-            val id = cursor.getLong(idColumn)
-            val displayName = cursor.getString(nameColumn)?.takeIf { it.isNotBlank() } ?: file.name
-            val title = file.nameWithoutExtension
-            val size = cursor.getLong(sizeColumn)
-            val duration = cursor.getLong(durationColumn)
-            val dateModified = cursor.getLong(dateModifiedColumn)
-            val dateAdded = cursor.getLong(dateAddedColumn)
-            val mimeType = cursor.getString(mimeTypeColumn) ?: "video/*"
-            val width = cursor.getInt(widthColumn)
-            val height = cursor.getInt(heightColumn)
-            val rawRotation =
-              if (rotationColumn >= 0 && !cursor.isNull(rotationColumn)) cursor.getInt(rotationColumn) else 0
-            val normalizedRotation = ((rawRotation % 360) + 360) % 360
-            val rotation = if (normalizedRotation % 90 == 0) normalizedRotation else 0
+          val id = cursor.getLong(idColumn)
+          val displayName = cursor.getString(nameColumn)?.takeIf { it.isNotBlank() } ?: file.name
+          val title = file.nameWithoutExtension
+          val size = cursor.getLong(sizeColumn)
+          val duration = cursor.getLong(durationColumn)
+          val dateModified = cursor.getLong(dateModifiedColumn)
+          val dateAdded = cursor.getLong(dateAddedColumn)
+          val mimeType = cursor.getString(mimeTypeColumn) ?: "video/*"
+          val width = cursor.getInt(widthColumn)
+          val height = cursor.getInt(heightColumn)
+          val rawRotation =
+            if (rotationColumn >= 0 && !cursor.isNull(rotationColumn)) cursor.getInt(rotationColumn) else 0
+          val normalizedRotation = ((rawRotation % 360) + 360) % 360
+          val rotation = if (normalizedRotation % 90 == 0) normalizedRotation else 0
 
-            val uri =
-              Uri.withAppendedPath(
-                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                id.toString(),
-              )
+          val uri =
+            Uri.withAppendedPath(
+              MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+              id.toString(),
+            )
 
-            val videoKey = keyResolver.key(normalizedPath) ?: normalizedPath
-            videosMap[videoKey] =
-              Video(
-                id = id,
-                title = title,
-                displayName = displayName,
-                path = normalizedPath,
-                uri = uri,
-                duration = duration,
-                durationFormatted = formatDuration(duration),
-                size = size,
-                sizeFormatted = formatFileSize(size),
-                dateModified = dateModified,
-                dateAdded = dateAdded,
-                mimeType = mimeType,
-                bucketId = normalizedFolderPath,
-                bucketDisplayName = leafStorageName(normalizedFolderPath),
-                width = width,
-                height = height,
-                rotation = rotation,
-                fps = 0f,
-                resolution = formatResolution(width, height),
-                hasEmbeddedSubtitles = false,
-                subtitleCodec = "",
-              )
-          }
+          val videoKey = keyResolver.key(normalizedPath) ?: normalizedPath
+          videosMap[videoKey] =
+            Video(
+              id = id,
+              title = title,
+              displayName = displayName,
+              path = normalizedPath,
+              uri = uri,
+              duration = duration,
+              durationFormatted = formatDuration(duration),
+              size = size,
+              sizeFormatted = formatFileSize(size),
+              dateModified = dateModified,
+              dateAdded = dateAdded,
+              mimeType = mimeType,
+              bucketId = normalizedFolderPath,
+              bucketDisplayName = leafStorageName(normalizedFolderPath),
+              width = width,
+              height = height,
+              rotation = rotation,
+              fps = 0f,
+              resolution = formatResolution(width, height),
+              hasEmbeddedSubtitles = false,
+              subtitleCodec = "",
+            )
         }
+      }
     } catch (error: kotlinx.coroutines.CancellationException) {
       throw error
     } catch (e: Exception) {
@@ -482,10 +485,10 @@ object VideoScanUtils : KoinComponent {
     )
   }
 
-fun formatResolution(
+  fun formatResolution(
     width: Int,
     height: Int,
-): String {
+  ): String {
     if (width <= 0 || height <= 0) return "--"
 
     val longSide = maxOf(width, height)
@@ -499,45 +502,45 @@ fun formatResolution(
     val scanlines = if (isRotatedPortrait) width else height
 
     return when {
-        // 8K / 4320p class
-        longSide >= 7680 || scanlines >= 4320 -> "4320p"
+      // 8K / 4320p class
+      longSide >= 7680 || scanlines >= 4320 -> "4320p"
 
-        // 4K / 2160p class
-        // Includes cinematic 4K such as 3840×1600
-        longSide >= 3840 || scanlines >= 2160 -> "2160p"
+      // 4K / 2160p class
+      // Includes cinematic 4K such as 3840×1600
+      longSide >= 3840 || scanlines >= 2160 -> "2160p"
 
-        // QHD / 1440p class
-        // Includes ultrawide 3440×1440
-        scanlines >= 1440 -> "1440p"
+      // QHD / 1440p class
+      // Includes ultrawide 3440×1440
+      scanlines >= 1440 -> "1440p"
 
-        // FHD / 1080p class
-        // A frame that still carries a full 1080 scanlines is 1080p however narrow it
-        // is. Anamorphic, 4:3 broadcast and pillarboxed frames (1440×1080, 1152×1080,
-        // 1280×1080) have a long side below 1920, so requiring the long side to reach
-        // 1920 demoted them to 720p.
-        scanlines >= 1000 -> "1080p"
+      // FHD / 1080p class
+      // A frame that still carries a full 1080 scanlines is 1080p however narrow it
+      // is. Anamorphic, 4:3 broadcast and pillarboxed frames (1440×1080, 1152×1080,
+      // 1280×1080) have a long side below 1920, so requiring the long side to reach
+      // 1920 demoted them to 720p.
+      scanlines >= 1000 -> "1080p"
 
-        // Cinematic letterboxing crops scanlines away instead of squeezing them
-        // (1920×800, 1920×816, 2560×600), so the long side has to decide here.
-        longSide >= 1920 && scanlines >= 750 -> "1080p"
+      // Cinematic letterboxing crops scanlines away instead of squeezing them
+      // (1920×800, 1920×816, 2560×600), so the long side has to decide here.
+      longSide >= 1920 && scanlines >= 750 -> "1080p"
 
-        // HD / 720p class
-        // Includes 1280×544, 1280×576, etc.
-        longSide >= 1280 && scanlines >= 500 -> "720p"
+      // HD / 720p class
+      // Includes 1280×544, 1280×576, etc.
+      longSide >= 1280 && scanlines >= 500 -> "720p"
 
-        // 480p class
-        longSide >= 854 || scanlines >= 480 -> "480p"
+      // 480p class
+      longSide >= 854 || scanlines >= 480 -> "480p"
 
-        // 360p class
-        longSide >= 640 || scanlines >= 360 -> "360p"
+      // 360p class
+      longSide >= 640 || scanlines >= 360 -> "360p"
 
-        // 240p class
-        longSide >= 426 || scanlines >= 240 -> "240p"
+      // 240p class
+      longSide >= 426 || scanlines >= 240 -> "240p"
 
-        // 144p / everything below 240p
-        else -> "144p"
+      // 144p / everything below 240p
+      else -> "144p"
     }
-}
+  }
 
   fun formatResolutionWithFps(
     width: Int,
@@ -635,7 +638,15 @@ object FileTypeUtils {
 
   val IMAGE_EXTENSIONS =
     setOf(
-      "jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif", "avif"
+      "jpg",
+      "jpeg",
+      "png",
+      "webp",
+      "gif",
+      "bmp",
+      "heic",
+      "heif",
+      "avif",
     )
 
   /**
@@ -658,7 +669,10 @@ object FileTypeUtils {
     val dotIndex = title.lastIndexOf('.')
     if (dotIndex <= 0) return title
     val ext = title.substring(dotIndex + 1).lowercase(Locale.getDefault())
-    return if (ext in AUDIO_EXTENSIONS || ext in VIDEO_EXTENSIONS || (ext.length in 2..5 && ext.none { it.isWhitespace() })) {
+    return if (ext in AUDIO_EXTENSIONS ||
+      ext in VIDEO_EXTENSIONS ||
+      (ext.length in 2..5 && ext.none { it.isWhitespace() })
+    ) {
       title.substring(0, dotIndex)
     } else {
       title
@@ -823,10 +837,11 @@ object StorageVolumeUtils {
   fun getAllStorageVolumes(context: Context): List<StorageVolume> =
     try {
       val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
-      storageManager.storageVolumes.filter { volume ->
-        volume.state == Environment.MEDIA_MOUNTED ||
-          (getVolumePath(volume)?.let { path -> File(path).exists() } == true)
-      }.distinctBy { getVolumePath(it) ?: it.uuid ?: it.toString() }
+      storageManager.storageVolumes
+        .filter { volume ->
+          volume.state == Environment.MEDIA_MOUNTED ||
+            (getVolumePath(volume)?.let { path -> File(path).exists() } == true)
+        }.distinctBy { getVolumePath(it) ?: it.uuid ?: it.toString() }
     } catch (e: Exception) {
       Log.e(TAG, "Error getting storage volumes", e)
       emptyList()

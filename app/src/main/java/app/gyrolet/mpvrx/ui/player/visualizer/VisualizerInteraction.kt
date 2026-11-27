@@ -13,7 +13,12 @@ import kotlin.math.exp
 
 /** A single immutable input snapshot crosses from the UI thread to the renderer. */
 internal class VisualizerInteraction {
-  private data class Pointer(val x: Float, val y: Float, val active: Boolean, val pressed: Boolean)
+  private data class Pointer(
+    val x: Float,
+    val y: Float,
+    val active: Boolean,
+    val pressed: Boolean,
+  )
 
   @Volatile private var pointer = Pointer(0f, 0f, false, false)
 
@@ -25,13 +30,19 @@ internal class VisualizerInteraction {
     private set
   val pressed: Boolean get() = pointer.pressed
 
-  fun update(normalizedX: Float, normalizedY: Float, active: Boolean, pressed: Boolean) {
-    pointer = Pointer(
-      normalizedX.coerceIn(0f, 1f) * 2f - 1f,
-      1f - normalizedY.coerceIn(0f, 1f) * 2f,
-      active,
-      active && pressed,
-    )
+  fun update(
+    normalizedX: Float,
+    normalizedY: Float,
+    active: Boolean,
+    pressed: Boolean,
+  ) {
+    pointer =
+      Pointer(
+        normalizedX.coerceIn(0f, 1f) * 2f - 1f,
+        1f - normalizedY.coerceIn(0f, 1f) * 2f,
+        active,
+        active && pressed,
+      )
   }
 
   fun release() {

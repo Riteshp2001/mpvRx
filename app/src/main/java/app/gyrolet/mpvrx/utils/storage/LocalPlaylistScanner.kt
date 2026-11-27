@@ -15,8 +15,6 @@ import android.provider.MediaStore
 import androidx.core.content.ContextCompat
 import app.gyrolet.mpvrx.ui.player.resolveLocalPath
 import app.gyrolet.mpvrx.utils.media.isPathBasedDocumentAuthority
-import java.io.File
-import java.nio.file.Files
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.currentCoroutineContext
@@ -24,6 +22,8 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.nio.file.Files
 
 internal data class LocalPlaylistFile(
   val uri: Uri,
@@ -33,40 +33,52 @@ internal data class LocalPlaylistFile(
 
 internal object LocalPlaylistScanner {
   private val extensions = setOf("m3u", "m3u8")
-  private val localDocumentProviders = setOf(
-    "com.android.externalstorage.documents",
-    "com.android.providers.downloads.documents",
-  )
+  private val localDocumentProviders =
+    setOf(
+      "com.android.externalstorage.documents",
+      "com.android.providers.downloads.documents",
+    )
 
-  fun changes(context: Context): Flow<Unit> = callbackFlow {
-    val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
-      override fun onChange(selfChange: Boolean) {
-        trySend(Unit)
+  fun changes(context: Context): Flow<Unit> =
+    callbackFlow {
+      val observer =
+        object : ContentObserver(Handler(Looper.getMainLooper())) {
+          override fun onChange(selfChange: Boolean) {
+            trySend(Unit)
+          }
+        }
+      val receiver =
+        object : BroadcastReceiver() {
+          override fun onReceive(
+            context: Context?,
+            intent: Intent?,
+          ) {
+            if (intent?.action == Intent.ACTION_MEDIA_MOUNTED) trySend(Unit)
+          }
+        }
+      val observingFiles =
+        runCatching {
+          context.contentResolver.registerContentObserver(MediaStore.Files.getContentUri("external"), true, observer)
+        }.isSuccess
+      val observingMounts =
+        runCatching {
+          ContextCompat.registerReceiver(
+            context,
+            receiver,
+            IntentFilter(Intent.ACTION_MEDIA_MOUNTED).apply { addDataScheme("file") },
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+          )
+        }.isSuccess
+      awaitClose {
+        if (observingFiles) context.contentResolver.unregisterContentObserver(observer)
+        if (observingMounts) context.unregisterReceiver(receiver)
       }
     }
-    val receiver = object : BroadcastReceiver() {
-      override fun onReceive(context: Context?, intent: Intent?) {
-        if (intent?.action == Intent.ACTION_MEDIA_MOUNTED) trySend(Unit)
-      }
-    }
-    val observingFiles = runCatching {
-      context.contentResolver.registerContentObserver(MediaStore.Files.getContentUri("external"), true, observer)
-    }.isSuccess
-    val observingMounts = runCatching {
-      ContextCompat.registerReceiver(
-        context,
-        receiver,
-        IntentFilter(Intent.ACTION_MEDIA_MOUNTED).apply { addDataScheme("file") },
-        ContextCompat.RECEIVER_NOT_EXPORTED,
-      )
-    }.isSuccess
-    awaitClose {
-      if (observingFiles) context.contentResolver.unregisterContentObserver(observer)
-      if (observingMounts) context.unregisterReceiver(receiver)
-    }
-  }
 
-  fun sourceKey(context: Context, uri: Uri): String {
+  fun sourceKey(
+    context: Context,
+    uri: Uri,
+  ): String {
     val path = runCatching { uri.resolveLocalPath(context) }.getOrNull()
     if (!path.isNullOrBlank()) {
       return "file:${runCatching { File(path).canonicalPath }.getOrDefault(path)}"
@@ -77,7 +89,10 @@ internal object LocalPlaylistScanner {
     return uri.normalizeScheme().toString()
   }
 
-  suspend fun scan(context: Context, onFile: suspend (LocalPlaylistFile) -> Boolean) = withContext(Dispatchers.IO) {
+  suspend fun scan(
+    context: Context,
+    onFile: suspend (LocalPlaylistFile) -> Boolean,
+  ) = withContext(Dispatchers.IO) {
     val visitedSources = mutableSetOf<String>()
     val accept: suspend (LocalPlaylistFile) -> Unit = { file ->
       currentCoroutineContext().ensureActive()
@@ -89,14 +104,22 @@ internal object LocalPlaylistScanner {
     scanGrantedFolders(context, accept)
   }
 
-  private suspend fun scanStorage(context: Context, onFile: suspend (LocalPlaylistFile) -> Unit) {
-    val roots = StorageVolumeUtils.getAllStorageVolumes(context)
-      .mapNotNull(StorageVolumeUtils::getVolumePath).map(::File) + Environment.getExternalStorageDirectory()
+  private suspend fun scanStorage(
+    context: Context,
+    onFile: suspend (LocalPlaylistFile) -> Unit,
+  ) {
+    val roots =
+      StorageVolumeUtils
+        .getAllStorageVolumes(context)
+        .mapNotNull(StorageVolumeUtils::getVolumePath)
+        .map(::File) + Environment.getExternalStorageDirectory()
     val directories = ArrayDeque<File>()
     roots.forEach { root -> runCatching { root.canonicalFile }.getOrNull()?.let(directories::addLast) }
     val visited = mutableSetOf<String>()
-    val cacheDirectories = (context.externalCacheDirs.filterNotNull() + context.cacheDir)
-      .mapNotNull { runCatching { it.canonicalPath }.getOrNull() }.toSet()
+    val cacheDirectories =
+      (context.externalCacheDirs.filterNotNull() + context.cacheDir)
+        .mapNotNull { runCatching { it.canonicalPath }.getOrNull() }
+        .toSet()
 
     while (directories.isNotEmpty()) {
       currentCoroutineContext().ensureActive()
@@ -115,35 +138,51 @@ internal object LocalPlaylistScanner {
     }
   }
 
-  private suspend fun scanMediaStore(context: Context, onFile: suspend (LocalPlaylistFile) -> Unit) {
+  private suspend fun scanMediaStore(
+    context: Context,
+    onFile: suspend (LocalPlaylistFile) -> Unit,
+  ) {
     val collection = MediaStore.Files.getContentUri("external")
-    val cursor = runCatching {
-      context.contentResolver.query(
-        collection,
-        arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATE_MODIFIED, MediaStore.MediaColumns.SIZE),
-        "LOWER(${MediaStore.MediaColumns.DISPLAY_NAME}) LIKE ? OR LOWER(${MediaStore.MediaColumns.DISPLAY_NAME}) LIKE ?",
-        arrayOf("%.m3u", "%.m3u8"),
-        null,
-      )
-    }.getOrNull() ?: return
+    val cursor =
+      runCatching {
+        context.contentResolver.query(
+          collection,
+          arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DATE_MODIFIED, MediaStore.MediaColumns.SIZE),
+          "LOWER(${MediaStore.MediaColumns.DISPLAY_NAME}) LIKE ? OR LOWER(${MediaStore.MediaColumns.DISPLAY_NAME}) LIKE ?",
+          arrayOf("%.m3u", "%.m3u8"),
+          null,
+        )
+      }.getOrNull() ?: return
     cursor.use {
       val idColumn = it.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
       val modifiedColumn = it.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED)
       val sizeColumn = it.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
       while (it.moveToNext()) {
         currentCoroutineContext().ensureActive()
-        onFile(LocalPlaylistFile(ContentUris.withAppendedId(collection, it.getLong(idColumn)), it.getLong(modifiedColumn) * 1000L, it.getLong(sizeColumn)))
+        onFile(
+          LocalPlaylistFile(
+            ContentUris.withAppendedId(collection, it.getLong(idColumn)),
+            it.getLong(modifiedColumn) * 1000L,
+            it.getLong(sizeColumn),
+          ),
+        )
       }
     }
   }
 
-  private suspend fun scanGrantedFolders(context: Context, onFile: suspend (LocalPlaylistFile) -> Unit) {
+  private suspend fun scanGrantedFolders(
+    context: Context,
+    onFile: suspend (LocalPlaylistFile) -> Unit,
+  ) {
     val visited = mutableSetOf<String>()
     for (permission in context.contentResolver.persistedUriPermissions) {
       val treeUri = permission.uri
-      if (!permission.isReadPermission || !DocumentsContract.isTreeUri(treeUri) ||
+      if (!permission.isReadPermission ||
+        !DocumentsContract.isTreeUri(treeUri) ||
         (treeUri.authority !in localDocumentProviders && !isPathBasedDocumentAuthority(treeUri.authority))
-      ) continue
+      ) {
+        continue
+      }
       val directories = ArrayDeque<String>()
       directories.addLast(DocumentsContract.getTreeDocumentId(treeUri))
       while (directories.isNotEmpty()) {
@@ -152,21 +191,22 @@ internal object LocalPlaylistScanner {
         val directoryKey = "${treeUri.authority}:$documentId"
         if (directoryKey in visited) continue
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, documentId)
-        val cursor = runCatching {
-          context.contentResolver.query(
-            childrenUri,
-            arrayOf(
-              DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-              DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-              DocumentsContract.Document.COLUMN_MIME_TYPE,
-              DocumentsContract.Document.COLUMN_LAST_MODIFIED,
-              DocumentsContract.Document.COLUMN_SIZE,
-            ),
-            null,
-            null,
-            null,
-          )
-        }.getOrNull() ?: continue
+        val cursor =
+          runCatching {
+            context.contentResolver.query(
+              childrenUri,
+              arrayOf(
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE,
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                DocumentsContract.Document.COLUMN_SIZE,
+              ),
+              null,
+              null,
+              null,
+            )
+          }.getOrNull() ?: continue
         visited.add(directoryKey)
         cursor.use {
           val idColumn = it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
@@ -180,7 +220,13 @@ internal object LocalPlaylistScanner {
             if (it.getString(typeColumn) == DocumentsContract.Document.MIME_TYPE_DIR) {
               directories.addLast(childId)
             } else if (it.getString(nameColumn)?.substringAfterLast('.')?.lowercase() in extensions) {
-              onFile(LocalPlaylistFile(DocumentsContract.buildDocumentUriUsingTree(treeUri, childId), it.getLong(modifiedColumn), it.getLong(sizeColumn)))
+              onFile(
+                LocalPlaylistFile(
+                  DocumentsContract.buildDocumentUriUsingTree(treeUri, childId),
+                  it.getLong(modifiedColumn),
+                  it.getLong(sizeColumn),
+                ),
+              )
             }
           }
         }

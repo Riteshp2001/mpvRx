@@ -162,7 +162,8 @@ private class LayerPicture(
     CanvasDrawScope().draw(
       density,
       layoutDirection,
-      androidx.compose.ui.graphics.Canvas(canvas),
+      androidx.compose.ui.graphics
+        .Canvas(canvas),
       layer.size.toSize(),
     ) { drawLayer(layer) }
   }
@@ -317,7 +318,10 @@ internal object PlayerSheetTransitions {
   fun anchor(destination: PlayerSheetDestination): PlayerSheetAnchor? =
     if (destination == PlayerSheetDestination.FULL) fullAnchor else miniAnchor
 
-  fun update(slot: PlayerSheetSlot, anchor: PlayerSheetAnchor) {
+  fun update(
+    slot: PlayerSheetSlot,
+    anchor: PlayerSheetAnchor,
+  ) {
     when (slot) {
       PlayerSheetSlot.FULL -> {
         fullAnchor = anchor
@@ -329,7 +333,11 @@ internal object PlayerSheetTransitions {
     }
   }
 
-  fun remove(slot: PlayerSheetSlot, owner: Any, capture: PlayerSheetCapture) {
+  fun remove(
+    slot: PlayerSheetSlot,
+    owner: Any,
+    capture: PlayerSheetCapture,
+  ) {
     when (slot) {
       PlayerSheetSlot.FULL -> if (fullAnchor?.owner === owner) fullAnchor = null
       PlayerSheetSlot.MINI -> if (miniAnchor?.owner === owner) miniAnchor = null
@@ -357,7 +365,8 @@ internal object PlayerSheetTransitions {
     // Check a freshly staged launch first so a stale video in PlaybackSession doesn't skip audio capture.
     val outgoingKind =
       PreparedPlaybackLaunchStore.pendingMediaKind()
-        ?: PlaybackSession.state.value.currentItem?.declaredMediaKind()
+        ?: PlaybackSession.state.value.currentItem
+          ?.declaredMediaKind()
     if (outgoingKind == DeclaredPlaybackMediaKind.VIDEO) return
     browserWallpaper = wallpaper?.frozen()?.takeIf { it.snapshot != null }
     browserBackdrop = backdrop?.frozen()?.takeIf { it.snapshot != null }
@@ -371,41 +380,48 @@ internal object PlayerSheetTransitions {
     browserMini = null
   }
 
-  private fun endpoints(source: PlayerSheetDestination, mediaId: String): PlayerSheetEndpoints? {
+  private fun endpoints(
+    source: PlayerSheetDestination,
+    mediaId: String,
+  ): PlayerSheetEndpoints? {
     val placement = miniPlacement ?: return null
-    val pair = if (source == PlayerSheetDestination.MINI) {
-      val mini = miniAnchor?.takeIf { it.capture?.isRecorded == true } ?: return null
-      val screen = backdrop?.bounds ?: return null
-      val cached = cachedFull?.takeIf { it.mediaId == mediaId && it.bounds.size == screen.size }
-      PlayerSheetEndpoints(
-        // Opaque, so the browser never ghosts through the sheet the player will replace.
-        full = cached?.copy(bounds = screen) ?: PlayerSheetAnchor(
-          owner = standInOwner,
-          mediaId = mediaId,
-          bounds = screen,
-          cornerRadius = 0f,
-          backgroundColor = (fullBackground ?: mini.backgroundColor).copy(alpha = 1f),
-        ),
-        mini = mini.copy(bounds = placement.bounds),
-        backdrop = null,
-      )
-    } else {
-      // Until the reopened player has drawn its controls, it shows the resting hand-off sheet.
-      val full = fullAnchor?.takeIf { it.capture?.isRecorded == true }
-        ?: restingHandOff(mediaId)?.endpoints?.full
-        ?: return null
-      // When AppWallpaperHost is active, browserBackdrop is transparent over the wallpaper; don't
-      // run the morph without both layers frozen.
-      if (wallpaper != null && browserWallpaper == null) return null
-      PlayerSheetEndpoints(
-        full = full.copy(mediaId = mediaId),
-        mini = browserMini?.takeIf { it.mediaId == mediaId }?.copy(bounds = placement.bounds)
-          ?: placement.copy(mediaId = mediaId),
-        // Without a frozen browser the player's black video surface would show through.
-        backdrop = browserBackdrop ?: return null,
-        wallpaper = browserWallpaper,
-      )
-    }
+    val pair =
+      if (source == PlayerSheetDestination.MINI) {
+        val mini = miniAnchor?.takeIf { it.capture?.isRecorded == true } ?: return null
+        val screen = backdrop?.bounds ?: return null
+        val cached = cachedFull?.takeIf { it.mediaId == mediaId && it.bounds.size == screen.size }
+        PlayerSheetEndpoints(
+          // Opaque, so the browser never ghosts through the sheet the player will replace.
+          full =
+            cached?.copy(bounds = screen) ?: PlayerSheetAnchor(
+              owner = standInOwner,
+              mediaId = mediaId,
+              bounds = screen,
+              cornerRadius = 0f,
+              backgroundColor = (fullBackground ?: mini.backgroundColor).copy(alpha = 1f),
+            ),
+          mini = mini.copy(bounds = placement.bounds),
+          backdrop = null,
+        )
+      } else {
+        // Until the reopened player has drawn its controls, it shows the resting hand-off sheet.
+        val full =
+          fullAnchor?.takeIf { it.capture?.isRecorded == true }
+            ?: restingHandOff(mediaId)?.endpoints?.full
+            ?: return null
+        // When AppWallpaperHost is active, browserBackdrop is transparent over the wallpaper; don't
+        // run the morph without both layers frozen.
+        if (wallpaper != null && browserWallpaper == null) return null
+        PlayerSheetEndpoints(
+          full = full.copy(mediaId = mediaId),
+          mini =
+            browserMini?.takeIf { it.mediaId == mediaId }?.copy(bounds = placement.bounds)
+              ?: placement.copy(mediaId = mediaId),
+          // Without a frozen browser the player's black video surface would show through.
+          backdrop = browserBackdrop ?: return null,
+          wallpaper = browserWallpaper,
+        )
+      }
     if (pair.full.bounds.isEmpty || pair.mini.bounds.isEmpty) return null
     return pair
   }
@@ -431,14 +447,15 @@ internal object PlayerSheetTransitions {
     }
     motion?.let { finish(it.id) }
     if (destination == PlayerSheetDestination.FULL) collapsedMediaId = null
-    val active = PlayerSheetMotion(
-      id = ++nextId,
-      destination = destination,
-      endpoints = pair,
-      initialExpansion = activeDrag?.expansion ?: source.expansion,
-      initialVelocity = (-(activeDrag?.velocity ?: 0f) / pair.travel).coerceIn(-6f, 6f),
-      onSettled = onSettled,
-    )
+    val active =
+      PlayerSheetMotion(
+        id = ++nextId,
+        destination = destination,
+        endpoints = pair,
+        initialExpansion = activeDrag?.expansion ?: source.expansion,
+        initialVelocity = (-(activeDrag?.velocity ?: 0f) / pair.travel).coerceIn(-6f, 6f),
+        onSettled = onSettled,
+      )
     motion = active
     drag = null
     schedule(START_TIMEOUT_MS) {
@@ -458,7 +475,10 @@ internal object PlayerSheetTransitions {
     cancelTimeout()
     if (active.destination == PlayerSheetDestination.MINI) {
       // The screen is at rest now, so the GPU copy cannot cost a visible frame.
-      active.endpoints.full.frozen().takeIf { it.snapshot != null }?.let { cachedFull = it }
+      active.endpoints.full
+        .frozen()
+        .takeIf { it.snapshot != null }
+        ?.let { cachedFull = it }
       // Safety net: the player normally finishes or reverses well before this.
       schedule(PARK_TIMEOUT_MS) { reverse(id) }
     } else {
@@ -501,13 +521,17 @@ internal object PlayerSheetTransitions {
   }
 
   /** The overlay of [destination] left composition; drop the motion it was responsible for. */
-  internal fun detachHost(destination: PlayerSheetDestination, id: Long) {
+  internal fun detachHost(
+    destination: PlayerSheetDestination,
+    id: Long,
+  ) {
     val active = motion?.takeIf { it.id == id } ?: return
-    val owned = when (destination) {
-      // PlayerActivity is gone: it either hosted the collapse or was receiving the expansion.
-      PlayerSheetDestination.FULL -> active.host == destination || active.arrived
-      PlayerSheetDestination.MINI -> active.host == destination && !active.arrived
-    }
+    val owned =
+      when (destination) {
+        // PlayerActivity is gone: it either hosted the collapse or was receiving the expansion.
+        PlayerSheetDestination.FULL -> active.host == destination || active.arrived
+        PlayerSheetDestination.MINI -> active.host == destination && !active.arrived
+      }
     if (owned) finish(id)
   }
 
@@ -515,7 +539,10 @@ internal object PlayerSheetTransitions {
   private fun restingHandOff(mediaId: String): PlayerSheetMotion? =
     motion?.takeIf { it.destination == PlayerSheetDestination.FULL && it.arrived && it.mediaId == mediaId }
 
-  fun startDrag(source: PlayerSheetDestination, mediaId: String?): PlayerSheetDrag? {
+  fun startDrag(
+    source: PlayerSheetDestination,
+    mediaId: String?,
+  ): PlayerSheetDrag? {
     if (mediaId == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return null
     // The just-opened player may be pulled down again while it still shows the hand-off sheet.
     if (motion != null && (source != PlayerSheetDestination.FULL || restingHandOff(mediaId) == null)) return null
@@ -532,7 +559,10 @@ internal object PlayerSheetTransitions {
     releaseUnusedCaptures()
   }
 
-  suspend fun restoreDrag(active: PlayerSheetDrag, reduceMotion: Boolean) {
+  suspend fun restoreDrag(
+    active: PlayerSheetDrag,
+    reduceMotion: Boolean,
+  ) {
     try {
       if (!reduceMotion) {
         Animatable(active.expansion).animateTo(active.source.expansion, SheetSpring) {
@@ -553,7 +583,10 @@ internal object PlayerSheetTransitions {
     return drag?.source == destination
   }
 
-  private fun schedule(delayMs: Long, block: () -> Unit) {
+  private fun schedule(
+    delayMs: Long,
+    block: () -> Unit,
+  ) {
     cancelTimeout()
     timeout = Runnable { block() }.also { handler.postDelayed(it, delayMs) }
   }
@@ -564,19 +597,21 @@ internal object PlayerSheetTransitions {
   }
 
   private fun releaseUnusedCaptures() {
-    val unused = pendingReleases.filter {
-      motion?.endpoints?.uses(it) != true && drag?.endpoints?.uses(it) != true
-    }
+    val unused =
+      pendingReleases.filter {
+        motion?.endpoints?.uses(it) != true && drag?.endpoints?.uses(it) != true
+      }
     unused.forEach { it.release() }
     pendingReleases.removeAll(unused.toSet())
   }
 }
 
-private val SheetSpring = spring(
-  dampingRatio = Spring.DampingRatioNoBouncy,
-  stiffness = 500f,
-  visibilityThreshold = 0.002f,
-)
+private val SheetSpring =
+  spring(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = 500f,
+    visibilityThreshold = 0.002f,
+  )
 
 private fun LayoutCoordinates.sheetScreenBounds(view: View): Rect {
   val location = IntArray(2)
@@ -596,9 +631,10 @@ private fun Modifier.recordPlayerSheet(
   val view = LocalView.current
   val density = LocalDensity.current
   val direction = LocalLayoutDirection.current
-  val capture = remember(context, view, slot, mediaId, density, direction) {
-    PlayerSheetCapture(context, view, density, direction)
-  }
+  val capture =
+    remember(context, view, slot, mediaId, density, direction) {
+      PlayerSheetCapture(context, view, density, direction)
+    }
   val owner = remember(capture) { Any() }
   var coordinates by remember(view, slot) { mutableStateOf<LayoutCoordinates?>(null) }
 
@@ -621,8 +657,7 @@ private fun Modifier.recordPlayerSheet(
     .onGloballyPositioned {
       coordinates = it
       updateAnchor(it)
-    }
-    .drawWithContent {
+    }.drawWithContent {
       val destination = slot.destination
       val hidden = destination != null && PlayerSheetTransitions.isHidden(destination)
       // While hidden the morph draws the last recording; replaying the whole player or browser
@@ -645,12 +680,13 @@ internal fun Modifier.playerSheetAnchor(
   mediaId: String?,
   shape: Shape = RectangleShape,
   backgroundColor: Color,
-): Modifier = recordPlayerSheet(
-  if (destination == PlayerSheetDestination.FULL) PlayerSheetSlot.FULL else PlayerSheetSlot.MINI,
-  mediaId,
-  shape,
-  backgroundColor,
-)
+): Modifier =
+  recordPlayerSheet(
+    if (destination == PlayerSheetDestination.FULL) PlayerSheetSlot.FULL else PlayerSheetSlot.MINI,
+    mediaId,
+    shape,
+    backgroundColor,
+  )
 
 @Composable
 internal fun Modifier.playerSheetBackdrop(): Modifier =
@@ -661,7 +697,10 @@ internal fun Modifier.playerSheetWallpaper(backgroundColor: Color = Color.Transp
   recordPlayerSheet(PlayerSheetSlot.WALLPAPER, null, RectangleShape, backgroundColor)
 
 @Composable
-internal fun Modifier.playerSheetMiniPlacement(shape: Shape, backgroundColor: Color): Modifier {
+internal fun Modifier.playerSheetMiniPlacement(
+  shape: Shape,
+  backgroundColor: Color,
+): Modifier {
   val view = LocalView.current
   val density = LocalDensity.current
   val direction = LocalLayoutDirection.current
@@ -674,7 +713,9 @@ internal fun Modifier.playerSheetMiniPlacement(shape: Shape, backgroundColor: Co
     val outline = shape.createOutline(Size(bounds.width, bounds.height), direction, density)
     PlayerSheetTransitions.updateMiniPlacement(
       PlayerSheetAnchor(
-        owner, null, bounds,
+        owner,
+        null,
+        bounds,
         (outline as? Outline.Rounded)?.roundRect?.topLeftCornerRadius?.x ?: 0f,
         backgroundColor,
       ),
@@ -803,17 +844,24 @@ internal fun PlayerSheetTransitionOverlay(
 
   // The player Activity takes over a finished expansion: keep the resting sheet until the live
   // controls have drawn beneath it, then fade it away.
-  val received = motion?.takeIf {
-    destination == PlayerSheetDestination.FULL && it.host != destination && it.destination == destination && it.arrived
-  }
+  val received =
+    motion?.takeIf {
+      destination == PlayerSheetDestination.FULL &&
+        it.host != destination &&
+        it.destination == destination &&
+        it.arrived
+    }
   LaunchedEffect(received?.id, contentReady) {
     val active = received ?: return@LaunchedEffect
     if (!contentReady) return@LaunchedEffect
     try {
       withTimeoutOrNull(2_500L) {
         snapshotFlow {
-          PlayerSheetTransitions.anchor(destination)?.capture
-            ?.takeIf { it.view.rootView === view.rootView }?.isRecorded == true
+          PlayerSheetTransitions
+            .anchor(destination)
+            ?.capture
+            ?.takeIf { it.view.rootView === view.rootView }
+            ?.isRecorded == true
         }.first { it }
       }
       active.revealed = true
@@ -834,19 +882,30 @@ internal fun PlayerSheetTransitionOverlay(
   if (drawn == null && !showDrag) return
   // Drags never coexist with a hosted morph, but may pick up the resting hand-off sheet.
   val activeDrag = drag?.takeIf { showDrag && hosted == null }
-  val touches = when {
-    drawn == null -> Modifier
-    drawn === received && onMinimize != null ->
-      Modifier.swipeDownToMiniPlayer(drawn.mediaId, enabled = true, onMinimize = onMinimize)
-    else -> Modifier.blockTouches()
-  }
+  val touches =
+    when {
+      drawn == null -> Modifier
+      drawn === received && onMinimize != null ->
+        Modifier.swipeDownToMiniPlayer(drawn.mediaId, enabled = true, onMinimize = onMinimize)
+      else -> Modifier.blockTouches()
+    }
   Canvas(
-    modifier = modifier
-      .fillMaxSize()
-      .onGloballyPositioned { origin[0] = it.sheetScreenBounds(view).topLeft }
-      // Own layer: per-frame redraws stay here instead of replaying the screen underneath.
-      .graphicsLayer { alpha = if (activeDrag == null && drawn != null && drawn === received) drawn.cover.value else 1f }
-      .then(touches),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .onGloballyPositioned { origin[0] = it.sheetScreenBounds(view).topLeft }
+        // Own layer: per-frame redraws stay here instead of replaying the screen underneath.
+        .graphicsLayer {
+          alpha =
+            if (activeDrag == null &&
+              drawn != null &&
+              drawn === received
+            ) {
+              drawn.cover.value
+            } else {
+              1f
+            }
+        }.then(touches),
   ) {
     val drawBackdrop = destination == PlayerSheetDestination.FULL
     if (activeDrag != null) {
@@ -887,14 +946,15 @@ private fun Modifier.swipePlayerSheet(
   fun restore() {
     restoreJob?.cancel()
     val active = activeDrag ?: return
-    restoreJob = scope.launch {
-      try {
-        PlayerSheetTransitions.restoreDrag(active, reducedMotion)
-      } finally {
-        PlayerSheetTransitions.cancelDrag(active)
-        if (activeDrag === active) activeDrag = null
+    restoreJob =
+      scope.launch {
+        try {
+          PlayerSheetTransitions.restoreDrag(active, reducedMotion)
+        } finally {
+          PlayerSheetTransitions.cancelDrag(active)
+          if (activeDrag === active) activeDrag = null
+        }
       }
-    }
   }
 
   DisposableEffect(source, mediaId, enabled) {
@@ -909,13 +969,14 @@ private fun Modifier.swipePlayerSheet(
     awaitEachGesture {
       val down = awaitFirstDown(requireUnconsumed = false)
       var overSlop = 0f
-      val first = awaitVerticalTouchSlopOrCancellation(down.id) { change, over ->
-        val towardTarget = if (source == PlayerSheetDestination.FULL) over > 0f else over < 0f
-        if (towardTarget) {
-          change.consume()
-          overSlop = over
-        }
-      } ?: return@awaitEachGesture
+      val first =
+        awaitVerticalTouchSlopOrCancellation(down.id) { change, over ->
+          val towardTarget = if (source == PlayerSheetDestination.FULL) over > 0f else over < 0f
+          if (towardTarget) {
+            change.consume()
+            overSlop = over
+          }
+        } ?: return@awaitEachGesture
 
       // Do not hide the live player for a drag away from the other sheet anchor.
       val previousExpansion = activeDrag?.takeIf { PlayerSheetTransitions.drag === it }?.expansion
@@ -925,14 +986,16 @@ private fun Modifier.swipePlayerSheet(
       val tracker = VelocityTracker()
       tracker.addPosition(down.uptimeMillis, down.position)
       var accumulated = 0f
+
       fun dragBy(amount: Float) {
         accumulated += amount
         if (activeDrag == null) {
-          accumulated = if (source == PlayerSheetDestination.FULL) {
-            accumulated.coerceAtLeast(0f)
-          } else {
-            accumulated.coerceAtMost(0f)
-          }
+          accumulated =
+            if (source == PlayerSheetDestination.FULL) {
+              accumulated.coerceAtLeast(0f)
+            } else {
+              accumulated.coerceAtMost(0f)
+            }
           if (accumulated != 0f && animateSheet && !reducedMotion) {
             activeDrag = PlayerSheetTransitions.startDrag(source, mediaId)
           }
@@ -949,11 +1012,12 @@ private fun Modifier.swipePlayerSheet(
       try {
         dragBy(overSlop)
         tracker.addPosition(first.uptimeMillis, first.position)
-        released = verticalDrag(first.id) { change ->
-          dragBy(change.position.y - change.previousPosition.y)
-          tracker.addPosition(change.uptimeMillis, change.position)
-          change.consume()
-        }
+        released =
+          verticalDrag(first.id) { change ->
+            dragBy(change.position.y - change.previousPosition.y)
+            tracker.addPosition(change.uptimeMillis, change.position)
+            change.consume()
+          }
       } finally {
         if (!released) restore()
       }
@@ -962,24 +1026,26 @@ private fun Modifier.swipePlayerSheet(
       val velocity = tracker.calculateVelocity().y
       val towardTarget = if (source == PlayerSheetDestination.FULL) accumulated else -accumulated
       val targetVelocity = if (source == PlayerSheetDestination.FULL) velocity else -velocity
-      val shouldToggle = if (active != null) {
-        when {
-          source == PlayerSheetDestination.FULL && accumulated <= 0f -> false
-          abs(accumulated) > directionThreshold -> towardTarget > 0f
-          abs(velocity) > 150f -> targetVelocity > 0f
-          else -> if (source == PlayerSheetDestination.FULL) active.expansion < 0.5f else active.expansion > 0.5f
+      val shouldToggle =
+        if (active != null) {
+          when {
+            source == PlayerSheetDestination.FULL && accumulated <= 0f -> false
+            abs(accumulated) > directionThreshold -> towardTarget > 0f
+            abs(velocity) > 150f -> targetVelocity > 0f
+            else -> if (source == PlayerSheetDestination.FULL) active.expansion < 0.5f else active.expansion > 0.5f
+          }
+        } else {
+          towardTarget > fallbackThreshold
         }
-      } else {
-        towardTarget > fallbackThreshold
-      }
       if (active != null) active.velocity = velocity
       if (!shouldToggle || !toggle()) {
         restore()
       } else if (active != null && PlayerSheetTransitions.drag === active) {
-        restoreJob = scope.launch {
-          kotlinx.coroutines.delay(1_000L)
-          if (PlayerSheetTransitions.drag === active) restore()
-        }
+        restoreJob =
+          scope.launch {
+            kotlinx.coroutines.delay(1_000L)
+            if (PlayerSheetTransitions.drag === active) restore()
+          }
       } else {
         activeDrag = null
       }

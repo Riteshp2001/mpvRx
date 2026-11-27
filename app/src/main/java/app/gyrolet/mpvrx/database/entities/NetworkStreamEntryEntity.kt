@@ -51,4 +51,3 @@ data class NetworkStreamEntryEntity(
   val releaseYear: String? = null,
   val mediaType: String? = null,
 )
-

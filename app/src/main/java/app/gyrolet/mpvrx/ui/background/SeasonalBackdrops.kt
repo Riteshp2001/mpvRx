@@ -27,33 +27,69 @@ import kotlin.math.sin
  * text on both light and dark pages.
  */
 
-/* ---------------------------------------------------------------- Halloween -------------- */
+// ---------------------------------------------------------------- Halloween --------------
 
 private val HalloweenOrange = Color(0xFFFF7A18)
 private val HalloweenPurple = Color(0xFF8A4DFF)
 private val MoonTone = Color(0xFFFFE3A3)
 
 /** Purple night with a low orange glow, a big moon, drifting fog, flapping bats and rising embers. */
-internal fun DrawScope.drawHalloween(t: Float, tilt: Offset, p: BackdropPalette, path: Path) {
+internal fun DrawScope.drawHalloween(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+  path: Path,
+) {
   val w = size.width
   val h = size.height
   val base = min(w, h)
 
   drawRect(
-    brush = Brush.radialGradient(listOf(HalloweenPurple.copy(alpha = 0.16f), Color.Transparent), center = Offset(w * 0.5f, 0f), radius = h * 0.75f),
+    brush =
+      Brush.radialGradient(
+        listOf(HalloweenPurple.copy(alpha = 0.16f), Color.Transparent),
+        center =
+          Offset(
+            w * 0.5f,
+            0f,
+          ),
+        radius = h * 0.75f,
+      ),
     size = size,
   )
   drawRect(
-    brush = Brush.radialGradient(listOf(HalloweenOrange.copy(alpha = 0.20f), Color.Transparent), center = Offset(w * 0.5f, h * 1.02f), radius = h * 0.6f),
+    brush =
+      Brush.radialGradient(
+        listOf(HalloweenOrange.copy(alpha = 0.20f), Color.Transparent),
+        center =
+          Offset(
+            w * 0.5f,
+            h * 1.02f,
+          ),
+        radius = h * 0.6f,
+      ),
     size = size,
   )
 
   // Moon
   val moon = Offset(w * 0.76f + tilt.x * 8.dp.toPx(), h * 0.15f + tilt.y * 8.dp.toPx())
   val mr = base * 0.10f
-  drawCircle(Brush.radialGradient(listOf(MoonTone.copy(alpha = 0.28f), Color.Transparent), center = moon, radius = mr * 3.2f), radius = mr * 3.2f, center = moon)
+  drawCircle(
+    Brush.radialGradient(
+      listOf(MoonTone.copy(alpha = 0.28f), Color.Transparent),
+      center = moon,
+      radius =
+        mr * 3.2f,
+    ),
+    radius = mr * 3.2f,
+    center = moon,
+  )
   drawCircle(MoonTone.copy(alpha = 0.70f), radius = mr, center = moon)
-  drawCircle(Color(0xFFB98F3A).copy(alpha = 0.18f), radius = mr * 0.22f, center = moon + Offset(-mr * 0.35f, -mr * 0.2f))
+  drawCircle(
+    Color(0xFFB98F3A).copy(alpha = 0.18f),
+    radius = mr * 0.22f,
+    center = moon + Offset(-mr * 0.35f, -mr * 0.2f),
+  )
   drawCircle(Color(0xFFB98F3A).copy(alpha = 0.14f), radius = mr * 0.15f, center = moon + Offset(mr * 0.3f, mr * 0.35f))
 
   // Fog banks sliding across at different heights
@@ -64,7 +100,11 @@ internal fun DrawScope.drawHalloween(t: Float, tilt: Offset, p: BackdropPalette,
     val c = Offset(x + tilt.x * 6.dp.toPx(), h * (0.62f + 0.12f * k) + sin(t * 0.12f + k) * 12.dp.toPx())
     val rr = w * 0.65f
     drawCircle(
-      Brush.radialGradient(listOf(HalloweenPurple.copy(alpha = 0.10f * fade), Color.Transparent), center = c, radius = rr),
+      Brush.radialGradient(
+        listOf(HalloweenPurple.copy(alpha = 0.10f * fade), Color.Transparent),
+        center = c,
+        radius = rr,
+      ),
       radius = rr,
       center = c,
     )
@@ -102,28 +142,48 @@ internal fun DrawScope.drawHalloween(t: Float, tilt: Offset, p: BackdropPalette,
     val a = smoothstep(0f, 0.12f, u) * smoothstep(1f, 0.6f, u)
     val flicker = 0.8f + 0.2f * sin(t * 2.5f + i * 2f)
     drawCircle(HalloweenOrange.copy(alpha = 0.14f * a), radius = 7.dp.toPx(), center = Offset(x, y))
-    drawCircle(HalloweenOrange.copy(alpha = 0.8f * a * flicker), radius = (1f + 1.2f * hash01(i, 14)).dp.toPx(), center = Offset(x, y))
+    drawCircle(
+      HalloweenOrange.copy(alpha = 0.8f * a * flicker),
+      radius = (1f + 1.2f * hash01(i, 14)).dp.toPx(),
+      center = Offset(x, y),
+    )
   }
 }
 
-/* ---------------------------------------------------------------- New Year --------------- */
+// ---------------------------------------------------------------- New Year ---------------
 
 private val FireworkPalette =
-  listOf(Color(0xFFFF5E7E), Color(0xFFFFC857), Color(0xFF6BE0FF), Color(0xFFA98BFF), Color(0xFF7DFFB3), Color(0xFFFF8F4D))
+  listOf(
+    Color(0xFFFF5E7E),
+    Color(0xFFFFC857),
+    Color(0xFF6BE0FF),
+    Color(0xFFA98BFF),
+    Color(0xFF7DFFB3),
+    Color(0xFFFF8F4D),
+  )
 
 private const val FW_SLOT = 2.4f
 private const val FW_RISE = 0.8f
 private const val FW_BURST = 2.8f
 private const val FW_SPARKS = 34
 
-private fun sparkOffset(angle: Float, speed: Float, age: Float, gravity: Float): Offset {
+private fun sparkOffset(
+  angle: Float,
+  speed: Float,
+  age: Float,
+  gravity: Float,
+): Offset {
   // Drag makes the spark decelerate; gravity pulls it down once it has slowed
   val travel = speed * (1f - exp(-2.4f * age)) / 2.4f * 2.6f
   return Offset(cos(angle) * travel, sin(angle) * travel + gravity * age * age)
 }
 
 /** A rocket climbs, bursts into a ring of sparks that droop and fade; a new one every 2.4 s. */
-internal fun DrawScope.drawFireworks(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawFireworks(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   val base = min(w, h)
@@ -141,7 +201,11 @@ internal fun DrawScope.drawFireworks(t: Float, tilt: Offset, p: BackdropPalette)
       val e = 1f - (1f - u) * (1f - u)
       val y = h + (cy - h) * e
       drawLine(
-        Brush.verticalGradient(listOf(color.copy(alpha = 0.9f), Color.Transparent), startY = y, endY = y + 36.dp.toPx()),
+        Brush.verticalGradient(
+          listOf(color.copy(alpha = 0.9f), Color.Transparent),
+          startY = y,
+          endY = y + 36.dp.toPx(),
+        ),
         start = Offset(cx, y + 36.dp.toPx()),
         end = Offset(cx, y),
         strokeWidth = 2.dp.toPx(),
@@ -156,7 +220,12 @@ internal fun DrawScope.drawFireworks(t: Float, tilt: Offset, p: BackdropPalette)
     if (a < 0.32f) {
       val flash = 1f - a / 0.32f
       drawCircle(
-        Brush.radialGradient(listOf(color.copy(alpha = 0.20f * flash * flash), Color.Transparent), center = Offset(cx, cy), radius = base * 0.30f),
+        Brush.radialGradient(
+          listOf(color.copy(alpha = 0.20f * flash * flash), Color.Transparent),
+          center = Offset(cx, cy),
+          radius =
+            base * 0.30f,
+        ),
         radius = base * 0.30f,
         center = Offset(cx, cy),
       )
@@ -175,16 +244,30 @@ internal fun DrawScope.drawFireworks(t: Float, tilt: Offset, p: BackdropPalette)
   }
 }
 
-/* ---------------------------------------------------------------- Winter ----------------- */
+// ---------------------------------------------------------------- Winter -----------------
 
 private val BulbColors = listOf(Color(0xFFFF4D4D), Color(0xFFFFC83D), Color(0xFF4DD2FF), Color(0xFF7CFF6B))
 
 /** Snowfall under a string of blinking festive lights, with a cold glow rising from the bottom. */
-internal fun DrawScope.drawWinter(t: Float, tilt: Offset, p: BackdropPalette, path: Path) {
+internal fun DrawScope.drawWinter(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+  path: Path,
+) {
   val w = size.width
   val h = size.height
   drawRect(
-    brush = Brush.radialGradient(listOf(Color(0xFF6EC1FF).copy(alpha = 0.14f), Color.Transparent), center = Offset(w * 0.5f, h * 1.05f), radius = h * 0.55f),
+    brush =
+      Brush.radialGradient(
+        listOf(Color(0xFF6EC1FF).copy(alpha = 0.14f), Color.Transparent),
+        center =
+          Offset(
+            w * 0.5f,
+            h * 1.05f,
+          ),
+        radius = h * 0.55f,
+      ),
     size = size,
   )
   drawSnow(t, tilt, p, intensity = 0.9f)
@@ -216,20 +299,34 @@ internal fun DrawScope.drawWinter(t: Float, tilt: Offset, p: BackdropPalette, pa
   }
 }
 
-/* ---------------------------------------------------------------- Diwali ----------------- */
+// ---------------------------------------------------------------- Diwali -----------------
 
 private val Gold = Color(0xFFFFC857)
 private val Flame = Color(0xFFFF8A1F)
 private val ClayBowl = Color(0xFFC2570C)
 
 /** A turning gold mandala, a row of flickering diyas along the bottom and sparks drifting up. */
-internal fun DrawScope.drawDiwali(t: Float, tilt: Offset, p: BackdropPalette, path: Path) {
+internal fun DrawScope.drawDiwali(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+  path: Path,
+) {
   val w = size.width
   val h = size.height
   val base = min(w, h)
 
   drawRect(
-    brush = Brush.radialGradient(listOf(Flame.copy(alpha = 0.20f), Color.Transparent), center = Offset(w * 0.5f, h * 1.04f), radius = h * 0.70f),
+    brush =
+      Brush.radialGradient(
+        listOf(Flame.copy(alpha = 0.20f), Color.Transparent),
+        center =
+          Offset(
+            w * 0.5f,
+            h * 1.04f,
+          ),
+        radius = h * 0.70f,
+      ),
     size = size,
   )
 
@@ -245,7 +342,12 @@ internal fun DrawScope.drawDiwali(t: Float, tilt: Offset, p: BackdropPalette, pa
       val a = turn + i * TAU / n
       val pt = Offset(mc.x + cos(a) * radius, mc.y + sin(a) * radius)
       rotate(a * 57.29578f + 90f, pivot = pt) {
-        drawOval(Gold.copy(alpha = 0.16f - 0.04f * ring), topLeft = Offset(pt.x - pw / 2f, pt.y - ph / 2f), size = Size(pw, ph), style = Stroke(width = 1.2.dp.toPx()))
+        drawOval(
+          Gold.copy(alpha = 0.16f - 0.04f * ring),
+          topLeft = Offset(pt.x - pw / 2f, pt.y - ph / 2f),
+          size = Size(pw, ph),
+          style = Stroke(width = 1.2.dp.toPx()),
+        )
       }
     }
     drawCircle(Gold.copy(alpha = 0.10f), radius = radius, center = mc, style = Stroke(width = 1.dp.toPx()))
@@ -260,7 +362,11 @@ internal fun DrawScope.drawDiwali(t: Float, tilt: Offset, p: BackdropPalette, pa
     val a = smoothstep(0f, 0.1f, u) * smoothstep(1f, 0.55f, u)
     val tw = 0.75f + 0.25f * sin(t * 2f + i * 2.3f)
     drawCircle(Gold.copy(alpha = 0.12f * a), radius = 6.dp.toPx(), center = Offset(x, y))
-    drawCircle(Gold.copy(alpha = 0.85f * a * tw), radius = (0.9f + 1.3f * hash01(i, 4)).dp.toPx(), center = Offset(x, y))
+    drawCircle(
+      Gold.copy(alpha = 0.85f * a * tw),
+      radius = (0.9f + 1.3f * hash01(i, 4)).dp.toPx(),
+      center = Offset(x, y),
+    )
   }
 
   // Diyas
@@ -274,42 +380,60 @@ internal fun DrawScope.drawDiwali(t: Float, tilt: Offset, p: BackdropPalette, pa
     val fh = s * 1.05f * flick
     val fw = s * 0.30f
     drawCircle(
-      Brush.radialGradient(listOf(Flame.copy(alpha = 0.32f * flick), Color.Transparent), center = Offset(x, y - s * 0.5f), radius = s * 3.4f),
+      Brush.radialGradient(
+        listOf(Flame.copy(alpha = 0.32f * flick), Color.Transparent),
+        center = Offset(x, y - s * 0.5f),
+        radius =
+          s * 3.4f,
+      ),
       radius = s * 3.4f,
       center = Offset(x, y - s * 0.5f),
     )
     translate(left = x, top = y) {
-      val bowl = path.apply {
-        rewind()
-        moveTo(-s, 0f)
-        quadraticTo(0f, s * 1.1f, s, 0f)
-        quadraticTo(0f, -s * 0.18f, -s, 0f)
-        close()
-      }
+      val bowl =
+        path.apply {
+          rewind()
+          moveTo(-s, 0f)
+          quadraticTo(0f, s * 1.1f, s, 0f)
+          quadraticTo(0f, -s * 0.18f, -s, 0f)
+          close()
+        }
       drawPath(bowl, ClayBowl.copy(alpha = 0.85f))
       drawPath(bowl, Gold.copy(alpha = 0.30f), style = Stroke(width = 1.dp.toPx()))
-      val flame = path.apply {
-        rewind()
-        moveTo(sway, -fh)
-        cubicTo(fw + sway * 0.5f, -fh * 0.45f, fw * 0.9f, -s * 0.05f, 0f, -s * 0.05f)
-        cubicTo(-fw * 0.9f, -s * 0.05f, -fw + sway * 0.5f, -fh * 0.45f, sway, -fh)
-        close()
-      }
+      val flame =
+        path.apply {
+          rewind()
+          moveTo(sway, -fh)
+          cubicTo(fw + sway * 0.5f, -fh * 0.45f, fw * 0.9f, -s * 0.05f, 0f, -s * 0.05f)
+          cubicTo(-fw * 0.9f, -s * 0.05f, -fw + sway * 0.5f, -fh * 0.45f, sway, -fh)
+          close()
+        }
       drawPath(flame, Brush.verticalGradient(listOf(Color(0xFFFFF2B0), Flame), startY = -fh, endY = 0f))
     }
   }
 }
 
-/* ---------------------------------------------------------------- Holi ------------------- */
+// ---------------------------------------------------------------- Holi -------------------
 
 private val GulalPalette =
-  listOf(Color(0xFFFF1F8E), Color(0xFFFFD400), Color(0xFF00C2FF), Color(0xFF3DDC84), Color(0xFFFF7A00), Color(0xFF8E44FF))
+  listOf(
+    Color(0xFFFF1F8E),
+    Color(0xFFFFD400),
+    Color(0xFF00C2FF),
+    Color(0xFF3DDC84),
+    Color(0xFFFF7A00),
+    Color(0xFF8E44FF),
+  )
 
 private const val HOLI_SLOT = 2f
 private const val HOLI_LIFE = 5.6f
 
 /** Clouds of coloured powder bloom at random spots, scatter grains and thin out; dust drifts between. */
-internal fun DrawScope.drawHoli(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawHoli(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   val base = min(w, h)
@@ -351,6 +475,11 @@ internal fun DrawScope.drawHoli(t: Float, tilt: Offset, p: BackdropPalette) {
     val dy = h * (1.03f - 1.06f * u)
     val a = smoothstep(0f, 0.1f, u) * smoothstep(1f, 0.85f, u)
     val color = GulalPalette[i % GulalPalette.size]
-    drawCircle(color.copy(alpha = 0.55f * a), radius = (1.1f + 1.6f * hash01(i, 24)).dp.toPx(), center = Offset(dx, dy) + shift * 0.6f)
+    drawCircle(
+      color.copy(alpha = 0.55f * a),
+      radius = (1.1f + 1.6f * hash01(i, 24)).dp.toPx(),
+      center =
+        Offset(dx, dy) + shift * 0.6f,
+    )
   }
 }

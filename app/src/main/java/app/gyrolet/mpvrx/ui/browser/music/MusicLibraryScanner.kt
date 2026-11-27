@@ -27,7 +27,6 @@ import java.io.FileOutputStream
 import java.util.concurrent.ConcurrentHashMap
 
 object MusicLibraryScanner {
-
   private const val TAG = "MusicLibraryScanner"
   private val ALBUM_ART_BASE_URI = Uri.parse("content://media/external/audio/albumart")
   private const val ALBUM_TAG_CACHE_FILE = "music_album_tags.bin"
@@ -52,173 +51,210 @@ object MusicLibraryScanner {
   suspend fun scanSongs(
     context: Context,
     onSongsIndexed: (suspend (List<MusicSong>) -> Unit)? = null,
-  ): List<MusicSong> = withContext(Dispatchers.IO) {
-    val songs = mutableListOf<MusicSong>()
-    val pendingAlbumTags = mutableListOf<PendingAlbumTag>()
-    ensureAlbumTagCacheLoaded(context)
-    val usedAlbumTagKeys = HashSet<String>()
-    var libraryQueryCompleted = false
-    val projection = arrayOf(
-      MediaStore.Audio.Media._ID,
-      MediaStore.Audio.Media.TITLE,
-      MediaStore.Audio.Media.ARTIST,
-      MediaStore.Audio.Media.ALBUM,
-      MediaStore.Audio.Media.ALBUM_ID,
-      MediaStore.Audio.Media.DURATION,
-      MediaStore.Audio.Media.DATA,
-      MediaStore.Audio.Media.DATE_ADDED,
-      MediaStore.Audio.Media.DATE_MODIFIED,
-      MediaStore.Audio.Media.TRACK,
-      MediaStore.Audio.Media.YEAR,
-      MediaStore.Audio.Media.SIZE,
-      MediaStore.Audio.Media.MIME_TYPE,
-    ).let { columns ->
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) columns + MediaStore.MediaColumns.RELATIVE_PATH else columns
-    }
-
-    val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.DURATION} > 1000"
-    val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
-
-    try {
-      context.contentResolver.query(
-        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-        projection,
-        selection,
-        null,
-        sortOrder
-      )?.use { cursor ->
-        val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-        val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
-        val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
-        val albumCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
-        val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
-        val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
-        val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
-        val dateAddedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
-        val dateModifiedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
-        val relativePathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-          cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
-        } else -1
-        val trackCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
-        val yearCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
-        val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
-        val mimeTypeCol = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
-
-        while (cursor.moveToNext()) {
-          currentCoroutineContext().ensureActive()
-          val id = cursor.getLong(idCol)
-          val path = cursor.getString(dataCol)
-          val size = cursor.getLong(sizeCol)
-          val duration = cursor.getLong(durationCol)
-          val dateModified = cursor.getLong(dateModifiedCol)
-
-          // On Android 10+ the DATA column may be null or stale; use content URI as fallback.
-          val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
-          val effectivePath = path ?: contentUri.toString()
-          val file = path?.let { File(it) }
-          if (size <= 0L && duration <= 0L) {
-            val fileExists = try { file?.exists() == true } catch (_: Exception) { false }
-            if (!fileExists) continue
+  ): List<MusicSong> =
+    withContext(Dispatchers.IO) {
+      val songs = mutableListOf<MusicSong>()
+      val pendingAlbumTags = mutableListOf<PendingAlbumTag>()
+      ensureAlbumTagCacheLoaded(context)
+      val usedAlbumTagKeys = HashSet<String>()
+      var libraryQueryCompleted = false
+      val projection =
+        arrayOf(
+          MediaStore.Audio.Media._ID,
+          MediaStore.Audio.Media.TITLE,
+          MediaStore.Audio.Media.ARTIST,
+          MediaStore.Audio.Media.ALBUM,
+          MediaStore.Audio.Media.ALBUM_ID,
+          MediaStore.Audio.Media.DURATION,
+          MediaStore.Audio.Media.DATA,
+          MediaStore.Audio.Media.DATE_ADDED,
+          MediaStore.Audio.Media.DATE_MODIFIED,
+          MediaStore.Audio.Media.TRACK,
+          MediaStore.Audio.Media.YEAR,
+          MediaStore.Audio.Media.SIZE,
+          MediaStore.Audio.Media.MIME_TYPE,
+        ).let { columns ->
+          if (Build.VERSION.SDK_INT >=
+            Build.VERSION_CODES.Q
+          ) {
+            columns + MediaStore.MediaColumns.RELATIVE_PATH
+          } else {
+            columns
           }
-          if (app.gyrolet.mpvrx.domain.audiobook.AudiobookMarkerUtils.isAudiobookMediaFile(path ?: effectivePath)) continue
-
-          val title = cursor.getString(titleCol)?.takeIf { it.isNotBlank() } ?: (file?.nameWithoutExtension ?: id.toString())
-          val artist = cursor.getString(artistCol)?.takeIf { it.isNotBlank() && it != "<unknown>" } ?: "Unknown Artist"
-          val indexedAlbum = cursor.getString(albumCol)?.trim()?.takeIf { it.isNotBlank() && it != "<unknown>" }
-          val folderName = file?.parentFile?.name ?: relativePathCol.takeIf { it >= 0 }?.let { column ->
-            cursor.getString(column)?.let { File(it).name }
-          }
-          val needsAlbumVerification =
-            indexedAlbum == null || folderName == null || indexedAlbum.equals(folderName, ignoreCase = true)
-          val cachedAlbumTag = if (needsAlbumVerification) {
-            val albumTagKey = albumTagCacheKey(contentUri, indexedAlbum, dateModified, size)
-            usedAlbumTagKeys.add(albumTagKey)
-            albumTagCache[albumTagKey]
-          } else null
-          val album = if (needsAlbumVerification) cachedAlbumTag?.takeIf(String::isNotBlank) else indexedAlbum
-          val mediaStoreAlbumId = cursor.getLong(albumIdCol)
-          val albumId = if (album?.equals(indexedAlbum, ignoreCase = true) == true) mediaStoreAlbumId else 0L
-          val dateAdded = cursor.getLong(dateAddedCol)
-          val track = cursor.getInt(trackCol)
-          val year = cursor.getInt(yearCol)
-
-          if (needsAlbumVerification && cachedAlbumTag == null) {
-            pendingAlbumTags.add(PendingAlbumTag(songs.size, indexedAlbum, mediaStoreAlbumId))
-          }
-
-          // Keep MediaStore's artwork identity even when we intentionally avoid its album ID for
-          // grouping because the embedded album tag disagrees with the index. Dropping the raw ID
-          // here made otherwise valid cover art disappear for those songs.
-          val albumArtUri =
-            if (mediaStoreAlbumId > 0) ContentUris.withAppendedId(ALBUM_ART_BASE_URI, mediaStoreAlbumId) else null
-
-          songs.add(
-            MusicSong(
-              id = id,
-              title = title,
-              artist = artist,
-              album = album ?: "Unknown Album",
-              albumId = albumId,
-              durationMs = duration,
-              path = effectivePath,
-              uri = contentUri,
-              dateAdded = dateAdded,
-              trackNumber = track,
-              year = year,
-              albumArtUri = albumArtUri,
-              size = size,
-              hasAlbumTag = album != null,
-              dateModified = dateModified,
-              mimeType = mimeTypeCol.takeIf { it >= 0 }?.let(cursor::getString),
-            )
-          )
         }
-        libraryQueryCompleted = true
-      }
-    } catch (e: CancellationException) {
-      throw e
-    } catch (e: Exception) {
-      Log.e(TAG, "Error scanning songs from MediaStore", e)
-    }
 
-    if (pendingAlbumTags.isNotEmpty()) {
-      currentCoroutineContext().ensureActive()
-      onSongsIndexed?.invoke(songs.toList())
-      var probedSinceSave = 0
-      for (pending in pendingAlbumTags) {
+      val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 OR ${MediaStore.Audio.Media.DURATION} > 1000"
+      val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
+
+      try {
+        context.contentResolver
+          .query(
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            selection,
+            null,
+            sortOrder,
+          )?.use { cursor ->
+            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+            val titleCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+            val artistCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+            val albumCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+            val albumIdCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
+            val durationCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            val dateAddedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+            val dateModifiedCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_MODIFIED)
+            val relativePathCol =
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH)
+              } else {
+                -1
+              }
+            val trackCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TRACK)
+            val yearCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.YEAR)
+            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+            val mimeTypeCol = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
+
+            while (cursor.moveToNext()) {
+              currentCoroutineContext().ensureActive()
+              val id = cursor.getLong(idCol)
+              val path = cursor.getString(dataCol)
+              val size = cursor.getLong(sizeCol)
+              val duration = cursor.getLong(durationCol)
+              val dateModified = cursor.getLong(dateModifiedCol)
+
+              // On Android 10+ the DATA column may be null or stale; use content URI as fallback.
+              val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+              val effectivePath = path ?: contentUri.toString()
+              val file = path?.let { File(it) }
+              if (size <= 0L && duration <= 0L) {
+                val fileExists =
+                  try {
+                    file?.exists() == true
+                  } catch (_: Exception) {
+                    false
+                  }
+                if (!fileExists) continue
+              }
+              if (app.gyrolet.mpvrx.domain.audiobook.AudiobookMarkerUtils.isAudiobookMediaFile(
+                  path ?: effectivePath,
+                )
+              ) {
+                continue
+              }
+
+              val title =
+                cursor.getString(titleCol)?.takeIf { it.isNotBlank() } ?: (file?.nameWithoutExtension ?: id.toString())
+              val artist =
+                cursor.getString(artistCol)?.takeIf { it.isNotBlank() && it != "<unknown>" } ?: "Unknown Artist"
+              val indexedAlbum = cursor.getString(albumCol)?.trim()?.takeIf { it.isNotBlank() && it != "<unknown>" }
+              val folderName =
+                file?.parentFile?.name ?: relativePathCol.takeIf { it >= 0 }?.let { column ->
+                  cursor.getString(column)?.let { File(it).name }
+                }
+              val needsAlbumVerification =
+                indexedAlbum == null || folderName == null || indexedAlbum.equals(folderName, ignoreCase = true)
+              val cachedAlbumTag =
+                if (needsAlbumVerification) {
+                  val albumTagKey = albumTagCacheKey(contentUri, indexedAlbum, dateModified, size)
+                  usedAlbumTagKeys.add(albumTagKey)
+                  albumTagCache[albumTagKey]
+                } else {
+                  null
+                }
+              val album = if (needsAlbumVerification) cachedAlbumTag?.takeIf(String::isNotBlank) else indexedAlbum
+              val mediaStoreAlbumId = cursor.getLong(albumIdCol)
+              val albumId = if (album?.equals(indexedAlbum, ignoreCase = true) == true) mediaStoreAlbumId else 0L
+              val dateAdded = cursor.getLong(dateAddedCol)
+              val track = cursor.getInt(trackCol)
+              val year = cursor.getInt(yearCol)
+
+              if (needsAlbumVerification && cachedAlbumTag == null) {
+                pendingAlbumTags.add(PendingAlbumTag(songs.size, indexedAlbum, mediaStoreAlbumId))
+              }
+
+              // Keep MediaStore's artwork identity even when we intentionally avoid its album ID for
+              // grouping because the embedded album tag disagrees with the index. Dropping the raw ID
+              // here made otherwise valid cover art disappear for those songs.
+              val albumArtUri =
+                if (mediaStoreAlbumId > 0) ContentUris.withAppendedId(ALBUM_ART_BASE_URI, mediaStoreAlbumId) else null
+
+              songs.add(
+                MusicSong(
+                  id = id,
+                  title = title,
+                  artist = artist,
+                  album = album ?: "Unknown Album",
+                  albumId = albumId,
+                  durationMs = duration,
+                  path = effectivePath,
+                  uri = contentUri,
+                  dateAdded = dateAdded,
+                  trackNumber = track,
+                  year = year,
+                  albumArtUri = albumArtUri,
+                  size = size,
+                  hasAlbumTag = album != null,
+                  dateModified = dateModified,
+                  mimeType = mimeTypeCol.takeIf { it >= 0 }?.let(cursor::getString),
+                ),
+              )
+            }
+            libraryQueryCompleted = true
+          }
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        Log.e(TAG, "Error scanning songs from MediaStore", e)
+      }
+
+      if (pendingAlbumTags.isNotEmpty()) {
         currentCoroutineContext().ensureActive()
-        val song = songs[pending.songIndex]
-        // Opening every untagged file is the heaviest part of a scan; keep it below the UI threads.
-        val album = runAtLowThreadPriority {
-          resolveAlbumTag(context, song.uri, pending.indexedAlbum, song.dateModified, song.size)
-        }
-        songs[pending.songIndex] = song.copy(
-          album = album ?: "Unknown Album",
-          albumId = if (album?.equals(pending.indexedAlbum, ignoreCase = true) == true) pending.mediaStoreAlbumId else 0L,
-          hasAlbumTag = album != null,
-        )
-        // Save progress so an interrupted first scan is not repeated from scratch.
-        if (++probedSinceSave >= ALBUM_TAG_SAVE_INTERVAL) {
-          saveAlbumTagCache(context)
-          probedSinceSave = 0
+        onSongsIndexed?.invoke(songs.toList())
+        var probedSinceSave = 0
+        for (pending in pendingAlbumTags) {
+          currentCoroutineContext().ensureActive()
+          val song = songs[pending.songIndex]
+          // Opening every untagged file is the heaviest part of a scan; keep it below the UI threads.
+          val album =
+            runAtLowThreadPriority {
+              resolveAlbumTag(context, song.uri, pending.indexedAlbum, song.dateModified, song.size)
+            }
+          songs[pending.songIndex] =
+            song.copy(
+              album = album ?: "Unknown Album",
+              albumId =
+                if (album?.equals(pending.indexedAlbum, ignoreCase = true) ==
+                  true
+                ) {
+                  pending.mediaStoreAlbumId
+                } else {
+                  0L
+                },
+              hasAlbumTag = album != null,
+            )
+          // Save progress so an interrupted first scan is not repeated from scratch.
+          if (++probedSinceSave >= ALBUM_TAG_SAVE_INTERVAL) {
+            saveAlbumTagCache(context)
+            probedSinceSave = 0
+          }
         }
       }
-    }
 
-    // Only a complete library listing may prune entries for changed or removed files; a failed
-    // query just keeps what was read so far.
-    if (libraryQueryCompleted) {
-      val hasStaleEntries = albumTagCache.keys.any { it !in usedAlbumTagKeys }
-      if (pendingAlbumTags.isNotEmpty() || hasStaleEntries) {
-        albumTagCache.keys.retainAll(usedAlbumTagKeys)
+      // Only a complete library listing may prune entries for changed or removed files; a failed
+      // query just keeps what was read so far.
+      if (libraryQueryCompleted) {
+        val hasStaleEntries = albumTagCache.keys.any { it !in usedAlbumTagKeys }
+        if (pendingAlbumTags.isNotEmpty() || hasStaleEntries) {
+          albumTagCache.keys.retainAll(usedAlbumTagKeys)
+          saveAlbumTagCache(context)
+        }
+      } else if (pendingAlbumTags.isNotEmpty()) {
         saveAlbumTagCache(context)
       }
-    } else if (pendingAlbumTags.isNotEmpty()) {
-      saveAlbumTagCache(context)
-    }
 
-    songs
-  }
+      songs
+    }
 
   private fun ensureAlbumTagCacheLoaded(context: Context) {
     if (albumTagCacheLoaded) return
@@ -248,7 +284,10 @@ object MusicLibraryScanner {
         val entries =
           albumTagCache.entries
             .map { it.key to it.value }
-            .filter { (key, album) -> key.length <= ALBUM_TAG_MAX_STORED_LENGTH && album.length <= ALBUM_TAG_MAX_STORED_LENGTH }
+            .filter { (key, album) ->
+              key.length <= ALBUM_TAG_MAX_STORED_LENGTH &&
+                album.length <= ALBUM_TAG_MAX_STORED_LENGTH
+            }
         val directory = context.applicationContext.noBackupFilesDir
         val target = File(directory, ALBUM_TAG_CACHE_FILE)
         val temporary = File(directory, "$ALBUM_TAG_CACHE_FILE.tmp")
@@ -268,8 +307,12 @@ object MusicLibraryScanner {
     }
   }
 
-  private fun albumTagCacheKey(uri: Uri, indexedAlbum: String?, dateModified: Long, size: Long): String =
-    "$uri:$dateModified:$size:${indexedAlbum.orEmpty()}"
+  private fun albumTagCacheKey(
+    uri: Uri,
+    indexedAlbum: String?,
+    dateModified: Long,
+    size: Long,
+  ): String = "$uri:$dateModified:$size:${indexedAlbum.orEmpty()}"
 
   private fun resolveAlbumTag(
     context: Context,
@@ -283,8 +326,11 @@ object MusicLibraryScanner {
     val retriever = MediaMetadataRetriever()
     return try {
       retriever.setDataSource(context, uri)
-      val album = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-        ?.trim()?.takeIf { it.isNotBlank() && it != "<unknown>" }
+      val album =
+        retriever
+          .extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+          ?.trim()
+          ?.takeIf { it.isNotBlank() && it != "<unknown>" }
       albumTagCache.put(cacheKey, album.orEmpty())
       album
     } catch (error: CancellationException) {
@@ -295,5 +341,4 @@ object MusicLibraryScanner {
       retriever.release()
     }
   }
-
 }

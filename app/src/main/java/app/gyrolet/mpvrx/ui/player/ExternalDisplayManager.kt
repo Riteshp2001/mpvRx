@@ -69,9 +69,10 @@ class ExternalDisplayManager(
 
     if (target != null && presentation == null) {
       Log.d(TAG, "Showing external display on ${target.name} (${target.displayId})")
-      val shown = ExternalDisplayPresentation(appContext, target) { source, ready ->
-        if (!released && presentation === source) onStateChanged(ready)
-      }
+      val shown =
+        ExternalDisplayPresentation(appContext, target) { source, ready ->
+          if (!released && presentation === source) onStateChanged(ready)
+        }
       shown.setOnDismissListener {
         if (presentation === shown) {
           presentation = null

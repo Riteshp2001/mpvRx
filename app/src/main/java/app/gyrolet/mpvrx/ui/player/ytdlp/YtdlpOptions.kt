@@ -71,7 +71,6 @@ data class YtdlpOptionSettings(
         rawOptions = ytdlPreferences.customRawOptions.get(),
       )
     }
-
   }
 }
 

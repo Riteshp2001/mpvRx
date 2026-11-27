@@ -19,16 +19,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +50,11 @@ import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 /** The six adjustable filter values a preset stores. */
 private data class FilterValues(
@@ -161,9 +161,7 @@ fun VideoSettingsFilterPresetsCard(
   var nameErrorRes by remember { mutableStateOf<Int?>(null) }
   var presetMenuOwner by remember { mutableStateOf<CustomFilterPreset?>(null) }
 
-  fun commitName(
-    rawName: String,
-  ) {
+  fun commitName(rawName: String) {
     val cleanName = CustomFilterPreset.normalizeName(rawName)
     if (cleanName.isEmpty()) {
       nameErrorRes = R.string.filter_preset_name_empty

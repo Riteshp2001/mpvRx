@@ -10,7 +10,6 @@
 package app.gyrolet.mpvrx.ui.browser.networkstreaming
 
 import android.content.Context
-import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,7 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import app.gyrolet.mpvrx.ui.utils.NavigationPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -42,11 +40,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
-import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -84,22 +80,22 @@ import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
 import app.gyrolet.mpvrx.domain.torrent.isTorrentSource
 import app.gyrolet.mpvrx.domain.torrent.normalizeTorrentSource
-import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.preferences.NetworkBookmarkPreferences
+import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.repository.wyzie.WyzieSearchRepository
-import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.ui.browser.cards.NetworkConnectionCard
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddConnectionSheet
 import app.gyrolet.mpvrx.ui.browser.dialogs.EditConnectionSheet
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import app.gyrolet.mpvrx.ui.components.InlineSearchBar
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpInstallPromptDialog
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpInstallProgressDialog
+import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpInstallPromptDialog
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.preferences.NetworkConfigurationPreferencesScreen
 import app.gyrolet.mpvrx.ui.torrent.TorrentSelectionInput
@@ -108,20 +104,26 @@ import app.gyrolet.mpvrx.ui.torrent.TorrentSelectionViewModel
 import app.gyrolet.mpvrx.ui.torrent.loadViewedFileIndices
 import app.gyrolet.mpvrx.ui.torrent.saveViewedFileIndices
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.NavigationPager
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.ui.utils.rememberTabNavigation
-import app.gyrolet.mpvrx.utils.media.SharedUrlExtractor
+import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils
+import app.gyrolet.mpvrx.utils.media.SharedUrlExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
+import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 
 private const val VIEWED_TORRENT_FILES_PREFS = "torrent_viewed_files"
 
-private enum class NetworkTab(val titleResId: Int) {
+private enum class NetworkTab(
+  val titleResId: Int,
+) {
   LOCAL_NETWORK(R.string.ui_local_network),
   MEDIA(R.string.ui_media),
   SYNC_PLAY(R.string.syncplay_title),
@@ -139,22 +141,23 @@ object NetworkStreamingScreen : Screen {
     val ytdlPreferences = koinInject<YtdlPreferences>()
     val bookmarkPreferences = koinInject<NetworkBookmarkPreferences>()
     val linkDownloadCoordinator = koinInject<app.gyrolet.mpvrx.domain.download.LinkDownloadCoordinator>()
-    val torrentPickerViewModel: TorrentSelectionViewModel? = if (app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) {
-      val torrentStreamingEngine = koinInject<TorrentStreamingEngine>()
-      val streamEntryRepository = koinInject<NetworkStreamEntryRepository>()
-      val wyzieSearchRepository = koinInject<WyzieSearchRepository>()
-      viewModel(
-        key = "network_torrent_picker",
-        factory =
-          TorrentSelectionViewModel.factory(
-            torrentStreamingEngine = torrentStreamingEngine,
-            streamEntryRepository = streamEntryRepository,
-            wyzieSearchRepository = wyzieSearchRepository,
-          ),
-      )
-    } else {
-      null
-    }
+    val torrentPickerViewModel: TorrentSelectionViewModel? =
+      if (app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) {
+        val torrentStreamingEngine = koinInject<TorrentStreamingEngine>()
+        val streamEntryRepository = koinInject<NetworkStreamEntryRepository>()
+        val wyzieSearchRepository = koinInject<WyzieSearchRepository>()
+        viewModel(
+          key = "network_torrent_picker",
+          factory =
+            TorrentSelectionViewModel.factory(
+              torrentStreamingEngine = torrentStreamingEngine,
+              streamEntryRepository = streamEntryRepository,
+              wyzieSearchRepository = wyzieSearchRepository,
+            ),
+        )
+      } else {
+        null
+      }
     val torrentPickerState = torrentPickerViewModel?.uiState?.collectAsState()?.value
     val connections by viewModel.connections.collectAsState()
     val folderBookmarks by bookmarkPreferences.bookmarks.collectAsState()
@@ -166,7 +169,9 @@ object NetworkStreamingScreen : Screen {
     var editingConnection by remember { mutableStateOf<NetworkConnection?>(null) }
     var showTorrentPicker by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-    val navigationHaptics = app.gyrolet.mpvrx.ui.utils.rememberAppHaptics()
+    val navigationHaptics =
+      app.gyrolet.mpvrx.ui.utils
+        .rememberAppHaptics()
 
     // yt-dlp install gate for the "paste link -> Play" flow: instead of silently installing
     // yt-dlp in the background while the player buffers on first use, we ask up front.
@@ -311,7 +316,9 @@ object NetworkStreamingScreen : Screen {
 
     Scaffold(
       contentWindowInsets = FabPlacement.scaffoldInsets(),
-      containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
+      containerColor =
+        app.gyrolet.mpvrx.ui.theme
+          .wallpaperAwareBackgroundColor(),
       modifier = Modifier.fillMaxSize(),
       topBar = {
         Column(
@@ -412,9 +419,9 @@ object NetworkStreamingScreen : Screen {
               Tab(
                 selected = pagerState.currentPage == index,
                 onClick = {
-                   if (pagerState.currentPage != index) navigationHaptics.selection(true)
-                   navigateTab(index)
-                 },
+                  if (pagerState.currentPage != index) navigationHaptics.selection(true)
+                  navigateTab(index)
+                },
                 text = {
                   Text(
                     text = stringResource(tab.titleResId),
@@ -501,7 +508,8 @@ object NetworkStreamingScreen : Screen {
                   )
                 },
                 onSaveToMedia = { entry ->
-                  val playableSource = normalizeTorrentSource(entry.canonicalSourceUri) ?: entry.canonicalSourceUri.trim()
+                  val playableSource =
+                    normalizeTorrentSource(entry.canonicalSourceUri) ?: entry.canonicalSourceUri.trim()
                   if (isTorrentSource(playableSource)) {
                     showTorrentPicker = true
                     torrentPickerViewModel?.open(TorrentSelectionInput(source = playableSource, title = entry.fileName))
@@ -509,12 +517,18 @@ object NetworkStreamingScreen : Screen {
                     when (linkDownloadCoordinator.enqueue(playableSource, entry.fileName)) {
                       app.gyrolet.mpvrx.domain.download.LinkDownloadCoordinator.Route.UNSUPPORTED ->
                         app.gyrolet.mpvrx.ui.components.AppToast
-                          .makeText(context, R.string.downloads_location_invalid, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT)
-                          .show()
+                          .makeText(
+                            context,
+                            R.string.downloads_location_invalid,
+                            app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
+                          ).show()
                       else ->
                         app.gyrolet.mpvrx.ui.components.AppToast
-                          .makeText(context, R.string.downloads_started, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT)
-                          .show()
+                          .makeText(
+                            context,
+                            R.string.downloads_started,
+                            app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
+                          ).show()
                     }
                   }
                 },
@@ -555,7 +569,8 @@ object NetworkStreamingScreen : Screen {
                 mediaGroups = filteredMediaGroups,
                 searchQuery = searchQuery,
                 onPlayMedia = { entry ->
-                  val playableSource = normalizeTorrentSource(entry.canonicalSourceUri) ?: entry.canonicalSourceUri.trim()
+                  val playableSource =
+                    normalizeTorrentSource(entry.canonicalSourceUri) ?: entry.canonicalSourceUri.trim()
                   if (isTorrentSource(playableSource)) {
                     MediaUtils.playFile(
                       source = entry.canonicalSourceUri,
@@ -729,7 +744,12 @@ private fun AddMediaDialog(
                   coroutineScope.launch {
                     val clipData = clipboard.getClipEntry()?.clipData
                     if (clipData != null && clipData.itemCount > 0) {
-                      val clip = clipData.getItemAt(0).coerceToText(context)?.toString()?.trim()
+                      val clip =
+                        clipData
+                          .getItemAt(0)
+                          .coerceToText(context)
+                          ?.toString()
+                          ?.trim()
                       if (!clip.isNullOrBlank()) inputUrl = clip
                     }
                   }
@@ -792,7 +812,8 @@ private fun LocalNetworkContent(
   // With a remote, the first D-pad stop is a saved connection (or bookmark) to browse rather than
   // the stream URL field; the field moves below them (#1035).
   val streamLinkLast =
-    app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(LocalContext.current) &&
+    app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+      .isTelevision(LocalContext.current) &&
       (connections.isNotEmpty() || bookmarks.isNotEmpty())
   LazyColumn(
     modifier = Modifier.fillMaxSize(),
@@ -881,17 +902,19 @@ private fun MediaContent(
 
   val heroGroups =
     remember(mediaGroups) {
-      mediaGroups.filter { !it.backdropUrl.isNullOrBlank() || !it.posterUrl.isNullOrBlank() }
+      mediaGroups
+        .filter { !it.backdropUrl.isNullOrBlank() || !it.posterUrl.isNullOrBlank() }
         .ifEmpty { mediaGroups }
     }
 
   val recentViewedFiles =
     remember(mediaGroups) {
-      mediaGroups.flatMap { group ->
-        val infoHash = group.infoHash
-        val viewed = if (infoHash != null) loadViewedFileIndices(viewedPreferences, infoHash) else emptySet()
-        group.files.filter { it.fileIndex in viewed || group.groupType != MediaGroupType.TORRENT }
-      }.sortedByDescending { it.updatedAt }
+      mediaGroups
+        .flatMap { group ->
+          val infoHash = group.infoHash
+          val viewed = if (infoHash != null) loadViewedFileIndices(viewedPreferences, infoHash) else emptySet()
+          group.files.filter { it.fileIndex in viewed || group.groupType != MediaGroupType.TORRENT }
+        }.sortedByDescending { it.updatedAt }
         .distinctBy { it.stableKey }
     }
 
@@ -908,7 +931,13 @@ private fun MediaContent(
     if (mediaGroups.isEmpty()) {
       LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = bottomOverlayClearance + 16.dp),
+        contentPadding =
+          PaddingValues(
+            start = 16.dp,
+            top = 16.dp,
+            end = 16.dp,
+            bottom = bottomOverlayClearance + 16.dp,
+          ),
       ) {
         item {
           EmptyStateCard(
@@ -951,11 +980,12 @@ private fun MediaContent(
             ) {
               TorrentSectionHeader(
                 title = "Continue Watching",
-                subtitle = if (app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) {
-                  "Resume your recent streams and torrents"
-                } else {
-                  stringResource(R.string.ui_recent_streams)
-                },
+                subtitle =
+                  if (app.gyrolet.mpvrx.BuildConfig.ENABLE_TORRENT) {
+                    "Resume your recent streams and torrents"
+                  } else {
+                    stringResource(R.string.ui_recent_streams)
+                  },
               )
               androidx.compose.foundation.lazy.LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -966,7 +996,11 @@ private fun MediaContent(
                     entry = entry,
                     onClick = { onPlayWithHistory(entry, entry.infoHash) },
                     onLongClick = {
-                      val group = mediaGroups.find { it.infoHash == entry.infoHash || it.canonicalSourceUri == entry.canonicalSourceUri }
+                      val group =
+                        mediaGroups.find {
+                          it.infoHash == entry.infoHash ||
+                            it.canonicalSourceUri == entry.canonicalSourceUri
+                        }
                       if (group != null) selectedDetailGroup = group
                     },
                   )
@@ -979,7 +1013,12 @@ private fun MediaContent(
         // 3. Saved Links Section Header
         item {
           TorrentSectionHeader(
-            title = if (searchQuery.isNotBlank()) "Search Results (${mediaGroups.size})" else "Saved Links (${mediaGroups.size})",
+            title =
+              if (searchQuery.isNotBlank()) {
+                "Search Results (${mediaGroups.size})"
+              } else {
+                "Saved Links (${mediaGroups.size})"
+              },
             subtitle = if (searchQuery.isNotBlank()) null else "Stream instantly with high-speed hardware acceleration",
           )
         }
@@ -1085,7 +1124,9 @@ private fun StreamLinkSection(
 ) {
   val context = LocalContext.current
   val keyboardController = LocalSoftwareKeyboardController.current
-  val isTelevision = app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(context)
+  val isTelevision =
+    app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+      .isTelevision(context)
   val playStreamContentDescription = stringResource(R.string.ui_play_stream)
   var linkUrl by rememberSaveable { mutableStateOf("") }
 

@@ -20,15 +20,15 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import app.gyrolet.mpvrx.database.entities.RecentlyPlayedEntity
 import app.gyrolet.mpvrx.database.repository.VideoMetadataCacheRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
-import app.gyrolet.mpvrx.utils.logging.Log
-import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
-import app.gyrolet.mpvrx.utils.storage.leafStorageName
 import app.gyrolet.mpvrx.domain.recentlyplayed.repository.RecentlyPlayedRepository
-import app.gyrolet.mpvrx.utils.permission.PermissionUtils
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
+import app.gyrolet.mpvrx.utils.permission.PermissionUtils
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
+import app.gyrolet.mpvrx.utils.storage.leafStorageName
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,7 +40,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.java.KoinJavaComponent.inject
 import java.io.File
-import kotlin.math.pow
 
 class RecentlyPlayedViewModel(
   application: Application,
@@ -79,9 +78,7 @@ class RecentlyPlayedViewModel(
     completedRefreshRevision.first { it >= revision }
   }
 
-  private suspend fun loadRecentVideosFromEntities(
-    allRecentEntities: List<RecentlyPlayedEntity>,
-  ) {
+  private suspend fun loadRecentVideosFromEntities(allRecentEntities: List<RecentlyPlayedEntity>) {
     try {
       val items = mutableListOf<RecentlyPlayedItem>()
 
@@ -134,6 +131,7 @@ class RecentlyPlayedViewModel(
       _isLoading.value = false
     }
   }
+
   private suspend fun createVideoFromFilePath(
     filePath: String,
     file: File,
@@ -245,9 +243,9 @@ class RecentlyPlayedViewModel(
             val size = if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) cursor.getLong(sizeIndex) else null
             name to size
           } ?: run {
-            Log.w("RecentlyPlayedViewModel", "Cannot query recent content URI: $uri")
-            return null
-          }
+          Log.w("RecentlyPlayedViewModel", "Cannot query recent content URI: $uri")
+          return null
+        }
 
       val displayName =
         metadata.first?.takeIf(String::isNotBlank)
@@ -272,28 +270,29 @@ class RecentlyPlayedViewModel(
       val duration = entity.duration
       val size = metadata.second?.takeIf { it > 0L } ?: entity.fileSize
 
-      val video = Video(
-        id = uri.toString().hashCode().toLong(),
-        title = entity.videoTitle?.takeIf(String::isNotBlank) ?: FileTypeUtils.stripExtension(displayName),
-        displayName = displayName,
-        path = uri.toString(),
-        uri = uri,
-        duration = duration,
-        durationFormatted = formatDuration(duration),
-        size = size,
-        sizeFormatted = formatFileSize(size),
-        dateModified = entity.timestamp / 1_000L,
-        dateAdded = entity.timestamp / 1_000L,
-        mimeType = mimeType,
-        bucketId = parentPath.ifBlank { ScopedHiddenFolderScanner.documentKey(uri) },
-        bucketDisplayName = bucketName,
-        width = entity.width,
-        height = entity.height,
-        fps = 0f,
-        resolution = if (isAudio) "--" else VideoScanUtils.formatResolution(entity.width, entity.height),
-        isAudio = isAudio,
-        artworkUrl = entity.artworkUrl,
-      )
+      val video =
+        Video(
+          id = uri.toString().hashCode().toLong(),
+          title = entity.videoTitle?.takeIf(String::isNotBlank) ?: FileTypeUtils.stripExtension(displayName),
+          displayName = displayName,
+          path = uri.toString(),
+          uri = uri,
+          duration = duration,
+          durationFormatted = formatDuration(duration),
+          size = size,
+          sizeFormatted = formatFileSize(size),
+          dateModified = entity.timestamp / 1_000L,
+          dateAdded = entity.timestamp / 1_000L,
+          mimeType = mimeType,
+          bucketId = parentPath.ifBlank { ScopedHiddenFolderScanner.documentKey(uri) },
+          bucketDisplayName = bucketName,
+          width = entity.width,
+          height = entity.height,
+          fps = 0f,
+          resolution = if (isAudio) "--" else VideoScanUtils.formatResolution(entity.width, entity.height),
+          isAudio = isAudio,
+          artworkUrl = entity.artworkUrl,
+        )
       metadataCache.getOrExtractContentMetadata(video)?.let { MetadataRetrieval.withMetadata(video, it) } ?: video
     } catch (cancelled: CancellationException) {
       throw cancelled
@@ -493,10 +492,12 @@ class RecentlyPlayedViewModel(
   }
 
   private fun formatFileSize(bytes: Long): String =
-    app.gyrolet.mpvrx.utils.storage.VideoScanUtils.formatFileSize(bytes)
+    app.gyrolet.mpvrx.utils.storage.VideoScanUtils
+      .formatFileSize(bytes)
 
   private fun isNetworkUri(path: String): Boolean =
-    app.gyrolet.mpvrx.utils.storage.FileTypeUtils.isNetworkStreamUri(path)
+    app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+      .isNetworkStreamUri(path)
 
   /**
    * Checks if a URL is likely a streaming playlist (M3U, HLS, DASH, etc.)
@@ -561,9 +562,7 @@ class RecentlyPlayedViewModel(
 
     const val DEFAULT_HISTORY_LIMIT = 50
 
-    fun factory(
-      application: Application,
-    ): ViewModelProvider.Factory =
+    fun factory(application: Application): ViewModelProvider.Factory =
       viewModelFactory {
         initializer {
           RecentlyPlayedViewModel(application)

@@ -60,9 +60,10 @@ fun ZoomableImage(
   modifier: Modifier = Modifier,
   onClick: () -> Unit = {},
 ) {
-  val zoomableState = rememberZoomableState(
-    zoomSpec = ZoomSpec(maxZoomFactor = 5f),
-  )
+  val zoomableState =
+    rememberZoomableState(
+      zoomSpec = ZoomSpec(maxZoomFactor = 5f),
+    )
   BoxWithConstraints(
     modifier = modifier.fillMaxSize(),
     contentAlignment = Alignment.Center,
@@ -88,8 +89,11 @@ fun ZoomableImage(
           remember(fitted, quarterTurned, density) {
             with(density) {
               // A quarter turn puts the image on screen with its axes swapped.
-              if (quarterTurned) Size(fitted.height.toPx(), fitted.width.toPx())
-              else Size(fitted.width.toPx(), fitted.height.toPx())
+              if (quarterTurned) {
+                Size(fitted.height.toPx(), fitted.width.toPx())
+              } else {
+                Size(fitted.width.toPx(), fitted.height.toPx())
+              }
             }
           }
         LaunchedEffect(zoomableState, contentSize) {
@@ -192,7 +196,11 @@ fun ZoomableImage(
 }
 
 /** Largest `w x h` with [aspect] that fits inside [maxWidth] x [maxHeight]. */
-private fun fitInto(aspect: Float, maxWidth: Dp, maxHeight: Dp): DpSize {
+private fun fitInto(
+  aspect: Float,
+  maxWidth: Dp,
+  maxHeight: Dp,
+): DpSize {
   val widthFromHeight = maxHeight * aspect
   return if (widthFromHeight <= maxWidth) {
     DpSize(widthFromHeight, maxHeight)
@@ -200,5 +208,3 @@ private fun fitInto(aspect: Float, maxWidth: Dp, maxHeight: Dp): DpSize {
     DpSize(maxWidth, maxWidth / aspect)
   }
 }
-
-

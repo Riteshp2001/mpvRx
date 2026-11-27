@@ -10,7 +10,6 @@
 package app.gyrolet.mpvrx.ui.browser.selection
 
 import android.content.Context
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -26,6 +25,7 @@ import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 /**
  * Manager for handling item selection and operations in browser screens

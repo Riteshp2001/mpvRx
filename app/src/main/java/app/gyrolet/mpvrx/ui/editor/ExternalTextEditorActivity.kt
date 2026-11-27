@@ -11,11 +11,10 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
-import androidx.activity.compose.setContent
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,17 +22,15 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,9 +43,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.ui.player.MpvConfigCache
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.ui.tv.startForResultOrToast
@@ -57,6 +54,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import java.util.Locale
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 /**
  * Restrict file-open intents to URI grants and recognized text/config formats. The UI offers
@@ -65,13 +65,25 @@ import java.util.Locale
  */
 class ExternalTextEditorActivity : AppCompatActivity() {
   @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
-  override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) =
+  override fun startActivityForResult(
+    intent: Intent,
+    requestCode: Int,
+    options: Bundle?,
+  ) =
     startForResultOrToast(intent, requestCode) { target -> super.startActivityForResult(target, requestCode, options) }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    val sourceIntent = intent ?: run { finish(); return }
-    val source = sourceIntent.data ?: run { finish(); return }
+    val sourceIntent =
+      intent ?: run {
+        finish()
+        return
+      }
+    val source =
+      sourceIntent.data ?: run {
+        finish()
+        return
+      }
     if (sourceIntent.action != Intent.ACTION_VIEW && sourceIntent.action != Intent.ACTION_EDIT) {
       finish()
       return
@@ -86,8 +98,9 @@ class ExternalTextEditorActivity : AppCompatActivity() {
       finish()
       return
     }
-    val canWrite = (sourceIntent.flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION) != 0 ||
-      source.scheme == "file"
+    val canWrite =
+      (sourceIntent.flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION) != 0 ||
+        source.scheme == "file"
     setContent {
       MpvrxTheme {
         ExternalTextEditorScreen(
@@ -109,15 +122,21 @@ class ExternalTextEditorActivity : AppCompatActivity() {
       return suffix in allowedExtensions
     }
 
-    private fun resolveFileName(context: Context, uri: Uri): String {
+    private fun resolveFileName(
+      context: Context,
+      uri: Uri,
+    ): String {
       if (uri.scheme == "content") {
         runCatching {
-          context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+          context.contentResolver
+            .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
             ?.use { cursor ->
               if (cursor.moveToFirst()) {
                 val column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                 if (column >= 0) cursor.getString(column) else null
-              } else null
+              } else {
+                null
+              }
             }
         }.getOrNull()?.takeIf { it.isNotBlank() }?.let { return it }
       }
@@ -157,21 +176,22 @@ private fun ExternalTextEditorScreen(
   LaunchedEffect(uri) {
     loadError = null
     try {
-      val contents = withContext(Dispatchers.IO) {
-        context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
-          val buffer = CharArray(4096)
-          val builder = StringBuilder()
-          while (true) {
-            val count = reader.read(buffer)
-            if (count < 0) break
-            if (builder.length + count > 1_000_000) {
-              error("This text document is larger than the 1 MB editor safety limit")
+      val contents =
+        withContext(Dispatchers.IO) {
+          context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { reader ->
+            val buffer = CharArray(4096)
+            val builder = StringBuilder()
+            while (true) {
+              val count = reader.read(buffer)
+              if (count < 0) break
+              if (builder.length + count > 1_000_000) {
+                error("This text document is larger than the 1 MB editor safety limit")
+              }
+              builder.append(buffer, 0, count)
             }
-            builder.append(buffer, 0, count)
-          }
-          builder.toString()
-        } ?: error("Unable to read document")
-      }
+            builder.toString()
+          } ?: error("Unable to read document")
+        }
       if (!dirty) text = contents
       loaded = true
     } catch (e: Exception) {
@@ -179,14 +199,18 @@ private fun ExternalTextEditorScreen(
     }
   }
 
-  fun writeDocument(destination: Uri, closeOnSuccess: Boolean) {
+  fun writeDocument(
+    destination: Uri,
+    closeOnSuccess: Boolean,
+  ) {
     if (busy) return
     busy = true
     val savedText = text
     scope.launch {
       try {
         withContext(Dispatchers.IO) {
-          context.contentResolver.openOutputStream(destination, "wt")
+          context.contentResolver
+            .openOutputStream(destination, "wt")
             ?.use { output -> output.write(savedText.toByteArray(Charsets.UTF_8)) }
             ?: error("The document provider does not permit writing")
         }
@@ -201,12 +225,13 @@ private fun ExternalTextEditorScreen(
     }
   }
 
-  val createCopy = rememberLauncherForActivityResult(
-    // Let the original filename determine its type; text/plain makes providers append .txt.
-    ActivityResultContracts.CreateDocument("application/octet-stream"),
-  ) { destination ->
-    if (destination != null) writeDocument(destination, closeOnSuccess = false)
-  }
+  val createCopy =
+    rememberLauncherForActivityResult(
+      // Let the original filename determine its type; text/plain makes providers append .txt.
+      ActivityResultContracts.CreateDocument("application/octet-stream"),
+    ) { destination ->
+      if (destination != null) writeDocument(destination, closeOnSuccess = false)
+    }
 
   if (showDiscard) {
     AlertDialog(
@@ -214,7 +239,10 @@ private fun ExternalTextEditorScreen(
       title = { Text("Discard your changes?") },
       text = { Text("Unsaved edits to $fileName will be lost.") },
       confirmButton = {
-        TextButton(onClick = { showDiscard = false; onClose() }) { Text("Discard") }
+        TextButton(onClick = {
+          showDiscard = false
+          onClose()
+        }) { Text("Discard") }
       },
       dismissButton = {
         TextButton(onClick = { showDiscard = false }) { Text("Keep editing") }
@@ -267,11 +295,12 @@ private fun ExternalTextEditorScreen(
   ) { padding ->
     Column(Modifier.fillMaxSize().padding(padding)) {
       when {
-        loadError != null -> Text(
-          loadError.orEmpty(),
-          modifier = Modifier.padding(16.dp),
-          color = MaterialTheme.colorScheme.error,
-        )
+        loadError != null ->
+          Text(
+            loadError.orEmpty(),
+            modifier = Modifier.padding(16.dp),
+            color = MaterialTheme.colorScheme.error,
+          )
         !loaded -> CircularProgressIndicator(Modifier.padding(20.dp))
         else -> {
           FlowRow(
@@ -294,17 +323,23 @@ private fun ExternalTextEditorScreen(
           }
           MpvScriptEditor(
             content = text,
-            onContentChange = { changed -> text = changed; dirty = true },
-            language = when {
-              isInputConfig -> "input.conf"
-              isMpvConfig || fileKind.endsWith(".conf") || fileKind.endsWith(".cfg") ||
-                fileKind.endsWith(".ini") -> "mpv.conf"
-              fileKind.endsWith(".xml") -> "xml"
-              fileKind.endsWith(".json") -> "json"
-              fileKind.endsWith(".lua") -> "lua"
-              fileKind.endsWith(".js") -> "js"
-              else -> "text"
+            onContentChange = { changed ->
+              text = changed
+              dirty = true
             },
+            language =
+              when {
+                isInputConfig -> "input.conf"
+                isMpvConfig ||
+                  fileKind.endsWith(".conf") ||
+                  fileKind.endsWith(".cfg") ||
+                  fileKind.endsWith(".ini") -> "mpv.conf"
+                fileKind.endsWith(".xml") -> "xml"
+                fileKind.endsWith(".json") -> "json"
+                fileKind.endsWith(".lua") -> "lua"
+                fileKind.endsWith(".js") -> "js"
+                else -> "text"
+              },
             modifier = Modifier.weight(1f),
           )
           if (dirty) {

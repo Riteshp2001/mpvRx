@@ -10,7 +10,6 @@
 package app.gyrolet.mpvrx.ui.components
 
 import androidx.compose.foundation.layout.size
-import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -22,6 +21,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.LiquidControlColors
 import app.gyrolet.mpvrx.ui.liquidglass.LiquidToggle
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.theme.rememberLowEndDevice
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import com.kyant.backdrop.backdrops.rememberCanvasBackdrop

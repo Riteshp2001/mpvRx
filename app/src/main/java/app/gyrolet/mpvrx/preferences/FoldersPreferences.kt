@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.combine
 enum class BlacklistScope {
   BOTH,
   VIDEO_ONLY,
-  AUDIO_ONLY
+  AUDIO_ONLY,
 }
 
 /** Each Home browser mode can independently opt out of expensive hidden-folder scans. */
@@ -33,8 +33,10 @@ class FoldersPreferences(
 
   // Set of folder paths that should be hidden from the video folder list
   val blacklistedFolders = preferenceStore.getStringSet("blacklisted_folders", emptySet())
+
   // Set of folder paths that should be hidden from the audio/music library
   val blacklistedAudioFolders = preferenceStore.getStringSet("blacklisted_audio_folders", emptySet())
+
   /** Scan thresholds default to no limit to preserve existing libraries. */
   val minimumVideoDurationSeconds = preferenceStore.getInt("scan_minimum_video_duration_seconds", 0)
   val minimumMediaFileSizeBytes = preferenceStore.getLong("scan_minimum_media_file_size_bytes", 0L)
@@ -45,6 +47,7 @@ class FoldersPreferences(
     combine(whitelistEnabled.changes(), whitelistedFolders.changes()) { enabled, folders -> enabled to folders }
 
   val pinnedFolders = preferenceStore.getStringSet("pinned_folders", emptySet())
+
   // Video file paths pinned to the top of their folder listing
   val pinnedVideos = preferenceStore.getStringSet("pinned_videos", emptySet())
 
@@ -54,7 +57,9 @@ class FoldersPreferences(
     val current = pinnedVideos.get()
     pinnedVideos.set(if (current.containsAll(paths)) current - paths.toSet() else current + paths)
   }
+
   val includeNoMediaFolders = preferenceStore.getBoolean("include_nomedia_folders", false)
+
   /** Persisted SAF tree grants for the Play Store (scoped-storage) distribution. */
   val scopedHiddenFolderUris = preferenceStore.getStringSet("scoped_hidden_folder_uris", emptySet())
   val hiddenFolderMarkerNames =
@@ -68,6 +73,7 @@ class FoldersPreferences(
   val treeScanDotFolders = preferenceStore.getBoolean("hidden_scan_tree_dot_folders", true)
   val foldersScanMarkedFolders = preferenceStore.getBoolean("hidden_scan_folders_markers", true)
   val foldersScanDotFolders = preferenceStore.getBoolean("hidden_scan_folders_dot_folders", true)
+
   // Individual marker opt-outs per view; entries refer to the user's global marker list.
   val libraryIgnoredMarkers = preferenceStore.getStringSet("hidden_scan_library_ignored_markers", emptySet())
   val treeIgnoredMarkers = preferenceStore.getStringSet("hidden_scan_tree_ignored_markers", emptySet())
@@ -76,18 +82,21 @@ class FoldersPreferences(
   // A single compact control drives Library, Tree and Folders. Defaulting to the
   // intersection of the legacy per-view settings is a conservative one-time migration:
   // nothing the user previously disabled is silently re-enabled.
-  val sharedScanMarkedFolders = preferenceStore.getBoolean(
-    "hidden_scan_shared_markers",
-    libraryScanMarkedFolders.get() && treeScanMarkedFolders.get() && foldersScanMarkedFolders.get(),
-  )
-  val sharedScanDotFolders = preferenceStore.getBoolean(
-    "hidden_scan_shared_dot_folders",
-    libraryScanDotFolders.get() && treeScanDotFolders.get() && foldersScanDotFolders.get(),
-  )
-  val sharedIgnoredMarkers = preferenceStore.getStringSet(
-    "hidden_scan_shared_ignored_markers",
-    libraryIgnoredMarkers.get() + treeIgnoredMarkers.get() + foldersIgnoredMarkers.get(),
-  )
+  val sharedScanMarkedFolders =
+    preferenceStore.getBoolean(
+      "hidden_scan_shared_markers",
+      libraryScanMarkedFolders.get() && treeScanMarkedFolders.get() && foldersScanMarkedFolders.get(),
+    )
+  val sharedScanDotFolders =
+    preferenceStore.getBoolean(
+      "hidden_scan_shared_dot_folders",
+      libraryScanDotFolders.get() && treeScanDotFolders.get() && foldersScanDotFolders.get(),
+    )
+  val sharedIgnoredMarkers =
+    preferenceStore.getStringSet(
+      "hidden_scan_shared_ignored_markers",
+      libraryIgnoredMarkers.get() + treeIgnoredMarkers.get() + foldersIgnoredMarkers.get(),
+    )
 
   // Compact connected selector under Hidden Folder Scan. Keep the marker/dot policies
   // shared while allowing each Home browser mode to skip hidden content independently.
@@ -95,11 +104,12 @@ class FoldersPreferences(
   val treeHiddenScanEnabled = preferenceStore.getBoolean("hidden_scan_enabled_tree", true)
   val foldersHiddenScanEnabled = preferenceStore.getBoolean("hidden_scan_enabled_folders", true)
 
-  fun isModeScanEnabled(scope: HiddenScanScope): Boolean = when (scope) {
-    HiddenScanScope.LIBRARY -> libraryHiddenScanEnabled.get()
-    HiddenScanScope.TREE -> treeHiddenScanEnabled.get()
-    HiddenScanScope.FOLDERS -> foldersHiddenScanEnabled.get()
-  }
+  fun isModeScanEnabled(scope: HiddenScanScope): Boolean =
+    when (scope) {
+      HiddenScanScope.LIBRARY -> libraryHiddenScanEnabled.get()
+      HiddenScanScope.TREE -> treeHiddenScanEnabled.get()
+      HiddenScanScope.FOLDERS -> foldersHiddenScanEnabled.get()
+    }
 
   // Keep the scope parameter for existing scanner callers; all three use one policy now.
   @Suppress("UNUSED_PARAMETER")
@@ -115,10 +125,14 @@ class FoldersPreferences(
     if (scanMarkedFolders(scope)) hiddenFolderMarkerNames.get() - ignoredMarkers(scope) else emptySet()
 
   fun hiddenScanEnabled(scope: HiddenScanScope): Boolean =
-    includeNoMediaFolders.get() && isModeScanEnabled(scope) &&
+    includeNoMediaFolders.get() &&
+      isModeScanEnabled(scope) &&
       (enabledMarkerNames(scope).isNotEmpty() || scanDotFolders(scope))
 
-  fun addBlacklistedFolders(paths: Set<String>, scope: BlacklistScope) {
+  fun addBlacklistedFolders(
+    paths: Set<String>,
+    scope: BlacklistScope,
+  ) {
     val currentVideo = blacklistedFolders.get().toMutableSet()
     val currentAudio = blacklistedAudioFolders.get().toMutableSet()
     when (scope) {

@@ -13,33 +13,32 @@ import android.net.Uri
 import android.os.SystemClock
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
+import app.gyrolet.mpvrx.domain.network.NetworkPath
 import app.gyrolet.mpvrx.domain.network.SmbSharePath
 import app.gyrolet.mpvrx.domain.network.SmbUsername
 import app.gyrolet.mpvrx.domain.network.normalizedAddress
-import app.gyrolet.mpvrx.domain.network.NetworkPath
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.fileinformation.FileIdFullDirectoryInformation
 import com.hierynomus.mssmb2.SMB2CreateDisposition
 import com.hierynomus.mssmb2.SMB2Packet
 import com.hierynomus.mssmb2.SMB2ShareAccess
+import com.hierynomus.mssmb2.SMBApiException
 import com.hierynomus.mssmb2.messages.SMB2Echo
 import com.hierynomus.smbj.SMBClient
 import com.hierynomus.smbj.SmbConfig
 import com.hierynomus.smbj.auth.AuthenticationContext
-import com.hierynomus.mssmb2.SMBApiException
 import com.hierynomus.smbj.connection.Connection
 import com.hierynomus.smbj.session.Session
-import com.hierynomus.smbj.share.DiskShare
 import com.hierynomus.smbj.share.Directory
+import com.hierynomus.smbj.share.DiskShare
 import com.hierynomus.smbj.share.PipeShare
 import com.hierynomus.smbj.transport.tcp.direct.DirectTcpTransportFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.runInterruptible
-import kotlinx.coroutines.ensureActive
-import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -50,12 +49,14 @@ import java.io.InputStream
 import java.net.URI
 import java.util.EnumSet
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.coroutineContext
 
 class SmbClient(
   connection: NetworkConnection,
 ) : NetworkClient {
   private val connection = connection.normalizedAddress()
   private val sharePath by lazy { SmbSharePath(this.connection.path) }
+
   companion object {
     // 1 MiB for every transport buffer plus another 1 MiB stream buffer was excessive on phones,
     // especially when mpv opens multiple range requests while seeking. 512 KiB keeps SMBJ reads
@@ -104,8 +105,11 @@ class SmbClient(
   }
 
   @Volatile private var smbClient: SMBClient? = null
+
   @Volatile private var smbConnection: Connection? = null
+
   @Volatile private var session: Session? = null
+
   @Volatile private var lastActivityAt = 0L
   private val connectionMutex = Mutex()
 
@@ -128,7 +132,8 @@ class SmbClient(
     } catch (cancellation: CancellationException) {
       throw cancellation
     } catch (_: Exception) {
-      app.gyrolet.mpvrx.utils.logging.Log.w("SmbClient", "SMB transport did not answer after idling; reconnecting")
+      app.gyrolet.mpvrx.utils.logging.Log
+        .w("SmbClient", "SMB transport did not answer after idling; reconnecting")
       false
     }
   }
@@ -168,7 +173,8 @@ class SmbClient(
       throw e
     } catch (e: Exception) {
       if (isNetworkError(e)) {
-        app.gyrolet.mpvrx.utils.logging.Log.w("SmbClient", "SMB transport failed; reconnecting")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .w("SmbClient", "SMB transport failed; reconnecting")
 
         connectionMutex.withLock {
           if (session === sessionAtStart || !isConnected()) {
@@ -191,8 +197,9 @@ class SmbClient(
    * directory listing (or streaming its files) is never an acceptable fallback.
    */
   private fun Session.connectDiskShare(shareName: String): DiskShare {
-    val tree = connectShare(shareName) as? DiskShare
-      ?: throw IOException("SMB share is not a disk share: $shareName")
+    val tree =
+      connectShare(shareName) as? DiskShare
+        ?: throw IOException("SMB share is not a disk share: $shareName")
     if (tree.smbPath.shareName?.equals(shareName, ignoreCase = true) != true) {
       throw IOException("SMB server returned a different share instead of $shareName")
     }
@@ -213,19 +220,26 @@ class SmbClient(
       var candidateSession: Session? = null
       try {
         val configuredShare = sharePath.shareName
-        val authentication = if (connection.isAnonymous) {
-          listOf(AuthenticationContext.anonymous(), AuthenticationContext.guest())
-        } else {
-          val user = SmbUsername.parse(connection.username)
-          listOf(AuthenticationContext(user.username, connection.password.toCharArray(), user.domain))
-        }
+        val authentication =
+          if (connection.isAnonymous) {
+            listOf(AuthenticationContext.anonymous(), AuthenticationContext.guest())
+          } else {
+            val user = SmbUsername.parse(connection.username)
+            listOf(AuthenticationContext(user.username, connection.password.toCharArray(), user.domain))
+          }
         withTimeout(15_000) {
           runInterruptible(Dispatchers.IO) {
             for ((index, authContext) in authentication.withIndex()) {
               try {
-                val newClient = newClient()
-                  .also { candidateClient = it }
-                val newConnection = newClient.connect(connection.host, connection.port).also { candidateConnection = it }
+                val newClient =
+                  newClient()
+                    .also { candidateClient = it }
+                val newConnection =
+                  newClient
+                    .connect(
+                      connection.host,
+                      connection.port,
+                    ).also { candidateConnection = it }
                 val newSession = newConnection.authenticate(authContext).also { candidateSession = it }
                 if (configuredShare == null) {
                   // Validate server browsing without enumerating every share again when a
@@ -301,7 +315,10 @@ class SmbClient(
       null,
     )
 
-  private fun listDirectory(share: DiskShare, path: String): List<FileIdFullDirectoryInformation> {
+  private fun listDirectory(
+    share: DiskShare,
+    path: String,
+  ): List<FileIdFullDirectoryInformation> {
     val directory = share.openListingDirectory(path)
     try {
       val files = mutableListOf<FileIdFullDirectoryInformation>()
@@ -475,7 +492,8 @@ class SmbClient(
                     // streams; closing it here triggers TREE_DISCONNECT and breaks any
                     // sibling stream that is still reading.
                     runCatching { file.closeNoWait() }.onFailure { error ->
-                      app.gyrolet.mpvrx.utils.logging.Log.w("SmbClient", "Could not release SMB file handle", error)
+                      app.gyrolet.mpvrx.utils.logging.Log
+                        .w("SmbClient", "Could not release SMB file handle", error)
                     }
                   }
                 }
@@ -534,7 +552,11 @@ class SmbClient(
   override suspend fun getFileUri(path: String): Result<Uri> =
     withContext(Dispatchers.IO) {
       try {
-        val host = connection.host.trim().removePrefix("[").removeSuffix("]")
+        val host =
+          connection.host
+            .trim()
+            .removePrefix("[")
+            .removeSuffix("]")
         val target = sharePath.resolve(parseNetworkPath(path))
         val uriPath = "/${target.shareName}${if (target.path.isRoot) "" else target.path.value}"
         val uri = URI("smb", null, host, connection.port, uriPath, null, null)
@@ -550,26 +572,30 @@ class SmbClient(
     if (!path.startsWith("smb://", ignoreCase = true)) return NetworkPath.from(path)
 
     val uri = URI(path)
-    val address = app.gyrolet.mpvrx.domain.network.NetworkAddress.parse(path, connection.protocol)
-    require(address.host.equals(connection.host, ignoreCase = true) &&
-      (address.port ?: 445) == connection.port
+    val address =
+      app.gyrolet.mpvrx.domain.network.NetworkAddress
+        .parse(path, connection.protocol)
+    require(
+      address.host.equals(connection.host, ignoreCase = true) &&
+        (address.port ?: 445) == connection.port,
     ) {
       "SMB path belongs to a different server"
     }
     return sharePath.fromServerPath(NetworkPath.from(uri.path.orEmpty()))
   }
 
-  private fun connectionError(error: Exception): Exception = when {
-    error is SMBApiException && error.statusCode in LOGON_FAILURE_CODES ->
-      NetworkAuthenticationException("SMB login failed. Check the username, password and DOMAIN\\username.", error)
-    error is SMBApiException && error.statusCode == 0xC0000022L ->
-      NetworkAuthenticationException("SMB access denied. Check account permissions for this share and folder.", error)
-    error is SMBApiException && error.statusCode == 0xC00000CCL ->
-      IOException("SMB share not found. Enter a shared folder such as /Media, not a local disk path.", error)
-    error is SMBApiException && error.statusCode in setOf(0xC0000034L, 0xC000003AL) ->
-      IOException("The configured folder does not exist inside the SMB share.", error)
-    else -> error
-  }
+  private fun connectionError(error: Exception): Exception =
+    when {
+      error is SMBApiException && error.statusCode in LOGON_FAILURE_CODES ->
+        NetworkAuthenticationException("SMB login failed. Check the username, password and DOMAIN\\username.", error)
+      error is SMBApiException && error.statusCode == 0xC0000022L ->
+        NetworkAuthenticationException("SMB access denied. Check account permissions for this share and folder.", error)
+      error is SMBApiException && error.statusCode == 0xC00000CCL ->
+        IOException("SMB share not found. Enter a shared folder such as /Media, not a local disk path.", error)
+      error is SMBApiException && error.statusCode in setOf(0xC0000034L, 0xC000003AL) ->
+        IOException("The configured folder does not exist inside the SMB share.", error)
+      else -> error
+    }
 
   private fun closeResources(
     smbSession: Session?,

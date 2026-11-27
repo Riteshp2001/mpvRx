@@ -27,16 +27,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.Screen
-import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
-import app.gyrolet.mpvrx.ui.tv.tvContentFocus
-import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
 import app.gyrolet.mpvrx.ui.tv.isTelevision
 import app.gyrolet.mpvrx.ui.tv.tryRequestFocus
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import app.gyrolet.mpvrx.ui.tv.tvContentFocus
+import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
+import app.gyrolet.mpvrx.ui.utils.LocalCurrentScreen
 import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,7 +74,10 @@ private val settingsSearchListAnchors: Map<Screen, List<SettingsSearchListAnchor
         SettingsSearchListAnchor(titleRes = R.string.legacy_navigation_bar_title, itemIndex = 9),
         SettingsSearchListAnchor(titleRes = R.string.progressive_navigation_blur_title, itemIndex = 9),
         SettingsSearchListAnchor(titleRes = R.string.connected_mini_player_navigation_title, itemIndex = 9),
-        SettingsSearchListAnchor(titleRes = R.string.pref_appearance_show_unplayed_old_video_label_title, itemIndex = 3),
+        SettingsSearchListAnchor(
+          titleRes = R.string.pref_appearance_show_unplayed_old_video_label_title,
+          itemIndex = 3,
+        ),
         SettingsSearchListAnchor(titleRes = R.string.pref_appearance_unplayed_old_video_days_title, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_appearance_auto_scroll_title, itemIndex = 3),
         SettingsSearchListAnchor(titleRes = R.string.pref_appearance_show_video_thumbnails_title, itemIndex = 5),
@@ -344,8 +347,10 @@ fun Modifier.settingsSearchTarget(
   composed {
     val requestedTarget by SettingsSearchNavigation.target.collectAsState()
     val currentScreen = LocalCurrentScreen.current
-    val isTarget = requestedTarget != null && requestedTarget?.screen == currentScreen &&
-      (requestedTarget?.key == key || fallback)
+    val isTarget =
+      requestedTarget != null &&
+        requestedTarget?.screen == currentScreen &&
+        (requestedTarget?.key == key || fallback)
     val requester = remember { BringIntoViewRequester() }
     val television = isTelevision()
     val focusRequester = remember { FocusRequester() }
@@ -424,10 +429,11 @@ private suspend fun scrollToSettingsSearchTarget(
     Log.w("SettingsSearch", "No settings rows available for $screen")
     return
   }
-  val hint = settingsSearchListAnchors[screen]
-    ?.firstOrNull {
-      target.key == "res:${it.titleRes}" || (it.title != null && target.key == "text:${it.title}")
-    }?.itemIndex ?: target.anchorItemIndex ?: 0
+  val hint =
+    settingsSearchListAnchors[screen]
+      ?.firstOrNull {
+        target.key == "res:${it.titleRes}" || (it.title != null && target.key == "text:${it.title}")
+      }?.itemIndex ?: target.anchorItemIndex ?: 0
   val start = hint.coerceIn(0, count - 1)
   // Indices are only hints: conditional cards and reordered sections must not break deep links.
   val candidates = sequenceOf(start) + (0 until count).asSequence().filter { it != start }
@@ -440,7 +446,10 @@ private suspend fun scrollToSettingsSearchTarget(
   }
   if (!SettingsSearchNavigation.isLocated(target) && SettingsSearchNavigation.target.value == target) {
     listState.scrollToItem(start)
-    Log.w("SettingsSearch", "Requested setting ${target.key} is not displayed on $screen; it may require another option to be enabled")
+    Log.w(
+      "SettingsSearch",
+      "Requested setting ${target.key} is not displayed on $screen; it may require another option to be enabled",
+    )
   }
 }
 

@@ -86,5 +86,8 @@ private fun isDeviceSecure(context: Context): Boolean =
 // DEVICE_CREDENTIAL alone is unsupported by BiometricPrompt before Android 11.
 // Keep the system credential fallback for those devices and non-FragmentActivity hosts.
 @Suppress("DEPRECATION")
-private fun legacyCredentialIntent(context: Context, title: String, subtitle: String): Intent? =
-  context.getSystemService(KeyguardManager::class.java)?.createConfirmDeviceCredentialIntent(title, subtitle)
+private fun legacyCredentialIntent(
+  context: Context,
+  title: String,
+  subtitle: String,
+): Intent? = context.getSystemService(KeyguardManager::class.java)?.createConfirmDeviceCredentialIntent(title, subtitle)

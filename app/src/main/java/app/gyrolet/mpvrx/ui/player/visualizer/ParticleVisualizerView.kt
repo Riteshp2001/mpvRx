@@ -16,14 +16,16 @@ internal class ParticleVisualizerView(
   features: AudioFeatures,
   palette: VisualizerPalette,
   reducedMotion: Boolean = false,
-) : InteractiveVisualizerView(context), PaletteConsumer {
-  private val renderer = ParticleFeedbackRenderer(
-    context.applicationContext,
-    features,
-    palette,
-    reducedMotion,
-    interaction,
-  )
+) : InteractiveVisualizerView(context),
+  PaletteConsumer {
+  private val renderer =
+    ParticleFeedbackRenderer(
+      context.applicationContext,
+      features,
+      palette,
+      reducedMotion,
+      interaction,
+    )
 
   init {
     setRenderer(renderer)

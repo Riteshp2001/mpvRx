@@ -25,8 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,18 +34,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.TrackNode
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
-import app.gyrolet.mpvrx.ui.theme.spacing
-import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
 import app.gyrolet.mpvrx.ui.liquidglass.playerGlassContainerColor
+import app.gyrolet.mpvrx.ui.player.TrackNode
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.spacing
 
 /**
  * Shared Material 3 Expressive state colors for player selection sheets.
@@ -60,11 +60,12 @@ internal fun playerSheetSelectionColor(
   frosted: Boolean = LocalPlayerGlassSurfaceActive.current,
 ): Color {
   val colors = MaterialTheme.colorScheme
-  val color = when {
-    selected -> colors.secondaryContainer
-    frosted -> colors.surfaceContainerLow
-    else -> colors.surfaceContainerHigh
-  }
+  val color =
+    when {
+      selected -> colors.secondaryContainer
+      frosted -> colors.surfaceContainerLow
+      else -> colors.surfaceContainerHigh
+    }
   return playerGlassContainerColor(color, selected = selected, frosted = frosted)
 }
 
@@ -80,11 +81,13 @@ internal fun animatedPlayerSheetSelectionColorState(
   val reduceMotion = AppMotion.playerReducedMotion()
   val baseColor = playerSheetSelectionColor(selected, frosted)
   return animateColorAsState(
-    targetValue = if (pressed && enabled) {
-      androidx.compose.ui.graphics.lerp(baseColor, MaterialTheme.colorScheme.primary, 0.10f)
-    } else {
-      baseColor
-    },
+    targetValue =
+      if (pressed && enabled) {
+        androidx.compose.ui.graphics
+          .lerp(baseColor, MaterialTheme.colorScheme.primary, 0.10f)
+      } else {
+        baseColor
+      },
     animationSpec = if (reduceMotion) snap() else AppMotion.Effect.Color,
     label = label,
   )
@@ -234,7 +237,12 @@ fun getTrackTitle(track: TrackNode): String {
       )
     hasTitle -> stringResource(R.string.player_sheets_track_title_wo_lang, track.id, title)
     hasLang -> stringResource(R.string.player_sheets_track_lang_wo_title, track.id, lang)
-    !track.codecDesc.isNullOrBlank() -> stringResource(R.string.player_sheets_track_title_wo_lang, track.id, track.codecDesc)
+    !track.codecDesc.isNullOrBlank() ->
+      stringResource(
+        R.string.player_sheets_track_title_wo_lang,
+        track.id,
+        track.codecDesc,
+      )
     track.isSubtitle -> stringResource(R.string.player_sheets_chapter_title_substitute_subtitle, track.id)
     track.isAudio -> stringResource(R.string.player_sheets_chapter_title_substitute_audio, track.id)
     else -> ""

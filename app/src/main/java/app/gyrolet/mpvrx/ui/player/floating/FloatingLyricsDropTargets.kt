@@ -40,29 +40,42 @@ internal class FloatingLyricsDropTargets(
   private val reducedMotion: () -> Boolean,
 ) {
   private val density get() = context.resources.displayMetrics.density
+
   private fun px(value: Float): Int = (value * density).roundToInt()
-  private val targets = listOf(
-    Target(FloatingPillDrop.CLOSE, R.string.ui_close, Color.WHITE, 0xFF1C1C1E.toInt()),
-    Target(FloatingPillDrop.NEVER, R.string.floating_lyrics_never, 0xFFE5484D.toInt(), Color.WHITE),
-  )
-  private val row = LinearLayout(context).apply {
-    orientation = LinearLayout.HORIZONTAL
-    clipChildren = false
-    clipToPadding = false
-    targets.forEachIndexed { index, target ->
-      val layout = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-      if (index > 0) layout.marginStart = px(12f)
-      addView(target.view, layout)
+
+  private val targets =
+    listOf(
+      Target(FloatingPillDrop.CLOSE, R.string.ui_close, Color.WHITE, 0xFF1C1C1E.toInt()),
+      Target(FloatingPillDrop.NEVER, R.string.floating_lyrics_never, 0xFFE5484D.toInt(), Color.WHITE),
+    )
+  private val row =
+    LinearLayout(context).apply {
+      orientation = LinearLayout.HORIZONTAL
+      clipChildren = false
+      clipToPadding = false
+      targets.forEachIndexed { index, target ->
+        val layout = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        if (index > 0) layout.marginStart = px(12f)
+        addView(target.view, layout)
+      }
     }
-  }
-  val view = FrameLayout(context).apply {
-    background = GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, intArrayOf(0x8C000000.toInt(), Color.TRANSPARENT))
-    alpha = 0f
-    visibility = View.GONE
-    clipChildren = false
-    clipToPadding = false
-    addView(row, FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
-  }
+  val view =
+    FrameLayout(context).apply {
+      background =
+        GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP, intArrayOf(0x8C000000.toInt(), Color.TRANSPARENT))
+      alpha = 0f
+      visibility = View.GONE
+      clipChildren = false
+      clipToPadding = false
+      addView(
+        row,
+        FrameLayout.LayoutParams(
+          ViewGroup.LayoutParams.WRAP_CONTENT,
+          ViewGroup.LayoutParams.WRAP_CONTENT,
+          Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL,
+        ),
+      )
+    }
   private val bounds = RectF()
   private var hovered: FloatingPillDrop? = null
 
@@ -85,45 +98,81 @@ internal class FloatingLyricsDropTargets(
     if (reducedMotion()) {
       view.alpha = 1f
     } else {
-      view.animate().alpha(1f).setDuration(180).start()
+      view
+        .animate()
+        .alpha(1f)
+        .setDuration(180)
+        .start()
       targets.forEachIndexed { index, target ->
         target.view.translationY = px(72f).toFloat()
         target.view.alpha = 0f
-        target.view.animate().translationY(0f).alpha(1f).setStartDelay(index * 45L)
-          .setDuration(360).setInterpolator(OvershootInterpolator(1.4f)).start()
+        target.view
+          .animate()
+          .translationY(0f)
+          .alpha(1f)
+          .setStartDelay(index * 45L)
+          .setDuration(360)
+          .setInterpolator(OvershootInterpolator(1.4f))
+          .start()
       }
     }
   }
 
   fun hide() {
     if (view.visibility != View.VISIBLE) return
-    if (reducedMotion()) { hideNow(); return }
+    if (reducedMotion()) {
+      hideNow()
+      return
+    }
     targets.forEach {
       it.stop()
-      it.view.animate().translationY(px(56f).toFloat()).alpha(0f).setStartDelay(0)
-        .setDuration(170).setInterpolator(AccelerateInterpolator()).start()
+      it.view
+        .animate()
+        .translationY(px(56f).toFloat())
+        .alpha(0f)
+        .setStartDelay(0)
+        .setDuration(170)
+        .setInterpolator(AccelerateInterpolator())
+        .start()
     }
-    view.animate().alpha(0f).setDuration(200).withEndAction { view.visibility = View.GONE }.start()
+    view
+      .animate()
+      .alpha(0f)
+      .setDuration(200)
+      .withEndAction { view.visibility = View.GONE }
+      .start()
   }
 
   fun hideNow() {
     view.animate().cancel()
-    targets.forEach { it.stop(); it.view.animate().cancel() }
+    targets.forEach {
+      it.stop()
+      it.view.animate().cancel()
+    }
     view.alpha = 0f
     view.visibility = View.GONE
     hovered = null
   }
 
-  fun hover(center: Offset, cover: Int): FloatingPillDrop? {
+  fun hover(
+    center: Offset,
+    cover: Int,
+  ): FloatingPillDrop? {
     var best: FloatingPillDrop? = null
     var distance = Float.MAX_VALUE
     for (target in targets) {
       if (!boundsOf(target)) continue
       val reach = px(28f) + if (hovered == target.drop) px(18f) else 0
-      val inside = center.x >= bounds.left - reach && center.x <= bounds.right + reach &&
-        center.y >= bounds.top - cover - reach && center.y <= bounds.bottom + reach
+      val inside =
+        center.x >= bounds.left - reach &&
+          center.x <= bounds.right + reach &&
+          center.y >= bounds.top - cover - reach &&
+          center.y <= bounds.bottom + reach
       val away = abs(center.x - bounds.centerX())
-      if (inside && away < distance) { best = target.drop; distance = away }
+      if (inside && away < distance) {
+        best = target.drop
+        distance = away
+      }
     }
     if (best != hovered) {
       hovered = best
@@ -133,7 +182,10 @@ internal class FloatingLyricsDropTargets(
     return best
   }
 
-  fun restSpot(drop: FloatingPillDrop, cover: Int): Offset? {
+  fun restSpot(
+    drop: FloatingPillDrop,
+    cover: Int,
+  ): Offset? {
     if (!boundsOf(targets.first { it.drop == drop })) return null
     return Offset(bounds.centerX() - cover / 2f, bounds.top - px(10f) - cover)
   }
@@ -146,8 +198,21 @@ internal class FloatingLyricsDropTargets(
   fun swallow(drop: FloatingPillDrop) {
     if (reducedMotion()) return
     val target = targets.first { it.drop == drop }.view
-    target.animate().scaleX(0.92f).scaleY(0.92f).setDuration(110).setInterpolator(DecelerateInterpolator())
-      .withEndAction { target.animate().scaleX(1f).scaleY(1f).setDuration(220).setInterpolator(OvershootInterpolator(2f)).start() }.start()
+    target
+      .animate()
+      .scaleX(0.92f)
+      .scaleY(0.92f)
+      .setDuration(110)
+      .setInterpolator(DecelerateInterpolator())
+      .withEndAction {
+        target
+          .animate()
+          .scaleX(1f)
+          .scaleY(1f)
+          .setDuration(220)
+          .setInterpolator(OvershootInterpolator(2f))
+          .start()
+      }.start()
   }
 
   private fun boundsOf(target: Target): Boolean {
@@ -158,40 +223,58 @@ internal class FloatingLyricsDropTargets(
     return true
   }
 
-  private inner class Target(val drop: FloatingPillDrop, label: Int, private val activeFill: Int, private val activeInk: Int) {
-    private val fill = GradientDrawable().apply { cornerRadius = px(100f).toFloat(); setColor(REST_FILL) }
-    private val icon = ContextCompat.getDrawable(context, Icons.Platform.Close)?.mutate()?.apply {
-      setBounds(0, 0, px(16f), px(16f))
-      setTint(Color.WHITE)
-    }
+  private inner class Target(
+    val drop: FloatingPillDrop,
+    label: Int,
+    private val activeFill: Int,
+    private val activeInk: Int,
+  ) {
+    private val fill =
+      GradientDrawable().apply {
+        cornerRadius = px(100f).toFloat()
+        setColor(REST_FILL)
+      }
+    private val icon =
+      ContextCompat.getDrawable(context, Icons.Platform.Close)?.mutate()?.apply {
+        setBounds(0, 0, px(16f), px(16f))
+        setTint(Color.WHITE)
+      }
     private var amount = 0f
     private var animation: ValueAnimator? = null
-    val view = TextView(context).apply {
-      text = context.getString(label)
-      textSize = 14f
-      typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-      setTextColor(Color.WHITE)
-      gravity = Gravity.CENTER_VERTICAL
-      setCompoundDrawablesRelative(icon, null, null, null)
-      compoundDrawablePadding = px(6f)
-      setPaddingRelative(px(16f), px(12f), px(18f), px(12f))
-      maxLines = 1
-      ellipsize = TextUtils.TruncateAt.END
-      background = fill
-    }
+    val view =
+      TextView(context).apply {
+        text = context.getString(label)
+        textSize = 14f
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        setTextColor(Color.WHITE)
+        gravity = Gravity.CENTER_VERTICAL
+        setCompoundDrawablesRelative(icon, null, null, null)
+        compoundDrawablePadding = px(6f)
+        setPaddingRelative(px(16f), px(12f), px(18f), px(12f))
+        maxLines = 1
+        ellipsize = TextUtils.TruncateAt.END
+        background = fill
+      }
 
     fun light(on: Boolean) {
       stop()
-      if (reducedMotion()) { paint(if (on) 1f else 0f); return }
-      animation = ValueAnimator.ofFloat(amount, if (on) 1f else 0f).apply {
-        duration = if (on) 240 else 160
-        interpolator = if (on) OvershootInterpolator(2.2f) else DecelerateInterpolator()
-        addUpdateListener { paint(it.animatedValue as Float) }
-        start()
+      if (reducedMotion()) {
+        paint(if (on) 1f else 0f)
+        return
       }
+      animation =
+        ValueAnimator.ofFloat(amount, if (on) 1f else 0f).apply {
+          duration = if (on) 240 else 160
+          interpolator = if (on) OvershootInterpolator(2.2f) else DecelerateInterpolator()
+          addUpdateListener { paint(it.animatedValue as Float) }
+          start()
+        }
     }
 
-    fun stop() { animation?.cancel(); animation = null }
+    fun stop() {
+      animation?.cancel()
+      animation = null
+    }
 
     fun reset() {
       stop()

@@ -34,7 +34,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
-import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,13 +53,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gyrolet.mpvrx.presentation.components.AppPickerSheet
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.presentation.components.AppPickerSheet
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import java.util.Locale
 import kotlin.math.abs
+import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 
 @Composable
 fun CastRemoteControllerScreen(
@@ -166,7 +166,6 @@ fun CastRemoteControllerScreen(
       onDismiss = { showSpeedDialog = false },
     )
   }
-
 }
 
 @Composable
@@ -276,9 +275,7 @@ private fun CastPlaybackControls(
 }
 
 @Composable
-private fun CastOptionsRow(
-  onShowSpeed: () -> Unit,
-) {
+private fun CastOptionsRow(onShowSpeed: () -> Unit) {
   Row(
     modifier =
       Modifier
@@ -290,7 +287,9 @@ private fun CastOptionsRow(
   ) {
     CastOptionButton(
       icon = Icons.RoundedFilled.Speed,
-      label = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.cast_playback_speed),
+      label =
+        androidx.compose.ui.res
+          .stringResource(app.gyrolet.mpvrx.R.string.cast_playback_speed),
       onClick = onShowSpeed,
     )
   }
@@ -381,36 +380,41 @@ private fun CastSpeedDialog(
 
   AppPickerSheet(
     onDismissRequest = onDismiss,
-    title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.cast_playback_speed),
+    title =
+      androidx.compose.ui.res
+        .stringResource(app.gyrolet.mpvrx.R.string.cast_playback_speed),
     actions = {
       TextButton(onClick = onDismiss) {
-        Text(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel))
+        Text(
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
+        )
       }
     },
   ) {
-      Column {
-        speeds.forEach { speed ->
-          val isSelected = speed == currentSpeed
-          Row(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .clickable {
-                  onSpeedChange(speed)
-                  onDismiss()
-                }.padding(vertical = 12.dp, horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            RadioButton(
-              selected = isSelected,
-              onClick = null,
-              colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary),
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(text = "${speed}x", color = MaterialTheme.colorScheme.onSurface)
-          }
+    Column {
+      speeds.forEach { speed ->
+        val isSelected = speed == currentSpeed
+        Row(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .clickable {
+                onSpeedChange(speed)
+                onDismiss()
+              }.padding(vertical = 12.dp, horizontal = 8.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          RadioButton(
+            selected = isSelected,
+            onClick = null,
+            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary),
+          )
+          Spacer(modifier = Modifier.width(16.dp))
+          Text(text = "${speed}x", color = MaterialTheme.colorScheme.onSurface)
         }
       }
+    }
   }
 }
 

@@ -10,18 +10,26 @@ import app.gyrolet.mpvrx.App
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.ui.icons.AppIcon
+import org.koin.core.context.GlobalContext
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicLong
-import org.koin.core.context.GlobalContext
 import android.widget.Toast as NativeToast
 
 enum class AppToastType { Normal, Success, Info, Warning, Error, Loading }
 
-data class AppToastAction(val label: String, val onClick: () -> Unit)
+data class AppToastAction(
+  val label: String,
+  val onClick: () -> Unit,
+)
 
 sealed interface AppToastIcon {
-  data class Symbol(val value: AppIcon) : AppToastIcon
-  data class Emoji(val value: String) : AppToastIcon
+  data class Symbol(
+    val value: AppIcon,
+  ) : AppToastIcon
+
+  data class Emoji(
+    val value: String,
+  ) : AppToastIcon
 }
 
 internal data class AppToastMessage(
@@ -42,10 +50,15 @@ class AppToast private constructor(
   private val context = context.applicationContext
   private val id = nextId.incrementAndGet()
   private val revision = AtomicLong()
+
   @Volatile private var message: CharSequence = text ?: ""
+
   @Volatile var duration: Int = duration
+
   @Volatile private var type: AppToastType = AppToastType.Normal
+
   @Volatile private var icon: AppToastIcon? = null
+
   @Volatile private var action: AppToastAction? = null
   private var nativeToast: NativeToast? = null
 
@@ -53,7 +66,9 @@ class AppToast private constructor(
     message = text ?: ""
   }
 
-  fun setText(@StringRes resourceId: Int) {
+  fun setText(
+    @StringRes resourceId: Int,
+  ) {
     message = context.getText(resourceId)
   }
 
@@ -63,11 +78,18 @@ class AppToast private constructor(
 
   fun withIcon(emoji: String): AppToast = apply { icon = AppToastIcon.Emoji(emoji) }
 
-  fun withAction(label: String, onClick: () -> Unit): AppToast = apply {
-    action = AppToastAction(label, onClick)
-  }
+  fun withAction(
+    label: String,
+    onClick: () -> Unit,
+  ): AppToast =
+    apply {
+      action = AppToastAction(label, onClick)
+    }
 
-  fun update(text: CharSequence, type: AppToastType) {
+  fun update(
+    text: CharSequence,
+    type: AppToastType,
+  ) {
     setText(text)
     withType(type)
     show()
@@ -114,37 +136,69 @@ class AppToast private constructor(
     const val LENGTH_LONG: Int = NativeToast.LENGTH_LONG
     private val nextId = AtomicLong()
 
-    fun makeText(context: Context, text: CharSequence?, duration: Int): AppToast =
-      AppToast(context, text, duration)
+    fun makeText(
+      context: Context,
+      text: CharSequence?,
+      duration: Int,
+    ): AppToast = AppToast(context, text, duration)
 
-    fun makeText(context: Context, @StringRes resourceId: Int, duration: Int): AppToast =
+    fun makeText(
+      context: Context,
+      @StringRes resourceId: Int,
+      duration: Int,
+    ): AppToast =
       makeText(context, context.getText(resourceId), duration).withType(
         when (resourceId) {
           R.string.generic_unknown_error, R.string.ui_failed_to_delete,
           R.string.toast_playback_load_failed, R.string.playlist_add_failed,
           R.string.downloads_location_invalid, R.string.app_icon_change_failed,
           R.string.playback_bookmark_update_failed, R.string.playlist_zip_import_failed,
-          R.string.jellyfin_open_trailer_error -> AppToastType.Error
+          R.string.jellyfin_open_trailer_error,
+          -> AppToastType.Error
           R.string.downloads_queued, R.string.downloads_started,
-          R.string.playlist_zip_import_success -> AppToastType.Success
+          R.string.playlist_zip_import_success,
+          -> AppToastType.Success
           R.string.queue_requires_playback, R.string.video_swipe_recent_disabled -> AppToastType.Warning
           else -> AppToastType.Normal
         },
       )
 
-    fun success(context: Context, text: CharSequence): AppToast = typed(context, text, AppToastType.Success)
-    fun info(context: Context, text: CharSequence): AppToast = typed(context, text, AppToastType.Info)
-    fun warning(context: Context, text: CharSequence): AppToast = typed(context, text, AppToastType.Warning)
-    fun error(context: Context, text: CharSequence): AppToast = typed(context, text, AppToastType.Error)
-    fun loading(context: Context, text: CharSequence): AppToast = typed(context, text, AppToastType.Loading)
+    fun success(
+      context: Context,
+      text: CharSequence,
+    ): AppToast = typed(context, text, AppToastType.Success)
 
-    private fun typed(context: Context, text: CharSequence, type: AppToastType): AppToast =
-      makeText(context, text, LENGTH_LONG).withType(type).also { it.show() }
+    fun info(
+      context: Context,
+      text: CharSequence,
+    ): AppToast = typed(context, text, AppToastType.Info)
+
+    fun warning(
+      context: Context,
+      text: CharSequence,
+    ): AppToast = typed(context, text, AppToastType.Warning)
+
+    fun error(
+      context: Context,
+      text: CharSequence,
+    ): AppToast = typed(context, text, AppToastType.Error)
+
+    fun loading(
+      context: Context,
+      text: CharSequence,
+    ): AppToast = typed(context, text, AppToastType.Loading)
+
+    private fun typed(
+      context: Context,
+      text: CharSequence,
+      type: AppToastType,
+    ): AppToast = makeText(context, text, LENGTH_LONG).withType(type).also { it.show() }
   }
 }
 
 internal interface AppToastSink {
   fun show(message: AppToastMessage): Boolean
+
   fun dismiss(id: Long)
 }
 
@@ -167,7 +221,10 @@ internal object AppToastRouter {
   val enabled: Boolean
     get() = preferences.showAppToasts.get()
 
-  fun register(owner: Any, sink: AppToastSink) {
+  fun register(
+    owner: Any,
+    sink: AppToastSink,
+  ) {
     sinks.remove(owner)
     sinks[owner] = WeakReference(sink)
     pending.values.toList().forEach { entry ->
@@ -179,14 +236,20 @@ internal object AppToastRouter {
     sinks.remove(owner)
   }
 
-  fun show(message: AppToastMessage, waitForHost: Boolean, isCurrent: () -> Boolean, fallback: () -> Unit): Boolean {
+  fun show(
+    message: AppToastMessage,
+    waitForHost: Boolean,
+    isCurrent: () -> Boolean,
+    fallback: () -> Unit,
+  ): Boolean {
     removePending(message.id)
     if (deliver(message)) return true
     if (!waitForHost && !App.isInForeground) return false
     if (pending.size >= MAX_PENDING) pending.keys.firstOrNull()?.let(::removePending)
-    val expiry = Runnable {
-      pending.remove(message.id)?.let { entry -> if (entry.isCurrent()) entry.fallback() }
-    }
+    val expiry =
+      Runnable {
+        pending.remove(message.id)?.let { entry -> if (entry.isCurrent()) entry.fallback() }
+      }
     pending[message.id] = PendingToast(message, isCurrent, fallback, expiry)
     mainHandler.postDelayed(expiry, HOST_WAIT_MS)
     return true
@@ -194,7 +257,10 @@ internal object AppToastRouter {
 
   private fun deliver(message: AppToastMessage): Boolean {
     sinks.entries.removeAll { it.value.get() == null }
-    return sinks.values.toList().asReversed().any { it.get()?.show(message) == true }
+    return sinks.values
+      .toList()
+      .asReversed()
+      .any { it.get()?.show(message) == true }
   }
 
   fun dismiss(id: Long) {

@@ -102,7 +102,11 @@ object XtreamPlaybackUri {
       }
 
       val accountKey = uri.authority ?: return@runCatching null
-      val segments = uri.path.orEmpty().split('/').filter(String::isNotEmpty)
+      val segments =
+        uri.path
+          .orEmpty()
+          .split('/')
+          .filter(String::isNotEmpty)
       if (!isValidAccountKey(accountKey) || segments.size != 3) return@runCatching null
       val route = Route.entries.firstOrNull { it.wireValue == segments[0] } ?: return@runCatching null
       val streamId = segments[1]

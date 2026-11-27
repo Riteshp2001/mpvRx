@@ -29,7 +29,9 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 
 /** Maps the live GPU layer across the native video host and the controls' ComposeView. */
 @Stable
-internal class VideoGlassSource(val scene: LayerBackdrop?) {
+internal class VideoGlassSource(
+  val scene: LayerBackdrop?,
+) {
   var boundsInWindow by mutableStateOf(Rect.Zero)
   var originInWindow by mutableStateOf(Offset.Zero)
 
@@ -60,23 +62,27 @@ internal fun rememberVideoGlassSource(videoView: MPVView?): VideoGlassSource {
   DisposableEffect(videoView, source) {
     if (videoView == null || scene == null) return@DisposableEffect onDispose {}
     val location = IntArray(2)
+
     fun updateBounds() {
       videoView.getLocationInWindow(location)
-      source.boundsInWindow = if (videoView.isShown) {
-        Rect(
-          location[0].toFloat(), location[1].toFloat(),
-          location[0] + videoView.width * videoView.scaleX,
-          location[1] + videoView.height * videoView.scaleY,
-        )
-      } else {
-        Rect.Zero
-      }
+      source.boundsInWindow =
+        if (videoView.isShown) {
+          Rect(
+            location[0].toFloat(),
+            location[1].toFloat(),
+            location[0] + videoView.width * videoView.scaleX,
+            location[1] + videoView.height * videoView.scaleY,
+          )
+        } else {
+          Rect.Zero
+        }
     }
     val observer = videoView.viewTreeObserver
-    val listener = ViewTreeObserver.OnPreDrawListener {
-      updateBounds()
-      true
-    }
+    val listener =
+      ViewTreeObserver.OnPreDrawListener {
+        updateBounds()
+        true
+      }
     updateBounds()
     observer.addOnPreDrawListener(listener)
     onDispose { if (observer.isAlive) observer.removeOnPreDrawListener(listener) }
@@ -86,9 +92,13 @@ internal fun rememberVideoGlassSource(videoView: MPVView?): VideoGlassSource {
 
 /** Records the same GPU video layer in control-window coordinates, without displaying it twice. */
 @Composable
-internal fun VideoGlassBackdropSource(source: VideoGlassSource, backdrop: LayerBackdrop) {
+internal fun VideoGlassBackdropSource(
+  source: VideoGlassSource,
+  backdrop: LayerBackdrop,
+) {
   Box(
-    Modifier.fillMaxSize()
+    Modifier
+      .fillMaxSize()
       .onGloballyPositioned { source.originInWindow = it.positionInWindow() }
       .layerBackdrop(backdrop),
   )

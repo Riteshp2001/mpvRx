@@ -56,17 +56,22 @@ object MpvDocumentationRepository {
   private val json = Json { ignoreUnknownKeys = true }
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val busy = AtomicBoolean(false)
-  private val client = OkHttpClient.Builder()
-    .connectTimeout(10, TimeUnit.SECONDS)
-    .readTimeout(30, TimeUnit.SECONDS)
-    .callTimeout(55, TimeUnit.SECONDS)
-    .build()
+  private val client =
+    OkHttpClient
+      .Builder()
+      .connectTimeout(10, TimeUnit.SECONDS)
+      .readTimeout(30, TimeUnit.SECONDS)
+      .callTimeout(55, TimeUnit.SECONDS)
+      .build()
 
   private val _state = MutableStateFlow(MpvDocumentationState())
   val state = _state.asStateFlow()
   private var lastFailedAttemptMillis = 0L
 
-  fun ensureLoaded(context: Context, forceRefresh: Boolean = false) {
+  fun ensureLoaded(
+    context: Context,
+    forceRefresh: Boolean = false,
+  ) {
     if (!busy.compareAndSet(false, true)) return
     val appContext = context.applicationContext
     scope.launch {
@@ -74,16 +79,22 @@ object MpvDocumentationRepository {
         if (_state.value.entries.isEmpty()) {
           val cached = readCache(appContext)
           if (cached != null) {
-            _state.value = MpvDocumentationState(
-              entries = cached.entries,
-              lastCheckedMillis = cached.lastCheckedMillis,
-              isBundledSnapshot = false,
-            )
+            _state.value =
+              MpvDocumentationState(
+                entries = cached.entries,
+                lastCheckedMillis = cached.lastCheckedMillis,
+                isBundledSnapshot = false,
+              )
           } else {
-            val bundled = parseAll(sourceFiles.associateWith { name ->
-              appContext.assets.open("mpv_manual/$name.rst")
-                .bufferedReader(Charsets.UTF_8).use { it.readText() }
-            })
+            val bundled =
+              parseAll(
+                sourceFiles.associateWith { name ->
+                  appContext.assets
+                    .open("mpv_manual/$name.rst")
+                    .bufferedReader(Charsets.UTF_8)
+                    .use { it.readText() }
+                },
+              )
             if (isValidCatalog(bundled)) {
               _state.value = MpvDocumentationState(entries = bundled)
             } else {
@@ -103,23 +114,28 @@ object MpvDocumentationRepository {
           val parsed = parseAll(sources)
           require(isValidCatalog(parsed)) { "Invalid or incomplete mpv manual response" }
           val fetchedAt = System.currentTimeMillis()
-          writeCache(appContext, PersistedMpvManual(
-            schema = CACHE_SCHEMA,
-            lastCheckedMillis = fetchedAt,
-            entries = parsed,
-          ))
-          lastFailedAttemptMillis = 0L
-          _state.value = MpvDocumentationState(
-            entries = parsed,
-            lastCheckedMillis = fetchedAt,
-            isBundledSnapshot = false,
+          writeCache(
+            appContext,
+            PersistedMpvManual(
+              schema = CACHE_SCHEMA,
+              lastCheckedMillis = fetchedAt,
+              entries = parsed,
+            ),
           )
+          lastFailedAttemptMillis = 0L
+          _state.value =
+            MpvDocumentationState(
+              entries = parsed,
+              lastCheckedMillis = fetchedAt,
+              isBundledSnapshot = false,
+            )
         } catch (error: Exception) {
           lastFailedAttemptMillis = System.currentTimeMillis()
           Log.w(TAG, "Official mpv manual refresh failed; retaining cached docs", error)
-          _state.value = _state.value.copy(
-            error = "Refresh unavailable; cached documentation is still usable",
-          )
+          _state.value =
+            _state.value.copy(
+              error = "Refresh unavailable; cached documentation is still usable",
+            )
         }
       } catch (error: Exception) {
         Log.e(TAG, "Unable to load offline mpv documentation", error)
@@ -132,29 +148,37 @@ object MpvDocumentationRepository {
   }
 
   private fun downloadOfficialSource(name: String): String {
-    val request = Request.Builder()
-      .url("https://raw.githubusercontent.com/mpv-player/mpv/master/DOCS/man/$name.rst")
-      .header("Accept", "text/plain")
-      .build()
+    val request =
+      Request
+        .Builder()
+        .url("https://raw.githubusercontent.com/mpv-player/mpv/master/DOCS/man/$name.rst")
+        .header("Accept", "text/plain")
+        .build()
     client.newCall(request).execute().use { response ->
       check(response.isSuccessful) { "mpv $name: HTTP ${response.code}" }
       val body = requireNotNull(response.body) { "Empty mpv $name response" }
       check(body.contentLength() <= MAX_SOURCE_CHARS) { "Oversize $name document" }
       val content = body.string()
-      check(content.length in 1_000..MAX_SOURCE_CHARS &&
-        !content.trimStart().startsWith("<!DOCTYPE", ignoreCase = true)
+      check(
+        content.length in 1_000..MAX_SOURCE_CHARS &&
+          !content.trimStart().startsWith("<!DOCTYPE", ignoreCase = true),
       ) { "Invalid mpv $name source" }
       return content
     }
   }
 
-  private fun readCache(context: Context): PersistedMpvManual? = runCatching {
-    val file = File(context.filesDir, CACHE_FILE).takeIf { it.isFile } ?: return@runCatching null
-    json.decodeFromString<PersistedMpvManual>(file.readText())
-      .takeIf { it.schema == CACHE_SCHEMA && isValidCatalog(it.entries) }
-  }.getOrNull()
+  private fun readCache(context: Context): PersistedMpvManual? =
+    runCatching {
+      val file = File(context.filesDir, CACHE_FILE).takeIf { it.isFile } ?: return@runCatching null
+      json
+        .decodeFromString<PersistedMpvManual>(file.readText())
+        .takeIf { it.schema == CACHE_SCHEMA && isValidCatalog(it.entries) }
+    }.getOrNull()
 
-  private fun writeCache(context: Context, data: PersistedMpvManual) {
+  private fun writeCache(
+    context: Context,
+    data: PersistedMpvManual,
+  ) {
     val target = File(context.filesDir, CACHE_FILE)
     val temporary = File(context.filesDir, "$CACHE_FILE.tmp")
     try {
@@ -177,14 +201,23 @@ object MpvDocumentationRepository {
     buildList {
       addAll(MpvManualRstParser.parseOptions(requireNotNull(sources["options"])))
       addAll(MpvManualRstParser.parseInput(requireNotNull(sources["input"])))
-      val lua = MpvManualRstParser.parseJavaScript(requireNotNull(sources["lua"]))
-        .associateBy { it.name }
-      addAll(MpvManualRstParser.parseJavaScript(requireNotNull(sources["javascript"])).map { entry ->
-        val luaDescription = lua[entry.name]?.description
-        if (entry.description == MpvManualRstParser.API_REFERENCE_DESCRIPTION && luaDescription != null &&
-          luaDescription != MpvManualRstParser.API_REFERENCE_DESCRIPTION
-        ) entry.copy(description = luaDescription) else entry
-      })
+      val lua =
+        MpvManualRstParser
+          .parseJavaScript(requireNotNull(sources["lua"]))
+          .associateBy { it.name }
+      addAll(
+        MpvManualRstParser.parseJavaScript(requireNotNull(sources["javascript"])).map { entry ->
+          val luaDescription = lua[entry.name]?.description
+          if (entry.description == MpvManualRstParser.API_REFERENCE_DESCRIPTION &&
+            luaDescription != null &&
+            luaDescription != MpvManualRstParser.API_REFERENCE_DESCRIPTION
+          ) {
+            entry.copy(description = luaDescription)
+          } else {
+            entry
+          }
+        },
+      )
     }.distinctBy { it.kind to it.name }
 }
 
@@ -199,20 +232,29 @@ internal object MpvManualRstParser {
   private val optionName = Regex("""^--([a-z][a-z0-9-]*)""")
   private val commandName = Regex("""^([a-z][a-z0-9-]*)(?:\s|$)""")
   private val propertyName = Regex("""^[a-z][a-z0-9_./-]*$""")
-  private val jsName = Regex("""(?:mp(?:\.[a-zA-Z_][\w]*)+|setTimeout|setInterval|clearTimeout|clearInterval|print|dump|require|JSON\.(?:parse|stringify))""")
+  private val jsName =
+    Regex(
+      """(?:mp(?:\.[a-zA-Z_][\w]*)+|setTimeout|setInterval|clearTimeout|clearInterval|print|dump|require|JSON\.(?:parse|stringify))""",
+    )
 
   fun parseOptions(source: String): List<HelpEntry> = parse(source, "options")
+
   fun parseInput(source: String): List<HelpEntry> = parse(source, "input")
+
   fun parseJavaScript(source: String): List<HelpEntry> = parse(source, "javascript")
 
-  private fun parse(source: String, document: String): List<HelpEntry> {
+  private fun parse(
+    source: String,
+    document: String,
+  ): List<HelpEntry> {
     val lines = source.lines()
     val entries = mutableListOf<HelpEntry>()
-    var mode: HelpEntryKind? = when (document) {
-      "options" -> HelpEntryKind.OPTION
-      "javascript" -> HelpEntryKind.JS_API
-      else -> null
-    }
+    var mode: HelpEntryKind? =
+      when (document) {
+        "options" -> HelpEntryKind.OPTION
+        "javascript" -> HelpEntryKind.JS_API
+        else -> null
+      }
     var section = if (document == "options") "General" else "JavaScript"
     var pending = emptyList<Pair<String, String>>()
     var pendingKind: HelpEntryKind? = null
@@ -237,9 +279,13 @@ internal object MpvManualRstParser {
       val line = lines[i]
       val stripped = line.trim()
       val next = lines.getOrNull(i + 1).orEmpty()
-      val heading = line.isNotBlank() && line == stripped &&
-        next.length >= line.length && next.length >= 3 &&
-        next.all { it == '-' || it == '~' } && next.toSet().size == 1
+      val heading =
+        line.isNotBlank() &&
+          line == stripped &&
+          next.length >= line.length &&
+          next.length >= 3 &&
+          next.all { it == '-' || it == '~' } &&
+          next.toSet().size == 1
       if (heading) {
         flush()
         if (document == "input") {
@@ -256,34 +302,53 @@ internal object MpvManualRstParser {
       }
       val active = mode
       val indent = line.length - line.trimStart().length
-      if (active != null && (indent == 0 || active == HelpEntryKind.PROPERTY && indent == 4) &&
+      if (active != null &&
+        (indent == 0 || active == HelpEntryKind.PROPERTY && indent == 4) &&
         stripped.startsWith("``")
       ) {
         val tokens = term.findAll(stripped).map { it.groupValues[1] }.toList()
-        val remaining = stripped.replace(term, "").replace(",", "")
-          .replace("(RW)", "").replace("(LE)", "").trim()
+        val remaining =
+          stripped
+            .replace(term, "")
+            .replace(",", "")
+            .replace("(RW)", "")
+            .replace("(LE)", "")
+            .trim()
         val followedByDescription = next.startsWith(" ".repeat(indent + 4))
-        if (tokens.isNotEmpty() && remaining.isEmpty() &&
+        if (tokens.isNotEmpty() &&
+          remaining.isEmpty() &&
           (followedByDescription || active == HelpEntryKind.JS_API)
         ) {
-          val candidates = tokens.mapNotNull { token ->
-            when (active) {
-              HelpEntryKind.OPTION -> optionName.find(token)?.groupValues?.get(1)?.let { it to token }
-              HelpEntryKind.COMMAND -> commandName.find(token)?.groupValues?.get(1)?.let { it to token }
-              HelpEntryKind.PROPERTY -> token.takeIf(propertyName::matches)?.let { it to token }
-              HelpEntryKind.JS_API -> jsName.find(token)?.value?.let { it to token }
+          val candidates =
+            tokens.mapNotNull { token ->
+              when (active) {
+                HelpEntryKind.OPTION ->
+                  optionName
+                    .find(token)
+                    ?.groupValues
+                    ?.get(1)
+                    ?.let { it to token }
+                HelpEntryKind.COMMAND ->
+                  commandName
+                    .find(token)
+                    ?.groupValues
+                    ?.get(1)
+                    ?.let { it to token }
+                HelpEntryKind.PROPERTY -> token.takeIf(propertyName::matches)?.let { it to token }
+                HelpEntryKind.JS_API -> jsName.find(token)?.value?.let { it to token }
+              }
             }
-          }
           if (candidates.isNotEmpty()) {
             flush()
             pending = candidates
             pendingKind = active
-            pendingCategory = when (active) {
-              HelpEntryKind.OPTION -> "mpv.conf — $section"
-              HelpEntryKind.COMMAND -> "Input Commands — $section"
-              HelpEntryKind.PROPERTY -> "Properties — Official property list"
-              HelpEntryKind.JS_API -> "JavaScript API — $section"
-            }
+            pendingCategory =
+              when (active) {
+                HelpEntryKind.OPTION -> "mpv.conf — $section"
+                HelpEntryKind.COMMAND -> "Input Commands — $section"
+                HelpEntryKind.PROPERTY -> "Properties — Official property list"
+                HelpEntryKind.JS_API -> "JavaScript API — $section"
+              }
             continue
           }
         }

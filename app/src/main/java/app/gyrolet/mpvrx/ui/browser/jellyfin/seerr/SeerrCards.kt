@@ -9,9 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.jellyfin.seerr
 
-import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -58,6 +55,9 @@ import app.gyrolet.mpvrx.domain.seerr.SearchResultItem
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
 
 private val SeerrWarningContainer = Color(0xFFBF360C)
 private val SeerrOnWarningContainer = Color(0xFFFFF3E0)
@@ -73,14 +73,15 @@ fun SeerrMediaCard(
     modifier = modifier.width(cardWidth),
   ) {
     Box(
-      modifier = Modifier
-        .fillMaxWidth()
-        .aspectRatio(2f / 3f)
-        .tvFocusMemory(listOf("seerr", item.mediaType, item.id))
-        .tvFocusHighlight(RoundedCornerShape(8.dp), clipToShape = false)
-        .clip(RoundedCornerShape(8.dp))
-        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-        .clickable(onClick = onClick),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .aspectRatio(2f / 3f)
+          .tvFocusMemory(listOf("seerr", item.mediaType, item.id))
+          .tvFocusHighlight(RoundedCornerShape(8.dp), clipToShape = false)
+          .clip(RoundedCornerShape(8.dp))
+          .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+          .clickable(onClick = onClick),
     ) {
       val posterUrl = item.getPosterUrl()
       if (!posterUrl.isNullOrBlank()) {
@@ -92,9 +93,10 @@ fun SeerrMediaCard(
         )
       } else {
         Box(
-          modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+          modifier =
+            Modifier
+              .fillMaxSize()
+              .background(MaterialTheme.colorScheme.surfaceVariant),
           contentAlignment = Alignment.Center,
         ) {
           Icon(
@@ -108,9 +110,10 @@ fun SeerrMediaCard(
 
       // Top Badges (Rating on left, Status on right)
       Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(6.dp),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .padding(6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top,
       ) {
@@ -192,43 +195,51 @@ fun SeerrStatusChip(
   status: MediaStatus,
   modifier: Modifier = Modifier,
 ) {
-  val (bgColor, textColor, textRes) = when (status) {
-    MediaStatus.AVAILABLE -> Triple(
-      Color(0xFF1B5E20).copy(alpha = 0.85f),
-      Color(0xFFE8F5E9),
-      R.string.seerr_status_available,
-    )
-    MediaStatus.PARTIALLY_AVAILABLE -> Triple(
-      SeerrWarningContainer,
-      SeerrOnWarningContainer,
-      R.string.seerr_status_partially_available,
-    )
-    MediaStatus.PROCESSING -> Triple(
-      Color(0xFF0D47A1).copy(alpha = 0.85f),
-      Color(0xFFE3F2FD),
-      R.string.seerr_status_processing,
-    )
-    MediaStatus.PENDING -> Triple(
-      Color(0xFF4A148C).copy(alpha = 0.85f),
-      Color(0xFFF3E5F5),
-      R.string.seerr_status_pending,
-    )
-    MediaStatus.DELETED -> Triple(
-      Color(0xFFD32F2F).copy(alpha = 0.9f),
-      Color(0xFFFFEBEE),
-      R.string.seerr_status_deleted,
-    )
-    MediaStatus.BLACKLISTED -> Triple(
-      Color(0xFF37474F).copy(alpha = 0.85f),
-      Color(0xFFECEFF1),
-      R.string.seerr_status_blacklisted,
-    )
-    else -> Triple(
-      Color.Black.copy(alpha = 0.7f),
-      Color.White,
-      R.string.seerr_status_requested,
-    )
-  }
+  val (bgColor, textColor, textRes) =
+    when (status) {
+      MediaStatus.AVAILABLE ->
+        Triple(
+          Color(0xFF1B5E20).copy(alpha = 0.85f),
+          Color(0xFFE8F5E9),
+          R.string.seerr_status_available,
+        )
+      MediaStatus.PARTIALLY_AVAILABLE ->
+        Triple(
+          SeerrWarningContainer,
+          SeerrOnWarningContainer,
+          R.string.seerr_status_partially_available,
+        )
+      MediaStatus.PROCESSING ->
+        Triple(
+          Color(0xFF0D47A1).copy(alpha = 0.85f),
+          Color(0xFFE3F2FD),
+          R.string.seerr_status_processing,
+        )
+      MediaStatus.PENDING ->
+        Triple(
+          Color(0xFF4A148C).copy(alpha = 0.85f),
+          Color(0xFFF3E5F5),
+          R.string.seerr_status_pending,
+        )
+      MediaStatus.DELETED ->
+        Triple(
+          Color(0xFFD32F2F).copy(alpha = 0.9f),
+          Color(0xFFFFEBEE),
+          R.string.seerr_status_deleted,
+        )
+      MediaStatus.BLACKLISTED ->
+        Triple(
+          Color(0xFF37474F).copy(alpha = 0.85f),
+          Color(0xFFECEFF1),
+          R.string.seerr_status_blacklisted,
+        )
+      else ->
+        Triple(
+          Color.Black.copy(alpha = 0.7f),
+          Color.White,
+          R.string.seerr_status_requested,
+        )
+    }
 
   Surface(
     shape = RoundedCornerShape(8.dp),
@@ -251,33 +262,39 @@ fun SeerrRequestStatusChip(
   status: RequestStatus,
   modifier: Modifier = Modifier,
 ) {
-  val (bgColor, textColor, textRes) = when (status) {
-    RequestStatus.COMPLETED -> Triple(
-      Color(0xFF1B5E20).copy(alpha = 0.85f),
-      Color(0xFFE8F5E9),
-      R.string.seerr_status_available,
-    )
-    RequestStatus.APPROVED -> Triple(
-      Color(0xFF0D47A1).copy(alpha = 0.85f),
-      Color(0xFFE3F2FD),
-      R.string.seerr_status_processing,
-    )
-    RequestStatus.PENDING -> Triple(
-      SeerrWarningContainer,
-      SeerrOnWarningContainer,
-      R.string.seerr_status_pending,
-    )
-    RequestStatus.DECLINED -> Triple(
-      Color(0xFFB71C1C).copy(alpha = 0.85f),
-      Color(0xFFFFEBEE),
-      R.string.seerr_decline,
-    )
-    RequestStatus.FAILED -> Triple(
-      Color(0xFFB71C1C).copy(alpha = 0.85f),
-      Color(0xFFFFEBEE),
-      R.string.clip_cancel,
-    )
-  }
+  val (bgColor, textColor, textRes) =
+    when (status) {
+      RequestStatus.COMPLETED ->
+        Triple(
+          Color(0xFF1B5E20).copy(alpha = 0.85f),
+          Color(0xFFE8F5E9),
+          R.string.seerr_status_available,
+        )
+      RequestStatus.APPROVED ->
+        Triple(
+          Color(0xFF0D47A1).copy(alpha = 0.85f),
+          Color(0xFFE3F2FD),
+          R.string.seerr_status_processing,
+        )
+      RequestStatus.PENDING ->
+        Triple(
+          SeerrWarningContainer,
+          SeerrOnWarningContainer,
+          R.string.seerr_status_pending,
+        )
+      RequestStatus.DECLINED ->
+        Triple(
+          Color(0xFFB71C1C).copy(alpha = 0.85f),
+          Color(0xFFFFEBEE),
+          R.string.seerr_decline,
+        )
+      RequestStatus.FAILED ->
+        Triple(
+          Color(0xFFB71C1C).copy(alpha = 0.85f),
+          Color(0xFFFFEBEE),
+          R.string.clip_cancel,
+        )
+    }
 
   Surface(
     shape = RoundedCornerShape(8.dp),
@@ -311,14 +328,15 @@ fun SeerrRequestCard(
     modifier = modifier.width(cardWidth),
   ) {
     Box(
-      modifier = Modifier
-        .fillMaxWidth()
-        .aspectRatio(16f / 9f)
-        .tvFocusMemory(listOf("seerr-request", request.id))
-        .tvFocusHighlight(RoundedCornerShape(10.dp), clipToShape = false)
-        .clip(RoundedCornerShape(10.dp))
-        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-        .clickable(onClick = onClick),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .aspectRatio(16f / 9f)
+          .tvFocusMemory(listOf("seerr-request", request.id))
+          .tvFocusHighlight(RoundedCornerShape(10.dp), clipToShape = false)
+          .clip(RoundedCornerShape(10.dp))
+          .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+          .clickable(onClick = onClick),
     ) {
       val backdropUrl = request.media.getBackdropUrl() ?: request.media.getPosterUrl()
       if (!backdropUrl.isNullOrBlank()) {
@@ -344,15 +362,16 @@ fun SeerrRequestCard(
 
       // Subtle horizontal gradient overlay to enhance poster and text clarity
       Box(
-        modifier = Modifier
-          .fillMaxSize()
-          .background(
-            Brush.horizontalGradient(
-              0.0f to Color.Black.copy(alpha = 0.5f),
-              0.55f to Color.Black.copy(alpha = 0.15f),
-              1.0f to Color.Black.copy(alpha = 0.65f),
-            )
-          ),
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .background(
+              Brush.horizontalGradient(
+                0.0f to Color.Black.copy(alpha = 0.5f),
+                0.55f to Color.Black.copy(alpha = 0.15f),
+                1.0f to Color.Black.copy(alpha = 0.65f),
+              ),
+            ),
       )
 
       // Poster on the Right side of the thumbnail
@@ -362,13 +381,14 @@ fun SeerrRequestCard(
           url = posterUrl,
           contentDescription = null,
           contentScale = ContentScale.Crop,
-          modifier = Modifier
-            .align(Alignment.CenterEnd)
-            .padding(end = 8.dp, top = 8.dp, bottom = 8.dp)
-            .fillMaxHeight()
-            .aspectRatio(2f / 3f)
-            .clip(RoundedCornerShape(6.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(6.dp)),
+          modifier =
+            Modifier
+              .align(Alignment.CenterEnd)
+              .padding(end = 8.dp, top = 8.dp, bottom = 8.dp)
+              .fillMaxHeight()
+              .aspectRatio(2f / 3f)
+              .clip(RoundedCornerShape(6.dp))
+              .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(6.dp)),
         )
       }
 
@@ -378,82 +398,92 @@ fun SeerrRequestCard(
         mediaStatus == MediaStatus.DELETED -> {
           SeerrStatusChip(
             status = MediaStatus.DELETED,
-            modifier = Modifier
-              .align(Alignment.TopStart)
-              .padding(8.dp),
+            modifier =
+              Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp),
           )
         }
         mediaStatus == MediaStatus.PARTIALLY_AVAILABLE -> {
           SeerrStatusChip(
             status = MediaStatus.PARTIALLY_AVAILABLE,
-            modifier = Modifier
-              .align(Alignment.TopStart)
-              .padding(8.dp),
+            modifier =
+              Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp),
           )
         }
         request.getRequestStatus() == RequestStatus.PENDING -> {
           SeerrRequestStatusChip(
             status = RequestStatus.PENDING,
-            modifier = Modifier
-              .align(Alignment.TopStart)
-              .padding(8.dp),
+            modifier =
+              Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp),
           )
         }
         request.getRequestStatus() == RequestStatus.DECLINED -> {
           SeerrRequestStatusChip(
             status = RequestStatus.DECLINED,
-            modifier = Modifier
-              .align(Alignment.TopStart)
-              .padding(8.dp),
+            modifier =
+              Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp),
           )
         }
         request.getRequestStatus() == RequestStatus.FAILED -> {
           SeerrRequestStatusChip(
             status = RequestStatus.FAILED,
-            modifier = Modifier
-              .align(Alignment.TopStart)
-              .padding(8.dp),
+            modifier =
+              Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp),
           )
         }
         mediaStatus == MediaStatus.AVAILABLE -> {
           SeerrStatusChip(
             status = MediaStatus.AVAILABLE,
-            modifier = Modifier
-              .align(Alignment.TopStart)
-              .padding(8.dp),
+            modifier =
+              Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp),
           )
         }
         mediaStatus == MediaStatus.PROCESSING || request.getRequestStatus() == RequestStatus.APPROVED -> {
           SeerrStatusChip(
             status = MediaStatus.PROCESSING,
-            modifier = Modifier
-              .align(Alignment.TopStart)
-              .padding(8.dp),
+            modifier =
+              Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp),
           )
         }
         else -> {
           SeerrRequestStatusChip(
             status = request.getRequestStatus(),
-            modifier = Modifier
-              .align(Alignment.TopStart)
-              .padding(8.dp),
+            modifier =
+              Modifier
+                .align(Alignment.TopStart)
+                .padding(8.dp),
           )
         }
       }
 
       // Requester Photo on Bottom Left of Thumbnail
       val rawAvatar = request.requestedBy.avatar
-      val avatarUrl = when {
-        rawAvatar.isNullOrBlank() -> null
-        rawAvatar.startsWith("http") -> rawAvatar
-        !baseUrl.isNullOrBlank() -> "${baseUrl.trimEnd('/')}/${rawAvatar.trimStart('/')}"
-        else -> null
-      }
+      val avatarUrl =
+        when {
+          rawAvatar.isNullOrBlank() -> null
+          rawAvatar.startsWith("http") -> rawAvatar
+          !baseUrl.isNullOrBlank() -> "${baseUrl.trimEnd('/')}/${rawAvatar.trimStart('/')}"
+          else -> null
+        }
 
       Box(
-        modifier = Modifier
-          .align(Alignment.BottomStart)
-          .padding(8.dp),
+        modifier =
+          Modifier
+            .align(Alignment.BottomStart)
+            .padding(8.dp),
       ) {
         if (avatarUrl != null) {
           RemoteImage(
@@ -461,16 +491,18 @@ fun SeerrRequestCard(
             url = avatarUrl,
             contentDescription = request.requestedBy.displayName ?: request.requestedBy.username,
             contentScale = ContentScale.Crop,
-            modifier = Modifier
-              .size(24.dp)
-              .clip(CircleShape),
+            modifier =
+              Modifier
+                .size(24.dp)
+                .clip(CircleShape),
           )
         } else {
           Box(
-            modifier = Modifier
-              .size(24.dp)
-              .clip(CircleShape)
-              .background(MaterialTheme.colorScheme.primaryContainer),
+            modifier =
+              Modifier
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center,
           ) {
             Text(
@@ -534,9 +566,10 @@ fun SeerrSectionHeader(
   onActionClick: (() -> Unit)? = null,
 ) {
   Row(
-    modifier = modifier
-      .fillMaxWidth()
-      .padding(horizontal = 16.dp, vertical = 8.dp),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp, vertical = 8.dp),
     horizontalArrangement = Arrangement.SpaceBetween,
     verticalAlignment = Alignment.CenterVertically,
   ) {
@@ -553,11 +586,12 @@ fun SeerrSectionHeader(
         style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier
-          .clip(RoundedCornerShape(8.dp))
-          .tvFocusHighlight(RoundedCornerShape(8.dp), clipToShape = false)
-          .clickable(onClick = onActionClick)
-          .padding(horizontal = 8.dp, vertical = 4.dp),
+        modifier =
+          Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .tvFocusHighlight(RoundedCornerShape(8.dp), clipToShape = false)
+            .clickable(onClick = onActionClick)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
       )
     }
   }

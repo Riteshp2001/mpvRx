@@ -22,7 +22,14 @@ val DownloadModule =
   module {
     single { DownloadLocations(androidContext(), get()) }
     single { DownloadOutputReservations(get<app.gyrolet.mpvrx.database.MpvRxDatabase>().downloadItemDao()) }
-    single { AppDownloadManager(androidContext(), get<app.gyrolet.mpvrx.database.MpvRxDatabase>().downloadItemDao(), get(), get()) }
+    single {
+      AppDownloadManager(
+        androidContext(),
+        get<app.gyrolet.mpvrx.database.MpvRxDatabase>().downloadItemDao(),
+        get(),
+        get(),
+      )
+    }
     single { YtdlpDownloadEngine(androidContext(), get(), get()) }
     single { LinkDownloadCoordinator(get(), get()) }
     single {

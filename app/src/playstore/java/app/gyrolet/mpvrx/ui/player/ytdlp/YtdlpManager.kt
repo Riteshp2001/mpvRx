@@ -8,10 +8,10 @@ import android.content.Context
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
-import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 
 /** Compile-time adapter with no executable download, installation, update or extraction code. */
 @Suppress("UNUSED_PARAMETER")
@@ -32,7 +32,11 @@ object YtdlpManager {
 
   fun canonicalPlaylistSource(source: String): String = source
 
-  fun playPlaylist(context: Context, playlist: YtdlpPlaylistMetadata, launchSource: String) = Unit
+  fun playPlaylist(
+    context: Context,
+    playlist: YtdlpPlaylistMetadata,
+    launchSource: String,
+  ) = Unit
 
   suspend fun extractPlaylist(
     context: Context,
@@ -44,9 +48,16 @@ object YtdlpManager {
     Result.failure(UnsupportedOperationException("Web extraction is unavailable in this distribution"))
 
   // Direct URLs, HLS and DASH remain playable through libmpv without an extractor.
-  suspend fun prepareForPlayback(context: Context, source: String, onLog: (String) -> Unit = {}): Boolean = true
+  suspend fun prepareForPlayback(
+    context: Context,
+    source: String,
+    onLog: (String) -> Unit = {},
+  ): Boolean = true
 
-  suspend fun ensureRuntimeInstalled(context: Context, onLog: (String) -> Unit = {}): Boolean = false
+  suspend fun ensureRuntimeInstalled(
+    context: Context,
+    onLog: (String) -> Unit = {},
+  ): Boolean = false
 
   suspend fun copyAssets(context: Context) = Unit
 
@@ -54,13 +65,26 @@ object YtdlpManager {
     PlaybackSession.setIntegrationOptionString("ytdl", "no")
   }
 
-  fun setupMpvOptions(context: Context, ytdlPreferences: YtdlPreferences, subtitlesPreferences: SubtitlesPreferences) = Unit
+  fun setupMpvOptions(
+    context: Context,
+    ytdlPreferences: YtdlPreferences,
+    subtitlesPreferences: SubtitlesPreferences,
+  ) = Unit
 
-  suspend fun runInstall(context: Context, onLog: (String) -> Unit): Boolean = false
+  suspend fun runInstall(
+    context: Context,
+    onLog: (String) -> Unit,
+  ): Boolean = false
 
-  suspend fun runUpdate(context: Context, onLog: (String) -> Unit): Boolean = false
+  suspend fun runUpdate(
+    context: Context,
+    onLog: (String) -> Unit,
+  ): Boolean = false
 
-  suspend fun runUpdateToNightly(context: Context, onLog: (String) -> Unit): Boolean = false
+  suspend fun runUpdateToNightly(
+    context: Context,
+    onLog: (String) -> Unit,
+  ): Boolean = false
 
   fun isInstalled(context: Context): Boolean = false
 }

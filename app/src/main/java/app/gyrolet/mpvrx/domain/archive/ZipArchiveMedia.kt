@@ -18,15 +18,19 @@ import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
+import android.system.ErrnoException
 import android.system.Os
 import android.system.OsConstants
-import android.system.ErrnoException
 import android.text.format.Formatter
 import app.gyrolet.mpvrx.domain.browser.FileSystemItem
 import app.gyrolet.mpvrx.domain.browser.PathComponent
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.utils.media.isPathBasedDocumentAuthority
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import java.io.Closeable
 import java.io.EOFException
 import java.io.File
@@ -40,10 +44,6 @@ import java.nio.channels.FileChannel
 import java.util.GregorianCalendar
 import java.util.Locale
 import java.util.zip.ZipException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.withContext
 
 object ZipArchiveMedia {
   private const val BROWSER_SCHEME = "mpvrx-zip"
@@ -101,27 +101,40 @@ object ZipArchiveMedia {
     var lastModified: Long = 0L,
   )
 
-  private suspend fun resolveZipPath(context: Context, uri: Uri): String =
+  private suspend fun resolveZipPath(
+    context: Context,
+    uri: Uri,
+  ): String =
     withContext(Dispatchers.IO) {
       // Content URIs stay content URIs: their descriptor is read directly, because re-opening the
       // backing file by path is denied without broad storage access.
       val source =
         when (uri.scheme?.lowercase(Locale.ROOT)) {
           "content" -> uri.toString()
-          "file" -> uri.path?.let(::File)?.takeIf { it.isFile && it.canRead() }?.absolutePath
+          "file" ->
+            uri.path
+              ?.let(::File)
+              ?.takeIf { it.isFile && it.canRead() }
+              ?.absolutePath
           else -> null
         } ?: throw IOException("Unsupported ZIP source")
       source
     }
 
-  suspend fun playlistContent(context: Context, uri: Uri): PlaylistContent = withContext(Dispatchers.IO) {
-    val source = resolveZipPath(context, uri)
-    val videos = allMedia(context, browserPath(source), includeAudio = true).getOrThrow()
-      .distinctBy(Video::path)
-    currentCoroutineContext().ensureActive()
-    require(videos.isNotEmpty()) { "ZIP archive contains no playable media" }
-    PlaylistContent(source, archiveDisplayName(context, uri, File(source).takeIf(File::isAbsolute)), videos)
-  }
+  suspend fun playlistContent(
+    context: Context,
+    uri: Uri,
+  ): PlaylistContent =
+    withContext(Dispatchers.IO) {
+      val source = resolveZipPath(context, uri)
+      val videos =
+        allMedia(context, browserPath(source), includeAudio = true)
+          .getOrThrow()
+          .distinctBy(Video::path)
+      currentCoroutineContext().ensureActive()
+      require(videos.isNotEmpty()) { "ZIP archive contains no playable media" }
+      PlaylistContent(source, archiveDisplayName(context, uri, File(source).takeIf(File::isAbsolute)), videos)
+    }
 
   private fun normalizeArchiveSource(source: String): String? =
     when {
@@ -131,8 +144,12 @@ object ZipArchiveMedia {
       else -> null
     }
 
-  private fun openDescriptor(context: Context, uri: Uri): ParcelFileDescriptor {
-    val descriptor = context.contentResolver.openFileDescriptor(uri, "r") ?: throw IOException("ZIP source is unavailable")
+  private fun openDescriptor(
+    context: Context,
+    uri: Uri,
+  ): ParcelFileDescriptor {
+    val descriptor =
+      context.contentResolver.openFileDescriptor(uri, "r") ?: throw IOException("ZIP source is unavailable")
     try {
       Os.lseek(descriptor.fileDescriptor, 0L, OsConstants.SEEK_SET)
       return descriptor
@@ -142,7 +159,10 @@ object ZipArchiveMedia {
     }
   }
 
-  private fun readEntries(context: Context, source: String): List<ArchiveEntry> {
+  private fun readEntries(
+    context: Context,
+    source: String,
+  ): List<ArchiveEntry> {
     if (source.startsWith("content://")) {
       return ParcelFileDescriptor.AutoCloseInputStream(openDescriptor(context, Uri.parse(source))).use { stream ->
         readCentralDirectory(stream.channel)
@@ -151,7 +171,11 @@ object ZipArchiveMedia {
     return RandomAccessFile(source, "r").use { file -> readCentralDirectory(file.channel) }
   }
 
-  private fun readFully(channel: FileChannel, position: Long, length: Int): ByteBuffer {
+  private fun readFully(
+    channel: FileChannel,
+    position: Long,
+    length: Int,
+  ): ByteBuffer {
     val buffer = ByteBuffer.allocate(length).order(ByteOrder.LITTLE_ENDIAN)
     var offset = position
     while (buffer.hasRemaining()) {
@@ -174,9 +198,10 @@ object ZipArchiveMedia {
     val tailLength = minOf(fileSize, EOCD_LENGTH + 0xFFFFL).toInt()
     val tailStart = fileSize - tailLength
     val tail = readFully(channel, tailStart, tailLength)
-    val eocd = (tailLength - EOCD_LENGTH downTo 0).firstOrNull { index ->
-      tail.getInt(index) == EOCD_SIGNATURE && index + EOCD_LENGTH + tail.u16(index + 20) <= tailLength
-    } ?: throw ZipException("Not a ZIP archive")
+    val eocd =
+      (tailLength - EOCD_LENGTH downTo 0).firstOrNull { index ->
+        tail.getInt(index) == EOCD_SIGNATURE && index + EOCD_LENGTH + tail.u16(index + 20) <= tailLength
+      } ?: throw ZipException("Not a ZIP archive")
 
     var entryCount = tail.u16(eocd + 10).toLong()
     var directorySize = tail.u32(eocd + 12)
@@ -250,21 +275,25 @@ object ZipArchiveMedia {
         }
       }
       val encrypted = (directory.u16(position + 8) and 1) != 0
-      entries += ArchiveEntry(
-        name = name,
-        isDirectory = name.endsWith('/') || name.endsWith('\\'),
-        size = size,
-        time = dosToJavaTime(directory.u16(position + 14), directory.u16(position + 12)),
-        stored = directory.u16(position + 10) == 0 && !encrypted && compressedSize == size,
-        localHeaderOffset = localHeaderOffset + offsetShift,
-      )
+      entries +=
+        ArchiveEntry(
+          name = name,
+          isDirectory = name.endsWith('/') || name.endsWith('\\'),
+          size = size,
+          time = dosToJavaTime(directory.u16(position + 14), directory.u16(position + 12)),
+          stored = directory.u16(position + 10) == 0 && !encrypted && compressedSize == size,
+          localHeaderOffset = localHeaderOffset + offsetShift,
+        )
       position = next
     }
     if (entries.size < entryCount) throw ZipException("Invalid ZIP central directory")
     return entries
   }
 
-  private fun dosToJavaTime(date: Int, time: Int): Long {
+  private fun dosToJavaTime(
+    date: Int,
+    time: Int,
+  ): Long {
     if (date == 0) return -1L
     return GregorianCalendar(
       ((date shr 9) and 0x7F) + 1980,
@@ -276,7 +305,10 @@ object ZipArchiveMedia {
     ).timeInMillis
   }
 
-  fun openPlayback(context: Context, value: String): OpenedPlayback {
+  fun openPlayback(
+    context: Context,
+    value: String,
+  ): OpenedPlayback {
     val location = parsePlaybackLocation(value) ?: throw IOException("Invalid ZIP entry")
     if (!location.archivePath.startsWith("content://")) {
       val file = File(location.archivePath)
@@ -308,7 +340,10 @@ object ZipArchiveMedia {
    * Opens the entry behind playback URI [value] for reading in place. Returns null unless the entry
    * is stored uncompressed: compressed entries are never inflated or extracted.
    */
-  fun openStoredEntry(context: Context, value: String): StoredEntry? {
+  fun openStoredEntry(
+    context: Context,
+    value: String,
+  ): StoredEntry? {
     val location = parsePlaybackLocation(value) ?: return null
     val descriptor =
       if (location.archivePath.startsWith("content://")) {
@@ -332,7 +367,10 @@ object ZipArchiveMedia {
   }
 
   /** Start and length of [entryPath]'s bytes, or null unless the entry is stored uncompressed. */
-  private fun storedRange(channel: FileChannel, entryPath: String): Pair<Long, Long>? {
+  private fun storedRange(
+    channel: FileChannel,
+    entryPath: String,
+  ): Pair<Long, Long>? {
     val entry =
       readCentralDirectory(channel).firstOrNull { !it.isDirectory && normalizedEntryName(it) == entryPath }
         ?: return null
@@ -347,15 +385,22 @@ object ZipArchiveMedia {
 
   fun entryPathOf(value: String): String? = parsePlaybackLocation(value)?.entryPath
 
-  fun sourceAvailable(context: Context, source: String): Boolean = runCatching {
-    if (source.startsWith("content://")) {
-      openDescriptor(context, Uri.parse(source)).use { true }
-    } else {
-      File(source).let { it.isFile && it.canRead() }
-    }
-  }.getOrDefault(false)
+  fun sourceAvailable(
+    context: Context,
+    source: String,
+  ): Boolean =
+    runCatching {
+      if (source.startsWith("content://")) {
+        openDescriptor(context, Uri.parse(source)).use { true }
+      } else {
+        File(source).let { it.isFile && it.canRead() }
+      }
+    }.getOrDefault(false)
 
-  fun sourceDeleted(context: Context, source: String): Boolean {
+  fun sourceDeleted(
+    context: Context,
+    source: String,
+  ): Boolean {
     val mountedStates = setOf(Environment.MEDIA_MOUNTED, Environment.MEDIA_MOUNTED_READ_ONLY)
     if (!source.startsWith("content://")) {
       val file = File(source)
@@ -375,11 +420,12 @@ object ZipArchiveMedia {
       val volumeId = documentId?.substringBefore(':')
       val relativePath = documentId?.substringAfter(':', "")?.let(::normalizeEntryPath)
       if (!relativePath.isNullOrBlank() && volumeId != null) {
-        val volume = when {
-          volumeId == "primary" -> Environment.getExternalStorageDirectory()
-          volumeId.matches(Regex("[A-Za-z0-9-]+")) -> File("/storage/$volumeId")
-          else -> null
-        }
+        val volume =
+          when {
+            volumeId == "primary" -> Environment.getExternalStorageDirectory()
+            volumeId.matches(Regex("[A-Za-z0-9-]+")) -> File("/storage/$volumeId")
+            else -> null
+          }
         if (volume != null) {
           val file = File(volume, relativePath)
           val ancestor = generateSequence(file.parentFile) { it.parentFile }.firstOrNull(File::exists)
@@ -387,23 +433,32 @@ object ZipArchiveMedia {
         }
       }
     }
-    if (context.checkUriPermission(uri, Process.myPid(), Process.myUid(), Intent.FLAG_GRANT_READ_URI_PERMISSION) != PackageManager.PERMISSION_GRANTED) {
+    if (context.checkUriPermission(uri, Process.myPid(), Process.myUid(), Intent.FLAG_GRANT_READ_URI_PERMISSION) !=
+      PackageManager.PERMISSION_GRANTED
+    ) {
       return false
     }
-    val volumeFile = when {
-      isPathBasedDocumentAuthority(uri.authority) -> {
-        val volumeId = runCatching { DocumentsContract.getDocumentId(uri).substringBefore(':') }.getOrNull() ?: return false
-        if (volumeId == "primary") Environment.getExternalStorageDirectory()
-        else if (volumeId.matches(Regex("[A-Za-z0-9-]+"))) File("/storage/$volumeId")
-        else return false
+    val volumeFile =
+      when {
+        isPathBasedDocumentAuthority(uri.authority) -> {
+          val volumeId =
+            runCatching { DocumentsContract.getDocumentId(uri).substringBefore(':') }.getOrNull() ?: return false
+          if (volumeId == "primary") {
+            Environment.getExternalStorageDirectory()
+          } else if (volumeId.matches(Regex("[A-Za-z0-9-]+"))) {
+            File("/storage/$volumeId")
+          } else {
+            return false
+          }
+        }
+        uri.authority == "com.android.providers.downloads.documents" ||
+          uri.authority == "com.android.providers.media.documents" -> Environment.getExternalStorageDirectory()
+        else -> return false
       }
-      uri.authority == "com.android.providers.downloads.documents" ||
-        uri.authority == "com.android.providers.media.documents" -> Environment.getExternalStorageDirectory()
-      else -> return false
-    }
     if (Environment.getExternalStorageState(volumeFile) !in mountedStates) return false
     return try {
-      context.contentResolver.query(uri, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)
+      context.contentResolver
+        .query(uri, arrayOf(DocumentsContract.Document.COLUMN_DOCUMENT_ID), null, null, null)
         ?.use { !it.moveToFirst() } ?: false
     } catch (_: FileNotFoundException) {
       true
@@ -412,7 +467,10 @@ object ZipArchiveMedia {
     }
   }
 
-  fun clearLegacyCache(context: Context, activeUri: String? = null) {
+  fun clearLegacyCache(
+    context: Context,
+    activeUri: String? = null,
+  ) {
     val activeSource = activeUri?.let(::sourceOf)
     val roots = listOf(context.cacheDir, context.filesDir) + context.externalCacheDirs.filterNotNull()
     for (root in roots.distinct()) {
@@ -439,10 +497,17 @@ object ZipArchiveMedia {
     val uri = Uri.parse(archivePath)
     if (uri.scheme != "content") return 0L
     return runCatching {
-      context.contentResolver.query(uri, arrayOf(DocumentsContract.Document.COLUMN_LAST_MODIFIED), null, null, null)?.use { cursor ->
-        val column = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
-        if (column >= 0 && cursor.moveToFirst() && !cursor.isNull(column)) cursor.getLong(column) else null
-      }
+      context.contentResolver
+        .query(
+          uri,
+          arrayOf(DocumentsContract.Document.COLUMN_LAST_MODIFIED),
+          null,
+          null,
+          null,
+        )?.use { cursor ->
+          val column = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+          if (column >= 0 && cursor.moveToFirst() && !cursor.isNull(column)) cursor.getLong(column) else null
+        }
     }.getOrNull()?.coerceAtLeast(0L) ?: 0L
   }
 
@@ -451,12 +516,13 @@ object ZipArchiveMedia {
     uri: Uri,
     localFile: File?,
   ): String {
-    val providerName = runCatching {
-      context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-        val nameColumn = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-        if (nameColumn >= 0 && cursor.moveToFirst()) cursor.getString(nameColumn) else null
-      }
-    }.getOrNull()
+    val providerName =
+      runCatching {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+          val nameColumn = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+          if (nameColumn >= 0 && cursor.moveToFirst()) cursor.getString(nameColumn) else null
+        }
+      }.getOrNull()
     val safeName =
       (providerName ?: localFile?.name)
         ?.substringAfterLast('/')
@@ -469,9 +535,13 @@ object ZipArchiveMedia {
     return if (safeName.endsWith(".zip", ignoreCase = true)) safeName else "$safeName.zip"
   }
 
-  fun browserPath(archivePath: String, directory: String = ""): String {
+  fun browserPath(
+    archivePath: String,
+    directory: String = "",
+  ): String {
     val normalizedDirectory = normalizeEntryPath(directory).orEmpty()
-    return Uri.Builder()
+    return Uri
+      .Builder()
       .scheme(BROWSER_SCHEME)
       .authority(BROWSER_AUTHORITY)
       .appendQueryParameter("archive", requireNotNull(normalizeArchiveSource(archivePath)))
@@ -480,15 +550,16 @@ object ZipArchiveMedia {
       .toString()
   }
 
-  fun parseBrowserPath(value: String): Location? = runCatching {
-    val uri = Uri.parse(value)
-    if (!uri.scheme.equals(BROWSER_SCHEME, ignoreCase = true) || uri.authority != BROWSER_AUTHORITY) {
-      return@runCatching null
-    }
-    val archivePath = uri.getQueryParameter("archive")?.let(::normalizeArchiveSource) ?: return@runCatching null
-    val directory = normalizeEntryPath(uri.getQueryParameter("directory").orEmpty()) ?: return@runCatching null
-    Location(archivePath, directory)
-  }.getOrNull()
+  fun parseBrowserPath(value: String): Location? =
+    runCatching {
+      val uri = Uri.parse(value)
+      if (!uri.scheme.equals(BROWSER_SCHEME, ignoreCase = true) || uri.authority != BROWSER_AUTHORITY) {
+        return@runCatching null
+      }
+      val archivePath = uri.getQueryParameter("archive")?.let(::normalizeArchiveSource) ?: return@runCatching null
+      val directory = normalizeEntryPath(uri.getQueryParameter("directory").orEmpty()) ?: return@runCatching null
+      Location(archivePath, directory)
+    }.getOrNull()
 
   fun isBrowserPath(value: String): Boolean = parseBrowserPath(value) != null
 
@@ -503,20 +574,27 @@ object ZipArchiveMedia {
     val separator = encodedLocation.indexOf('|')
     if (separator <= 0 || separator == encodedLocation.lastIndex) return null
 
-    val archivePath = runCatching { Uri.decode(encodedLocation.substring(0, separator)) }.getOrNull()
-      ?.let(::normalizeArchiveSource) ?: return null
-    val entryPath = normalizeEntryPath(encodedLocation.substring(separator + 1))?.takeIf(String::isNotEmpty) ?: return null
+    val archivePath =
+      runCatching { Uri.decode(encodedLocation.substring(0, separator)) }
+        .getOrNull()
+        ?.let(::normalizeArchiveSource) ?: return null
+    val entryPath =
+      normalizeEntryPath(encodedLocation.substring(separator + 1))?.takeIf(String::isNotEmpty) ?: return null
     return PlaybackLocation(archivePath, entryPath)
   }
 
-  fun displayPath(value: String): String? = parseBrowserPath(value)?.let { location ->
-    buildString {
-      append(location.archivePath)
-      if (location.directory.isNotEmpty()) append("!/").append(location.directory)
+  fun displayPath(value: String): String? =
+    parseBrowserPath(value)?.let { location ->
+      buildString {
+        append(location.archivePath)
+        if (location.directory.isNotEmpty()) append("!/").append(location.directory)
+      }
     }
-  }
 
-  fun breadcrumbs(context: Context, value: String): List<PathComponent> {
+  fun breadcrumbs(
+    context: Context,
+    value: String,
+  ): List<PathComponent> {
     val location = parseBrowserPath(value) ?: return emptyList()
     val archiveFile = File(location.archivePath)
     val archiveName = archiveDisplayName(context, Uri.parse(location.archivePath), archiveFile.takeIf(File::isAbsolute))
@@ -530,15 +608,21 @@ object ZipArchiveMedia {
     }
   }
 
-  fun playbackUri(archivePath: String, entryPath: String): String =
-    nativePlaybackUri(requireNotNull(normalizeArchiveSource(archivePath)), entryPath)
+  fun playbackUri(
+    archivePath: String,
+    entryPath: String,
+  ): String = nativePlaybackUri(requireNotNull(normalizeArchiveSource(archivePath)), entryPath)
 
-  private fun nativePlaybackUri(source: String, entryPath: String): String {
+  private fun nativePlaybackUri(
+    source: String,
+    entryPath: String,
+  ): String {
     val entry = normalizeEntryPath(entryPath) ?: error("Unsafe ZIP entry path")
     require(entry.isNotEmpty()) { "ZIP entry path is empty" }
-    val escapedArchivePath = source
-      .replace("%", "%25")
-      .replace("|", "%7C")
+    val escapedArchivePath =
+      source
+        .replace("%", "%25")
+        .replace("|", "%7C")
     return "$PLAYBACK_SCHEME://$escapedArchivePath|$entry"
   }
 
@@ -546,78 +630,90 @@ object ZipArchiveMedia {
     context: Context,
     virtualPath: String,
     includeAudio: Boolean,
-  ): Result<List<Video>> = runCatching {
-    val location = parseBrowserPath(virtualPath) ?: throw IOException("Invalid ZIP folder")
-    val archiveFile = File(location.archivePath)
-    val archiveName = archiveDisplayName(context, Uri.parse(location.archivePath), archiveFile.takeIf(File::isAbsolute))
-    val archiveModified = archiveModifiedMillis(context, location.archivePath, archiveFile)
-    val prefix = location.directory.takeIf(String::isNotEmpty)?.plus('/') ?: ""
-    readEntries(context, location.archivePath).mapNotNull { entry ->
-      val fullPath = normalizedEntryName(entry) ?: return@mapNotNull null
-      if (entry.isDirectory || !fullPath.startsWith(prefix) || !isPlayable(fullPath, includeAudio)) return@mapNotNull null
-      videoItem(context, location.archivePath, archiveName, archiveModified, entry, fullPath, virtualPath).video
+  ): Result<List<Video>> =
+    runCatching {
+      val location = parseBrowserPath(virtualPath) ?: throw IOException("Invalid ZIP folder")
+      val archiveFile = File(location.archivePath)
+      val archiveName =
+        archiveDisplayName(context, Uri.parse(location.archivePath), archiveFile.takeIf(File::isAbsolute))
+      val archiveModified = archiveModifiedMillis(context, location.archivePath, archiveFile)
+      val prefix = location.directory.takeIf(String::isNotEmpty)?.plus('/') ?: ""
+      readEntries(context, location.archivePath).mapNotNull { entry ->
+        val fullPath = normalizedEntryName(entry) ?: return@mapNotNull null
+        if (entry.isDirectory ||
+          !fullPath.startsWith(prefix) ||
+          !isPlayable(fullPath, includeAudio)
+        ) {
+          return@mapNotNull null
+        }
+        videoItem(context, location.archivePath, archiveName, archiveModified, entry, fullPath, virtualPath).video
+      }
     }
-  }
 
   fun scan(
     context: Context,
     virtualPath: String,
     includeAudio: Boolean,
-  ): Result<List<FileSystemItem>> = runCatching {
-    val location = parseBrowserPath(virtualPath) ?: throw IOException("Invalid ZIP folder")
-    val archiveFile = File(location.archivePath)
-    val archiveName = archiveDisplayName(context, Uri.parse(location.archivePath), archiveFile.takeIf(File::isAbsolute))
-    val archiveModified = archiveModifiedMillis(context, location.archivePath, archiveFile)
+  ): Result<List<FileSystemItem>> =
+    runCatching {
+      val location = parseBrowserPath(virtualPath) ?: throw IOException("Invalid ZIP folder")
+      val archiveFile = File(location.archivePath)
+      val archiveName =
+        archiveDisplayName(context, Uri.parse(location.archivePath), archiveFile.takeIf(File::isAbsolute))
+      val archiveModified = archiveModifiedMillis(context, location.archivePath, archiveFile)
 
-    val prefix = location.directory.takeIf(String::isNotEmpty)?.plus('/') ?: ""
-    val folders = linkedMapOf<String, FolderStats>()
-    val videos = linkedMapOf<String, FileSystemItem.VideoFile>()
+      val prefix = location.directory.takeIf(String::isNotEmpty)?.plus('/') ?: ""
+      val folders = linkedMapOf<String, FolderStats>()
+      val videos = linkedMapOf<String, FileSystemItem.VideoFile>()
 
-    for (entry in readEntries(context, location.archivePath)) {
-      val fullPath = normalizedEntryName(entry) ?: continue
-      if (!fullPath.startsWith(prefix) || fullPath == location.directory) continue
-      val relativePath = fullPath.removePrefix(prefix)
-      if (relativePath.isEmpty()) continue
+      for (entry in readEntries(context, location.archivePath)) {
+        val fullPath = normalizedEntryName(entry) ?: continue
+        if (!fullPath.startsWith(prefix) || fullPath == location.directory) continue
+        val relativePath = fullPath.removePrefix(prefix)
+        if (relativePath.isEmpty()) continue
 
-      val separator = relativePath.indexOf('/')
-      if (separator >= 0) {
-        val childName = relativePath.substring(0, separator)
-        if (childName.isEmpty()) continue
-        val remainder = relativePath.substring(separator + 1)
-        val stats = folders.getOrPut(childName, ::FolderStats)
-        if (remainder.trimEnd('/').contains('/')) stats.hasSubfolders = true
-        if (!entry.isDirectory && isPlayable(fullPath, includeAudio)) {
-          stats.videoCount++
-          stats.totalSize += entry.size.coerceAtLeast(0L)
-          stats.lastModified = maxOf(stats.lastModified, entry.time.takeIf { it > 0L } ?: archiveModified)
+        val separator = relativePath.indexOf('/')
+        if (separator >= 0) {
+          val childName = relativePath.substring(0, separator)
+          if (childName.isEmpty()) continue
+          val remainder = relativePath.substring(separator + 1)
+          val stats = folders.getOrPut(childName, ::FolderStats)
+          if (remainder.trimEnd('/').contains('/')) stats.hasSubfolders = true
+          if (!entry.isDirectory && isPlayable(fullPath, includeAudio)) {
+            stats.videoCount++
+            stats.totalSize += entry.size.coerceAtLeast(0L)
+            stats.lastModified = maxOf(stats.lastModified, entry.time.takeIf { it > 0L } ?: archiveModified)
+          }
+          continue
         }
-        continue
+
+        if (!entry.isDirectory && isPlayable(fullPath, includeAudio)) {
+          videos.putIfAbsent(
+            fullPath,
+            videoItem(context, location.archivePath, archiveName, archiveModified, entry, fullPath, virtualPath),
+          )
+        }
       }
 
-      if (!entry.isDirectory && isPlayable(fullPath, includeAudio)) {
-        videos.putIfAbsent(fullPath, videoItem(context, location.archivePath, archiveName, archiveModified, entry, fullPath, virtualPath))
+      buildList {
+        folders.forEach { (name, stats) ->
+          // Folders without playable media would only lead to empty pages.
+          if (stats.videoCount == 0) return@forEach
+          val childDirectory = if (location.directory.isEmpty()) name else "${location.directory}/$name"
+          add(
+            FileSystemItem.Folder(
+              name = name,
+              path = browserPath(location.archivePath, childDirectory),
+              lastModified = stats.lastModified.takeIf { it > 0L } ?: archiveModified,
+              videoCount = stats.videoCount,
+              totalSize = stats.totalSize,
+              hasSubfolders = stats.hasSubfolders,
+            ),
+          )
+        }
+        addAll(videos.values)
       }
     }
-
-    buildList {
-      folders.forEach { (name, stats) ->
-        // Folders without playable media would only lead to empty pages.
-        if (stats.videoCount == 0) return@forEach
-        val childDirectory = if (location.directory.isEmpty()) name else "${location.directory}/$name"
-        add(
-          FileSystemItem.Folder(
-            name = name,
-            path = browserPath(location.archivePath, childDirectory),
-            lastModified = stats.lastModified.takeIf { it > 0L } ?: archiveModified,
-            videoCount = stats.videoCount,
-            totalSize = stats.totalSize,
-            hasSubfolders = stats.hasSubfolders,
-          ),
-        )
-      }
-      addAll(videos.values)
-    }
-  }
 
   private fun videoItem(
     context: Context,
@@ -634,27 +730,28 @@ object ZipArchiveMedia {
     val uri = Uri.parse(playbackUri(archivePath, entryPath))
     val modifiedMillis = entry.time.takeIf { it >= 0L } ?: archiveModified
     val isAudio = extension in FileTypeUtils.AUDIO_EXTENSIONS
-    val video = Video(
-      id = "$bucketId\u0000$entryPath".hashCode().toLong(),
-      title = displayName.substringBeforeLast('.', displayName),
-      displayName = displayName,
-      path = uri.toString(),
-      uri = uri,
-      duration = 0L,
-      durationFormatted = "",
-      size = size,
-      sizeFormatted = if (size > 0L) Formatter.formatFileSize(context, size) else "",
-      dateModified = modifiedMillis / 1000L,
-      dateAdded = archiveModified / 1000L,
-      mimeType = FileTypeUtils.getMimeTypeFromExtension(extension),
-      bucketId = bucketId,
-      bucketDisplayName = archiveName,
-      width = 0,
-      height = 0,
-      fps = 0f,
-      resolution = "--",
-      isAudio = isAudio,
-    )
+    val video =
+      Video(
+        id = "$bucketId\u0000$entryPath".hashCode().toLong(),
+        title = displayName.substringBeforeLast('.', displayName),
+        displayName = displayName,
+        path = uri.toString(),
+        uri = uri,
+        duration = 0L,
+        durationFormatted = "",
+        size = size,
+        sizeFormatted = if (size > 0L) Formatter.formatFileSize(context, size) else "",
+        dateModified = modifiedMillis / 1000L,
+        dateAdded = archiveModified / 1000L,
+        mimeType = FileTypeUtils.getMimeTypeFromExtension(extension),
+        bucketId = bucketId,
+        bucketDisplayName = archiveName,
+        width = 0,
+        height = 0,
+        fps = 0f,
+        resolution = "--",
+        isAudio = isAudio,
+      )
     return FileSystemItem.VideoFile(displayName, uri.toString(), modifiedMillis, video)
   }
 
@@ -662,18 +759,36 @@ object ZipArchiveMedia {
     val normalized = normalizeEntryPath(entry.name) ?: return null
     if (normalized.isEmpty()) return null
     val segments = normalized.split('/')
-    if (segments.firstOrNull().equals("__MACOSX", ignoreCase = true) || segments.lastOrNull() == ".DS_Store") return null
+    if (segments.firstOrNull().equals("__MACOSX", ignoreCase = true) ||
+      segments.lastOrNull() == ".DS_Store"
+    ) {
+      return null
+    }
     return normalized
   }
 
   private fun normalizeEntryPath(value: String): String? {
-    if ('\u0000' in value || value.startsWith('/') || value.startsWith('\\') || Regex("^[A-Za-z]:").containsMatchIn(value)) return null
-    val segments = value.replace('\\', '/').trim('/').split('/').filter { it.isNotEmpty() && it != "." }
+    if ('\u0000' in value ||
+      value.startsWith('/') ||
+      value.startsWith('\\') ||
+      Regex("^[A-Za-z]:").containsMatchIn(value)
+    ) {
+      return null
+    }
+    val segments =
+      value
+        .replace('\\', '/')
+        .trim('/')
+        .split('/')
+        .filter { it.isNotEmpty() && it != "." }
     if (segments.any { it == ".." }) return null
     return segments.joinToString("/")
   }
 
-  private fun isPlayable(path: String, includeAudio: Boolean): Boolean {
+  private fun isPlayable(
+    path: String,
+    includeAudio: Boolean,
+  ): Boolean {
     val extension = path.substringAfterLast('.', "").lowercase(Locale.ROOT)
     return extension in FileTypeUtils.VIDEO_EXTENSIONS || includeAudio && extension in FileTypeUtils.AUDIO_EXTENSIONS
   }

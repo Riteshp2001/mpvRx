@@ -12,13 +12,13 @@ import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,8 +29,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.libtorrent4j.AnnounceEntry
 import org.libtorrent4j.AlertListener
+import org.libtorrent4j.AnnounceEntry
 import org.libtorrent4j.Priority
 import org.libtorrent4j.SessionHandle
 import org.libtorrent4j.SessionManager
@@ -319,70 +319,74 @@ class TorrentStreamingEngine(
     fileIndex: Int,
     destination: File,
     onProgress: suspend (Long, Long, Long) -> Unit,
-  ): Long = withContext(Dispatchers.IO) {
-    val hash = parseMagnet(source)?.infoHash ?: throw streamError("Invalid torrent download source.")
-    val storedMetadata = metadataFile(magnetWithoutFileSelection(source))
-    val input = if (storedMetadata.isFile) Uri.fromFile(storedMetadata).toString() else source
-    val prepared = createPreparedSession(input, fileIndex, generation.get())
-    try {
-      if (!prepared.infoHash.equals(hash, ignoreCase = true)) throw streamError("Torrent metadata changed.")
-      val selected = prepared.playableFiles.firstOrNull { it.index == fileIndex && it.size > 0 }
-        ?: throw streamError("The selected torrent file is not playable.")
-      val file = safeCacheFile(prepared.cacheDir, selected.path)
-      val handle = prepared.handle
-      monitorTorrentErrors(prepared.session) { failure ->
-        val storage = prepared.info.files()
-        val pieceLength = prepared.info.pieceLength().toLong()
-        val offset = storage.fileOffset(selected.index)
-        val firstPiece = (offset / pieceLength).toInt()
-        val lastPiece = ((offset + selected.size - 1L) / pieceLength).toInt()
-        val priorities = Array(storage.numFiles()) { Priority.IGNORE }
-        priorities[selected.index] = Priority.TOP_PRIORITY
-        handle.prioritizeFiles(priorities)
-        handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
-        handle.unsetFlags(TorrentFlags.UPLOAD_MODE)
-        handle.resume()
+  ): Long =
+    withContext(Dispatchers.IO) {
+      val hash = parseMagnet(source)?.infoHash ?: throw streamError("Invalid torrent download source.")
+      val storedMetadata = metadataFile(magnetWithoutFileSelection(source))
+      val input = if (storedMetadata.isFile) Uri.fromFile(storedMetadata).toString() else source
+      val prepared = createPreparedSession(input, fileIndex, generation.get())
+      try {
+        if (!prepared.infoHash.equals(hash, ignoreCase = true)) throw streamError("Torrent metadata changed.")
+        val selected =
+          prepared.playableFiles.firstOrNull { it.index == fileIndex && it.size > 0 }
+            ?: throw streamError("The selected torrent file is not playable.")
+        val file = safeCacheFile(prepared.cacheDir, selected.path)
+        val handle = prepared.handle
+        monitorTorrentErrors(prepared.session) { failure ->
+          val storage = prepared.info.files()
+          val pieceLength = prepared.info.pieceLength().toLong()
+          val offset = storage.fileOffset(selected.index)
+          val firstPiece = (offset / pieceLength).toInt()
+          val lastPiece = ((offset + selected.size - 1L) / pieceLength).toInt()
+          val priorities = Array(storage.numFiles()) { Priority.IGNORE }
+          priorities[selected.index] = Priority.TOP_PRIORITY
+          handle.prioritizeFiles(priorities)
+          handle.unsetFlags(TorrentFlags.SEQUENTIAL_DOWNLOAD)
+          handle.unsetFlags(TorrentFlags.UPLOAD_MODE)
+          handle.resume()
 
-        var lastBytes = -1L
-        var lastProgressAt = SystemClock.elapsedRealtime()
-        while (true) {
-          currentCoroutineContext().ensureActive()
-          failure.get()?.let { throw it }
-          if (!handle.isValid) throw streamError("The torrent session stopped before the download finished.")
-          val bytes = handle.fileProgress().getOrNull(fileIndex)?.coerceIn(0, selected.size) ?: 0L
-          val now = SystemClock.elapsedRealtime()
-          if (bytes > lastBytes) {
-            lastBytes = bytes
-            lastProgressAt = now
-          } else if (now - lastProgressAt >= DOWNLOAD_IDLE_TIMEOUT_MS) {
-            throw streamError("No torrent data received for two minutes. Check that peers are available and try again.")
-          }
-          onProgress(bytes, selected.size, handle.status().downloadPayloadRate().toLong())
-          if (bytes == selected.size && (firstPiece..lastPiece).all(handle::havePiece)) break
-          delay(STATUS_INTERVAL_MS)
-        }
-      }
-
-      // Finish native writes before copying the verified payload to the app worker's .part file.
-      prepared.session.stop()
-      if (!file.isFile || file.length() != selected.size) throw streamError("The downloaded file is incomplete.")
-      val coroutine = currentCoroutineContext()
-      file.inputStream().use { inputStream ->
-        FileOutputStream(destination).use { output ->
-          val buffer = ByteArray(128 * 1024)
+          var lastBytes = -1L
+          var lastProgressAt = SystemClock.elapsedRealtime()
           while (true) {
-            coroutine.ensureActive()
-            val read = inputStream.read(buffer)
-            if (read < 0) break
-            output.write(buffer, 0, read)
+            currentCoroutineContext().ensureActive()
+            failure.get()?.let { throw it }
+            if (!handle.isValid) throw streamError("The torrent session stopped before the download finished.")
+            val bytes = handle.fileProgress().getOrNull(fileIndex)?.coerceIn(0, selected.size) ?: 0L
+            val now = SystemClock.elapsedRealtime()
+            if (bytes > lastBytes) {
+              lastBytes = bytes
+              lastProgressAt = now
+            } else if (now - lastProgressAt >= DOWNLOAD_IDLE_TIMEOUT_MS) {
+              throw streamError(
+                "No torrent data received for two minutes. Check that peers are available and try again.",
+              )
+            }
+            onProgress(bytes, selected.size, handle.status().downloadPayloadRate().toLong())
+            if (bytes == selected.size && (firstPiece..lastPiece).all(handle::havePiece)) break
+            delay(STATUS_INTERVAL_MS)
           }
         }
+
+        // Finish native writes before copying the verified payload to the app worker's .part file.
+        prepared.session.stop()
+        if (!file.isFile || file.length() != selected.size) throw streamError("The downloaded file is incomplete.")
+        val coroutine = currentCoroutineContext()
+        file.inputStream().use { inputStream ->
+          FileOutputStream(destination).use { output ->
+            val buffer = ByteArray(128 * 1024)
+            while (true) {
+              coroutine.ensureActive()
+              val read = inputStream.read(buffer)
+              if (read < 0) break
+              output.write(buffer, 0, read)
+            }
+          }
+        }
+        selected.size
+      } finally {
+        cleanupPreparedSession(prepared)
       }
-      selected.size
-    } finally {
-      cleanupPreparedSession(prepared)
     }
-  }
 
   private suspend fun createPreparedSession(
     sourceValue: String,
@@ -394,8 +398,9 @@ class TorrentStreamingEngine(
     if (hasV2OnlyMagnet(source)) {
       throw streamError("BitTorrent v2-only torrents are not supported yet.")
     }
-    val normalized = normalizeTorrentSource(source)
-      ?: if (isMetadataUri(source)) source else throw streamError("Unsupported torrent source.")
+    val normalized =
+      normalizeTorrentSource(source)
+        ?: if (isMetadataUri(source)) source else throw streamError("Unsupported torrent source.")
 
     val cacheDir = File(appContext.cacheDir, "torrent_streaming/${UUID.randomUUID()}")
     if (!cacheDir.mkdirs() && !cacheDir.isDirectory) {
@@ -518,8 +523,9 @@ class TorrentStreamingEngine(
     startGeneration: Long,
   ): PreparedTorrent {
     val parsed = parseMagnet(source) ?: throw streamError("Magnet link does not contain a supported v1 info hash.")
-    val hash = runCatching { Sha1Hash.parseHex(parsed.infoHash) }.getOrNull()
-      ?: throw streamError("Magnet link contains an invalid v1 info hash.")
+    val hash =
+      runCatching { Sha1Hash.parseHex(parsed.infoHash) }.getOrNull()
+        ?: throw streamError("Magnet link contains an invalid v1 info hash.")
 
     _state.value = TorrentStreamingState.Connecting("Connecting to peers and fetching torrent metadata...")
     return monitorTorrentErrors(session) { failure ->
@@ -557,12 +563,14 @@ class TorrentStreamingEngine(
   ): PreparedTorrent {
     _state.value = TorrentStreamingState.Connecting("Reading torrent metadata...")
     val payload = readMetadata(source)
-    val endpoints = runCatching { extractTorrentMetadataEndpoints(payload) }.getOrElse {
-      throw streamError("The selected file contains invalid torrent metadata.")
-    }
-    val info = runCatching { TorrentInfo(payload) }.getOrElse {
-      throw streamError("The selected file is not valid torrent metadata.")
-    }
+    val endpoints =
+      runCatching { extractTorrentMetadataEndpoints(payload) }.getOrElse {
+        throw streamError("The selected file contains invalid torrent metadata.")
+      }
+    val info =
+      runCatching { TorrentInfo(payload) }.getOrElse {
+        throw streamError("The selected file is not valid torrent metadata.")
+      }
     if (!info.isValid) throw streamError("The selected file is not valid torrent metadata.")
     if (!info.hasV1()) throw streamError("BitTorrent v2-only torrents are not supported yet.")
     validateAndEnumerateFiles(info, cacheDir)
@@ -595,7 +603,10 @@ class TorrentStreamingEngine(
     return File(appContext.filesDir, "torrent_metadata/$key.torrent")
   }
 
-  private fun rememberMetadata(source: String, payload: ByteArray) {
+  private fun rememberMetadata(
+    source: String,
+    payload: ByteArray,
+  ) {
     val destination = metadataFile(source)
     if (destination.isFile) return
     try {
@@ -797,8 +808,9 @@ class TorrentStreamingEngine(
     val uri = Uri.parse(source)
     val input =
       when (uri.scheme?.lowercase()) {
-        "content" -> appContext.contentResolver.openInputStream(uri)
-          ?: throw streamError("Couldn't open the selected torrent metadata.")
+        "content" ->
+          appContext.contentResolver.openInputStream(uri)
+            ?: throw streamError("Couldn't open the selected torrent metadata.")
         "file" -> {
           val path = uri.path ?: throw streamError("Torrent metadata path is invalid.")
           FileInputStream(File(path))
@@ -810,9 +822,16 @@ class TorrentStreamingEngine(
   }
 
   private fun readRemoteMetadata(source: String): ByteArray {
-    val request = runCatching { Request.Builder().url(source).get().build() }.getOrElse {
-      throw streamError("Torrent metadata URL is invalid.")
-    }
+    val request =
+      runCatching {
+        Request
+          .Builder()
+          .url(source)
+          .get()
+          .build()
+      }.getOrElse {
+        throw streamError("Torrent metadata URL is invalid.")
+      }
     return try {
       httpClient.newCall(request).execute().use { response ->
         if (!response.isSuccessful) throw streamError("Couldn't download torrent metadata (HTTP ${response.code}).")
@@ -848,7 +867,10 @@ class TorrentStreamingEngine(
     cacheDir: File,
   ) {
     if (
-      path.isBlank() || path.length > 4096 || absolute || File(path).isAbsolute ||
+      path.isBlank() ||
+      path.length > 4096 ||
+      absolute ||
+      File(path).isAbsolute ||
       path.any { it == '\u0000' || it.isISOControl() } ||
       path.replace('\\', '/').split('/').any { it.isEmpty() || it == "." || it == ".." }
     ) {

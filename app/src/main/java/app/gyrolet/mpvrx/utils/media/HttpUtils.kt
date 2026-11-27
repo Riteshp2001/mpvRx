@@ -97,7 +97,14 @@ object HttpUtils {
    */
   fun isMusicStreamingUrl(url: String?): Boolean {
     if (url.isNullOrBlank()) return false
-    val host = runCatching { Uri.parse(url).host?.lowercase().orEmpty() }.getOrElse { return false }
+    val host =
+      runCatching {
+        Uri
+          .parse(url)
+          .host
+          ?.lowercase()
+          .orEmpty()
+      }.getOrElse { return false }
     return isMusicStreamingHost(host)
   }
 
@@ -107,28 +114,31 @@ object HttpUtils {
     return isMusicStreamingHost(host)
   }
 
-  private fun isMusicStreamingHost(host: String): Boolean = when {
-    // YouTube Music — any path (watch, playlist, browse, channel, album)
-    host == "music.youtube.com" -> true
-    // SoundCloud
-    host == "soundcloud.com" || host == "www.soundcloud.com" ||
-      host == "on.soundcloud.com" || host == "m.soundcloud.com" -> true
-    // Bandcamp — covers artist subdomains (artist.bandcamp.com) and bandcamp.com itself
-    host == "bandcamp.com" || host.endsWith(".bandcamp.com") -> true
-    // Audiomack
-    host == "audiomack.com" || host == "www.audiomack.com" -> true
-    // Spotify
-    host == "open.spotify.com" || host == "spotify.com" || host == "www.spotify.com" -> true
-    // Apple Music
-    host == "music.apple.com" -> true
-    // Amazon Music (music.amazon.com, music.amazon.in, music.amazon.co.uk, etc.)
-    host == "music.amazon.com" || (host.startsWith("music.amazon.")) -> true
-    // Deezer
-    host == "deezer.com" || host == "www.deezer.com" || host == "deezer.page.link" -> true
-    // Tidal
-    host == "tidal.com" || host == "www.tidal.com" || host == "listen.tidal.com" -> true
-    else -> false
-  }
+  private fun isMusicStreamingHost(host: String): Boolean =
+    when {
+      // YouTube Music — any path (watch, playlist, browse, channel, album)
+      host == "music.youtube.com" -> true
+      // SoundCloud
+      host == "soundcloud.com" ||
+        host == "www.soundcloud.com" ||
+        host == "on.soundcloud.com" ||
+        host == "m.soundcloud.com" -> true
+      // Bandcamp — covers artist subdomains (artist.bandcamp.com) and bandcamp.com itself
+      host == "bandcamp.com" || host.endsWith(".bandcamp.com") -> true
+      // Audiomack
+      host == "audiomack.com" || host == "www.audiomack.com" -> true
+      // Spotify
+      host == "open.spotify.com" || host == "spotify.com" || host == "www.spotify.com" -> true
+      // Apple Music
+      host == "music.apple.com" -> true
+      // Amazon Music (music.amazon.com, music.amazon.in, music.amazon.co.uk, etc.)
+      host == "music.amazon.com" || (host.startsWith("music.amazon.")) -> true
+      // Deezer
+      host == "deezer.com" || host == "www.deezer.com" || host == "deezer.page.link" -> true
+      // Tidal
+      host == "tidal.com" || host == "www.tidal.com" || host == "listen.tidal.com" -> true
+      else -> false
+    }
 
   /**
    * Fetches a thumbnail URL for a music-streaming link.
@@ -174,11 +184,19 @@ object HttpUtils {
       var connection: HttpURLConnection? = null
       try {
         val videoId = extractYouTubeVideoId(Uri.parse(url))
-        val canonicalUrl = videoId?.let {
-          Uri.Builder().scheme("https").authority("www.youtube.com").path("watch")
-            .appendQueryParameter("v", it).build().toString()
-        } ?: url
-        val oEmbedUrl = "https://www.youtube.com/oembed?url=" + java.net.URLEncoder.encode(canonicalUrl, "UTF-8") + "&format=json"
+        val canonicalUrl =
+          videoId?.let {
+            Uri
+              .Builder()
+              .scheme("https")
+              .authority("www.youtube.com")
+              .path("watch")
+              .appendQueryParameter("v", it)
+              .build()
+              .toString()
+          } ?: url
+        val oEmbedUrl =
+          "https://www.youtube.com/oembed?url=" + java.net.URLEncoder.encode(canonicalUrl, "UTF-8") + "&format=json"
         connection = URL(oEmbedUrl).openConnection() as HttpURLConnection
         connection.requestMethod = "GET"
         connection.connectTimeout = CONNECTION_TIMEOUT
@@ -209,19 +227,31 @@ object HttpUtils {
       }
     }
 
-  private fun highQualityYouTubeArtwork(videoId: String?, fallback: String?): String? {
+  private fun highQualityYouTubeArtwork(
+    videoId: String?,
+    fallback: String?,
+  ): String? {
     if (videoId == null) return fallback
     for (quality in listOf("maxresdefault.jpg", "sddefault.jpg")) {
-      val candidate = Uri.Builder().scheme("https").authority("i.ytimg.com")
-        .appendPath("vi").appendPath(videoId).appendPath(quality).build().toString()
+      val candidate =
+        Uri
+          .Builder()
+          .scheme("https")
+          .authority("i.ytimg.com")
+          .appendPath("vi")
+          .appendPath(videoId)
+          .appendPath(quality)
+          .build()
+          .toString()
       var connection: HttpURLConnection? = null
       try {
-        connection = (URL(candidate).openConnection() as HttpURLConnection).apply {
-          requestMethod = "HEAD"
-          connectTimeout = 1_500
-          readTimeout = 1_500
-          instanceFollowRedirects = true
-        }
+        connection =
+          (URL(candidate).openConnection() as HttpURLConnection).apply {
+            requestMethod = "HEAD"
+            connectTimeout = 1_500
+            readTimeout = 1_500
+            instanceFollowRedirects = true
+          }
         if (connection.responseCode == HttpURLConnection.HTTP_OK) return candidate
       } catch (_: IOException) {
       } finally {

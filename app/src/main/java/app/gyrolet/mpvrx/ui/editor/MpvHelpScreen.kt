@@ -42,8 +42,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -113,7 +113,8 @@ data class MpvHelpScreen(
         if (searchQuery.isNotBlank()) {
           listOf(null to filteredEntries)
         } else {
-          filteredEntries.groupBy { it.category }
+          filteredEntries
+            .groupBy { it.category }
             .map { (name, entries) -> HelpCategory(name, entries) to entries }
         }
       }
@@ -183,10 +184,12 @@ data class MpvHelpScreen(
           if (documentation.isRefreshing) {
             "Checking official mpv documentation…"
           } else if (documentation.lastCheckedMillis > 0L) {
-            val date = remember(documentation.lastCheckedMillis) {
-              DateFormat.getDateInstance(DateFormat.MEDIUM)
-                .format(Date(documentation.lastCheckedMillis))
-            }
+            val date =
+              remember(documentation.lastCheckedMillis) {
+                DateFormat
+                  .getDateInstance(DateFormat.MEDIUM)
+                  .format(Date(documentation.lastCheckedMillis))
+              }
             "Official mpv • $date"
           } else {
             "Official mpv • offline snapshot"
@@ -197,8 +200,10 @@ data class MpvHelpScreen(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           maxLines = 1,
           overflow = TextOverflow.Ellipsis,
-          modifier = Modifier.fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 2.dp),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 16.dp, vertical = 2.dp),
         )
         app.gyrolet.mpvrx.ui.components.InlineSearchBar(
           query = searchQuery,
@@ -206,7 +211,9 @@ data class MpvHelpScreen(
           onSearch = { keyboardController?.hide() },
           modifier = Modifier.padding(horizontal = 16.dp),
           inputFieldModifier = Modifier.focusRequester(focusRequester),
-          windowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
+          windowInsets =
+            androidx.compose.foundation.layout
+              .WindowInsets(0.dp),
           placeholder = {
             Text(
               text =

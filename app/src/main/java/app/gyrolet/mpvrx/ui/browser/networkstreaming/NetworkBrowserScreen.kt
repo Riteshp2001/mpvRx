@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.networkstreaming
 
-import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -59,16 +58,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.repository.PlaylistItemInput
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
-import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.DlnaPath
-import app.gyrolet.mpvrx.domain.network.NetworkProtocol
+import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
 import app.gyrolet.mpvrx.domain.network.NetworkPath
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
+import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.domain.network.isNetworkImageFile
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
@@ -79,14 +77,12 @@ import app.gyrolet.mpvrx.preferences.SortOrder
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
-import app.gyrolet.mpvrx.ui.browser.cards.NetworkFolderCard
-import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionListGap
 import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionGridGap
+import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionListGap
+import app.gyrolet.mpvrx.ui.browser.cards.NetworkFolderCard
 import app.gyrolet.mpvrx.ui.browser.cards.NetworkImageCard
 import app.gyrolet.mpvrx.ui.browser.cards.NetworkVideoCard
 import app.gyrolet.mpvrx.ui.browser.cards.mediaSelectionNeighbors
-import app.gyrolet.mpvrx.ui.imageviewer.ImageViewerItem
-import app.gyrolet.mpvrx.ui.imageviewer.ImageViewerScreen
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.NetworkMediaType
@@ -100,6 +96,8 @@ import app.gyrolet.mpvrx.ui.browser.states.EmptyState
 import app.gyrolet.mpvrx.ui.components.InlineSearchBar
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.imageviewer.ImageViewerItem
+import app.gyrolet.mpvrx.ui.imageviewer.ImageViewerScreen
 import app.gyrolet.mpvrx.ui.preferences.PreferencesScreen
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
@@ -110,6 +108,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
+import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 
 @Serializable
 data class NetworkBrowserScreen(
@@ -259,11 +259,12 @@ data class NetworkBrowserScreen(
             },
           )
         }
-        Toast.makeText(
-          context,
-          context.getString(R.string.playlist_add_videos_success, selected.size),
-          Toast.LENGTH_SHORT,
-        ).show()
+        Toast
+          .makeText(
+            context,
+            context.getString(R.string.playlist_add_videos_success, selected.size),
+            Toast.LENGTH_SHORT,
+          ).show()
         // Leave the whole picker flow (this browser plus the source picker that opened it).
         backstack.popUpTo { it is PlaylistDetailScreen }
       }
@@ -281,7 +282,9 @@ data class NetworkBrowserScreen(
     }
 
     Scaffold(
-      containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
+      containerColor =
+        app.gyrolet.mpvrx.ui.theme
+          .wallpaperAwareBackgroundColor(),
       topBar = {
         if (isSearching) {
           InlineSearchBar(
@@ -449,13 +452,14 @@ data class NetworkBrowserScreen(
               ImageViewerScreen(
                 connectionId = connectionId,
                 folderPath = currentPath,
-                items = visibleImages.map {
-                  ImageViewerItem(
-                    path = it.path,
-                    name = it.name,
-                    lastModified = it.lastModified,
-                  )
-                },
+                items =
+                  visibleImages.map {
+                    ImageViewerItem(
+                      path = it.path,
+                      name = it.name,
+                      lastModified = it.lastModified,
+                    )
+                  },
                 initialIndex = index,
               ),
             )
@@ -493,7 +497,10 @@ data class NetworkBrowserScreen(
 private const val SCROLLBAR_MIN_ITEM_COUNT = 20
 
 @Composable
-private fun BrowserSectionHeader(text: String, topPadding: Dp = 16.dp) {
+private fun BrowserSectionHeader(
+  text: String,
+  topPadding: Dp = 16.dp,
+) {
   Text(
     text = text,
     style = MaterialTheme.typography.titleMedium,
@@ -768,9 +775,12 @@ private fun NetworkBrowserContent(
                     onClick = { onVideoClick(video) },
                     onLongClick = onVideoLongClick?.let { handler -> { handler(video) } },
                     isSelected = isVideoSelected(video),
-                    selectionNeighbors = mediaSelectionNeighbors(
-                      videoIndices[video.path] ?: -1, videos.size, gridColumns,
-                    ) { neighbor -> isVideoSelected(videos[neighbor]) },
+                    selectionNeighbors =
+                      mediaSelectionNeighbors(
+                        videoIndices[video.path] ?: -1,
+                        videos.size,
+                        gridColumns,
+                      ) { neighbor -> isVideoSelected(videos[neighbor]) },
                     isGridMode = true,
                     mediaType = mediaTypeBadgeFor(video, includeImages, isImage = false),
                   )
@@ -816,9 +826,12 @@ private fun NetworkBrowserContent(
                     onClick = { onVideoClick(video) },
                     onLongClick = onVideoLongClick?.let { handler -> { handler(video) } },
                     isSelected = isVideoSelected(video),
-                    selectionNeighbors = mediaSelectionNeighbors(
-                      videoIndices[video.path] ?: -1, videos.size, 1,
-                    ) { neighbor -> isVideoSelected(videos[neighbor]) },
+                    selectionNeighbors =
+                      mediaSelectionNeighbors(
+                        videoIndices[video.path] ?: -1,
+                        videos.size,
+                        1,
+                      ) { neighbor -> isVideoSelected(videos[neighbor]) },
                     isGridMode = false,
                     mediaType = mediaTypeBadgeFor(video, includeImages, isImage = false),
                   )

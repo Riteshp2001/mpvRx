@@ -63,7 +63,7 @@ class SecureFolderViewModel(
 
   private val _gateStep =
     MutableStateFlow(
-      if (preferences.isPinSet()) GateStep.ENTER_PIN else GateStep.SETUP
+      if (preferences.isPinSet()) GateStep.ENTER_PIN else GateStep.SETUP,
     )
   val gateStep: StateFlow<GateStep> = _gateStep.asStateFlow()
 
@@ -79,7 +79,8 @@ class SecureFolderViewModel(
   /** Called from ENTER_PIN. On success the caller (Gate screen) navigates to the grid. */
   fun verifyPin(pin: String): Boolean {
     val ok = preferences.verifyPin(pin)
-    _gateError.value = if (ok) null else getApplication<Application>().getString(R.string.secure_folder_error_incorrect_pin)
+    _gateError.value =
+      if (ok) null else getApplication<Application>().getString(R.string.secure_folder_error_incorrect_pin)
     return ok
   }
 
@@ -257,17 +258,26 @@ class SecureFolderViewModel(
             .onSuccess { batch ->
               _operationResult.value =
                 if (batch.failedIds.isEmpty()) {
-                  getApplication<Application>().getString(R.string.secure_folder_restored_success, batch.succeededIds.size)
+                  getApplication<Application>().getString(
+                    R.string.secure_folder_restored_success,
+                    batch.succeededIds.size,
+                  )
                 } else {
-                  getApplication<Application>().getString(R.string.secure_folder_restored_partial, batch.succeededIds.size, batch.failedIds.size)
+                  getApplication<Application>().getString(
+                    R.string.secure_folder_restored_partial,
+                    batch.succeededIds.size,
+                    batch.failedIds.size,
+                  )
                 }
             }.onFailure { e ->
               Log.e(TAG, "Restore failed", e)
-              _operationResult.value = getApplication<Application>().getString(R.string.secure_folder_restore_failed, e.message ?: "")
+              _operationResult.value =
+                getApplication<Application>().getString(R.string.secure_folder_restore_failed, e.message ?: "")
             }
         }.onFailure { e ->
           Log.e(TAG, "Restore threw", e)
-          _operationResult.value = getApplication<Application>().getString(R.string.secure_folder_restore_failed, e.message ?: "")
+          _operationResult.value =
+            getApplication<Application>().getString(R.string.secure_folder_restore_failed, e.message ?: "")
         }
         _selectedIds.value = emptySet()
         _isBusy.value = false
@@ -289,17 +299,26 @@ class SecureFolderViewModel(
             .onSuccess { batch ->
               _operationResult.value =
                 if (batch.failedIds.isEmpty()) {
-                  getApplication<Application>().getString(R.string.secure_folder_deleted_success, batch.succeededIds.size)
+                  getApplication<Application>().getString(
+                    R.string.secure_folder_deleted_success,
+                    batch.succeededIds.size,
+                  )
                 } else {
-                  getApplication<Application>().getString(R.string.secure_folder_deleted_partial, batch.succeededIds.size, batch.failedIds.size)
+                  getApplication<Application>().getString(
+                    R.string.secure_folder_deleted_partial,
+                    batch.succeededIds.size,
+                    batch.failedIds.size,
+                  )
                 }
             }.onFailure { e ->
               Log.e(TAG, "Delete failed", e)
-              _operationResult.value = getApplication<Application>().getString(R.string.secure_folder_delete_failed, e.message ?: "")
+              _operationResult.value =
+                getApplication<Application>().getString(R.string.secure_folder_delete_failed, e.message ?: "")
             }
         }.onFailure { e ->
           Log.e(TAG, "Delete threw", e)
-          _operationResult.value = getApplication<Application>().getString(R.string.secure_folder_delete_failed, e.message ?: "")
+          _operationResult.value =
+            getApplication<Application>().getString(R.string.secure_folder_delete_failed, e.message ?: "")
         }
         _selectedIds.value = emptySet()
         _isBusy.value = false

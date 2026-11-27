@@ -63,12 +63,13 @@ internal object ClipSubtitleLoader {
     val clipStartUs = (startSeconds * 1000.0).roundToLong() * 1000L
     val clipEndUs = (endSeconds * 1000.0).roundToLong() * 1000L
     val delayUs = (delaySeconds.takeIf { it.isFinite() }?.times(1_000_000.0))?.roundToLong() ?: 0L
-    val samples = track.externalFile?.let { external ->
-      loadExternal(context, external, track.codec, headers)
-    } ?: run {
-      check(!track.isExternal) { context.getString(R.string.clip_subtitle_read_failed) }
-      loadEmbedded(context, source, headers, track, clipStartUs - delayUs, clipEndUs - delayUs)
-    }
+    val samples =
+      track.externalFile?.let { external ->
+        loadExternal(context, external, track.codec, headers)
+      } ?: run {
+        check(!track.isExternal) { context.getString(R.string.clip_subtitle_read_failed) }
+        loadEmbedded(context, source, headers, track, clipStartUs - delayUs, clipEndUs - delayUs)
+      }
     check(samples.parsed) { context.getString(R.string.clip_subtitle_read_failed) }
 
     val ordered = samples.cues.sortedBy { it.startTimeUs }
@@ -92,23 +93,24 @@ internal object ClipSubtitleLoader {
     headers: Map<String, String>,
   ): SubtitleSamples {
     val dataSource = clipDataSourceFactory(context, headers).createDataSource()
-    val data = try {
-      dataSource.open(DataSpec(clipMediaUri(source)))
-      val output = ByteArrayOutputStream()
-      val buffer = ByteArray(8192)
-      while (true) {
-        currentCoroutineContext().ensureActive()
-        val read = dataSource.read(buffer, 0, buffer.size)
-        if (read == C.RESULT_END_OF_INPUT) break
-        check(output.size() + read <= MAX_SUBTITLE_BYTES) {
-          context.getString(R.string.clip_subtitle_too_large)
+    val data =
+      try {
+        dataSource.open(DataSpec(clipMediaUri(source)))
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        while (true) {
+          currentCoroutineContext().ensureActive()
+          val read = dataSource.read(buffer, 0, buffer.size)
+          if (read == C.RESULT_END_OF_INPUT) break
+          check(output.size() + read <= MAX_SUBTITLE_BYTES) {
+            context.getString(R.string.clip_subtitle_too_large)
+          }
+          output.write(buffer, 0, read)
         }
-        output.write(buffer, 0, read)
+        output.toByteArray()
+      } finally {
+        DataSourceUtil.closeQuietly(dataSource)
       }
-      output.toByteArray()
-    } finally {
-      DataSourceUtil.closeQuietly(dataSource)
-    }
     val format = Format.Builder().setSampleMimeType(externalMimeType(source, codec, data)).build()
     val factory = DefaultSubtitleParserFactory()
     check(factory.supportsFormat(format)) { context.getString(R.string.clip_subtitle_unsupported) }
@@ -117,14 +119,21 @@ internal object ClipSubtitleLoader {
     parser.parse(data, SubtitleParser.OutputOptions.allCues()) { sample ->
       // Standalone files use their own timestamps, with no container offset.
       result.parsed = true
-      result.cues += if (sample.startTimeUs == C.TIME_UNSET) {
-        CuesWithTiming(sample.cues, 0L, sample.durationUs)
-      } else sample
+      result.cues +=
+        if (sample.startTimeUs == C.TIME_UNSET) {
+          CuesWithTiming(sample.cues, 0L, sample.durationUs)
+        } else {
+          sample
+        }
     }
     return result
   }
 
-  private fun externalMimeType(source: String, codec: String, data: ByteArray): String? {
+  private fun externalMimeType(
+    source: String,
+    codec: String,
+    data: ByteArray,
+  ): String? {
     val extension = clipMediaUri(source).lastPathSegment?.substringAfterLast('.', "")?.lowercase()
     return when {
       codec in setOf("ass", "ssa") || extension in setOf("ass", "ssa") -> MimeTypes.TEXT_SSA
@@ -162,40 +171,53 @@ internal object ClipSubtitleLoader {
     val discarded = DiscardedTrackOutput()
     try {
       var input = openInput(dataSource, source, 0L)
-      val extractor = candidates.firstOrNull { candidate ->
-        try {
-          candidate.sniff(input)
-        } catch (_: EOFException) {
-          false
-        } finally {
-          input.resetPeekPosition()
-        }
-      } ?: error(context.getString(R.string.clip_subtitle_unsupported))
-      extractor.init(object : ExtractorOutput {
-        override fun track(id: Int, type: Int): TrackOutput = outputs.getOrPut(id) {
-          if (type == C.TRACK_TYPE_TEXT) {
-            CueTrackOutput(context, startUs, endUs, discarded).also { subtitleOutputs += it }
-          } else discarded
-        }
-
-        override fun endTracks() {
-          // Matroska/MP4 format IDs preserve container IDs, unlike the player's UI track IDs.
-          val matches = subtitleOutputs.filter { output ->
-            track.demuxId != null && output.trackFormat?.id?.toIntOrNull() == track.demuxId
+      val extractor =
+        candidates.firstOrNull { candidate ->
+          try {
+            candidate.sniff(input)
+          } catch (_: EOFException) {
+            false
+          } finally {
+            input.resetPeekPosition()
           }
-          val hasContainerIds = extractor is MatroskaExtractor || extractor is Mp4Extractor ||
-            extractor is FragmentedMp4Extractor
-          selected = if (track.demuxId != null && hasContainerIds) {
-            matches.singleOrNull()
-          } else {
-            matches.singleOrNull() ?: subtitleOutputs.getOrNull(track.ordinal)
-          }
-          checkNotNull(selected) { context.getString(R.string.clip_subtitle_unsupported) }.select()
-          subtitleOutputs.filter { it !== selected }.forEach { it.discard() }
-        }
+        } ?: error(context.getString(R.string.clip_subtitle_unsupported))
+      extractor.init(
+        object : ExtractorOutput {
+          override fun track(
+            id: Int,
+            type: Int,
+          ): TrackOutput =
+            outputs.getOrPut(id) {
+              if (type == C.TRACK_TYPE_TEXT) {
+                CueTrackOutput(context, startUs, endUs, discarded).also { subtitleOutputs += it }
+              } else {
+                discarded
+              }
+            }
 
-        override fun seekMap(seekMap: SeekMap) = Unit
-      })
+          override fun endTracks() {
+            // Matroska/MP4 format IDs preserve container IDs, unlike the player's UI track IDs.
+            val matches =
+              subtitleOutputs.filter { output ->
+                track.demuxId != null && output.trackFormat?.id?.toIntOrNull() == track.demuxId
+              }
+            val hasContainerIds =
+              extractor is MatroskaExtractor ||
+                extractor is Mp4Extractor ||
+                extractor is FragmentedMp4Extractor
+            selected =
+              if (track.demuxId != null && hasContainerIds) {
+                matches.singleOrNull()
+              } else {
+                matches.singleOrNull() ?: subtitleOutputs.getOrNull(track.ordinal)
+              }
+            checkNotNull(selected) { context.getString(R.string.clip_subtitle_unsupported) }.select()
+            subtitleOutputs.filter { it !== selected }.forEach { it.discard() }
+          }
+
+          override fun seekMap(seekMap: SeekMap) = Unit
+        },
+      )
       val seekPosition = PositionHolder()
       // Scan from the beginning to retain cues that start before, but overlap, the clip.
       // Audio/video payloads and expired subtitle cues are discarded.
@@ -216,8 +238,19 @@ internal object ClipSubtitleLoader {
     }
   }
 
-  private fun openInput(dataSource: DataSource, source: String, position: Long): DefaultExtractorInput {
-    val remaining = dataSource.open(DataSpec.Builder().setUri(clipMediaUri(source)).setPosition(position).build())
+  private fun openInput(
+    dataSource: DataSource,
+    source: String,
+    position: Long,
+  ): DefaultExtractorInput {
+    val remaining =
+      dataSource.open(
+        DataSpec
+          .Builder()
+          .setUri(clipMediaUri(source))
+          .setPosition(position)
+          .build(),
+      )
     val length = if (remaining == C.LENGTH_UNSET.toLong()) C.LENGTH_UNSET.toLong() else position + remaining
     return DefaultExtractorInput(dataSource, position, length)
   }
@@ -284,7 +317,12 @@ internal object ClipSubtitleLoader {
       if (!samples.parsed) samples = SubtitleSamples(format.clipCueBehavior)
     }
 
-    override fun sampleData(input: DataReader, length: Int, allowEndOfInput: Boolean, sampleDataPart: Int): Int {
+    override fun sampleData(
+      input: DataReader,
+      length: Int,
+      allowEndOfInput: Boolean,
+      sampleDataPart: Int,
+    ): Int {
       if (!acceptsSamples()) return discarded.sampleData(input, length, allowEndOfInput, sampleDataPart)
       val read = input.read(scratch, 0, minOf(length, scratch.size))
       if (read == C.RESULT_END_OF_INPUT) {
@@ -296,7 +334,11 @@ internal object ClipSubtitleLoader {
       return read
     }
 
-    override fun sampleData(data: ParsableByteArray, length: Int, sampleDataPart: Int) {
+    override fun sampleData(
+      data: ParsableByteArray,
+      length: Int,
+      sampleDataPart: Int,
+    ) {
       if (!acceptsSamples()) {
         discarded.sampleData(data, length, sampleDataPart)
         return
@@ -307,7 +349,13 @@ internal object ClipSubtitleLoader {
       pending.write(bytes)
     }
 
-    override fun sampleMetadata(timeUs: Long, flags: Int, size: Int, offset: Int, cryptoData: TrackOutput.CryptoData?) {
+    override fun sampleMetadata(
+      timeUs: Long,
+      flags: Int,
+      size: Int,
+      offset: Int,
+      cryptoData: TrackOutput.CryptoData?,
+    ) {
       if (!acceptsSamples()) return
       check(cryptoData == null) { context.getString(R.string.clip_subtitle_unsupported) }
       val bytes = pending.toByteArray()
@@ -329,11 +377,37 @@ internal object ClipSubtitleLoader {
 
   private class DiscardedTrackOutput : TrackOutput {
     private val scratch = ByteArray(8192)
+
     override fun format(format: Format) = Unit
-    override fun sampleMetadata(timeUs: Long, flags: Int, size: Int, offset: Int, cryptoData: TrackOutput.CryptoData?) = Unit
-    override fun sampleData(data: ParsableByteArray, length: Int, sampleDataPart: Int) = data.skipBytes(length)
-    override fun sampleData(input: DataReader, length: Int, allowEndOfInput: Boolean, sampleDataPart: Int): Int {
-      val read = if (input is ExtractorInput) input.skip(length) else input.read(scratch, 0, minOf(length, scratch.size))
+
+    override fun sampleMetadata(
+      timeUs: Long,
+      flags: Int,
+      size: Int,
+      offset: Int,
+      cryptoData: TrackOutput.CryptoData?,
+    ) = Unit
+
+    override fun sampleData(
+      data: ParsableByteArray,
+      length: Int,
+      sampleDataPart: Int,
+    ) = data.skipBytes(length)
+
+    override fun sampleData(
+      input: DataReader,
+      length: Int,
+      allowEndOfInput: Boolean,
+      sampleDataPart: Int,
+    ): Int {
+      val read =
+        if (input is ExtractorInput) {
+          input.skip(
+            length,
+          )
+        } else {
+          input.read(scratch, 0, minOf(length, scratch.size))
+        }
       if (read == C.RESULT_END_OF_INPUT && !allowEndOfInput) throw EOFException()
       return read
     }

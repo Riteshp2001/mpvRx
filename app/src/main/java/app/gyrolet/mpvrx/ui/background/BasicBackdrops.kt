@@ -18,13 +18,17 @@ import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
 
-/* Geometric, calm backdrops: Circles, Rings, Shapes, Grid, Lava, Bokeh. */
+// Geometric, calm backdrops: Circles, Rings, Shapes, Grid, Lava, Bokeh.
 
 /**
  * Translucent discs that each circle a private anchor point, the near ones large and quick to
  * react to tilt, the far ones small and nearly still. Every disc has a faint fill and a thin rim.
  */
-internal fun DrawScope.drawCircles(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawCircles(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   val base = min(w, h)
@@ -53,21 +57,34 @@ internal fun DrawScope.drawCircles(t: Float, tilt: Offset, p: BackdropPalette) {
       radius = r,
       center = c,
     )
-    drawCircle(color.copy(alpha = (0.12f + 0.14f * depth) * breath), radius = r, center = c, style = Stroke(width = 1.2.dp.toPx()))
+    drawCircle(
+      color.copy(alpha = (0.12f + 0.14f * depth) * breath),
+      radius = r,
+      center = c,
+      style = Stroke(width = 1.2.dp.toPx()),
+    )
     val bead = c + Offset(cos(-ang * 1.4f), sin(-ang * 1.4f)) * r
     drawCircle(color.copy(alpha = 0.38f * breath), radius = (1.4f + depth).dp.toPx(), center = bead)
   }
 }
 
 /** Ripples spreading out of three drifting sources, each emitting a train of fading rings. */
-internal fun DrawScope.drawRings(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawRings(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   val reach = hypot(w, h) * 0.45f
   val travel = 16.dp.toPx()
   for (s in 0 until 3) {
-    val cx = w * (0.18f + 0.64f * hash01(s, 10)) + sin(t * 0.07f * TAU * 0.5f + s * 2f) * 24.dp.toPx() + tilt.x * travel * (s + 1) * 0.5f
-    val cy = h * (0.14f + 0.72f * hash01(s, 11)) + cos(t * 0.05f * TAU * 0.5f + s) * 24.dp.toPx() + tilt.y * travel * (s + 1) * 0.5f
+    val cx =
+      w * (0.18f + 0.64f * hash01(s, 10)) + sin(t * 0.07f * TAU * 0.5f + s * 2f) * 24.dp.toPx() +
+        tilt.x * travel * (s + 1) * 0.5f
+    val cy =
+      h * (0.14f + 0.72f * hash01(s, 11)) + cos(t * 0.05f * TAU * 0.5f + s) * 24.dp.toPx() +
+        tilt.y * travel * (s + 1) * 0.5f
     val color = p.accent(s)
     for (k in 0 until 5) {
       val ph = fract(t / 11f + k / 5f + hash01(s, 12))
@@ -83,7 +100,11 @@ internal fun DrawScope.drawRings(t: Float, tilt: Offset, p: BackdropPalette) {
     }
     val source = Offset(cx, cy)
     drawCircle(
-      Brush.radialGradient(listOf(color.copy(alpha = 0.12f), Color.Transparent), center = source, radius = 28.dp.toPx()),
+      Brush.radialGradient(
+        listOf(color.copy(alpha = 0.12f), Color.Transparent),
+        center = source,
+        radius = 28.dp.toPx(),
+      ),
       radius = 28.dp.toPx(),
       center = source,
     )
@@ -106,16 +127,21 @@ private val SoftShapePaths: List<Path> by lazy {
 }
 
 /** Soft four-, five- and six-lobed shapes rise, breathe and rotate at different depths. */
-internal fun DrawScope.drawShapes(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawShapes(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val base = size.minDimension
   for (i in 0 until backdropCount(12, minimum = 7, maximum = 18)) {
     val depth = 0.3f + 0.7f * hash01(i, 1)
     val radius = base * (0.035f + 0.055f * depth) * (0.94f + 0.06f * sin(t * 0.4f + i))
     val life = fract(hash01(i, 2) + t * (0.008f + 0.012f * depth))
-    val center = Offset(
-      size.width * hash01(i, 3) + sin(t * 0.18f + i * 1.7f) * 22.dp.toPx() + tilt.x * 24.dp.toPx() * depth,
-      size.height * (1.1f - 1.2f * life) + tilt.y * 24.dp.toPx() * depth,
-    )
+    val center =
+      Offset(
+        size.width * hash01(i, 3) + sin(t * 0.18f + i * 1.7f) * 22.dp.toPx() + tilt.x * 24.dp.toPx() * depth,
+        size.height * (1.1f - 1.2f * life) + tilt.y * 24.dp.toPx() * depth,
+      )
     val spin = t * (if (i % 2 == 0) 7f else -9f) + hash01(i, 5) * 360f
     val edge = smoothstep(0f, 0.12f, life) * smoothstep(1f, 0.88f, life)
     val path = SoftShapePaths[i % SoftShapePaths.size]
@@ -124,7 +150,15 @@ internal fun DrawScope.drawShapes(t: Float, tilt: Offset, p: BackdropPalette) {
       rotate(spin, pivot = Offset.Zero) {
         scale(radius, radius, pivot = Offset.Zero) {
           drawPath(path, color.copy(alpha = (0.08f + 0.05f * depth) * edge))
-          drawPath(path, color.copy(alpha = (0.18f + 0.14f * depth) * edge), style = Stroke(width = 1.2.dp.toPx() / radius))
+          drawPath(
+            path,
+            color.copy(alpha = (0.18f + 0.14f * depth) * edge),
+            style =
+              Stroke(
+                width =
+                  1.2.dp.toPx() / radius,
+              ),
+          )
         }
       }
     }
@@ -132,7 +166,11 @@ internal fun DrawScope.drawShapes(t: Float, tilt: Offset, p: BackdropPalette) {
 }
 
 /** A lattice of dots lit by two slow pulse waves, so the pattern swells and relaxes in rings. */
-internal fun DrawScope.drawGrid(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawGrid(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   // Limit the number of expensive wave evaluations on large tablets.
@@ -166,14 +204,22 @@ internal fun DrawScope.drawGrid(t: Float, tilt: Offset, p: BackdropPalette) {
 }
 
 /** Soft wax blobs that rise, sink and stretch; where two overlap their glow adds up. */
-internal fun DrawScope.drawLava(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawLava(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   val base = min(w, h)
   for (i in 0 until backdropCount(7, minimum = 5, maximum = 10)) {
     val depth = 0.5f + 0.5f * hash01(i, 1)
-    val cx = w * (0.18f + 0.64f * hash01(i, 2) + 0.10f * sin(t * (0.10f + 0.08f * hash01(i, 3)) + i)) + tilt.x * 18.dp.toPx() * depth
-    val cy = h * (0.5f + 0.42f * sin(t * (0.045f + 0.035f * hash01(i, 4)) + hash01(i, 5) * TAU)) + tilt.y * 18.dp.toPx() * depth
+    val cx =
+      w * (0.18f + 0.64f * hash01(i, 2) + 0.10f * sin(t * (0.10f + 0.08f * hash01(i, 3)) + i)) +
+        tilt.x * 18.dp.toPx() * depth
+    val cy =
+      h * (0.5f + 0.42f * sin(t * (0.045f + 0.035f * hash01(i, 4)) + hash01(i, 5) * TAU)) +
+        tilt.y * 18.dp.toPx() * depth
     val r = base * (0.15f + 0.14f * hash01(i, 6)) * (1f + 0.10f * sin(t * 0.55f + i * 1.3f))
     val stretch = 1f + 0.25f * cos(t * 0.24f + i * 0.9f)
     val color = p.accent(i)
@@ -181,14 +227,15 @@ internal fun DrawScope.drawLava(t: Float, tilt: Offset, p: BackdropPalette) {
     rotate(sin(t * 0.16f + i) * 18f, pivot = center) {
       scale(scaleX = 1f / stretch, scaleY = stretch, pivot = center) {
         drawCircle(
-          brush = Brush.radialGradient(
-            0f to color.copy(alpha = 0.42f),
-            0.42f to color.copy(alpha = 0.28f),
-            0.78f to color.copy(alpha = 0.08f),
-            1f to Color.Transparent,
-            center = center,
-            radius = r,
-          ),
+          brush =
+            Brush.radialGradient(
+              0f to color.copy(alpha = 0.42f),
+              0.42f to color.copy(alpha = 0.28f),
+              0.78f to color.copy(alpha = 0.08f),
+              1f to Color.Transparent,
+              center = center,
+              radius = r,
+            ),
           radius = r,
           center = center,
         )
@@ -198,7 +245,11 @@ internal fun DrawScope.drawLava(t: Float, tilt: Offset, p: BackdropPalette) {
 }
 
 /** Large out-of-focus lights drifting sideways: dim centre, brighter rim, like a lens full of bulbs. */
-internal fun DrawScope.drawBokeh(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawBokeh(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   val base = min(w, h)
@@ -207,7 +258,9 @@ internal fun DrawScope.drawBokeh(t: Float, tilt: Offset, p: BackdropPalette) {
     val r = base * (0.045f + 0.10f * depth) * (0.94f + 0.06f * sin(t * 0.6f + i))
     val f = fract(hash01(i, 2) + t * (0.004f + 0.006f * depth))
     val x = w * (f * 1.3f - 0.15f) + tilt.x * 30.dp.toPx() * (0.3f + depth)
-    val y = h * (0.08f + 0.84f * hash01(i, 3)) + sin(t * (0.18f + 0.1f * hash01(i, 4)) + i) * 22.dp.toPx() + tilt.y * 30.dp.toPx() * (0.3f + depth)
+    val y =
+      h * (0.08f + 0.84f * hash01(i, 3)) + sin(t * (0.18f + 0.1f * hash01(i, 4)) + i) * 22.dp.toPx() +
+        tilt.y * 30.dp.toPx() * (0.3f + depth)
     val edge = smoothstep(0f, 0.10f, f) * smoothstep(1f, 0.90f, f)
     val color = p.accent(i + 1)
     val breath = 0.75f + 0.25f * sin(t * 0.24f + i * 2.1f)
@@ -227,7 +280,12 @@ internal fun DrawScope.drawBokeh(t: Float, tilt: Offset, p: BackdropPalette) {
       radius = r,
       center = c,
     )
-    drawCircle(color.copy(alpha = 0.16f * edge * breath), radius = r, center = c, style = Stroke(width = (1f + depth).dp.toPx()))
+    drawCircle(
+      color.copy(alpha = 0.16f * edge * breath),
+      radius = r,
+      center = c,
+      style = Stroke(width = (1f + depth).dp.toPx()),
+    )
     drawArc(
       color = color.copy(alpha = 0.22f * edge * breath),
       startAngle = 205f + 12f * sin(t * 0.2f + i),

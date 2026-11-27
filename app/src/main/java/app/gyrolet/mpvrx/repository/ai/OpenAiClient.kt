@@ -80,7 +80,14 @@ class OpenAiClient(
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
           if (!response.isSuccessful) {
-            throw Exception("$providerName at $target returned HTTP ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
+            throw Exception(
+              "$providerName at $target returned HTTP ${response.code}: ${AiResponseParser.error(
+                json,
+                body,
+                apiKey,
+                200,
+              )}",
+            )
           }
 
           val parsed = json.decodeFromString<OpenAiModelListResponse>(body)
@@ -104,7 +111,12 @@ class OpenAiClient(
         apiClient.newCall(request).awaitResponse().use { response ->
           if (!response.isSuccessful) {
             throw Exception(
-              "$providerName at $target returned HTTP ${response.code}: ${AiResponseParser.error(json, response.body.string(), apiKey, 200)}",
+              "$providerName at $target returned HTTP ${response.code}: ${AiResponseParser.error(
+                json,
+                response.body.string(),
+                apiKey,
+                200,
+              )}",
             )
           }
           if (compatible) "Endpoint ready" else "API key verified successfully"
@@ -121,10 +133,21 @@ class OpenAiClient(
   ): Result<AiGeneratedContent> =
     withContext(Dispatchers.IO) {
       runCatchingCancellable {
-        val messages = listOf(
-          OpenAiMessage(role = if (!compatible && isReasoningModel(model)) "developer" else "system", content = instruction),
-          OpenAiMessage(role = "user", content = userInput),
-        )
+        val messages =
+          listOf(
+            OpenAiMessage(
+              role =
+                if (!compatible &&
+                  isReasoningModel(model)
+                ) {
+                  "developer"
+                } else {
+                  "system"
+                },
+              content = instruction,
+            ),
+            OpenAiMessage(role = "user", content = userInput),
+          )
         val requestBody =
           if (compatible) {
             json.encodeToString(
@@ -152,7 +175,14 @@ class OpenAiClient(
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
           if (!response.isSuccessful) {
-            throw Exception("$providerName at $target returned HTTP ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
+            throw Exception(
+              "$providerName at $target returned HTTP ${response.code}: ${AiResponseParser.error(
+                json,
+                body,
+                apiKey,
+                200,
+              )}",
+            )
           }
           AiResponseParser.openAiCompatible(json, body, providerName)
         }
@@ -168,7 +198,10 @@ class OpenAiClient(
     return url.newBuilder().addPathSegments(path).build()
   }
 
-  private fun requestBuilder(target: HttpUrl, apiKey: String): Request.Builder =
+  private fun requestBuilder(
+    target: HttpUrl,
+    apiKey: String,
+  ): Request.Builder =
     Request.Builder().url(target).apply {
       if (apiKey.isNotBlank()) {
         require(apiKey.all { it.code in 0x21..0x7e }) { "API key must be a single printable token without spaces" }

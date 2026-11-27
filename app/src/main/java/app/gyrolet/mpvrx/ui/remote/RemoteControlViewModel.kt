@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.remote
 
 import android.app.Application
@@ -66,16 +66,27 @@ enum class RemoteFailure(
 sealed interface RemoteConnection {
   data object Idle : RemoteConnection
 
-  data class Connecting(val name: String) : RemoteConnection
+  data class Connecting(
+    val name: String,
+  ) : RemoteConnection
 
-  data class AwaitingApproval(val name: String, val code: String) : RemoteConnection
+  data class AwaitingApproval(
+    val name: String,
+    val code: String,
+  ) : RemoteConnection
 
-  data class Connected(val name: String) : RemoteConnection
+  data class Connected(
+    val name: String,
+  ) : RemoteConnection
 
-  data class Failed(val reason: RemoteFailure) : RemoteConnection
+  data class Failed(
+    val reason: RemoteFailure,
+  ) : RemoteConnection
 }
 
-class RemoteControlViewModel(application: Application) : AndroidViewModel(application) {
+class RemoteControlViewModel(
+  application: Application,
+) : AndroidViewModel(application) {
   private val store = RemoteControlStore(application)
   private val sender = Executors.newSingleThreadExecutor()
 
@@ -113,7 +124,12 @@ class RemoteControlViewModel(application: Application) : AndroidViewModel(applic
 
   /** Accepts "host" or "host:port"; returns false when the text is not an address. */
   fun connectToAddress(address: String): Boolean {
-    val trimmed = address.trim().removePrefix("http://").removePrefix("https://").trimEnd('/')
+    val trimmed =
+      address
+        .trim()
+        .removePrefix("http://")
+        .removePrefix("https://")
+        .trimEnd('/')
     if (trimmed.isEmpty() || trimmed.any { it.isWhitespace() || it == '/' }) return false
     val hasPort = trimmed.count { it == ':' } == 1
     val host = if (hasPort) trimmed.substringBefore(':') else trimmed
@@ -172,7 +188,11 @@ class RemoteControlViewModel(application: Application) : AndroidViewModel(applic
       }
   }
 
-  private fun startSession(host: String, port: Int, label: String) {
+  private fun startSession(
+    host: String,
+    port: Int,
+    label: String,
+  ) {
     sessionJob?.cancel()
     closeSocket()
     discoveryJob?.cancel()
@@ -187,7 +207,11 @@ class RemoteControlViewModel(application: Application) : AndroidViewModel(applic
             runSession(token, host, port, label)
           } catch (error: Exception) {
             if (error is CancellationException) throw error
-            if (_connection.value is RemoteConnection.Connected) RemoteFailure.Disconnected else RemoteFailure.Unreachable
+            if (_connection.value is RemoteConnection.Connected) {
+              RemoteFailure.Disconnected
+            } else {
+              RemoteFailure.Unreachable
+            }
           }
         if (isActive && sessionToken === token) {
           activeChannel = null
@@ -198,7 +222,12 @@ class RemoteControlViewModel(application: Application) : AndroidViewModel(applic
   }
 
   /** Returns why the session ended. A TV that forgot this phone answers in pairing mode. */
-  private fun runSession(token: Any, host: String, port: Int, label: String): RemoteFailure {
+  private fun runSession(
+    token: Any,
+    host: String,
+    port: Int,
+    label: String,
+  ): RemoteFailure {
     return Socket().use { socket ->
       if (sessionToken !== token) return RemoteFailure.Disconnected
       activeSocket = socket
@@ -218,15 +247,25 @@ class RemoteControlViewModel(application: Application) : AndroidViewModel(applic
         ),
       )
       val hello = channel.receive()
-      if (hello.type != RemoteMessageType.HELLO || hello.version != REMOTE_PROTOCOL_VERSION) return RemoteFailure.Unreachable
+      if (hello.type != RemoteMessageType.HELLO ||
+        hello.version != REMOTE_PROTOCOL_VERSION
+      ) {
+        return RemoteFailure.Unreachable
+      }
       val serverKey = hello.publicKey.fromBase64()
       val commitment = hello.commitment.fromBase64()
       val tvId = hello.tvId?.takeIf { it.isNotBlank() } ?: return RemoteFailure.Unreachable
-      val tvName = hello.name?.trim()?.take(MAX_NAME_LENGTH)?.takeIf { it.isNotBlank() } ?: label
+      val tvName =
+        hello.name
+          ?.trim()
+          ?.take(MAX_NAME_LENGTH)
+          ?.takeIf { it.isNotBlank() } ?: label
       val saved = store.pairedTv(tvId)
 
       val clientNonce = RemoteCrypto.randomBytes(REMOTE_NONCE_BYTES)
-      channel.send(RemoteMessage(type = RemoteMessageType.NONCE, nonce = clientNonce.toBase64(), pairId = saved?.pairId))
+      channel.send(
+        RemoteMessage(type = RemoteMessageType.NONCE, nonce = clientNonce.toBase64(), pairId = saved?.pairId),
+      )
       val nonceReply = channel.receive()
       if (nonceReply.type != RemoteMessageType.NONCE) return RemoteFailure.Unreachable
       val serverNonce = nonceReply.nonce.fromBase64(REMOTE_NONCE_BYTES)
@@ -240,7 +279,10 @@ class RemoteControlViewModel(application: Application) : AndroidViewModel(applic
       if (nonceReply.mode == RemoteMode.RESUME && saved != null) {
         val secret = saved.secret.fromBase64(REMOTE_SECRET_BYTES)
         channel.send(
-          RemoteMessage(type = RemoteMessageType.AUTH, proof = RemoteCrypto.proof(secret, "client", transcript).toBase64()),
+          RemoteMessage(
+            type = RemoteMessageType.AUTH,
+            proof = RemoteCrypto.proof(secret, "client", transcript).toBase64(),
+          ),
         )
         val auth = channel.receive()
         val expected = RemoteCrypto.proof(secret, "server", transcript)
@@ -276,7 +318,10 @@ class RemoteControlViewModel(application: Application) : AndroidViewModel(applic
     }
   }
 
-  private fun readAcks(token: Any, channel: RemoteChannel): Nothing {
+  private fun readAcks(
+    token: Any,
+    channel: RemoteChannel,
+  ): Nothing {
     while (true) {
       val message = channel.receive()
       if (message.type == RemoteMessageType.ACK && sessionToken === token) {
@@ -285,7 +330,10 @@ class RemoteControlViewModel(application: Application) : AndroidViewModel(applic
     }
   }
 
-  private fun savedTvList(): List<DiscoveredTv> = store.pairedTvs().map { DiscoveredTv(it.name, it.host, it.port, it.tvId) }
+  private fun savedTvList(): List<DiscoveredTv> =
+    store.pairedTvs().map {
+      DiscoveredTv(it.name, it.host, it.port, it.tvId)
+    }
 
   private fun refreshSaved() {
     val saved = savedTvList()
@@ -344,7 +392,10 @@ private fun discoverRemoteTvs(context: Context): Flow<List<DiscoveredTv>> =
       resolving = true
       val listener =
         object : NsdManager.ResolveListener {
-          override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+          override fun onResolveFailed(
+            serviceInfo: NsdServiceInfo,
+            errorCode: Int,
+          ) {
             handler.post {
               resolving = false
               resolveNext()
@@ -356,7 +407,8 @@ private fun discoverRemoteTvs(context: Context): Flow<List<DiscoveredTv>> =
               resolving = false
               val address =
                 if (Build.VERSION.SDK_INT >= 34) {
-                  serviceInfo.hostAddresses.firstOrNull { it is Inet4Address } ?: serviceInfo.hostAddresses.firstOrNull()
+                  serviceInfo.hostAddresses.firstOrNull { it is Inet4Address }
+                    ?: serviceInfo.hostAddresses.firstOrNull()
                 } else {
                   serviceInfo.host
                 }
@@ -384,9 +436,15 @@ private fun discoverRemoteTvs(context: Context): Flow<List<DiscoveredTv>> =
 
         override fun onDiscoveryStopped(serviceType: String) = Unit
 
-        override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) = Unit
+        override fun onStartDiscoveryFailed(
+          serviceType: String,
+          errorCode: Int,
+        ) = Unit
 
-        override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) = Unit
+        override fun onStopDiscoveryFailed(
+          serviceType: String,
+          errorCode: Int,
+        ) = Unit
 
         override fun onServiceFound(serviceInfo: NsdServiceInfo) {
           handler.post {
@@ -399,7 +457,11 @@ private fun discoverRemoteTvs(context: Context): Flow<List<DiscoveredTv>> =
 
         override fun onServiceLost(serviceInfo: NsdServiceInfo) {
           handler.post {
-            if (results.remove(serviceInfo.serviceName) != null) trySend(results.values.distinctBy { it.host to it.port })
+            if (results.remove(serviceInfo.serviceName) !=
+              null
+            ) {
+              trySend(results.values.distinctBy { it.host to it.port })
+            }
           }
         }
       }

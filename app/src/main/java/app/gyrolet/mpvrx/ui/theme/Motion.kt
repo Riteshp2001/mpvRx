@@ -30,20 +30,20 @@ import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import org.koin.compose.koinInject
@@ -168,11 +168,12 @@ fun Modifier.appPressFeedback(
 ): Modifier {
   if (!enabled || reduceMotion) return this
   val pressed by interactionSource.collectIsPressedAsState()
-  val scale = animateFloatAsState(
-    targetValue = if (pressed) pressedScale else 1f,
-    animationSpec = if (pressed) AppMotion.Spatial.Press else AppMotion.Spatial.Release,
-    label = "appPressFeedback",
-  )
+  val scale =
+    animateFloatAsState(
+      targetValue = if (pressed) pressedScale else 1f,
+      animationSpec = if (pressed) AppMotion.Spatial.Press else AppMotion.Spatial.Release,
+      label = "appPressFeedback",
+    )
   return graphicsLayer {
     scaleX = scale.value
     scaleY = scale.value
@@ -181,9 +182,7 @@ fun Modifier.appPressFeedback(
 
 /** Dialogs enter once per opening, not on recomposition or when their fields change. */
 @Composable
-fun Modifier.appDialogEnter(
-  reduceMotion: Boolean = AppMotion.shouldReduceMotion(),
-): Modifier {
+fun Modifier.appDialogEnter(reduceMotion: Boolean = AppMotion.shouldReduceMotion()): Modifier {
   if (reduceMotion) return this
   val progress = remember { Animatable(0f) }
   LaunchedEffect(Unit) {

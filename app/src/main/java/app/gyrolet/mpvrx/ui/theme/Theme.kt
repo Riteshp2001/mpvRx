@@ -390,7 +390,12 @@ fun MpvrxTheme(
         content = {
           ProvideTvFocusRipple {
             app.gyrolet.mpvrx.ui.utils.ProvideAppHaptics {
-              if (hostToasts) app.gyrolet.mpvrx.ui.components.AppToastHost(content) else content()
+              if (hostToasts) {
+                app.gyrolet.mpvrx.ui.components
+                  .AppToastHost(content)
+              } else {
+                content()
+              }
             }
           }
         },
@@ -437,7 +442,7 @@ internal fun resolveAppColorScheme(
   }
 
 /** Keeps wallpaper-derived accents while replacing near-white full-screen surfaces. */
-private fun androidx.compose.material3.ColorScheme.withComfortableLightSurfaces(): androidx.compose.material3.ColorScheme {
+private fun ColorScheme.withComfortableLightSurfaces(): ColorScheme {
   val base = Color(0xFFF7F5F8)
 
   fun tint(amount: Float) =
@@ -476,7 +481,9 @@ private const val RIPPLE_PRESSED_ALPHA = .6f
 @Suppress("DEPRECATION")
 @Composable
 private fun ProvideTvFocusRipple(content: @Composable () -> Unit) {
-  val isTelevision = app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(LocalContext.current)
+  val isTelevision =
+    app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+      .isTelevision(LocalContext.current)
   if (!isTelevision) {
     content()
     return

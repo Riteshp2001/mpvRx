@@ -268,7 +268,14 @@ internal object AppLogFile {
       val directory = File(context.noBackupFilesDir, DIRECTORY)
       val log = File(directory, PREVIOUS).takeIf(File::isFile) ?: return null
       val header = log.bufferedReader().use { it.readLine() }.orEmpty()
-      if (header.removePrefix(PID_HEADER).substringBefore(',').trim().toIntOrNull() != processId) return null
+      if (header
+          .removePrefix(PID_HEADER)
+          .substringBefore(',')
+          .trim()
+          .toIntOrNull() != processId
+      ) {
+        return null
+      }
       val text =
         buildString {
           sequenceOf(File(directory, PREVIOUS_ROLLED), log).filter(File::isFile).forEach { file ->
@@ -289,10 +296,11 @@ internal object AppLogFile {
         // Released as soon as a line leaves the queue, whatever happens to it afterwards.
         var entry: DebugLogEntry? = queue.take().also { queuedChars.addAndGet(-it.chars()) }
         try {
-          val output = writer ?: open(current).also {
-            writer = it
-            written = current.length()
-          }
+          val output =
+            writer ?: open(current).also {
+              writer = it
+              written = current.length()
+            }
           while (entry != null) {
             val line = entry.toLogLine()
             output.write(line)
@@ -331,7 +339,12 @@ internal object AppLogFile {
     val fresh = !file.exists() || file.length() == 0L
     val writer = FileOutputStream(file, true).bufferedWriter(Charsets.UTF_8)
     if (fresh) {
-      writer.write("$PID_HEADER${Process.myPid()}, started ${SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.ROOT).format(Date())}")
+      writer.write(
+        "$PID_HEADER${Process.myPid()}, started ${SimpleDateFormat(
+          "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+          Locale.ROOT,
+        ).format(Date())}",
+      )
       writer.newLine()
     }
     return writer
@@ -563,7 +576,11 @@ internal object LogcatTap {
         Thread.sleep(1_000L * quickFailures)
       }
     } catch (error: Exception) {
-      AndroidLog.w(AppLogging.DEFAULT_TAG, "logcat is unavailable; Android's own lines are left out of the app log", error)
+      AndroidLog.w(
+        AppLogging.DEFAULT_TAG,
+        "logcat is unavailable; Android's own lines are left out of the app log",
+        error,
+      )
     }
   }
 

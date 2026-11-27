@@ -1,15 +1,15 @@
 package app.gyrolet.mpvrx.ui.browser.cards
 
 import androidx.compose.animation.core.snap
-import androidx.compose.foundation.background
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -46,6 +46,7 @@ internal fun Modifier.mediaCardClickable(
  * conditional on selection) so toggling selection never jumps rows or reloads thumbnails.
  */
 internal val MediaSelectionGridGap = 4.dp
+
 // Keep the list and grid breathing room identical; gaps never depend on selection.
 internal val MediaSelectionListGap = MediaSelectionGridGap
 
@@ -95,29 +96,59 @@ internal fun rememberMediaSelectionShape(
   val spec = AppMotion.spatial(AppMotion.Spatial.SnappyDp, snap())
   val scope = rememberCoroutineScope()
   val topStart by animateDpWhenChanged(
-    targetValue = if (!selected) regular else if (neighbors.top || neighbors.start) inner else outer,
+    targetValue =
+      if (!selected) {
+        regular
+      } else if (neighbors.top || neighbors.start) {
+        inner
+      } else {
+        outer
+      },
     animationSpec = spec,
     scope = scope,
   )
   val topEnd by animateDpWhenChanged(
-    targetValue = if (!selected) regular else if (neighbors.top || neighbors.end) inner else outer,
+    targetValue =
+      if (!selected) {
+        regular
+      } else if (neighbors.top || neighbors.end) {
+        inner
+      } else {
+        outer
+      },
     animationSpec = spec,
     scope = scope,
   )
   val bottomStart by animateDpWhenChanged(
-    targetValue = if (!selected) regular else if (neighbors.bottom || neighbors.start) inner else outer,
+    targetValue =
+      if (!selected) {
+        regular
+      } else if (neighbors.bottom || neighbors.start) {
+        inner
+      } else {
+        outer
+      },
     animationSpec = spec,
     scope = scope,
   )
   val bottomEnd by animateDpWhenChanged(
-    targetValue = if (!selected) regular else if (neighbors.bottom || neighbors.end) inner else outer,
+    targetValue =
+      if (!selected) {
+        regular
+      } else if (neighbors.bottom || neighbors.end) {
+        inner
+      } else {
+        outer
+      },
     animationSpec = spec,
     scope = scope,
   )
   return remember(topStart, topEnd, bottomStart, bottomEnd) {
     RoundedCornerShape(
-      topStart = topStart, topEnd = topEnd,
-      bottomStart = bottomStart, bottomEnd = bottomEnd,
+      topStart = topStart,
+      topEnd = topEnd,
+      bottomStart = bottomStart,
+      bottomEnd = bottomEnd,
     )
   }
 }
@@ -144,16 +175,18 @@ internal fun SelectionIndicator(
   modifier: Modifier = Modifier,
 ) {
   val scope = rememberCoroutineScope()
-  val opacityState = animateFloatWhenChanged(
-    targetValue = if (selected) 1f else 0f,
-    animationSpec = AppMotion.spatial(AppMotion.Effect.Alpha, snap()),
-    scope = scope,
-  )
-  val scaleState = animateFloatWhenChanged(
-    targetValue = if (selected) 1f else 0.88f,
-    animationSpec = AppMotion.spatial(AppMotion.Spatial.ExpressiveFast, snap()),
-    scope = scope,
-  )
+  val opacityState =
+    animateFloatWhenChanged(
+      targetValue = if (selected) 1f else 0f,
+      animationSpec = AppMotion.spatial(AppMotion.Effect.Alpha, snap()),
+      scope = scope,
+    )
+  val scaleState =
+    animateFloatWhenChanged(
+      targetValue = if (selected) 1f else 0.88f,
+      animationSpec = AppMotion.spatial(AppMotion.Spatial.ExpressiveFast, snap()),
+      scope = scope,
+    )
   val fadedOut by remember { derivedStateOf { opacityState.value <= 0f } }
   // Unselected cards keep only the badge's footprint; its circle and icon are composed while visible.
   if (!selected && fadedOut) {
@@ -162,7 +195,9 @@ internal fun SelectionIndicator(
   }
   Box(
     modifier =
-      modifier.size(24.dp).clearAndSetSemantics { }
+      modifier
+        .size(24.dp)
+        .clearAndSetSemantics { }
         .graphicsLayer {
           alpha = opacityState.value
           val scale = scaleState.value

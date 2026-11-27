@@ -38,5 +38,4 @@ private val CARD_DATE_FORMATTER: DateTimeFormatter =
   DateTimeFormatter.ofPattern("MMM dd").withZone(ZoneId.systemDefault())
 
 /** [timestamp] is milliseconds since the epoch, as carried by `NetworkFile.lastModified`. */
-internal fun formatCardDate(timestamp: Long): String =
-  CARD_DATE_FORMATTER.format(Instant.ofEpochMilli(timestamp))
+internal fun formatCardDate(timestamp: Long): String = CARD_DATE_FORMATTER.format(Instant.ofEpochMilli(timestamp))

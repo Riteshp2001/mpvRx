@@ -23,7 +23,6 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,6 +45,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.VideoAspect
 import app.gyrolet.mpvrx.ui.player.controls.icon
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 data class AspectRatio(
   val label: String,
@@ -78,7 +78,12 @@ fun AspectRatioSheet(
       AspectRatio("2.39:1", 2.39),
     )
 
-  PlayerSheet(onDismissRequest, title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_aspect_ratio)) {
+  PlayerSheet(
+    onDismissRequest,
+    title =
+      androidx.compose.ui.res
+        .stringResource(app.gyrolet.mpvrx.R.string.ui_aspect_ratio),
+  ) {
     Column(
       modifier =
         modifier
@@ -97,17 +102,21 @@ fun AspectRatioSheet(
             onClick = { onSelectMode(mode) },
             label = { Text(stringResource(mode.titleRes)) },
             leadingIcon = { Icon(mode.icon(), contentDescription = null) },
-            colors = androidx.compose.material3.InputChipDefaults.inputChipColors(
-              containerColor = playerSheetSelectionColor(false),
-              selectedContainerColor = playerSheetSelectionColor(true),
-              selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            ),
+            colors =
+              androidx.compose.material3.InputChipDefaults.inputChipColors(
+                containerColor = playerSheetSelectionColor(false),
+                selectedContainerColor = playerSheetSelectionColor(true),
+                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+              ),
           )
         }
       }
 
       // Preset ratios
-      PlayerSheetSectionHeader(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_presets))
+      PlayerSheetSectionHeader(
+        androidx.compose.ui.res
+          .stringResource(app.gyrolet.mpvrx.R.string.ui_presets),
+      )
 
       androidx.compose.foundation.layout.FlowRow(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -119,18 +128,22 @@ fun AspectRatioSheet(
             onClick = { onSelectRatio(ratio.ratio) },
             label = { Text(ratio.label) },
             leadingIcon = null,
-            colors = androidx.compose.material3.InputChipDefaults.inputChipColors(
-              containerColor = playerSheetSelectionColor(false),
-              selectedContainerColor = playerSheetSelectionColor(true),
-              selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            ),
+            colors =
+              androidx.compose.material3.InputChipDefaults.inputChipColors(
+                containerColor = playerSheetSelectionColor(false),
+                selectedContainerColor = playerSheetSelectionColor(true),
+                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+              ),
           )
         }
       }
 
       // Custom ratios
       if (customRatios.isNotEmpty()) {
-        PlayerSheetSectionHeader(androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_gesture_double_tap_custom))
+        PlayerSheetSectionHeader(
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.pref_gesture_double_tap_custom),
+        )
 
         androidx.compose.foundation.layout.FlowRow(
           modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -142,11 +155,12 @@ fun AspectRatioSheet(
               onClick = { onSelectRatio(ratio.ratio) },
               label = { Text(ratio.label) },
               leadingIcon = null,
-            colors = androidx.compose.material3.InputChipDefaults.inputChipColors(
-              containerColor = playerSheetSelectionColor(false),
-              selectedContainerColor = playerSheetSelectionColor(true),
-              selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            ),
+              colors =
+                androidx.compose.material3.InputChipDefaults.inputChipColors(
+                  containerColor = playerSheetSelectionColor(false),
+                  selectedContainerColor = playerSheetSelectionColor(true),
+                  selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
               trailingIcon = {
                 Icon(
                   Icons.RoundedFilled.Close,

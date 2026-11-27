@@ -12,16 +12,16 @@ package app.gyrolet.mpvrx.ui.theme
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.snap
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.State
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
@@ -165,15 +165,19 @@ fun rememberConnectedShape(
   reduceMotion: Boolean = AppMotion.shouldReduceMotion(),
 ): Shape {
   val layoutDirection = LocalLayoutDirection.current
-  val target = remember(index, itemCount, layout, columns, tokens, pressed, selected) {
-    connectedCornerRadii(
-      index, itemCount, layout, columns,
-      tokens.copy(
-        outerCorner = if (pressed) tokens.outerCorner * 0.64f else tokens.outerCorner,
-        innerCorner = if (pressed || selected) tokens.innerCorner + 8.dp else tokens.innerCorner,
-      ),
-    )
-  }
+  val target =
+    remember(index, itemCount, layout, columns, tokens, pressed, selected) {
+      connectedCornerRadii(
+        index,
+        itemCount,
+        layout,
+        columns,
+        tokens.copy(
+          outerCorner = if (pressed) tokens.outerCorner * 0.64f else tokens.outerCorner,
+          innerCorner = if (pressed || selected) tokens.innerCorner + 8.dp else tokens.innerCorner,
+        ),
+      )
+    }
   val animationSpec = if (reduceMotion) AppMotion.ReducedDp else AppMotion.Spatial.SnappyDp
   val topStart by animateDpAsState(target.topStart, animationSpec, label = "connectedTopStart")
   val topEnd by animateDpAsState(target.topEnd, animationSpec, label = "connectedTopEnd")
@@ -214,9 +218,15 @@ fun animatedConnectedContainerColor(
   containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
   selectedContainerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
   reduceMotion: Boolean = AppMotion.shouldReduceMotion(),
-): Color = animatedConnectedContainerColorState(
-  selected, pressed, enabled, containerColor, selectedContainerColor, reduceMotion,
-).value
+): Color =
+  animatedConnectedContainerColorState(
+    selected,
+    pressed,
+    enabled,
+    containerColor,
+    selectedContainerColor,
+    reduceMotion,
+  ).value
 
 /** Visible for deterministic shape verification without requiring composition. */
 internal fun ConnectedCornerRadii.physical(layoutDirection: LayoutDirection): ConnectedCornerRadii =

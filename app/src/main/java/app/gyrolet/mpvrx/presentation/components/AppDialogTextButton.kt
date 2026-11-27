@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.presentation.components
 
 import androidx.compose.foundation.BorderStroke
@@ -38,29 +38,55 @@ fun AppDialogTextButton(
   val emphasis = LocalDialogActionEmphasis.current
   val source = interactionSource ?: remember { MutableInteractionSource() }
   val reduceMotion = AppMotion.shouldReduceMotion()
-  val focusModifier = modifier.tvFocusHighlight(shape, clipToShape = false).then(
-    if (emphasis != DialogActionEmphasis.None && shapes == null) {
-      Modifier.appPressFeedback(source, enabled = enabled, reduceMotion = reduceMotion)
-    } else Modifier,
-  )
+  val focusModifier =
+    modifier.tvFocusHighlight(shape, clipToShape = false).then(
+      if (emphasis != DialogActionEmphasis.None && shapes == null) {
+        Modifier.appPressFeedback(source, enabled = enabled, reduceMotion = reduceMotion)
+      } else {
+        Modifier
+      },
+    )
   val scheme = MaterialTheme.colorScheme
-  val resolvedColors = colors ?: when (emphasis) {
-    DialogActionEmphasis.Primary -> ButtonDefaults.textButtonColors(containerColor = scheme.primary, contentColor = scheme.onPrimary)
-    DialogActionEmphasis.Secondary -> ButtonDefaults.textButtonColors(containerColor = scheme.secondaryContainer, contentColor = scheme.onSecondaryContainer)
-    DialogActionEmphasis.None -> ButtonDefaults.textButtonColors()
-  }
+  val resolvedColors =
+    colors ?: when (emphasis) {
+      DialogActionEmphasis.Primary ->
+        ButtonDefaults.textButtonColors(
+          containerColor = scheme.primary,
+          contentColor = scheme.onPrimary,
+        )
+      DialogActionEmphasis.Secondary ->
+        ButtonDefaults.textButtonColors(
+          containerColor = scheme.secondaryContainer,
+          contentColor = scheme.onSecondaryContainer,
+        )
+      DialogActionEmphasis.None -> ButtonDefaults.textButtonColors()
+    }
   val resolvedShapes = shapes?.takeUnless { reduceMotion }
   if (resolvedShapes != null) {
     androidx.compose.material3.TextButton(
-      onClick = onClick, modifier = focusModifier, enabled = enabled, shapes = resolvedShapes,
-      colors = resolvedColors, elevation = elevation, border = border,
-      contentPadding = contentPadding, interactionSource = source, content = content,
+      onClick = onClick,
+      modifier = focusModifier,
+      enabled = enabled,
+      shapes = resolvedShapes,
+      colors = resolvedColors,
+      elevation = elevation,
+      border = border,
+      contentPadding = contentPadding,
+      interactionSource = source,
+      content = content,
     )
   } else {
     androidx.compose.material3.TextButton(
-      onClick = onClick, modifier = focusModifier, enabled = enabled, shape = shape,
-      colors = resolvedColors, elevation = elevation, border = border,
-      contentPadding = contentPadding, interactionSource = source, content = content,
+      onClick = onClick,
+      modifier = focusModifier,
+      enabled = enabled,
+      shape = shape,
+      colors = resolvedColors,
+      elevation = elevation,
+      border = border,
+      contentPadding = contentPadding,
+      interactionSource = source,
+      content = content,
     )
   }
 }

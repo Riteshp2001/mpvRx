@@ -23,10 +23,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -52,8 +52,8 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.LiquidGlassBackdrop
 import app.gyrolet.mpvrx.presentation.components.LiquidGlassEditingBarSurface
 import app.gyrolet.mpvrx.presentation.components.rememberLiquidGlassBackdrop
-import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
+import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
@@ -118,7 +118,9 @@ fun BrowserBottomBar(
   val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
   val reducedMotion = AppMotion.shouldReduceMotion()
   val density = LocalDensity.current
-  val haptics = app.gyrolet.mpvrx.ui.utils.rememberAppHaptics()
+  val haptics =
+    app.gyrolet.mpvrx.ui.utils
+      .rememberAppHaptics()
   val entranceOffset = with(LocalDensity.current) { 12.dp.roundToPx() }
 
   var lastShowCopy by remember { mutableStateOf(showCopy) }
@@ -173,7 +175,11 @@ fun BrowserBottomBar(
               stiffness = AppMotion.Spatial.ExpressiveDp.stiffness,
             ),
           initialOffsetY = { entranceOffset },
-        ) + fadeIn(androidx.compose.animation.core.tween(180))
+        ) +
+          fadeIn(
+            androidx.compose.animation.core
+              .tween(180),
+          )
       },
     exit =
       if (reducedMotion) {
@@ -186,7 +192,11 @@ fun BrowserBottomBar(
               stiffness = androidx.compose.animation.core.Spring.StiffnessMedium,
             ),
           targetOffsetY = { entranceOffset },
-        ) + fadeOut(androidx.compose.animation.core.tween(120))
+        ) +
+          fadeOut(
+            androidx.compose.animation.core
+              .tween(120),
+          )
       },
   ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
@@ -303,8 +313,7 @@ fun BrowserBottomBar(
                   if (isSelectionMode) {
                     NavigationBarState.selectionBarHeight = with(density) { size.height.toDp() }
                   }
-                }
-                .horizontalScroll(rememberScrollState())
+                }.horizontalScroll(rememberScrollState())
                 .padding(
                   horizontal = layoutParams.rowPaddingHorizontal,
                   vertical = layoutParams.rowPaddingVertical,

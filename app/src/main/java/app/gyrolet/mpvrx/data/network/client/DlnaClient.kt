@@ -16,9 +16,6 @@ import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
 import app.gyrolet.mpvrx.domain.network.NetworkPath
 import app.gyrolet.mpvrx.network.SharedHttpClient
-import java.io.IOException
-import java.io.InputStream
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -29,9 +26,14 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import java.io.IOException
+import java.io.InputStream
+import java.util.concurrent.TimeUnit
 
 /** UPnP ContentDirectory browsing with durable object IDs and ranged HTTP playback. */
-class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
+class DlnaClient(
+  private val connection: NetworkConnection,
+) : NetworkClient {
   companion object {
     private const val PAGE_SIZE = 128
     private const val MAX_ITEMS = 50_000
@@ -45,32 +47,45 @@ class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
   private val metadata = LruCache<String, DlnaEntry>(MAX_METADATA_ENTRIES)
 
   private fun descriptionUrl(): HttpUrl {
-    val builder = HttpUrl.Builder()
-      .scheme(if (connection.useHttps) "https" else "http")
-      .host(connection.host.trim().removePrefix("[").removeSuffix("]"))
-      .port(connection.port)
+    val builder =
+      HttpUrl
+        .Builder()
+        .scheme(if (connection.useHttps) "https" else "http")
+        .host(
+          connection.host
+            .trim()
+            .removePrefix("[")
+            .removeSuffix("]"),
+        ).port(connection.port)
     NetworkPath.from(connection.path).segments.forEach(builder::addPathSegment)
     return builder.build()
   }
 
-  override suspend fun connect(): Result<Unit> = withContext(Dispatchers.IO) {
-    try {
-      val location = descriptionUrl()
-      val request = Request.Builder().url(location).get().build()
-      val found = http.newCall(request).execute().use { response ->
-        if (!response.isSuccessful) throw IOException("DLNA description failed with HTTP ${response.code}")
-        DlnaXml.description(DlnaXml.readBounded(response.body.byteStream()), response.request.url)
+  override suspend fun connect(): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      try {
+        val location = descriptionUrl()
+        val request =
+          Request
+            .Builder()
+            .url(location)
+            .get()
+            .build()
+        val found =
+          http.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IOException("DLNA description failed with HTTP ${response.code}")
+            DlnaXml.description(DlnaXml.readBounded(response.body.byteStream()), response.request.url)
+          }
+        currentCoroutineContext().ensureActive()
+        device = found
+        Result.success(Unit)
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (error: Exception) {
+        device = null
+        Result.failure(error)
       }
-      currentCoroutineContext().ensureActive()
-      device = found
-      Result.success(Unit)
-    } catch (cancelled: CancellationException) {
-      throw cancelled
-    } catch (error: Exception) {
-      device = null
-      Result.failure(error)
     }
-  }
 
   override suspend fun disconnect() {
     device = null
@@ -79,115 +94,160 @@ class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
 
   override fun isConnected(): Boolean = device != null
 
-  private fun browse(id: String, metadataOnly: Boolean, start: Int, count: Int): DlnaBrowsePage {
+  private fun browse(
+    id: String,
+    metadataOnly: Boolean,
+    start: Int,
+    count: Int,
+  ): DlnaBrowsePage {
     val server = device ?: throw IOException("DLNA server is not connected")
     val body = DlnaXml.browseRequest(server.serviceType, id, metadataOnly, start, count).toRequestBody(soapType)
-    val request = Request.Builder().url(server.controlUrl)
-      .header("SOAPAction", "\"${server.serviceType}#Browse\"")
-      .post(body).build()
+    val request =
+      Request
+        .Builder()
+        .url(server.controlUrl)
+        .header("SOAPAction", "\"${server.serviceType}#Browse\"")
+        .post(body)
+        .build()
     return http.newCall(request).execute().use { response ->
       if (!response.isSuccessful) throw IOException("DLNA browse failed with HTTP ${response.code}")
       DlnaXml.browseResponse(DlnaXml.readBounded(response.body.byteStream()), server.baseUrl)
     }
   }
 
-  override suspend fun listFiles(path: String): Result<List<NetworkFile>> = withContext(Dispatchers.IO) {
-    try {
-      val directory = NetworkPath.from(path)
-      val id = DlnaPath.objectId(directory)
-      val files = ArrayList<NetworkFile>()
-      val occurrences = mutableMapOf<Pair<Char, String>, Int>()
-      var start = 0
-      while (true) {
-        currentCoroutineContext().ensureActive()
-        val page = browse(id, false, start, PAGE_SIZE)
-        if (page.returned == 0) break
-        if (page.entries.isEmpty()) {
-          // A page can contain unsupported UPnP objects. Advance using NumberReturned.
-          start += page.returned
-        } else {
-          page.entries.forEach { entry ->
-            val key = entry.kind to entry.id
-            val duplicate = occurrences.getOrDefault(key, 0)
-            occurrences[key] = duplicate + 1
-            val child = DlnaPath.child(directory, entry.id, entry.kind, duplicate)
-            metadata.put(entry.id, entry)
-            val parent = metadata[id]
-            files += NetworkFile(
-              entry.title, child.value, entry.size, entry.kind == 'd' || entry.kind == 'o',
-              mimeType = entry.mimeType, durationMs = entry.durationMs,
-              artist = entry.artist ?: parent?.artist,
-              album = entry.album ?: parent?.album,
-              artworkUrl = (entry.artworkUrl ?: parent?.artworkUrl)?.toString(),
-              trackNumber = entry.trackNumber, year = entry.year,
-            )
+  override suspend fun listFiles(path: String): Result<List<NetworkFile>> =
+    withContext(Dispatchers.IO) {
+      try {
+        val directory = NetworkPath.from(path)
+        val id = DlnaPath.objectId(directory)
+        val files = ArrayList<NetworkFile>()
+        val occurrences = mutableMapOf<Pair<Char, String>, Int>()
+        var start = 0
+        while (true) {
+          currentCoroutineContext().ensureActive()
+          val page = browse(id, false, start, PAGE_SIZE)
+          if (page.returned == 0) break
+          if (page.entries.isEmpty()) {
+            // A page can contain unsupported UPnP objects. Advance using NumberReturned.
+            start += page.returned
+          } else {
+            page.entries.forEach { entry ->
+              val key = entry.kind to entry.id
+              val duplicate = occurrences.getOrDefault(key, 0)
+              occurrences[key] = duplicate + 1
+              val child = DlnaPath.child(directory, entry.id, entry.kind, duplicate)
+              metadata.put(entry.id, entry)
+              val parent = metadata[id]
+              files +=
+                NetworkFile(
+                  entry.title,
+                  child.value,
+                  entry.size,
+                  entry.kind == 'd' || entry.kind == 'o',
+                  mimeType = entry.mimeType,
+                  durationMs = entry.durationMs,
+                  artist = entry.artist ?: parent?.artist,
+                  album = entry.album ?: parent?.album,
+                  artworkUrl = (entry.artworkUrl ?: parent?.artworkUrl)?.toString(),
+                  trackNumber = entry.trackNumber,
+                  year = entry.year,
+                )
+            }
+            start += page.returned
           }
-          start += page.returned
+          if (start > MAX_ITEMS) throw IOException("DLNA folder has too many items")
+          if (page.total != null && start >= page.total) break
+          if (page.total == null && page.returned < PAGE_SIZE) break
         }
-        if (start > MAX_ITEMS) throw IOException("DLNA folder has too many items")
-        if (page.total != null && start >= page.total) break
-        if (page.total == null && page.returned < PAGE_SIZE) break
+        Result.success(files)
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (error: Exception) {
+        Result.failure(error)
       }
-      Result.success(files)
-    } catch (cancelled: CancellationException) {
-      throw cancelled
-    } catch (error: Exception) {
-      Result.failure(error)
     }
-  }
 
   private fun resolve(path: String): DlnaEntry {
     val id = DlnaPath.objectId(NetworkPath.from(path))
     metadata[id]?.let { return it }
-    val entry = browse(id, true, 0, 1).entries.firstOrNull { it.resource != null }
-      ?: throw IOException("DLNA media is no longer available")
+    val entry =
+      browse(id, true, 0, 1).entries.firstOrNull { it.resource != null }
+        ?: throw IOException("DLNA media is no longer available")
     metadata.put(id, entry)
     return entry
   }
 
-  override suspend fun getFileUri(path: String): Result<Uri> = withContext(Dispatchers.IO) {
-    try {
-      Result.success(Uri.parse(requireNotNull(resolve(path).resource).toString()))
-    } catch (cancelled: CancellationException) {
-      throw cancelled
-    } catch (error: Exception) {
-      Result.failure(error)
-    }
-  }
-
-  override suspend fun getFileSize(path: String): Result<Long> = withContext(Dispatchers.IO) {
-    try {
-      val entry = resolve(path)
-      if (entry.size > 0) return@withContext Result.success(entry.size)
-      val url = requireNotNull(entry.resource)
-      val head = Request.Builder().url(url).head().header("Accept-Encoding", "identity").build()
-      val size = http.newCall(head).execute().use { response ->
-        if (response.isSuccessful) response.header("Content-Length")?.toLongOrNull()?.takeIf { it > 0 } else null
-      } ?: run {
-        val request = Request.Builder().url(url).get().header("Range", "bytes=0-0")
-          .header("Accept-Encoding", "identity").build()
-        http.newCall(request).execute().use { response ->
-          val range = contentRange.matchEntire(response.header("Content-Range").orEmpty())
-          range?.groupValues?.get(3)?.toLongOrNull()
-            ?: if (response.code == 200) response.header("Content-Length")?.toLongOrNull() else null
-        }
+  override suspend fun getFileUri(path: String): Result<Uri> =
+    withContext(Dispatchers.IO) {
+      try {
+        Result.success(Uri.parse(requireNotNull(resolve(path).resource).toString()))
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (error: Exception) {
+        Result.failure(error)
       }
-      // Live tuner channels can be chunked HTTP streams with no finite file length.
-      Result.success(size?.takeIf { it > 0 } ?: -1L)
-    } catch (cancelled: CancellationException) {
-      throw cancelled
-    } catch (error: Exception) {
-      Result.failure(error)
     }
-  }
 
-  private data class RangedResponse(val response: Response, val start: Long, val end: Long?, val total: Long?)
+  override suspend fun getFileSize(path: String): Result<Long> =
+    withContext(Dispatchers.IO) {
+      try {
+        val entry = resolve(path)
+        if (entry.size > 0) return@withContext Result.success(entry.size)
+        val url = requireNotNull(entry.resource)
+        val head =
+          Request
+            .Builder()
+            .url(url)
+            .head()
+            .header("Accept-Encoding", "identity")
+            .build()
+        val size =
+          http.newCall(head).execute().use { response ->
+            if (response.isSuccessful) response.header("Content-Length")?.toLongOrNull()?.takeIf { it > 0 } else null
+          } ?: run {
+            val request =
+              Request
+                .Builder()
+                .url(url)
+                .get()
+                .header("Range", "bytes=0-0")
+                .header("Accept-Encoding", "identity")
+                .build()
+            http.newCall(request).execute().use { response ->
+              val range = contentRange.matchEntire(response.header("Content-Range").orEmpty())
+              range?.groupValues?.get(3)?.toLongOrNull()
+                ?: if (response.code == 200) response.header("Content-Length")?.toLongOrNull() else null
+            }
+          }
+        // Live tuner channels can be chunked HTTP streams with no finite file length.
+        Result.success(size?.takeIf { it > 0 } ?: -1L)
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (error: Exception) {
+        Result.failure(error)
+      }
+    }
 
-  private fun open(url: HttpUrl, offset: Long): RangedResponse {
-    val request = Request.Builder().url(url).get()
-      .apply { if (offset > 0L) header("Range", "bytes=$offset-") }
-      .header("Accept-Encoding", "identity")
-      .header("transferMode.dlna.org", "Streaming").build()
+  private data class RangedResponse(
+    val response: Response,
+    val start: Long,
+    val end: Long?,
+    val total: Long?,
+  )
+
+  private fun open(
+    url: HttpUrl,
+    offset: Long,
+  ): RangedResponse {
+    val request =
+      Request
+        .Builder()
+        .url(url)
+        .get()
+        .apply { if (offset > 0L) header("Range", "bytes=$offset-") }
+        .header("Accept-Encoding", "identity")
+        .header("transferMode.dlna.org", "Streaming")
+        .build()
     val response = http.newCall(request).execute()
     try {
       val length = response.body.contentLength()
@@ -207,8 +267,13 @@ class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
       val start = match?.groupValues?.get(1)?.toLongOrNull()
       val end = match?.groupValues?.get(2)?.toLongOrNull()
       val total = match?.groupValues?.get(3)?.toLongOrNull()
-      if (response.code != 206 || start != offset || end == null || end < offset ||
-        (length >= 0 && length != end - offset + 1) || (total != null && end >= total)) {
+      if (response.code != 206 ||
+        start != offset ||
+        end == null ||
+        end < offset ||
+        (length >= 0 && length != end - offset + 1) ||
+        (total != null && end >= total)
+      ) {
         throw IOException("DLNA server returned an invalid byte range (HTTP ${response.code})")
       }
       return RangedResponse(response, offset, end, total)
@@ -218,63 +283,76 @@ class DlnaClient(private val connection: NetworkConnection) : NetworkClient {
     }
   }
 
-  override suspend fun getFileStream(path: String, offset: Long): Result<InputStream> = withContext(Dispatchers.IO) {
-    try {
-      require(offset >= 0) { "Stream offset must not be negative" }
-      val url = requireNotNull(resolve(path).resource)
-      val first = open(url, offset)
-      Result.success(object : InputStream() {
-        private var current = first
-        private var stream = first.response.body.byteStream()
-        private var position = first.start
-        private var remaining = first.end?.let { it - first.start + 1 }
-        private var total = first.total
-        private var closed = false
+  override suspend fun getFileStream(
+    path: String,
+    offset: Long,
+  ): Result<InputStream> =
+    withContext(Dispatchers.IO) {
+      try {
+        require(offset >= 0) { "Stream offset must not be negative" }
+        val url = requireNotNull(resolve(path).resource)
+        val first = open(url, offset)
+        Result.success(
+          object : InputStream() {
+            private var current = first
+            private var stream = first.response.body.byteStream()
+            private var position = first.start
+            private var remaining = first.end?.let { it - first.start + 1 }
+            private var total = first.total
+            private var closed = false
 
-        override fun read(): Int {
-          val byte = ByteArray(1)
-          return if (read(byte, 0, 1) < 0) -1 else byte[0].toInt() and 0xff
-        }
+            override fun read(): Int {
+              val byte = ByteArray(1)
+              return if (read(byte, 0, 1) < 0) -1 else byte[0].toInt() and 0xff
+            }
 
-        override fun read(b: ByteArray, off: Int, len: Int): Int {
-          if (off < 0 || len < 0 || off > b.size - len) throw IndexOutOfBoundsException()
-          if (len == 0) return 0
-          check(!closed) { "DLNA stream is closed" }
-          while (true) {
-            if (remaining == 0L) {
-              val length = total ?: return -1
-              if (position >= length) return -1
-              current.response.close()
-              val next = open(url, position)
-              if (next.total != null && next.total != length) {
-                next.response.close()
-                throw IOException("DLNA resource length changed during playback")
+            override fun read(
+              b: ByteArray,
+              off: Int,
+              len: Int,
+            ): Int {
+              if (off < 0 || len < 0 || off > b.size - len) throw IndexOutOfBoundsException()
+              if (len == 0) return 0
+              check(!closed) { "DLNA stream is closed" }
+              while (true) {
+                if (remaining == 0L) {
+                  val length = total ?: return -1
+                  if (position >= length) return -1
+                  current.response.close()
+                  val next = open(url, position)
+                  if (next.total != null && next.total != length) {
+                    next.response.close()
+                    throw IOException("DLNA resource length changed during playback")
+                  }
+                  current = next
+                  stream = next.response.body.byteStream()
+                  remaining = next.end?.let { it - next.start + 1 }
+                  total = next.total ?: length
+                }
+                val count = stream.read(b, off, remaining?.let { minOf(it, len.toLong()).toInt() } ?: len)
+                if (count > 0) {
+                  position += count
+                  remaining = remaining?.minus(count)
+                  return count
+                }
+                if (count == 0) continue
+                if (remaining == null) return -1
+                throw IOException("DLNA range ended prematurely")
               }
-              current = next
-              stream = next.response.body.byteStream()
-              remaining = next.end?.let { it - next.start + 1 }
-              total = next.total ?: length
             }
-            val count = stream.read(b, off, remaining?.let { minOf(it, len.toLong()).toInt() } ?: len)
-            if (count > 0) {
-              position += count
-              remaining = remaining?.minus(count)
-              return count
-            }
-            if (count == 0) continue
-            if (remaining == null) return -1
-            throw IOException("DLNA range ended prematurely")
-          }
-        }
 
-        override fun close() {
-          if (!closed) { closed = true; current.response.close() }
-        }
-      })
-    } catch (cancelled: CancellationException) {
-      throw cancelled
-    } catch (error: Exception) {
-      Result.failure(error)
+            override fun close() {
+              if (!closed) {
+                closed = true
+                current.response.close()
+              }
+            }
+          },
+        )
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (error: Exception) {
+        Result.failure(error)
+      }
     }
-  }
 }

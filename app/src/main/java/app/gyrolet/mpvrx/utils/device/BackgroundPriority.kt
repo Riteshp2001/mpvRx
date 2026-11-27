@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.utils.device
 
 import android.os.Process
@@ -13,7 +13,8 @@ private const val LOW_PRIORITY_WORK = Process.THREAD_PRIORITY_BACKGROUND + Proce
 internal fun <T> runAtLowThreadPriority(block: () -> T): T {
   val previous = runCatching { Process.getThreadPriority(Process.myTid()) }.getOrNull()
   val lowered =
-    previous != null && previous < LOW_PRIORITY_WORK &&
+    previous != null &&
+      previous < LOW_PRIORITY_WORK &&
       runCatching { Process.setThreadPriority(LOW_PRIORITY_WORK) }.isSuccess
   try {
     return block()

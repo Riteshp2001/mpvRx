@@ -13,8 +13,8 @@ import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import app.gyrolet.mpvrx.domain.browser.FileSystemItem
 import app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
+import app.gyrolet.mpvrx.domain.browser.FileSystemItem
 import app.gyrolet.mpvrx.domain.browser.PathComponent
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
@@ -25,10 +25,10 @@ import app.gyrolet.mpvrx.ui.browser.base.BaseBrowserViewModel
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
-import app.gyrolet.mpvrx.utils.media.VisibleDirectoryWatcher
 import app.gyrolet.mpvrx.utils.media.MetadataRetrieval
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.media.PlaybackStateOps
+import app.gyrolet.mpvrx.utils.media.VisibleDirectoryWatcher
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils.StorageOps
 import app.gyrolet.mpvrx.utils.sort.SortUtils
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
@@ -74,7 +74,7 @@ class FileSystemBrowserViewModel(
 
   // Special marker for "show storage volumes" mode
   // Similar to Fossify's root/home folder detection
-  private val STORAGE_ROOTS_MARKER = "__STORAGE_ROOTS__"
+  private val storageRootsMarker = "__STORAGE_ROOTS__"
 
   // Home directory - the top-most directory we can navigate to (set once on init)
   // This prevents navigation errors when the app opens to a specific storage volume
@@ -82,12 +82,12 @@ class FileSystemBrowserViewModel(
 
   // Current directory path - corresponds to Fossify's currentPath
   // If initialPath is null, we'll determine it after checking storage volumes
-  private val _currentPath = MutableStateFlow(initialPath ?: STORAGE_ROOTS_MARKER)
+  private val _currentPath = MutableStateFlow(initialPath ?: storageRootsMarker)
   val currentPath: StateFlow<String> = _currentPath.asStateFlow()
 
   // Unsorted items from filesystem scan - before sorting is applied
   // Similar to Fossify's items list before sorting
-  private val _unsortedItems = MutableStateFlow<List<FileSystemItem>>(emptyList())
+  private val unsortedItemsState = MutableStateFlow<List<FileSystemItem>>(emptyList())
 
   private data class ItemChange(
     val original: FileSystemItem,
@@ -136,7 +136,7 @@ class FileSystemBrowserViewModel(
     MutableStateFlow(initialPath == null).apply {
       viewModelScope.launch {
         _currentPath.collect { path ->
-          value = path == STORAGE_ROOTS_MARKER || path == homeDirectory
+          value = path == storageRootsMarker || path == homeDirectory
         }
       }
     }
@@ -194,7 +194,7 @@ class FileSystemBrowserViewModel(
           // Multiple roots - home is the storage roots view
           homeDirectory = null
         }
-        // If multiple roots or none, stay at STORAGE_ROOTS_MARKER
+        // If multiple roots or none, stay at storageRootsMarker
         loadCurrentDirectory()
       }
     } else {
@@ -225,8 +225,8 @@ class FileSystemBrowserViewModel(
 
     viewModelScope.launch(Dispatchers.IO) {
       PlaybackStateEvents.changes.collectLatest {
-        if (_unsortedItems.value.isNotEmpty()) {
-          applyPlaybackState(_unsortedItems.value)
+        if (unsortedItemsState.value.isNotEmpty()) {
+          applyPlaybackState(unsortedItemsState.value)
         }
       }
     }
@@ -235,12 +235,16 @@ class FileSystemBrowserViewModel(
     // Based on Fossify's ChangeSortingDialog callback and sorting logic
     viewModelScope.launch {
       combine(
-        combine(_unsortedItems, itemChanges) { items, changes ->
+        combine(unsortedItemsState, itemChanges) { items, changes ->
           val visible = items.filterNot { it.path in changes }.toMutableList()
           changes.values.forEach { change ->
             val replacement = change.replacement
-            if (change.directory == _currentPath.value && replacement != null &&
-              visible.none { matchesReplacement(it, change) }) visible += replacement
+            if (change.directory == _currentPath.value &&
+              replacement != null &&
+              visible.none { matchesReplacement(it, change) }
+            ) {
+              visible += replacement
+            }
           }
           visible.toList()
         },
@@ -249,21 +253,26 @@ class FileSystemBrowserViewModel(
         foldersPreferences.blacklistedFolders.changes(),
         foldersPreferences.blacklistedAudioFolders.changes(),
       ) { items, sortType, sortOrder, videoBlacklist, audioBlacklist ->
-        val visibleItems = run {
-          items.filter { item ->
-            val videoHidden = videoBlacklist.any {
-              app.gyrolet.mpvrx.utils.storage.isMediaPathInFolder(item.path, it)
-            }
-            val audioHidden = audioBlacklist.any {
-              app.gyrolet.mpvrx.utils.storage.isMediaPathInFolder(item.path, it)
-            }
-            when (item) {
-              is FileSystemItem.VideoFile -> if (item.video.isAudio) !audioHidden else !videoHidden
-              is FileSystemItem.Folder ->
-                !videoHidden || (browserPreferences.includeAudioBrowser.get() && !audioHidden)
+        val visibleItems =
+          run {
+            items.filter { item ->
+              val videoHidden =
+                videoBlacklist.any {
+                  app.gyrolet.mpvrx.utils.storage
+                    .isMediaPathInFolder(item.path, it)
+                }
+              val audioHidden =
+                audioBlacklist.any {
+                  app.gyrolet.mpvrx.utils.storage
+                    .isMediaPathInFolder(item.path, it)
+                }
+              when (item) {
+                is FileSystemItem.VideoFile -> if (item.video.isAudio) !audioHidden else !videoHidden
+                is FileSystemItem.Folder ->
+                  !videoHidden || (browserPreferences.includeAudioBrowser.get() && !audioHidden)
+              }
             }
           }
-        }
         // Sort using the same logic as Fossify's FileDirItem.sort()
         SortUtils.sortFileSystemItems(visibleItems, sortType, sortOrder)
       }.collectLatest { sortedItems ->
@@ -299,13 +308,34 @@ class FileSystemBrowserViewModel(
     // Hidden-folder settings and Play Store folder grants change which folders the tree holds.
     viewModelScope.launch {
       merge(
-        foldersPreferences.includeNoMediaFolders.changes().drop(1).map { },
-        foldersPreferences.treeHiddenScanEnabled.changes().drop(1).map { },
-        foldersPreferences.sharedScanMarkedFolders.changes().drop(1).map { },
-        foldersPreferences.sharedScanDotFolders.changes().drop(1).map { },
-        foldersPreferences.hiddenFolderMarkerNames.changes().drop(1).map { },
-        foldersPreferences.sharedIgnoredMarkers.changes().drop(1).map { },
-        foldersPreferences.scopedHiddenFolderUris.changes().drop(1).map { },
+        foldersPreferences.includeNoMediaFolders
+          .changes()
+          .drop(1)
+          .map { },
+        foldersPreferences.treeHiddenScanEnabled
+          .changes()
+          .drop(1)
+          .map { },
+        foldersPreferences.sharedScanMarkedFolders
+          .changes()
+          .drop(1)
+          .map { },
+        foldersPreferences.sharedScanDotFolders
+          .changes()
+          .drop(1)
+          .map { },
+        foldersPreferences.hiddenFolderMarkerNames
+          .changes()
+          .drop(1)
+          .map { },
+        foldersPreferences.sharedIgnoredMarkers
+          .changes()
+          .drop(1)
+          .map { },
+        foldersPreferences.scopedHiddenFolderUris
+          .changes()
+          .drop(1)
+          .map { },
       ).collectLatest {
         MediaFileRepository.invalidateTreeCache()
         loadCurrentDirectory()
@@ -352,7 +382,7 @@ class FileSystemBrowserViewModel(
       val path = _currentPath.value
 
       // Skip if we're at storage roots marker
-      if (path == STORAGE_ROOTS_MARKER || ZipArchiveMedia.isBrowserPath(path)) {
+      if (path == storageRootsMarker || ZipArchiveMedia.isBrowserPath(path)) {
         return
       }
 
@@ -428,22 +458,27 @@ class FileSystemBrowserViewModel(
     replacement: (FileSystemItem) -> FileSystemItem?,
   ): Map<String, Long> {
     val directory = _currentPath.value
-    val visiblePaths = _unsortedItems.value.mapTo(hashSetOf()) { it.path }
-    val changes = items.distinctBy { it.path }.associate { item ->
-      val parent = if (item.path in visiblePaths) directory else File(item.path).parent.orEmpty()
-      item.path to ItemChange(item, parent, replacement(item), changeRevision.incrementAndGet())
-    }
+    val visiblePaths = unsortedItemsState.value.mapTo(hashSetOf()) { it.path }
+    val changes =
+      items.distinctBy { it.path }.associate { item ->
+        val parent = if (item.path in visiblePaths) directory else File(item.path).parent.orEmpty()
+        item.path to ItemChange(item, parent, replacement(item), changeRevision.incrementAndGet())
+      }
     var added = emptyMap<String, ItemChange>()
     itemChanges.update { current ->
-      added = changes.filterKeys { path ->
-        path !in current && current.values.none { it.replacement?.path == path }
-      }
+      added =
+        changes.filterKeys { path ->
+          path !in current && current.values.none { it.replacement?.path == path }
+        }
       current + added
     }
     return added.mapValues { it.value.revision }
   }
 
-  fun confirmItemChanges(request: Map<String, Long>, paths: Collection<String>) {
+  fun confirmItemChanges(
+    request: Map<String, Long>,
+    paths: Collection<String>,
+  ) {
     val confirmed = paths.toSet()
     itemChanges.update { changes ->
       changes.mapValues { (path, change) ->
@@ -456,7 +491,7 @@ class FileSystemBrowserViewModel(
   /** Restore failed/cancelled items from their own snapshots, including after an intervening scan. */
   fun finishItemChanges(request: Map<String, Long>) {
     val failed = itemChanges.value.filter { (path, change) -> request[path] == change.revision && !change.confirmed }
-    _unsortedItems.update { current ->
+    unsortedItemsState.update { current ->
       val restored = current.toMutableList()
       failed.values.filter { it.directory == _currentPath.value }.forEach { change ->
         if (restored.none { it.path == change.original.path }) restored += change.original
@@ -468,17 +503,26 @@ class FileSystemBrowserViewModel(
     }
   }
 
-  private fun reconcileItemChanges(path: String, items: List<FileSystemItem>, scanRevision: Long) {
+  private fun reconcileItemChanges(
+    path: String,
+    items: List<FileSystemItem>,
+    scanRevision: Long,
+  ) {
     itemChanges.update { changes ->
       changes.filterNot { (_, change) ->
-        change.confirmed && change.directory == path && change.revision <= scanRevision &&
+        change.confirmed &&
+          change.directory == path &&
+          change.revision <= scanRevision &&
           items.none { it.path == change.original.path && it.name == change.original.name } &&
           (change.replacement == null || items.any { matchesReplacement(it, change) })
       }
     }
   }
 
-  private fun matchesReplacement(item: FileSystemItem, change: ItemChange): Boolean {
+  private fun matchesReplacement(
+    item: FileSystemItem,
+    change: ItemChange,
+  ): Boolean {
     val replacement = change.replacement ?: return false
     val contentRename = (change.original as? FileSystemItem.VideoFile)?.video?.uri?.scheme == "content"
     return item.name == replacement.name &&
@@ -499,9 +543,12 @@ class FileSystemBrowserViewModel(
       val folders = targets.filterIsInstance<FileSystemItem.Folder>()
       val videos = targets.filterIsInstance<FileSystemItem.VideoFile>().map { it.video }
       val folderResult = withContext(Dispatchers.IO) { deleteFolders(folders, request) }
-      val videoResult = if (videos.isEmpty()) 0 to 0 else {
-        super.deleteVideos(videos) { video -> confirmItemChanges(request, listOf(video.path)) }
-      }
+      val videoResult =
+        if (videos.isEmpty()) {
+          0 to 0
+        } else {
+          super.deleteVideos(videos) { video -> confirmItemChanges(request, listOf(video.path)) }
+        }
       return (folderResult.first + videoResult.first) to (folderResult.second + videoResult.second)
     } finally {
       finishItemChanges(request)
@@ -512,7 +559,10 @@ class FileSystemBrowserViewModel(
   /**
    * Delete all contents or recursively remove media while preserving other files.
    */
-  private suspend fun deleteFolders(folders: List<FileSystemItem.Folder>, request: Map<String, Long>): Pair<Int, Int> {
+  private suspend fun deleteFolders(
+    folders: List<FileSystemItem.Folder>,
+    request: Map<String, Long>,
+  ): Pair<Int, Int> {
     if (folders.isEmpty()) return 0 to 0
     if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
       Log.w(TAG, "Folder deletion is unavailable with scoped storage")
@@ -551,14 +601,14 @@ class FileSystemBrowserViewModel(
           } else {
             var deletedAny = false
             var deletionFailed = false
-            dir.walkBottomUp()
+            dir
+              .walkBottomUp()
               // Never follow a child link outside the selected tree or back into an ancestor.
               .onEnter { directory -> !Files.isSymbolicLink(directory.toPath()) }
               .onFail { directory, error ->
                 deletionFailed = true
                 Log.w(TAG, "Cannot read folder while deleting media: ${directory.path}", error)
-              }
-              .forEach { file ->
+              }.forEach { file ->
                 deletionContext.ensureActive()
                 if (!Files.isSymbolicLink(file.toPath())) {
                   if (file.isFile) {
@@ -624,11 +674,12 @@ class FileSystemBrowserViewModel(
    * Delete videos - delegates to base class implementation
    * Similar to Fossify's deleteFiles() for individual files
    */
-  override suspend fun deleteVideos(videos: List<Video>): Pair<Int, Int> {
-    return deleteItems(videos.map { video ->
-      FileSystemItem.VideoFile(video.displayName, video.path, video.dateModified, video)
-    })
-  }
+  override suspend fun deleteVideos(videos: List<Video>): Pair<Int, Int> =
+    deleteItems(
+      videos.map { video ->
+        FileSystemItem.VideoFile(video.displayName, video.path, video.dateModified, video)
+      },
+    )
 
   /**
    * Rename a video file - delegates to base class implementation
@@ -640,15 +691,27 @@ class FileSystemBrowserViewModel(
   ): Result<Unit> {
     if (newDisplayName == video.displayName) return Result.success(Unit)
     val contentUri = video.uri.scheme == "content"
-    val newPath = if (video.path.startsWith('/')) File(File(video.path).parentFile, newDisplayName).absolutePath else video.path
-    val renamed = video.copy(
-      title = newDisplayName.substringBeforeLast('.'), displayName = newDisplayName, path = newPath,
-      uri = if (contentUri) video.uri else android.net.Uri.fromFile(File(newPath)),
-    )
+    val newPath =
+      if (video.path.startsWith(
+          '/',
+        )
+      ) {
+        File(File(video.path).parentFile, newDisplayName).absolutePath
+      } else {
+        video.path
+      }
+    val renamed =
+      video.copy(
+        title = newDisplayName.substringBeforeLast('.'),
+        displayName = newDisplayName,
+        path = newPath,
+        uri = if (contentUri) video.uri else android.net.Uri.fromFile(File(newPath)),
+      )
     val original = FileSystemItem.VideoFile(video.displayName, video.path, video.dateModified, video)
-    val request = beginItemChanges(listOf(original)) {
-      FileSystemItem.VideoFile(newDisplayName, newPath, video.dateModified, renamed)
-    }
+    val request =
+      beginItemChanges(listOf(original)) {
+        FileSystemItem.VideoFile(newDisplayName, newPath, video.dateModified, renamed)
+      }
     if (request.isEmpty()) return Result.failure(IllegalStateException("File operation already in progress"))
     try {
       return super.renameVideo(video, newDisplayName).also { result ->
@@ -685,145 +748,150 @@ class FileSystemBrowserViewModel(
   private fun loadCurrentDirectory(forceFileSystemCheck: Boolean = false) {
     directoryLoadJob?.cancel()
     val path = _currentPath.value
-    directoryLoadJob = viewModelScope.launch {
-      val scanRevision = changeRevision.get()
-      _isLoading.value = loadedDirectoryPath != path
-      _error.value = null
-      // Don't reset the flag here - let navigation handle it
+    directoryLoadJob =
+      viewModelScope.launch {
+        val scanRevision = changeRevision.get()
+        _isLoading.value = loadedDirectoryPath != path
+        _error.value = null
+        // Don't reset the flag here - let navigation handle it
 
-      try {
-        // Special case: Show storage roots at the special marker
-        // Similar to Fossify's StoragePickerDialog logic
-        if (path == STORAGE_ROOTS_MARKER) {
-          Log.d(TAG, "Loading storage roots")
-          _breadcrumbs.value = emptyList()
-          val roots = MediaFileRepository.getStorageRoots(getApplication(), forceFileSystemCheck)
-          ensureActive()
-          _unsortedItems.value = roots
-          loadedDirectoryPath = path
-          reconcileItemChanges(path, roots, scanRevision)
-          _videoFilesWithPlayback.value = emptyMap()
-          _newVideoIds.value = emptySet()
-          _watchedVideoIds.value = emptySet()
-          Log.d(TAG, "Loaded ${roots.size} storage roots")
-        } else {
-          // Update breadcrumbs for real paths
-          // Similar to Fossify's Breadcrumbs.setBreadcrumb()
-          _breadcrumbs.value = if (ZipArchiveMedia.isBrowserPath(path)) {
-            withContext(Dispatchers.IO) { ZipArchiveMedia.breadcrumbs(getApplication(), path) }
+        try {
+          // Special case: Show storage roots at the special marker
+          // Similar to Fossify's StoragePickerDialog logic
+          if (path == storageRootsMarker) {
+            Log.d(TAG, "Loading storage roots")
+            _breadcrumbs.value = emptyList()
+            val roots = MediaFileRepository.getStorageRoots(getApplication(), forceFileSystemCheck)
+            ensureActive()
+            unsortedItemsState.value = roots
+            loadedDirectoryPath = path
+            reconcileItemChanges(path, roots, scanRevision)
+            _videoFilesWithPlayback.value = emptyMap()
+            _newVideoIds.value = emptySet()
+            _watchedVideoIds.value = emptySet()
+            Log.d(TAG, "Loaded ${roots.size} storage roots")
           } else {
-            MediaFileRepository.getPathComponents(path)
-          }
-          Log.d(TAG, "Breadcrumbs updated: ${_breadcrumbs.value.size} components")
-
-          // Get hidden files preference
-          // Scan directory - equivalent to Fossify's getRegularItemsOf()
-          // Always show only videos (showAllFileTypes = false)
-          val scanResult =
-            if (ZipArchiveMedia.isBrowserPath(path)) {
-              // ZIP imports accept audio too, so the archive browser must list it as well.
-              withContext(Dispatchers.IO) { ZipArchiveMedia.scan(getApplication(), path, includeAudio = true) }
-            } else {
-              MediaFileRepository.scanDirectory(
-                getApplication(),
-                path,
-                showAllFileTypes = false,
-                forceFileSystemCheck = forceFileSystemCheck,
-              )
-            }
-          scanResult
-            .onSuccess { items ->
-              ensureActive()
-              // Get previous count for this path
-              val previousCount = itemCountByPath[path] ?: 0
-
-              // Check if folder became empty after having items
-              if (previousCount > 0 && items.isEmpty()) {
-                _itemsWereDeletedOrMoved.value = true
-                Log.d(TAG, "Folder became empty (had $previousCount items before)")
-              } else if (items.isNotEmpty()) {
-                // Reset flag if folder now has items
-                _itemsWereDeletedOrMoved.value = false
+            // Update breadcrumbs for real paths
+            // Similar to Fossify's Breadcrumbs.setBreadcrumb()
+            _breadcrumbs.value =
+              if (ZipArchiveMedia.isBrowserPath(path)) {
+                withContext(Dispatchers.IO) { ZipArchiveMedia.breadcrumbs(getApplication(), path) }
+              } else {
+                MediaFileRepository.getPathComponents(path)
               }
+            Log.d(TAG, "Breadcrumbs updated: ${_breadcrumbs.value.size} components")
 
-              // Update count for this path
-              itemCountByPath[path] = items.size
+            // Get hidden files preference
+            // Scan directory - equivalent to Fossify's getRegularItemsOf()
+            // Always show only videos (showAllFileTypes = false)
+            val scanResult =
+              if (ZipArchiveMedia.isBrowserPath(path)) {
+                // ZIP imports accept audio too, so the archive browser must list it as well.
+                withContext(Dispatchers.IO) { ZipArchiveMedia.scan(getApplication(), path, includeAudio = true) }
+              } else {
+                MediaFileRepository.scanDirectory(
+                  getApplication(),
+                  path,
+                  showAllFileTypes = false,
+                  forceFileSystemCheck = forceFileSystemCheck,
+                )
+              }
+            scanResult
+              .onSuccess { items ->
+                ensureActive()
+                // Get previous count for this path
+                val previousCount = itemCountByPath[path] ?: 0
 
-              _unsortedItems.value = items
-              loadedDirectoryPath = path
-              reconcileItemChanges(path, items, scanRevision)
-
-              val folderCount = items.filterIsInstance<FileSystemItem.Folder>().size
-              val videoCount = items.filterIsInstance<FileSystemItem.VideoFile>().size
-              Log.d(TAG, "Loaded directory: $path with $folderCount folders, $videoCount videos")
-
-              // ZIP entries need basic metadata even when optional metadata chips are disabled.
-              val enrichedItems =
-                if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences) ||
-                  items.any { item ->
-                    item is FileSystemItem.VideoFile && ZipArchiveMedia.isPlaybackUri(item.video.uri.toString())
-                  }
-                ) {
-                  Log.d(TAG, "Enriching $videoCount videos with metadata")
-                  val videoFiles = items.filterIsInstance<FileSystemItem.VideoFile>()
-                  val videos = videoFiles.map { it.video }
-                  val enrichedVideos =
-                    withContext(Dispatchers.IO) {
-                      MetadataRetrieval.enrichVideosIfNeeded(
-                        context = getApplication(),
-                        videos = videos,
-                        browserPreferences = browserPreferences,
-                        metadataCache = metadataCache,
-                      )
-                    }
-
-                  // Replace videos in items with enriched versions
-                  val enrichedVideoMap = enrichedVideos.associateBy { it.id }
-                  items.map { item ->
-                    when (item) {
-                      is FileSystemItem.VideoFile -> {
-                        val enrichedVideo = enrichedVideoMap[item.video.id]
-                        if (enrichedVideo != null) {
-                          item.copy(video = enrichedVideo)
-                        } else {
-                          item
-                        }
-                      }
-                      else -> item
-                    }
-                  }
-                } else {
-                  items
+                // Check if folder became empty after having items
+                if (previousCount > 0 && items.isEmpty()) {
+                  _itemsWereDeletedOrMoved.value = true
+                  Log.d(TAG, "Folder became empty (had $previousCount items before)")
+                } else if (items.isNotEmpty()) {
+                  // Reset flag if folder now has items
+                  _itemsWereDeletedOrMoved.value = false
                 }
 
-              ensureActive()
-              _unsortedItems.value = enrichedItems
+                // Update count for this path
+                itemCountByPath[path] = items.size
 
-              // Load playback info and NEW-state data for videos in the current tree view.
-              applyPlaybackState(enrichedItems)
-            }.onFailure { error ->
-              if (error is CancellationException) throw error
-              ensureActive()
-              showDirectoryLoadError(path, error)
-              Log.e(TAG, "Error loading directory: $path", error)
-            }
+                unsortedItemsState.value = items
+                loadedDirectoryPath = path
+                reconcileItemChanges(path, items, scanRevision)
+
+                val folderCount = items.filterIsInstance<FileSystemItem.Folder>().size
+                val videoCount = items.filterIsInstance<FileSystemItem.VideoFile>().size
+                Log.d(TAG, "Loaded directory: $path with $folderCount folders, $videoCount videos")
+
+                // ZIP entries need basic metadata even when optional metadata chips are disabled.
+                val enrichedItems =
+                  if (MetadataRetrieval.isVideoMetadataNeeded(browserPreferences) ||
+                    items.any { item ->
+                      item is FileSystemItem.VideoFile && ZipArchiveMedia.isPlaybackUri(item.video.uri.toString())
+                    }
+                  ) {
+                    Log.d(TAG, "Enriching $videoCount videos with metadata")
+                    val videoFiles = items.filterIsInstance<FileSystemItem.VideoFile>()
+                    val videos = videoFiles.map { it.video }
+                    val enrichedVideos =
+                      withContext(Dispatchers.IO) {
+                        MetadataRetrieval.enrichVideosIfNeeded(
+                          context = getApplication(),
+                          videos = videos,
+                          browserPreferences = browserPreferences,
+                          metadataCache = metadataCache,
+                        )
+                      }
+
+                    // Replace videos in items with enriched versions
+                    val enrichedVideoMap = enrichedVideos.associateBy { it.id }
+                    items.map { item ->
+                      when (item) {
+                        is FileSystemItem.VideoFile -> {
+                          val enrichedVideo = enrichedVideoMap[item.video.id]
+                          if (enrichedVideo != null) {
+                            item.copy(video = enrichedVideo)
+                          } else {
+                            item
+                          }
+                        }
+                        else -> item
+                      }
+                    }
+                  } else {
+                    items
+                  }
+
+                ensureActive()
+                unsortedItemsState.value = enrichedItems
+
+                // Load playback info and NEW-state data for videos in the current tree view.
+                applyPlaybackState(enrichedItems)
+              }.onFailure { error ->
+                if (error is CancellationException) throw error
+                ensureActive()
+                showDirectoryLoadError(path, error)
+                Log.e(TAG, "Error loading directory: $path", error)
+              }
+          }
+        } catch (error: CancellationException) {
+          throw error
+        } catch (e: Exception) {
+          ensureActive()
+          showDirectoryLoadError(path, e)
+          Log.e(TAG, "Exception loading directory", e)
+        } finally {
+          if (isActive) _isLoading.value = false
         }
-      } catch (error: CancellationException) {
-        throw error
-      } catch (e: Exception) {
-        ensureActive()
-        showDirectoryLoadError(path, e)
-        Log.e(TAG, "Exception loading directory", e)
-      } finally {
-        if (isActive) _isLoading.value = false
       }
-    }
   }
 
-  private fun showDirectoryLoadError(path: String, error: Throwable) {
-    if (loadedDirectoryPath == path && _unsortedItems.value.isNotEmpty()) return
+  private fun showDirectoryLoadError(
+    path: String,
+    error: Throwable,
+  ) {
+    if (loadedDirectoryPath == path && unsortedItemsState.value.isNotEmpty()) return
     _error.value = error.message
-    _unsortedItems.value = emptyList()
+    unsortedItemsState.value = emptyList()
     _videoFilesWithPlayback.value = emptyMap()
     _newVideoIds.value = emptySet()
     _watchedVideoIds.value = emptySet()
@@ -848,34 +916,47 @@ class FileSystemBrowserViewModel(
 
     videoFiles.forEach { videoFile ->
       val video = videoFile.video
-      val playbackIdentifiers = if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
-        app.gyrolet.mpvrx.ui.browser.videolist.videoPlaybackIdentifiers(video)
-      } else linkedSetOf(
-          PlaybackIdentity.forLocalPath(video.path),
-          PlaybackIdentity.forUri(video.uri.toString()),
-          PlaybackIdentity.forUri(video.path),
-          PlaybackIdentity.forUri("file://${video.path}"),
-        )
+      val playbackIdentifiers =
+        if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
+          app.gyrolet.mpvrx.ui.browser.videolist
+            .videoPlaybackIdentifiers(video)
+        } else {
+          linkedSetOf(
+            PlaybackIdentity.forLocalPath(video.path),
+            PlaybackIdentity.forUri(video.uri.toString()),
+            PlaybackIdentity.forUri(video.path),
+            PlaybackIdentity.forUri("file://${video.path}"),
+          )
+        }
       val playbackState = playbackIdentifiers.firstNotNullOfOrNull { playbackStates[it] }
       // ZIP entries are never probed; the shared builder recovers their duration from the saved state.
       val sharedInfo =
         if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY || ZipArchiveMedia.isPlaybackUri(video.path)) {
           app.gyrolet.mpvrx.ui.browser.videolist.buildVideoWithPlaybackInfo(
-            video, playbackState, currentTime, appearancePreferences.unplayedOldVideoDays.get(), watchedThreshold,
+            video,
+            playbackState,
+            currentTime,
+            appearancePreferences.unplayedOldVideoDays.get(),
+            watchedThreshold,
           )
-        } else null
+        } else {
+          null
+        }
       val progressValue =
-        if (sharedInfo != null) sharedInfo.progressPercentage ?: 0f
-        else if (playbackState != null && video.duration > 0) {
+        if (sharedInfo != null) {
+          sharedInfo.progressPercentage ?: 0f
+        } else if (playbackState != null && video.duration > 0) {
           val durationSeconds = video.duration / 1000.0
           val watched = durationSeconds - playbackState.timeRemaining.toDouble()
           (watched / durationSeconds).toFloat().coerceIn(0f, 1f)
         } else {
           0f
         }
-      val isWatched = sharedInfo?.isWatched ?: (
-        playbackState?.hasBeenWatched == true ||
-          (watchedThreshold > 0 && progressValue >= watchedThreshold / 100f))
+      val isWatched =
+        sharedInfo?.isWatched ?: (
+          playbackState?.hasBeenWatched == true ||
+            (watchedThreshold > 0 && progressValue >= watchedThreshold / 100f)
+        )
       if (isWatched) watchedIds += video.id
 
       if (playbackState != null && progressValue in 0.01f..0.99f) {
@@ -890,7 +971,7 @@ class FileSystemBrowserViewModel(
     }
 
     withContext(Dispatchers.Main.immediate) {
-      if (_unsortedItems.value != items) return@withContext
+      if (unsortedItemsState.value != items) return@withContext
       _videoFilesWithPlayback.value = playbackMap
       _newVideoIds.value = newIds
       _watchedVideoIds.value = watchedIds
@@ -898,10 +979,12 @@ class FileSystemBrowserViewModel(
     }
   }
 
-  fun setWatched(video: Video, watched: Boolean) {
+  fun setWatched(
+    video: Video,
+    watched: Boolean,
+  ) {
     viewModelScope.launch(Dispatchers.IO) {
       PlaybackStateOps.setWatched(video, watched)
     }
   }
 }
-

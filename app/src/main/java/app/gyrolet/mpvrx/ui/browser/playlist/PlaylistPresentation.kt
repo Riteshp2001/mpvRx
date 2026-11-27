@@ -7,7 +7,10 @@ import app.gyrolet.mpvrx.preferences.SortOrder
 import app.gyrolet.mpvrx.utils.sort.SortUtils
 import java.util.Locale
 
-internal fun playlistGridColumnLimit(availableWidthDp: Int, isLibrary: Boolean = false): Int {
+internal fun playlistGridColumnLimit(
+  availableWidthDp: Int,
+  isLibrary: Boolean = false,
+): Int {
   val spacing = if (isLibrary) 12 else 8
   val minimumWidth = if (isLibrary) 156 else 160
   return ((availableWidthDp - 16 + spacing) / (minimumWidth + spacing)).coerceIn(1, 8)

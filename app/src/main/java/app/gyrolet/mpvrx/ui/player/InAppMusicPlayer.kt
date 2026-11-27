@@ -91,9 +91,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import app.gyrolet.mpvrx.ui.background.BackdropGate
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.background.BackdropGate
 import app.gyrolet.mpvrx.ui.player.controls.AudioPlayerScreen
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
@@ -188,7 +188,10 @@ class InAppMusicSheetState internal constructor(
       return (if (mini.isEmpty) hostSize.height else mini.top).coerceAtLeast(1f)
     }
 
-  internal fun sheetRect(fraction: Float, size: Size): Rect {
+  internal fun sheetRect(
+    fraction: Float,
+    size: Size,
+  ): Rect {
     val full = Rect(Offset.Zero, size)
     val mini = miniRect()
     if (mini.isEmpty) return Rect(0f, size.height * (1f - fraction), size.width, size.height)
@@ -224,12 +227,13 @@ class InAppMusicSheetState internal constructor(
     motionJob?.cancel()
     releaseJob?.cancel()
     isOpen = false
-    motionJob = scope.launch {
-      animatedExpansion.snapTo(0f)
-      dragExpansion = Float.NaN
-      isContentRequested = false
-      isContentReady = false
-    }
+    motionJob =
+      scope.launch {
+        animatedExpansion.snapTo(0f)
+        dragExpansion = Float.NaN
+        isContentRequested = false
+        isContentReady = false
+      }
   }
 
   internal fun startDrag() {
@@ -275,35 +279,40 @@ class InAppMusicSheetState internal constructor(
 
   private fun scheduleRelease(delayMs: Long) {
     releaseJob?.cancel()
-    releaseJob = scope.launch {
-      delay(delayMs)
-      if (!isVisible) {
-        isContentRequested = false
-        isContentReady = false
+    releaseJob =
+      scope.launch {
+        delay(delayMs)
+        if (!isVisible) {
+          isContentRequested = false
+          isContentReady = false
+        }
       }
-    }
   }
 
-  private fun animateTo(target: Float, velocity: Float) {
+  private fun animateTo(
+    target: Float,
+    velocity: Float,
+  ) {
     motionJob?.cancel()
     val waitForContent = target > 0f && !isContentReady && expansion <= 0f
-    motionJob = scope.launch {
-      if (waitForContent) {
-        // Move only once the player has composed and drawn off-screen, so the first frames of the
-        // motion carry no composition work.
-        withTimeoutOrNull(CONTENT_TIMEOUT_MS) { snapshotFlow { isContentReady }.first { it } }
-        withFrameNanos { }
+    motionJob =
+      scope.launch {
+        if (waitForContent) {
+          // Move only once the player has composed and drawn off-screen, so the first frames of the
+          // motion carry no composition work.
+          withTimeoutOrNull(CONTENT_TIMEOUT_MS) { snapshotFlow { isContentReady }.first { it } }
+          withFrameNanos { }
+        }
+        animatedExpansion.snapTo(expansion)
+        dragExpansion = Float.NaN
+        if (reduceMotion) {
+          animatedExpansion.snapTo(target)
+        } else {
+          animatedExpansion.animateTo(target, SheetSpring, velocity)
+        }
+        // Keep the player warm briefly, so reopening right after a collapse is instant.
+        if (target <= 0f) scheduleRelease(KEEP_WARM_MS)
       }
-      animatedExpansion.snapTo(expansion)
-      dragExpansion = Float.NaN
-      if (reduceMotion) {
-        animatedExpansion.snapTo(target)
-      } else {
-        animatedExpansion.animateTo(target, SheetSpring, velocity)
-      }
-      // Keep the player warm briefly, so reopening right after a collapse is instant.
-      if (target <= 0f) scheduleRelease(KEEP_WARM_MS)
-    }
   }
 
   private companion object {
@@ -315,11 +324,12 @@ class InAppMusicSheetState internal constructor(
   }
 }
 
-private val SheetSpring = spring(
-  dampingRatio = Spring.DampingRatioNoBouncy,
-  stiffness = 420f,
-  visibilityThreshold = 0.001f,
-)
+private val SheetSpring =
+  spring(
+    dampingRatio = Spring.DampingRatioNoBouncy,
+    stiffness = 420f,
+    visibilityThreshold = 0.001f,
+  )
 
 @Composable
 fun rememberInAppMusicSheetState(): InAppMusicSheetState {
@@ -332,7 +342,10 @@ fun rememberInAppMusicSheetState(): InAppMusicSheetState {
  * touch handling in place; only where it is drawn changes while the sheet is up.
  */
 @Composable
-fun Modifier.inAppMusicSheetMiniSource(state: InAppMusicSheetState?, shape: Shape): Modifier {
+fun Modifier.inAppMusicSheetMiniSource(
+  state: InAppMusicSheetState?,
+  shape: Shape,
+): Modifier {
   if (state == null) return this
   val layer = rememberGraphicsLayer()
   val density = LocalDensity.current
@@ -352,13 +365,11 @@ fun Modifier.inAppMusicSheetMiniSource(state: InAppMusicSheetState?, shape: Shap
       state.miniBounds = bounds
       val outline = shape.createOutline(bounds.size, direction, density)
       state.miniCornerRadius = (outline as? Outline.Rounded)?.roundRect?.topLeftCornerRadius?.x ?: 0f
-    }
-    .graphicsLayer { alpha = if (state.isMiniHidden) 0f else 1f }
+    }.graphicsLayer { alpha = if (state.isMiniHidden) 0f else 1f }
     .drawWithContent {
       layer.record { this@drawWithContent.drawContent() }
       drawLayer(layer)
-    }
-    .then(InAppMusicSheetCoverElement(state))
+    }.then(InAppMusicSheetCoverElement(state))
 }
 
 /** Hides covered browser content from accessibility while the sheet rests full screen. */
@@ -435,6 +446,7 @@ internal fun Modifier.inAppMusicSheetDrag(
     .onPlaced { coordinates[0] = it }
     .pointerInput(state, collapsing, enabled, allowBothDirections) {
       if (!enabled) return@pointerInput
+
       fun rootY(change: PointerInputChange): Float =
         coordinates[0]?.takeIf { it.isAttached }?.localToRoot(change.position)?.y ?: change.position.y
 
@@ -546,8 +558,7 @@ fun InAppMusicPlayerSheet(
         .onPlaced {
           state.hostOrigin = it.positionInRoot()
           state.hostSize = it.size.toSize()
-        }
-        .layout { measurable, constraints ->
+        }.layout { measurable, constraints ->
           val placeable = measurable.measure(constraints)
           layout(placeable.width, placeable.height) {
             // A warming player is laid out and recorded off-screen, where it can't be seen or touched.
@@ -576,11 +587,11 @@ fun InAppMusicPlayerSheet(
               shape = RectangleShape
               clip = false
             } else {
-              shape = SheetClipShape(rect.translate(Offset(-translationX, -translationY)), state.sheetCornerRadius(fraction))
+              shape =
+                SheetClipShape(rect.translate(Offset(-translationX, -translationY)), state.sheetCornerRadius(fraction))
               clip = true
             }
-          }
-          .then(if (state.isSettledOpen) Modifier else Modifier.clearAndSetSemantics { }),
+          }.then(if (state.isSettledOpen) Modifier else Modifier.clearAndSetSemantics { }),
     ) {
       InAppMusicPlayerContent(state, store)
       if (!state.isSettledOpen) {
@@ -644,9 +655,12 @@ private fun InAppMusicPlayerContent(
   val audioOrientation by preferences.audioOrientation.collectAsState()
   val browserOrientation = rememberSaveable { activity.requestedOrientation }
   LaunchedEffect(activity, state.isVisible, audioOrientation) {
-    val target = if (state.isVisible) {
-      PlayerOrientationPolicy.forAudioPreference(audioOrientation)
-    } else browserOrientation
+    val target =
+      if (state.isVisible) {
+        PlayerOrientationPolicy.forAudioPreference(audioOrientation)
+      } else {
+        browserOrientation
+      }
     if (activity.requestedOrientation != target) activity.requestedOrientation = target
   }
   DisposableEffect(activity) {
@@ -737,7 +751,9 @@ private class InAppMusicPlayerHost(
   // Like a notification pause, the detached owner keeps focus while paused.
   override fun abandonAudioFocus() = Unit
 
-  override fun currentThumbnailSource(): String? = PlaybackSession.state.value.currentItem?.playableUri
+  override fun currentThumbnailSource(): String? =
+    PlaybackSession.state.value.currentItem
+      ?.playableUri
 
   override fun isCurrentMediaKnownAudio(): Boolean = true
 

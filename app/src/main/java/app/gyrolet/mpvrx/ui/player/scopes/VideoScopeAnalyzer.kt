@@ -43,7 +43,10 @@ internal object VideoScopeAnalyzer {
       Color.rgb(225, 225, 225),
     )
 
-  fun analyze(source: Bitmap, mode: VideoScopeMode): Bitmap =
+  fun analyze(
+    source: Bitmap,
+    mode: VideoScopeMode,
+  ): Bitmap =
     synchronized(analysisLock) {
       val sourcePixelCount = source.width * source.height
       if (sourcePixels.size < sourcePixelCount) sourcePixels = IntArray(sourcePixelCount)
@@ -55,7 +58,10 @@ internal object VideoScopeAnalyzer {
       }
     }
 
-  private fun lumaWaveform(sourceWidth: Int, sourceHeight: Int): Bitmap {
+  private fun lumaWaveform(
+    sourceWidth: Int,
+    sourceHeight: Int,
+  ): Bitmap {
     waveformBins.fill(0)
     waveformSumRed.fill(0)
     waveformSumGreen.fill(0)
@@ -93,18 +99,22 @@ internal object VideoScopeAnalyzer {
         val averageBlue = waveformSumBlue[sourceIndex].toFloat() / count
         val colorMax = max(averageRed, max(averageGreen, averageBlue)).coerceAtLeast(1f)
         val outputIndex = (OUTPUT_HEIGHT - 1 - level) * OUTPUT_WIDTH + column
-        waveformOutput[outputIndex] = Color.argb(
-          (intensity * 255).toInt(),
-          (averageRed / colorMax * 255).toInt(),
-          (averageGreen / colorMax * 255).toInt(),
-          (averageBlue / colorMax * 255).toInt(),
-        )
+        waveformOutput[outputIndex] =
+          Color.argb(
+            (intensity * 255).toInt(),
+            (averageRed / colorMax * 255).toInt(),
+            (averageGreen / colorMax * 255).toInt(),
+            (averageBlue / colorMax * 255).toInt(),
+          )
       }
     }
     return waveformOutput.toBitmap(OUTPUT_WIDTH, OUTPUT_HEIGHT)
   }
 
-  private fun rgbyParade(sourceWidth: Int, sourceHeight: Int): Bitmap {
+  private fun rgbyParade(
+    sourceWidth: Int,
+    sourceHeight: Int,
+  ): Bitmap {
     paradeBins.forEach { it.fill(0) }
     paradeOutput.fill(0)
 
@@ -137,12 +147,13 @@ internal object VideoScopeAnalyzer {
           if (count == 0) continue
           val intensity = (count.toFloat() / (maximum * 0.22f)).coerceIn(0f, 1f)
           val tint = paradeColors[channel]
-          paradeOutput[(OUTPUT_HEIGHT - 1 - level) * OUTPUT_WIDTH + xOffset + column] = Color.argb(
-            255,
-            (Color.red(tint) * intensity).toInt(),
-            (Color.green(tint) * intensity).toInt(),
-            (Color.blue(tint) * intensity).toInt(),
-          )
+          paradeOutput[(OUTPUT_HEIGHT - 1 - level) * OUTPUT_WIDTH + xOffset + column] =
+            Color.argb(
+              255,
+              (Color.red(tint) * intensity).toInt(),
+              (Color.green(tint) * intensity).toInt(),
+              (Color.blue(tint) * intensity).toInt(),
+            )
         }
       }
     }
@@ -185,16 +196,19 @@ internal object VideoScopeAnalyzer {
       val averageGreen = vectorSumGreen[index].toFloat() / count
       val averageBlue = vectorSumBlue[index].toFloat() / count
       val colorMax = max(averageRed, max(averageGreen, averageBlue)).coerceAtLeast(1f)
-      vectorOutput[index] = Color.argb(
-        (intensity * 255).toInt(),
-        (averageRed / colorMax * 255).toInt(),
-        (averageGreen / colorMax * 255).toInt(),
-        (averageBlue / colorMax * 255).toInt(),
-      )
+      vectorOutput[index] =
+        Color.argb(
+          (intensity * 255).toInt(),
+          (averageRed / colorMax * 255).toInt(),
+          (averageGreen / colorMax * 255).toInt(),
+          (averageBlue / colorMax * 255).toInt(),
+        )
     }
     return vectorOutput.toBitmap(VECTOR_SIZE, VECTOR_SIZE)
   }
 
-  private fun IntArray.toBitmap(width: Int, height: Int): Bitmap =
-    Bitmap.createBitmap(this, width, height, Bitmap.Config.ARGB_8888)
+  private fun IntArray.toBitmap(
+    width: Int,
+    height: Int,
+  ): Bitmap = Bitmap.createBitmap(this, width, height, Bitmap.Config.ARGB_8888)
 }

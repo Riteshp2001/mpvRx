@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.components
 
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -22,8 +21,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -31,8 +30,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -44,8 +41,6 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import app.gyrolet.mpvrx.ui.background.SeasonalEvent
-import app.gyrolet.mpvrx.ui.background.rememberSeasonalEvent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,14 +49,14 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -71,30 +66,38 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.background.SeasonalEvent
+import app.gyrolet.mpvrx.ui.background.rememberSeasonalEvent
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
-import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.AppMotion
-import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
-import app.gyrolet.mpvrx.ui.theme.LocalThemeTransitionState
+import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.LocalAppWallpaperActive
+import app.gyrolet.mpvrx.ui.theme.LocalThemeTransitionState
 import app.gyrolet.mpvrx.ui.theme.onWallpaper
+import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 private fun Modifier.browserTopBarFocus(enabled: Boolean = true): Modifier =
   tvFocusHighlight(CircleShape, enabled = enabled, focusedScale = 1.06f)
 
 @Composable
-private fun SeasonalTitleIcon(event: SeasonalEvent, modifier: Modifier = Modifier) {
+private fun SeasonalTitleIcon(
+  event: SeasonalEvent,
+  modifier: Modifier = Modifier,
+) {
   val context = LocalContext.current
   val greeting = stringResource(event.greetingRes)
   val toast = remember(context) { Toast.makeText(context.applicationContext, "", Toast.LENGTH_SHORT) }
@@ -202,7 +205,8 @@ fun BrowserTopBar(
     val outgoing = selectionMode != isInSelectionMode
     val toolbarModifier =
       if (outgoing) {
-        Modifier.clearAndSetSemantics { }
+        Modifier
+          .clearAndSetSemantics { }
           .onPreviewKeyEvent { true }
           .pointerInput(Unit) {
             awaitPointerEventScope {
@@ -565,13 +569,13 @@ private fun SelectionTopBar(
           modifier =
             Modifier
               .clip(selectionDropdownShape)
-              .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = if (wallpaperActive) 0.78f else 1f))
-              .border(
+              .background(
+                MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = if (wallpaperActive) 0.78f else 1f),
+              ).border(
                 1.dp,
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = if (wallpaperActive) 0.5f else 0.35f),
                 selectionDropdownShape,
-              )
-              .tvFocusHighlight(selectionDropdownShape, focusedScale = 1.02f)
+              ).tvFocusHighlight(selectionDropdownShape, focusedScale = 1.02f)
               .clickable { showDropdown = true }
               .padding(horizontal = 10.dp, vertical = 8.dp),
         ) {
@@ -590,8 +594,10 @@ private fun SelectionTopBar(
                   (fadeIn(tween(0)) togetherWith fadeOut(tween(0))).using(null)
                 } else {
                   val direction = if (targetState > initialState) 1 else -1
-                  ((fadeIn(tween(160)) + slideInVertically(tween(160)) { it * direction / 3 }) togetherWith
-                    (fadeOut(tween(100)) + slideOutVertically(tween(100)) { -it * direction / 3 })).using(null)
+                  (
+                    (fadeIn(tween(160)) + slideInVertically(tween(160)) { it * direction / 3 }) togetherWith
+                      (fadeOut(tween(100)) + slideOutVertically(tween(100)) { -it * direction / 3 })
+                  ).using(null)
                 }
               },
               label = "selectionCount",

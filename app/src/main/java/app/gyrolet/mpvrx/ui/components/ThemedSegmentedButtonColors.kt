@@ -35,7 +35,14 @@ fun themedSegmentedButtonColors(
   borderAlpha: Float = 0.3f,
 ): SegmentedButtonColors {
   val colorScheme = MaterialTheme.colorScheme
-  val activeContentColor = if (colorScheme.onSurface.luminance() > colorScheme.surface.luminance()) Color.White else Color.Black
+  val activeContentColor =
+    if (colorScheme.onSurface.luminance() >
+      colorScheme.surface.luminance()
+    ) {
+      Color.White
+    } else {
+      Color.Black
+    }
   return SegmentedButtonDefaults.colors(
     activeContainerColor = colorScheme.primary.copy(alpha = activeContainerAlpha),
     activeContentColor = activeContentColor,

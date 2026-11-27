@@ -1,11 +1,10 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.preferences
 
 import androidx.annotation.StringRes
-
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -56,13 +55,17 @@ internal fun ReorderableTabPreferences(
       ExpressivePreferenceTile(
         index = index,
         itemCount = tabs.size,
-        modifier = Modifier
-          .then(tab.titleRes?.let { Modifier.settingsSearchTarget(it) } ?: Modifier)
-          .graphicsLayer { alpha = if (isDragging) 0.95f else 1f },
+        modifier =
+          Modifier
+            .then(tab.titleRes?.let { Modifier.settingsSearchTarget(it) } ?: Modifier)
+            .graphicsLayer { alpha = if (isDragging) 0.95f else 1f },
       ) {
         Row(
-          modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp)
-            .padding(start = 12.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .heightIn(min = 72.dp)
+              .padding(start = 12.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -85,8 +88,11 @@ internal fun ReorderableTabPreferences(
           Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(tab.title, style = MaterialTheme.typography.bodyLarge)
             if (tab.summary.isNotBlank()) {
-              Text(tab.summary, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+              Text(
+                tab.summary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
             }
           }
           IconSwitch(

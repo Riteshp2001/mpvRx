@@ -87,7 +87,9 @@ sealed class TorrentStreamingState {
     val downloadedBytes: Long = 0L,
   ) : TorrentStreamingState()
 
-  data class Error(val message: String) : TorrentStreamingState()
+  data class Error(
+    val message: String,
+  ) : TorrentStreamingState()
 }
 
 class TorrentStreamException(
@@ -174,7 +176,8 @@ fun normalizeTorrentSource(source: String): String? {
 
   if (value.startsWith("torrent:", ignoreCase = true)) {
     val payload =
-      value.substringAfter(':')
+      value
+        .substringAfter(':')
         .removePrefix("//")
         .substringBefore('?')
         .substringBefore('#')
@@ -202,7 +205,8 @@ fun canonicalInfoHash(raw: String): String? {
 
   if (value.startsWith("torrent:", ignoreCase = true)) {
     val payload =
-      value.substringAfter(':')
+      value
+        .substringAfter(':')
         .removePrefix("//")
         .substringBefore('?')
         .substringBefore('#')
@@ -238,7 +242,16 @@ fun parseMagnet(raw: String): ParsedMagnet? {
       ?.second
       ?.takeIf(String::isNotBlank)
       ?.let(::normalizeTorrentDisplayName)
-  val trackers = parameters.filter { it.first.equals("tr", true) }.map { it.second }.filter(String::isNotBlank).distinct()
+  val trackers =
+    parameters
+      .filter {
+        it.first.equals(
+          "tr",
+          true,
+        )
+      }.map { it.second }
+      .filter(String::isNotBlank)
+      .distinct()
   return ParsedMagnet(
     infoHash = hash,
     cleanMagnetUri = normalized,
@@ -277,7 +290,8 @@ fun buildMagnetUri(
 internal fun magnetWithoutFileSelection(source: String): String {
   if (!source.startsWith("magnet:?", ignoreCase = true)) return source
   val kept =
-    source.substringAfter('?', "")
+    source
+      .substringAfter('?', "")
       .split('&')
       .filter { part ->
         val key = part.substringBefore('=').lowercase()
@@ -289,7 +303,13 @@ internal fun magnetWithoutFileSelection(source: String): String {
 internal fun hasV2OnlyMagnet(source: String): Boolean {
   if (v2HexHash.matches(source.trim())) return true
   if (source.startsWith("torrent:", true)) {
-    val payload = source.substringAfter(':').removePrefix("//").substringBefore('?').substringBefore('#').trim('/')
+    val payload =
+      source
+        .substringAfter(':')
+        .removePrefix("//")
+        .substringBefore('?')
+        .substringBefore('#')
+        .trim('/')
     return v2HexHash.matches(payload)
   }
   if (!source.startsWith("magnet:?", true)) return false
@@ -342,7 +362,8 @@ private fun canonicalV1Hash(value: String): String? =
   }
 
 private fun magnetParameters(source: String): List<Pair<String, String>> =
-  source.substringAfter('?', "")
+  source
+    .substringAfter('?', "")
     .split('&')
     .mapNotNull { part ->
       val separator = part.indexOf('=')
@@ -381,8 +402,13 @@ private fun encodeUriComponent(value: String): String =
     value.toByteArray(Charsets.UTF_8).forEach { byte ->
       val item = byte.toInt() and 0xff
       if (
-        item in 'a'.code..'z'.code || item in 'A'.code..'Z'.code || item in '0'.code..'9'.code ||
-        item == '-'.code || item == '.'.code || item == '_'.code || item == '~'.code
+        item in 'a'.code..'z'.code ||
+        item in 'A'.code..'Z'.code ||
+        item in '0'.code..'9'.code ||
+        item == '-'.code ||
+        item == '.'.code ||
+        item == '_'.code ||
+        item == '~'.code
       ) {
         append(item.toChar())
       } else {

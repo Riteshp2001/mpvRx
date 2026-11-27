@@ -49,25 +49,26 @@ data class ImageViewerScreen(
   val folderPath: String,
   val items: List<ImageViewerItem>,
   val initialIndex: Int = 0,
-) : Screen, TvEdgeToEdgeScreen {
-
+) : Screen,
+  TvEdgeToEdgeScreen {
   @Composable
   override fun Content() {
     val backstack = LocalBackStack.current
     val context = LocalContext.current
 
-    val images = remember(items) {
-      items.map { item ->
-        NetworkFile(
-          name = item.name,
-          path = item.path,
-          size = 0L,
-          isDirectory = false,
-          lastModified = item.lastModified,
-          mimeType = null,
-        )
+    val images =
+      remember(items) {
+        items.map { item ->
+          NetworkFile(
+            name = item.name,
+            path = item.path,
+            size = 0L,
+            isDirectory = false,
+            lastModified = item.lastModified,
+            mimeType = null,
+          )
+        }
       }
-    }
 
     // The ViewModel outlives this screen — Navigation3 gives back-stack entries no ViewModelStore
     // of their own — so anything that changes what the list *contains* must be part of the key.
@@ -110,9 +111,10 @@ data class ImageViewerScreen(
     }
 
     Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .background(Color.Black),
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .background(Color.Black),
     ) {
       HorizontalPager(
         state = pagerState,

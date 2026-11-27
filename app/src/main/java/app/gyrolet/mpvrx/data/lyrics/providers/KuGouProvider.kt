@@ -35,7 +35,9 @@ internal object KuGouProvider : LyricsProviderClient {
       val keyword = keyword(ref)
       val candidate =
         searchSongs(ref, seconds)
-          ?.firstNotNullOfOrNull { hash -> searchLyrics(hash = hash).orEmpty().firstOrNull { it.matches(ref, seconds) } }
+          ?.firstNotNullOfOrNull { hash ->
+            searchLyrics(hash = hash).orEmpty().firstOrNull { it.matches(ref, seconds) }
+          }
           ?: searchLyrics(keyword = keyword, seconds = seconds).orEmpty().firstOrNull { it.matches(ref, seconds) }
           ?: continue
 
@@ -73,13 +75,14 @@ internal object KuGouProvider : LyricsProviderClient {
       .filter {
         LyricsTrackMatcher.matches(ref, it.songname, it.singername, seconds, it.duration.toDouble()) &&
           (seconds <= 0 || it.duration <= 0 || abs(it.duration - seconds) <= DURATION_TOLERANCE_SECONDS)
-      }
-      .sortedBy { abs(it.duration - seconds) }
+      }.sortedBy { abs(it.duration - seconds) }
       .map { it.hash }
   }
 
-  private fun Candidate.matches(ref: TrackRef, seconds: Int): Boolean =
-    LyricsTrackMatcher.matches(ref, song, singer, seconds, (duration ?: 0.0) / 1000.0)
+  private fun Candidate.matches(
+    ref: TrackRef,
+    seconds: Int,
+  ): Boolean = LyricsTrackMatcher.matches(ref, song, singer, seconds, (duration ?: 0.0) / 1000.0)
 
   private suspend fun searchLyrics(
     hash: String? = null,
@@ -125,20 +128,28 @@ internal object KuGouProvider : LyricsProviderClient {
     return decoded.stripCredits()
   }
 
-  private fun keyword(ref: TrackRef): String = listOf(ref.title, ref.artist).filter { it.isNotBlank() }.joinToString(" - ")
+  private fun keyword(ref: TrackRef): String =
+    listOf(ref.title, ref.artist)
+      .filter {
+        it.isNotBlank()
+      }.joinToString(" - ")
 
   /**
    * Remove only recognized credit lines. A colon in sung text must not delete
    * the surrounding verse, and whole-second LRC timestamps are valid too.
    */
-  private fun String.stripCredits(): String {
-    return lineSequence().map { it.trim() }.filterNot { CREDIT.matches(it) }.joinToString("\n")
-  }
+  private fun String.stripCredits(): String =
+    lineSequence()
+      .map {
+        it.trim()
+      }.filterNot { CREDIT.matches(it) }
+      .joinToString("\n")
 
-  private val CREDIT = Regex(
-    """^(?:\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\])+\s*(?:作词|作曲|编曲|词|曲|词曲|制作人|词作者|曲作者|lyricist|composer|arranger|lyrics by|composed by)\s*[:：].*$""",
-    RegexOption.IGNORE_CASE,
-  )
+  private val CREDIT =
+    Regex(
+      """^(?:\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\])+\s*(?:作词|作曲|编曲|词|曲|词曲|制作人|词作者|曲作者|lyricist|composer|arranger|lyrics by|composed by)\s*[:：].*$""",
+      RegexOption.IGNORE_CASE,
+    )
 
   @Serializable
   private data class SearchSongResponse(

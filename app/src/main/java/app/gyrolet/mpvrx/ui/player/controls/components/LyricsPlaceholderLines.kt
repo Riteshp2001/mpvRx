@@ -48,21 +48,36 @@ fun rememberPlaceholderLine(
 object LyricsPlaceholders {
   val LOADING: List<Int> =
     listOf(
-      R.string.lyrics_loading_line_1, R.string.lyrics_loading_line_2, R.string.lyrics_loading_line_3,
-      R.string.lyrics_loading_line_4, R.string.lyrics_loading_line_5, R.string.lyrics_loading_line_6,
-      R.string.lyrics_loading_line_7, R.string.lyrics_loading_line_8, R.string.lyrics_loading_line_9,
+      R.string.lyrics_loading_line_1,
+      R.string.lyrics_loading_line_2,
+      R.string.lyrics_loading_line_3,
+      R.string.lyrics_loading_line_4,
+      R.string.lyrics_loading_line_5,
+      R.string.lyrics_loading_line_6,
+      R.string.lyrics_loading_line_7,
+      R.string.lyrics_loading_line_8,
+      R.string.lyrics_loading_line_9,
       R.string.lyrics_loading_line_10,
     )
   val INTRO: List<Int> =
     listOf(
-      R.string.lyrics_intro_line_1, R.string.lyrics_intro_line_2, R.string.lyrics_intro_line_3,
-      R.string.lyrics_intro_line_4, R.string.lyrics_intro_line_5, R.string.lyrics_intro_line_6,
-      R.string.lyrics_intro_line_7, R.string.lyrics_intro_line_8,
+      R.string.lyrics_intro_line_1,
+      R.string.lyrics_intro_line_2,
+      R.string.lyrics_intro_line_3,
+      R.string.lyrics_intro_line_4,
+      R.string.lyrics_intro_line_5,
+      R.string.lyrics_intro_line_6,
+      R.string.lyrics_intro_line_7,
+      R.string.lyrics_intro_line_8,
     )
   val EMPTY: List<Int> =
     listOf(
-      R.string.lyrics_empty_line_1, R.string.lyrics_empty_line_2, R.string.lyrics_empty_line_3,
-      R.string.lyrics_empty_line_4, R.string.lyrics_empty_line_5, R.string.lyrics_empty_line_6,
+      R.string.lyrics_empty_line_1,
+      R.string.lyrics_empty_line_2,
+      R.string.lyrics_empty_line_3,
+      R.string.lyrics_empty_line_4,
+      R.string.lyrics_empty_line_5,
+      R.string.lyrics_empty_line_6,
     )
 }
 

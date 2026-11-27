@@ -53,15 +53,16 @@ internal fun Modifier.playerGlassSurface(
   if (!enabled) return this
   val settings = rememberLiquidGlassSettings()
   val reducedMotion = AppMotion.shouldReduceMotion()
-  val tint = remember(containerColor, settings.opacity) {
-    // Preserve the player's original 80% frosted backing. Rows inside it provide lighter
-    // 35% / 65% resting / selected surfaces, rather than opaque cards hiding the video.
-    Brush.verticalGradient(
-      0f to settings.surfaceColor(containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.86f))),
-      0.25f to settings.surfaceColor(containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.80f))),
-      1f to settings.surfaceColor(containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.80f))),
-    )
-  }
+  val tint =
+    remember(containerColor, settings.opacity) {
+      // Preserve the player's original 80% frosted backing. Rows inside it provide lighter
+      // 35% / 65% resting / selected surfaces, rather than opaque cards hiding the video.
+      Brush.verticalGradient(
+        0f to settings.surfaceColor(containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.86f))),
+        0.25f to settings.surfaceColor(containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.80f))),
+        1f to settings.surfaceColor(containerColor.copy(alpha = containerColor.alpha.coerceAtMost(0.80f))),
+      )
+    }
   // SurfaceView (HDR without the "liquid glass in HDR" opt-in) is composed by Android outside the
   // Compose scene. Keep HDR untouched and show it through the same translucent backing; do not
   // sample stale frames or fake a blur.
@@ -78,18 +79,23 @@ internal fun Modifier.playerGlassSurface(
           ),
           shape,
         )
-      } else Modifier,
+      } else {
+        Modifier
+      },
     )
   }
-  val rememberedHighlight = remember(settings, reducedMotion) {
-    settings.highlight(Highlight.Ambient.copy(alpha = if (reducedMotion) 0.15f else 0.30f))
-  }
-  val rememberedShadow = remember {
-    Shadow(radius = 16.dp, color = Color.Black.copy(alpha = 0.25f))
-  }
-  val rememberedInnerShadow = remember {
-    InnerShadow(radius = 2.dp, color = Color.White.copy(alpha = 0.12f))
-  }
+  val rememberedHighlight =
+    remember(settings, reducedMotion) {
+      settings.highlight(Highlight.Ambient.copy(alpha = if (reducedMotion) 0.15f else 0.30f))
+    }
+  val rememberedShadow =
+    remember {
+      Shadow(radius = 16.dp, color = Color.Black.copy(alpha = 0.25f))
+    }
+  val rememberedInnerShadow =
+    remember {
+      InnerShadow(radius = 2.dp, color = Color.White.copy(alpha = 0.12f))
+    }
   return drawBackdrop(
     backdrop = backdrop,
     shape = { shape },

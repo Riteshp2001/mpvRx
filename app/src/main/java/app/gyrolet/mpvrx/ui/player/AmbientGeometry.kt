@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.player
 
 import kotlin.math.pow
@@ -28,9 +28,14 @@ internal data class AmbientGeometry(
       alignY: Double = 0.0,
       recenter: Boolean = false,
     ): AmbientGeometry? {
-      if (width <= 0 || height <= 0 || !aspect.isFinite() || aspect <= 0.0 ||
+      if (width <= 0 ||
+        height <= 0 ||
+        !aspect.isFinite() ||
+        aspect <= 0.0 ||
         listOf(panscan, zoom, panX, panY, alignX, alignY).any { !it.isFinite() }
-      ) return null
+      ) {
+        return null
+      }
       val w = width.toDouble()
       val h = height.toDouble()
       val fitWidth = minOf(w, h * aspect)
@@ -42,25 +47,33 @@ internal data class AmbientGeometry(
       val multiplier = 2.0.pow(zoom)
       val pictureWidth = baseWidth * multiplier
       val pictureHeight = baseHeight * multiplier
-      if (!pictureWidth.isFinite() || !pictureHeight.isFinite() ||
-        pictureWidth < 1.0 || pictureHeight < 1.0
-      ) return null
+      if (!pictureWidth.isFinite() ||
+        !pictureHeight.isFinite() ||
+        pictureWidth < 1.0 ||
+        pictureHeight < 1.0
+      ) {
+        return null
+      }
       val effectiveAlignX = if (recenter && pictureWidth <= w) 0.0 else alignX
       val effectiveAlignY = if (recenter && pictureHeight <= h) 0.0 else alignY
       val left = (w - pictureWidth) * (effectiveAlignX + 1.0) / 2.0 + panX * pictureWidth
       val top = (h - pictureHeight) * (effectiveAlignY + 1.0) / 2.0 + panY * pictureHeight
       // Ignore subpixel rounding at the fitted edges; an exact-fit video needs no Ambient pass.
-      val hasBars = left >= 1.0 || top >= 1.0 ||
-        left + pictureWidth <= w - 1.0 || top + pictureHeight <= h - 1.0
+      val hasBars =
+        left >= 1.0 ||
+          top >= 1.0 ||
+          left + pictureWidth <= w - 1.0 ||
+          top + pictureHeight <= h - 1.0
       return AmbientGeometry(
         canvasScaleX = w / baseWidth,
         canvasScaleY = h / baseHeight,
-        picture = AmbientRenderContext(
-          scaleX = w / pictureWidth,
-          scaleY = h / pictureHeight,
-          centerX = (left + pictureWidth / 2.0) / w,
-          centerY = (top + pictureHeight / 2.0) / h,
-        ),
+        picture =
+          AmbientRenderContext(
+            scaleX = w / pictureWidth,
+            scaleY = h / pictureHeight,
+            centerX = (left + pictureWidth / 2.0) / w,
+            centerY = (top + pictureHeight / 2.0) / h,
+          ),
         hasBars = hasBars,
       )
     }

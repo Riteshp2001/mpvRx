@@ -106,22 +106,23 @@ class PlaylistViewModel(
   /** Only resumed playlist/profile screens may watch storage or start discovery. */
   fun startMonitoring() {
     if (monitoringJob?.isActive == true) return
-    monitoringJob = viewModelScope.launch {
-      launch(Dispatchers.IO) {
-        repository.observeAllPlaylists().collectLatest { playlistsFromDb ->
-          _playlistsWithCount.value = loadPlaylistsWithCounts(playlistsFromDb)
-          _hasCompletedInitialLoad.value = true
+    monitoringJob =
+      viewModelScope.launch {
+        launch(Dispatchers.IO) {
+          repository.observeAllPlaylists().collectLatest { playlistsFromDb ->
+            _playlistsWithCount.value = loadPlaylistsWithCounts(playlistsFromDb)
+            _hasCompletedInitialLoad.value = true
+          }
         }
+        // Complete an in-flight scan during a foreground notification burst, then process the
+        // latest change. Leaving the screen cancels this entire job and unregisters the observer.
+        merge(MediaLibraryEvents.changes, LocalPlaylistScanner.changes(getApplication()))
+          .conflate()
+          .collect {
+            delay(750)
+            withContext(Dispatchers.IO) { refreshPlaylists(scanLocalFiles = true) }
+          }
       }
-      // Complete an in-flight scan during a foreground notification burst, then process the
-      // latest change. Leaving the screen cancels this entire job and unregisters the observer.
-      merge(MediaLibraryEvents.changes, LocalPlaylistScanner.changes(getApplication()))
-        .conflate()
-        .collect {
-          delay(750)
-          withContext(Dispatchers.IO) { refreshPlaylists(scanLocalFiles = true) }
-        }
-    }
     // Reconcile changes missed while stopped, without reparsing every unchanged M3U file.
     refresh(scanLocalFiles = true, forceLocalFiles = false)
   }
@@ -212,16 +213,23 @@ class PlaylistViewModel(
 
   fun refresh(scanLocalFiles: Boolean = false): Job = refresh(scanLocalFiles, forceLocalFiles = scanLocalFiles)
 
-  private fun refresh(scanLocalFiles: Boolean, forceLocalFiles: Boolean): Job {
+  private fun refresh(
+    scanLocalFiles: Boolean,
+    forceLocalFiles: Boolean,
+  ): Job {
     refreshJob?.cancel()
-    return viewModelScope.launch(Dispatchers.IO) {
-      // Permission callbacks can arrive after the screen has paused. The next resume reconciles
-      // them; do not let such a callback restart a storage walk in the cached process.
-      if (monitoringJob?.isActive == true) refreshPlaylists(scanLocalFiles, forceLocalFiles)
-    }.also { refreshJob = it }
+    return viewModelScope
+      .launch(Dispatchers.IO) {
+        // Permission callbacks can arrive after the screen has paused. The next resume reconciles
+        // them; do not let such a callback restart a storage walk in the cached process.
+        if (monitoringJob?.isActive == true) refreshPlaylists(scanLocalFiles, forceLocalFiles)
+      }.also { refreshJob = it }
   }
 
-  private suspend fun refreshPlaylists(scanLocalFiles: Boolean, forceLocalFiles: Boolean = false) = refreshMutex.withLock {
+  private suspend fun refreshPlaylists(
+    scanLocalFiles: Boolean,
+    forceLocalFiles: Boolean = false,
+  ) = refreshMutex.withLock {
     try {
       _isLoading.value = true
       repository.removeDeletedZipPlaylists()

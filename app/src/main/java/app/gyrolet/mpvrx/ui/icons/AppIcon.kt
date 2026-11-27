@@ -42,7 +42,9 @@ class AppIcon(
   constructor(imageVector: ImageVector, rtlImageVector: ImageVector? = null, mirrorInRtl: Boolean = false) :
     this(ltrImageVector = imageVector, rtlImageVector = rtlImageVector, mirrorInRtl = mirrorInRtl, drawableRes = null)
 
-  constructor(@DrawableRes drawableRes: Int) :
+  constructor(
+    @DrawableRes drawableRes: Int,
+  ) :
     this(ltrImageVector = null, rtlImageVector = null, mirrorInRtl = false, drawableRes = drawableRes)
 
   internal fun resolve(isRtl: Boolean): ImageVector? = if (isRtl) rtlImageVector ?: ltrImageVector else ltrImageVector
@@ -60,7 +62,9 @@ fun Icon(
   val drawableRes = imageVector.drawableRes
   if (drawableRes != null) {
     MaterialIcon(
-      painter = androidx.compose.ui.res.painterResource(drawableRes),
+      painter =
+        androidx.compose.ui.res
+          .painterResource(drawableRes),
       contentDescription = contentDescription,
       modifier = modifier.iconShadow(LocalIconShadow.current),
       tint = tint,
@@ -101,9 +105,10 @@ fun AnimatedIcon(
   AnimatedContent(
     targetState = imageVector,
     contentKey = { it.drawableRes ?: it.resolve(isRtl) },
-    modifier = modifier.size(24.dp).clearAndSetSemantics {
-      if (contentDescription != null) this.contentDescription = contentDescription
-    },
+    modifier =
+      modifier.size(24.dp).clearAndSetSemantics {
+        if (contentDescription != null) this.contentDescription = contentDescription
+      },
     transitionSpec = { AppMotion.iconChange(reduceMotion).using(null) },
     contentAlignment = Alignment.Center,
     label = "appActionIcon",

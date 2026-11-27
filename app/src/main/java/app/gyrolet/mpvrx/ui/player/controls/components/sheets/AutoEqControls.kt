@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -72,7 +72,10 @@ import org.koin.compose.koinInject
 import kotlin.math.log10
 
 @Composable
-internal fun AutoEqControls(enabled: Boolean, onChooseHeadphones: () -> Unit) {
+internal fun AutoEqControls(
+  enabled: Boolean,
+  onChooseHeadphones: () -> Unit,
+) {
   val preferences = koinInject<AudioPreferences>()
   val savedProfile by preferences.autoEqProfile.collectAsState()
   val correctionEnabled by preferences.autoEqEnabled.collectAsState()
@@ -107,16 +110,21 @@ internal fun AutoEqControls(enabled: Boolean, onChooseHeadphones: () -> Unit) {
       onCheckedChange = { checked ->
         if (checked && profile == null) {
           onChooseHeadphones()
-        } else preferences.autoEqEnabled.set(checked)
+        } else {
+          preferences.autoEqEnabled.set(checked)
+        }
       },
       modifier = Modifier.semantics { contentDescription = title },
     )
   }
   HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
   Row(
-    modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp)
-      .clickable(onClick = onChooseHeadphones)
-      .padding(vertical = 12.dp),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .heightIn(min = 68.dp)
+        .clickable(onClick = onChooseHeadphones)
+        .padding(vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
@@ -172,8 +180,9 @@ internal fun AutoEqHeadphonePickerSheet(onDismissRequest: () -> Unit) {
   var failed by remember { mutableStateOf(false) }
   var downloadJob by remember { mutableStateOf<Job?>(null) }
   val scope = rememberCoroutineScope()
-    val entries by produceState<List<AutoEqEntry>?>(null, context, indexAttempt) {
-      value = try {
+  val entries by produceState<List<AutoEqEntry>?>(null, context, indexAttempt) {
+    value =
+      try {
         AutoEq.entries(context)
       } catch (cancellation: CancellationException) {
         throw cancellation
@@ -181,93 +190,111 @@ internal fun AutoEqHeadphonePickerSheet(onDismissRequest: () -> Unit) {
         failed = true
         emptyList()
       }
-    }
-    var query by rememberSaveable { mutableStateOf("") }
-    val matches by produceState<List<AutoEqEntry>?>(null, query, entries) {
-      value = null
-      val available = entries ?: return@produceState
-      delay(100)
-      val search = query.trim()
-      value = withContext(Dispatchers.Default) {
-        available.filter { it.name.contains(search, ignoreCase = true) || it.measurementSource.contains(search, ignoreCase = true) }
+  }
+  var query by rememberSaveable { mutableStateOf("") }
+  val matches by produceState<List<AutoEqEntry>?>(null, query, entries) {
+    value = null
+    val available = entries ?: return@produceState
+    delay(100)
+    val search = query.trim()
+    value =
+      withContext(Dispatchers.Default) {
+        available.filter {
+          it.name.contains(search, ignoreCase = true) ||
+            it.measurementSource.contains(search, ignoreCase = true)
+        }
       }
-    }
-    AppPickerSheet(
-      title = stringResource(R.string.autoeq_choose_headphones),
-      usePlayerSheet = true,
-      scrollContent = false,
-      onDismissRequest = {
-        downloadJob?.cancel()
-        loading = false
-        onDismissRequest()
-      },
-    ) {
-      AppTextField(
-        value = query,
-        onValueChange = { query = it },
-        singleLine = true,
-        enabled = !loading,
-        label = { Text(stringResource(R.string.autoeq_search)) },
-        modifier = Modifier.fillMaxWidth(),
+  }
+  AppPickerSheet(
+    title = stringResource(R.string.autoeq_choose_headphones),
+    usePlayerSheet = true,
+    scrollContent = false,
+    onDismissRequest = {
+      downloadJob?.cancel()
+      loading = false
+      onDismissRequest()
+    },
+  ) {
+    AppTextField(
+      value = query,
+      onValueChange = { query = it },
+      singleLine = true,
+      enabled = !loading,
+      label = { Text(stringResource(R.string.autoeq_search)) },
+      modifier = Modifier.fillMaxWidth(),
+    )
+    if (failed) {
+      Text(
+        stringResource(R.string.autoeq_download_failed),
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.padding(vertical = 8.dp),
       )
-      if (failed) {
+      TextButton(onClick = {
+        failed = false
+        indexAttempt++
+      }) {
+        Text(stringResource(R.string.ui_retry))
+      }
+    }
+    if (loading || entries == null || matches == null) {
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         Text(
-          stringResource(R.string.autoeq_download_failed),
-          color = MaterialTheme.colorScheme.error,
-          modifier = Modifier.padding(vertical = 8.dp),
+          stringResource(if (loading) R.string.autoeq_loading_preset else R.string.autoeq_searching),
+          style = MaterialTheme.typography.bodyMedium,
         )
-        TextButton(onClick = { failed = false; indexAttempt++ }) {
-          Text(stringResource(R.string.ui_retry))
-        }
       }
-      if (loading || entries == null || matches == null) {
-        Row(
-          modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-          horizontalArrangement = Arrangement.spacedBy(12.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-          Text(stringResource(if (loading) R.string.autoeq_loading_preset else R.string.autoeq_searching), style = MaterialTheme.typography.bodyMedium)
-        }
-      }
-      if (!failed && matches?.isEmpty() == true) {
-        Text(stringResource(R.string.autoeq_no_matches), modifier = Modifier.padding(vertical = 12.dp))
-      }
-      LazyColumn(Modifier.fillMaxWidth().selectableGroup()) {
-        items(matches.orEmpty(), key = { it.url }) { entry ->
-          ListItem(
-            headlineContent = { Text(entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-            supportingContent = { Text(entry.measurementSource) },
-            trailingContent = { RadioButton(selected = profile?.entry?.url == entry.url, onClick = null, enabled = !loading) },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-            modifier = Modifier.selectable(
+    }
+    if (!failed && matches?.isEmpty() == true) {
+      Text(stringResource(R.string.autoeq_no_matches), modifier = Modifier.padding(vertical = 12.dp))
+    }
+    LazyColumn(Modifier.fillMaxWidth().selectableGroup()) {
+      items(matches.orEmpty(), key = { it.url }) { entry ->
+        ListItem(
+          headlineContent = { Text(entry.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+          supportingContent = { Text(entry.measurementSource) },
+          trailingContent = {
+            RadioButton(
+              selected = profile?.entry?.url == entry.url,
+              onClick = null,
+              enabled = !loading,
+            )
+          },
+          colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+          modifier =
+            Modifier.selectable(
               selected = profile?.entry?.url == entry.url,
               enabled = !loading,
               role = Role.RadioButton,
               onClick = {
                 loading = true
                 failed = false
-                downloadJob = scope.launch {
-                  try {
-                    val downloaded = AutoEq.download(entry)
-                    ensureActive()
-                    preferences.autoEqProfile.set(downloaded.saved())
-                    preferences.autoEqEnabled.set(true)
-                    onDismissRequest()
-                  } catch (cancellation: CancellationException) {
-                    throw cancellation
-                  } catch (_: Exception) {
-                    failed = true
-                  } finally {
-                    loading = false
+                downloadJob =
+                  scope.launch {
+                    try {
+                      val downloaded = AutoEq.download(entry)
+                      ensureActive()
+                      preferences.autoEqProfile.set(downloaded.saved())
+                      preferences.autoEqEnabled.set(true)
+                      onDismissRequest()
+                    } catch (cancellation: CancellationException) {
+                      throw cancellation
+                    } catch (_: Exception) {
+                      failed = true
+                    } finally {
+                      loading = false
+                    }
                   }
-                }
               },
             ),
-          )
-        }
+        )
       }
     }
+  }
 }
 
 @Composable
@@ -276,13 +303,14 @@ private fun HarmanTargetReference() {
   val preferences = koinInject<AudioPreferences>()
   val inEar by preferences.eqTargetInEar.collectAsState()
   val points by produceState(emptyList<EqTargetPoint>(), inEar) {
-    value = try {
-      AutoEq.target(context, inEar)
-    } catch (cancellation: CancellationException) {
-      throw cancellation
-    } catch (_: Exception) {
-      emptyList()
-    }
+    value =
+      try {
+        AutoEq.target(context, inEar)
+      } catch (cancellation: CancellationException) {
+        throw cancellation
+      } catch (_: Exception) {
+        emptyList()
+      }
   }
   SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(top = 8.dp)) {
     listOf(false, true).forEachIndexed { index, targetInEar ->
@@ -300,19 +328,27 @@ private fun HarmanTargetReference() {
   val lineColor = MaterialTheme.colorScheme.primary
   val gridColor = MaterialTheme.colorScheme.outlineVariant
   Canvas(
-    Modifier.fillMaxWidth().height(160.dp).padding(vertical = 16.dp)
+    Modifier
+      .fillMaxWidth()
+      .height(160.dp)
+      .padding(vertical = 16.dp)
       .semantics { contentDescription = label },
   ) {
     if (points.size < 2) return@Canvas
     val low = minOf(0.0, points.minOf { it.response })
     val high = maxOf(1.0, points.maxOf { it.response })
+
     fun x(frequency: Double) = ((log10(frequency.coerceIn(20.0, 20000.0)) - log10(20.0)) / 3.0 * size.width).toFloat()
+
     fun y(response: Double) = ((high - response) / (high - low) * size.height).toFloat()
     drawLine(gridColor, Offset(0f, y(0.0)), Offset(size.width, y(0.0)))
     val path = Path()
     points.filter { it.frequency in 20.0..20000.0 }.forEachIndexed { index, point ->
-      if (index == 0) path.moveTo(x(point.frequency), y(point.response))
-      else path.lineTo(x(point.frequency), y(point.response))
+      if (index == 0) {
+        path.moveTo(x(point.frequency), y(point.response))
+      } else {
+        path.lineTo(x(point.frequency), y(point.response))
+      }
     }
     drawPath(path, lineColor, style = Stroke(width = 2.dp.toPx()))
   }

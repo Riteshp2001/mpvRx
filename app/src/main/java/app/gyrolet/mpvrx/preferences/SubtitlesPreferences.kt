@@ -43,6 +43,7 @@ class SubtitlesPreferences(
   val borderColor = preferenceStore.getInt("sub_color_border", Color.Black.toArgb())
   val borderStyle = preferenceStore.getEnum("sub_border_style", SubtitlesBorderStyle.OutlineAndShadow)
   val shadowOffset = preferenceStore.getInt("sub_shadow_offset", 0)
+
   /** Corner radius of the background box, in the scaled pixels of [shadowOffset] (its padding). */
   val backgroundRadius = preferenceStore.getInt("sub_back_radius", 0)
   val backgroundColor = preferenceStore.getInt("sub_color_bg", Color.Transparent.toArgb())

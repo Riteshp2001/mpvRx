@@ -19,11 +19,11 @@ import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
-import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Lazy metadata retrieval system
@@ -51,18 +51,27 @@ object MetadataRetrieval {
   fun isFolderMetadataNeeded(browserPreferences: BrowserPreferences): Boolean =
     browserPreferences.showTotalDurationChip.get()
 
-  fun needsVideoMetadata(video: Video, preferences: BrowserPreferences): Boolean {
+  fun needsVideoMetadata(
+    video: Video,
+    preferences: BrowserPreferences,
+  ): Boolean {
     if (ZipArchiveMedia.isPlaybackUri(video.uri.toString())) return false
     return (preferences.showDurationField.get() && video.duration <= 0L) ||
-      (!video.isAudio && (
-        (preferences.showResolutionChip.get() && (video.width == 0 || video.height == 0)) ||
-          (preferences.showFramerateInResolution.get() && (!video.fps.isFinite() || video.fps <= 0f)) ||
-          (preferences.showSubtitleIndicator.get() && video.subtitleCodec.isEmpty()) ||
-          (preferences.showCodecSupportIndicator.get() && video.videoCodec.isBlank())
-        ))
+      (
+        !video.isAudio &&
+          (
+            (preferences.showResolutionChip.get() && (video.width == 0 || video.height == 0)) ||
+              (preferences.showFramerateInResolution.get() && (!video.fps.isFinite() || video.fps <= 0f)) ||
+              (preferences.showSubtitleIndicator.get() && video.subtitleCodec.isEmpty()) ||
+              (preferences.showCodecSupportIndicator.get() && video.videoCodec.isBlank())
+          )
+      )
   }
 
-  internal fun withMetadata(video: Video, metadata: MediaInfoOps.VideoMetadata): Video {
+  internal fun withMetadata(
+    video: Video,
+    metadata: MediaInfoOps.VideoMetadata,
+  ): Video {
     val duration = metadata.durationMs.takeIf { it > 0L } ?: video.duration
     // MediaStore's dimensions are what the library and resolution chip report; a probe only
     // fills them in when the index has none, so enrichment never changes a shown resolution.
@@ -140,18 +149,21 @@ object MetadataRetrieval {
     val metadataByVideoPath = mutableMapOf<String, MediaInfoOps.VideoMetadata>()
     for (video in videos.filter { it.uri.scheme == "content" }) {
       kotlinx.coroutines.currentCoroutineContext().ensureActive()
-      metadataCache.getOrExtractContentMetadata(
-        video,
-        includeVideoCodec && !video.isAudio && video.videoCodec.isBlank(),
-      )?.let {
-        metadataByVideoPath[video.path] = it
-      }
+      metadataCache
+        .getOrExtractContentMetadata(
+          video,
+          includeVideoCodec && !video.isAudio && video.videoCodec.isBlank(),
+        )?.let {
+          metadataByVideoPath[video.path] = it
+        }
     }
     val localFiles =
       videos.mapNotNull { video ->
         if (ZipArchiveMedia.isPlaybackUri(video.uri.toString()) ||
           video.uri.scheme == "content"
-        ) return@mapNotNull null
+        ) {
+          return@mapNotNull null
+        }
         File(video.path).takeIf(File::isFile)?.let { file -> video to file }
       }
 
@@ -200,14 +212,16 @@ object MetadataRetrieval {
         }
 
         if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
-          val videos = restoreCachedContentMetadata(
-            app.gyrolet.mpvrx.repository.MediaFileRepository.getVideosInFolder(
-              context,
-              folder.bucketId,
-              includeAudioOverride = if (audioOnly) true else null,
-            ).filter { !audioOnly || it.isAudio },
-            metadataCache,
-          )
+          val videos =
+            restoreCachedContentMetadata(
+              app.gyrolet.mpvrx.repository.MediaFileRepository
+                .getVideosInFolder(
+                  context,
+                  folder.bucketId,
+                  includeAudioOverride = if (audioOnly) true else null,
+                ).filter { !audioOnly || it.isAudio },
+              metadataCache,
+            )
           var totalDuration = 0L
           for (video in videos) {
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
@@ -310,5 +324,4 @@ object MetadataRetrieval {
       else -> "${secs}s"
     }
   }
-
 }

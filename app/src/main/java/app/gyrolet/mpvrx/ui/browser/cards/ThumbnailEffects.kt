@@ -34,7 +34,10 @@ private val RevealBlur = 12.dp
 
 /** Runs 0 to 1 when a thumbnail missing at first draw arrives; one already in memory starts at 1. */
 @Composable
-internal fun rememberThumbnailReveal(shown: Boolean, vararg keys: Any?): State<Float> {
+internal fun rememberThumbnailReveal(
+  shown: Boolean,
+  vararg keys: Any?,
+): State<Float> {
   val reveal = remember(*keys) { Animatable(if (shown) 1f else 0f) }
   val reduceMotion = AppMotion.shouldReduceMotion()
   LaunchedEffect(reveal, shown) {

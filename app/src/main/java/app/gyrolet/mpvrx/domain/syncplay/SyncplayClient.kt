@@ -29,8 +29,8 @@ import java.io.EOFException
 import java.io.IOException
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
-import java.net.InetAddress
 import java.net.Inet4Address
+import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.ProtocolException
 import java.net.Socket
@@ -41,38 +41,51 @@ class SyncplayClient(
   private val resolver: (String) -> List<InetAddress> = { InetAddress.getAllByName(it).toList() },
   private val socketFactory: () -> Socket = { Socket() },
 ) {
-  private val json = Json {
-    ignoreUnknownKeys = true
-    explicitNulls = false
-  }
-  private data class Connection(val socket: Socket, val reader: BufferedReader, val writer: BufferedWriter)
+  private val json =
+    Json {
+      ignoreUnknownKeys = true
+      explicitNulls = false
+    }
+
+  private data class Connection(
+    val socket: Socket,
+    val reader: BufferedReader,
+    val writer: BufferedWriter,
+  )
 
   private val connectionLock = Any()
   private var generation = 0L
   private var pendingSocket: Socket? = null
+
   @Volatile private var connection: Connection? = null
   private val writeMutex = Mutex()
+
   // Deliver login/errors before a following EOF can cancel the session's collector.
   private val _messages = MutableSharedFlow<SyncplayMessage>()
   val messages: SharedFlow<SyncplayMessage> = _messages.asSharedFlow()
 
-  suspend fun connect(host: String, port: Int): Result<Unit> {
-    val attempt = synchronized(connectionLock) {
-      disconnect()
-      generation
-    }
+  suspend fun connect(
+    host: String,
+    port: Int,
+  ): Result<Unit> {
+    val attempt =
+      synchronized(connectionLock) {
+        disconnect()
+        generation
+      }
     try {
       return withContext(Dispatchers.IO) {
         val endpoint = SyncplayEndpoint.parse(host, port)
         val resolved = resolveSyncplayAddresses(endpoint.host, resolver)
         // Preserve the resolver's preferred family, but don't spend the whole deadline on it.
         val (preferred, alternate) = resolved.partition { (it is Inet4Address) == (resolved.first() is Inet4Address) }
-        val addresses = buildList {
-          for (index in 0 until maxOf(preferred.size, alternate.size)) {
-            preferred.getOrNull(index)?.let(::add)
-            alternate.getOrNull(index)?.let(::add)
+        val addresses =
+          buildList {
+            for (index in 0 until maxOf(preferred.size, alternate.size)) {
+              preferred.getOrNull(index)?.let(::add)
+              alternate.getOrNull(index)?.let(::add)
+            }
           }
-        }
         val deadline = System.nanoTime() + CONNECT_TIMEOUT_MS * 1_000_000L
         var failure: IOException = SocketTimeoutException("Syncplay connection timed out")
         // InetSocketAddress(host, port) only tries one DNS answer. Try the other family too.
@@ -91,11 +104,12 @@ class SyncplayClient(
             candidate.keepAlive = true
             candidate.tcpNoDelay = true
             candidate.soTimeout = READ_TIMEOUT_MS
-            val connected = Connection(
-              candidate,
-              BufferedReader(InputStreamReader(candidate.inputStream, StandardCharsets.UTF_8)),
-              BufferedWriter(OutputStreamWriter(candidate.outputStream, StandardCharsets.UTF_8)),
-            )
+            val connected =
+              Connection(
+                candidate,
+                BufferedReader(InputStreamReader(candidate.inputStream, StandardCharsets.UTF_8)),
+                BufferedWriter(OutputStreamWriter(candidate.outputStream, StandardCharsets.UTF_8)),
+              )
             currentCoroutineContext().ensureActive()
             synchronized(connectionLock) {
               checkAttempt(attempt)
@@ -124,31 +138,33 @@ class SyncplayClient(
     }
   }
 
-  suspend fun listen(): Result<Unit> = withContext(Dispatchers.IO) {
-    val listening = connection ?: return@withContext Result.failure(EOFException())
-    try {
-      while (true) {
-        currentCoroutineContext().ensureActive()
-        val line = listening.reader.readProtocolLine() ?: throw EOFException("Syncplay server closed the connection")
-        if (line.isBlank()) continue
-        val message = try {
-          json.decodeFromString<SyncplayMessage>(line)
-        } catch (_: SerializationException) {
-          // Do not log raw packets: Hello and room messages can contain private information.
-          throw ProtocolException("Invalid Syncplay server response")
+  suspend fun listen(): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      val listening = connection ?: return@withContext Result.failure(EOFException())
+      try {
+        while (true) {
+          currentCoroutineContext().ensureActive()
+          val line = listening.reader.readProtocolLine() ?: throw EOFException("Syncplay server closed the connection")
+          if (line.isBlank()) continue
+          val message =
+            try {
+              json.decodeFromString<SyncplayMessage>(line)
+            } catch (_: SerializationException) {
+              // Do not log raw packets: Hello and room messages can contain private information.
+              throw ProtocolException("Invalid Syncplay server response")
+            }
+          _messages.emit(message)
         }
-        _messages.emit(message)
+        @Suppress("UNREACHABLE_CODE")
+        Result.success(Unit)
+      } catch (cancelled: CancellationException) {
+        throw cancelled
+      } catch (error: Exception) {
+        Result.failure(error)
+      } finally {
+        closeConnection(listening)
       }
-      @Suppress("UNREACHABLE_CODE")
-      Result.success(Unit)
-    } catch (cancelled: CancellationException) {
-      throw cancelled
-    } catch (error: Exception) {
-      Result.failure(error)
-    } finally {
-      closeConnection(listening)
     }
-  }
 
   suspend fun sendMessage(message: SyncplayMessage): Boolean = sendRawMessage(json.encodeToString(message))
 

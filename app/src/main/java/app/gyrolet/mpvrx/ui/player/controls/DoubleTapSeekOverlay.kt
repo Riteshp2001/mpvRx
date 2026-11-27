@@ -83,7 +83,10 @@ import kotlin.math.min
 // Each accepted tap is a distinct event, even when seeking is clamped at the media boundary.
 // Position is normalized within the physical left/right seek region, not the whole player.
 @Immutable
-class SeekRippleRequest(val position: Offset, val isForward: Boolean)
+class SeekRippleRequest(
+  val position: Offset,
+  val isForward: Boolean,
+)
 
 private const val MAX_SEEK_RIPPLES = 4
 private const val MAX_SEEK_CHEVRONS = 8
@@ -133,10 +136,11 @@ fun DoubleTapToSeekOvals(
           request = wave,
           reducedMotion = reducedMotion,
           onFinished = { waves.remove(wave) },
-          modifier = Modifier
-            .align(if (wave.isForward) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft)
-            .fillMaxHeight()
-            .fillMaxWidth(areaFraction),
+          modifier =
+            Modifier
+              .align(if (wave.isForward) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft)
+              .fillMaxHeight()
+              .fillMaxWidth(areaFraction),
         )
       }
     }
@@ -149,10 +153,11 @@ fun DoubleTapToSeekOvals(
         showSeekTime = showSeekTime,
         rippleRequest = rippleRequest?.takeIf { it.isForward == isForward },
         reducedMotion = reducedMotion,
-        modifier = Modifier
-          .align(if (isForward) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft)
-          .fillMaxHeight()
-          .fillMaxWidth(areaFraction),
+        modifier =
+          Modifier
+            .align(if (isForward) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft)
+            .fillMaxHeight()
+            .fillMaxWidth(areaFraction),
       )
     }
   }
@@ -190,29 +195,34 @@ private fun SeekSideFeedback(
   val displayedSeconds = abs(if (amount != 0) amount else lastAmount)
   val seekSign = if (isForward) "+" else "−"
   val seekText = "$seekSign $displayedSeconds"
-  val seekTextStyle = MaterialTheme.typography.headlineSmall.copy(
-    fontSize = 24.sp,
-    lineHeight = 24.sp,
-    fontWeight = FontWeight.Bold,
-    fontFeatureSettings = "tnum",
-    shadow = Shadow(Color.Black.copy(alpha = 0.7f), Offset(0f, 1f), 6f),
-  )
+  val seekTextStyle =
+    MaterialTheme.typography.headlineSmall.copy(
+      fontSize = 24.sp,
+      lineHeight = 24.sp,
+      fontWeight = FontWeight.Bold,
+      fontFeatureSettings = "tnum",
+      shadow = Shadow(Color.Black.copy(alpha = 0.7f), Offset(0f, 1f), 6f),
+    )
   val textMeasurer = rememberTextMeasurer()
   // Only the layout slot is two digits wide; the actual number can grow inward without a limit.
-  val counterSlotWidth = with(LocalDensity.current) {
-    textMeasurer.measure(
-      text = "$seekSign 99",
-      style = seekTextStyle,
-      maxLines = 1,
-      softWrap = false,
-      layoutDirection = LayoutDirection.Ltr,
-    ).size.width.toDp()
-  }
+  val counterSlotWidth =
+    with(LocalDensity.current) {
+      textMeasurer
+        .measure(
+          text = "$seekSign 99",
+          style = seekTextStyle,
+          maxLines = 1,
+          softWrap = false,
+          layoutDirection = LayoutDirection.Ltr,
+        ).size.width
+        .toDp()
+    }
   val durationText = pluralStringResource(R.plurals.seconds, displayedSeconds, displayedSeconds)
-  val seekDescription = stringResource(
-    if (isForward) R.string.player_seek_forward else R.string.player_seek_backward,
-    durationText,
-  )
+  val seekDescription =
+    stringResource(
+      if (isForward) R.string.player_seek_forward else R.string.player_seek_backward,
+      durationText,
+    )
 
   AnimatedVisibility(
     visible = amount != 0 && (showSeekIcon || showSeekTime),
@@ -225,9 +235,10 @@ private fun SeekSideFeedback(
         Row(
           verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterHorizontally),
-          modifier = Modifier
-            .wrapContentWidth(unbounded = true)
-            .semantics(mergeDescendants = true) { contentDescription = seekDescription },
+          modifier =
+            Modifier
+              .wrapContentWidth(unbounded = true)
+              .semantics(mergeDescendants = true) { contentDescription = seekDescription },
         ) {
           if (showSeekIcon && !isForward) SeekMorphingChevrons(isForward, amount, rippleRequest, reducedMotion)
           if (showSeekTime) {
@@ -237,34 +248,38 @@ private fun SeekSideFeedback(
               maxLines = 1,
               softWrap = false,
               style = seekTextStyle,
-              textAlign = when {
-                !showSeekIcon -> TextAlign.Center
-                isForward -> TextAlign.End
-                else -> TextAlign.Start
-              },
-              modifier = Modifier
-                .width(counterSlotWidth)
-                .wrapContentWidth(
-                  align = when {
-                    !showSeekIcon -> Alignment.CenterHorizontally
-                    isForward -> Alignment.End
-                    else -> Alignment.Start
-                  },
-                  unbounded = true,
-                )
-                .stableNumericWidth(seekText)
-                .graphicsLayer {
-                  transformOrigin = TransformOrigin(
-                    pivotFractionX = when {
-                      !showSeekIcon -> 0.5f
-                      isForward -> 1f
-                      else -> 0f
-                    },
-                    pivotFractionY = 0.5f,
-                  )
-                  scaleX = if (reducedMotion) 1f else labelScale.value
-                  scaleY = scaleX
+              textAlign =
+                when {
+                  !showSeekIcon -> TextAlign.Center
+                  isForward -> TextAlign.End
+                  else -> TextAlign.Start
                 },
+              modifier =
+                Modifier
+                  .width(counterSlotWidth)
+                  .wrapContentWidth(
+                    align =
+                      when {
+                        !showSeekIcon -> Alignment.CenterHorizontally
+                        isForward -> Alignment.End
+                        else -> Alignment.Start
+                      },
+                    unbounded = true,
+                  ).stableNumericWidth(seekText)
+                  .graphicsLayer {
+                    transformOrigin =
+                      TransformOrigin(
+                        pivotFractionX =
+                          when {
+                            !showSeekIcon -> 0.5f
+                            isForward -> 1f
+                            else -> 0f
+                          },
+                        pivotFractionY = 0.5f,
+                      )
+                    scaleX = if (reducedMotion) 1f else labelScale.value
+                    scaleY = scaleX
+                  },
             )
           }
           if (showSeekIcon && isForward) SeekMorphingChevrons(isForward, amount, rippleRequest, reducedMotion)
@@ -299,8 +314,9 @@ private fun SeekRippleWave(
       .drawWithCache {
         val origin = Offset(size.width * request.position.x, size.height * request.position.y)
         // Reach the farthest corner even for touches near the edge of a tall portrait region.
-        val maxRadius = hypot(max(origin.x, size.width - origin.x), max(origin.y, size.height - origin.y))
-          .coerceAtLeast(1f)
+        val maxRadius =
+          hypot(max(origin.x, size.width - origin.x), max(origin.y, size.height - origin.y))
+            .coerceAtLeast(1f)
         val startRadius = min(20.dp.toPx(), maxRadius * 0.12f)
         val staticRadius = min(56.dp.toPx(), maxRadius)
         val brush =
@@ -381,7 +397,8 @@ private fun SeekMorphingChevrons(
   }
 
   Box(
-    Modifier.size(width = 22.dp, height = 24.dp)
+    Modifier
+      .size(width = 22.dp, height = 24.dp)
       .graphicsLayer { scaleX = if (isForward) 1f else -1f }
       .drawWithCache {
         // Preserve the vector's aspect ratio and fixed upper/lower anchors as the tip unfolds.
@@ -398,7 +415,11 @@ private fun SeekMorphingChevrons(
           val baseMorph = seekSlideEasing.transform((entrance / SEEK_MORPH_DURATION_MS).coerceIn(0f, 1f))
           val baseSlide = seekSlideEasing.transform((entrance / SEEK_SLIDE_DURATION_MS).coerceIn(0f, 1f))
 
-          fun drawChevron(morph: Float, slide: Float, alpha: Float) {
+          fun drawChevron(
+            morph: Float,
+            slide: Float,
+            alpha: Float,
+          ) {
             path.reset()
             path.moveTo(left, top)
             path.lineTo(left + 12f * unit * morph, size.height / 2f)

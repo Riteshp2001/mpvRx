@@ -9,16 +9,17 @@
 
 package app.gyrolet.mpvrx.ui.player
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 internal object PlaybackActivityOwner {
   private val sequence = AtomicLong()
   private val ownershipLock = ReentrantReadWriteLock(true)
+
   @Volatile private var activeToken = 0L
   private val _hasOwner = MutableStateFlow(false)
   val hasOwner = _hasOwner.asStateFlow()
@@ -135,18 +136,4 @@ internal object PlayerLifecyclePolicy {
       !isChangingConfigurations &&
       !isScreenOffOrLocked &&
       !alreadyHandled
-
-  fun shouldStartBackgroundPlaybackOnStop(
-    backgroundPlaybackEnabled: Boolean,
-    backgroundPlaybackSessionActive: Boolean,
-    isUserFinishing: Boolean,
-    isFinishing: Boolean,
-    isInPictureInPictureMode: Boolean,
-    isScreenOffOrLocked: Boolean,
-  ): Boolean =
-    backgroundPlaybackEnabled &&
-      !backgroundPlaybackSessionActive &&
-      !isUserFinishing &&
-      !isFinishing &&
-      (!isInPictureInPictureMode || isScreenOffOrLocked)
 }

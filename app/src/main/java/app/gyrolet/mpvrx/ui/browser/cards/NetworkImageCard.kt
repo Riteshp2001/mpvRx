@@ -50,22 +50,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
 import app.gyrolet.mpvrx.domain.network.NetworkFile
 import app.gyrolet.mpvrx.domain.network.NetworkImageRepository
-import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.browser.components.MediaTypeBadge
 import app.gyrolet.mpvrx.ui.browser.components.NetworkMediaType
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.icons.Icon as AppIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.ui.icons.Icon as AppIcon
 
 @Composable
 fun NetworkImageCard(
@@ -178,14 +178,16 @@ private fun NetworkImageCardGridLayout(
   modifier: Modifier = Modifier,
 ) {
   Card(
-    modifier = modifier
-      .fillMaxWidth()
-      .tvFocusHighlight(AppShapeScale.large, focusedScale = 1.03f)
-      .mediaCardClickable(onClick = onClick),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .tvFocusHighlight(AppShapeScale.large, focusedScale = 1.03f)
+        .mediaCardClickable(onClick = onClick),
     shape = AppShapeScale.large,
-    colors = CardDefaults.cardColors(
-      containerColor = Color.Transparent,
-    ),
+    colors =
+      CardDefaults.cardColors(
+        containerColor = Color.Transparent,
+      ),
   ) {
     Column(
       modifier =
@@ -194,12 +196,13 @@ private fun NetworkImageCardGridLayout(
           .padding(horizontal = 4.dp, vertical = 6.dp),
     ) {
       Box(
-        modifier = Modifier
-          .fillMaxWidth()
-          .aspectRatio(16f / 10f)
-          .clip(AppShapeScale.medium)
-          .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-          .onSizeChanged(onThumbSizeChanged),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 10f)
+            .clip(AppShapeScale.medium)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .onSizeChanged(onThumbSizeChanged),
         contentAlignment = Alignment.Center,
       ) {
         ThumbnailImage(
@@ -282,21 +285,23 @@ private fun NetworkImageCardListLayout(
   modifier: Modifier = Modifier,
 ) {
   Row(
-    modifier = modifier
-      .fillMaxWidth()
-      .tvFocusHighlight(AppShapeScale.medium)
-      .mediaCardClickable(onClick = onClick)
-      .padding(horizontal = 8.dp, vertical = 6.dp),
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .tvFocusHighlight(AppShapeScale.medium)
+        .mediaCardClickable(onClick = onClick)
+        .padding(horizontal = 8.dp, vertical = 6.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Box(
-      modifier = Modifier
-        .width(128.dp)
-        .aspectRatio(16f / 9f)
-        .clip(AppShapeScale.medium)
-        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-        .onSizeChanged(onThumbSizeChanged),
+      modifier =
+        Modifier
+          .width(128.dp)
+          .aspectRatio(16f / 9f)
+          .clip(AppShapeScale.medium)
+          .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+          .onSizeChanged(onThumbSizeChanged),
       contentAlignment = Alignment.Center,
     ) {
       ThumbnailImage(
@@ -337,12 +342,12 @@ private fun NetworkImageCardListLayout(
             text = formatCardFileSize(file.size),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier
-              .background(
-                MaterialTheme.colorScheme.surfaceContainerHigh,
-                AppShapeScale.small,
-              )
-              .padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier =
+              Modifier
+                .background(
+                  MaterialTheme.colorScheme.surfaceContainerHigh,
+                  AppShapeScale.small,
+                ).padding(horizontal = 8.dp, vertical = 4.dp),
           )
         }
         if (showDateChip && file.lastModified > 0) {
@@ -350,12 +355,12 @@ private fun NetworkImageCardListLayout(
             text = formatCardDate(file.lastModified),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier
-              .background(
-                MaterialTheme.colorScheme.surfaceContainerHigh,
-                AppShapeScale.small,
-              )
-              .padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier =
+              Modifier
+                .background(
+                  MaterialTheme.colorScheme.surfaceContainerHigh,
+                  AppShapeScale.small,
+                ).padding(horizontal = 8.dp, vertical = 4.dp),
           )
         }
       }

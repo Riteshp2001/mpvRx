@@ -9,9 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
-import app.gyrolet.mpvrx.ui.player.FongMiMpv
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +50,8 @@ import app.gyrolet.mpvrx.presentation.components.SliderItem
 import app.gyrolet.mpvrx.ui.components.ExpressiveColorPicker
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.FongMiMpv
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.applySubtitleLayout
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
@@ -92,7 +91,8 @@ fun SubtitleSettingsColorsCard(
     Column(verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing)) {
       AssOverrideWarningBanner(viewModel = viewModel, preferences = preferences)
 
-      val colorTypes = remember { SubColorType.entries.filter { it != SubColorType.Image || FongMiMpv.isBuildSupported } }
+      val colorTypes =
+        remember { SubColorType.entries.filter { it != SubColorType.Image || FongMiMpv.isBuildSupported } }
       var currentColorType by remember { mutableStateOf(SubColorType.Text) }
       var currentColor by remember { mutableIntStateOf(getCurrentMPVColor(currentColorType)) }
       LaunchedEffect(currentColorType) {
@@ -104,49 +104,49 @@ fun SubtitleSettingsColorsCard(
         )
       val colorEditingEnabled = currentColorOptions.none(configOwnedOptions::contains)
       PanelConnectedTile(index = 0, itemCount = 5) {
-      Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
-      ) {
-        colorTypes.forEach { type ->
-          IconToggleButton(
-            checked = currentColorType == type,
-            onCheckedChange = { currentColorType = type },
-          ) {
-            Icon(
-              when (type) {
-                SubColorType.Text -> Icons.RoundedFilled.FormatColorText
-                SubColorType.Border -> Icons.RoundedFilled.BorderColor
-                SubColorType.Shadow -> Icons.RoundedFilled.Shadow
-                SubColorType.Image -> Icons.RoundedFilled.Image
-              },
-              null,
-            )
-          }
-        }
-        Text(stringResource(currentColorType.titleRes))
-        Spacer(Modifier.weight(1f))
-        TextButton(
-          enabled = colorEditingEnabled,
-          onClick = {
-            resetColors(preferences, currentColorType)
-            currentColor = getCurrentMPVColor(currentColorType)
-          },
+        Row(
+          horizontalArrangement = Arrangement.Center,
+          verticalAlignment = Alignment.CenterVertically,
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .horizontalScroll(rememberScrollState())
+              .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
         ) {
-          Row(
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            verticalAlignment = Alignment.CenterVertically,
+          colorTypes.forEach { type ->
+            IconToggleButton(
+              checked = currentColorType == type,
+              onCheckedChange = { currentColorType = type },
+            ) {
+              Icon(
+                when (type) {
+                  SubColorType.Text -> Icons.RoundedFilled.FormatColorText
+                  SubColorType.Border -> Icons.RoundedFilled.BorderColor
+                  SubColorType.Shadow -> Icons.RoundedFilled.Shadow
+                  SubColorType.Image -> Icons.RoundedFilled.Image
+                },
+                null,
+              )
+            }
+          }
+          Text(stringResource(currentColorType.titleRes))
+          Spacer(Modifier.weight(1f))
+          TextButton(
+            enabled = colorEditingEnabled,
+            onClick = {
+              resetColors(preferences, currentColorType)
+              currentColor = getCurrentMPVColor(currentColorType)
+            },
           ) {
-            Icon(Icons.RoundedFilled.FormatColorReset, null)
-            Text(stringResource(R.string.generic_reset))
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Icon(Icons.RoundedFilled.FormatColorReset, null)
+              Text(stringResource(R.string.generic_reset))
+            }
           }
         }
-      }
       }
       ExpressiveColorPicker(
         currentColor,
@@ -262,7 +262,10 @@ fun resetColors(
       SubColorType.Image -> {
         val recolor = preferences.imageSubsOverride.deleteAndGet()
         PlaybackSession.setPropertyString("image-subs-override", if (recolor) "yes" else "no")
-        PlaybackSession.setPropertyDouble("image-subs-brightness", preferences.imageSubsBrightness.deleteAndGet().toDouble())
+        PlaybackSession.setPropertyDouble(
+          "image-subs-brightness",
+          preferences.imageSubsBrightness.deleteAndGet().toDouble(),
+        )
         preferences.imageSubsColor.deleteAndGet().toColorHexString()
       }
     }

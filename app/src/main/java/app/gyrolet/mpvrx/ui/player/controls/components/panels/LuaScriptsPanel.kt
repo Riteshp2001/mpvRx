@@ -9,9 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
-import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
-import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
-import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +30,9 @@ import app.gyrolet.mpvrx.ui.lua.LuaScriptsLoadingState
 import app.gyrolet.mpvrx.ui.lua.LuaSelectionFootnote
 import app.gyrolet.mpvrx.ui.lua.rememberLuaScriptsCatalog
 import app.gyrolet.mpvrx.ui.lua.toggleLuaScriptSelection
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.spacing
 import org.koin.compose.koinInject
 

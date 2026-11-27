@@ -46,7 +46,9 @@ object SubtitleOps : KoinComponent {
     try {
       if (!isGenerationCurrent(expectedGeneration) ||
         MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.SUBTITLE_DISCOVERY)
-      ) return@withContext
+      ) {
+        return@withContext
+      }
 
       // PlayerActivity is singleTask and its original launch Intent can outlive several queue
       // selections. For a network queue, PlaybackSession is the authoritative source for the item
@@ -54,7 +56,8 @@ object SubtitleOps : KoinComponent {
       // first WebDAV/SMB/FTP item's cached path while discovering external subtitles.
       val activeNetworkSource =
         if (networkConnectionId != -1L) {
-          PlaybackSession.queue.value.currentItem?.networkSource
+          PlaybackSession.queue.value.currentItem
+            ?.networkSource
         } else {
           null
         }
@@ -140,26 +143,31 @@ object SubtitleOps : KoinComponent {
           directoryCache.get(key, null, limit)?.let { return@find it }
           currentCoroutineContext().ensureActive()
           if (!shouldContinue()) return@find SubtitleDiscovery.Listing(emptyList(), complete = false)
-          val files = networkRepository.listFiles(connection, path).getOrElse { error ->
-            if (error is CancellationException) throw error
-            Log.w(TAG, "Failed to list subtitle directory: ${error.message}")
-            return@find SubtitleDiscovery.Listing(emptyList(), complete = false)
-          }
+          val files =
+            networkRepository.listFiles(connection, path).getOrElse { error ->
+              if (error is CancellationException) throw error
+              Log.w(TAG, "Failed to list subtitle directory: ${error.message}")
+              return@find SubtitleDiscovery.Listing(emptyList(), complete = false)
+            }
           val parent = NetworkPath.from(path)
-          val entries = files.take(limit).map { file ->
-            currentCoroutineContext().ensureActive()
-            // DLNA paths contain opaque IDs, not display names. Validate containment without
-            // rebuilding the path from the name, which could point at a different remote file.
-            val child = runCatching { NetworkPath.from(file.path) }.getOrNull()
-              ?.takeIf { it.segments.dropLast(1) == parent.segments }
-            SubtitleDiscovery.Entry(
-              name = if (child != null) file.name else "",
-              path = child?.value.orEmpty(),
-              isDirectory = child != null && file.isDirectory,
-              size = file.size,
-            )
-          }
-          SubtitleDiscovery.Listing(entries, complete = files.size <= limit)
+          val entries =
+            files.take(limit).map { file ->
+              currentCoroutineContext().ensureActive()
+              // DLNA paths contain opaque IDs, not display names. Validate containment without
+              // rebuilding the path from the name, which could point at a different remote file.
+              val child =
+                runCatching { NetworkPath.from(file.path) }
+                  .getOrNull()
+                  ?.takeIf { it.segments.dropLast(1) == parent.segments }
+              SubtitleDiscovery.Entry(
+                name = if (child != null) file.name else "",
+                path = child?.value.orEmpty(),
+                isDirectory = child != null && file.isDirectory,
+                size = file.size,
+              )
+            }
+          SubtitleDiscovery
+            .Listing(entries, complete = files.size <= limit)
             .also { directoryCache.put(key, null, it) }
         }
 
@@ -272,11 +280,13 @@ object SubtitleOps : KoinComponent {
                 } else {
                   ""
                 }
-              entries.add(SubtitleDiscovery.Entry(
-                name = name,
-                path = child.toString(),
-                isDirectory = attributes?.isDirectory == true,
-              ))
+              entries.add(
+                SubtitleDiscovery.Entry(
+                  name = name,
+                  path = child.toString(),
+                  isDirectory = attributes?.isDirectory == true,
+                ),
+              )
             }
           }
         } catch (cancellation: CancellationException) {
@@ -291,8 +301,9 @@ object SubtitleOps : KoinComponent {
     if (subtitles.isNotEmpty()) {
       withContext(Dispatchers.Main) {
         if (!isGenerationCurrent(expectedGeneration)) return@withContext
-        val loadedPaths = (0 until (PlaybackSession.getPropertyInt("track-list/count") ?: 0).coerceAtMost(512))
-          .mapNotNullTo(hashSetOf()) { PlaybackSession.getPropertyString("track-list/$it/external-filename") }
+        val loadedPaths =
+          (0 until (PlaybackSession.getPropertyInt("track-list/count") ?: 0).coerceAtMost(512))
+            .mapNotNullTo(hashSetOf()) { PlaybackSession.getPropertyString("track-list/$it/external-filename") }
         subtitles.forEachIndexed { index, subtitle ->
           currentCoroutineContext().ensureActive()
           if (!isGenerationCurrent(expectedGeneration)) return@forEachIndexed

@@ -35,20 +35,20 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.Preference
+import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
 import app.gyrolet.mpvrx.ui.background.BackgroundType
 import app.gyrolet.mpvrx.ui.background.RandomInterval
+import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.theme.AppTheme
 import app.gyrolet.mpvrx.ui.theme.CustomThemeDefinition
 import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.WallpaperScaleMode
 import app.gyrolet.mpvrx.ui.theme.spacing
-import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
-import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.utils.device.DevicePerformance
 import kotlinx.collections.immutable.ImmutableList
@@ -78,6 +78,7 @@ class AppearancePreferences(
   val customWallpaperAlpha = preferenceStore.getFloat("custom_wallpaper_alpha", 1f)
   val customWallpaperUseColors = preferenceStore.getBoolean("custom_wallpaper_use_colors", false)
   val amoledMode = preferenceStore.getBoolean("amoled_mode", false)
+
   // Opt-in: glass records the screen behind it every frame and moves player video to a TextureView.
   val liquidGlassEnabled = preferenceStore.getBoolean("liquid_glass_enabled", false)
   val liquidGlassInHdr = preferenceStore.getBoolean("liquid_glass_in_hdr", false)
@@ -91,12 +92,17 @@ class AppearancePreferences(
   val liquidGlassSaturation = preferenceStore.getFloat("liquid_glass_saturation", 1f)
   val liquidGlassBrightness = preferenceStore.getFloat("liquid_glass_brightness", 0f)
   val liquidGlassContrast = preferenceStore.getFloat("liquid_glass_contrast", 1f)
-  val liquidGlassHighlightStyle = preferenceStore.getEnum("liquid_glass_highlight_style", LiquidGlassHighlightStyle.Component)
+  val liquidGlassHighlightStyle =
+    preferenceStore.getEnum(
+      "liquid_glass_highlight_style",
+      LiquidGlassHighlightStyle.Component,
+    )
   val liquidGlassHighlightStrength = preferenceStore.getFloat("liquid_glass_highlight_strength", 1f)
   val liquidGlassHighlightWidth = preferenceStore.getFloat("liquid_glass_highlight_width", 1f)
   val liquidGlassHighlightBlur = preferenceStore.getFloat("liquid_glass_highlight_blur", 1f)
   val navigationBarGlow = preferenceStore.getBoolean("navigation_bar_glow", true)
   val connectedMiniPlayerNavigation = preferenceStore.getBoolean("connected_mini_player_navigation", true)
+
   // Android 11 and older have no RenderEffect blur for the floating bar.
   val legacyNavigationBar =
     preferenceStore.getBoolean("legacy_navigation_bar", Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
@@ -119,10 +125,12 @@ class AppearancePreferences(
     preferenceStore.getEnum("landscape_seekbar_placement", SeekbarPlacement.AboveButtons)
   val portraitPlaybackControlsPlacement =
     preferenceStore.getEnum("portrait_playback_controls_placement", PlaybackControlsPlacement.Center)
+
   // Reuse the existing key so an explicitly saved Center choice is restored.
   // Both legacy seekbar-relative values use the combined landscape button row.
   val landscapePlaybackControlsPlacement =
     preferenceStore.getEnum("landscape_playback_controls_placement", PlaybackControlsPlacement.Center)
+
   // Absolute background level: 0.55 keeps each button's designed tint, 1 is opaque, 0 is clear.
   // A new key, because "player_buttons_opacity" stored a multiplier whose 100% kept buttons translucent.
   val playerButtonsBackgroundOpacity = preferenceStore.getFloat("player_buttons_background_opacity", 0.55f)
@@ -130,21 +138,34 @@ class AppearancePreferences(
   val showProfileTab = preferenceStore.getBoolean("show_profile_tab", true)
   val profileName = preferenceStore.getString("profile_name", "")
   val profileImagePath = preferenceStore.getString("profile_image_path", "")
-  val profileSectionOrder = preferenceStore.profileLayoutOrder("profile_section_order", ProfileSection.entries.map { it.name })
+  val profileSectionOrder =
+    preferenceStore.profileLayoutOrder(
+      "profile_section_order",
+      ProfileSection.entries.map {
+        it.name
+      },
+    )
   val profileHiddenSections = preferenceStore.getStringSet("profile_hidden_sections")
   val showNetworkTab = preferenceStore.getBoolean("show_network_tab", false)
   val showJellyfinTab = preferenceStore.getBoolean("show_jellyfin_tab", false)
+
   /** Persistent visual order of bottom navigation tabs. Home remains the root destination. */
-  val bottomNavigationOrder = preferenceStore.getObject(
-    key = "bottom_navigation_tab_order",
-    defaultValue = listOf("HOME", "MUSIC", "NETWORK", "JELLYFIN", "PROFILE"),
-    serializer = { order -> order.joinToString(",") },
-    deserializer = { stored ->
-      val defaults = listOf("HOME", "MUSIC", "NETWORK", "JELLYFIN", "PROFILE")
-      val parsed = stored.split(",").map(String::trim).filter { it in defaults }.distinct()
-      listOf("HOME") + parsed.filterNot { it == "HOME" } + defaults.drop(1).filterNot { it in parsed }
-    },
-  )
+  val bottomNavigationOrder =
+    preferenceStore.getObject(
+      key = "bottom_navigation_tab_order",
+      defaultValue = listOf("HOME", "MUSIC", "NETWORK", "JELLYFIN", "PROFILE"),
+      serializer = { order -> order.joinToString(",") },
+      deserializer = { stored ->
+        val defaults = listOf("HOME", "MUSIC", "NETWORK", "JELLYFIN", "PROFILE")
+        val parsed =
+          stored
+            .split(",")
+            .map(String::trim)
+            .filter { it in defaults }
+            .distinct()
+        listOf("HOME") + parsed.filterNot { it == "HOME" } + defaults.drop(1).filterNot { it in parsed }
+      },
+    )
   val showQuickPlayFab = preferenceStore.getBoolean("show_quick_play_fab", true)
   val quickPlayFabDirect = preferenceStore.getBoolean("quick_play_fab_direct", false)
 
@@ -152,6 +173,7 @@ class AppearancePreferences(
   val backgroundType = preferenceStore.getEnum("background_type", BackgroundType.NONE)
   val backgroundParallax = preferenceStore.getBoolean("background_parallax", true)
   val backgroundOverWallpaper = preferenceStore.getBoolean("background_over_wallpaper", true)
+
   // Seasonal backdrops animate behind every screen; TV boxes start without them.
   val seasonalThemes = preferenceStore.getBoolean("seasonal_themes", !television)
   val randomBackgroundInterval = preferenceStore.getEnum("random_background_interval", RandomInterval.EACH_LAUNCH)
@@ -160,10 +182,20 @@ class AppearancePreferences(
 
   fun resetLiquidGlassOptions() {
     listOf<Preference<*>>(
-      liquidGlassOpacity, liquidGlassBlur, liquidGlassRefractionHeight, liquidGlassRefractionAmount,
-      liquidGlassDepthEffect, liquidGlassChromaticAberration, liquidGlassVibrancy,
-      liquidGlassSaturation, liquidGlassBrightness, liquidGlassContrast,
-      liquidGlassHighlightStyle, liquidGlassHighlightStrength, liquidGlassHighlightWidth, liquidGlassHighlightBlur,
+      liquidGlassOpacity,
+      liquidGlassBlur,
+      liquidGlassRefractionHeight,
+      liquidGlassRefractionAmount,
+      liquidGlassDepthEffect,
+      liquidGlassChromaticAberration,
+      liquidGlassVibrancy,
+      liquidGlassSaturation,
+      liquidGlassBrightness,
+      liquidGlassContrast,
+      liquidGlassHighlightStyle,
+      liquidGlassHighlightStrength,
+      liquidGlassHighlightWidth,
+      liquidGlassHighlightBlur,
     ).forEach { it.delete() }
   }
 
@@ -284,7 +316,9 @@ enum class SeekbarPlacement {
   BelowButtons,
 }
 
-enum class PlaybackControlsPlacement(@StringRes val titleRes: Int) {
+enum class PlaybackControlsPlacement(
+  @StringRes val titleRes: Int,
+) {
   Center(R.string.pref_layout_playback_center),
   AboveSeekbar(R.string.pref_layout_playback_above_seekbar),
   BelowSeekbar(R.string.pref_layout_playback_below_seekbar),
@@ -347,4 +381,3 @@ fun MultiChoiceSegmentedButton(
     }
   }
 }
-

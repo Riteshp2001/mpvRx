@@ -68,9 +68,13 @@ internal fun SettingsNavigationRow(
   val interactive = enabled && !busy
   val interactionSource = remember { MutableInteractionSource() }
   val pressed by interactionSource.collectIsPressedAsState()
-  val containerColor = animatedConnectedContainerColor(
-    selected = false, pressed = pressed, enabled = interactive, containerColor = colors.surfaceContainerLow,
-  )
+  val containerColor =
+    animatedConnectedContainerColor(
+      selected = false,
+      pressed = pressed,
+      enabled = interactive,
+      containerColor = colors.surfaceContainerLow,
+    )
   Row(
     modifier =
       Modifier
@@ -86,8 +90,7 @@ internal fun SettingsNavigationRow(
           interactionSource = interactionSource,
           indication = androidx.compose.material3.ripple(),
           onClick = onClick,
-        )
-        .heightIn(min = 64.dp)
+        ).heightIn(min = 64.dp)
         .padding(horizontal = 16.dp, vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {

@@ -10,8 +10,8 @@ import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
-import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import app.gyrolet.mpvrx.utils.storage.MediaStoreGenerationGuard
+import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 
 /**
  * Persisted copy of the media library list, so a cold boot can show it immediately.
@@ -29,6 +29,7 @@ import app.gyrolet.mpvrx.utils.storage.MediaStoreGenerationGuard
 internal object MediaLibraryCache {
   private const val TAG = "MediaLibraryCache"
   private const val PREFS = "media_library_cache"
+
   // Rescan snapshots written before the standard MediaStore orientation column was used.
   private const val KEY_VIDEOS = "videos_v3"
   private const val KEY_SCAN_OPTIONS = "scan_options_v3"
@@ -93,7 +94,9 @@ internal object MediaLibraryCache {
   ) {
     if (observedGeneration == null) return // No safe cold-boot shortcut below API 30.
     runCatching {
-      context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+      context.applicationContext
+        .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .edit()
         .putString(KEY_VIDEOS, videos.joinToString(RECORD_SEPARATOR) { encode(it) })
         .putString(KEY_SCAN_OPTIONS, scanOptionsKey)
         .putString(KEY_GENERATION, observedGeneration)
@@ -131,7 +134,9 @@ internal object MediaLibraryCache {
 
   fun clear(context: Context) {
     runCatching {
-      context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+      context.applicationContext
+        .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        .edit()
         .remove(KEY_VIDEOS)
         .remove(KEY_SCAN_OPTIONS)
         .remove(KEY_GENERATION)

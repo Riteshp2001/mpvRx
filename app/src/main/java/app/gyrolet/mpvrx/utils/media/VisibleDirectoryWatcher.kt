@@ -14,7 +14,9 @@ import java.io.File
  * Watches only the directory currently visible in a browser, never an entire storage tree.
  * Calls back once after bursts of writes/renames. Must stop when the screen leaves RESUMED.
  */
-class VisibleDirectoryWatcher(private val onChanged: () -> Unit) {
+class VisibleDirectoryWatcher(
+  private val onChanged: () -> Unit,
+) {
   private val handler = Handler(Looper.getMainLooper())
   private val dispatch = Runnable { onChanged() }
   private var observer: FileObserver? = null
@@ -51,7 +53,10 @@ class VisibleDirectoryWatcher(private val onChanged: () -> Unit) {
   private fun createObserver(directory: File): FileObserver =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       object : FileObserver(directory, EVENTS) {
-        override fun onEvent(event: Int, path: String?) = onFileEvent(event)
+        override fun onEvent(
+          event: Int,
+          path: String?,
+        ) = onFileEvent(event)
       }
     } else {
       createLegacyObserver(directory)
@@ -61,13 +66,17 @@ class VisibleDirectoryWatcher(private val onChanged: () -> Unit) {
   @Suppress("DEPRECATION")
   private fun createLegacyObserver(directory: File): FileObserver =
     object : FileObserver(directory.absolutePath, EVENTS) {
-      override fun onEvent(event: Int, path: String?) = onFileEvent(event)
+      override fun onEvent(
+        event: Int,
+        path: String?,
+      ) = onFileEvent(event)
     }
 
   private companion object {
     const val TAG = "VisibleDirectoryWatcher"
-    val EVENTS = FileObserver.CREATE or FileObserver.DELETE or
-      FileObserver.MOVED_FROM or FileObserver.MOVED_TO or FileObserver.CLOSE_WRITE or
-      FileObserver.DELETE_SELF or FileObserver.MOVE_SELF
+    val EVENTS =
+      FileObserver.CREATE or FileObserver.DELETE or
+        FileObserver.MOVED_FROM or FileObserver.MOVED_TO or FileObserver.CLOSE_WRITE or
+        FileObserver.DELETE_SELF or FileObserver.MOVE_SELF
   }
 }

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.preferences
 
 import androidx.compose.runtime.Composable
@@ -16,20 +16,22 @@ internal fun ProfileLayoutPreferences(preferences: AppearancePreferences) {
   val hidden by preferences.profileHiddenSections.collectAsState()
   PreferenceSectionHeader(
     title = stringResource(R.string.profile_layout_sections),
-    modifier = Modifier
-      .settingsSearchTarget(R.string.profile_layout_title)
-      .settingsSearchTarget(R.string.profile_layout_sections),
+    modifier =
+      Modifier
+        .settingsSearchTarget(R.string.profile_layout_title)
+        .settingsSearchTarget(R.string.profile_layout_sections),
   )
   ExpressivePreferenceGroup {
     ReorderableTabPreferences(
-      tabs = order.map { id ->
-        ReorderableTabItem(
-          id = id,
-          title = stringResource(ProfileSection.entries.first { it.name == id }.titleRes),
-          summary = "",
-          enabled = id !in hidden,
-        )
-      },
+      tabs =
+        order.map { id ->
+          ReorderableTabItem(
+            id = id,
+            title = stringResource(ProfileSection.entries.first { it.name == id }.titleRes),
+            summary = "",
+            enabled = id !in hidden,
+          )
+        },
       onEnabledChange = { id, enabled ->
         preferences.profileHiddenSections.set(if (enabled) hidden - id else hidden + id)
       },

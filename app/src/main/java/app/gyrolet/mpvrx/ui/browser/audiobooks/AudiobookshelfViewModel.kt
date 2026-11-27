@@ -55,7 +55,8 @@ data class AudiobookshelfUiState(
 
 class AudiobookshelfViewModel(
   application: Application,
-) : AndroidViewModel(application), KoinComponent {
+) : AndroidViewModel(application),
+  KoinComponent {
   private val repository: AudiobookshelfRepository by inject()
   private val audiobookDao: AudiobookDao by inject()
   private val mediaServerPreferences: MediaServerPreferences by inject()
@@ -68,11 +69,12 @@ class AudiobookshelfViewModel(
       repository.allServers.collect { servers ->
         _uiState.update { current ->
           val currentActive = current.activeServer
-          val newActive = if (currentActive != null && servers.any { it.id == currentActive.id }) {
-            servers.first { it.id == currentActive.id }
-          } else {
-            servers.firstOrNull()
-          }
+          val newActive =
+            if (currentActive != null && servers.any { it.id == currentActive.id }) {
+              servers.first { it.id == currentActive.id }
+            } else {
+              servers.firstOrNull()
+            }
           current.copy(servers = servers, activeServer = newActive)
         }
         if (_uiState.value.activeServer != null) {
@@ -135,31 +137,35 @@ class AudiobookshelfViewModel(
     }
   }
 
-  private suspend fun loadBooks(server: AudiobookshelfServer, libraryId: String) {
+  private suspend fun loadBooks(
+    server: AudiobookshelfServer,
+    libraryId: String,
+  ) {
     val booksResult = repository.getItems(server, libraryId, limit = 500)
     if (booksResult.isSuccess) {
       val rawBooks = booksResult.getOrDefault(emptyList())
-      val mergedBooks = rawBooks.map { book ->
-        val localId = audiobookDao.findBySource("abs:${server.id}:${book.id}")
-        if (localId != null) {
-          val local = audiobookDao.getBook(localId)
-          if (local != null && local.book.lastPlayedAt > 0) {
-            val localProgressMs = local.book.progressMs
-            val durMs = if (book.durationMs > 0) book.durationMs else local.durationMs
-            val percent = if (durMs > 0) (localProgressMs.toFloat() / durMs).coerceIn(0f, 1f) else 0f
-            book.copy(
-              progressMs = localProgressMs,
-              progressPercent = percent,
-              isFinished = local.book.finished,
-              durationMs = if (book.durationMs > 0) book.durationMs else durMs,
-            )
+      val mergedBooks =
+        rawBooks.map { book ->
+          val localId = audiobookDao.findBySource("abs:${server.id}:${book.id}")
+          if (localId != null) {
+            val local = audiobookDao.getBook(localId)
+            if (local != null && local.book.lastPlayedAt > 0) {
+              val localProgressMs = local.book.progressMs
+              val durMs = if (book.durationMs > 0) book.durationMs else local.durationMs
+              val percent = if (durMs > 0) (localProgressMs.toFloat() / durMs).coerceIn(0f, 1f) else 0f
+              book.copy(
+                progressMs = localProgressMs,
+                progressPercent = percent,
+                isFinished = local.book.finished,
+                durationMs = if (book.durationMs > 0) book.durationMs else durMs,
+              )
+            } else {
+              book
+            }
           } else {
             book
           }
-        } else {
-          book
         }
-      }
       _uiState.update {
         it.copy(
           isLoading = false,
@@ -213,17 +219,19 @@ class AudiobookshelfViewModel(
       var lastError: String? = null
 
       for (candUrl in urlsToTry) {
-        val result = if (isToken) {
-          repository.verifyToken(candUrl, token.trim(), serverName.trim())
-        } else {
-          repository.login(candUrl, username.trim(), password)
-        }
+        val result =
+          if (isToken) {
+            repository.verifyToken(candUrl, token.trim(), serverName.trim())
+          } else {
+            repository.login(candUrl, username.trim(), password)
+          }
 
         if (result.isSuccess) {
-          successfulServer = result.getOrNull()?.copy(
-            id = existingServer?.id ?: 0,
-            name = serverName.trim().ifBlank { result.getOrNull()?.name ?: "Audiobookshelf" },
-          )
+          successfulServer =
+            result.getOrNull()?.copy(
+              id = existingServer?.id ?: 0,
+              name = serverName.trim().ifBlank { result.getOrNull()?.name ?: "Audiobookshelf" },
+            )
           break
         } else {
           lastError = result.exceptionOrNull()?.message
@@ -231,12 +239,13 @@ class AudiobookshelfViewModel(
       }
 
       if (successfulServer != null) {
-        val savedId = if (existingServer != null) {
-          repository.updateServer(successfulServer)
-          existingServer.id
-        } else {
-          repository.saveServer(successfulServer)
-        }
+        val savedId =
+          if (existingServer != null) {
+            repository.updateServer(successfulServer)
+            existingServer.id
+          } else {
+            repository.saveServer(successfulServer)
+          }
         val savedServer = successfulServer.copy(id = savedId)
         _uiState.update {
           it.copy(
@@ -268,91 +277,96 @@ class AudiobookshelfViewModel(
     val server = _uiState.value.activeServer ?: return
     viewModelScope.launch(Dispatchers.IO) {
       // Fetch full details if tracks/chapters are empty
-      val fullBook = if (book.tracks.isEmpty() || book.chapters.isEmpty()) {
-        repository.getItemDetails(server, book.id).getOrDefault(book)
-      } else {
-        book
-      }
+      val fullBook =
+        if (book.tracks.isEmpty() || book.chapters.isEmpty()) {
+          repository.getItemDetails(server, book.id).getOrDefault(book)
+        } else {
+          book
+        }
 
       val sourceKey = "abs:${server.id}:${fullBook.id}"
       val coverUrl = fullBook.coverUrl ?: repository.getCoverUrl(server, fullBook.id)
 
-      val rawTracks = fullBook.tracks.ifEmpty {
-        listOf(
-          AudiobookshelfTrack(
-            id = fullBook.id,
-            index = 0,
-            title = fullBook.title,
-            durationMs = fullBook.durationMs,
+      val rawTracks =
+        fullBook.tracks.ifEmpty {
+          listOf(
+            AudiobookshelfTrack(
+              id = fullBook.id,
+              index = 0,
+              title = fullBook.title,
+              durationMs = fullBook.durationMs,
+            ),
           )
-        )
-      }
+        }
 
-      val trackEntities = rawTracks.mapIndexed { index, track ->
-        AudiobookTrackEntity(
-          id = 0L,
-          bookId = 0L,
-          uri = repository.getTrackStreamUrl(server, track, fullBook.id),
-          fileName = track.title.ifBlank { "Track ${index + 1}" },
-          title = track.title.ifBlank { fullBook.title },
-          position = index,
-          durationMs = track.durationMs,
-          size = track.size,
-        )
-      }
+      val trackEntities =
+        rawTracks.mapIndexed { index, track ->
+          AudiobookTrackEntity(
+            id = 0L,
+            bookId = 0L,
+            uri = repository.getTrackStreamUrl(server, track, fullBook.id),
+            fileName = track.title.ifBlank { "Track ${index + 1}" },
+            title = track.title.ifBlank { fullBook.title },
+            position = index,
+            durationMs = track.durationMs,
+            size = track.size,
+          )
+        }
 
       val existingId = audiobookDao.findBySource(sourceKey)
-      val bookId = if (existingId != null) {
-        audiobookDao.updateDetails(
-          id = existingId,
-          title = fullBook.title,
-          author = fullBook.author,
-          narrator = fullBook.narrator,
-          series = fullBook.series,
-          seriesPart = fullBook.seriesPart,
-        )
-        audiobookDao.fillMetadata(
-          id = existingId,
-          author = fullBook.author,
-          narrator = fullBook.narrator,
-          series = fullBook.series,
-          seriesPart = fullBook.seriesPart,
-          description = fullBook.description,
-          language = fullBook.language,
-          publisher = fullBook.publisher,
-          publishedYear = fullBook.publishedYear,
-          genre = fullBook.genres.joinToString(", "),
-          isbn = fullBook.isbn,
-          asin = fullBook.asin,
-        )
-        existingId
-      } else {
-        val bookEntity = AudiobookEntity(
-          id = 0L,
-          sourceKey = sourceKey,
-          title = fullBook.title,
-          subtitle = fullBook.subtitle,
-          author = fullBook.author,
-          narrator = fullBook.narrator,
-          series = fullBook.series,
-          seriesPart = fullBook.seriesPart,
-          description = fullBook.description,
-          language = fullBook.language,
-          publisher = fullBook.publisher,
-          publishedYear = fullBook.publishedYear,
-          genre = fullBook.genres.joinToString(", "),
-          isbn = fullBook.isbn,
-          asin = fullBook.asin,
-          coverUri = coverUrl,
-          playbackSpeed = 1.0f,
-          rewindSeconds = 15,
-          lastPlayedAt = System.currentTimeMillis(),
-          positionMs = if (restart) 0L else fullBook.progressMs,
-          progressMs = if (restart) 0L else fullBook.progressMs,
-          finished = if (restart) false else fullBook.isFinished,
-        )
-        audiobookDao.importBook(bookEntity, trackEntities)
-      }
+      val bookId =
+        if (existingId != null) {
+          audiobookDao.updateDetails(
+            id = existingId,
+            title = fullBook.title,
+            author = fullBook.author,
+            narrator = fullBook.narrator,
+            series = fullBook.series,
+            seriesPart = fullBook.seriesPart,
+          )
+          audiobookDao.fillMetadata(
+            id = existingId,
+            author = fullBook.author,
+            narrator = fullBook.narrator,
+            series = fullBook.series,
+            seriesPart = fullBook.seriesPart,
+            description = fullBook.description,
+            language = fullBook.language,
+            publisher = fullBook.publisher,
+            publishedYear = fullBook.publishedYear,
+            genre = fullBook.genres.joinToString(", "),
+            isbn = fullBook.isbn,
+            asin = fullBook.asin,
+          )
+          existingId
+        } else {
+          val bookEntity =
+            AudiobookEntity(
+              id = 0L,
+              sourceKey = sourceKey,
+              title = fullBook.title,
+              subtitle = fullBook.subtitle,
+              author = fullBook.author,
+              narrator = fullBook.narrator,
+              series = fullBook.series,
+              seriesPart = fullBook.seriesPart,
+              description = fullBook.description,
+              language = fullBook.language,
+              publisher = fullBook.publisher,
+              publishedYear = fullBook.publishedYear,
+              genre = fullBook.genres.joinToString(", "),
+              isbn = fullBook.isbn,
+              asin = fullBook.asin,
+              coverUri = coverUrl,
+              playbackSpeed = 1.0f,
+              rewindSeconds = 15,
+              lastPlayedAt = System.currentTimeMillis(),
+              positionMs = if (restart) 0L else fullBook.progressMs,
+              progressMs = if (restart) 0L else fullBook.progressMs,
+              finished = if (restart) false else fullBook.isFinished,
+            )
+          audiobookDao.importBook(bookEntity, trackEntities)
+        }
 
       val loadedBook = audiobookDao.getBook(bookId)
       if (loadedBook != null && fullBook.chapters.isNotEmpty()) {
@@ -360,20 +374,25 @@ class AudiobookshelfViewModel(
         for (track in loadedBook.orderedTracks) {
           val trackStartOffset = loadedBook.positionInBook(track.id, 0L)
           val trackEndOffset = trackStartOffset + track.durationMs
-          val chaptersForTrack = fullBook.chapters.mapNotNull { chap ->
-            if (chap.startMs < trackEndOffset && chap.endMs > trackStartOffset) {
-              val localStart = (chap.startMs - trackStartOffset).coerceAtLeast(0L)
-              val localEnd = (chap.endMs - trackStartOffset).coerceAtMost(track.durationMs)
-              if (localEnd > localStart) {
-                AudiobookChapterEntity(
-                  trackId = track.id,
-                  startMs = localStart,
-                  endMs = localEnd,
-                  title = chap.title,
-                )
-              } else null
-            } else null
-          }
+          val chaptersForTrack =
+            fullBook.chapters.mapNotNull { chap ->
+              if (chap.startMs < trackEndOffset && chap.endMs > trackStartOffset) {
+                val localStart = (chap.startMs - trackStartOffset).coerceAtLeast(0L)
+                val localEnd = (chap.endMs - trackStartOffset).coerceAtMost(track.durationMs)
+                if (localEnd > localStart) {
+                  AudiobookChapterEntity(
+                    trackId = track.id,
+                    startMs = localStart,
+                    endMs = localEnd,
+                    title = chap.title,
+                  )
+                } else {
+                  null
+                }
+              } else {
+                null
+              }
+            }
           if (chaptersForTrack.isNotEmpty()) {
             audiobookDao.replaceChapters(track.id, chaptersForTrack)
           }
@@ -388,7 +407,12 @@ class AudiobookshelfViewModel(
     }
   }
 
-  fun syncProgress(book: AudiobookshelfBook, currentTimeSeconds: Double, durationSeconds: Double, isFinished: Boolean = false) {
+  fun syncProgress(
+    book: AudiobookshelfBook,
+    currentTimeSeconds: Double,
+    durationSeconds: Double,
+    isFinished: Boolean = false,
+  ) {
     val server = _uiState.value.activeServer ?: return
     viewModelScope.launch(Dispatchers.IO) {
       val progressMs = (currentTimeSeconds * 1000).toLong()
@@ -396,13 +420,20 @@ class AudiobookshelfViewModel(
 
       // Update local UI state immediately for instant feedback
       _uiState.update { state ->
-        val updatedBooks = state.books.map {
-          if (it.id == book.id) it.copy(progressMs = progressMs, progressPercent = percent, isFinished = isFinished)
-          else it
-        }
-        val updatedDetail = if (state.detailBook?.id == book.id) {
-          state.detailBook.copy(progressMs = progressMs, progressPercent = percent, isFinished = isFinished)
-        } else state.detailBook
+        val updatedBooks =
+          state.books.map {
+            if (it.id == book.id) {
+              it.copy(progressMs = progressMs, progressPercent = percent, isFinished = isFinished)
+            } else {
+              it
+            }
+          }
+        val updatedDetail =
+          if (state.detailBook?.id == book.id) {
+            state.detailBook.copy(progressMs = progressMs, progressPercent = percent, isFinished = isFinished)
+          } else {
+            state.detailBook
+          }
         state.copy(books = updatedBooks, detailBook = updatedDetail)
       }
 
@@ -417,7 +448,10 @@ class AudiobookshelfViewModel(
     }
   }
 
-  fun updateCover(bookId: String, coverUrl: String) {
+  fun updateCover(
+    bookId: String,
+    coverUrl: String,
+  ) {
     val server = _uiState.value.activeServer ?: return
     viewModelScope.launch(Dispatchers.IO) {
       val res = repository.updateCoverUrl(server, bookId, coverUrl)
@@ -426,12 +460,19 @@ class AudiobookshelfViewModel(
           loadBooks(server, lib.id)
         }
       } else {
-        _uiState.update { it.copy(error = res.exceptionOrNull()?.localizedMessage ?: "Failed to update cover on server") }
+        _uiState.update {
+          it.copy(
+            error = res.exceptionOrNull()?.localizedMessage ?: "Failed to update cover on server",
+          )
+        }
       }
     }
   }
 
-  fun quickMatch(bookId: String, provider: String = "audible") {
+  fun quickMatch(
+    bookId: String,
+    provider: String = "audible",
+  ) {
     val server = _uiState.value.activeServer ?: return
     viewModelScope.launch(Dispatchers.IO) {
       val res = repository.quickMatch(server, bookId, provider)

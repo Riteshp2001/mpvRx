@@ -27,8 +27,8 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -64,8 +64,8 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
 import app.gyrolet.mpvrx.ui.preferences.components.ThemePreviewCard
-import app.gyrolet.mpvrx.ui.theme.AppTheme
 import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
+import app.gyrolet.mpvrx.ui.theme.AppTheme
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.CustomThemeDefinition
 import app.gyrolet.mpvrx.ui.theme.ThemeColorRole
@@ -114,17 +114,22 @@ data class CustomThemeEditorScreen(
     var selectedKey by rememberSaveable { mutableStateOf("primary") }
     var showValidationErrors by rememberSaveable { mutableStateOf(false) }
     var advancedExpanded by rememberSaveable(themeName) { mutableStateOf(selectedKey.startsWith("override_")) }
-    val baseOptions = remember(context, savedThemes) {
-      AppTheme.entries.map { theme ->
-        ThemeBaseOption("built_in_${theme.name}", theme.editorDefinition(context), theme.titleRes)
-      } + savedThemes.map { theme ->
-        ThemeBaseOption("saved_${theme.name}", theme)
+    val baseOptions =
+      remember(context, savedThemes) {
+        AppTheme.entries.map { theme ->
+          ThemeBaseOption("built_in_${theme.name}", theme.editorDefinition(context), theme.titleRes)
+        } +
+          savedThemes.map { theme ->
+            ThemeBaseOption("saved_${theme.name}", theme)
+          }
       }
-    }
     var baseKey by rememberSaveable(themeName) {
       mutableStateOf(
-        if (savedThemes.any { it.name == initialTheme.name }) "saved_${initialTheme.name}"
-        else "built_in_${initialTheme.name}",
+        if (savedThemes.any { it.name == initialTheme.name }) {
+          "saved_${initialTheme.name}"
+        } else {
+          "built_in_${initialTheme.name}"
+        },
       )
     }
     val selectedBase = baseOptions.firstOrNull { it.key == baseKey }
@@ -220,7 +225,12 @@ data class CustomThemeEditorScreen(
       ) {
         LazyColumn(
           state = listState,
-          modifier = Modifier.fillMaxHeight().widthIn(max = 640.dp).fillMaxWidth().tvFocusGroup(),
+          modifier =
+            Modifier
+              .fillMaxHeight()
+              .widthIn(max = 640.dp)
+              .fillMaxWidth()
+              .tvFocusGroup(),
           contentPadding = settingsContentPadding(PaddingValues(horizontal = 16.dp, vertical = 16.dp)),
           verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
@@ -295,8 +305,11 @@ data class CustomThemeEditorScreen(
             ) {
               Text(
                 stringResource(
-                  if (editorMode.isDark) R.string.pref_appearance_custom_theme_dark_palette
-                  else R.string.pref_appearance_custom_theme_light_palette,
+                  if (editorMode.isDark) {
+                    R.string.pref_appearance_custom_theme_dark_palette
+                  } else {
+                    R.string.pref_appearance_custom_theme_light_palette
+                  },
                 ),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -353,7 +366,9 @@ data class CustomThemeEditorScreen(
                   optionLeadingIcon = { field ->
                     val role = ThemeColorRole.entries.first { "override_${it.key}" == field.key }
                     ThemeRoleSwatch(
-                      role, editScheme, colors[field.key]?.let(::parseThemeColor) ?: role.color(editScheme),
+                      role,
+                      editScheme,
+                      colors[field.key]?.let(::parseThemeColor) ?: role.color(editScheme),
                     )
                   },
                 )
@@ -407,9 +422,14 @@ private fun ThemePaletteColor(
   itemCount: Int,
   modifier: Modifier = Modifier,
 ) {
-  val shape = rememberConnectedShape(
-    index, itemCount, ConnectedLayout.Grid, columns = 2, tokens = AppConnectedControlShapeTokens,
-  )
+  val shape =
+    rememberConnectedShape(
+      index,
+      itemCount,
+      ConnectedLayout.Grid,
+      columns = 2,
+      tokens = AppConnectedControlShapeTokens,
+    )
   Surface(
     modifier = modifier.clip(shape).selectable(selected = selected, role = Role.RadioButton, onClick = onClick),
     shape = shape,
@@ -438,16 +458,24 @@ private fun ThemePaletteColor(
 }
 
 @Composable
-private fun ThemeColorSwatch(color: Color?, modifier: Modifier = Modifier) {
+private fun ThemeColorSwatch(
+  color: Color?,
+  modifier: Modifier = Modifier,
+) {
   Box(
-    modifier = modifier.clip(CircleShape)
-      .background(color ?: MaterialTheme.colorScheme.errorContainer)
-      .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+    modifier =
+      modifier
+        .clip(CircleShape)
+        .background(color ?: MaterialTheme.colorScheme.errorContainer)
+        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
   )
 }
 
 @Composable
-private fun ThemeBaseSwatches(theme: CustomThemeDefinition, mode: CustomThemeEditorMode) {
+private fun ThemeBaseSwatches(
+  theme: CustomThemeDefinition,
+  mode: CustomThemeEditorMode,
+) {
   val scheme =
     if (mode.isDark) theme.darkColorScheme(mode == CustomThemeEditorMode.Amoled) else theme.lightColorScheme()
   Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -458,31 +486,39 @@ private fun ThemeBaseSwatches(theme: CustomThemeDefinition, mode: CustomThemeEdi
 }
 
 @Composable
-private fun ThemeRoleSwatch(role: ThemeColorRole, scheme: ColorScheme, color: Color?) {
-  val background = when (role) {
-    ThemeColorRole.OnPrimary -> scheme.primary
-    ThemeColorRole.OnSecondary -> scheme.secondary
-    ThemeColorRole.OnTertiary -> scheme.tertiary
-    ThemeColorRole.OnPrimaryContainer -> scheme.primaryContainer
-    ThemeColorRole.OnSecondaryContainer -> scheme.secondaryContainer
-    ThemeColorRole.OnTertiaryContainer -> scheme.tertiaryContainer
-    ThemeColorRole.OnSurface -> scheme.surface
-    ThemeColorRole.OnSurfaceVariant -> scheme.surfaceVariant
-    ThemeColorRole.OnBackground -> scheme.background
-    ThemeColorRole.InverseOnSurface -> scheme.inverseSurface
-    ThemeColorRole.OnError -> scheme.error
-    ThemeColorRole.OnErrorContainer -> scheme.errorContainer
-    ThemeColorRole.OnPrimaryFixed, ThemeColorRole.OnPrimaryFixedVariant -> scheme.primaryFixed
-    ThemeColorRole.OnSecondaryFixed, ThemeColorRole.OnSecondaryFixedVariant -> scheme.secondaryFixed
-    ThemeColorRole.OnTertiaryFixed, ThemeColorRole.OnTertiaryFixedVariant -> scheme.tertiaryFixed
-    else -> null
-  }
+private fun ThemeRoleSwatch(
+  role: ThemeColorRole,
+  scheme: ColorScheme,
+  color: Color?,
+) {
+  val background =
+    when (role) {
+      ThemeColorRole.OnPrimary -> scheme.primary
+      ThemeColorRole.OnSecondary -> scheme.secondary
+      ThemeColorRole.OnTertiary -> scheme.tertiary
+      ThemeColorRole.OnPrimaryContainer -> scheme.primaryContainer
+      ThemeColorRole.OnSecondaryContainer -> scheme.secondaryContainer
+      ThemeColorRole.OnTertiaryContainer -> scheme.tertiaryContainer
+      ThemeColorRole.OnSurface -> scheme.surface
+      ThemeColorRole.OnSurfaceVariant -> scheme.surfaceVariant
+      ThemeColorRole.OnBackground -> scheme.background
+      ThemeColorRole.InverseOnSurface -> scheme.inverseSurface
+      ThemeColorRole.OnError -> scheme.error
+      ThemeColorRole.OnErrorContainer -> scheme.errorContainer
+      ThemeColorRole.OnPrimaryFixed, ThemeColorRole.OnPrimaryFixedVariant -> scheme.primaryFixed
+      ThemeColorRole.OnSecondaryFixed, ThemeColorRole.OnSecondaryFixedVariant -> scheme.secondaryFixed
+      ThemeColorRole.OnTertiaryFixed, ThemeColorRole.OnTertiaryFixedVariant -> scheme.tertiaryFixed
+      else -> null
+    }
   if (background == null) {
     ThemeColorSwatch(color, Modifier.size(24.dp))
   } else {
     val shape = RoundedCornerShape(6.dp)
     Box(
-      Modifier.size(36.dp).clip(shape).background(background)
+      Modifier
+        .size(36.dp)
+        .clip(shape)
+        .background(background)
         .clearAndSetSemantics {}
         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape),
       contentAlignment = Alignment.Center,

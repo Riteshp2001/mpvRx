@@ -9,14 +9,14 @@
 
 package app.gyrolet.mpvrx.data.network.client
 
+import okhttp3.HttpUrl
+import org.w3c.dom.Element
+import org.w3c.dom.Node
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.parsers.ParserConfigurationException
-import okhttp3.HttpUrl
-import org.w3c.dom.Element
-import org.w3c.dom.Node
 
 internal data class DlnaDevice(
   val name: String,
@@ -40,7 +40,11 @@ internal data class DlnaEntry(
   val year: Int = 0,
 )
 
-internal data class DlnaBrowsePage(val entries: List<DlnaEntry>, val returned: Int, val total: Int?)
+internal data class DlnaBrowsePage(
+  val entries: List<DlnaEntry>,
+  val returned: Int,
+  val total: Int?,
+)
 
 /** XML supplied by a LAN device is untrusted; do not resolve entities or read unbounded bodies. */
 internal object DlnaXml {
@@ -60,18 +64,22 @@ internal object DlnaXml {
 
   private fun parse(xml: String): Element {
     if (xml.contains("<!DOCTYPE", ignoreCase = true)) throw IOException("Invalid DLNA XML")
-    val factory = DocumentBuilderFactory.newInstance().apply {
-      isNamespaceAware = true
-      setFeatureSafely("http://apache.org/xml/features/disallow-doctype-decl", true)
-      setFeatureSafely("http://xml.org/sax/features/external-general-entities", false)
-      setFeatureSafely("http://xml.org/sax/features/external-parameter-entities", false)
-      setFeatureSafely("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
-    }
+    val factory =
+      DocumentBuilderFactory.newInstance().apply {
+        isNamespaceAware = true
+        setFeatureSafely("http://apache.org/xml/features/disallow-doctype-decl", true)
+        setFeatureSafely("http://xml.org/sax/features/external-general-entities", false)
+        setFeatureSafely("http://xml.org/sax/features/external-parameter-entities", false)
+        setFeatureSafely("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+      }
     return factory.newDocumentBuilder().parse(xml.byteInputStream()).documentElement
   }
 
   /** Android's bundled parser may not expose Apache-specific features; DOCTYPEs are already rejected above. */
-  private fun DocumentBuilderFactory.setFeatureSafely(name: String, value: Boolean) {
+  private fun DocumentBuilderFactory.setFeatureSafely(
+    name: String,
+    value: Boolean,
+  ) {
     try {
       setFeature(name, value)
     } catch (_: ParserConfigurationException) {
@@ -86,38 +94,64 @@ internal object DlnaXml {
 
   private fun Element.text(name: String): String? = descendants(name).firstOrNull()?.textContent?.trim()
 
-  private fun Element.children(): List<Element> = buildList {
-    var node: Node? = firstChild
-    while (node != null) {
-      if (node is Element) add(node)
-      node = node.nextSibling
+  private fun Element.children(): List<Element> =
+    buildList {
+      var node: Node? = firstChild
+      while (node != null) {
+        if (node is Element) add(node)
+        node = node.nextSibling
+      }
     }
-  }
 
-  fun description(xml: String, location: HttpUrl): DlnaDevice {
+  fun description(
+    xml: String,
+    location: HttpUrl,
+  ): DlnaDevice {
     val root = parse(xml)
     val base = root.text("URLBase")?.let(location::resolve) ?: location
-    val service = root.descendants("service").firstOrNull {
-      it.text("serviceType")?.matches(Regex("urn:schemas-upnp-org:service:ContentDirectory:[0-9]+", RegexOption.IGNORE_CASE)) == true
-    } ?: throw IOException("Server has no DLNA ContentDirectory service")
+    val service =
+      root.descendants("service").firstOrNull {
+        it
+          .text(
+            "serviceType",
+          )?.matches(Regex("urn:schemas-upnp-org:service:ContentDirectory:[0-9]+", RegexOption.IGNORE_CASE)) ==
+          true
+      } ?: throw IOException("Server has no DLNA ContentDirectory service")
     val type = service.text("serviceType") ?: throw IOException("DLNA service type is missing")
-    val control = service.text("controlURL")?.let(base::resolve)
-      ?: throw IOException("DLNA control URL is invalid")
+    val control =
+      service.text("controlURL")?.let(base::resolve)
+        ?: throw IOException("DLNA control URL is invalid")
     if (control.username.isNotEmpty() || control.password.isNotEmpty()) throw IOException("Invalid DLNA control URL")
     return DlnaDevice(root.text("friendlyName").orEmpty(), type, control, base)
   }
 
-  fun browseRequest(serviceType: String, objectId: String, metadata: Boolean, start: Int, count: Int): String {
-    val id = objectId.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-      .replace("\"", "&quot;").replace("'", "&apos;")
+  fun browseRequest(
+    serviceType: String,
+    objectId: String,
+    metadata: Boolean,
+    start: Int,
+    count: Int,
+  ): String {
+    val id =
+      objectId
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&apos;")
     val flag = if (metadata) "BrowseMetadata" else "BrowseDirectChildren"
-    return """<?xml version="1.0" encoding="utf-8"?>
+    return """
+      <?xml version="1.0" encoding="utf-8"?>
       <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body>
       <u:Browse xmlns:u="$serviceType"><ObjectID>$id</ObjectID><BrowseFlag>$flag</BrowseFlag><Filter>*</Filter><StartingIndex>$start</StartingIndex><RequestedCount>$count</RequestedCount><SortCriteria></SortCriteria></u:Browse>
-      </s:Body></s:Envelope>""".trimIndent()
+      </s:Body></s:Envelope>
+      """.trimIndent()
   }
 
-  fun browseResponse(xml: String, base: HttpUrl): DlnaBrowsePage {
+  fun browseResponse(
+    xml: String,
+    base: HttpUrl,
+  ): DlnaBrowsePage {
     val root = parse(xml)
     val result = root.descendants("Result").firstOrNull() ?: throw IOException("Invalid DLNA browse response")
     val returnedValue = root.text("NumberReturned")?.toIntOrNull()?.takeIf { it >= 0 }
@@ -125,66 +159,117 @@ internal object DlnaXml {
     val content = result.textContent.trim()
     val didl = result.children().firstOrNull() ?: content.takeIf { it.isNotEmpty() }?.let(::parse)
     if (didl == null) return DlnaBrowsePage(emptyList(), returnedValue ?: 0, total)
-    val entries = didl.children().mapNotNull { element ->
-      val elementName = element.localName ?: element.tagName
-      if (elementName != "container" && elementName != "item") return@mapNotNull null
-      val id = element.getAttribute("id").takeIf(String::isNotBlank) ?: return@mapNotNull null
-      val title = element.text("title").orEmpty().ifBlank { id }
-      val type = element.text("class").orEmpty().lowercase()
-      val artist = element.text("artist")?.takeIf(String::isNotBlank)
-      val album = element.text("album")?.takeIf(String::isNotBlank)
-      val artwork = element.text("albumArtURI")?.let(base::resolve)?.takeIf {
-        it.username.isEmpty() && it.password.isEmpty()
-      }
-      if (elementName == "container") {
-        val ordered = type.contains("playlistcontainer") || type.contains("musicalbum")
-        return@mapNotNull DlnaEntry(
-          id, title, if (ordered) 'o' else 'd', null, 0, null,
-          artist = artist, album = if (type.contains("musicalbum")) title else album, artworkUrl = artwork,
+    val entries =
+      didl.children().mapNotNull { element ->
+        val elementName = element.localName ?: element.tagName
+        if (elementName != "container" && elementName != "item") return@mapNotNull null
+        val id = element.getAttribute("id").takeIf(String::isNotBlank) ?: return@mapNotNull null
+        val title = element.text("title").orEmpty().ifBlank { id }
+        val type = element.text("class").orEmpty().lowercase()
+        val artist = element.text("artist")?.takeIf(String::isNotBlank)
+        val album = element.text("album")?.takeIf(String::isNotBlank)
+        val artwork =
+          element.text("albumArtURI")?.let(base::resolve)?.takeIf {
+            it.username.isEmpty() && it.password.isEmpty()
+          }
+        if (elementName == "container") {
+          val ordered = type.contains("playlistcontainer") || type.contains("musicalbum")
+          return@mapNotNull DlnaEntry(
+            id,
+            title,
+            if (ordered) 'o' else 'd',
+            null,
+            0,
+            null,
+            artist = artist,
+            album = if (type.contains("musicalbum")) title else album,
+            artworkUrl = artwork,
+          )
+        }
+        val classKind =
+          when {
+            type.contains("audioitem") -> 'a'
+            type.contains("videoitem") -> 'v'
+            type.contains("imageitem") -> 'i'
+            else -> null
+          }
+        val resources =
+          element
+            .children()
+            .filter { (it.localName ?: it.tagName) == "res" }
+            .mapNotNull resource@{ res ->
+              val protocol = res.getAttribute("protocolInfo")
+              if (protocol.isNotBlank() && !protocol.startsWith("http-get:", true)) return@resource null
+              val url = base.resolve(res.textContent.trim()) ?: return@resource null
+              if (url.username.isNotEmpty() || url.password.isNotEmpty()) return@resource null
+              val mime =
+                protocol
+                  .split(':')
+                  .getOrNull(2)
+                  ?.substringBefore(';')
+                  ?.trim()
+                  ?.lowercase()
+                  ?.takeIf { it.isNotBlank() && it != "*" }
+              Triple(res, url, mime)
+            }
+        val expectedPrefix =
+          when (classKind) {
+            'a' -> "audio/"
+            'v' -> "video/"
+            'i' -> "image/"
+            else -> null
+          }
+        val matching = resources.filter { expectedPrefix != null && it.third?.startsWith(expectedPrefix) == true }
+        val generic = resources.filter { it.third == null || it.third == "application/octet-stream" }
+        val candidates = matching.ifEmpty { generic.ifEmpty { resources } }
+        // Prefer an original over a server-side transcoded resource when both are available.
+        val chosen =
+          candidates.firstOrNull { it.first.getAttribute("protocolInfo").contains("DLNA.ORG_CI=0", true) }
+            ?: candidates.firstOrNull() ?: return@mapNotNull null
+        val advertisedMime = chosen.third
+        val kind =
+          classKind ?: when {
+            advertisedMime?.startsWith("audio/") == true -> 'a'
+            advertisedMime?.startsWith("video/") == true -> 'v'
+            advertisedMime?.startsWith("image/") == true -> 'i'
+            else -> return@mapNotNull null
+          }
+        val mimePrefix =
+          when (kind) {
+            'a' -> "audio/"
+            'v' -> "video/"
+            else -> "image/"
+          }
+        val mime =
+          advertisedMime?.takeIf { it.startsWith(mimePrefix) }
+            ?: when (kind) {
+              'a' -> "audio/*"
+              'v' -> "video/*"
+              else -> null
+            }
+        DlnaEntry(
+          id,
+          title,
+          kind,
+          mime,
+          chosen.first
+            .getAttribute("size")
+            .toLongOrNull()
+            ?.takeIf { it > 0 } ?: -1L,
+          chosen.second,
+          durationMs = parseDuration(chosen.first.getAttribute("duration")),
+          artist = artist,
+          album = album,
+          artworkUrl = artwork,
+          trackNumber = element.text("originalTrackNumber")?.toIntOrNull()?.coerceAtLeast(0) ?: 0,
+          year =
+            element
+              .text("date")
+              ?.substringBefore('-')
+              ?.toIntOrNull()
+              ?.coerceAtLeast(0) ?: 0,
         )
       }
-      val classKind = when {
-        type.contains("audioitem") -> 'a'
-        type.contains("videoitem") -> 'v'
-        type.contains("imageitem") -> 'i'
-        else -> null
-      }
-      val resources = element.children().filter { (it.localName ?: it.tagName) == "res" }
-        .mapNotNull resource@ { res ->
-          val protocol = res.getAttribute("protocolInfo")
-          if (protocol.isNotBlank() && !protocol.startsWith("http-get:", true)) return@resource null
-          val url = base.resolve(res.textContent.trim()) ?: return@resource null
-          if (url.username.isNotEmpty() || url.password.isNotEmpty()) return@resource null
-          val mime = protocol.split(':').getOrNull(2)?.substringBefore(';')?.trim()?.lowercase()
-            ?.takeIf { it.isNotBlank() && it != "*" }
-          Triple(res, url, mime)
-        }
-      val expectedPrefix = when (classKind) { 'a' -> "audio/"; 'v' -> "video/"; 'i' -> "image/"; else -> null }
-      val matching = resources.filter { expectedPrefix != null && it.third?.startsWith(expectedPrefix) == true }
-      val generic = resources.filter { it.third == null || it.third == "application/octet-stream" }
-      val candidates = matching.ifEmpty { generic.ifEmpty { resources } }
-      // Prefer an original over a server-side transcoded resource when both are available.
-      val chosen = candidates.firstOrNull { it.first.getAttribute("protocolInfo").contains("DLNA.ORG_CI=0", true) }
-        ?: candidates.firstOrNull() ?: return@mapNotNull null
-      val advertisedMime = chosen.third
-      val kind = classKind ?: when {
-        advertisedMime?.startsWith("audio/") == true -> 'a'
-        advertisedMime?.startsWith("video/") == true -> 'v'
-        advertisedMime?.startsWith("image/") == true -> 'i'
-        else -> return@mapNotNull null
-      }
-      val mimePrefix = when (kind) { 'a' -> "audio/"; 'v' -> "video/"; else -> "image/" }
-      val mime = advertisedMime?.takeIf { it.startsWith(mimePrefix) }
-        ?: when (kind) { 'a' -> "audio/*"; 'v' -> "video/*"; else -> null }
-      DlnaEntry(
-        id, title, kind, mime,
-        chosen.first.getAttribute("size").toLongOrNull()?.takeIf { it > 0 } ?: -1L, chosen.second,
-        durationMs = parseDuration(chosen.first.getAttribute("duration")),
-        artist = artist, album = album, artworkUrl = artwork,
-        trackNumber = element.text("originalTrackNumber")?.toIntOrNull()?.coerceAtLeast(0) ?: 0,
-        year = element.text("date")?.substringBefore('-')?.toIntOrNull()?.coerceAtLeast(0) ?: 0,
-      )
-    }
     return DlnaBrowsePage(entries, returnedValue ?: entries.size, total)
   }
 

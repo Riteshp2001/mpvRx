@@ -262,9 +262,10 @@ fun applyHdrScreenOutputProperties(
   // All HDR options are documented mpv properties. A single load-config-file command keeps
   // the color profile changes together instead of repeatedly crossing JNI and triggering VO
   // reconfiguration between unrelated intermediate HDR/SDR configurations.
-  val config = changedOptions.joinToString("\n") { (property, value) ->
-    require(value.none { it == '\n' || it == '\r' || it == '\u0000' })
-    "$property=%${value.toByteArray(Charsets.UTF_8).size}%$value"
-  }
+  val config =
+    changedOptions.joinToString("\n") { (property, value) ->
+      require(value.none { it == '\n' || it == '\r' || it == '\u0000' })
+      "$property=%${value.toByteArray(Charsets.UTF_8).size}%$value"
+    }
   PlaybackSession.command("load-config-file", "memory://$config")
 }

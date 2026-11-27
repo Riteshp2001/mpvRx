@@ -363,7 +363,15 @@ fun TorrentHeroBanner(
             label = "dotWidth",
           )
           val color by animateColorAsState(
-            targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            targetValue =
+              if (isSelected) {
+                MaterialTheme.colorScheme.primary
+              } else {
+                MaterialTheme.colorScheme.outlineVariant
+                  .copy(
+                    alpha = 0.5f,
+                  )
+              },
             label = "dotColor",
           )
           Box(

@@ -63,10 +63,12 @@ import kotlin.math.roundToInt
 
 private const val TAG = "AudioOutputSheet"
 
-private val musicAttributes = AudioAttributes.Builder()
-  .setUsage(AudioAttributes.USAGE_MEDIA)
-  .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-  .build()
+private val musicAttributes =
+  AudioAttributes
+    .Builder()
+    .setUsage(AudioAttributes.USAGE_MEDIA)
+    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+    .build()
 
 @Composable
 internal fun AudioOutputSheet(
@@ -89,19 +91,23 @@ internal fun AudioOutputSheet(
       var canReadRoutes = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
       while (true) {
         val version = volumeWriteVersion
-        val (currentRoutes, currentVolume) = withContext(Dispatchers.IO) {
-          val devices = if (canReadRoutes && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            try {
-              audioManager.getAudioDevicesForAttributes(musicAttributes).distinctBy { it.id }.map {
-                OutputDevice(it.type, it.productName.toString().trim())
+        val (currentRoutes, currentVolume) =
+          withContext(Dispatchers.IO) {
+            val devices =
+              if (canReadRoutes && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                try {
+                  audioManager.getAudioDevicesForAttributes(musicAttributes).distinctBy { it.id }.map {
+                    OutputDevice(it.type, it.productName.toString().trim())
+                  }
+                } catch (error: SecurityException) {
+                  Log.w(TAG, "Android did not expose the current media route", error)
+                  null
+                }
+              } else {
+                null
               }
-            } catch (error: SecurityException) {
-              Log.w(TAG, "Android did not expose the current media route", error)
-              null
-            }
-          } else null
-          devices to audioManager.readMediaVolume()
-        }
+            devices to audioManager.readMediaVolume()
+          }
         if (currentRoutes == null) canReadRoutes = false
         routes = currentRoutes.orEmpty()
         // A read begun before the last slider change must not move the thumb backwards.
@@ -117,9 +123,11 @@ internal fun AudioOutputSheet(
     actions = { PlayerSheetAction(Icons.RoundedFilled.Close, stringResource(R.string.ui_close), onDismissRequest) },
   ) {
     Column(
-      modifier = Modifier.fillMaxWidth()
-        .verticalScroll(rememberScrollState())
-        .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState())
+          .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
       verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       if (routes.isEmpty()) {
@@ -136,7 +144,13 @@ internal fun AudioOutputSheet(
               title = device.label(),
               subtitle = stringResource(R.string.audio_output_current_device),
               icon = { Icon(device.icon, contentDescription = null, modifier = Modifier.size(20.dp)) },
-              trailing = { Icon(Icons.RoundedFilled.Check, contentDescription = null, modifier = Modifier.size(20.dp)) },
+              trailing = {
+                Icon(
+                  Icons.RoundedFilled.Check,
+                  contentDescription = null,
+                  modifier = Modifier.size(20.dp),
+                )
+              },
             )
           }
         }
@@ -150,12 +164,22 @@ internal fun AudioOutputSheet(
       ) {
         OutputRow(
           title = stringResource(R.string.audio_output_change_device),
-          subtitle = stringResource(
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) R.string.audio_output_android_picker
-            else R.string.audio_output_android_settings,
-          ),
+          subtitle =
+            stringResource(
+              if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                R.string.audio_output_android_picker
+              } else {
+                R.string.audio_output_android_settings
+              },
+            ),
           icon = { AudioOutputGlyph() },
-          trailing = { Icon(Icons.RoundedFilled.ChevronRight, contentDescription = null, modifier = Modifier.size(20.dp)) },
+          trailing = {
+            Icon(
+              Icons.RoundedFilled.ChevronRight,
+              contentDescription = null,
+              modifier = Modifier.size(20.dp),
+            )
+          },
         )
       }
       if (outputPickerFailed) {
@@ -212,7 +236,13 @@ internal fun AudioOutputSheet(
         OutputRow(
           title = stringResource(R.string.audio_information_title),
           icon = { Icon(Icons.RoundedFilled.Equalizer, contentDescription = null, modifier = Modifier.size(20.dp)) },
-          trailing = { Icon(Icons.RoundedFilled.ChevronRight, contentDescription = null, modifier = Modifier.size(20.dp)) },
+          trailing = {
+            Icon(
+              Icons.RoundedFilled.ChevronRight,
+              contentDescription = null,
+              modifier = Modifier.size(20.dp),
+            )
+          },
         )
       }
     }
@@ -253,36 +283,52 @@ private fun OutputRow(
   }
 }
 
-private data class OutputDevice(val type: Int, val name: String) {
+private data class OutputDevice(
+  val type: Int,
+  val name: String,
+) {
   @Composable
-  fun label(): String = when (type) {
-    AudioDeviceInfo.TYPE_BUILTIN_SPEAKER, AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE ->
-      stringResource(R.string.audio_output_device_speakers)
-    else -> name.ifBlank { stringResource(R.string.audio_output_system_managed) }
-  }
+  fun label(): String =
+    when (type) {
+      AudioDeviceInfo.TYPE_BUILTIN_SPEAKER, AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE ->
+        stringResource(R.string.audio_output_device_speakers)
+      else -> name.ifBlank { stringResource(R.string.audio_output_system_managed) }
+    }
 
   val icon
-    get() = when (type) {
-      AudioDeviceInfo.TYPE_WIRED_HEADPHONES, AudioDeviceInfo.TYPE_WIRED_HEADSET,
-      AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, AudioDeviceInfo.TYPE_BLE_HEADSET -> Icons.RoundedFilled.Headset
-      AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_USB_ACCESSORY, AudioDeviceInfo.TYPE_USB_HEADSET -> Icons.RoundedFilled.Usb
-      AudioDeviceInfo.TYPE_HDMI, AudioDeviceInfo.TYPE_HDMI_ARC, AudioDeviceInfo.TYPE_HDMI_EARC -> Icons.RoundedFilled.Tv
-      else -> Icons.RoundedFilled.VolumeUp
-    }
+    get() =
+      when (type) {
+        AudioDeviceInfo.TYPE_WIRED_HEADPHONES, AudioDeviceInfo.TYPE_WIRED_HEADSET,
+        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, AudioDeviceInfo.TYPE_BLE_HEADSET,
+        -> Icons.RoundedFilled.Headset
+        AudioDeviceInfo.TYPE_USB_DEVICE,
+        AudioDeviceInfo.TYPE_USB_ACCESSORY,
+        AudioDeviceInfo.TYPE_USB_HEADSET,
+        -> Icons.RoundedFilled.Usb
+        AudioDeviceInfo.TYPE_HDMI, AudioDeviceInfo.TYPE_HDMI_ARC, AudioDeviceInfo.TYPE_HDMI_EARC,
+        -> Icons.RoundedFilled.Tv
+        else -> Icons.RoundedFilled.VolumeUp
+      }
 }
 
-private data class MediaVolume(val level: Int, val min: Int, val max: Int, val fixed: Boolean) {
+private data class MediaVolume(
+  val level: Int,
+  val min: Int,
+  val max: Int,
+  val fixed: Boolean,
+) {
   val range: Int get() = max - min
   val adjustable: Boolean get() = !fixed && range > 0
   val fraction: Float get() = if (range > 0) ((level - min).toFloat() / range).coerceIn(0f, 1f) else 0f
 }
 
-private fun AudioManager.readMediaVolume(): MediaVolume = MediaVolume(
-  level = getStreamVolume(AudioManager.STREAM_MUSIC),
-  min = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) getStreamMinVolume(AudioManager.STREAM_MUSIC) else 0,
-  max = getStreamMaxVolume(AudioManager.STREAM_MUSIC),
-  fixed = isVolumeFixed,
-)
+private fun AudioManager.readMediaVolume(): MediaVolume =
+  MediaVolume(
+    level = getStreamVolume(AudioManager.STREAM_MUSIC),
+    min = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) getStreamMinVolume(AudioManager.STREAM_MUSIC) else 0,
+    max = getStreamMaxVolume(AudioManager.STREAM_MUSIC),
+    fixed = isVolumeFixed,
+  )
 
 private fun openAndroidOutputPicker(context: Context): Boolean {
   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

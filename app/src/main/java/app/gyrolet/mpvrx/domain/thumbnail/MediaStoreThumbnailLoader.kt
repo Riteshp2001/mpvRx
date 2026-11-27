@@ -60,14 +60,16 @@ internal object MediaStoreThumbnailLoader {
               Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->
                 resolver.loadThumbnail(uri, Size(sizePx.coerceAtLeast(1), sizePx.coerceAtLeast(1)), signal)
               isAudio -> {
-                val albumId = resolver.query(
-                  uri,
-                  arrayOf(MediaStore.Audio.Media.ALBUM_ID),
-                  null,
-                  null,
-                  null,
-                  signal,
-                )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else null }
+                val albumId =
+                  resolver
+                    .query(
+                      uri,
+                      arrayOf(MediaStore.Audio.Media.ALBUM_ID),
+                      null,
+                      null,
+                      null,
+                      signal,
+                    )?.use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else null }
                 signal.throwIfCanceled()
                 albumId?.takeIf { it > 0L }?.let { id ->
                   val volume = uri.pathSegments.firstOrNull() ?: "external"
@@ -126,12 +128,17 @@ internal object MediaStoreThumbnailLoader {
           val albumId = ContentUris.parseId(originalUri)
           val volume = originalUri.pathSegments.firstOrNull() ?: "external"
           val collection = MediaStore.Audio.Media.getContentUri(volume)
-          return context.contentResolver.query(
-            collection, arrayOf(MediaStore.Audio.Media._ID),
-            "${MediaStore.Audio.Media.ALBUM_ID}=?", arrayOf(albumId.toString()), null, signal,
-          )?.use { cursor ->
-            if (cursor.moveToFirst()) ContentUris.withAppendedId(collection, cursor.getLong(0)) else null
-          }
+          return context.contentResolver
+            .query(
+              collection,
+              arrayOf(MediaStore.Audio.Media._ID),
+              "${MediaStore.Audio.Media.ALBUM_ID}=?",
+              arrayOf(albumId.toString()),
+              null,
+              signal,
+            )?.use { cursor ->
+              if (cursor.moveToFirst()) ContentUris.withAppendedId(collection, cursor.getLong(0)) else null
+            }
         }
         return originalUri
       }
@@ -150,31 +157,42 @@ internal object MediaStoreThumbnailLoader {
     // Filesystem browsing supplies file:// URIs and filesystem IDs, not MediaStore row IDs.
     // Resolve the indexed media by its path rather than trusting filesystem/playlist IDs.
     if (!localPath.startsWith("/")) return null
-    val collection = if (isAudio) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI else MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+    val collection =
+      if (isAudio) {
+        MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+      } else {
+        MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+      }
     val projection =
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.VOLUME_NAME)
       } else {
         arrayOf(MediaStore.Video.Media._ID)
       }
-    return context.contentResolver.query(
-      collection,
-      projection,
-      "${MediaStore.Video.Media.DATA}=?",
-      arrayOf(localPath),
-      null,
-      signal,
-    )?.use { cursor ->
-      if (!cursor.moveToFirst()) return@use null
-      val sourceCollection =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-          // Keep the physical volume: removable storage must not resolve to another volume's row.
-          if (isAudio) MediaStore.Audio.Media.getContentUri(cursor.getString(1)) else MediaStore.Video.Media.getContentUri(cursor.getString(1))
-        } else {
-          collection
-        }
-      ContentUris.withAppendedId(sourceCollection, cursor.getLong(0))
-    }
+    return context.contentResolver
+      .query(
+        collection,
+        projection,
+        "${MediaStore.Video.Media.DATA}=?",
+        arrayOf(localPath),
+        null,
+        signal,
+      )?.use { cursor ->
+        if (!cursor.moveToFirst()) return@use null
+        val sourceCollection =
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Keep the physical volume: removable storage must not resolve to another volume's row.
+            if (isAudio) {
+              MediaStore.Audio.Media.getContentUri(
+                cursor.getString(1),
+              )
+            } else {
+              MediaStore.Video.Media.getContentUri(cursor.getString(1))
+            }
+          } else {
+            collection
+          }
+        ContentUris.withAppendedId(sourceCollection, cursor.getLong(0))
+      }
   }
 }
-

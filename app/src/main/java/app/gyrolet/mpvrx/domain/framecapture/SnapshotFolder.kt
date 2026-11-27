@@ -24,7 +24,9 @@ data class SnapshotFolder(
 
 /** The outcome of creating or renaming a folder. The UI turns each case into its own message. */
 sealed interface FolderWriteResult {
-  data class Ok(val id: Long) : FolderWriteResult
+  data class Ok(
+    val id: Long,
+  ) : FolderWriteResult
 
   data object BlankName : FolderWriteResult
 

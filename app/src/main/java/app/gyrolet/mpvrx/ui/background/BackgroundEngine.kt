@@ -132,14 +132,16 @@ internal fun rememberTilt(enabled: Boolean): State<Offset> {
         override fun onSensorChanged(event: SensorEvent) {
           // 9.81 m/s^2 along an axis means the device is fully on its side; ~5 is a hearty tilt
           // Sensors use the device's natural orientation, whereas the canvas uses display axes.
-          val rotation = view.display?.rotation
-            ?: android.view.Surface.ROTATION_0
-          val (gx, gy) = when (rotation) {
-            android.view.Surface.ROTATION_90 -> -event.values[1] to event.values[0]
-            android.view.Surface.ROTATION_180 -> -event.values[0] to -event.values[1]
-            android.view.Surface.ROTATION_270 -> event.values[1] to -event.values[0]
-            else -> event.values[0] to event.values[1]
-          }
+          val rotation =
+            view.display?.rotation
+              ?: android.view.Surface.ROTATION_0
+          val (gx, gy) =
+            when (rotation) {
+              android.view.Surface.ROTATION_90 -> -event.values[1] to event.values[0]
+              android.view.Surface.ROTATION_180 -> -event.values[0] to -event.values[1]
+              android.view.Surface.ROTATION_270 -> event.values[1] to -event.values[0]
+              else -> event.values[0] to event.values[1]
+            }
           val tx = (-gx / TILT_FULL_SCALE).coerceIn(-1f, 1f)
           val ty = ((gy - REST_PITCH) / TILT_FULL_SCALE).coerceIn(-1f, 1f)
           ex += (tx - ex) * EASE
@@ -149,7 +151,10 @@ internal fun rememberTilt(enabled: Boolean): State<Offset> {
           if (abs(ex - cur.x) > 0.005f || abs(ey - cur.y) > 0.005f) tilt.value = Offset(ex, ey)
         }
 
-        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+        override fun onAccuracyChanged(
+          sensor: Sensor?,
+          accuracy: Int,
+        ) = Unit
       }
 
     val observer =
@@ -245,15 +250,20 @@ internal fun DrawScope.drawBackdrop(
   }
 }
 
-/* ------------------------------------------------------------------ helpers ---------------- */
+// ------------------------------------------------------------------ helpers ----------------
 
 internal const val TAU = (2.0 * PI).toFloat()
 
 /** Screen-area-aware particle budget shared by all effects (including their compact previews). */
-internal fun DrawScope.backdropCount(base: Int, minimum: Int = 4, maximum: Int = base * 2): Int {
+internal fun DrawScope.backdropCount(
+  base: Int,
+  minimum: Int = 4,
+  maximum: Int = base * 2,
+): Int {
   val referenceArea = 360.dp.toPx() * 720.dp.toPx()
-  val fraction = sqrt((size.width * size.height / referenceArea).coerceAtLeast(0f))
-    .coerceIn(0.55f, 1.35f)
+  val fraction =
+    sqrt((size.width * size.height / referenceArea).coerceAtLeast(0f))
+      .coerceIn(0.55f, 1.35f)
   return (base * fraction).toInt().coerceIn(minimum, maximum.coerceAtLeast(minimum))
 }
 
@@ -261,7 +271,10 @@ internal fun DrawScope.backdropCount(base: Int, minimum: Int = 4, maximum: Int =
 internal fun fract(x: Float): Float = x - floor(x)
 
 /** Cheap deterministic noise in 0..1 for (index, salt). Same inputs, same output, every launch. */
-internal fun hash01(index: Int, salt: Int = 0): Float {
+internal fun hash01(
+  index: Int,
+  salt: Int = 0,
+): Float {
   var h = index * 374761393 + salt * 668265263 + 0x2545F491
   h = (h xor (h ushr 13)) * 1274126177
   h = h xor (h ushr 16)
@@ -274,7 +287,11 @@ internal fun pulse(x: Float): Float = 0.5f - 0.5f * kotlin.math.cos(x * TAU)
 /** Sine mapped to 0..1. */
 internal fun wave01(x: Float): Float = 0.5f + 0.5f * sin(x)
 
-internal fun smoothstep(edge0: Float, edge1: Float, x: Float): Float {
+internal fun smoothstep(
+  edge0: Float,
+  edge1: Float,
+  x: Float,
+): Float {
   val t = ((x - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
   return t * t * (3f - 2f * t)
 }

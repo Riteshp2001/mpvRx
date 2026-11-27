@@ -15,7 +15,9 @@ import app.gyrolet.mpvrx.ui.theme.AppMotion
 import kotlinx.coroutines.flow.collect
 
 @Stable
-internal class ReorderFeedback(private val haptics: AppHaptics) {
+internal class ReorderFeedback(
+  private val haptics: AppHaptics,
+) {
   val interactions = MutableInteractionSource()
   private var firstIndex: Int? = null
   private var lastIndex: Int? = null
@@ -26,7 +28,10 @@ internal class ReorderFeedback(private val haptics: AppHaptics) {
     haptics.pickup()
   }
 
-  fun move(from: Int, to: Int) {
+  fun move(
+    from: Int,
+    to: Int,
+  ) {
     if (from == to) return
     if (firstIndex == null) firstIndex = from
     lastIndex = to
@@ -57,7 +62,10 @@ internal fun rememberReorderFeedback(): ReorderFeedback {
 }
 
 @Composable
-internal fun dragElevation(dragging: Boolean, reducedMotion: Boolean = AppMotion.shouldReduceMotion()): Dp {
+internal fun dragElevation(
+  dragging: Boolean,
+  reducedMotion: Boolean = AppMotion.shouldReduceMotion(),
+): Dp {
   val elevation by animateDpAsState(
     targetValue = if (dragging && !reducedMotion) 3.dp else 0.dp,
     animationSpec = if (reducedMotion) snap() else AppMotion.Spatial.ExpressiveDp,

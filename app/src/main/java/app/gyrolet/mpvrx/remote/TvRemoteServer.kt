@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.remote
 
 import android.content.Context
@@ -80,19 +80,28 @@ object TvRemoteServer {
     stop(context.applicationContext)
   }
 
-  fun setEnabled(context: Context, enabled: Boolean) {
+  fun setEnabled(
+    context: Context,
+    enabled: Boolean,
+  ) {
     val appContext = context.applicationContext
     RemoteControlStore(appContext).serverEnabled = enabled
     if (enabled) onAppForeground(appContext) else onAppBackground(appContext)
   }
 
-  fun respondToPairing(id: Long, allow: Boolean) {
+  fun respondToPairing(
+    id: Long,
+    allow: Boolean,
+  ) {
     synchronized(lock) {
       if (_pairingRequest.value?.id == id) pendingDecision?.complete(allow)
     }
   }
 
-  fun removePairedPhone(context: Context, id: String) {
+  fun removePairedPhone(
+    context: Context,
+    id: String,
+  ) {
     RemoteControlStore(context).removePairedPhone(id)
     sessions.entries.filter { it.value == id }.forEach { runCatching { it.key.close() } }
     _revision.update { it + 1 }
@@ -123,7 +132,9 @@ object TvRemoteServer {
     runCatching { server?.close() }
     sessions.keys.forEach { runCatching { it.close() } }
     if (listener != null) {
-      context.getSystemService(NsdManager::class.java)?.let { manager -> runCatching { manager.unregisterService(listener) } }
+      context.getSystemService(NsdManager::class.java)?.let { manager ->
+        runCatching { manager.unregisterService(listener) }
+      }
     }
   }
 
@@ -142,7 +153,10 @@ object TvRemoteServer {
     return null
   }
 
-  private fun acceptLoop(context: Context, server: ServerSocket) {
+  private fun acceptLoop(
+    context: Context,
+    server: ServerSocket,
+  ) {
     while (!server.isClosed) {
       val client =
         try {
@@ -168,7 +182,10 @@ object TvRemoteServer {
     }
   }
 
-  private fun serve(context: Context, socket: Socket) {
+  private fun serve(
+    context: Context,
+    socket: Socket,
+  ) {
     socket.soTimeout = HANDSHAKE_TIMEOUT_MS
     socket.tcpNoDelay = true
     val channel = RemoteChannel(socket)
@@ -218,13 +235,21 @@ object TvRemoteServer {
         return
       }
       channel.send(
-        RemoteMessage(type = RemoteMessageType.AUTH, proof = RemoteCrypto.proof(secret, "server", transcript).toBase64()),
+        RemoteMessage(
+          type = RemoteMessageType.AUTH,
+          proof = RemoteCrypto.proof(secret, "server", transcript).toBase64(),
+        ),
       )
       channel.cipher = RemoteCrypto.sessionCipher(shared, secret, transcript, server = true)
       sessions[socket] = paired.id
     } else {
       channel.cipher = RemoteCrypto.sessionCipher(shared, null, transcript, server = true)
-      val device = hello.device.orEmpty().trim().take(MAX_NAME_LENGTH).ifBlank { "Phone" }
+      val device =
+        hello.device
+          .orEmpty()
+          .trim()
+          .take(MAX_NAME_LENGTH)
+          .ifBlank { "Phone" }
       val remoteAddress = socket.inetAddress?.hostAddress.orEmpty()
       val lastDenied = deniedAt[remoteAddress]
       val approved =
@@ -239,9 +264,16 @@ object TvRemoteServer {
         channel.send(RemoteMessage(type = RemoteMessageType.ERROR, reason = reason))
         return
       }
-      val phone = PairedPhone(UUID.randomUUID().toString(), device, RemoteCrypto.randomBytes(REMOTE_SECRET_BYTES).toBase64())
+      val phone =
+        PairedPhone(UUID.randomUUID().toString(), device, RemoteCrypto.randomBytes(REMOTE_SECRET_BYTES).toBase64())
       channel.send(
-        RemoteMessage(type = RemoteMessageType.PAIRED, pairId = phone.id, secret = phone.secret, tvId = tvId, name = tvName),
+        RemoteMessage(
+          type = RemoteMessageType.PAIRED,
+          pairId = phone.id,
+          secret = phone.secret,
+          tvId = tvId,
+          name = tvName,
+        ),
       )
       store.addPairedPhone(phone)
       sessions[socket] = phone.id
@@ -257,7 +289,10 @@ object TvRemoteServer {
   }
 
   /** Blocks until the TV user answers; null when another request is already on screen. */
-  private fun requestApproval(device: String, code: String): Boolean? {
+  private fun requestApproval(
+    device: String,
+    code: String,
+  ): Boolean? {
     val decision = CompletableFuture<Boolean>()
     synchronized(lock) {
       if (pendingDecision != null || serverSocket == null) return null
@@ -278,7 +313,10 @@ object TvRemoteServer {
     }
   }
 
-  private fun register(context: Context, servicePort: Int): NsdManager.RegistrationListener? {
+  private fun register(
+    context: Context,
+    servicePort: Int,
+  ): NsdManager.RegistrationListener? {
     val manager = context.getSystemService(NsdManager::class.java) ?: return null
     val info =
       NsdServiceInfo().apply {
@@ -291,13 +329,19 @@ object TvRemoteServer {
       object : NsdManager.RegistrationListener {
         override fun onServiceRegistered(serviceInfo: NsdServiceInfo) = Unit
 
-        override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+        override fun onRegistrationFailed(
+          serviceInfo: NsdServiceInfo,
+          errorCode: Int,
+        ) {
           Log.w(TAG, "Remote control discovery unavailable: $errorCode")
         }
 
         override fun onServiceUnregistered(serviceInfo: NsdServiceInfo) = Unit
 
-        override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) = Unit
+        override fun onUnregistrationFailed(
+          serviceInfo: NsdServiceInfo,
+          errorCode: Int,
+        ) = Unit
       }
     return runCatching { manager.registerService(info, NsdManager.PROTOCOL_DNS_SD, listener) }
       .map { listener }
@@ -307,7 +351,10 @@ object TvRemoteServer {
   private fun localAddress(context: Context): String? {
     val manager = context.getSystemService(ConnectivityManager::class.java) ?: return null
     val network = manager.activeNetwork ?: return null
-    return manager.getLinkProperties(network)?.linkAddresses.orEmpty()
+    return manager
+      .getLinkProperties(network)
+      ?.linkAddresses
+      .orEmpty()
       .map { it.address }
       .firstOrNull { it is Inet4Address && !it.isLoopbackAddress && !it.isLinkLocalAddress }
       ?.hostAddress
@@ -315,7 +362,8 @@ object TvRemoteServer {
 
   private fun deviceName(context: Context): String =
     (
-      Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)
+      Settings.Global
+        .getString(context.contentResolver, Settings.Global.DEVICE_NAME)
         ?.takeIf { it.isNotBlank() }
         ?: Build.MODEL.orEmpty().ifBlank { "Android TV" }
     ).take(MAX_NAME_LENGTH)

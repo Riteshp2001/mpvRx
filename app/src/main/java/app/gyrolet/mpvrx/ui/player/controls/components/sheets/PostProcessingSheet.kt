@@ -81,18 +81,19 @@ fun PostProcessingSheet(
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-          verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
       ) {
         PostProcessingPreset.entries.forEach { entry ->
           FilterChip(
             selected = preset == entry,
             onClick = { viewModel.setPostProcessingPreset(entry) },
             label = { Text(stringResource(entry.displayNameRes)) },
-            colors = FilterChipDefaults.filterChipColors(
-              containerColor = playerSheetSelectionColor(false),
-              selectedContainerColor = playerSheetSelectionColor(true),
-              selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            ),
+            colors =
+              FilterChipDefaults.filterChipColors(
+                containerColor = playerSheetSelectionColor(false),
+                selectedContainerColor = playerSheetSelectionColor(true),
+                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+              ),
           )
         }
       }

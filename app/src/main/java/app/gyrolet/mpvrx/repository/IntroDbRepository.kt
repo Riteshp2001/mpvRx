@@ -280,7 +280,9 @@ class IntroDbRepository(
           }
         val effectiveSeason = request.season ?: parsed.season
         val effectiveEpisode = request.episode ?: parsed.episode
-        if (normalizedTitle.isBlank() || parsed.episodeEnd != null || parsed.isEpisodeAmbiguous ||
+        if (normalizedTitle.isBlank() ||
+          parsed.episodeEnd != null ||
+          parsed.isEpisodeAmbiguous ||
           (effectiveMediaType == "tv" && (effectiveSeason == null || effectiveEpisode == null || effectiveEpisode <= 0))
         ) {
           return@runCatching IntroDbLookupOutcome.Unresolved(
@@ -442,7 +444,9 @@ class IntroDbRepository(
     withContext(Dispatchers.IO) {
       runCatching {
         val url =
-          SKIPDB_SEGMENTS_URL.toHttpUrl().newBuilder()
+          SKIPDB_SEGMENTS_URL
+            .toHttpUrl()
+            .newBuilder()
             .addQueryParameter("imdb_id", imdbId)
             .addQueryParameter("adjust", "conservative")
             .apply {
@@ -453,7 +457,8 @@ class IntroDbRepository(
               }
             }.build()
         val request =
-          Request.Builder()
+          Request
+            .Builder()
             .url(url)
             .header("User-Agent", MARKER_PROVIDER_USER_AGENT)
             .header("Accept", "application/json")
@@ -654,8 +659,11 @@ class IntroDbRepository(
           bestShow.episodes.filter { candidate ->
             val baseDuration = candidate.baseDuration?.takeIf { it.isFinite() && it > 0.0 }
             candidate.number?.toDoubleOrNull() == expectedEpisode &&
-              (duration == null || baseDuration == null ||
-                abs(duration - baseDuration) <= ANIME_SKIP_DURATION_TOLERANCE_SECONDS)
+              (
+                duration == null ||
+                  baseDuration == null ||
+                  abs(duration - baseDuration) <= ANIME_SKIP_DURATION_TOLERANCE_SECONDS
+              )
           }
         val seasonMatches =
           if (season == null) {
@@ -684,7 +692,12 @@ class IntroDbRepository(
     val segments = mutableListOf<IntroDbSegment>()
     for (index in timestamps.indices) {
       val current = timestamps[index]
-      val typeName = current.type?.name?.trim()?.lowercase().orEmpty()
+      val typeName =
+        current.type
+          ?.name
+          ?.trim()
+          ?.lowercase()
+          .orEmpty()
       val segmentType =
         when (typeName) {
           "recap", "summary" -> "recap"
@@ -716,10 +729,11 @@ class IntroDbRepository(
 
   private fun parseObjectSegments(body: String): List<IntroDbSegment> {
     val payload = json.parseToJsonElement(body).jsonObject
-    return payload.entries.mapNotNull { (segmentType, value) ->
-      val segmentPayload = value as? JsonObject ?: return@mapNotNull null
-      segmentPayload.toIntroDbSegment(segmentType)
-    }.ifEmpty { payload.toLegacyIntroDbSegments() }
+    return payload.entries
+      .mapNotNull { (segmentType, value) ->
+        val segmentPayload = value as? JsonObject ?: return@mapNotNull null
+        segmentPayload.toIntroDbSegment(segmentType)
+      }.ifEmpty { payload.toLegacyIntroDbSegments() }
   }
 
   private fun parseTheIntroDbMediaBody(body: String): List<IntroDbSegment> {
@@ -1162,11 +1176,12 @@ class IntroDbRepository(
       }
     }
 
-    val match = pickBestAniSkipMatch(
-      results = aggregatedResults.values.toList(),
-      queryCandidates = queryCandidates,
-      expectedSeason = expectedSeason,
-    )?.first
+    val match =
+      pickBestAniSkipMatch(
+        results = aggregatedResults.values.toList(),
+        queryCandidates = queryCandidates,
+        expectedSeason = expectedSeason,
+      )?.first
     if (match == null) searchFailure?.let { throw it }
     return match
   }
@@ -1182,19 +1197,20 @@ class IntroDbRepository(
         .build()
 
     repeat(2) { attempt ->
-      val results = client.newCall(request).awaitResponse().use { response ->
-        if (attempt == 0 && response.code in setOf(502, 503, 504)) return@use null
-        if (!response.isSuccessful) {
-          error("AniSkip MAL search failed with HTTP ${response.code}")
-        }
+      val results =
+        client.newCall(request).awaitResponse().use { response ->
+          if (attempt == 0 && response.code in setOf(502, 503, 504)) return@use null
+          if (!response.isSuccessful) {
+            error("AniSkip MAL search failed with HTTP ${response.code}")
+          }
 
-        val body = response.body.string()
-        if (body.isBlank()) {
-          emptyList()
-        } else {
-          json.decodeFromString<JikanAnimeSearchResponse>(body).data
+          val body = response.body.string()
+          if (body.isBlank()) {
+            emptyList()
+          } else {
+            json.decodeFromString<JikanAnimeSearchResponse>(body).data
+          }
         }
-      }
       if (results != null) return results
       delay(500L)
     }
@@ -1333,24 +1349,33 @@ class IntroDbRepository(
   ): IntroDbTmdbSearchResult? {
     val startedAt = System.nanoTime()
     for (language in titleSearchLanguages(title)) {
-      val remainingMillis = PROVIDER_LOOKUP_TIMEOUT_MS -
-        TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt)
+      val remainingMillis =
+        PROVIDER_LOOKUP_TIMEOUT_MS -
+          TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt)
       if (remainingMillis <= 0L) break
-      val url = TMDB_SEARCH_URL.toHttpUrl().newBuilder()
-        .addQueryParameter("q", title)
-        .addQueryParameter("language", language)
-        .build()
-      val request = Request.Builder().url(url)
-        .header("User-Agent", MARKER_PROVIDER_USER_AGENT)
-        .header("Accept", "application/json")
-        .get().build()
-      val results = withTimeoutOrNull(remainingMillis) {
-        client.newCall(request).awaitResponse().use { response ->
-          check(response.isSuccessful) { "TMDB search failed with HTTP ${response.code}" }
-          val body = response.body.string()
-          if (body.isBlank()) emptyList() else json.decodeFromString<IntroDbTmdbSearchResponse>(body).results
-        }
-      } ?: break
+      val url =
+        TMDB_SEARCH_URL
+          .toHttpUrl()
+          .newBuilder()
+          .addQueryParameter("q", title)
+          .addQueryParameter("language", language)
+          .build()
+      val request =
+        Request
+          .Builder()
+          .url(url)
+          .header("User-Agent", MARKER_PROVIDER_USER_AGENT)
+          .header("Accept", "application/json")
+          .get()
+          .build()
+      val results =
+        withTimeoutOrNull(remainingMillis) {
+          client.newCall(request).awaitResponse().use { response ->
+            check(response.isSuccessful) { "TMDB search failed with HTTP ${response.code}" }
+            val body = response.body.string()
+            if (body.isBlank()) emptyList() else json.decodeFromString<IntroDbTmdbSearchResponse>(body).results
+          }
+        } ?: break
       pickBestTmdbMatch(results, title, year, mediaType)?.let { return it }
     }
     return null
@@ -1358,19 +1383,29 @@ class IntroDbRepository(
 
   private fun titleSearchLanguages(title: String): List<String> {
     val scripts = title.map { Character.UnicodeScript.of(it.code) }.toSet()
-    val configuredLanguage = context.resources.configuration.locales[0].toLanguageTag()
-    val detectedLanguages = when {
-      Character.UnicodeScript.HIRAGANA in scripts || Character.UnicodeScript.KATAKANA in scripts -> listOf("ja-JP", "zh-CN")
-      Character.UnicodeScript.HANGUL in scripts -> listOf("ko-KR")
-      Character.UnicodeScript.HAN in scripts -> listOf("zh-CN", "ja-JP")
-      Character.UnicodeScript.ARABIC in scripts -> listOf("ar-SA")
-      Character.UnicodeScript.DEVANAGARI in scripts -> listOf("hi-IN")
-      Character.UnicodeScript.CYRILLIC in scripts -> listOf("ru-RU", "uk-UA")
-      else -> emptyList()
-    }
-    val fallbackLanguages = if (detectedLanguages.isEmpty()) {
-      listOf("en-US", "es-ES", "fr-FR", "de-DE", "pt-BR")
-    } else listOf("en-US")
+    val configuredLanguage =
+      context.resources.configuration.locales[0]
+        .toLanguageTag()
+    val detectedLanguages =
+      when {
+        Character.UnicodeScript.HIRAGANA in scripts || Character.UnicodeScript.KATAKANA in scripts ->
+          listOf(
+            "ja-JP",
+            "zh-CN",
+          )
+        Character.UnicodeScript.HANGUL in scripts -> listOf("ko-KR")
+        Character.UnicodeScript.HAN in scripts -> listOf("zh-CN", "ja-JP")
+        Character.UnicodeScript.ARABIC in scripts -> listOf("ar-SA")
+        Character.UnicodeScript.DEVANAGARI in scripts -> listOf("hi-IN")
+        Character.UnicodeScript.CYRILLIC in scripts -> listOf("ru-RU", "uk-UA")
+        else -> emptyList()
+      }
+    val fallbackLanguages =
+      if (detectedLanguages.isEmpty()) {
+        listOf("en-US", "es-ES", "fr-FR", "de-DE", "pt-BR")
+      } else {
+        listOf("en-US")
+      }
     return (detectedLanguages + configuredLanguage + fallbackLanguages).distinct().take(6)
   }
 
@@ -1399,9 +1434,11 @@ class IntroDbRepository(
 
     val bestScore = preferred.second
     if (bestScore < 90) return null
-    val tiedMatches = results.filter {
-      buildTmdbScore(it, normalizedTitle, year, mediaType) == bestScore
-    }.distinctBy(IntroDbTmdbSearchResult::id)
+    val tiedMatches =
+      results
+        .filter {
+          buildTmdbScore(it, normalizedTitle, year, mediaType) == bestScore
+        }.distinctBy(IntroDbTmdbSearchResult::id)
     return tiedMatches.singleOrNull()
   }
 
@@ -1411,8 +1448,9 @@ class IntroDbRepository(
     expectedYear: String?,
     expectedMediaType: String,
   ): Int {
-    val titleScore = listOfNotNull(result.title, result.originalTitle)
-      .maxOf { candidate -> scoreNormalizedTitleMatch(normalizedTitle, normalizeTitle(candidate)) }
+    val titleScore =
+      listOfNotNull(result.title, result.originalTitle)
+        .maxOf { candidate -> scoreNormalizedTitleMatch(normalizedTitle, normalizeTitle(candidate)) }
     if (titleScore < 60 || !result.mediaType.equals(expectedMediaType, ignoreCase = true)) return Int.MIN_VALUE
     var score = titleScore + 30
     if (expectedYear != null && result.releaseYear == expectedYear) {
@@ -1423,11 +1461,11 @@ class IntroDbRepository(
   }
 
   private fun normalizeTitle(title: String): String =
-    Normalizer.normalize(
-      Normalizer.normalize(title, Normalizer.Form.NFKD).replace(LATIN_TITLE_DIACRITICS, ""),
-      Normalizer.Form.NFKC,
-    )
-      .lowercase(Locale.ROOT)
+    Normalizer
+      .normalize(
+        Normalizer.normalize(title, Normalizer.Form.NFKD).replace(LATIN_TITLE_DIACRITICS, ""),
+        Normalizer.Form.NFKC,
+      ).lowercase(Locale.ROOT)
       .replace(Regex("""[^\p{L}\p{M}\p{N}]+"""), " ")
       .trim()
 
@@ -1457,31 +1495,38 @@ class IntroDbRepository(
     private val ANISKIP_PENALTY_MARKERS = Regex("""(?:^|\s)(?:recap|summary|digest|compilation)(?:\s|$)""")
 
     internal fun combineHybridSegments(outcomes: List<IntroDbLookupOutcome.Loaded>): IntroDbLookupOutcome.Loaded? {
-      val priority = listOf(
-        IntroSegmentProvider.THE_INTRO_DB,
-        IntroSegmentProvider.SKIP_DB,
-        IntroSegmentProvider.INTRO_DB,
-        IntroSegmentProvider.ANI_SKIP,
-        IntroSegmentProvider.ANIME_SKIP,
-      )
-      val ordered = outcomes.sortedWith(
-        compareByDescending<IntroDbLookupOutcome.Loaded> { it.source == IntroDbResolutionSource.DIRECT_MAL }
-          .thenBy { priority.indexOf(it.provider).takeIf { index -> index >= 0 } ?: Int.MAX_VALUE },
-      )
+      val priority =
+        listOf(
+          IntroSegmentProvider.THE_INTRO_DB,
+          IntroSegmentProvider.SKIP_DB,
+          IntroSegmentProvider.INTRO_DB,
+          IntroSegmentProvider.ANI_SKIP,
+          IntroSegmentProvider.ANIME_SKIP,
+        )
+      val ordered =
+        outcomes.sortedWith(
+          compareByDescending<IntroDbLookupOutcome.Loaded> { it.source == IntroDbResolutionSource.DIRECT_MAL }
+            .thenBy { priority.indexOf(it.provider).takeIf { index -> index >= 0 } ?: Int.MAX_VALUE },
+        )
       val segmentsByCategory = linkedMapOf<String, List<IntroDbSegment>>()
       ordered.forEach { outcome ->
-        outcome.segments.groupBy { segment ->
-          when (segment.segmentType) {
-            "intro", "recap", "preview" -> segment.segmentType
-            "outro", "credits" -> "ending"
-            else -> null
+        outcome.segments
+          .groupBy { segment ->
+            when (segment.segmentType) {
+              "intro", "recap", "preview" -> segment.segmentType
+              "outro", "credits" -> "ending"
+              else -> null
+            }
+          }.forEach { (category, segments) ->
+            if (category != null) segmentsByCategory.putIfAbsent(category, segments)
           }
-        }.forEach { (category, segments) ->
-          if (category != null) segmentsByCategory.putIfAbsent(category, segments)
-        }
       }
       val first = ordered.firstOrNull() ?: return null
-      val segments = segmentsByCategory.values.flatten().distinct().sortedBy(IntroDbSegment::normalizedStart)
+      val segments =
+        segmentsByCategory.values
+          .flatten()
+          .distinct()
+          .sortedBy(IntroDbSegment::normalizedStart)
       return if (segments.isEmpty()) null else first.copy(segments = segments, provider = IntroSegmentProvider.HYBRID)
     }
   }

@@ -18,14 +18,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,22 +40,26 @@ import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerOrientation
 import app.gyrolet.mpvrx.ui.player.ResumePlaybackMode
 import app.gyrolet.mpvrx.ui.player.controls.TV_SEEK_DURATION_RANGE
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotFormat
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
-import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
+import org.koin.compose.koinInject
+import kotlin.math.roundToInt
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
+import app.gyrolet.mpvrx.presentation.components.AppTextField as TextField
 import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 import app.gyrolet.mpvrx.ui.preferences.components.AppPreference as Preference
 import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference as SliderPreference
 import app.gyrolet.mpvrx.ui.preferences.components.AppTextFieldPreference as TextFieldPreference
-import org.koin.compose.koinInject
-import kotlin.math.roundToInt
 
 @Serializable
 object PlayerPreferencesScreen : ScrollableSettingsScreen {
@@ -75,7 +75,9 @@ object PlayerPreferencesScreen : ScrollableSettingsScreen {
     var showTemplateDialog by remember { mutableStateOf(false) }
     var templateDraft by remember { mutableStateOf("") }
     val gesturePreferences = koinInject<GesturePreferences>()
-    val television = app.gyrolet.mpvrx.ui.tv.isTelevision()
+    val television =
+      app.gyrolet.mpvrx.ui.tv
+        .isTelevision()
     var showTvSeekCustomDialog by remember { mutableStateOf(false) }
     var tvSeekCustomDraft by remember { mutableStateOf("") }
     Scaffold(
@@ -101,7 +103,8 @@ object PlayerPreferencesScreen : ScrollableSettingsScreen {
         ) {
           // ── General ───────────────────────────────────────────────────────
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.First,
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.First,
               title = stringResource(R.string.pref_section_general),
               modifier = Modifier.settingsSearchTarget(R.string.pref_player),
             )
@@ -111,15 +114,15 @@ object PlayerPreferencesScreen : ScrollableSettingsScreen {
               DevicePreference(R.string.pref_player_orientation) {
                 val orientation by preferences.orientation.collectAsState()
                 ExpressivePreferenceItem {
-                ListPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_player_orientation),
-                  value = orientation,
-                  onValueChange = preferences.orientation::set,
-                  values = PlayerOrientation.entries,
-                  valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
-                  title = { Text(stringResource(R.string.pref_player_orientation)) },
-                  summary = { Text(stringResource(orientation.titleRes), color = MaterialTheme.colorScheme.outline) },
-                )
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_player_orientation),
+                    value = orientation,
+                    onValueChange = preferences.orientation::set,
+                    values = PlayerOrientation.entries,
+                    valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                    title = { Text(stringResource(R.string.pref_player_orientation)) },
+                    summary = { Text(stringResource(orientation.titleRes), color = MaterialTheme.colorScheme.outline) },
+                  )
                 }
 
                 PreferenceDivider()
@@ -127,48 +130,52 @@ object PlayerPreferencesScreen : ScrollableSettingsScreen {
 
               val resumePlaybackMode by preferences.resumePlaybackMode.collectAsState()
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_player_resume_playback_title),
-                value = resumePlaybackMode,
-                onValueChange = preferences.resumePlaybackMode::set,
-                values = ResumePlaybackMode.entries,
-                valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
-                title = { Text(stringResource(R.string.pref_player_resume_playback_title)) },
-                summary = {
-                  Text(
-                    stringResource(resumePlaybackMode.summaryRes),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_player_resume_playback_title),
+                  value = resumePlaybackMode,
+                  onValueChange = preferences.resumePlaybackMode::set,
+                  values = ResumePlaybackMode.entries,
+                  valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                  title = { Text(stringResource(R.string.pref_player_resume_playback_title)) },
+                  summary = {
+                    Text(
+                      stringResource(resumePlaybackMode.summaryRes),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               if (resumePlaybackMode == ResumePlaybackMode.MinimumDuration) {
                 PreferenceDivider()
                 val minimumDuration by preferences.minimumResumeDurationSeconds.collectAsState()
                 ExpressivePreferenceItem {
-                SliderPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_player_resume_min_duration),
-                  value = minimumDuration.coerceIn(0, 3600).toFloat(),
-                  onValueChange = { preferences.minimumResumeDurationSeconds.set(it.roundToInt().coerceIn(0, 3600)) },
-                  title = { Text(stringResource(R.string.pref_player_resume_min_duration)) },
-                  summary = {
-                    Text(
-                      stringResource(R.string.pref_player_resume_min_duration_summary, minimumDuration),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                  valueRange = 0f..3600f,
-                  valueSteps = 359,
-                  onSliderValueChange = { preferences.minimumResumeDurationSeconds.set(it.roundToInt().coerceIn(0, 3600)) },
-                  sliderValue = minimumDuration.coerceIn(0, 3600).toFloat(),
-                )
+                  SliderPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_player_resume_min_duration),
+                    value = minimumDuration.coerceIn(0, 3600).toFloat(),
+                    onValueChange = { preferences.minimumResumeDurationSeconds.set(it.roundToInt().coerceIn(0, 3600)) },
+                    title = { Text(stringResource(R.string.pref_player_resume_min_duration)) },
+                    summary = {
+                      Text(
+                        stringResource(R.string.pref_player_resume_min_duration_summary, minimumDuration),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                    valueRange = 0f..3600f,
+                    valueSteps = 359,
+                    onSliderValueChange = {
+                      preferences.minimumResumeDurationSeconds.set(
+                        it.roundToInt().coerceIn(0, 3600),
+                      )
+                    },
+                    sliderValue = minimumDuration.coerceIn(0, 3600).toFloat(),
+                  )
                 }
               }
 
-PreferenceDivider()
+              PreferenceDivider()
 
-val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
+              val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_player_save_position_on_quit),
                 value = savePositionOnQuit,
@@ -181,27 +188,27 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
               val watchedThreshold by browserPreferences.watchedThreshold.collectAsState()
               val watchedThresholdPercent = watchedThreshold.coerceIn(0, 100)
               ExpressivePreferenceItem {
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_player_watched_threshold_title),
-                value = watchedThresholdPercent.toFloat(),
-                onValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt().coerceIn(0, 100)) },
-                title = { Text(stringResource(R.string.pref_player_watched_threshold_title)) },
-                summary = {
-                  Text(
-                    // 0 keeps manual marks but never marks a video as watched from its progress.
-                    if (watchedThresholdPercent == 0) {
-                      stringResource(R.string.pref_player_watched_threshold_summary_never)
-                    } else {
-                      stringResource(R.string.pref_player_watched_threshold_summary, watchedThresholdPercent)
-                    },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                valueRange = 0f..100f,
-                valueSteps = 19,
-                onSliderValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt().coerceIn(0, 100)) },
-                sliderValue = watchedThresholdPercent.toFloat(),
-              )
+                SliderPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_player_watched_threshold_title),
+                  value = watchedThresholdPercent.toFloat(),
+                  onValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt().coerceIn(0, 100)) },
+                  title = { Text(stringResource(R.string.pref_player_watched_threshold_title)) },
+                  summary = {
+                    Text(
+                      // 0 keeps manual marks but never marks a video as watched from its progress.
+                      if (watchedThresholdPercent == 0) {
+                        stringResource(R.string.pref_player_watched_threshold_summary_never)
+                      } else {
+                        stringResource(R.string.pref_player_watched_threshold_summary, watchedThresholdPercent)
+                      },
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  valueRange = 0f..100f,
+                  valueSteps = 19,
+                  onSliderValueChange = { browserPreferences.watchedThreshold.set(it.roundToInt().coerceIn(0, 100)) },
+                  sliderValue = watchedThresholdPercent.toFloat(),
+                )
               }
 
               PreferenceDivider()
@@ -440,7 +447,8 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                       PackageManager.DONT_KILL_APP,
                     )
                   } catch (e: Exception) {
-                    app.gyrolet.mpvrx.utils.logging.Log.e("PlayerPreferencesScreen", "Failed to set alias state", e)
+                    app.gyrolet.mpvrx.utils.logging.Log
+                      .e("PlayerPreferencesScreen", "Failed to set alias state", e)
                   }
                 },
                 title = {
@@ -467,7 +475,8 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                   value = enableWebStreamLinkIntents,
                   onValueChange = { enabled ->
                     preferences.enableWebStreamLinkIntents.set(enabled)
-                    val componentName = ComponentName(context, "app.gyrolet.mpvrx.ui.player.WebStreamLinksActivityAlias")
+                    val componentName =
+                      ComponentName(context, "app.gyrolet.mpvrx.ui.player.WebStreamLinksActivityAlias")
                     val newState =
                       if (enabled) {
                         PackageManager.COMPONENT_ENABLED_STATE_ENABLED
@@ -481,7 +490,8 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                         PackageManager.DONT_KILL_APP,
                       )
                     } catch (e: Exception) {
-                      app.gyrolet.mpvrx.utils.logging.Log.e("PlayerPreferencesScreen", "Failed to set alias state", e)
+                      app.gyrolet.mpvrx.utils.logging.Log
+                        .e("PlayerPreferencesScreen", "Failed to set alias state", e)
                     }
                   },
                   title = { Text(stringResource(R.string.pref_player_web_stream_links_title)) },
@@ -497,7 +507,12 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           }
 
           // ── Seeking ───────────────────────────────────────────────────────
-          item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_player_seeking_title)) }
+          item {
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
+              title = stringResource(R.string.pref_player_seeking_title),
+            )
+          }
           item {
             PreferenceCard {
               if (television) {
@@ -506,35 +521,35 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                 val tvSeekPresets = listOf(3, 5, 10, 15, 20, 25, 30)
                 val tvSeekIsCustom = tvSeekDuration !in tvSeekPresets
                 ExpressivePreferenceItem {
-                ListPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_tv_seek_duration_title),
-                  value = if (tvSeekIsCustom) -1 else tvSeekDuration,
-                  onValueChange = { value ->
-                    if (value == -1) {
-                      tvSeekCustomDraft = tvSeekDuration.toString()
-                      showTvSeekCustomDialog = true
-                    } else {
-                      gesturePreferences.tvSeekDuration.set(value)
-                    }
-                  },
-                  values = tvSeekPresets + -1,
-                  valueToText = { value ->
-                    AnnotatedString(
-                      if (value == -1) resources.getString(R.string.pref_gesture_double_tap_custom) else "${value}s",
-                    )
-                  },
-                  title = { Text(stringResource(R.string.pref_tv_seek_duration_title)) },
-                  summary = {
-                    Text(
-                      if (tvSeekIsCustom) {
-                        stringResource(R.string.pref_custom_seek_summary_format, tvSeekDuration)
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_tv_seek_duration_title),
+                    value = if (tvSeekIsCustom) -1 else tvSeekDuration,
+                    onValueChange = { value ->
+                      if (value == -1) {
+                        tvSeekCustomDraft = tvSeekDuration.toString()
+                        showTvSeekCustomDialog = true
                       } else {
-                        "${tvSeekDuration}s"
-                      },
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
+                        gesturePreferences.tvSeekDuration.set(value)
+                      }
+                    },
+                    values = tvSeekPresets + -1,
+                    valueToText = { value ->
+                      AnnotatedString(
+                        if (value == -1) resources.getString(R.string.pref_gesture_double_tap_custom) else "${value}s",
+                      )
+                    },
+                    title = { Text(stringResource(R.string.pref_tv_seek_duration_title)) },
+                    summary = {
+                      Text(
+                        if (tvSeekIsCustom) {
+                          stringResource(R.string.pref_custom_seek_summary_format, tvSeekDuration)
+                        } else {
+                          "${tvSeekDuration}s"
+                        },
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
                 }
 
                 PreferenceDivider()
@@ -607,21 +622,21 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
 
               val customSkipDuration by preferences.customSkipDuration.collectAsState()
               ExpressivePreferenceItem {
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_player_custom_skip_duration_title),
-                value = customSkipDuration.toFloat(),
-                onValueChange = { preferences.customSkipDuration.set(it.roundToInt()) },
-                title = { Text(stringResource(R.string.pref_player_custom_skip_duration_title)) },
-                valueRange = 5f..180f,
-                summary = {
-                  Text(
-                    "${stringResource(R.string.pref_player_custom_skip_duration_summary)} ($customSkipDuration s)",
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                onSliderValueChange = { preferences.customSkipDuration.set(it.roundToInt()) },
-                sliderValue = customSkipDuration.toFloat(),
-              )
+                SliderPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_player_custom_skip_duration_title),
+                  value = customSkipDuration.toFloat(),
+                  onValueChange = { preferences.customSkipDuration.set(it.roundToInt()) },
+                  title = { Text(stringResource(R.string.pref_player_custom_skip_duration_title)) },
+                  valueRange = 5f..180f,
+                  summary = {
+                    Text(
+                      "${stringResource(R.string.pref_player_custom_skip_duration_summary)} ($customSkipDuration s)",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  onSliderValueChange = { preferences.customSkipDuration.set(it.roundToInt()) },
+                  sliderValue = customSkipDuration.toFloat(),
+                )
               }
 
               PreferenceDivider()
@@ -645,20 +660,20 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
 
                 val introSegmentProvider by preferences.introSegmentProvider.collectAsState()
                 ExpressivePreferenceItem {
-                ListPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_marker_provider_title),
-                  value = introSegmentProvider,
-                  onValueChange = preferences.introSegmentProvider::set,
-                  values = IntroSegmentProvider.entries,
-                  valueToText = { AnnotatedString(it.displayName) },
-                  title = { Text(stringResource(R.string.pref_marker_provider_title)) },
-                  summary = {
-                    Text(
-                      stringResource(R.string.pref_marker_provider_summary),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_marker_provider_title),
+                    value = introSegmentProvider,
+                    onValueChange = preferences.introSegmentProvider::set,
+                    values = IntroSegmentProvider.entries,
+                    valueToText = { AnnotatedString(it.displayName) },
+                    title = { Text(stringResource(R.string.pref_marker_provider_title)) },
+                    summary = {
+                      Text(
+                        stringResource(R.string.pref_marker_provider_summary),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
                 }
               }
 
@@ -700,36 +715,36 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
 
                   val customIntroKeywords by preferences.customIntroKeywords.collectAsState()
                   ExpressivePreferenceItem {
-                  TextFieldPreference(
-                    modifier = Modifier.settingsSearchTarget(R.string.pref_custom_intro_keywords_title),
-                    value = customIntroKeywords,
-                    onValueChange = preferences.customIntroKeywords::set,
-                    textToValue = { it },
-                    title = { Text(stringResource(R.string.pref_custom_intro_keywords_title)) },
-                    summary = {
-                      Text(
-                        customIntroKeywords.ifBlank { "Not set" },
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    },
-                    textField = { value, onValueChange, _ ->
-                      Column {
-                        Text(stringResource(R.string.pref_custom_intro_keywords_dialog_desc))
-                        TextField(
-                          value = value,
-                          onValueChange = onValueChange,
-                          modifier = Modifier.fillMaxWidth(),
-                          placeholder = {
-                            Text(
-                              androidx.compose.ui.res
-                                .stringResource(app.gyrolet.mpvrx.R.string.ui_e_g_intro_opening_op),
-                            )
-                          },
-                          singleLine = true,
+                    TextFieldPreference(
+                      modifier = Modifier.settingsSearchTarget(R.string.pref_custom_intro_keywords_title),
+                      value = customIntroKeywords,
+                      onValueChange = preferences.customIntroKeywords::set,
+                      textToValue = { it },
+                      title = { Text(stringResource(R.string.pref_custom_intro_keywords_title)) },
+                      summary = {
+                        Text(
+                          customIntroKeywords.ifBlank { "Not set" },
+                          color = MaterialTheme.colorScheme.outline,
                         )
-                      }
-                    },
-                  )
+                      },
+                      textField = { value, onValueChange, _ ->
+                        Column {
+                          Text(stringResource(R.string.pref_custom_intro_keywords_dialog_desc))
+                          TextField(
+                            value = value,
+                            onValueChange = onValueChange,
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = {
+                              Text(
+                                androidx.compose.ui.res
+                                  .stringResource(app.gyrolet.mpvrx.R.string.ui_e_g_intro_opening_op),
+                              )
+                            },
+                            singleLine = true,
+                          )
+                        }
+                      },
+                    )
                   }
                 }
 
@@ -754,36 +769,36 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
 
                   val customOutroKeywords by preferences.customOutroKeywords.collectAsState()
                   ExpressivePreferenceItem {
-                  TextFieldPreference(
-                    modifier = Modifier.settingsSearchTarget(R.string.pref_custom_outro_keywords_title),
-                    value = customOutroKeywords,
-                    onValueChange = preferences.customOutroKeywords::set,
-                    textToValue = { it },
-                    title = { Text(stringResource(R.string.pref_custom_outro_keywords_title)) },
-                    summary = {
-                      Text(
-                        customOutroKeywords.ifBlank { "Not set" },
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    },
-                    textField = { value, onValueChange, _ ->
-                      Column {
-                        Text(stringResource(R.string.pref_custom_outro_keywords_dialog_desc))
-                        TextField(
-                          value = value,
-                          onValueChange = onValueChange,
-                          modifier = Modifier.fillMaxWidth(),
-                          placeholder = {
-                            Text(
-                              androidx.compose.ui.res
-                                .stringResource(app.gyrolet.mpvrx.R.string.ui_e_g_outro_ending_ed),
-                            )
-                          },
-                          singleLine = true,
+                    TextFieldPreference(
+                      modifier = Modifier.settingsSearchTarget(R.string.pref_custom_outro_keywords_title),
+                      value = customOutroKeywords,
+                      onValueChange = preferences.customOutroKeywords::set,
+                      textToValue = { it },
+                      title = { Text(stringResource(R.string.pref_custom_outro_keywords_title)) },
+                      summary = {
+                        Text(
+                          customOutroKeywords.ifBlank { "Not set" },
+                          color = MaterialTheme.colorScheme.outline,
                         )
-                      }
-                    },
-                  )
+                      },
+                      textField = { value, onValueChange, _ ->
+                        Column {
+                          Text(stringResource(R.string.pref_custom_outro_keywords_dialog_desc))
+                          TextField(
+                            value = value,
+                            onValueChange = onValueChange,
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = {
+                              Text(
+                                androidx.compose.ui.res
+                                  .stringResource(app.gyrolet.mpvrx.R.string.ui_e_g_outro_ending_ed),
+                              )
+                            },
+                            singleLine = true,
+                          )
+                        }
+                      },
+                    )
                   }
                 }
               }
@@ -823,7 +838,12 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           }
 
           // ── Display & Controls ────────────────────────────────────────────
-          item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_display_controls)) }
+          item {
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
+              title = stringResource(R.string.pref_section_display_controls),
+            )
+          }
           item {
             PreferenceCard {
               DevicePreference(R.string.pref_player_controls_drawer_title) {
@@ -925,35 +945,39 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                   title = { Text(stringResource(R.string.swap_the_volume_and_brightness_slider)) },
                 )
               }
-
             }
           }
 
           // ── Screenshots ─────────────────────────────────────────────────
-          item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_screenshots_section)) }
+          item {
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
+              title = stringResource(R.string.pref_screenshots_section),
+            )
+          }
           item {
             PreferenceCard {
               val screenshotFormat by preferences.screenshotFormat.collectAsState()
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_image_format),
-                value = screenshotFormat,
-                onValueChange = preferences.screenshotFormat::set,
-                values = ScreenshotFormat.entries,
-                valueToText = { AnnotatedString(it.title) },
-                title = {
-                  Text(
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_image_format),
-                  )
-                },
-                summary = {
-                  Text(
-                    "${screenshotFormat.title} .${screenshotFormat.extension}",
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.ui_image_format),
+                  value = screenshotFormat,
+                  onValueChange = preferences.screenshotFormat::set,
+                  values = ScreenshotFormat.entries,
+                  valueToText = { AnnotatedString(it.title) },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_image_format),
+                    )
+                  },
+                  summary = {
+                    Text(
+                      "${screenshotFormat.title} .${screenshotFormat.extension}",
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               PreferenceDivider()
@@ -976,62 +1000,62 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
 
               val screenshotTemplate by preferences.screenshotTemplate.collectAsState()
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_filename_template),
-                title = {
-                  Text(
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_filename_template),
-                  )
-                },
-                summary = { Text(screenshotTemplate, color = MaterialTheme.colorScheme.outline) },
-                onClick = {
-                  templateDraft = screenshotTemplate
-                  showTemplateDialog = true
-                },
-              )
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.ui_filename_template),
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_filename_template),
+                    )
+                  },
+                  summary = { Text(screenshotTemplate, color = MaterialTheme.colorScheme.outline) },
+                  onClick = {
+                    templateDraft = screenshotTemplate
+                    showTemplateDialog = true
+                  },
+                )
               }
 
               PreferenceDivider()
 
               val screenshotQuality by preferences.screenshotQuality.collectAsState()
               ExpressivePreferenceItem {
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_jpeg_webp_quality),
-                value = screenshotQuality.toFloat(),
-                onValueChange = { preferences.screenshotQuality.set(it.roundToInt().coerceIn(1, 100)) },
-                title = {
-                  Text(
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_jpeg_webp_quality),
-                  )
-                },
-                valueRange = 1f..100f,
-                summary = { Text("$screenshotQuality", color = MaterialTheme.colorScheme.outline) },
-                onSliderValueChange = { preferences.screenshotQuality.set(it.roundToInt().coerceIn(1, 100)) },
-                sliderValue = screenshotQuality.toFloat(),
-              )
+                SliderPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.ui_jpeg_webp_quality),
+                  value = screenshotQuality.toFloat(),
+                  onValueChange = { preferences.screenshotQuality.set(it.roundToInt().coerceIn(1, 100)) },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_jpeg_webp_quality),
+                    )
+                  },
+                  valueRange = 1f..100f,
+                  summary = { Text("$screenshotQuality", color = MaterialTheme.colorScheme.outline) },
+                  onSliderValueChange = { preferences.screenshotQuality.set(it.roundToInt().coerceIn(1, 100)) },
+                  sliderValue = screenshotQuality.toFloat(),
+                )
               }
 
               PreferenceDivider()
 
               val pngCompression by preferences.screenshotPngCompression.collectAsState()
               ExpressivePreferenceItem {
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_png_compression),
-                value = pngCompression.toFloat(),
-                onValueChange = { preferences.screenshotPngCompression.set(it.roundToInt().coerceIn(0, 9)) },
-                title = {
-                  Text(
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_png_compression),
-                  )
-                },
-                valueRange = 0f..9f,
-                summary = { Text("$pngCompression", color = MaterialTheme.colorScheme.outline) },
-                onSliderValueChange = { preferences.screenshotPngCompression.set(it.roundToInt().coerceIn(0, 9)) },
-                sliderValue = pngCompression.toFloat(),
-              )
+                SliderPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.ui_png_compression),
+                  value = pngCompression.toFloat(),
+                  onValueChange = { preferences.screenshotPngCompression.set(it.roundToInt().coerceIn(0, 9)) },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_png_compression),
+                    )
+                  },
+                  valueRange = 0f..9f,
+                  summary = { Text("$pngCompression", color = MaterialTheme.colorScheme.outline) },
+                  onSliderValueChange = { preferences.screenshotPngCompression.set(it.roundToInt().coerceIn(0, 9)) },
+                  sliderValue = pngCompression.toFloat(),
+                )
               }
 
               if (screenshotFormat == ScreenshotFormat.WEBP) {
@@ -1062,7 +1086,12 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
           }
 
           // ── Overlays ─────────────────────────────────────────────────────
-          item { PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_overlays)) }
+          item {
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Last,
+              title = stringResource(R.string.pref_section_overlays),
+            )
+          }
           item {
             PreferenceCard {
               val showAppToasts by preferences.showAppToasts.collectAsState()
@@ -1194,23 +1223,23 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
 
                 PreferenceDivider()
 
-  val showResumeIndicatorOverlay by preferences.showResumeIndicatorOverlay.collectAsState()
-  SwitchPreference(
-    modifier = Modifier.settingsSearchTarget(R.string.pref_resume_indicator_overlay_title),
-    value = showResumeIndicatorOverlay,
-    onValueChange = preferences.showResumeIndicatorOverlay::set,
-    title = { Text(stringResource(R.string.pref_resume_indicator_overlay_title)) },
-    summary = {
-      Text(
-        stringResource(R.string.pref_resume_indicator_overlay_summary),
-        color = MaterialTheme.colorScheme.outline,
-      )
-    },
-  )
+                val showResumeIndicatorOverlay by preferences.showResumeIndicatorOverlay.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_resume_indicator_overlay_title),
+                  value = showResumeIndicatorOverlay,
+                  onValueChange = preferences.showResumeIndicatorOverlay::set,
+                  title = { Text(stringResource(R.string.pref_resume_indicator_overlay_title)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_resume_indicator_overlay_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
 
-  PreferenceDivider()
+                PreferenceDivider()
 
-  val showProviderStatusOverlay by preferences.showProviderStatusOverlay.collectAsState()
+                val showProviderStatusOverlay by preferences.showProviderStatusOverlay.collectAsState()
                 SwitchPreference(
                   modifier = Modifier.settingsSearchTarget(R.string.pref_provider_status_overlay_title),
                   value = showProviderStatusOverlay,
@@ -1224,7 +1253,6 @@ val savePositionOnQuit by preferences.savePositionOnQuit.collectAsState()
                   },
                 )
               }
-
             }
           }
         }

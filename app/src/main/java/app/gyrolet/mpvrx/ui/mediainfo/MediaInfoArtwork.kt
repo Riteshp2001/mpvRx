@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 package app.gyrolet.mpvrx.ui.mediainfo
 
@@ -65,36 +65,38 @@ internal fun MediaArtworkPanel(
   val scope = rememberCoroutineScope()
   var saving by remember(artwork) { mutableStateOf(false) }
   val preview by produceState<Result<ImageBitmap>?>(null, artwork) {
-    value = withContext(Dispatchers.IO) {
-      try {
-        Result.success(MediaArtworkOps.decodePreview(artwork, 1_024).asImageBitmap())
-      } catch (error: IOException) {
-        Log.w(TAG, "Could not display artwork", error)
-        Result.failure(error)
-      }
-    }
-  }
-  val saveImage = rememberLauncherForActivityResult(
-    ActivityResultContracts.CreateDocument(artwork.mimeType),
-  ) { target ->
-    if (target != null) {
-      saving = true
-      scope.launch {
+    value =
+      withContext(Dispatchers.IO) {
         try {
-          MediaArtworkOps.save(context, target, artwork)
-          Toast.success(context, context.getString(R.string.media_info_artwork_saved))
+          Result.success(MediaArtworkOps.decodePreview(artwork, 1_024).asImageBitmap())
         } catch (error: IOException) {
-          Log.w(TAG, "Could not save artwork", error)
-          Toast.error(context, context.getString(R.string.media_info_artwork_save_failed))
-        } catch (error: SecurityException) {
-          Log.w(TAG, "Permission to save artwork was denied", error)
-          Toast.error(context, context.getString(R.string.media_info_artwork_save_failed))
-        } finally {
-          saving = false
+          Log.w(TAG, "Could not display artwork", error)
+          Result.failure(error)
+        }
+      }
+  }
+  val saveImage =
+    rememberLauncherForActivityResult(
+      ActivityResultContracts.CreateDocument(artwork.mimeType),
+    ) { target ->
+      if (target != null) {
+        saving = true
+        scope.launch {
+          try {
+            MediaArtworkOps.save(context, target, artwork)
+            Toast.success(context, context.getString(R.string.media_info_artwork_saved))
+          } catch (error: IOException) {
+            Log.w(TAG, "Could not save artwork", error)
+            Toast.error(context, context.getString(R.string.media_info_artwork_save_failed))
+          } catch (error: SecurityException) {
+            Log.w(TAG, "Permission to save artwork was denied", error)
+            Toast.error(context, context.getString(R.string.media_info_artwork_save_failed))
+          } finally {
+            saving = false
+          }
         }
       }
     }
-  }
 
   Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
     Text(
@@ -113,17 +115,19 @@ internal fun MediaArtworkPanel(
         val image = preview?.getOrNull()
         when {
           preview == null -> CircularProgressIndicator(modifier = Modifier.size(32.dp))
-          image != null -> Image(
-            bitmap = image,
-            contentDescription = stringResource(R.string.media_info_artwork_title),
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize(),
-          )
-          else -> Text(
-            text = stringResource(R.string.media_info_artwork_preview_failed),
-            modifier = Modifier.padding(16.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
+          image != null ->
+            Image(
+              bitmap = image,
+              contentDescription = stringResource(R.string.media_info_artwork_title),
+              contentScale = ContentScale.Fit,
+              modifier = Modifier.fillMaxSize(),
+            )
+          else ->
+            Text(
+              text = stringResource(R.string.media_info_artwork_preview_failed),
+              modifier = Modifier.padding(16.dp),
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
       }
     }

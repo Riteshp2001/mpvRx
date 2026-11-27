@@ -15,7 +15,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.ImageView
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.annotation.StringRes
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -50,7 +49,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
@@ -61,6 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.net.toUri
@@ -76,8 +75,9 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
-import java.util.Locale
 import kotlinx.serialization.Serializable
+import java.util.Locale
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 @Serializable
 object AboutScreen : ScrollableSettingsScreen {
@@ -217,7 +217,10 @@ object AboutScreen : ScrollableSettingsScreen {
 
               Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens.spacing),
+                horizontalArrangement =
+                  Arrangement.spacedBy(
+                    app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens.spacing,
+                  ),
               ) {
                 val btnContainer = cs.primary
                 val btnContent = cs.onPrimary
@@ -356,37 +359,43 @@ object AboutScreen : ScrollableSettingsScreen {
         Spacer(Modifier.height(8.dp))
 
         // Support / Donation Section
-        if (!BuildConfig.IS_PLAY_STORE_BUILD) PreferenceSectionHeader(position = PreferenceSectionPosition.First, title = stringResource(R.string.pref_section_support))
-        if (!BuildConfig.IS_PLAY_STORE_BUILD) PreferenceCard {
-          Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Icon(
-                imageVector = Icons.RoundedFilled.MonetizationOn,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = cs.error,
-              )
-              Spacer(Modifier.width(10.dp))
+        if (!BuildConfig.IS_PLAY_STORE_BUILD) {
+          PreferenceSectionHeader(
+            position = PreferenceSectionPosition.First,
+            title = stringResource(R.string.pref_section_support),
+          )
+        }
+        if (!BuildConfig.IS_PLAY_STORE_BUILD) {
+          PreferenceCard {
+            Column(modifier = Modifier.padding(16.dp)) {
+              Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.MonetizationOn,
+                  contentDescription = null,
+                  modifier = Modifier.size(24.dp),
+                  tint = cs.error,
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                  text =
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.ui_buy_me_a_coffee),
+                  style = MaterialTheme.typography.titleMedium,
+                  fontWeight = FontWeight.Bold,
+                  color = cs.onSurface,
+                )
+              }
+              Spacer(Modifier.height(10.dp))
               Text(
                 text =
-                  androidx.compose.ui.res
-                    .stringResource(app.gyrolet.mpvrx.R.string.ui_buy_me_a_coffee),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = cs.onSurface,
+                  androidx.compose.ui.res.stringResource(
+                    app.gyrolet.mpvrx.R.string.ui_if_you_enjoy_mpvrx_consider_supporting_its_development_every_bit,
+                  ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = cs.onSurfaceVariant,
               )
             }
-            Spacer(Modifier.height(10.dp))
-            Text(
-              text =
-                androidx.compose.ui.res.stringResource(
-                  app.gyrolet.mpvrx.R.string.ui_if_you_enjoy_mpvrx_consider_supporting_its_development_every_bit,
-                ),
-              style = MaterialTheme.typography.bodyMedium,
-              color = cs.onSurfaceVariant,
-            )
-          }
-          Surface(
+            Surface(
               shape = RoundedCornerShape(12.dp),
               color = cs.primaryContainer.copy(alpha = 0.4f),
               modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
@@ -435,41 +444,42 @@ object AboutScreen : ScrollableSettingsScreen {
                 )
               }
             }
-          Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Button(
-              onClick = {
-                try {
-                  val upiIntent =
-                    Intent(
-                      Intent.ACTION_VIEW,
-                      "upi://pay?pa=panditritesh2001@okhdfcbank&pn=Ritesh%20Pandit&cu=INR".toUri(),
-                    )
-                  context.startActivity(upiIntent)
-                } catch (_: Exception) {
-                  Toast
-                    .makeText(
-                      context,
-                      context.getString(app.gyrolet.mpvrx.R.string.ui_no_upi_app_found),
-                      Toast.LENGTH_SHORT,
-                    ).show()
-                }
-              },
-              modifier = Modifier.fillMaxWidth().height(50.dp),
-              shape = RoundedCornerShape(12.dp),
-              colors =
-                ButtonDefaults.buttonColors(
-                  containerColor = cs.error,
-                  contentColor = cs.onError,
-                ),
-              elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-            ) {
-              Icon(Icons.RoundedFilled.MonetizationOn, null, modifier = Modifier.size(18.dp))
-              Spacer(Modifier.width(8.dp))
-              Text(
-                androidx.compose.ui.res
-                  .stringResource(app.gyrolet.mpvrx.R.string.ui_send_love),
-                fontWeight = FontWeight.SemiBold,
-              )
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+              Button(
+                onClick = {
+                  try {
+                    val upiIntent =
+                      Intent(
+                        Intent.ACTION_VIEW,
+                        "upi://pay?pa=panditritesh2001@okhdfcbank&pn=Ritesh%20Pandit&cu=INR".toUri(),
+                      )
+                    context.startActivity(upiIntent)
+                  } catch (_: Exception) {
+                    Toast
+                      .makeText(
+                        context,
+                        context.getString(app.gyrolet.mpvrx.R.string.ui_no_upi_app_found),
+                        Toast.LENGTH_SHORT,
+                      ).show()
+                  }
+                },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors =
+                  ButtonDefaults.buttonColors(
+                    containerColor = cs.error,
+                    contentColor = cs.onError,
+                  ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+              ) {
+                Icon(Icons.RoundedFilled.MonetizationOn, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.ui_send_love),
+                  fontWeight = FontWeight.SemiBold,
+                )
+              }
             }
           }
         }
@@ -478,97 +488,108 @@ object AboutScreen : ScrollableSettingsScreen {
 
         // Updates Section (only show if update feature is enabled)
         if (BuildConfig.ENABLE_UPDATE_FEATURE && updateViewModel != null) {
-          PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_updates))
+          PreferenceSectionHeader(
+            position = PreferenceSectionPosition.Middle,
+            title = stringResource(R.string.pref_section_updates),
+          )
           PreferenceCard {
             val isAutoUpdateEnabled by updateViewModel.isAutoUpdateEnabled.collectAsState()
             val isAutoInstallEnabled by updateViewModel.isAutoInstallEnabled.collectAsState()
             Row(
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .settingsSearchTarget(R.string.ui_auto_check_for_updates)
+                  .clickable { updateViewModel.toggleAutoUpdate(!isAutoUpdateEnabled) }
+                  .padding(16.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+              Column(
+                modifier = Modifier.weight(1f),
+              ) {
+                Text(
+                  text =
+                    androidx.compose.ui.res.stringResource(
+                      app.gyrolet.mpvrx.R.string.ui_auto_check_for_updates,
+                    ),
+                  style = MaterialTheme.typography.titleMedium,
+                  fontWeight = FontWeight.SemiBold,
+                  color = cs.onSurface,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                  text =
+                    androidx.compose.ui.res.stringResource(
+                      app.gyrolet.mpvrx.R.string.ui_check_on_startup,
+                    ),
+                  style = MaterialTheme.typography.bodyMedium,
+                  color = cs.outline,
+                )
+              }
+              IconSwitch(
+                checked = isAutoUpdateEnabled,
+                onCheckedChange = { updateViewModel.toggleAutoUpdate(it) },
+              )
+            }
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+              Row(
                 modifier =
                   Modifier
                     .fillMaxWidth()
-                    .settingsSearchTarget(R.string.ui_auto_check_for_updates)
-                    .clickable { updateViewModel.toggleAutoUpdate(!isAutoUpdateEnabled) }
+                    .settingsSearchTarget(R.string.update_auto_install)
+                    .clickable { updateViewModel.toggleAutoInstall(!isAutoInstallEnabled) }
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
               ) {
-                Column(
+                Text(
+                  text = stringResource(R.string.update_auto_install),
                   modifier = Modifier.weight(1f),
-                ) {
-                  Text(
-                    text =
-                      androidx.compose.ui.res.stringResource(
-                        app.gyrolet.mpvrx.R.string.ui_auto_check_for_updates,
-                      ),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = cs.onSurface,
-                  )
-                  Spacer(modifier = Modifier.height(2.dp))
-                  Text(
-                    text =
-                      androidx.compose.ui.res.stringResource(
-                        app.gyrolet.mpvrx.R.string.ui_check_on_startup,
-                      ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = cs.outline,
-                  )
-                }
+                  style = MaterialTheme.typography.titleMedium,
+                  fontWeight = FontWeight.SemiBold,
+                  color = cs.onSurface,
+                )
                 IconSwitch(
-                  checked = isAutoUpdateEnabled,
-                  onCheckedChange = { updateViewModel.toggleAutoUpdate(it) },
+                  checked = isAutoInstallEnabled,
+                  onCheckedChange = { updateViewModel.toggleAutoInstall(it) },
                 )
               }
+            }
 
-
-              if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                Row(
-                  modifier = Modifier.fillMaxWidth()
-                    .settingsSearchTarget(R.string.update_auto_install)
-                    .clickable { updateViewModel.toggleAutoInstall(!isAutoInstallEnabled) }.padding(16.dp),
-                  verticalAlignment = Alignment.CenterVertically,
-                  horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                  Text(
-                    text = stringResource(R.string.update_auto_install),
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = cs.onSurface,
-                  )
-                  IconSwitch(checked = isAutoInstallEnabled, onCheckedChange = { updateViewModel.toggleAutoInstall(it) })
-                }
+            Column(modifier = Modifier.padding(16.dp)) {
+              Button(
+                onClick = { updateViewModel.checkForUpdate(manual = true) },
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors =
+                  ButtonDefaults.buttonColors(
+                    containerColor = cs.secondaryContainer,
+                    contentColor = cs.onSecondaryContainer,
+                  ),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+              ) {
+                Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                  androidx.compose.ui.res.stringResource(
+                    app.gyrolet.mpvrx.R.string.ui_check_for_updates_now,
+                  ),
+                  fontWeight = FontWeight.SemiBold,
+                )
               }
-
-              Column(modifier = Modifier.padding(16.dp)) {
-                Button(
-                  onClick = { updateViewModel.checkForUpdate(manual = true) },
-                  modifier = Modifier.fillMaxWidth().height(50.dp),
-                  shape = RoundedCornerShape(12.dp),
-                  colors =
-                    ButtonDefaults.buttonColors(
-                      containerColor = cs.secondaryContainer,
-                      contentColor = cs.onSecondaryContainer,
-                    ),
-                  elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-                ) {
-                  Icon(Icons.RoundedFilled.Update, null, modifier = Modifier.size(18.dp))
-                  Spacer(Modifier.width(8.dp))
-                  Text(
-                    androidx.compose.ui.res.stringResource(
-                      app.gyrolet.mpvrx.R.string.ui_check_for_updates_now,
-                    ),
-                    fontWeight = FontWeight.SemiBold,
-                  )
-                }
-              }
+            }
           }
 
           Spacer(Modifier.height(8.dp))
         }
 
         // System Stats Section
-        PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_system))
+        PreferenceSectionHeader(
+          position = PreferenceSectionPosition.Last,
+          title = stringResource(R.string.pref_section_system),
+        )
 
         val systemStats = remember { collectSystemStats(context) }
         PreferenceCard {

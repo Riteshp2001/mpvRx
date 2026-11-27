@@ -22,7 +22,8 @@ internal interface VsyncRenderer : GLSurfaceView.Renderer {
 
 internal abstract class VisualizerTextureView(
   context: Context,
-) : TextureView(context), TextureView.SurfaceTextureListener {
+) : TextureView(context),
+  TextureView.SurfaceTextureListener {
   private var glRenderer: GLSurfaceView.Renderer? = null
   private var renderSession: RenderSession? = null
   private var retiringSession: RenderSession? = null

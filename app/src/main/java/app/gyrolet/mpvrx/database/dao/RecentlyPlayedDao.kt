@@ -25,7 +25,10 @@ interface RecentlyPlayedDao {
   suspend fun getByFilePath(filePath: String): RecentlyPlayedEntity?
 
   @Query("UPDATE RecentlyPlayedEntity SET timestamp = :timestamp, launchSource = 'normal' WHERE filePath = :filePath")
-  suspend fun markLastPlayed(filePath: String, timestamp: Long)
+  suspend fun markLastPlayed(
+    filePath: String,
+    timestamp: Long,
+  )
 
   // Existing history rows keep their id when they are replayed, while timestamp is refreshed.
   // Recency must therefore be ordered by timestamp (with id only as a deterministic tie-breaker)

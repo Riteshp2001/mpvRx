@@ -51,7 +51,9 @@ data class ParsedMediaInfo(
 
 object MediaInfoParser {
   // ── Result cache — avoids re-parsing the same filename (e.g. playlist repeat) ──
-  private data class CacheEntry(val fast: ParsedMediaInfo)
+  private data class CacheEntry(
+    val fast: ParsedMediaInfo,
+  )
 
   private val parseCache = android.util.LruCache<String, CacheEntry>(300)
 
@@ -461,7 +463,10 @@ object MediaInfoParser {
   }
 
   @Suppress("UNUSED_PARAMETER")
-  suspend fun parseForLookup(context: Context, fileName: String): ParsedMediaInfo = parse(fileName)
+  suspend fun parseForLookup(
+    context: Context,
+    fileName: String,
+  ): ParsedMediaInfo = parse(fileName)
 
   private fun normalizeFileName(source: String): String {
     var name = source.trim()
@@ -472,24 +477,30 @@ object MediaInfoParser {
     } else if (Regex("""^[a-zA-Z][a-zA-Z0-9+.-]*://""").containsMatchIn(name)) {
       runCatching {
         val uri = Uri.parse(name)
-        val queryName = sequenceOf("filename", "file", "title", "name", "path")
-          .mapNotNull { key -> uri.getQueryParameter(key)?.takeIf(String::isNotBlank)?.let { key to it } }
-          .firstOrNull()
+        val queryName =
+          sequenceOf("filename", "file", "title", "name", "path")
+            .mapNotNull { key -> uri.getQueryParameter(key)?.takeIf(String::isNotBlank)?.let { key to it } }
+            .firstOrNull()
         name = queryName?.second ?: uri.path.orEmpty()
         isPath = queryName == null || queryName.first in setOf("filename", "file", "path")
       }
     }
-    if (isPath || name.startsWith('/') || name.startsWith('\\') ||
+    if (isPath ||
+      name.startsWith('/') ||
+      name.startsWith('\\') ||
       Regex("""^[a-zA-Z]:[\\/]""").containsMatchIn(name) ||
       (EXTENSION_REGEX.containsMatchIn(name) && ('/' in name || '\\' in name))
     ) {
       name = name.replace('\\', '/').substringAfterLast('/')
     }
-    return Normalizer.normalize(name, Normalizer.Form.NFKC)
+    return Normalizer
+      .normalize(name, Normalizer.Form.NFKC)
       .map { character ->
         if (character.isDigit()) {
           ('0'.code + Character.digit(character, 10)).toChar()
-        } else character
+        } else {
+          character
+        }
       }.joinToString("")
       .replace('\u2013', '-')
       .replace('\u2014', '-')
@@ -524,21 +535,17 @@ object MediaInfoParser {
     if (seMatch != null) {
       season = seMatch.groupValues[1].toIntOrNull()
       episode = seMatch.groupValues[2].toIntOrNull()
-    }
-    // Priority 2: 1x02 format
-    else if (crossMatch != null) {
+    } else if (crossMatch != null) {
+      // Priority 2: 1x02 format
       season = crossMatch.groupValues[1].toIntOrNull()
       episode = crossMatch.groupValues[2].toIntOrNull()
-    }
-    // Priority 3: "Episode 5" format
-    else if (epWordMatch != null) {
+    } else if (epWordMatch != null) {
+      // Priority 3: "Episode 5" format
       episode = epWordMatch.groupValues[1].toIntOrNull()
-    }
-    // Priority 4: EP05 format
-    else if (epMarkerMatch != null) {
+    } else if (epMarkerMatch != null) {
+      // Priority 4: EP05 format
       episode = epMarkerMatch.groupValues[1].toIntOrNull()
-    }
-    else if (ePrefixMatch != null) {
+    } else if (ePrefixMatch != null) {
       episode = ePrefixMatch.groupValues[1].toIntOrNull()
     }
 
@@ -551,9 +558,12 @@ object MediaInfoParser {
     // Be careful not to grab episode numbers as years — skip if year is part of S01E2020 etc.
     val yearMatch = findYear(fileName, seMatch, crossMatch)
     val year = yearMatch?.value
-    val titleSource = if (yearMatch != null) {
-      fileName.replaceRange(yearMatch.range, " ".repeat(yearMatch.value.length))
-    } else fileName
+    val titleSource =
+      if (yearMatch != null) {
+        fileName.replaceRange(yearMatch.range, " ".repeat(yearMatch.value.length))
+      } else {
+        fileName
+      }
 
     // Step 3: Japanese season detection
     val japaneseSeason = extractJapaneseSeason(fileName)
@@ -603,7 +613,8 @@ object MediaInfoParser {
     // Step 7: Try to detect dash-separated episode for anime-style naming
     // Pattern: "Title - 08" or "Title - 08 - Episode Name"
     // Only if no episode was found yet AND no year-only movie pattern
-    if (episode == null && !isEpisodeAmbiguous &&
+    if (episode == null &&
+      !isEpisodeAmbiguous &&
       (year == null || season != null || LEADING_GROUP_REGEX.containsMatchIn(fileName))
     ) {
       val dashMatch = detectDashEpisode(fileName)
@@ -616,8 +627,9 @@ object MediaInfoParser {
         if (season == null) season = 1
         val candidateTitle = cleanRawTitle(titleSource.substring(0, dashMatch.range.first))
         if (candidateTitle.isNotBlank()) cleanTitle = candidateTitle
-        episodeTitle = cleanRawTitle(fileName.substring(dashExtent.endIndex))
-          .takeIf { it.isNotBlank() && it != cleanTitle }
+        episodeTitle =
+          cleanRawTitle(fileName.substring(dashExtent.endIndex))
+            .takeIf { it.isNotBlank() && it != cleanTitle }
       }
     }
 
@@ -678,11 +690,14 @@ object MediaInfoParser {
     val markerStart = listOfNotNull(seMatch?.range?.first, crossMatch?.range?.first).minOrNull() ?: fileName.length
     val metadataStart = findMetadataBoundary(fileName) ?: fileName.length
     val maximumYear = Year.now().value + 1
-    val yearCandidates = YEAR_REGEX.findAll(fileName).filter { candidate ->
-      candidate.range.first < minOf(markerStart, metadataStart) &&
-        candidate.value.toInt() in 1878..maximumYear &&
-        cleanRawTitle(fileName.substring(0, candidate.range.first)).isNotBlank()
-    }.toList()
+    val yearCandidates =
+      YEAR_REGEX
+        .findAll(fileName)
+        .filter { candidate ->
+          candidate.range.first < minOf(markerStart, metadataStart) &&
+            candidate.value.toInt() in 1878..maximumYear &&
+            cleanRawTitle(fileName.substring(0, candidate.range.first)).isNotBlank()
+        }.toList()
     if (yearCandidates.isEmpty()) return null
 
     // Filter out any year that overlaps with S01E02 or 1x02 match ranges
@@ -704,15 +719,26 @@ object MediaInfoParser {
     val ep = match.groupValues[1].toIntOrNull() ?: return null
 
     if (ep in 1900..2100) return null
-    if (ep in setOf(480, 720, 1080, 2160) && !LEADING_GROUP_REGEX.containsMatchIn(fileName) &&
+    if (ep in setOf(480, 720, 1080, 2160) &&
+      !LEADING_GROUP_REGEX.containsMatchIn(fileName) &&
       !TECHNICAL_METADATA_REGEX.containsMatchIn(fileName.substring(match.range.last + 1))
-    ) return null
+    ) {
+      return null
+    }
     return match
   }
 
-  private data class EpisodeExtent(val endIndex: Int, val lastEpisode: Int? = null, val ambiguous: Boolean = false)
+  private data class EpisodeExtent(
+    val endIndex: Int,
+    val lastEpisode: Int? = null,
+    val ambiguous: Boolean = false,
+  )
 
-  private fun readEpisodeExtent(fileName: String, startIndex: Int, firstEpisode: Int): EpisodeExtent {
+  private fun readEpisodeExtent(
+    fileName: String,
+    startIndex: Int,
+    firstEpisode: Int,
+  ): EpisodeExtent {
     var endIndex = startIndex
     var lastEpisode: Int? = null
     var ambiguous = false
@@ -799,8 +825,9 @@ object MediaInfoParser {
     while (true) {
       val group = LEADING_GROUP_REGEX.find(title) ?: break
       val remaining = title.substring(group.range.last + 1)
-      val followingTitle = stripMetadataBrackets(remaining.substringBefore(" - "))
-        .let { it.take(findMetadataBoundary(it) ?: it.length) }
+      val followingTitle =
+        stripMetadataBrackets(remaining.substringBefore(" - "))
+          .let { it.take(findMetadataBoundary(it) ?: it.length) }
       if (!isReleaseMetadata(group.groupValues[1]) && followingTitle.none(Char::isLetter)) break
       title = remaining
     }
@@ -814,28 +841,37 @@ object MediaInfoParser {
 
   private fun stripMetadataBrackets(value: String): String =
     value.replace(BRACKET_REGEX) { match ->
-      val contents = match.groupValues.drop(1).firstOrNull(String::isNotEmpty).orEmpty()
+      val contents =
+        match.groupValues
+          .drop(1)
+          .firstOrNull(String::isNotEmpty)
+          .orEmpty()
       if (isReleaseMetadata(contents)) " " else " $contents "
     }
 
   private fun findMetadataBoundary(value: String): Int? =
-    TECHNICAL_METADATA_REGEX.findAll(value).firstOrNull { match ->
-      val suffix = stripMetadataBrackets(value.substring(match.range.first)).replace(EXTENSION_REGEX, "")
-      isReleaseMetadata(suffix) ||
-        isReleaseMetadata(suffix.replace(Regex("""-[\p{L}\p{N}][\p{L}\p{N}._-]*$"""), ""))
-    }?.range?.first
+    TECHNICAL_METADATA_REGEX
+      .findAll(value)
+      .firstOrNull { match ->
+        val suffix = stripMetadataBrackets(value.substring(match.range.first)).replace(EXTENSION_REGEX, "")
+        isReleaseMetadata(suffix) ||
+          isReleaseMetadata(suffix.replace(Regex("""-[\p{L}\p{N}][\p{L}\p{N}._-]*$"""), ""))
+      }?.range
+      ?.first
 
   private fun isReleaseMetadata(value: String): Boolean {
     if (value.isBlank() || CHECKSUM_REGEX.matches(value.trim())) return true
-    var remaining = value.replace(TECHNICAL_METADATA_REGEX, " ")
-      .replace(AUDIO_CHANNEL_REGEX, " ")
-      .replace(FILESIZE_REGEX, " ")
-      .replace(BITRATE_REGEX, " ")
-      .replace(WEB_DL_REGEX, " ")
-      .replace(H_CODEC_REGEX, " ")
-      .replace(COMPOUND_AUDIO_REGEX, " ")
-      .replace(HDR10_PLUS_REGEX, " ")
-      .replace(DOLBY_VISION_REGEX, " ")
+    var remaining =
+      value
+        .replace(TECHNICAL_METADATA_REGEX, " ")
+        .replace(AUDIO_CHANNEL_REGEX, " ")
+        .replace(FILESIZE_REGEX, " ")
+        .replace(BITRATE_REGEX, " ")
+        .replace(WEB_DL_REGEX, " ")
+        .replace(H_CODEC_REGEX, " ")
+        .replace(COMPOUND_AUDIO_REGEX, " ")
+        .replace(HDR10_PLUS_REGEX, " ")
+        .replace(DOLBY_VISION_REGEX, " ")
     (ALL_NOISE_REGEXES + RELEASE_GROUP_REGEXES).forEach { remaining = remaining.replace(it, " ") }
     return remaining.all { it.isWhitespace() || it in "._-+&[]()" }
   }
@@ -893,13 +929,35 @@ object MediaInfoParser {
   ): String {
     val genericWords =
       setOf(
-        "raw", "api", "stream", "video", "play", "watch", "download", "get", "media", "v1", "v2", "v3",
-        "index.m3u8", "master.m3u8", "playlist.m3u8", "manifest.mpd", "video.mp4", "audio.mp3", "file", "embed", "player", "link",
+        "raw",
+        "api",
+        "stream",
+        "video",
+        "play",
+        "watch",
+        "download",
+        "get",
+        "media",
+        "v1",
+        "v2",
+        "v3",
+        "index.m3u8",
+        "master.m3u8",
+        "playlist.m3u8",
+        "manifest.mpd",
+        "video.mp4",
+        "audio.mp3",
+        "file",
+        "embed",
+        "player",
+        "link",
       )
 
     val trimmedFallback = fallbackFileName?.trim()
     if (!trimmedFallback.isNullOrBlank()) {
-      val isUrlLike = trimmedFallback.startsWith("http://", ignoreCase = true) || trimmedFallback.startsWith("https://", ignoreCase = true)
+      val isUrlLike =
+        trimmedFallback.startsWith("http://", ignoreCase = true) ||
+          trimmedFallback.startsWith("https://", ignoreCase = true)
       if (!isUrlLike && !genericWords.contains(trimmedFallback.lowercase())) {
         val parsed = parse(trimmedFallback)
         if (parsed.title.isNotBlank() && !genericWords.contains(parsed.title.lowercase())) {
@@ -920,18 +978,34 @@ object MediaInfoParser {
             return@runCatching "YouTube Video ($videoId)"
           }
         }
-        val queryParams = listOf("path", "file", "filename", "title", "name", "url", "src", "stream", "video", "target", "source", "query", "q")
+        val queryParams =
+          listOf(
+            "path",
+            "file",
+            "filename",
+            "title",
+            "name",
+            "url",
+            "src",
+            "stream",
+            "video",
+            "target",
+            "source",
+            "query",
+            "q",
+          )
         var candidate: String? = null
 
         for (param in queryParams) {
           val value = uri.getQueryParameter(param)
           if (!value.isNullOrBlank()) {
             val decoded = value.trim()
-            val extracted = if (param in setOf("title", "name", "query", "q")) {
-              decoded
-            } else {
-              decoded.substringAfterLast('/').substringAfterLast('\\').trim()
-            }
+            val extracted =
+              if (param in setOf("title", "name", "query", "q")) {
+                decoded
+              } else {
+                decoded.substringAfterLast('/').substringAfterLast('\\').trim()
+              }
             if (extracted.isNotEmpty() && !genericWords.contains(extracted.lowercase())) {
               candidate = extracted
               break
@@ -960,8 +1034,10 @@ object MediaInfoParser {
     }
 
     return parsedCandidate
-      .replace(Regex("""\.(?:mkv|mp4|m4v|webm|avi|mov|ts|m2ts|mp3|m4a|flac|ogg|m3u8|mpd)$""", RegexOption.IGNORE_CASE), "")
-      .replace(Regex("""[._\-]"""), " ")
+      .replace(
+        Regex("""\.(?:mkv|mp4|m4v|webm|avi|mov|ts|m2ts|mp3|m4a|flac|ogg|m3u8|mpd)$""", RegexOption.IGNORE_CASE),
+        "",
+      ).replace(Regex("""[._\-]"""), " ")
       .replace(Regex("""\s+"""), " ")
       .trim()
       .ifBlank { source }

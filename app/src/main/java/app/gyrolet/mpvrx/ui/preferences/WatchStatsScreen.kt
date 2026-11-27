@@ -7,9 +7,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.MediaStore
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -34,7 +33,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,21 +65,23 @@ import app.gyrolet.mpvrx.repository.WatchStatsRepository
 import app.gyrolet.mpvrx.repository.WatchStatsSnapshot
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
-import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.expressiveDisplayFontForText
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
-import java.io.File
-import java.time.LocalDate
-import java.time.format.TextStyle
-import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
+import java.io.File
+import java.time.LocalDate
+import java.time.format.TextStyle
+import java.util.Locale
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,7 +121,9 @@ internal fun ProfileWatchStatistics() {
       TextButton(
         enabled = stats.totalSeconds > 0 || stats.sessions > 0 || stats.media.isNotEmpty(),
         onClick = { confirmReset = true },
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+        contentPadding =
+          androidx.compose.foundation.layout
+            .PaddingValues(horizontal = 10.dp, vertical = 4.dp),
       ) {
         Text(
           text = stringResource(R.string.watch_stats_reset),
@@ -447,9 +449,10 @@ private fun WeeklyActivityBentoCard(days: Map<String, Long>) {
 
       // Bar Chart
       Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(130.dp),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .height(130.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom,
       ) {
@@ -470,36 +473,38 @@ private fun WeeklyActivityBentoCard(days: Map<String, Long>) {
           ) {
             // Track & Fill bar
             Box(
-              modifier = Modifier
-                .width(18.dp)
-                .height(96.dp)
-                .clip(CircleShape)
-                .background(trackColor),
+              modifier =
+                Modifier
+                  .width(18.dp)
+                  .height(96.dp)
+                  .clip(CircleShape)
+                  .background(trackColor),
               contentAlignment = Alignment.BottomCenter,
             ) {
               if (value > 0L) {
                 Box(
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight(animatedFraction.coerceAtLeast(0.12f))
-                    .clip(CircleShape)
-                    .background(
-                      if (isToday) {
-                        Brush.verticalGradient(
-                          listOf(
-                            MaterialTheme.colorScheme.tertiary,
-                            MaterialTheme.colorScheme.primary,
-                          ),
-                        )
-                      } else {
-                        Brush.verticalGradient(
-                          listOf(
-                            primaryColor.copy(alpha = 0.85f),
-                            primaryColor,
-                          ),
-                        )
-                      },
-                    ),
+                  modifier =
+                    Modifier
+                      .fillMaxWidth()
+                      .fillMaxHeight(animatedFraction.coerceAtLeast(0.12f))
+                      .clip(CircleShape)
+                      .background(
+                        if (isToday) {
+                          Brush.verticalGradient(
+                            listOf(
+                              MaterialTheme.colorScheme.tertiary,
+                              MaterialTheme.colorScheme.primary,
+                            ),
+                          )
+                        } else {
+                          Brush.verticalGradient(
+                            listOf(
+                              primaryColor.copy(alpha = 0.85f),
+                              primaryColor,
+                            ),
+                          )
+                        },
+                      ),
                 )
               }
             }
@@ -607,19 +612,23 @@ private fun TopMediaLeaderboardBentoCard(
                 )
               }
             },
-            shape = rememberConnectedShape(
-              index, 3, ConnectedLayout.Horizontal,
-              tokens = AppConnectedControlShapeTokens,
-            ),
+            shape =
+              rememberConnectedShape(
+                index,
+                3,
+                ConnectedLayout.Horizontal,
+                tokens = AppConnectedControlShapeTokens,
+              ),
           )
         }
       }
 
       if (topMedia.isEmpty()) {
         Box(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(vertical = 12.dp),
           contentAlignment = Alignment.Center,
         ) {
           Text(
@@ -654,19 +663,21 @@ private fun LeaderboardMediaRow(
   index: Int,
   itemCount: Int,
 ) {
-  val rankColor = when (rank) {
-    1 -> Color(0xFFFFB300) // Gold
-    2 -> Color(0xFF90A4AE) // Silver
-    3 -> Color(0xFFCD7F32) // Bronze
-    else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-  }
+  val rankColor =
+    when (rank) {
+      1 -> Color(0xFFFFB300) // Gold
+      2 -> Color(0xFF90A4AE) // Silver
+      3 -> Color(0xFFCD7F32) // Bronze
+      else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+    }
 
-  val rankContainerColor = when (rank) {
-    1 -> Color(0xFFFFB300).copy(alpha = 0.18f)
-    2 -> Color(0xFF90A4AE).copy(alpha = 0.18f)
-    3 -> Color(0xFFCD7F32).copy(alpha = 0.18f)
-    else -> MaterialTheme.colorScheme.surfaceContainerHighest
-  }
+  val rankContainerColor =
+    when (rank) {
+      1 -> Color(0xFFFFB300).copy(alpha = 0.18f)
+      2 -> Color(0xFF90A4AE).copy(alpha = 0.18f)
+      3 -> Color(0xFFCD7F32).copy(alpha = 0.18f)
+      else -> MaterialTheme.colorScheme.surfaceContainerHighest
+    }
 
   Surface(
     shape = rememberConnectedShape(index, itemCount, ConnectedLayout.Vertical),
@@ -714,10 +725,11 @@ private fun LeaderboardMediaRow(
         val progress = (media.seconds.toFloat() / maxSeconds.toFloat()).coerceIn(0f, 1f)
         LinearProgressIndicator(
           progress = { progress },
-          modifier = Modifier
-            .fillMaxWidth()
-            .height(4.dp)
-            .clip(CircleShape),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .height(4.dp)
+              .clip(CircleShape),
           color = if (rank == 1) Color(0xFFFFB300) else MaterialTheme.colorScheme.primary,
           trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
         )
@@ -859,26 +871,35 @@ private fun findLegacyMediaUri(
   if (displayName.isBlank()) return null
 
   val resolver = context.contentResolver
-  val contentUri = if (isAudio) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI else MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+  val contentUri =
+    if (isAudio) {
+      MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+    } else {
+      MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+    }
   val projection =
     arrayOf(
       if (isAudio) MediaStore.Audio.Media._ID else MediaStore.Video.Media._ID,
       if (isAudio) MediaStore.Audio.Media.DISPLAY_NAME else MediaStore.Video.Media.DISPLAY_NAME,
     )
 
-  fun query(selection: String, argument: String): Uri? =
+  fun query(
+    selection: String,
+    argument: String,
+  ): Uri? =
     runCatching {
-      resolver.query(
-        contentUri,
-        projection,
-        selection,
-        arrayOf(argument),
-        null,
-      )?.use { cursor ->
-        if (!cursor.moveToFirst()) return@use null
-        val id = cursor.getLong(0)
-        ContentUris.withAppendedId(contentUri, id)
-      }
+      resolver
+        .query(
+          contentUri,
+          projection,
+          selection,
+          arrayOf(argument),
+          null,
+        )?.use { cursor ->
+          if (!cursor.moveToFirst()) return@use null
+          val id = cursor.getLong(0)
+          ContentUris.withAppendedId(contentUri, id)
+        }
     }.getOrNull()
 
   query("${projection[1]} = ?", displayName)?.let { return it }

@@ -88,7 +88,6 @@ fun matchesFxPreset(
  * Ambilight, Cinema, Echo, and Mirror with bicubic B-spline filtering and adjustable parameters.
  */
 object FxAmbientShaderBuilder {
-
   // -- Private helpers ---------------------------------------------------------
 
   private fun f(value: Double): String {
@@ -100,7 +99,14 @@ object FxAmbientShaderBuilder {
   /**
    * Builds the standard mpv hook header, GLSL helpers, and the bicubic B-spline sampler.
    */
-  private fun buildHeader(desc: String, scaleX: Double, scaleY: Double, centerX: Double, centerY: Double): String = """
+  private fun buildHeader(
+    desc: String,
+    scaleX: Double,
+    scaleY: Double,
+    centerX: Double,
+    centerY: Double,
+  ): String =
+    """
 //!HOOK OUTPUT
 //!BIND HOOKED
 //!DESC $desc
@@ -181,7 +187,7 @@ mediump vec3 bspline_tex(highp vec2 sample_uv, highp vec2 size, highp vec2 inv_s
     return (c00 * g0_m.x + c10 * g1_m.x) * g0_m.y + (c01 * g0_m.x + c11 * g1_m.x) * g1_m.y;
 }
 
-  """.trimIndent()
+    """.trimIndent()
 
   // -- Shared video prologue ---------------------------------------------------
 
@@ -192,7 +198,8 @@ mediump vec3 bspline_tex(highp vec2 sample_uv, highp vec2 size, highp vec2 inv_s
    *   - Early-returns the original pixel when inside the video.
    *   - Computes per-bar geometry: bx, by, dx, dy, d, thick, dn, in_side_bar.
    */
-  private fun videoPrologue(reachScale: Double): String = """
+  private fun videoPrologue(reachScale: Double): String =
+    """
     highp vec2 uv       = HOOKED_pos;
     highp vec2 video_uv = (uv - vec2(CENTER_X, CENTER_Y)) * vec2(SCALE_X, SCALE_Y) + 0.5;
 
@@ -232,18 +239,23 @@ mediump vec3 bspline_tex(highp vec2 sample_uv, highp vec2 size, highp vec2 inv_s
     if (dn >= 1.0) { return vec4(0.0, 0.0, 0.0, 1.0); }
 
     bool in_side_bar = dx >= dy;
-  """.trimIndent().prependIndent("    ")
+    """.trimIndent().prependIndent("    ")
 
   /**
    * Spiral tap offsets for Poisson disk sampling.
    */
-  private fun tapTable(name: String, count: Int, maxR: Double): String {
+  private fun tapTable(
+    name: String,
+    count: Int,
+    maxR: Double,
+  ): String {
     val goldenAngle = 2.399963229728653
-    val taps = (0 until count).joinToString(",\n") { i ->
-      val r = sqrt((i.toDouble() + 0.5) / count) * maxR
-      val theta = (i.toDouble() + 0.5) * goldenAngle
-      "    vec2(${f(cos(theta) * r)}, ${f(sin(theta) * r)})"
-    }
+    val taps =
+      (0 until count).joinToString(",\n") { i ->
+        val r = sqrt((i.toDouble() + 0.5) / count) * maxR
+        val theta = (i.toDouble() + 0.5) * goldenAngle
+        "    vec2(${f(cos(theta) * r)}, ${f(sin(theta) * r)})"
+      }
     return "const vec2 $name[$count] = vec2[$count](\n$taps\n);"
   }
 
@@ -271,10 +283,15 @@ mediump vec3 bspline_tex(highp vec2 sample_uv, highp vec2 size, highp vec2 inv_s
     val opacityVal = spec.opacity.toDouble().coerceIn(0.0, 1.0)
 
     val warmthLine = if (abs(warmthVal) > 0.0001) "    col = apply_warmth(col, ${f(warmthVal)});\n" else ""
-    val vignetteLine = if (vignetteVal > 0.0001) """
+    val vignetteLine =
+      if (vignetteVal > 0.0001) {
+        """
     highp float vig_r = length(uv - 0.5) * 2.0;
     ambient_rgb *= mix(1.0, 1.0 - smoothstep(0.1, 1.3, vig_r), ${f(vignetteVal)});
-""" else ""
+"""
+      } else {
+        ""
+      }
     val opacityLine = if (abs(opacityVal - 1.0) > 0.0001) "    ambient_rgb *= ${f(opacityVal)};\n" else ""
 
     return """
@@ -323,10 +340,14 @@ $vignetteLine$opacityLine
     ambient_rgb = dither_out(ambient_rgb, uv * HOOKED_size);
     return vec4(ambient_rgb, 1.0);
 }
-    """.trimIndent()
+      """.trimIndent()
   }
 
-  fun buildAmbilight(context: Context, scaleX: Double, scaleY: Double): String =
+  fun buildAmbilight(
+    context: Context,
+    scaleX: Double,
+    scaleY: Double,
+  ): String =
     buildAmbilight(
       context,
       FxAmbientShaderSpec(
@@ -369,10 +390,15 @@ $vignetteLine$opacityLine
     val opacityVal = spec.opacity.toDouble().coerceIn(0.0, 1.0)
 
     val warmthLine = if (abs(warmthVal) > 0.0001) "    col = apply_warmth(col, ${f(warmthVal)});\n" else ""
-    val vignetteLine = if (vignetteVal > 0.0001) """
+    val vignetteLine =
+      if (vignetteVal > 0.0001) {
+        """
     highp float vig_r = length(uv - 0.5) * 2.0;
     ambient_rgb *= mix(1.0, 1.0 - smoothstep(0.1, 1.3, vig_r), ${f(vignetteVal)});
-""" else ""
+"""
+      } else {
+        ""
+      }
     val opacityLine = if (abs(opacityVal - 1.0) > 0.0001) "    ambient_rgb *= ${f(opacityVal)};\n" else ""
 
     return """
@@ -424,10 +450,14 @@ $vignetteLine$opacityLine
     ambient_rgb = dither_out(ambient_rgb, uv * HOOKED_size);
     return vec4(ambient_rgb, 1.0);
 }
-    """.trimIndent()
+      """.trimIndent()
   }
 
-  fun buildCinema(context: Context, scaleX: Double, scaleY: Double): String =
+  fun buildCinema(
+    context: Context,
+    scaleX: Double,
+    scaleY: Double,
+  ): String =
     buildCinema(
       context,
       FxAmbientShaderSpec(
@@ -464,9 +494,10 @@ $vignetteLine$opacityLine
     val tapCount = spec.blurSamples.coerceIn(3, 15).let { if (it % 2 == 0) it + 1 else it }
     val halfCount = tapCount / 2
     val sigma = (halfCount * 0.75).coerceAtLeast(0.5)
-    val rawWeights = (-halfCount..halfCount).map { i ->
-      kotlin.math.exp(-0.5 * (i.toDouble() / sigma).let { it * it })
-    }
+    val rawWeights =
+      (-halfCount..halfCount).map { i ->
+        kotlin.math.exp(-0.5 * (i.toDouble() / sigma).let { it * it })
+      }
     val sumWeights = rawWeights.sum()
     val weights = rawWeights.map { it / sumWeights }
 
@@ -478,22 +509,36 @@ $vignetteLine$opacityLine
     val opacityVal = spec.opacity.toDouble().coerceIn(0.0, 1.0)
 
     val warmthLine = if (abs(warmthVal) > 0.0001) "    col = apply_warmth(col, ${f(warmthVal)});\n" else ""
-    val vignetteLine = if (vignetteVal > 0.0001) """
+    val vignetteLine =
+      if (vignetteVal > 0.0001) {
+        """
     highp float vig_r = length(uv - 0.5) * 2.0;
     ambient_rgb *= mix(1.0, 1.0 - smoothstep(0.1, 1.3, vig_r), ${f(vignetteVal)});
-""" else ""
+"""
+      } else {
+        ""
+      }
     val opacityLine = if (abs(opacityVal - 1.0) > 0.0001) "    ambient_rgb *= ${f(opacityVal)};\n" else ""
 
     val weightsDecl = "const float ECHO_WEIGHTS[$tapCount] = float[$tapCount](${weights.joinToString(", ") { f(it) }});"
-    val offsetsDecl = "const float ECHO_OFFSETS[$tapCount] = float[$tapCount](${(-halfCount..halfCount).joinToString(", ") { f(it.toDouble() / halfCount) }});"
-    val crossFactors = (0 until tapCount).map { i ->
-      when (i % 4) {
-        1 -> 1.0
-        3 -> -1.0
-        else -> 0.0
+    val offsetsDecl = "const float ECHO_OFFSETS[$tapCount] = float[$tapCount](${(-halfCount..halfCount).joinToString(
+      ", ",
+    ) {
+      f(
+        it.toDouble() / halfCount,
+      )
+    }});"
+    val crossFactors =
+      (0 until tapCount).map { i ->
+        when (i % 4) {
+          1 -> 1.0
+          3 -> -1.0
+          else -> 0.0
+        }
       }
-    }
-    val crossDecl = "const float ECHO_CROSS[$tapCount] = float[$tapCount](${crossFactors.joinToString(", ") { f(it) }});"
+    val crossDecl = "const float ECHO_CROSS[$tapCount] = float[$tapCount](${crossFactors.joinToString(
+      ", ",
+    ) { f(it) }});"
 
     return """
 ${buildHeader("Fx Ambient -- Echo", spec.scaleX, spec.scaleY, spec.centerX, spec.centerY)}
@@ -542,10 +587,14 @@ $vignetteLine$opacityLine
     ambient_rgb = dither_out(ambient_rgb, uv * HOOKED_size);
     return vec4(ambient_rgb, 1.0);
 }
-    """.trimIndent()
+      """.trimIndent()
   }
 
-  fun buildEcho(context: Context, scaleX: Double, scaleY: Double): String =
+  fun buildEcho(
+    context: Context,
+    scaleX: Double,
+    scaleY: Double,
+  ): String =
     buildEcho(
       context,
       FxAmbientShaderSpec(
@@ -579,9 +628,10 @@ $vignetteLine$opacityLine
     val tapCount = spec.blurSamples.coerceIn(3, 9).let { if (it % 2 == 0) it + 1 else it }
     val halfCount = tapCount / 2
     val sigma = (halfCount * 0.75).coerceAtLeast(0.5)
-    val rawWeights = (-halfCount..halfCount).map { i ->
-      kotlin.math.exp(-0.5 * (i.toDouble() / sigma).let { it * it })
-    }
+    val rawWeights =
+      (-halfCount..halfCount).map { i ->
+        kotlin.math.exp(-0.5 * (i.toDouble() / sigma).let { it * it })
+      }
     val sumWeights = rawWeights.sum()
     val weights = rawWeights.map { it / sumWeights }
 
@@ -593,14 +643,27 @@ $vignetteLine$opacityLine
     val opacityVal = spec.opacity.toDouble().coerceIn(0.0, 1.0)
 
     val warmthLine = if (abs(warmthVal) > 0.0001) "    col = apply_warmth(col, ${f(warmthVal)});\n" else ""
-    val vignetteLine = if (vignetteVal > 0.0001) """
+    val vignetteLine =
+      if (vignetteVal > 0.0001) {
+        """
     highp float vig_r = length(uv - 0.5) * 2.0;
     ambient_rgb *= mix(1.0, 1.0 - smoothstep(0.1, 1.3, vig_r), ${f(vignetteVal)});
-""" else ""
+"""
+      } else {
+        ""
+      }
     val opacityLine = if (abs(opacityVal - 1.0) > 0.0001) "    ambient_rgb *= ${f(opacityVal)};\n" else ""
 
-    val weightsDecl = "const float MIRROR_WEIGHTS[$tapCount] = float[$tapCount](${weights.joinToString(", ") { f(it) }});"
-    val offsetsDecl = "const float MIRROR_OFFSETS[$tapCount] = float[$tapCount](${(-halfCount..halfCount).joinToString(", ") { f(it.toDouble() / halfCount) }});"
+    val weightsDecl = "const float MIRROR_WEIGHTS[$tapCount] = float[$tapCount](${weights.joinToString(
+      ", ",
+    ) { f(it) }});"
+    val offsetsDecl = "const float MIRROR_OFFSETS[$tapCount] = float[$tapCount](${(-halfCount..halfCount).joinToString(
+      ", ",
+    ) {
+      f(
+        it.toDouble() / halfCount,
+      )
+    }});"
 
     return """
 ${buildHeader("Fx Ambient -- Mirror", spec.scaleX, spec.scaleY, spec.centerX, spec.centerY)}
@@ -640,10 +703,14 @@ $vignetteLine$opacityLine
     ambient_rgb = dither_out(ambient_rgb, uv * HOOKED_size);
     return vec4(ambient_rgb, 1.0);
 }
-    """.trimIndent()
+      """.trimIndent()
   }
 
-  fun buildMirror(context: Context, scaleX: Double, scaleY: Double): String =
+  fun buildMirror(
+    context: Context,
+    scaleX: Double,
+    scaleY: Double,
+  ): String =
     buildMirror(
       context,
       FxAmbientShaderSpec(

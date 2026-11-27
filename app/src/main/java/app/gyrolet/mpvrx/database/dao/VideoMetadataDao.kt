@@ -89,5 +89,4 @@ interface VideoMetadataDao {
    */
   @Query("SELECT SUM(size) FROM video_metadata_cache")
   suspend fun getTotalCacheSize(): Long?
-
 }

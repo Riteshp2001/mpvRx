@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.browser.cards
 
 import androidx.compose.animation.VectorConverter
@@ -18,7 +18,9 @@ import androidx.compose.ui.unit.Dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-private class RequestedTarget<T>(var value: T)
+private class RequestedTarget<T>(
+  var value: T,
+)
 
 /**
  * Same result as animate*AsState for media-card decorations, without its idle cost: that API keeps

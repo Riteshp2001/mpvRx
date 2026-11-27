@@ -45,7 +45,12 @@ class ExternalDisplayPresentation(
           )
         }
 
-        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+        override fun surfaceChanged(
+          holder: SurfaceHolder,
+          format: Int,
+          width: Int,
+          height: Int,
+        ) {
           if (isSurfaceReady) {
             PlaybackSession.resizeSurface(width, height, surfaceOwner)
           } else {

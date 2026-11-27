@@ -10,7 +10,6 @@
 package app.gyrolet.mpvrx.ui.framecapture
 
 import android.app.Application
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -31,12 +30,10 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -58,25 +55,28 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.framecapture.VideoAvailability
 import app.gyrolet.mpvrx.domain.framecapture.VideoSource
 import app.gyrolet.mpvrx.presentation.Screen
-import app.gyrolet.mpvrx.ui.tv.TvEdgeToEdgeScreen
-import app.gyrolet.mpvrx.ui.tv.TvPagerFocusArea
-import app.gyrolet.mpvrx.ui.tv.tvOverscanPadding
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.imageviewer.ZoomableImage
+import app.gyrolet.mpvrx.ui.tv.TvEdgeToEdgeScreen
+import app.gyrolet.mpvrx.ui.tv.TvPagerFocusArea
+import app.gyrolet.mpvrx.ui.tv.tvOverscanPadding
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 @Serializable
 data class SnapshotDetailScreen(
   val captures: List<SnapshotDetailItem>,
   val initialIndex: Int = 0,
-) : Screen, TvEdgeToEdgeScreen {
-
+) : Screen,
+  TvEdgeToEdgeScreen {
   @Composable
   override fun Content() {
     val context = LocalContext.current
@@ -205,8 +205,7 @@ data class SnapshotDetailScreen(
                   context,
                   context.getString(R.string.playlist_item_unavailable, subject, reason),
                   Toast.LENGTH_LONG,
-                )
-                .show()
+                ).show()
             }
 
             when (availability) {

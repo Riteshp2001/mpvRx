@@ -21,9 +21,6 @@ import android.webkit.WebViewClient
 import app.gyrolet.mpvrx.network.awaitResponse
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.utils.logging.Log
-import java.util.Base64
-import java.util.UUID
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +40,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.Base64
+import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 /**
  * The bearer token behind Spotify's own web player, minted from the listener's `sp_dc` session
@@ -57,24 +57,45 @@ internal class SpotifyToken(
   private val preferences: AudioPreferences,
 ) {
   private val appContext = context.applicationContext
-  private val http = client.newBuilder()
-    .cookieJar(CookieJar.NO_COOKIES)
-    .callTimeout(20, TimeUnit.SECONDS)
-    .build()
-  private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+  private val http =
+    client
+      .newBuilder()
+      .cookieJar(CookieJar.NO_COOKIES)
+      .callTimeout(20, TimeUnit.SECONDS)
+      .build()
+  private val json =
+    Json {
+      ignoreUnknownKeys = true
+      isLenient = true
+    }
   private val harvestMutex = Mutex()
   private val clientTokenMutex = Mutex()
 
-  private data class SessionInfo(val clientVersion: String, val deviceId: String)
-  private data class HarvestedToken(val token: String, val expiresAt: Long, val clientId: String?)
+  private data class SessionInfo(
+    val clientVersion: String,
+    val deviceId: String,
+  )
+
+  private data class HarvestedToken(
+    val token: String,
+    val expiresAt: Long,
+    val clientId: String?,
+  )
 
   @Volatile private var cookieHash = 0
+
   @Volatile private var accessToken: String? = null
+
   @Volatile private var accessTokenExpiresAt = 0L
+
   @Volatile private var clientId: String? = null
+
   @Volatile private var retryHarvestAfter = 0L
+
   @Volatile private var session: SessionInfo? = null
+
   @Volatile private var clientToken: String? = null
+
   @Volatile private var clientTokenExpiresAt = 0L
 
   val hasCookie: Boolean
@@ -112,8 +133,7 @@ internal class SpotifyToken(
     clientTokenExpiresAt = 0L
   }
 
-  private fun fresh(): String? =
-    accessToken?.takeIf { System.currentTimeMillis() < accessTokenExpiresAt - 30_000L }
+  private fun fresh(): String? = accessToken?.takeIf { System.currentTimeMillis() < accessTokenExpiresAt - 30_000L }
 
   private fun resetIfCookieChanged(cookie: String) {
     val hash = cookie.hashCode()
@@ -129,38 +149,49 @@ internal class SpotifyToken(
     val deferred = CompletableDeferred<HarvestedToken?>()
     var webView: WebView? = null
     return try {
-      val cookieManager = CookieManager.getInstance().apply {
-        setAcceptCookie(true)
-        setCookie("https://open.spotify.com/", "sp_dc=$cookie; Domain=.spotify.com; Path=/; Secure")
-        setCookie("https://accounts.spotify.com/", "sp_dc=$cookie; Domain=.spotify.com; Path=/; Secure")
-        flush()
-      }
+      val cookieManager =
+        CookieManager.getInstance().apply {
+          setAcceptCookie(true)
+          setCookie("https://open.spotify.com/", "sp_dc=$cookie; Domain=.spotify.com; Path=/; Secure")
+          setCookie("https://accounts.spotify.com/", "sp_dc=$cookie; Domain=.spotify.com; Path=/; Secure")
+          flush()
+        }
       // The player reuses a token cached in web storage and then never requests one the hook
       // could see. mpvRx has no other WebView, so clearing storage affects only this page.
       runCatching { WebStorage.getInstance().deleteAllData() }
-      webView = WebView(appContext).apply {
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = true
-        settings.userAgentString = WEB_USER_AGENT
-        cookieManager.setAcceptThirdPartyCookies(this, true)
-        addJavascriptInterface(TokenBridge(deferred), BRIDGE_NAME)
-        webChromeClient = object : WebChromeClient() {
-          override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean = true
-        }
-        webViewClient = object : WebViewClient() {
-          override fun onPageStarted(view: WebView, url: String?, favicon: Bitmap?) {
-            super.onPageStarted(view, url, favicon)
-            view.evaluateJavascript(HOOK_SCRIPT, null)
-          }
+      webView =
+        WebView(appContext).apply {
+          settings.javaScriptEnabled = true
+          settings.domStorageEnabled = true
+          settings.userAgentString = WEB_USER_AGENT
+          cookieManager.setAcceptThirdPartyCookies(this, true)
+          addJavascriptInterface(TokenBridge(deferred), BRIDGE_NAME)
+          webChromeClient =
+            object : WebChromeClient() {
+              override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean = true
+            }
+          webViewClient =
+            object : WebViewClient() {
+              override fun onPageStarted(
+                view: WebView,
+                url: String?,
+                favicon: Bitmap?,
+              ) {
+                super.onPageStarted(view, url, favicon)
+                view.evaluateJavascript(HOOK_SCRIPT, null)
+              }
 
-          override fun onPageFinished(view: WebView, url: String?) {
-            super.onPageFinished(view, url)
-            // Re-assert in case the player navigated client-side after the first injection.
-            view.evaluateJavascript(HOOK_SCRIPT, null)
-          }
+              override fun onPageFinished(
+                view: WebView,
+                url: String?,
+              ) {
+                super.onPageFinished(view, url)
+                // Re-assert in case the player navigated client-side after the first injection.
+                view.evaluateJavascript(HOOK_SCRIPT, null)
+              }
+            }
+          loadUrl("https://open.spotify.com/")
         }
-        loadUrl("https://open.spotify.com/")
-      }
       withTimeoutOrNull(HARVEST_TIMEOUT_MS) { deferred.await() }
     } catch (e: CancellationException) {
       throw e
@@ -178,7 +209,9 @@ internal class SpotifyToken(
   }
 
   /** Receives raw `/api/token` response bodies from the hooked page. */
-  private inner class TokenBridge(private val deferred: CompletableDeferred<HarvestedToken?>) {
+  private inner class TokenBridge(
+    private val deferred: CompletableDeferred<HarvestedToken?>,
+  ) {
     @JavascriptInterface
     fun onTokenPayload(payload: String?) {
       if (payload.isNullOrBlank() || deferred.isCompleted) return
@@ -188,9 +221,12 @@ internal class SpotifyToken(
         // An anonymous token is minted before the cookie takes effect; it cannot read canvases.
         val anonymous = root.text("isAnonymous")?.toBooleanStrictOrNull() ?: false
         if (token.isNullOrBlank() || anonymous) return
-        val expiresAt = root.text("accessTokenExpirationTimestampMs")?.toLongOrNull()
-          ?.takeIf { it > System.currentTimeMillis() }
-          ?: (System.currentTimeMillis() + DEFAULT_TOKEN_LIFETIME_MS)
+        val expiresAt =
+          root
+            .text("accessTokenExpirationTimestampMs")
+            ?.toLongOrNull()
+            ?.takeIf { it > System.currentTimeMillis() }
+            ?: (System.currentTimeMillis() + DEFAULT_TOKEN_LIFETIME_MS)
         deferred.complete(HarvestedToken(token, expiresAt, root.text("clientId")))
       }
     }
@@ -200,64 +236,77 @@ internal class SpotifyToken(
    * The second header api.spotify.com and spclient now demand beside the bearer; without it
    * they answer 429. Best effort: callers send the bearer alone when this is unavailable.
    */
-  suspend fun clientToken(): String? = clientTokenMutex.withLock {
-    val now = System.currentTimeMillis()
-    clientToken?.takeIf { now < clientTokenExpiresAt - 30_000L }?.let { return@withLock it }
-    val id = clientId ?: return@withLock null
-    val session = session() ?: return@withLock null
-    val payload = buildJsonObject {
-      putJsonObject("client_data") {
-        put("client_version", session.clientVersion)
-        put("client_id", id)
-        putJsonObject("js_sdk_data") {
-          put("device_brand", "unknown")
-          put("device_model", "unknown")
-          put("os", "android")
-          put("os_version", Build.VERSION.RELEASE.orEmpty())
-          put("device_id", session.deviceId)
-          put("device_type", "smartphone")
+  suspend fun clientToken(): String? =
+    clientTokenMutex.withLock {
+      val now = System.currentTimeMillis()
+      clientToken?.takeIf { now < clientTokenExpiresAt - 30_000L }?.let { return@withLock it }
+      val id = clientId ?: return@withLock null
+      val session = session() ?: return@withLock null
+      val payload =
+        buildJsonObject {
+          putJsonObject("client_data") {
+            put("client_version", session.clientVersion)
+            put("client_id", id)
+            putJsonObject("js_sdk_data") {
+              put("device_brand", "unknown")
+              put("device_model", "unknown")
+              put("os", "android")
+              put("os_version", Build.VERSION.RELEASE.orEmpty())
+              put("device_id", session.deviceId)
+              put("device_type", "smartphone")
+            }
+          }
         }
-      }
+      // The ByteArray overload keeps the bare "application/json" type; clienttoken rejects a charset.
+      val request =
+        Request
+          .Builder()
+          .url("https://clienttoken.spotify.com/v1/clienttoken")
+          .post(payload.toString().toByteArray(Charsets.UTF_8).toRequestBody("application/json".toMediaType()))
+          .header("Accept", "application/json")
+          .header("User-Agent", WEB_USER_AGENT)
+          .build()
+      val body =
+        runCatching {
+          http.newCall(request).awaitResponse().use { response ->
+            if (response.isSuccessful) response.body.string() else null
+          }
+        }.getOrNull() ?: return@withLock null
+      val root = runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull() ?: return@withLock null
+      if (root.text("response_type") != "RESPONSE_GRANTED_TOKEN_RESPONSE") return@withLock null
+      val granted = root["granted_token"] as? JsonObject ?: return@withLock null
+      val token = granted.text("token") ?: return@withLock null
+      val ttlSeconds = granted.text("expires_after_seconds")?.toLongOrNull() ?: 3600L
+      clientToken = token
+      clientTokenExpiresAt = now + ttlSeconds * 1000L
+      token
     }
-    // The ByteArray overload keeps the bare "application/json" type; clienttoken rejects a charset.
-    val request = Request.Builder()
-      .url("https://clienttoken.spotify.com/v1/clienttoken")
-      .post(payload.toString().toByteArray(Charsets.UTF_8).toRequestBody("application/json".toMediaType()))
-      .header("Accept", "application/json")
-      .header("User-Agent", WEB_USER_AGENT)
-      .build()
-    val body = runCatching {
-      http.newCall(request).awaitResponse().use { response ->
-        if (response.isSuccessful) response.body.string() else null
-      }
-    }.getOrNull() ?: return@withLock null
-    val root = runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull() ?: return@withLock null
-    if (root.text("response_type") != "RESPONSE_GRANTED_TOKEN_RESPONSE") return@withLock null
-    val granted = root["granted_token"] as? JsonObject ?: return@withLock null
-    val token = granted.text("token") ?: return@withLock null
-    val ttlSeconds = granted.text("expires_after_seconds")?.toLongOrNull() ?: 3600L
-    clientToken = token
-    clientTokenExpiresAt = now + ttlSeconds * 1000L
-    token
-  }
 
   /** Client version and device id from the plain web player page; stable for the process. */
   private suspend fun session(): SessionInfo? {
     session?.let { return it }
-    val request = Request.Builder().url("https://open.spotify.com").header("User-Agent", WEB_USER_AGENT).build()
-    val (html, deviceId) = runCatching {
-      http.newCall(request).awaitResponse().use { response ->
-        val spT = response.headers("Set-Cookie").firstNotNullOfOrNull { header ->
-          SP_T_COOKIE.find(header)?.groupValues?.get(1)
+    val request =
+      Request
+        .Builder()
+        .url("https://open.spotify.com")
+        .header("User-Agent", WEB_USER_AGENT)
+        .build()
+    val (html, deviceId) =
+      runCatching {
+        http.newCall(request).awaitResponse().use { response ->
+          val spT =
+            response.headers("Set-Cookie").firstNotNullOfOrNull { header ->
+              SP_T_COOKIE.find(header)?.groupValues?.get(1)
+            }
+          response.body.string() to spT
         }
-        response.body.string() to spT
-      }
-    }.getOrNull() ?: return null
+      }.getOrNull() ?: return null
     val config = APP_SERVER_CONFIG.find(html)?.groupValues?.get(1) ?: return null
-    val clientVersion = runCatching {
-      val configJson = String(Base64.getDecoder().decode(config), Charsets.UTF_8)
-      (json.parseToJsonElement(configJson) as? JsonObject)?.text("clientVersion")
-    }.getOrNull() ?: return null
+    val clientVersion =
+      runCatching {
+        val configJson = String(Base64.getDecoder().decode(config), Charsets.UTF_8)
+        (json.parseToJsonElement(configJson) as? JsonObject)?.text("clientVersion")
+      }.getOrNull() ?: return null
     return SessionInfo(clientVersion, deviceId ?: UUID.randomUUID().toString()).also { session = it }
   }
 
@@ -274,7 +323,8 @@ internal class SpotifyToken(
     private val SP_T_COOKIE = Regex("""sp_t=([^;]+)""")
     private val APP_SERVER_CONFIG = Regex("""<script id="appServerConfig" type="text/plain">([^<]+)</script>""")
 
-    private val HOOK_SCRIPT = """
+    private val HOOK_SCRIPT =
+      """
       (function () {
         if (window.__mpvrxTokenHook) return;
         window.__mpvrxTokenHook = true;
@@ -317,6 +367,6 @@ internal class SpotifyToken(
           return origSend.apply(this, arguments);
         };
       })();
-    """.trimIndent()
+      """.trimIndent()
   }
 }

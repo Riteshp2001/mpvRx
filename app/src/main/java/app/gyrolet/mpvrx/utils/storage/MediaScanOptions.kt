@@ -30,9 +30,12 @@ data class MediaScanOptions(
     hiddenFolderMarkerNames.mapNotNull(::normalizeHiddenMarkerName).toSet()
 
   val activeHiddenMarkerNames: Set<String> =
-    if (includeNoMediaFolders) normalizedHiddenFolderMarkerNames -
-      ignoredHiddenMarkerNames.mapNotNull(::normalizeHiddenMarkerName).toSet()
-    else emptySet()
+    if (includeNoMediaFolders) {
+      normalizedHiddenFolderMarkerNames -
+        ignoredHiddenMarkerNames.mapNotNull(::normalizeHiddenMarkerName).toSet()
+    } else {
+      emptySet()
+    }
 
   val scanHiddenFolders: Boolean
     get() = activeHiddenMarkerNames.isNotEmpty() || includeDotFolders
@@ -50,14 +53,16 @@ data class MediaScanOptions(
 
   /** The size, duration and whitelist part of [cacheKey], for caches that key the other options themselves. */
   val mediaFilterKey: String
-    get() = "minVideo=$minimumVideoDurationSeconds|minSize=$minimumMediaFileSizeBytes|" +
-      "whitelist=$whitelistEnabled|allowed=${whitelistedPaths.sorted().joinToString(",")}"
+    get() =
+      "minVideo=$minimumVideoDurationSeconds|minSize=$minimumMediaFileSizeBytes|" +
+        "whitelist=$whitelistEnabled|allowed=${whitelistedPaths.sorted().joinToString(",")}"
 
   val rootDiscoveryCacheKey: String
     get() {
       val markers = normalizedHiddenFolderMarkerNames.sorted().joinToString("") { "${it.length}:$it" }
       val active = activeHiddenMarkerNames.sorted().joinToString("") { "${it.length}:$it" }
-      return "hiddenRootDiscoveryV3|marked=$includeNoMediaFolders|dot=$includeDotFolders|markers=$markers|active=$active"
+      return "hiddenRootDiscoveryV3|marked=$includeNoMediaFolders|dot=$includeDotFolders" +
+        "|markers=$markers|active=$active"
     }
 
   // One filter per options instance, so a single scan reuses its ancestor-marker cache.
@@ -65,7 +70,8 @@ data class MediaScanOptions(
 
   /** Missing duration and unknown size remain visible rather than falsely excluding media. */
   fun includesVideoDuration(durationMs: Long): Boolean =
-    minimumVideoDurationSeconds <= 0 || durationMs <= 0L ||
+    minimumVideoDurationSeconds <= 0 ||
+      durationMs <= 0L ||
       durationMs >= minimumVideoDurationSeconds * 1000L
 
   fun includesSize(sizeBytes: Long): Boolean =
@@ -75,7 +81,11 @@ data class MediaScanOptions(
   fun filtersDuration(isAudio: Boolean): Boolean =
     if (isAudio) minimumAudioDurationSeconds > 0 else minimumVideoDurationSeconds > 0
 
-  fun includesMedia(sizeBytes: Long, durationMs: Long, isAudio: Boolean = false): Boolean =
+  fun includesMedia(
+    sizeBytes: Long,
+    durationMs: Long,
+    isAudio: Boolean = false,
+  ): Boolean =
     includesSize(sizeBytes) &&
       (if (isAudio) includesAudioDuration(durationMs) else includesVideoDuration(durationMs))
 
@@ -85,7 +95,8 @@ data class MediaScanOptions(
     includesPath(video.bucketId) && includesMedia(video.size, video.duration, video.isAudio)
 
   fun includesAudioDuration(durationMs: Long): Boolean =
-    durationMs <= 0L || minimumAudioDurationSeconds == 0 ||
+    durationMs <= 0L ||
+      minimumAudioDurationSeconds == 0 ||
       durationMs >= minimumAudioDurationSeconds * 1000L
 }
 
@@ -119,8 +130,10 @@ class NoMediaPathFilter(
       runCatching {
         (directory.name.startsWith(".") && !options.includeDotFolders) ||
           excludedMarkerNames.any { File(directory, it).isFile } ||
-          (!options.scanHiddenFolders &&
-            File(directory, app.gyrolet.mpvrx.domain.audiobook.AudiobookMarkerUtils.AUDIOBOOK_MARKER).isFile) ||
+          (
+            !options.scanHiddenFolders &&
+              File(directory, app.gyrolet.mpvrx.domain.audiobook.AudiobookMarkerUtils.AUDIOBOOK_MARKER).isFile
+          ) ||
           directory.parentFile?.let(::hasHiddenMarkerInPath) == true
       }.getOrElse { error ->
         Log.w(TAG, "Failed checking hidden-folder ancestry for $path", error)

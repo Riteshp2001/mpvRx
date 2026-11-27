@@ -33,7 +33,12 @@ import app.gyrolet.mpvrx.domain.lyrics.SyncedWord
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.fontFamilyForText
 
-internal data class LyricWordSpan(val from: Int, val to: Int, val start: Long, val end: Long)
+internal data class LyricWordSpan(
+  val from: Int,
+  val to: Int,
+  val start: Long,
+  val end: Long,
+)
 
 internal fun lyricWordEndTime(
   words: List<SyncedWord>,
@@ -42,13 +47,21 @@ internal fun lyricWordEndTime(
   nextLineTimeMs: Long? = null,
 ): Long {
   val start = words[index].time.toLong()
-  return words.getOrNull(index + 1)?.time?.toLong()?.takeIf { it > start }
+  return words
+    .getOrNull(index + 1)
+    ?.time
+    ?.toLong()
+    ?.takeIf { it > start }
     ?: lineEndTimeMs?.takeIf { it > start }
     ?: nextLineTimeMs?.takeIf { it > start }
     ?: (start + 600L)
 }
 
-internal fun lyricWordSpans(text: String, words: List<SyncedWord>, endTimeMs: Long): List<LyricWordSpan> =
+internal fun lyricWordSpans(
+  text: String,
+  words: List<SyncedWord>,
+  endTimeMs: Long,
+): List<LyricWordSpan> =
   buildList {
     var cursor = 0
     for ((index, word) in words.withIndex()) {
@@ -62,7 +75,11 @@ internal fun lyricWordSpans(text: String, words: List<SyncedWord>, endTimeMs: Lo
     }
   }
 
-internal fun lyricCharacterPosition(textLength: Int, spans: List<LyricWordSpan>, position: Long): Float {
+internal fun lyricCharacterPosition(
+  textLength: Int,
+  spans: List<LyricWordSpan>,
+  position: Long,
+): Float {
   for (span in spans) {
     if (position < span.start) return span.from.toFloat()
     if (position < span.end) {
@@ -73,7 +90,11 @@ internal fun lyricCharacterPosition(textLength: Int, spans: List<LyricWordSpan>,
   return if (spans.isEmpty()) 0f else textLength.toFloat()
 }
 
-internal fun lyricSweepX(layout: TextLayoutResult, head: Float, rtl: Boolean): Float {
+internal fun lyricSweepX(
+  layout: TextLayoutResult,
+  head: Float,
+  rtl: Boolean,
+): Float {
   val length = layout.layoutInput.text.length
   if (length == 0) return 0f
   if (head >= length) return if (rtl) 0f else layout.size.width.toFloat()
@@ -97,11 +118,15 @@ internal fun DrawScope.drawLyricFill(
     else -> {
       val x = lyricSweepX(layout, head, rtl)
       val direction = if (rtl) -1f else 1f
-      val brush = Brush.horizontalGradient(
-        0f to activeColor, 1f to inactiveColor,
-        startX = x - layout.layoutInput.style.fontSize.toPx() * 0.55f * direction,
-        endX = x + 2.dp.toPx() * direction,
-      )
+      val brush =
+        Brush.horizontalGradient(
+          0f to activeColor,
+          1f to inactiveColor,
+          startX =
+            x - layout.layoutInput.style.fontSize
+              .toPx() * 0.55f * direction,
+          endX = x + 2.dp.toPx() * direction,
+        )
       if (layout.lineCount == 1) {
         drawText(layout, brush = brush, alpha = 1f)
       } else {
@@ -142,26 +167,32 @@ internal fun SweepingLyricText(
   Text(
     text = text,
     color = activeColor,
-    style = style.copy(
-      fontSize = fontSize,
-      fontFamily = fontFamilyForText(text),
-      textAlign = textAlign,
-    ),
+    style =
+      style.copy(
+        fontSize = fontSize,
+        fontFamily = fontFamilyForText(text),
+        textAlign = textAlign,
+      ),
     maxLines = maxLines,
     softWrap = softWrap,
     onTextLayout = {
       layout = it
       onTextLayout(it)
     },
-    modifier = modifier.drawWithContent {
-      val measured = layout
-      if (measured == null || spans.isEmpty() || reducedMotion) {
-        drawContent()
-      } else {
-        drawLyricFill(
-          measured, lyricCharacterPosition(text.length, spans, positionMs.value), rtl, activeColor, inactiveColor,
-        )
-      }
-    },
+    modifier =
+      modifier.drawWithContent {
+        val measured = layout
+        if (measured == null || spans.isEmpty() || reducedMotion) {
+          drawContent()
+        } else {
+          drawLyricFill(
+            measured,
+            lyricCharacterPosition(text.length, spans, positionMs.value),
+            rtl,
+            activeColor,
+            inactiveColor,
+          )
+        }
+      },
   )
 }

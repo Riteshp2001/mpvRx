@@ -4,8 +4,6 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import app.gyrolet.mpvrx.ui.tv.tvContentFocus
-
 import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -21,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,9 +43,11 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.ui.tv.tvContentFocus
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 @Serializable
 object LibrariesScreen : ScrollableSettingsScreen {
@@ -59,12 +58,13 @@ object LibrariesScreen : ScrollableSettingsScreen {
     val backStack = LocalBackStack.current
     var query by rememberSaveable { mutableStateOf("") }
     val search = query.trim()
-    val libraries = OPEN_SOURCE_LIBRARIES.filter { library ->
-      library.name.contains(search, ignoreCase = true) ||
-        library.artifact.contains(search, ignoreCase = true) ||
-        library.license.contains(search, ignoreCase = true) ||
-        context.getString(library.descriptionRes).contains(search, ignoreCase = true)
-    }
+    val libraries =
+      OPEN_SOURCE_LIBRARIES.filter { library ->
+        library.name.contains(search, ignoreCase = true) ||
+          library.artifact.contains(search, ignoreCase = true) ||
+          library.license.contains(search, ignoreCase = true) ||
+          context.getString(library.descriptionRes).contains(search, ignoreCase = true)
+      }
 
     Scaffold(
       topBar = {
@@ -75,8 +75,11 @@ object LibrariesScreen : ScrollableSettingsScreen {
       },
     ) { padding ->
       LazyColumn(
-        modifier = Modifier.fillMaxSize()
-            .tvContentFocus().padding(padding),
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .tvContentFocus()
+            .padding(padding),
         contentPadding = settingsContentPadding(PaddingValues(horizontal = 16.dp, vertical = 12.dp)),
         verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
       ) {
@@ -145,8 +148,11 @@ object LibrariesScreen : ScrollableSettingsScreen {
         libraries.groupBy { it.license }.toSortedMap().forEach { (license, group) ->
           item(key = "license_$license") {
             Row(
-              modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 20.dp, bottom = 8.dp)
-                .semantics { heading() },
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(start = 8.dp, end = 8.dp, top = 20.dp, bottom = 8.dp)
+                  .semantics { heading() },
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {

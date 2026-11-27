@@ -28,13 +28,18 @@ internal object MediaCodecEmbed {
   fun isActive(): Boolean = PlaybackSession.videoOutput == VO
 
   /** Returns true, and says why in a toast, when [feature] cannot work on this output. */
-  fun blocks(context: Context, @StringRes feature: Int): Boolean {
+  fun blocks(
+    context: Context,
+    @StringRes feature: Int,
+  ): Boolean {
     if (!isActive()) return false
-    AppToast.makeText(
-      context,
-      context.getString(R.string.player_mediacodec_embed_unsupported, context.getString(feature)),
-      AppToast.LENGTH_LONG,
-    ).withType(AppToastType.Warning).show()
+    AppToast
+      .makeText(
+        context,
+        context.getString(R.string.player_mediacodec_embed_unsupported, context.getString(feature)),
+        AppToast.LENGTH_LONG,
+      ).withType(AppToastType.Warning)
+      .show()
     return true
   }
 }

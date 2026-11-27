@@ -42,12 +42,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
-import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -71,6 +71,7 @@ class MediaLibraryViewModel(
   private val whitelistFlow = foldersPreferences.whitelistChanges()
   private val loadRequests = Channel<Boolean>(Channel.CONFLATED)
   private var enrichmentJob: Job? = null
+
   // Library's own hidden-folder index refresh; see loadData.
   private var hiddenIndexJob: Job? = null
   private val _videos = MutableStateFlow<List<Video>>(emptyList())
@@ -112,13 +113,19 @@ class MediaLibraryViewModel(
   ): Boolean {
     if (video.path in hidden) return false
     val (whitelistEnabled, whitelist) = whitelistState
-    if (!app.gyrolet.mpvrx.utils.storage.isWhitelistedMediaPath(video.bucketId, whitelistEnabled, whitelist) &&
-      !app.gyrolet.mpvrx.utils.storage.isWhitelistedMediaPath(video.path, whitelistEnabled, whitelist)
-    ) return false
+    if (!app.gyrolet.mpvrx.utils.storage
+        .isWhitelistedMediaPath(video.bucketId, whitelistEnabled, whitelist) &&
+      !app.gyrolet.mpvrx.utils.storage
+        .isWhitelistedMediaPath(video.path, whitelistEnabled, whitelist)
+    ) {
+      return false
+    }
     val blacklist = if (video.isAudio) audioBlacklist else videoBlacklist
     return blacklist.none { folder ->
-      app.gyrolet.mpvrx.utils.storage.isMediaPathInFolder(video.bucketId, folder) ||
-        app.gyrolet.mpvrx.utils.storage.isMediaPathInFolder(video.path, folder)
+      app.gyrolet.mpvrx.utils.storage
+        .isMediaPathInFolder(video.bucketId, folder) ||
+        app.gyrolet.mpvrx.utils.storage
+          .isMediaPathInFolder(video.path, folder)
     }
   }
 
@@ -126,8 +133,10 @@ class MediaLibraryViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       // Restore before consuming refreshes so a slow cache read cannot overwrite a newer list.
       val restored = loadCachedVideos()
-      if (!restored || foldersPreferences.hiddenScanEnabled(HiddenScanScope.LIBRARY) ||
-        UnindexedVideoDiscovery.hasVideos || _videos.value.any { it.uri.scheme == "file" }
+      if (!restored ||
+        foldersPreferences.hiddenScanEnabled(HiddenScanScope.LIBRARY) ||
+        UnindexedVideoDiscovery.hasVideos ||
+        _videos.value.any { it.uri.scheme == "file" }
       ) {
         loadData(force = true)
       }
@@ -136,16 +145,18 @@ class MediaLibraryViewModel(
       loadRequests.receiveAsFlow().collect { force -> loadData(force) }
     }
     viewModelScope.launch(Dispatchers.IO) {
-      val hiddenPreferences = combine(
-        foldersPreferences.includeNoMediaFolders.changes(),
-        foldersPreferences.libraryHiddenScanEnabled.changes(),
-        foldersPreferences.hiddenFolderMarkerNames.changes(),
-        foldersPreferences.sharedScanMarkedFolders.changes(),
-        foldersPreferences.sharedScanDotFolders.changes(),
-        foldersPreferences.sharedIgnoredMarkers.changes(),
-      ) { _ -> Unit }.drop(1)
+      val hiddenPreferences =
+        combine(
+          foldersPreferences.includeNoMediaFolders.changes(),
+          foldersPreferences.libraryHiddenScanEnabled.changes(),
+          foldersPreferences.hiddenFolderMarkerNames.changes(),
+          foldersPreferences.sharedScanMarkedFolders.changes(),
+          foldersPreferences.sharedScanDotFolders.changes(),
+          foldersPreferences.sharedIgnoredMarkers.changes(),
+        ) { _ -> Unit }.drop(1)
       merge(
-        app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.changes.map { true },
+        app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.changes
+          .map { true },
         hiddenPreferences.map { false },
       ).collectLatest { mediaChanged ->
         // Changing Library's scan policy must not destroy the saved Tree snapshot.
@@ -233,38 +244,41 @@ class MediaLibraryViewModel(
 
         if (metadataEnriched) {
           // Metadata must never hold the refresh queue. The next listing cancels this work.
-          enrichmentJob = viewModelScope.launch(Dispatchers.IO) {
-            try {
-              val enriched = MetadataRetrieval.enrichVideosIfNeeded(
-                context = getApplication(),
-                videos = videoList,
-                browserPreferences = browserPreferences,
-                metadataCache = metadataCache,
-              )
-              publishVideos(enriched, scanCacheKey, observedGeneration, metadataEnriched = true)
-            } catch (cancelled: CancellationException) {
-              throw cancelled
-            } catch (error: Exception) {
-              Log.w(tag, "Could not enrich media library", error)
+          enrichmentJob =
+            viewModelScope.launch(Dispatchers.IO) {
+              try {
+                val enriched =
+                  MetadataRetrieval.enrichVideosIfNeeded(
+                    context = getApplication(),
+                    videos = videoList,
+                    browserPreferences = browserPreferences,
+                    metadataCache = metadataCache,
+                  )
+                publishVideos(enriched, scanCacheKey, observedGeneration, metadataEnriched = true)
+              } catch (cancelled: CancellationException) {
+                throw cancelled
+              } catch (error: Exception) {
+                Log.w(tag, "Could not enrich media library", error)
+              }
             }
-          }
         }
 
         // .nomedia folders come from Library's own index. Keep it current off the load queue and
         // list again only when hidden folders were added, changed or removed; the next pass then
         // finds nothing stale, so this settles.
         if (foldersPreferences.hiddenScanEnabled(HiddenScanScope.LIBRARY) && hiddenIndexJob?.isActive != true) {
-          hiddenIndexJob = viewModelScope.launch(Dispatchers.IO) {
-            try {
-              if (MediaFileRepository.refreshLibraryHiddenFolders(getApplication(), includeAudioOverride = true)) {
-                loadRequests.trySend(false)
+          hiddenIndexJob =
+            viewModelScope.launch(Dispatchers.IO) {
+              try {
+                if (MediaFileRepository.refreshLibraryHiddenFolders(getApplication(), includeAudioOverride = true)) {
+                  loadRequests.trySend(false)
+                }
+              } catch (cancelled: CancellationException) {
+                throw cancelled
+              } catch (error: Exception) {
+                Log.w(tag, "Could not refresh hidden Library folders", error)
               }
-            } catch (cancelled: CancellationException) {
-              throw cancelled
-            } catch (error: Exception) {
-              Log.w(tag, "Could not refresh hidden Library folders", error)
             }
-          }
         }
       } catch (cancelled: CancellationException) {
         throw cancelled
@@ -393,7 +407,10 @@ class MediaLibraryViewModel(
       }
   }
 
-  fun setWatched(video: Video, watched: Boolean) {
+  fun setWatched(
+    video: Video,
+    watched: Boolean,
+  ) {
     viewModelScope.launch(Dispatchers.IO) {
       PlaybackStateOps.setWatched(video, watched)
     }

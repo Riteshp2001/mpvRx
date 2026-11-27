@@ -9,10 +9,9 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import app.gyrolet.mpvrx.ui.theme.appPressFeedback
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -48,10 +47,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.AppPickerSheet
-import app.gyrolet.mpvrx.presentation.components.PlayerSheetSearchField
+import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
+import app.gyrolet.mpvrx.presentation.components.PlayerSheetSearchField
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSectionHeader
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
@@ -60,6 +59,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusReq
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
@@ -284,7 +284,9 @@ fun SubtitlesSheet(
         showRealtimeLanguagePicker = false
         langSearch = ""
       },
-      title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_translate_to),
+      title =
+        androidx.compose.ui.res
+          .stringResource(app.gyrolet.mpvrx.R.string.ui_translate_to),
       scrollContent = false,
       actions = {
         androidx.compose.material3.TextButton(onClick = {
@@ -299,45 +301,45 @@ fun SubtitlesSheet(
         }
       },
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
-          PlayerSheetSearchField(
-            query = langSearch,
-            onQueryChange = { langSearch = it },
-            placeholder =
-              androidx.compose.ui.res
-                .stringResource(app.gyrolet.mpvrx.R.string.ui_search_language),
-          )
-          LazyColumn(modifier = Modifier.height(280.dp)) {
-            items(languagesToShow, key = { it }) { lang ->
+      Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+        PlayerSheetSearchField(
+          query = langSearch,
+          onQueryChange = { langSearch = it },
+          placeholder =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.ui_search_language),
+        )
+        LazyColumn(modifier = Modifier.height(280.dp)) {
+          items(languagesToShow, key = { it }) { lang ->
+            Text(
+              text = lang,
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .clickable {
+                    if (showRealtimeLanguagePicker) {
+                      onStartRealtimeSubtitle(lang)
+                    } else {
+                      showLanguagePicker?.let { track -> onTranslateSubtitle(track, lang) }
+                    }
+                    showLanguagePicker = null
+                    showRealtimeLanguagePicker = false
+                    langSearch = ""
+                  }.padding(MaterialTheme.spacing.medium),
+            )
+          }
+          if (languagesToShow.isEmpty()) {
+            item {
               Text(
-                text = lang,
-                modifier =
-                  Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                      if (showRealtimeLanguagePicker) {
-                        onStartRealtimeSubtitle(lang)
-                      } else {
-                        showLanguagePicker?.let { track -> onTranslateSubtitle(track, lang) }
-                      }
-                      showLanguagePicker = null
-                      showRealtimeLanguagePicker = false
-                      langSearch = ""
-                    }.padding(MaterialTheme.spacing.medium),
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_no_languages_found),
+                color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(MaterialTheme.spacing.medium),
               )
-            }
-            if (languagesToShow.isEmpty()) {
-              item {
-                Text(
-                  androidx.compose.ui.res
-                    .stringResource(app.gyrolet.mpvrx.R.string.ui_no_languages_found),
-                  color = MaterialTheme.colorScheme.outline,
-                  modifier = Modifier.padding(MaterialTheme.spacing.medium),
-                )
-              }
             }
           }
         }
+      }
     }
   }
 
@@ -356,7 +358,11 @@ fun SubtitlesSheet(
           modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
           shape = rememberConnectedShape(index = 0, itemCount = 2, layout = ConnectedLayout.Vertical),
           actions = {
-            PlayerSheetAction(Icons.RoundedFilled.Search, stringResource(R.string.settings_search_title), onOpenOnlineSearch)
+            PlayerSheetAction(
+              Icons.RoundedFilled.Search,
+              stringResource(R.string.settings_search_title),
+              onOpenOnlineSearch,
+            )
             if (aiEnabled && realtimeSubsEnabled) {
               PlayerSheetAction(
                 icon = if (isRealtimeSubsActive) Icons.RoundedFilled.Close else Icons.RoundedFilled.Translate,
@@ -397,172 +403,191 @@ fun SubtitlesSheet(
 
       if (aiEnabled && isTranslating) {
         item(key = "translation_progress") {
-        Column(
-          modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth(),
+          Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
           ) {
-            Text(
-              "${translationStatus.ifBlank {
-                "Translating"
-              }} $translatingTrackName... ${(translationProgress * 100).toInt()}%",
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.primary,
-              modifier = Modifier.weight(1f),
-              maxLines = 2,
-              overflow = TextOverflow.Ellipsis,
-            )
-            PlayerSheetAction(
-              icon = Icons.RoundedFilled.Close,
-              label = stringResource(R.string.ui_cancel_translation),
-              onClick = onCancelTranslation,
+            Row(
+              verticalAlignment = Alignment.CenterVertically,
+              modifier = Modifier.fillMaxWidth(),
+            ) {
+              Text(
+                "${translationStatus.ifBlank {
+                  "Translating"
+                }} $translatingTrackName... ${(translationProgress * 100).toInt()}%",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+              )
+              PlayerSheetAction(
+                icon = Icons.RoundedFilled.Close,
+                label = stringResource(R.string.ui_cancel_translation),
+                onClick = onCancelTranslation,
+              )
+            }
+            LinearProgressIndicator(
+              progress = { translationProgress.coerceIn(0f, 1f) },
+              modifier = Modifier.fillMaxWidth(),
             )
           }
-          LinearProgressIndicator(
-            progress = { translationProgress.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth(),
-          )
-        }
         }
       }
 
       if (aiEnabled && isGeneratingSubtitles) {
         item(key = "subtitle_generation_progress") {
-        androidx.compose.foundation.layout.Column(
-          modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          Text(
-            "${subtitleGenerationStatus.ifBlank {
-              "Generating subtitles"
-            }}... ${(subtitleGenerationProgress * 100).toInt()}%",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
-          )
-          LinearProgressIndicator(
-            progress = { subtitleGenerationProgress.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth(),
-          )
-        }
+          androidx.compose.foundation.layout.Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            Text(
+              "${subtitleGenerationStatus.ifBlank {
+                "Generating subtitles"
+              }}... ${(subtitleGenerationProgress * 100).toInt()}%",
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.primary,
+            )
+            LinearProgressIndicator(
+              progress = { subtitleGenerationProgress.coerceIn(0f, 1f) },
+              modifier = Modifier.fillMaxWidth(),
+            )
+          }
         }
       }
 
       if (aiEnabled && isRealtimeSubsActive) {
         item(key = "realtime_subtitle_progress") {
-        Column(
-          modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          Text(
-            realtimeSubsStatus.ifBlank { stringResource(R.string.pref_stt_title) },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-          )
-          LinearProgressIndicator(
-            progress = { realtimeSubsProgress.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth(),
-          )
-        }
+          Column(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            Text(
+              realtimeSubsStatus.ifBlank { stringResource(R.string.pref_stt_title) },
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.primary,
+              maxLines = 2,
+              overflow = TextOverflow.Ellipsis,
+            )
+            LinearProgressIndicator(
+              progress = { realtimeSubsProgress.coerceIn(0f, 1f) },
+              modifier = Modifier.fillMaxWidth(),
+            )
+          }
         }
       }
 
-        items(
-          items,
-          key = { item ->
-            when (item) {
-              is SubtitleItem.Track -> item.node.id
-              is SubtitleItem.Header -> item.title
-              is SubtitleItem.Off -> "off"
-              is SubtitleItem.Divider -> "divider"
-            }
-          },
-          contentType = { item -> item.javaClass.simpleName },
-        ) { item ->
+      items(
+        items,
+        key = { item ->
           when (item) {
-            is SubtitleItem.Track -> {
-              val track = item.node
-              SubtitleTrackRow(
-                track = track,
-                isSelected = isSubtitleSelected(track.id),
-                selectionIndicator = subtitleSelectionIndicator(track.id),
-                isExternal = track.external == true,
-                onToggle = { onToggleSubtitle(track.id) },
-                onRemove = { onRemoveSubtitle(track.id) },
-                onTranslate = {
-                  if (translationEnabled) {
-                    if (configuredLanguages.size == 1) {
-                      val langName = codeToName[configuredLanguages.first()] ?: configuredLanguages.first()
-                      onTranslateSubtitle(track, langName)
-                    } else {
-                      showLanguagePicker = track
-                    }
+            is SubtitleItem.Track -> item.node.id
+            is SubtitleItem.Header -> item.title
+            is SubtitleItem.Off -> "off"
+            is SubtitleItem.Divider -> "divider"
+          }
+        },
+        contentType = { item -> item.javaClass.simpleName },
+      ) { item ->
+        when (item) {
+          is SubtitleItem.Track -> {
+            val track = item.node
+            SubtitleTrackRow(
+              track = track,
+              isSelected = isSubtitleSelected(track.id),
+              selectionIndicator = subtitleSelectionIndicator(track.id),
+              isExternal = track.external == true,
+              onToggle = { onToggleSubtitle(track.id) },
+              onRemove = { onRemoveSubtitle(track.id) },
+              onTranslate = {
+                if (translationEnabled) {
+                  if (configuredLanguages.size == 1) {
+                    val langName = codeToName[configuredLanguages.first()] ?: configuredLanguages.first()
+                    onTranslateSubtitle(track, langName)
+                  } else {
+                    showLanguagePicker = track
                   }
-                },
-                translationEnabled = translationEnabled,
-                isCurrentlyTranslating = track.id == translatingTrackId,
-                groupIndex = item.groupIndex,
-                groupSize = item.groupSize,
-              )
-            }
-            is SubtitleItem.Header -> {
-              PlayerSheetSectionHeader(item.title)
-            }
-            is SubtitleItem.Off -> {
-              val haptics = rememberAppHaptics()
-              val shape = rememberConnectedShape(index = 1, itemCount = 2, layout = ConnectedLayout.Vertical)
-              val isFrostedOff = LocalPlayerGlassSurfaceActive.current
-              Surface(
+                }
+              },
+              translationEnabled = translationEnabled,
+              isCurrentlyTranslating = track.id == translatingTrackId,
+              groupIndex = item.groupIndex,
+              groupSize = item.groupSize,
+            )
+          }
+          is SubtitleItem.Header -> {
+            PlayerSheetSectionHeader(item.title)
+          }
+          is SubtitleItem.Off -> {
+            val haptics = rememberAppHaptics()
+            val shape = rememberConnectedShape(index = 1, itemCount = 2, layout = ConnectedLayout.Vertical)
+            val isFrostedOff = LocalPlayerGlassSurfaceActive.current
+            Surface(
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(horizontal = 8.dp, vertical = 2.dp)
+                  .tvInitialFocus(initialFocusRequester)
+                  .tvFocusHighlight(shape)
+                  .clip(shape)
+                  .selectable(selected = subtitlesOff, role = Role.RadioButton) {
+                    onDisableSubtitles()
+                    if (!subtitlesOff) haptics.selection(false)
+                  },
+              shape = shape,
+              color =
+                animatedPlayerSheetSelectionColor(
+                  subtitlesOff,
+                  frosted = isFrostedOff,
+                  label = "subtitlesOffSelection",
+                ),
+            ) {
+              Row(
                 modifier =
                   Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                    .tvInitialFocus(initialFocusRequester)
-                    .tvFocusHighlight(shape)
-                    .clip(shape)
-                    .selectable(selected = subtitlesOff, role = Role.RadioButton) {
-                      onDisableSubtitles()
-                      if (!subtitlesOff) haptics.selection(false)
-                    },
-                shape = shape,
-                color =
-                  animatedPlayerSheetSelectionColor(subtitlesOff, frosted = isFrostedOff, label = "subtitlesOffSelection"),
+                    .heightIn(
+                      min = 56.dp,
+                    ).padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
               ) {
-                Row(
-                  modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 12.dp, vertical = 10.dp),
-                  verticalAlignment = Alignment.CenterVertically,
-                  horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                  if (isTelevision) {
-                    RadioButton(selected = subtitlesOff, onClick = null)
-                  } else {
-                    Checkbox(checked = subtitlesOff, onCheckedChange = null)
-                  }
-                  Text(
-                    stringResource(R.string.player_sheets_off),
-                    style = if (subtitlesOff) MaterialTheme.typography.bodyLargeEmphasized else MaterialTheme.typography.bodyLarge,
-                    color = if (subtitlesOff) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f),
-                  )
+                if (isTelevision) {
+                  RadioButton(selected = subtitlesOff, onClick = null)
+                } else {
+                  Checkbox(checked = subtitlesOff, onCheckedChange = null)
                 }
+                Text(
+                  stringResource(R.string.player_sheets_off),
+                  style =
+                    if (subtitlesOff) {
+                      MaterialTheme.typography.bodyLargeEmphasized
+                    } else {
+                      MaterialTheme.typography.bodyLarge
+                    },
+                  color =
+                    if (subtitlesOff) {
+                      MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                      MaterialTheme.colorScheme.onSurface
+                    },
+                  modifier = Modifier.weight(1f),
+                )
               }
             }
-            SubtitleItem.Divider -> {
-              HorizontalDivider(
-                modifier =
-                  Modifier.padding(
-                    horizontal = MaterialTheme.spacing.medium,
-                    vertical = MaterialTheme.spacing.small,
-                  ),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-              )
-            }
+          }
+          SubtitleItem.Divider -> {
+            HorizontalDivider(
+              modifier =
+                Modifier.padding(
+                  horizontal = MaterialTheme.spacing.medium,
+                  vertical = MaterialTheme.spacing.small,
+                ),
+              color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            )
           }
         }
+      }
     }
   }
 }
@@ -600,12 +625,13 @@ fun SubtitleTrackRow(
       MaterialTheme.shapes.medium
     }
   val isFrosted = LocalPlayerGlassSurfaceActive.current
-  val containerColor = animatedPlayerSheetSelectionColor(
-    selected = isSelected,
-    frosted = isFrosted,
-    label = "subtitleTrackSelection",
-    pressed = pressed,
-  )
+  val containerColor =
+    animatedPlayerSheetSelectionColor(
+      selected = isSelected,
+      frosted = isFrosted,
+      label = "subtitleTrackSelection",
+      pressed = pressed,
+    )
   val badges = subtitleTrackBadges(track, selectionIndicator, isExternal)
   Surface(
     modifier =
@@ -616,8 +642,10 @@ fun SubtitleTrackRow(
         .appPressFeedback(interactionSource, pressedScale = 0.985f)
         .clip(shape)
         .toggleable(
-          value = isSelected, role = Role.Checkbox,
-          interactionSource = interactionSource, indication = androidx.compose.material3.ripple(),
+          value = isSelected,
+          role = Role.Checkbox,
+          interactionSource = interactionSource,
+          indication = androidx.compose.material3.ripple(),
           onValueChange = { selected ->
             onToggle()
             haptics.selection(selected)
@@ -640,7 +668,12 @@ fun SubtitleTrackRow(
         Text(
           text = getTrackTitle(track),
           style = if (isSelected) MaterialTheme.typography.bodyLargeEmphasized else MaterialTheme.typography.bodyLarge,
-          color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+          color =
+            if (isSelected) {
+              MaterialTheme.colorScheme.onSecondaryContainer
+            } else {
+              MaterialTheme.colorScheme.onSurface
+            },
         )
         TrackBadgeFlow(badges = badges, selected = isSelected)
       }
@@ -676,14 +709,24 @@ private fun subtitleTrackBadges(
   val defaultLabel = stringResource(R.string.theme_default)
   val forcedLabel = stringResource(R.string.track_badge_forced)
   val externalLabel = stringResource(R.string.track_badge_external)
-  return remember(track, selectionIndicator, isExternal, primaryLabel, secondaryLabel, defaultLabel, forcedLabel, externalLabel) {
+  return remember(
+    track,
+    selectionIndicator,
+    isExternal,
+    primaryLabel,
+    secondaryLabel,
+    defaultLabel,
+    forcedLabel,
+    externalLabel,
+  ) {
     buildList {
       selectionIndicator?.let { indicator ->
-        val label = when (indicator) {
-          "P" -> primaryLabel
-          "S" -> secondaryLabel
-          else -> indicator
-        }
+        val label =
+          when (indicator) {
+            "P" -> primaryLabel
+            "S" -> secondaryLabel
+            else -> indicator
+          }
         add(TrackBadge(label, emphasized = true))
       }
       track.effectiveLang?.takeIf(String::isNotBlank)?.let { add(TrackBadge(it.uppercase(Locale.ROOT))) }

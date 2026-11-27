@@ -4,13 +4,15 @@ import android.util.AtomicFile
 import app.gyrolet.mpvrx.domain.lyrics.Lyrics
 import app.gyrolet.mpvrx.domain.lyrics.LyricsProvider
 import app.gyrolet.mpvrx.utils.logging.Log
-import java.io.File
-import java.security.MessageDigest
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.io.File
+import java.security.MessageDigest
 
-internal class LyricsProviderCache(private val directory: File) {
+internal class LyricsProviderCache(
+  private val directory: File,
+) {
   @Serializable
   private data class Entry(
     val mediaPath: String,
@@ -38,10 +40,11 @@ internal class LyricsProviderCache(private val directory: File) {
         if (!file.exists() && !File("${file.path}.bak").exists()) return@forEach
         val atomicFile = AtomicFile(file)
         try {
-          val entry = atomicFile.openRead().use { input ->
-            require(input.channel.size() <= MAX_ENTRY_BYTES)
-            json.decodeFromString<Entry>(input.readBytes().toString(Charsets.UTF_8))
-          }
+          val entry =
+            atomicFile.openRead().use { input ->
+              require(input.channel.size() <= MAX_ENTRY_BYTES)
+              json.decodeFromString<Entry>(input.readBytes().toString(Charsets.UTF_8))
+            }
           if (entry.mediaPath == mediaPath && entry.provider == provider.name && entry.lyrics.isValid()) {
             put(provider, entry.lyrics)
             file.setLastModified(System.currentTimeMillis())
@@ -57,7 +60,11 @@ internal class LyricsProviderCache(private val directory: File) {
   }
 
   @Synchronized
-  fun write(mediaPath: String, provider: LyricsProvider, lyrics: Lyrics) {
+  fun write(
+    mediaPath: String,
+    provider: LyricsProvider,
+    lyrics: Lyrics,
+  ) {
     if (mediaPath.isBlank() || !lyrics.isValid()) return
     try {
       val bytes = json.encodeToString(Entry(mediaPath, provider.name, lyrics)).toByteArray(Charsets.UTF_8)
@@ -79,13 +86,16 @@ internal class LyricsProviderCache(private val directory: File) {
   }
 
   private fun trackKey(mediaPath: String): String =
-    MessageDigest.getInstance("SHA-256")
+    MessageDigest
+      .getInstance("SHA-256")
       .digest(mediaPath.toByteArray(Charsets.UTF_8))
       .joinToString("") { byte -> "%02x".format(byte) }
 
   private fun trim() {
-    val files = directory.listFiles { file -> file.isFile && file.extension == "json" }
-      ?.sortedBy { it.lastModified() } ?: return
+    val files =
+      directory
+        .listFiles { file -> file.isFile && file.extension == "json" }
+        ?.sortedBy { it.lastModified() } ?: return
     var totalBytes = files.sumOf { it.length() }
     var count = files.size
     for (file in files) {

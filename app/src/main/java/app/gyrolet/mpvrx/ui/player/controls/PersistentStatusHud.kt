@@ -7,9 +7,9 @@ package app.gyrolet.mpvrx.ui.player.controls
 
 import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.res.Configuration
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Configuration
 import android.os.BatteryManager
 import android.text.format.DateUtils
 import androidx.compose.foundation.Canvas
@@ -32,8 +32,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
@@ -47,8 +47,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
@@ -67,9 +67,9 @@ import app.gyrolet.mpvrx.preferences.PlayerClockFormat
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
+import app.gyrolet.mpvrx.ui.player.controls.components.formatSpeed
 import app.gyrolet.mpvrx.ui.tv.isTelevision
 import app.gyrolet.mpvrx.ui.tv.tvOverscanPadding
-import app.gyrolet.mpvrx.ui.player.controls.components.formatSpeed
 import kotlinx.coroutines.delay
 
 /**
@@ -108,13 +108,18 @@ internal fun PersistentStatusHud(
 
   Box(modifier.fillMaxSize()) {
     val isTop = position == PersistentStatusPosition.Top
-    val portraitTop = isTop && !television &&
-      LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+    val portraitTop =
+      isTop &&
+        !television &&
+        LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     // Some OEMs expose the notch reservation only as a status-bar inset in immersive mode.
     // Union takes the larger inset, so a cutout and status bar never add padding twice.
-    val hudInsets = if (portraitTop) {
-      WindowInsets.displayCutout.union(WindowInsets.statusBarsIgnoringVisibility)
-    } else WindowInsets.displayCutout
+    val hudInsets =
+      if (portraitTop) {
+        WindowInsets.displayCutout.union(WindowInsets.statusBarsIgnoringVisibility)
+      } else {
+        WindowInsets.displayCutout
+      }
     PersistentStatusHudRow(
       leftSlot = left,
       centerSlot = center,
@@ -129,20 +134,22 @@ internal fun PersistentStatusHud(
       nowMillis = now,
       clockFormat = clockFormat,
       // The portrait top HUD always clears the camera; other placements follow Safe area window.
-      modifier = Modifier
-        .align(if (isTop) Alignment.TopCenter else Alignment.BottomCenter)
-        .tvOverscanPadding(top = isTop, bottom = !isTop)
-        .then(
-          if (safeAreaWindow || portraitTop) {
-            Modifier.windowInsetsPadding(
-              hudInsets.only(
-                WindowInsetsSides.Horizontal +
-                  if (isTop) WindowInsetsSides.Top else WindowInsetsSides.Bottom,
-              ),
-            )
-          } else Modifier,
-        )
-        .padding(vertical = 8.dp),
+      modifier =
+        Modifier
+          .align(if (isTop) Alignment.TopCenter else Alignment.BottomCenter)
+          .tvOverscanPadding(top = isTop, bottom = !isTop)
+          .then(
+            if (safeAreaWindow || portraitTop) {
+              Modifier.windowInsetsPadding(
+                hudInsets.only(
+                  WindowInsetsSides.Horizontal +
+                    if (isTop) WindowInsetsSides.Top else WindowInsetsSides.Bottom,
+                ),
+              )
+            } else {
+              Modifier
+            },
+          ).padding(vertical = 8.dp),
     )
     if (showProgressLine) {
       PersistentPlaybackProgressLine(
@@ -162,8 +169,11 @@ internal fun PersistentPlaybackProgressLine(
 ) {
   val validDuration = durationSeconds.isFinite() && durationSeconds > 0f
   val progress =
-    if (validDuration && positionSeconds.isFinite()) (positionSeconds / durationSeconds).coerceIn(0f, 1f)
-    else 0f
+    if (validDuration && positionSeconds.isFinite()) {
+      (positionSeconds / durationSeconds).coerceIn(0f, 1f)
+    } else {
+      0f
+    }
   val color = MaterialTheme.colorScheme.primary
   val label = stringResource(R.string.pref_persistent_status_progress)
   Canvas(
@@ -196,13 +206,17 @@ private fun rememberHudBatteryLevel(): Int {
   var level by remember { mutableIntStateOf(100) }
   DisposableEffect(context) {
     val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-    val receiver = object : BroadcastReceiver() {
-      override fun onReceive(context: Context?, intent: Intent?) {
-        val raw = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-        val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-        if (raw >= 0 && scale > 0) level = (raw * 100 / scale).coerceIn(0, 100)
+    val receiver =
+      object : BroadcastReceiver() {
+        override fun onReceive(
+          context: Context?,
+          intent: Intent?,
+        ) {
+          val raw = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+          val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+          if (raw >= 0 && scale > 0) level = (raw * 100 / scale).coerceIn(0, 100)
+        }
       }
-    }
     // BATTERY_CHANGED is a protected system broadcast and supplies the initial sticky value.
     context.registerReceiver(receiver, filter)
     onDispose { runCatching { context.unregisterReceiver(receiver) } }
@@ -233,30 +247,38 @@ internal fun PersistentStatusHudRow(
   val remainingSeconds =
     if (validDuration && positionSeconds.isFinite()) {
       (durationSeconds - positionSeconds).coerceAtLeast(0f)
-    } else 0f
+    } else {
+      0f
+    }
   val validSpeed = playbackSpeed.isFinite() && playbackSpeed > 0.01f
   val progressText =
     if (!validDuration) {
       context.getString(R.string.pref_persistent_status_time_unknown)
     } else if (preferFinishTime && validSpeed) {
-      val extraMillis = ((remainingSeconds / playbackSpeed) * 1000.0).toLong()
-        .coerceIn(0L, 30L * 24 * 60 * 60 * 1000)
+      val extraMillis =
+        ((remainingSeconds / playbackSpeed) * 1000.0)
+          .toLong()
+          .coerceIn(0L, 30L * 24 * 60 * 60 * 1000)
       context.getString(R.string.pref_persistent_status_est_prefix) +
         " " + formatClock(context, clockFormat, nowMillis + extraMillis)
     } else {
       DateUtils.formatElapsedTime(positionSeconds.coerceAtLeast(0f).toLong()) +
         " / " + DateUtils.formatElapsedTime(durationSeconds.toLong())
     }
-  val speedTag = if (showSpeed && validSpeed && kotlin.math.abs(playbackSpeed - 1f) > 0.005f) {
-    " ${playbackSpeed.formatSpeed()}x"
-  } else ""
+  val speedTag =
+    if (showSpeed && validSpeed && kotlin.math.abs(playbackSpeed - 1f) > 0.005f) {
+      " ${playbackSpeed.formatSpeed()}x"
+    } else {
+      ""
+    }
   val statusText = progressText + speedTag
-  val style = TextStyle(
-    color = Color.White,
-    fontFamily = FontFamily.Monospace,
-    fontSize = 12.sp,
-    shadow = Shadow(color = Color.Black, offset = Offset(0f, 1f), blurRadius = 4f),
-  )
+  val style =
+    TextStyle(
+      color = Color.White,
+      fontFamily = FontFamily.Monospace,
+      fontSize = 12.sp,
+      shadow = Shadow(color = Color.Black, offset = Offset(0f, 1f), blurRadius = 4f),
+    )
 
   Row(
     modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
@@ -267,7 +289,17 @@ internal fun PersistentStatusHudRow(
       Triple(centerSlot, Alignment.Center, TextAlign.Center),
       Triple(rightSlot, Alignment.CenterEnd, TextAlign.End),
     ).forEach { (slot, alignment, textAlign) ->
-      StatusSlotContent(slot, wallTime, statusText, batteryLevel, microBattery, style, alignment, textAlign, Modifier.weight(1f))
+      StatusSlotContent(
+        slot,
+        wallTime,
+        statusText,
+        batteryLevel,
+        microBattery,
+        style,
+        alignment,
+        textAlign,
+        Modifier.weight(1f),
+      )
     }
   }
 }
@@ -289,10 +321,22 @@ private fun StatusSlotContent(
   Box(modifier = modifier, contentAlignment = alignment) {
     when (displayedSlot) {
       PersistentStatusSlot.None -> Unit
-      PersistentStatusSlot.CurrentTime -> Text(wallTime, style = style, maxLines = 1,
-        overflow = TextOverflow.Ellipsis, textAlign = textAlignment)
-      PersistentStatusSlot.PlaybackProgress -> Text(progressText, style = style, maxLines = 1,
-        overflow = TextOverflow.Ellipsis, textAlign = textAlignment)
+      PersistentStatusSlot.CurrentTime ->
+        Text(
+          wallTime,
+          style = style,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          textAlign = textAlignment,
+        )
+      PersistentStatusSlot.PlaybackProgress ->
+        Text(
+          progressText,
+          style = style,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          textAlign = textAlignment,
+        )
       PersistentStatusSlot.BatteryStatus -> {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
           if (microBattery) {
@@ -309,8 +353,11 @@ private fun StatusSlotContent(
               drawRoundRect(
                 color = Color.White,
                 topLeft = Offset(inner, inner),
-                size = Size((bodyWidth - inner * 2) * (batteryLevel.coerceIn(0, 100) / 100f),
-                  (size.height - inner * 2).coerceAtLeast(0f)),
+                size =
+                  Size(
+                    (bodyWidth - inner * 2) * (batteryLevel.coerceIn(0, 100) / 100f),
+                    (size.height - inner * 2).coerceAtLeast(0f),
+                  ),
                 cornerRadius = CornerRadius(0.75.dp.toPx()),
               )
               drawRoundRect(
@@ -327,4 +374,3 @@ private fun StatusSlotContent(
     }
   }
 }
-

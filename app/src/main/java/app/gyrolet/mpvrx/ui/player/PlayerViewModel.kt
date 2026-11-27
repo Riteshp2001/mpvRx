@@ -13,46 +13,42 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
-import android.media.MediaMetadataRetriever
 import android.media.AudioManager
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.PowerManager
-import app.gyrolet.mpvrx.utils.logging.Log
-import `is`.xyz.mpv.MPVNode
 import android.provider.OpenableColumns
 import android.provider.Settings
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.webkit.MimeTypeMap
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.repository.lyrics.PlaybackLyricsSnapshot
-import app.gyrolet.mpvrx.domain.lyrics.LyricsDraft
-import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem
 import app.gyrolet.mpvrx.data.network.client.NetworkMimeTypes
 import app.gyrolet.mpvrx.data.network.proxy.NetworkStreamingProxy
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.domain.hdr.HdrToysManager
+import app.gyrolet.mpvrx.domain.lyrics.LyricsDraft
+import app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.domain.network.XtreamPlaybackUri
-import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingState
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayFile
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayPlaybackState
+import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingState
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioPassthrough
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
+import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
-import app.gyrolet.mpvrx.preferences.IntroSegmentProvider
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
@@ -62,6 +58,7 @@ import app.gyrolet.mpvrx.repository.IntroDbRepository
 import app.gyrolet.mpvrx.repository.ai.RealtimeMediaInput
 import app.gyrolet.mpvrx.repository.ai.RealtimeSubtitleRequest
 import app.gyrolet.mpvrx.repository.ai.SubtitleGenerationService
+import app.gyrolet.mpvrx.repository.lyrics.PlaybackLyricsSnapshot
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitle
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleOrchestrator
 import app.gyrolet.mpvrx.repository.subtitle.OnlineSubtitleSearchMode
@@ -74,21 +71,23 @@ import app.gyrolet.mpvrx.ui.player.anime4k.applyAnime4KStabilityOptions
 import app.gyrolet.mpvrx.ui.player.anime4k.clearAnime4KShaders
 import app.gyrolet.mpvrx.ui.player.anime4k.selectRuntimeStableAnime4K
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.toColorHexString
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.AudioPropertyItem
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_MAX_DB
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_MIN_DB
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EQ_TONE_STEPS
-import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerMode
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerFilterKind
+import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerMode
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerPreset
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.EqualizerState
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.activeFilters
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.recommendedPreampDb
-import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
-import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpOptionSettings
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSaver
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSettings
+import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
+import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpOptionSettings
 import app.gyrolet.mpvrx.ui.preferences.CustomButton
 import app.gyrolet.mpvrx.ui.preferences.CustomButtonScriptLanguage
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.ChecksumUtils
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
@@ -97,6 +96,7 @@ import app.gyrolet.mpvrx.utils.media.SubtitleHashUtils
 import app.gyrolet.mpvrx.utils.media.fileExtension
 import app.gyrolet.mpvrx.utils.media.resolveSubtitleLookupDirectories
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import `is`.xyz.mpv.MPVNode
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
@@ -119,8 +119,8 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
@@ -138,8 +138,8 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
 import java.io.FileOutputStream
-import java.security.MessageDigest
 import java.lang.ref.WeakReference
+import java.security.MessageDigest
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -148,6 +148,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 // ~45% opaque charcoal (#AARRGGBB): visible on bright scenes without hiding the video like solid black.
 private const val SUBTITLE_GESTURE_HIGHLIGHT_COLOR = "#73202429"
@@ -182,6 +183,7 @@ class PlayerViewModel(
   fun detachHost(host: PlayerHost) {
     if (hostReference.get() === host) hostReference.clear()
   }
+
   enum class IntroDbStatusState {
     IDLE,
     LOOKING_UP,
@@ -620,10 +622,10 @@ class PlayerViewModel(
   private val _duration = MutableStateFlow<Int?>(null)
   val duration: Int? get() = _duration.value
 
-  private val _volumeBoostCap = MutableStateFlow<Int?>(null)
-  private val volumeBoostCap: Int? get() = _volumeBoostCap.value
+  private val volumeBoostCapState = MutableStateFlow<Int?>(null)
+  private val volumeBoostCap: Int? get() = volumeBoostCapState.value
 
-  private val _isMpvCoreReady = MutableStateFlow(false)
+  private val mpvCoreReadyState = MutableStateFlow(false)
   private var mpvStateCollectorsJob: Job? = null
 
   // High-precision position and duration for smooth seekbar
@@ -729,16 +731,17 @@ class PlayerViewModel(
         return@combine persistentListOf()
       }
 
-      val qualityTracks = tracks
-        .asSequence()
-        .filter { track -> track.isVideo && !track.isAlbumArtwork }
-        .distinctBy(TrackNode::id)
-        .sortedWith(
-          compareByDescending<TrackNode>(::videoQualityDimension)
-            .thenByDescending(::videoPixelCount)
-            .thenByDescending { track -> track.demuxFps ?: 0.0 }
-            .thenByDescending { track -> track.effectiveBitrate ?: 0L },
-        ).toList()
+      val qualityTracks =
+        tracks
+          .asSequence()
+          .filter { track -> track.isVideo && !track.isAlbumArtwork }
+          .distinctBy(TrackNode::id)
+          .sortedWith(
+            compareByDescending<TrackNode>(::videoQualityDimension)
+              .thenByDescending(::videoPixelCount)
+              .thenByDescending { track -> track.demuxFps ?: 0.0 }
+              .thenByDescending { track -> track.effectiveBitrate ?: 0L },
+          ).toList()
       if (qualityTracks.size > 1) {
         return@combine qualityTracks.toImmutableList()
       }
@@ -751,17 +754,18 @@ class PlayerViewModel(
           .getOrNull()
           .orEmpty()
       if (editions.size <= 1) return@combine persistentListOf()
-      editions.mapIndexed { index, edition ->
-        val editionIndex = edition.id?.toInt() ?: index
-        TrackNode(
-          id = -(editionIndex + 1),
-          type = "video",
-          title = edition.title?.takeIf(String::isNotBlank) ?: "Quality ${index + 1}",
-          hlsBitrate = editionQualityBitrate(edition.title),
-          selected = editionIndex == activeEdition,
-          editionIndex = editionIndex,
-        )
-      }.toImmutableList()
+      editions
+        .mapIndexed { index, edition ->
+          val editionIndex = edition.id?.toInt() ?: index
+          TrackNode(
+            id = -(editionIndex + 1),
+            type = "video",
+            title = edition.title?.takeIf(String::isNotBlank) ?: "Quality ${index + 1}",
+            hlsBitrate = editionQualityBitrate(edition.title),
+            selected = editionIndex == activeEdition,
+            editionIndex = editionIndex,
+          )
+        }.toImmutableList()
     }.stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   private fun editionQualityBitrate(title: String?): Long? {
@@ -788,11 +792,14 @@ class PlayerViewModel(
     val fileExtension: String = "mkv",
   )
 
-  fun canDownloadCurrentVideoQuality(): Boolean =
-    currentYouTubeSource() != null || currentJellyfinVideoSource() != null
+  fun canDownloadCurrentVideoQuality(): Boolean = currentYouTubeSource() != null || currentJellyfinVideoSource() != null
 
   fun qualityDownloadRequest(track: TrackNode): QualityDownloadRequest? {
-    val itemTitle = PlaybackSession.state.value.currentItem?.title?.trim()?.takeIf(String::isNotBlank)
+    val itemTitle =
+      PlaybackSession.state.value.currentItem
+        ?.title
+        ?.trim()
+        ?.takeIf(String::isNotBlank)
     val jellyfinSource = currentJellyfinVideoSource()
     if (jellyfinSource != null) {
       val qualityLabel = videoQualityLabel(track)
@@ -829,8 +836,15 @@ class PlayerViewModel(
   private fun videoQualityLabel(track: TrackNode): String =
     buildList {
       videoQualityDimension(track).takeIf { it > 0L }?.let { dimension -> add("${dimension}p") }
-      track.demuxFps?.takeIf { it > 0.0 }?.toInt()?.let { fps -> add("${fps}fps") }
-      track.codec?.trim()?.takeIf(String::isNotBlank)?.uppercase(Locale.ROOT)?.let(::add)
+      track.demuxFps
+        ?.takeIf { it > 0.0 }
+        ?.toInt()
+        ?.let { fps -> add("${fps}fps") }
+      track.codec
+        ?.trim()
+        ?.takeIf(String::isNotBlank)
+        ?.uppercase(Locale.ROOT)
+        ?.let(::add)
     }.joinToString(" ")
 
   private data class JellyfinVideoSource(
@@ -845,7 +859,8 @@ class PlayerViewModel(
     val uri = runCatching { Uri.parse(sourceUrl) }.getOrNull() ?: return null
     val videoSegmentIndex = uri.pathSegments.indexOfFirst { it.equals("Videos", ignoreCase = true) }
     val itemId = uri.pathSegments.getOrNull(videoSegmentIndex + 1)?.takeIf(String::isNotBlank) ?: return null
-    val isStaticStream = runCatching { uri.getQueryParameter("static")?.equals("true", ignoreCase = true) }.getOrNull() == true
+    val isStaticStream =
+      runCatching { uri.getQueryParameter("static")?.equals("true", ignoreCase = true) }.getOrNull() == true
     val hasAuthentication =
       item.headers.any { (name, value) -> name.equals("X-Emby-Token", ignoreCase = true) && value.isNotBlank() } ||
         runCatching { !uri.getQueryParameter("api_key").isNullOrBlank() }.getOrDefault(false)
@@ -868,12 +883,17 @@ class PlayerViewModel(
     }
   }
 
-  fun selectVideoQuality(track: TrackNode, expectedGeneration: Long) {
+  fun selectVideoQuality(
+    track: TrackNode,
+    expectedGeneration: Long,
+  ) {
     val session = PlaybackSession.state.value
     if (session.generation != expectedGeneration ||
       session.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND) ||
       videoQualityTracks.value.none { candidate -> candidate == track }
-    ) return
+    ) {
+      return
+    }
 
     val editionIndex = track.editionIndex
     if (editionIndex != null) {
@@ -882,8 +902,9 @@ class PlayerViewModel(
     }
 
     if (currentItemRequiresYtdlp() && !MpvConfigOverridePolicy.isOwnedByMpvConf("ytdl-format")) {
-      val selectedAudio = pairedYtdlTrack(track, TrackNode::isAudio)
-        ?: allTracks.value.firstOrNull { candidate -> candidate.isAudio && candidate.isSelected }
+      val selectedAudio =
+        pairedYtdlTrack(track, TrackNode::isAudio)
+          ?: allTracks.value.firstOrNull { candidate -> candidate.isAudio && candidate.isSelected }
       val selector = buildYtdlFormatSelector(videoTrack = track, audioTrack = selectedAudio)
       if (selector != null && host?.reloadCurrentYtdlFormat(selector) == true) return
     }
@@ -909,7 +930,10 @@ class PlayerViewModel(
     // a manual-selection mark is created. The mark is keyed by the item's stable id (the
     // playback-state key) and binds the exact track id picked; toggling the current track
     // off is a manual pick of "no audio" and is marked as 0.
-    val identifier = PlaybackSession.state.value.currentItem?.stableId.orEmpty()
+    val identifier =
+      PlaybackSession.state.value.currentItem
+        ?.stableId
+        .orEmpty()
     if (getTrackSelectionId("aid") == track.id) {
       setTrackSelectionId("aid", null)
       ManualAudioSelectionTracker.mark(identifier, 0)
@@ -920,8 +944,9 @@ class PlayerViewModel(
       !MpvConfigOverridePolicy.isOwnedByMpvConf("ytdl-format") &&
       ytdlFormatId(track) != null
     ) {
-      val selectedVideo = pairedYtdlTrack(track, TrackNode::isVideo)
-        ?: allTracks.value.firstOrNull { candidate -> candidate.isVideo && candidate.isSelected }
+      val selectedVideo =
+        pairedYtdlTrack(track, TrackNode::isVideo)
+          ?: allTracks.value.firstOrNull { candidate -> candidate.isVideo && candidate.isSelected }
       val selector = buildYtdlFormatSelector(videoTrack = selectedVideo, audioTrack = track)
       if (selector != null && host?.reloadCurrentYtdlFormat(selector) == true) {
         // The reload renumbers the tracks, so the picked id cannot be marked yet. The
@@ -944,13 +969,26 @@ class PlayerViewModel(
 
   private fun supportsOnlineVideoQualitySelection(item: PlaybackItem?): Boolean {
     item ?: return false
-    val sources = sequenceOf(item.originalUri, item.playableUri)
-      .map(String::trim)
-      .filter(String::isNotBlank)
-      .toList()
+    val sources =
+      sequenceOf(item.originalUri, item.playableUri)
+        .map(String::trim)
+        .filter(String::isNotBlank)
+        .toList()
     if (sources.any(YtdlpManager::requiresYtdlp)) return true
-    if (M3uPlaybackPolicy.looksLikeM3uForPlayback(item.playableUri, item.originalUri, item.title.orEmpty(), item.mimeType)) return true
-    if (item.networkSource != null || sources.any { NetworkPlaybackUri.parse(it) != null || XtreamPlaybackUri.parse(it) != null }) return true
+    if (M3uPlaybackPolicy.looksLikeM3uForPlayback(
+        item.playableUri,
+        item.originalUri,
+        item.title.orEmpty(),
+        item.mimeType,
+      )
+    ) {
+      return true
+    }
+    if (item.networkSource != null ||
+      sources.any { NetworkPlaybackUri.parse(it) != null || XtreamPlaybackUri.parse(it) != null }
+    ) {
+      return true
+    }
     return sources.any { source ->
       runCatching {
         val scheme = Uri.parse(source).scheme?.lowercase(Locale.ROOT)
@@ -1039,7 +1077,12 @@ class PlayerViewModel(
       width != null && height != null -> minOf(width, height)
       height != null -> height
       width != null -> width
-      else -> QUALITY_HEIGHT_REGEX.find(track.effectiveTitle.orEmpty())?.groupValues?.getOrNull(1)?.toLongOrNull() ?: 0L
+      else ->
+        QUALITY_HEIGHT_REGEX
+          .find(track.effectiveTitle.orEmpty())
+          ?.groupValues
+          ?.getOrNull(1)
+          ?.toLongOrNull() ?: 0L
     }
   }
 
@@ -1065,7 +1108,8 @@ class PlayerViewModel(
         DeclaredPlaybackMediaKind.AUDIO -> true
         DeclaredPlaybackMediaKind.UNKNOWN -> {
           if (session.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND) ||
-            currentPath == null || currentPath !in listOf(queuedItem.originalUri, queuedItem.playableUri)
+            currentPath == null ||
+            currentPath !in listOf(queuedItem.originalUri, queuedItem.playableUri)
           ) {
             return@combine false
           }
@@ -1102,18 +1146,24 @@ class PlayerViewModel(
           ?: persistentListOf()
       }.stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
-  private fun bookmarkMediaId(item: PlaybackItem?): String? = item?.audiobook?.let {
-    app.gyrolet.mpvrx.database.entities.PlaybackBookmarkEntity.audiobookMediaId(it.bookId)
-  } ?: item?.stableId
+  private fun bookmarkMediaId(item: PlaybackItem?): String? =
+    item?.audiobook?.let {
+      app.gyrolet.mpvrx.database.entities.PlaybackBookmarkEntity
+        .audiobookMediaId(it.bookId)
+    } ?: item?.stableId
 
-  val bookmarkMediaId: StateFlow<String?> = PlaybackSession.state.map { bookmarkMediaId(it.currentItem) }
-    .distinctUntilChanged().stateIn(viewModelScope, SharingStarted.Eagerly, null)
+  val bookmarkMediaId: StateFlow<String?> =
+    PlaybackSession.state
+      .map { bookmarkMediaId(it.currentItem) }
+      .distinctUntilChanged()
+      .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
   @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
   val playbackBookmarks: StateFlow<List<app.gyrolet.mpvrx.database.entities.PlaybackBookmarkEntity>> =
-    bookmarkMediaId.flatMapLatest { mediaId ->
-      if (mediaId == null) flowOf(emptyList()) else playbackBookmarkDao.observe(mediaId).onStart { emit(emptyList()) }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    bookmarkMediaId
+      .flatMapLatest { mediaId ->
+        if (mediaId == null) flowOf(emptyList()) else playbackBookmarkDao.observe(mediaId).onStart { emit(emptyList()) }
+      }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   /**
    * Chapters that come from the media itself: mpv's chapter list, or the book's own track
@@ -1121,38 +1171,70 @@ class PlayerViewModel(
    * chapter name from this can't feed a bookmark's own title back into the next one.
    */
   private val sourceChapters: StateFlow<List<dev.vivvvek.seeker.Segment>> =
-    combine(chapters, AudiobookPlayback.book, AudiobookPlayback.chapters, PlaybackSession.state) { native, book, bookChapters, state ->
+    combine(
+      chapters,
+      AudiobookPlayback.book,
+      AudiobookPlayback.chapters,
+      PlaybackSession.state,
+    ) { native, book, bookChapters, state ->
       val item = state.currentItem
-      if (item?.audiobook == null) native
-      else if (book?.book?.id != item.audiobook.bookId) emptyList()
-      else bookChapters.map { dev.vivvvek.seeker.Segment(it.title, it.bookStartMs / 1000f) }
+      if (item?.audiobook == null) {
+        native
+      } else if (book?.book?.id != item.audiobook.bookId) {
+        emptyList()
+      } else {
+        bookChapters.map { dev.vivvvek.seeker.Segment(it.title, it.bookStartMs / 1000f) }
+      }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, persistentListOf())
 
   val playbackChapters: StateFlow<List<dev.vivvvek.seeker.Segment>> =
-    combine(sourceChapters, playbackBookmarks, AudiobookPlayback.book, PlaybackSession.state) { sourceChapters, bookmarks, book, state ->
+    combine(
+      sourceChapters,
+      playbackBookmarks,
+      AudiobookPlayback.book,
+      PlaybackSession.state,
+    ) { sourceChapters, bookmarks, book, state ->
       val item = state.currentItem
       val mediaId = bookmarkMediaId(item)
       val currentBook = book?.takeIf { it.book.id == item?.audiobook?.bookId }
-      val customChapters = bookmarks.filter { it.mediaId == mediaId }.mapNotNull { bookmark ->
-        val positionMs = if (bookmark.bookTrackId == null) bookmark.positionMs else {
-          currentBook?.takeIf { book -> book.tracks.any { it.id == bookmark.bookTrackId } }
-            ?.positionInBook(bookmark.bookTrackId, bookmark.positionMs) ?: return@mapNotNull null
+      val customChapters =
+        bookmarks.filter { it.mediaId == mediaId }.mapNotNull { bookmark ->
+          val positionMs =
+            if (bookmark.bookTrackId == null) {
+              bookmark.positionMs
+            } else {
+              currentBook
+                ?.takeIf { book -> book.tracks.any { it.id == bookmark.bookTrackId } }
+                ?.positionInBook(bookmark.bookTrackId, bookmark.positionMs) ?: return@mapNotNull null
+            }
+          dev.vivvvek.seeker.Segment(bookmark.title, positionMs / 1000f)
         }
-        dev.vivvvek.seeker.Segment(bookmark.title, positionMs / 1000f)
-      }
       val customStarts = customChapters.mapTo(hashSetOf()) { (it.start * 1000).toLong() }
-      (customChapters + sourceChapters.distinctBy { (it.start * 1000).toLong() }.filter { (it.start * 1000).toLong() !in customStarts })
-        .filter { it.start.isFinite() && it.start >= 0 }.sortedBy { it.start }
+      (
+        customChapters +
+          sourceChapters
+            .distinctBy {
+              (it.start * 1000).toLong()
+            }.filter { (it.start * 1000).toLong() !in customStarts }
+      ).filter { it.start.isFinite() && it.start >= 0 }
+        .sortedBy { it.start }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
   fun seekAudioTo(positionSeconds: Float) {
     if (!positionSeconds.isFinite()) return
-    if (PlaybackSession.state.value.currentItem?.audiobook != null) AudiobookPlayback.seekInBook((positionSeconds * 1000).toLong())
-    else seekFromScrub(positionSeconds)
+    if (PlaybackSession.state.value.currentItem
+        ?.audiobook !=
+      null
+    ) {
+      AudiobookPlayback.seekInBook((positionSeconds * 1000).toLong())
+    } else {
+      seekFromScrub(positionSeconds)
+    }
   }
 
   // Audio player UI state
   val albumArtBounds = MutableStateFlow<android.graphics.Rect?>(null)
+
   // The style and artwork/visualizer display choice are persisted via audioPreferences.
   val showVisualizerInAudioPlayer = MutableStateFlow(audioPreferences.showAudioVisualizer.get())
   private val restoredEqualizerBands = audioPreferences.equalizerBands.get()
@@ -1183,8 +1265,8 @@ class PlayerViewModel(
     val embeddedLyrics: app.gyrolet.mpvrx.domain.lyrics.Lyrics? = null,
     val onlineLyrics: app.gyrolet.mpvrx.domain.lyrics.Lyrics? = null,
     val activeLineIndex: Int = -1,
-    val selectedSource: app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType = app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.EMBEDDED,
-    val availableSources: List<app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType> = emptyList(),
+    val selectedSource: LyricsSourceType = LyricsSourceType.EMBEDDED,
+    val availableSources: List<LyricsSourceType> = emptyList(),
     /** Which provider the current online lyrics actually came from. */
     val onlineProvider: app.gyrolet.mpvrx.domain.lyrics.LyricsProvider? = null,
     /** What the picker is set to, or null for the automatic lookup. */
@@ -1192,7 +1274,8 @@ class PlayerViewModel(
     /** Every provider that has answered for this track, for the source sheet. */
     val fetchedProviders: Set<app.gyrolet.mpvrx.domain.lyrics.LyricsProvider> = emptySet(),
     /** How well each answering provider's lyrics are timed, for the source sheet. */
-    val providerTimings: Map<app.gyrolet.mpvrx.domain.lyrics.LyricsProvider, app.gyrolet.mpvrx.domain.lyrics.LyricsTiming> =
+    val providerTimings:
+      Map<app.gyrolet.mpvrx.domain.lyrics.LyricsProvider, app.gyrolet.mpvrx.domain.lyrics.LyricsTiming> =
       emptyMap(),
     /** Providers asked for this track that came back empty. */
     val missingProviders: Set<app.gyrolet.mpvrx.domain.lyrics.LyricsProvider> = emptySet(),
@@ -1240,8 +1323,11 @@ class PlayerViewModel(
     val path = currentLyricsPath()
     val session = PlaybackSession.state.value
     val state = lyricsUiState.value
-    if (path.isNullOrBlank() || path != lyricsStatePath || state.isLoading ||
-      lyricsEditUiState.value.isSaving || session.currentItem?.audiobook != null ||
+    if (path.isNullOrBlank() ||
+      path != lyricsStatePath ||
+      state.isLoading ||
+      lyricsEditUiState.value.isSaving ||
+      session.currentItem?.audiobook != null ||
       session.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
     ) {
       Log.w(TAG, "Lyrics editing is unavailable until the current music track has loaded.")
@@ -1261,7 +1347,8 @@ class PlayerViewModel(
   fun saveEditedLyrics(draft: LyricsDraft) {
     if (draft.validationError() != null) {
       Log.w(TAG, "An invalid lyrics draft was rejected.")
-      lyricsEditUiState.value = LyricsEditUiState(errorMessage = appContext.getString(R.string.lyrics_editor_invalid_draft))
+      lyricsEditUiState.value =
+        LyricsEditUiState(errorMessage = appContext.getString(R.string.lyrics_editor_invalid_draft))
       return
     }
     val lyrics = draft.toLyrics()
@@ -1271,7 +1358,11 @@ class PlayerViewModel(
   }
 
   fun restoreOriginalLyrics() {
-    persistLyricsEdit(R.string.lyrics_editor_restore_failed, restoredOriginal = true, action = lyricsRepository::removeEditedLyrics)
+    persistLyricsEdit(
+      R.string.lyrics_editor_restore_failed,
+      restoredOriginal = true,
+      action = lyricsRepository::removeEditedLyrics,
+    )
   }
 
   private fun persistLyricsEdit(
@@ -1283,7 +1374,8 @@ class PlayerViewModel(
     val target = lyricsEditTarget.value
     if (target == null) {
       Log.w(TAG, "A lyrics edit operation was requested without a track.")
-      lyricsEditUiState.value = LyricsEditUiState(errorMessage = appContext.getString(R.string.lyrics_editor_unavailable))
+      lyricsEditUiState.value =
+        LyricsEditUiState(errorMessage = appContext.getString(R.string.lyrics_editor_unavailable))
       return
     }
     lyricsEditUiState.value = LyricsEditUiState(isSaving = true, restoredOriginal = restoredOriginal)
@@ -1398,7 +1490,7 @@ class PlayerViewModel(
    */
   fun syncLyricsWithPlayback() {
     // A collapsed in-app sheet must not fetch lyrics for playback it is not showing.
-    if (hostedInBrowser && !_isMpvCoreReady.value) return
+    if (hostedInBrowser && !mpvCoreReadyState.value) return
     if (!isAudioOnly.value) return
     val path = currentLyricsPath() ?: return
     if (path == lyricsStatePath) return
@@ -1471,18 +1563,25 @@ class PlayerViewModel(
     applyEqualizerMpvFilters(immediate = true)
   }
 
-  private fun currentLyricsPath(): String? = PlaybackSession.state.value.currentItem?.originalUri?.takeIf(String::isNotBlank)
-    ?: PlaybackSession.getPropertyString("path") ?: PlaybackSession.getPropertyString("stream-open-filename")
+  private fun currentLyricsPath(): String? =
+    PlaybackSession.state.value.currentItem
+      ?.originalUri
+      ?.takeIf(String::isNotBlank)
+      ?: PlaybackSession.getPropertyString("path") ?: PlaybackSession.getPropertyString("stream-open-filename")
 
   /** Queue song metadata is stable across track changes; native/display tags can lag behind. */
   private fun currentLyricsTitle(): String =
-    PlaybackSession.state.value.currentItem?.title?.takeIf { it.isNotBlank() }
+    PlaybackSession.state.value.currentItem
+      ?.title
+      ?.takeIf { it.isNotBlank() }
       ?: PlaybackSession.getPropertyString("metadata/by-key/Title")?.takeIf { it.isNotBlank() }
       ?: currentMediaTitle.takeIf { it.isNotBlank() }
       ?: PlaybackSession.getPropertyString("media-title").orEmpty()
 
   private fun currentLyricsArtist(): String =
-    PlaybackSession.state.value.currentItem?.artist?.takeIf { it.isNotBlank() }
+    PlaybackSession.state.value.currentItem
+      ?.artist
+      ?.takeIf { it.isNotBlank() }
       ?: PlaybackSession.getPropertyString("metadata/by-key/Artist")
       ?: PlaybackSession.getPropertyString("metadata/by-key/ARTIST")
       ?: PlaybackSession.getPropertyString("metadata/by-key/album_artist")
@@ -1504,30 +1603,41 @@ class PlayerViewModel(
 
     val title = titleOverride ?: currentLyricsTitle()
     val artist = currentLyricsArtist()
-    val duration = session.currentItem?.durationSeconds?.takeIf { it > 0 }
-      ?: PlaybackSession.getPropertyDouble("duration")?.toInt() ?: 0
-    val album = PlaybackSession.getPropertyString("metadata/by-key/Album")
-      ?: PlaybackSession.getPropertyString("metadata/by-key/album")
+    val duration =
+      session.currentItem?.durationSeconds?.takeIf { it > 0 }
+        ?: PlaybackSession.getPropertyDouble("duration")?.toInt() ?: 0
+    val album =
+      PlaybackSession.getPropertyString("metadata/by-key/Album")
+        ?: PlaybackSession.getPropertyString("metadata/by-key/album")
     val isrc = PlaybackSession.getPropertyString("metadata/by-key/isrc")
-    val request = LyricsLoadRequest(
-      path, title, artist, duration, allowOnline, audioPreferences.lyricsAutoFetchOnline.get(), album, isrc,
-    )
+    val request =
+      LyricsLoadRequest(
+        path,
+        title,
+        artist,
+        duration,
+        allowOnline,
+        audioPreferences.lyricsAutoFetchOnline.get(),
+        album,
+        isrc,
+      )
     if (!forceRefresh && !forceOnline && request == lastLyricsLoadRequest) return
     lastLyricsLoadRequest = request
     val isNewTrack = lyricsStatePath != path
     lyricsStatePath = path
     lyricsStateGeneration = generation
 
-    lyricsUiState.value = if (isNewTrack) {
-      LyricsUiState(isLoading = true, onlineEnabled = allowOnline)
-    } else {
-      lyricsUiState.value.copy(
-        isLoading = true,
-        errorMessage = null,
-        syncOffsetMs = 0,
-        onlineEnabled = allowOnline,
-      )
-    }
+    lyricsUiState.value =
+      if (isNewTrack) {
+        LyricsUiState(isLoading = true, onlineEnabled = allowOnline)
+      } else {
+        lyricsUiState.value.copy(
+          isLoading = true,
+          errorMessage = null,
+          syncOffsetMs = 0,
+          onlineEnabled = allowOnline,
+        )
+      }
 
     // Cancel any in-flight lyrics load/translate for the previous track, otherwise a slow
     // fetch for the old song can resolve after the new song's fetch and overwrite it with
@@ -1535,73 +1645,78 @@ class PlayerViewModel(
     lyricsLoadJob?.cancel()
     lyricsTranslateJob?.cancel()
 
-    lyricsLoadJob = viewModelScope.launch(Dispatchers.IO) {
-      val result = try {
-        lyricsRepository.loadLyricsForTrack(
-        mediaPath = path,
-        title = title,
-        artist = artist,
-        durationSeconds = duration,
-        forceRefresh = forceRefresh,
-        allowOnline = allowOnline,
-        forceOnline = forceOnline,
-        album = album,
-          isrc = isrc,
-        )
-      } catch (error: java.io.IOException) {
-        Log.e(TAG, "Unable to load lyrics; saved edits have been retained.", error)
-        if (PlaybackSession.isCurrentGeneration(generation) && currentLyricsPath() == path) {
-          lyricsUiState.value = lyricsUiState.value.copy(
-            isLoading = false,
-            errorMessage = appContext.getString(R.string.lyrics_editor_load_failed),
-            hasSavedEdits = lyricsRepository.hasEditedLyrics(path),
+    lyricsLoadJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        val result =
+          try {
+            lyricsRepository.loadLyricsForTrack(
+              mediaPath = path,
+              title = title,
+              artist = artist,
+              durationSeconds = duration,
+              forceRefresh = forceRefresh,
+              allowOnline = allowOnline,
+              forceOnline = forceOnline,
+              album = album,
+              isrc = isrc,
+            )
+          } catch (error: java.io.IOException) {
+            Log.e(TAG, "Unable to load lyrics; saved edits have been retained.", error)
+            if (PlaybackSession.isCurrentGeneration(generation) && currentLyricsPath() == path) {
+              lyricsUiState.value =
+                lyricsUiState.value.copy(
+                  isLoading = false,
+                  errorMessage = appContext.getString(R.string.lyrics_editor_load_failed),
+                  hasSavedEdits = lyricsRepository.hasEditedLyrics(path),
+                )
+            }
+            return@launch
+          }
+
+        ensureActive()
+        // The track may have changed again while this fetch was in-flight; only apply the
+        // result if we're still on the same track (extra guard on top of job cancellation).
+        val stillCurrentPath = currentLyricsPath()
+        if (!PlaybackSession.isCurrentGeneration(generation) || stillCurrentPath != path) return@launch
+
+        val activeIndex =
+          app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
+            syncedLines = result.activeLyrics?.synced,
+            positionMs = (precisePosition.value * 1000).toLong(),
+            offsetMs = 0,
           )
+        val autoTranslate = allowOnline && audioPreferences.lyricsAutoTranslate.get()
+        val defaultTargetLang = audioPreferences.lyricsTargetLanguage.get().ifBlank { "en" }
+
+        lyricsUiState.value =
+          lyricsUiState.value.copy(
+            isLoading = false,
+            isTranslationActive = false,
+            targetLanguage = defaultTargetLang,
+            lyrics = result.activeLyrics,
+            originalLyrics = result.activeLyrics,
+            embeddedLyrics = result.embeddedLyrics,
+            onlineLyrics = result.onlineLyrics,
+            activeLineIndex = activeIndex,
+            selectedSource = result.selectedSource,
+            availableSources = result.availableSources,
+            onlineProvider = result.onlineProvider,
+            preferredProvider = result.preferredOnlineProvider,
+            fetchedProviders = result.onlineByProvider.keys,
+            providerTimings = result.onlineByProvider.mapValues { it.value.timing() },
+            missingProviders = result.missingProviders,
+            failedProviders = result.failedProviders,
+            onlineEnabled = allowOnline,
+            syncOffsetMs = 0,
+            hasSavedEdits = result.hasSavedEdits,
+          )
+
+        val hasSynced = result.activeLyrics?.synced?.isNotEmpty() == true
+
+        if (autoTranslate && hasSynced) {
+          translateLyrics(defaultTargetLang)
         }
-        return@launch
       }
-
-      ensureActive()
-      // The track may have changed again while this fetch was in-flight; only apply the
-      // result if we're still on the same track (extra guard on top of job cancellation).
-      val stillCurrentPath = currentLyricsPath()
-      if (!PlaybackSession.isCurrentGeneration(generation) || stillCurrentPath != path) return@launch
-
-      val activeIndex = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
-        syncedLines = result.activeLyrics?.synced,
-        positionMs = (precisePosition.value * 1000).toLong(),
-        offsetMs = 0,
-      )
-      val autoTranslate = allowOnline && audioPreferences.lyricsAutoTranslate.get()
-      val defaultTargetLang = audioPreferences.lyricsTargetLanguage.get().ifBlank { "en" }
-
-      lyricsUiState.value = lyricsUiState.value.copy(
-        isLoading = false,
-        isTranslationActive = false,
-        targetLanguage = defaultTargetLang,
-        lyrics = result.activeLyrics,
-        originalLyrics = result.activeLyrics,
-        embeddedLyrics = result.embeddedLyrics,
-        onlineLyrics = result.onlineLyrics,
-        activeLineIndex = activeIndex,
-        selectedSource = result.selectedSource,
-        availableSources = result.availableSources,
-        onlineProvider = result.onlineProvider,
-        preferredProvider = result.preferredOnlineProvider,
-        fetchedProviders = result.onlineByProvider.keys,
-        providerTimings = result.onlineByProvider.mapValues { it.value.timing() },
-        missingProviders = result.missingProviders,
-        failedProviders = result.failedProviders,
-        onlineEnabled = allowOnline,
-        syncOffsetMs = 0,
-        hasSavedEdits = result.hasSavedEdits,
-      )
-
-      val hasSynced = result.activeLyrics?.synced?.isNotEmpty() == true
-
-      if (autoTranslate && hasSynced) {
-        translateLyrics(defaultTargetLang)
-      }
-    }
   }
 
   /**
@@ -1629,9 +1744,11 @@ class PlayerViewModel(
       .trim()
   }
 
-  fun switchLyricsSource(sourceType: app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType) {
-    val allowOnline = PlaybackSession.state.value.currentItem?.audiobook == null
-    if (!allowOnline && sourceType == app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE) return
+  fun switchLyricsSource(sourceType: LyricsSourceType) {
+    val allowOnline =
+      PlaybackSession.state.value.currentItem
+        ?.audiobook == null
+    if (!allowOnline && sourceType == LyricsSourceType.ONLINE) return
     val path = currentLyricsPath() ?: return
     if (path.isBlank()) return
 
@@ -1640,92 +1757,114 @@ class PlayerViewModel(
     val autoTranslate = allowOnline && audioPreferences.lyricsAutoTranslate.get()
     val defaultTargetLang = audioPreferences.lyricsTargetLanguage.get().ifBlank { "en" }
 
-    if (sourceType == app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE && current.onlineLyrics == null) {
+    if (sourceType == LyricsSourceType.ONLINE && current.onlineLyrics == null) {
       lyricsUiState.value = current.copy(isLoading = true)
       lyricsLoadJob?.cancel()
       lyricsTranslateJob?.cancel()
       val generation = PlaybackSession.state.value.generation
-      lyricsLoadJob = viewModelScope.launch(Dispatchers.IO) {
-        val title = currentLyricsTitle()
-        val artist = currentLyricsArtist()
-        val duration = PlaybackSession.state.value.currentItem?.durationSeconds?.takeIf { it > 0 }
-          ?: PlaybackSession.getPropertyDouble("duration")?.toInt() ?: 0
-        val album = PlaybackSession.getPropertyString("metadata/by-key/Album")
-          ?: PlaybackSession.getPropertyString("metadata/by-key/album")
+      lyricsLoadJob =
+        viewModelScope.launch(Dispatchers.IO) {
+          val title = currentLyricsTitle()
+          val artist = currentLyricsArtist()
+          val duration =
+            PlaybackSession.state.value.currentItem
+              ?.durationSeconds
+              ?.takeIf { it > 0 }
+              ?: PlaybackSession.getPropertyDouble("duration")?.toInt() ?: 0
+          val album =
+            PlaybackSession.getPropertyString("metadata/by-key/Album")
+              ?: PlaybackSession.getPropertyString("metadata/by-key/album")
 
-        val fetched = lyricsRepository.fetchOnlineLyrics(
-          rawTitle = title,
-          rawArtist = artist,
-          durationSeconds = duration,
-          provider = lyricsRepository.preferredProvider,
-          album = album,
-          mediaPath = path,
-        )
+          val fetched =
+            lyricsRepository.fetchOnlineLyrics(
+              rawTitle = title,
+              rawArtist = artist,
+              durationSeconds = duration,
+              provider = lyricsRepository.preferredProvider,
+              album = album,
+              mediaPath = path,
+            )
 
-        ensureActive()
-        if (!PlaybackSession.isCurrentGeneration(generation) || currentLyricsPath() != path ||
-          lyricsStatePath != path) return@launch
+          ensureActive()
+          if (!PlaybackSession.isCurrentGeneration(generation) ||
+            currentLyricsPath() != path ||
+            lyricsStatePath != path
+          ) {
+            return@launch
+          }
 
-        val updated = lyricsRepository.mergeOnline(path, fetched, allowOnline)
-        val online = updated?.onlineLyrics ?: fetched.lyrics
-        val updatedSources = if (online != null) {
-          (current.availableSources + app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE).distinct()
-        } else {
-          current.availableSources
+          val updated = lyricsRepository.mergeOnline(path, fetched, allowOnline)
+          val online = updated?.onlineLyrics ?: fetched.lyrics
+          val updatedSources =
+            if (online != null) {
+              (current.availableSources + LyricsSourceType.ONLINE).distinct()
+            } else {
+              current.availableSources
+            }
+          val activeLyrics = online ?: current.embeddedLyrics
+          val activeIndex =
+            app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
+              syncedLines = activeLyrics?.synced,
+              positionMs = (precisePosition.value * 1000).toLong(),
+              offsetMs = current.syncOffsetMs,
+            )
+          val hasSynced = activeLyrics?.synced?.isNotEmpty() == true
+
+          lyricsUiState.value =
+            current.copy(
+              isLoading = false,
+              isTranslationActive = false,
+              onlineLyrics = online,
+              lyrics = activeLyrics,
+              originalLyrics = activeLyrics,
+              selectedSource =
+                if (online !=
+                  null
+                ) {
+                  LyricsSourceType.ONLINE
+                } else {
+                  current.selectedSource
+                },
+              availableSources = updatedSources,
+              onlineProvider = updated?.onlineProvider ?: fetched.provider,
+              preferredProvider = updated?.preferredOnlineProvider ?: if (fetched.raced) null else fetched.provider,
+              fetchedProviders = (updated?.onlineByProvider ?: fetched.byProvider).keys,
+              providerTimings = (updated?.onlineByProvider ?: fetched.byProvider).mapValues { it.value.timing() },
+              missingProviders = updated?.missingProviders ?: fetched.missing,
+              failedProviders = updated?.failedProviders ?: fetched.failed,
+              activeLineIndex = activeIndex,
+            )
+
+          if (autoTranslate && hasSynced) {
+            translateLyrics(defaultTargetLang)
+          }
         }
-        val activeLyrics = online ?: current.embeddedLyrics
-        val activeIndex = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
-          syncedLines = activeLyrics?.synced,
-          positionMs = (precisePosition.value * 1000).toLong(),
-          offsetMs = current.syncOffsetMs,
-        )
-        val hasSynced = activeLyrics?.synced?.isNotEmpty() == true
-
-        lyricsUiState.value = current.copy(
-          isLoading = false,
-          isTranslationActive = false,
-          onlineLyrics = online,
-          lyrics = activeLyrics,
-          originalLyrics = activeLyrics,
-          selectedSource = if (online != null) app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE else current.selectedSource,
-          availableSources = updatedSources,
-          onlineProvider = updated?.onlineProvider ?: fetched.provider,
-          preferredProvider = updated?.preferredOnlineProvider ?: if (fetched.raced) null else fetched.provider,
-          fetchedProviders = (updated?.onlineByProvider ?: fetched.byProvider).keys,
-          providerTimings = (updated?.onlineByProvider ?: fetched.byProvider).mapValues { it.value.timing() },
-          missingProviders = updated?.missingProviders ?: fetched.missing,
-          failedProviders = updated?.failedProviders ?: fetched.failed,
-          activeLineIndex = activeIndex,
-        )
-
-        if (autoTranslate && hasSynced) {
-          translateLyrics(defaultTargetLang)
-        }
-      }
       return
     }
 
     val updatedResult = lyricsRepository.switchSource(path, sourceType, allowOnline)
     if (updatedResult != null) {
       val activeLyrics = updatedResult.activeLyrics
-      val activeIndex = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
-        syncedLines = activeLyrics?.synced,
-        positionMs = (precisePosition.value * 1000).toLong(),
-        offsetMs = current.syncOffsetMs,
-      )
+      val activeIndex =
+        app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
+          syncedLines = activeLyrics?.synced,
+          positionMs = (precisePosition.value * 1000).toLong(),
+          offsetMs = current.syncOffsetMs,
+        )
       val hasSynced = activeLyrics?.synced?.isNotEmpty() == true
 
-      lyricsUiState.value = current.copy(
-        lyrics = activeLyrics,
-        originalLyrics = activeLyrics,
-        isTranslationActive = false,
-        selectedSource = updatedResult.selectedSource,
-        activeLineIndex = activeIndex,
-        fetchedProviders = updatedResult.onlineByProvider.keys,
-        providerTimings = updatedResult.onlineByProvider.mapValues { it.value.timing() },
-        missingProviders = updatedResult.missingProviders,
-        failedProviders = updatedResult.failedProviders,
-      )
+      lyricsUiState.value =
+        current.copy(
+          lyrics = activeLyrics,
+          originalLyrics = activeLyrics,
+          isTranslationActive = false,
+          selectedSource = updatedResult.selectedSource,
+          activeLineIndex = activeIndex,
+          fetchedProviders = updatedResult.onlineByProvider.keys,
+          providerTimings = updatedResult.onlineByProvider.mapValues { it.value.timing() },
+          missingProviders = updatedResult.missingProviders,
+          failedProviders = updatedResult.failedProviders,
+        )
 
       if (autoTranslate && hasSynced) {
         translateLyrics(defaultTargetLang)
@@ -1742,7 +1881,9 @@ class PlayerViewModel(
    * falls through to the automatic lookup rather than blanking the panel.
    */
   fun switchLyricsProvider(provider: app.gyrolet.mpvrx.domain.lyrics.LyricsProvider?) {
-    val allowOnline = PlaybackSession.state.value.currentItem?.audiobook == null
+    val allowOnline =
+      PlaybackSession.state.value.currentItem
+        ?.audiobook == null
     if (!allowOnline) return
     val path = currentLyricsPath() ?: return
     if (path.isBlank() || lyricsStatePath != path) return
@@ -1757,100 +1898,115 @@ class PlayerViewModel(
     val cached = lyricsRepository.switchProvider(path, provider, allowOnline)
     if (cached != null && cached.onlineLyrics != null) {
       val activeLyrics = cached.onlineLyrics
-      lyricsUiState.value = current.copy(
-        isLoading = false,
-        lyrics = activeLyrics,
-        originalLyrics = activeLyrics,
-        onlineLyrics = activeLyrics,
-        isTranslationActive = false,
-        selectedSource = app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE,
-        onlineProvider = cached.onlineProvider,
-        preferredProvider = cached.preferredOnlineProvider,
-        fetchedProviders = cached.onlineByProvider.keys,
-        providerTimings = cached.onlineByProvider.mapValues { it.value.timing() },
-        missingProviders = cached.missingProviders,
-        failedProviders = cached.failedProviders,
-        activeLineIndex = currentActiveLineIndex(activeLyrics, current.syncOffsetMs),
-        availableSources = (current.availableSources + app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE)
-          .distinct(),
-        errorMessage = null,
-      )
+      lyricsUiState.value =
+        current.copy(
+          isLoading = false,
+          lyrics = activeLyrics,
+          originalLyrics = activeLyrics,
+          onlineLyrics = activeLyrics,
+          isTranslationActive = false,
+          selectedSource = LyricsSourceType.ONLINE,
+          onlineProvider = cached.onlineProvider,
+          preferredProvider = cached.preferredOnlineProvider,
+          fetchedProviders = cached.onlineByProvider.keys,
+          providerTimings = cached.onlineByProvider.mapValues { it.value.timing() },
+          missingProviders = cached.missingProviders,
+          failedProviders = cached.failedProviders,
+          activeLineIndex = currentActiveLineIndex(activeLyrics, current.syncOffsetMs),
+          availableSources =
+            (current.availableSources + LyricsSourceType.ONLINE)
+              .distinct(),
+          errorMessage = null,
+        )
       if (autoTranslate && activeLyrics.synced?.isNotEmpty() == true) translateLyrics(defaultTargetLang)
       return
     }
 
     lyricsUiState.value = current.copy(isLoading = true, errorMessage = null, preferredProvider = provider)
-    lyricsLoadJob = viewModelScope.launch(Dispatchers.IO) {
-      val title = currentLyricsTitle()
-      val artist = currentLyricsArtist()
-      val duration = PlaybackSession.state.value.currentItem?.durationSeconds?.takeIf { it > 0 }
-        ?: PlaybackSession.getPropertyDouble("duration")?.toInt() ?: 0
-      val album = PlaybackSession.getPropertyString("metadata/by-key/Album")
-        ?: PlaybackSession.getPropertyString("metadata/by-key/album")
+    lyricsLoadJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        val title = currentLyricsTitle()
+        val artist = currentLyricsArtist()
+        val duration =
+          PlaybackSession.state.value.currentItem
+            ?.durationSeconds
+            ?.takeIf { it > 0 }
+            ?: PlaybackSession.getPropertyDouble("duration")?.toInt() ?: 0
+        val album =
+          PlaybackSession.getPropertyString("metadata/by-key/Album")
+            ?: PlaybackSession.getPropertyString("metadata/by-key/album")
 
-      val fetched = lyricsRepository.fetchOnlineLyrics(
-        rawTitle = title,
-        rawArtist = artist,
-        durationSeconds = duration,
-        provider = provider,
-        album = album,
-        mediaPath = path,
-      )
+        val fetched =
+          lyricsRepository.fetchOnlineLyrics(
+            rawTitle = title,
+            rawArtist = artist,
+            durationSeconds = duration,
+            provider = provider,
+            album = album,
+            mediaPath = path,
+          )
 
-      ensureActive()
-      if (!PlaybackSession.isCurrentGeneration(generation) || currentLyricsPath() != path) return@launch
+        ensureActive()
+        if (!PlaybackSession.isCurrentGeneration(generation) || currentLyricsPath() != path) return@launch
 
-      val updated = lyricsRepository.mergeOnline(path, fetched, allowOnline)
-      val online = updated?.onlineLyrics ?: fetched.lyrics
-      val activeLyrics = online ?: current.embeddedLyrics
-      val hasSynced = activeLyrics?.synced?.isNotEmpty() == true
-      val answeredLyrics = updated?.onlineByProvider ?: fetched.byProvider
-      val answered = answeredLyrics.keys
-      val failed = updated?.failedProviders ?: ((current.failedProviders - answered - fetched.missing) + fetched.failed)
-      val missing = updated?.missingProviders ?: ((current.missingProviders - answered - fetched.failed) + fetched.missing)
+        val updated = lyricsRepository.mergeOnline(path, fetched, allowOnline)
+        val online = updated?.onlineLyrics ?: fetched.lyrics
+        val activeLyrics = online ?: current.embeddedLyrics
+        val hasSynced = activeLyrics?.synced?.isNotEmpty() == true
+        val answeredLyrics = updated?.onlineByProvider ?: fetched.byProvider
+        val answered = answeredLyrics.keys
+        val failed =
+          updated?.failedProviders ?: ((current.failedProviders - answered - fetched.missing) + fetched.failed)
+        val missing =
+          updated?.missingProviders ?: ((current.missingProviders - answered - fetched.failed) + fetched.missing)
 
-      lyricsUiState.value = current.copy(
-        isLoading = false,
-        isTranslationActive = false,
-        onlineLyrics = online,
-        lyrics = activeLyrics,
-        originalLyrics = activeLyrics,
-        selectedSource = if (online == null) {
-          current.selectedSource
-        } else {
-          app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE
-        },
-        availableSources = if (online == null) {
-          current.availableSources
-        } else {
-          (current.availableSources + app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType.ONLINE).distinct()
-        },
-        onlineProvider = updated?.onlineProvider ?: fetched.provider,
-        preferredProvider = updated?.preferredOnlineProvider ?: if (fetched.raced) null else fetched.provider,
-        fetchedProviders = answered,
-        providerTimings = answeredLyrics.mapValues { it.value.timing() },
-        missingProviders = missing,
-        failedProviders = failed,
-        activeLineIndex = currentActiveLineIndex(activeLyrics, current.syncOffsetMs),
-        errorMessage = if (online == null && provider != null) {
-          appContext.getString(R.string.lyrics_provider_not_found, provider.label)
-        } else {
-          null
-        },
-      )
+        lyricsUiState.value =
+          current.copy(
+            isLoading = false,
+            isTranslationActive = false,
+            onlineLyrics = online,
+            lyrics = activeLyrics,
+            originalLyrics = activeLyrics,
+            selectedSource =
+              if (online == null) {
+                current.selectedSource
+              } else {
+                LyricsSourceType.ONLINE
+              },
+            availableSources =
+              if (online == null) {
+                current.availableSources
+              } else {
+                (current.availableSources + LyricsSourceType.ONLINE).distinct()
+              },
+            onlineProvider = updated?.onlineProvider ?: fetched.provider,
+            preferredProvider = updated?.preferredOnlineProvider ?: if (fetched.raced) null else fetched.provider,
+            fetchedProviders = answered,
+            providerTimings = answeredLyrics.mapValues { it.value.timing() },
+            missingProviders = missing,
+            failedProviders = failed,
+            activeLineIndex = currentActiveLineIndex(activeLyrics, current.syncOffsetMs),
+            errorMessage =
+              if (online == null && provider != null) {
+                appContext.getString(R.string.lyrics_provider_not_found, provider.label)
+              } else {
+                null
+              },
+          )
 
-      if (autoTranslate && hasSynced) translateLyrics(defaultTargetLang)
-    }
+        if (autoTranslate && hasSynced) translateLyrics(defaultTargetLang)
+      }
   }
 
   private fun currentActiveLineIndex(
     lyrics: app.gyrolet.mpvrx.domain.lyrics.Lyrics?,
     offsetMs: Int,
-  ): Int = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
-    syncedLines = lyrics?.synced,
-    positionMs = (precisePosition.value * 1000).toLong(),
-    offsetMs = offsetMs,
-  )
+  ): Int =
+    app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
+      syncedLines = lyrics?.synced,
+      positionMs = (precisePosition.value * 1000).toLong(),
+      offsetMs = offsetMs,
+    )
 
   fun adjustLyricsSyncOffset(deltaMs: Int) {
     val newOffset = lyricsUiState.value.syncOffsetMs + deltaMs
@@ -1867,7 +2023,9 @@ class PlayerViewModel(
     val state = lyricsUiState.value
     val synced = state.lyrics?.synced ?: return
     val posMs = (precisePosition.value * 1000).toLong()
-    val index = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(synced, posMs, state.syncOffsetMs)
+    val index =
+      app.gyrolet.mpvrx.utils.media.LyricsUtils
+        .getActiveLineIndex(synced, posMs, state.syncOffsetMs)
     if (index != state.activeLineIndex) {
       lyricsUiState.value = state.copy(activeLineIndex = index)
     }
@@ -1886,52 +2044,62 @@ class PlayerViewModel(
     audioPreferences.lyricsAutoTranslate.set(true)
     audioPreferences.lyricsTargetLanguage.set(lang)
 
-    lyricsUiState.value = current.copy(
-      isTranslating = true,
-      targetLanguage = lang,
-      originalLyrics = current.originalLyrics ?: current.lyrics,
-      errorMessage = null,
-    )
+    lyricsUiState.value =
+      current.copy(
+        isTranslating = true,
+        targetLanguage = lang,
+        originalLyrics = current.originalLyrics ?: current.lyrics,
+        errorMessage = null,
+      )
 
     lyricsTranslateJob?.cancel()
-    lyricsTranslateJob = viewModelScope.launch(Dispatchers.IO) {
-      val outcome = lyricsTranslationService.translateLyrics(
-        lyrics = baseLyrics,
-        targetLanguage = lang,
-        cacheKey = path,
-      )
+    lyricsTranslateJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        val outcome =
+          lyricsTranslationService.translateLyrics(
+            lyrics = baseLyrics,
+            targetLanguage = lang,
+            cacheKey = path,
+          )
 
-      // Bail out if the track changed while translation was in-flight, so a slow
-      // translation for the previous song can't overwrite the new song's lyrics.
-      ensureActive()
-      if (!PlaybackSession.isCurrentGeneration(generation) || currentLyricsPath() != path ||
-        lyricsStatePath != path) return@launch
+        // Bail out if the track changed while translation was in-flight, so a slow
+        // translation for the previous song can't overwrite the new song's lyrics.
+        ensureActive()
+        if (!PlaybackSession.isCurrentGeneration(generation) ||
+          currentLyricsPath() != path ||
+          lyricsStatePath != path
+        ) {
+          return@launch
+        }
 
-      if (!outcome.isSuccessful) {
-        lyricsUiState.value = lyricsUiState.value.copy(
-          isTranslating = false,
-          isTranslationActive = false,
-          lyrics = baseLyrics,
-          errorMessage = appContext.getString(R.string.lyrics_translation_failed),
-        )
-        return@launch
+        if (!outcome.isSuccessful) {
+          lyricsUiState.value =
+            lyricsUiState.value.copy(
+              isTranslating = false,
+              isTranslationActive = false,
+              lyrics = baseLyrics,
+              errorMessage = appContext.getString(R.string.lyrics_translation_failed),
+            )
+          return@launch
+        }
+
+        val translated = outcome.lyrics
+        val activeIndex =
+          app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
+            syncedLines = translated.synced,
+            positionMs = (precisePosition.value * 1000).toLong(),
+            offsetMs = current.syncOffsetMs,
+          )
+        lyricsUiState.value =
+          lyricsUiState.value.copy(
+            isTranslating = false,
+            isTranslationActive = true,
+            lyrics = translated,
+            activeLineIndex = activeIndex,
+            errorMessage =
+              if (outcome.isComplete) null else appContext.getString(R.string.lyrics_translation_partial),
+          )
       }
-
-      val translated = outcome.lyrics
-      val activeIndex = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
-        syncedLines = translated.synced,
-        positionMs = (precisePosition.value * 1000).toLong(),
-        offsetMs = current.syncOffsetMs,
-      )
-      lyricsUiState.value = lyricsUiState.value.copy(
-        isTranslating = false,
-        isTranslationActive = true,
-        lyrics = translated,
-        activeLineIndex = activeIndex,
-        errorMessage =
-          if (outcome.isComplete) null else appContext.getString(R.string.lyrics_translation_partial),
-      )
-    }
   }
 
   fun showOriginalLyrics() {
@@ -1939,18 +2107,20 @@ class PlayerViewModel(
     lyricsTranslateJob?.cancel()
     val current = lyricsUiState.value
     val original = current.originalLyrics ?: current.lyrics ?: return
-    val activeIndex = app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
-      syncedLines = original.synced,
-      positionMs = (precisePosition.value * 1000).toLong(),
-      offsetMs = current.syncOffsetMs,
-    )
-    lyricsUiState.value = current.copy(
-      isTranslating = false,
-      isTranslationActive = false,
-      lyrics = original,
-      activeLineIndex = activeIndex,
-      errorMessage = null,
-    )
+    val activeIndex =
+      app.gyrolet.mpvrx.utils.media.LyricsUtils.getActiveLineIndex(
+        syncedLines = original.synced,
+        positionMs = (precisePosition.value * 1000).toLong(),
+        offsetMs = current.syncOffsetMs,
+      )
+    lyricsUiState.value =
+      current.copy(
+        isTranslating = false,
+        isTranslationActive = false,
+        lyrics = original,
+        activeLineIndex = activeIndex,
+        errorMessage = null,
+      )
   }
 
   fun setEqualizerVolumeBoost(db: Int) {
@@ -1980,17 +2150,29 @@ class PlayerViewModel(
 
   private fun getCustomMpvAf(): String {
     val confFile = File(appContext.filesDir, "mpv.conf")
-    val text = if (confFile.exists()) {
-      runCatching { confFile.readText() }.getOrDefault("")
-    } else {
-      advancedPreferences.mpvConf.get()
-    }
+    val text =
+      if (confFile.exists()) {
+        runCatching { confFile.readText() }.getOrDefault("")
+      } else {
+        advancedPreferences.mpvConf.get()
+      }
     if (text.isBlank()) return ""
-    val afFilters = text.lines()
-      .map { it.trim() }
-      .filter { !it.startsWith("#") && (it.startsWith("af=") || it.startsWith("af =") || it.startsWith("af-add=") || it.startsWith("af-add =") || it.startsWith("af-append=") || it.startsWith("af-append =")) }
-      .map { line -> line.substringAfter("=").trim() }
-      .filter { it.isNotBlank() }
+    val afFilters =
+      text
+        .lines()
+        .map { it.trim() }
+        .filter {
+          !it.startsWith("#") &&
+            (
+              it.startsWith("af=") ||
+                it.startsWith("af =") ||
+                it.startsWith("af-add=") ||
+                it.startsWith("af-add =") ||
+                it.startsWith("af-append=") ||
+                it.startsWith("af-append =")
+            )
+        }.map { line -> line.substringAfter("=").trim() }
+        .filter { it.isNotBlank() }
     return afFilters.joinToString(",")
   }
 
@@ -2064,6 +2246,7 @@ class PlayerViewModel(
     withContext(Dispatchers.IO) {
       val session = PlaybackSession.state.value
       val tracks = audioTracks.value
+
       fun MutableList<AudioPropertyItem>.addProperty(
         @androidx.annotation.StringRes label: Int,
         value: String?,
@@ -2073,105 +2256,147 @@ class PlayerViewModel(
         }
       }
 
-      val snapshot = PlaybackSession.readLoadedMedia(session.generation) { reader ->
-        fun tag(vararg names: String): String? {
-          for (name in names) {
-            val lower = name.lowercase(java.util.Locale.ROOT)
-            val variants = setOf(
-              name,
-              lower,
-              name.uppercase(java.util.Locale.ROOT),
-              lower.replaceFirstChar { it.uppercase() },
-            )
-            for (key in variants) {
-              reader.string("metadata/by-key/$key")?.trim()?.takeIf(String::isNotEmpty)?.let { return it }
+      val snapshot =
+        PlaybackSession.readLoadedMedia(session.generation) { reader ->
+          fun tag(vararg names: String): String? {
+            for (name in names) {
+              val lower = name.lowercase(java.util.Locale.ROOT)
+              val variants =
+                setOf(
+                  name,
+                  lower,
+                  name.uppercase(java.util.Locale.ROOT),
+                  lower.replaceFirstChar { it.uppercase() },
+                )
+              for (key in variants) {
+                reader
+                  .string("metadata/by-key/$key")
+                  ?.trim()
+                  ?.takeIf(String::isNotEmpty)
+                  ?.let { return it }
+              }
             }
+            return null
           }
-          return null
-        }
 
-        val path = session.currentItem?.originalUri?.takeIf(String::isNotBlank)
-          ?: reader.string("path")?.takeIf(String::isNotBlank)
-          ?: reader.string("stream-open-filename").orEmpty()
-        val track = tracks.firstOrNull(TrackNode::isSelected)
-        val codec = reader.string("current-tracks/audio/codec")?.takeIf(String::isNotBlank) ?: track?.codec
-        val sampleRate = track?.demuxSampleRate?.toInt()?.takeIf { it > 0 }
-          ?: reader.int("audio-params/samplerate")?.takeIf { it > 0 }
-        val format = resolveAudioFormatInfo(
-          codec = codec,
-          profile = reader.string("current-tracks/audio/codec-profile") ?: track?.codecProfile,
-          sampleRate = sampleRate,
-          bitsPerSample = if (tracks.size <= 1) tag("bits_per_sample", "bits_per_raw_sample", "bit_depth") else null,
-          bitrate = track?.effectiveBitrate,
-          trackMetadata = track?.metadata,
-        )
-        val channelCount = reader.int("audio-params/channel-count")?.takeIf { it > 0 }
-        val channelLayout = reader.string("audio-params/hr-channels")?.takeIf(String::isNotBlank)
-          ?: reader.string("audio-params/channels")?.takeIf(String::isNotBlank)
-          ?: channelCount?.let { appContext.resources.getQuantityString(R.plurals.audio_info_channel_count, it, it) }
-        val properties = buildList {
-          addProperty(
-            R.string.audio_info_track_title,
-            tag("title") ?: session.currentItem?.title?.takeIf(String::isNotBlank) ?: reader.string("media-title"),
-          )
-          addProperty(R.string.audio_info_artist, tag("artist") ?: session.currentItem?.artist)
-          addProperty(R.string.audio_info_album, tag("album"))
-          addProperty(R.string.audio_info_album_artist, tag("album_artist", "albumartist", "AlbumArtist", "album artist"))
-          addProperty(R.string.audio_info_genre, tag("genre"))
-          addProperty(R.string.audio_info_composer, tag("composer"))
-          addProperty(R.string.audio_info_date, tag("date", "year"))
-          addProperty(R.string.audio_info_track_number, tag("track", "tracknumber", "track_number"))
-          addProperty(R.string.audio_info_disc_number, tag("disc", "discnumber", "disc_number", "disk"))
-          addProperty(R.string.audio_info_isrc, tag("isrc"))
-          addProperty(R.string.audio_info_label, tag("label", "publisher", "organization", "record_label"))
-          addProperty(R.string.audio_info_copyright, tag("copyright"))
-          addProperty(
-            R.string.media_info_stat_format,
-            path.fileExtension().takeIf(String::isNotBlank)?.uppercase(java.util.Locale.ROOT)
-              ?: reader.string("file-format")?.uppercase(java.util.Locale.ROOT),
-          )
-          addProperty(R.string.audio_info_codec, format?.codecLabel ?: codec?.uppercase(java.util.Locale.ROOT))
-          addProperty(
-            R.string.media_info_stat_sample_rate,
-            sampleRate?.let { String.format(java.util.Locale.US, "%.1f kHz", it / 1000.0) },
-          )
-          addProperty(R.string.media_info_stat_bit_depth, format?.sourceBitDepth?.let { "$it-bit" })
-          addProperty(R.string.ui_bitrate, format?.bitrate?.let { "${it / 1000} kbps" })
-          addProperty(R.string.media_info_stat_channels, channelLayout)
-        }
-        path to properties
-      } ?: return@withContext emptyList()
+          val path =
+            session.currentItem?.originalUri?.takeIf(String::isNotBlank)
+              ?: reader.string("path")?.takeIf(String::isNotBlank)
+              ?: reader.string("stream-open-filename").orEmpty()
+          val track = tracks.firstOrNull(TrackNode::isSelected)
+          val codec = reader.string("current-tracks/audio/codec")?.takeIf(String::isNotBlank) ?: track?.codec
+          val sampleRate =
+            track?.demuxSampleRate?.toInt()?.takeIf { it > 0 }
+              ?: reader.int("audio-params/samplerate")?.takeIf { it > 0 }
+          val format =
+            resolveAudioFormatInfo(
+              codec = codec,
+              profile = reader.string("current-tracks/audio/codec-profile") ?: track?.codecProfile,
+              sampleRate = sampleRate,
+              bitsPerSample =
+                if (tracks.size <=
+                  1
+                ) {
+                  tag("bits_per_sample", "bits_per_raw_sample", "bit_depth")
+                } else {
+                  null
+                },
+              bitrate = track?.effectiveBitrate,
+              trackMetadata = track?.metadata,
+            )
+          val channelCount = reader.int("audio-params/channel-count")?.takeIf { it > 0 }
+          val channelLayout =
+            reader.string("audio-params/hr-channels")?.takeIf(String::isNotBlank)
+              ?: reader.string("audio-params/channels")?.takeIf(String::isNotBlank)
+              ?: channelCount?.let {
+                appContext.resources.getQuantityString(
+                  R.plurals.audio_info_channel_count,
+                  it,
+                  it,
+                )
+              }
+          val properties =
+            buildList {
+              addProperty(
+                R.string.audio_info_track_title,
+                tag("title") ?: session.currentItem?.title?.takeIf(String::isNotBlank) ?: reader.string("media-title"),
+              )
+              addProperty(R.string.audio_info_artist, tag("artist") ?: session.currentItem?.artist)
+              addProperty(R.string.audio_info_album, tag("album"))
+              addProperty(
+                R.string.audio_info_album_artist,
+                tag("album_artist", "albumartist", "AlbumArtist", "album artist"),
+              )
+              addProperty(R.string.audio_info_genre, tag("genre"))
+              addProperty(R.string.audio_info_composer, tag("composer"))
+              addProperty(R.string.audio_info_date, tag("date", "year"))
+              addProperty(R.string.audio_info_track_number, tag("track", "tracknumber", "track_number"))
+              addProperty(R.string.audio_info_disc_number, tag("disc", "discnumber", "disc_number", "disk"))
+              addProperty(R.string.audio_info_isrc, tag("isrc"))
+              addProperty(R.string.audio_info_label, tag("label", "publisher", "organization", "record_label"))
+              addProperty(R.string.audio_info_copyright, tag("copyright"))
+              addProperty(
+                R.string.media_info_stat_format,
+                path.fileExtension().takeIf(String::isNotBlank)?.uppercase(java.util.Locale.ROOT)
+                  ?: reader.string("file-format")?.uppercase(java.util.Locale.ROOT),
+              )
+              addProperty(R.string.audio_info_codec, format?.codecLabel ?: codec?.uppercase(java.util.Locale.ROOT))
+              addProperty(
+                R.string.media_info_stat_sample_rate,
+                sampleRate?.let { String.format(java.util.Locale.US, "%.1f kHz", it / 1000.0) },
+              )
+              addProperty(R.string.media_info_stat_bit_depth, format?.sourceBitDepth?.let { "$it-bit" })
+              addProperty(R.string.ui_bitrate, format?.bitrate?.let { "${it / 1000} kbps" })
+              addProperty(R.string.media_info_stat_channels, channelLayout)
+            }
+          path to properties
+        } ?: return@withContext emptyList()
 
       val (path, properties) = snapshot
-      val fileSize = if (path.isNotBlank()) {
-        try {
-          val uri = Uri.parse(path)
-          when (uri.scheme?.lowercase(java.util.Locale.ROOT)) {
-            null, "" -> java.io.File(path).length()
-            "file" -> uri.path?.let { java.io.File(it).length() }
-            "content" -> appContext.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize }
-            else -> null
-          }?.takeIf { it > 0 }
-        } catch (error: java.io.IOException) {
-          Log.w(TAG, "Unable to read the audio source size.", error)
-          null
-        } catch (error: SecurityException) {
-          Log.w(TAG, "Audio source size permission is unavailable.", error)
+      val fileSize =
+        if (path.isNotBlank()) {
+          try {
+            val uri = Uri.parse(path)
+            when (uri.scheme?.lowercase(java.util.Locale.ROOT)) {
+              null, "" -> java.io.File(path).length()
+              "file" -> uri.path?.let { java.io.File(it).length() }
+              "content" -> appContext.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize }
+              else -> null
+            }?.takeIf { it > 0 }
+          } catch (error: java.io.IOException) {
+            Log.w(TAG, "Unable to read the audio source size.", error)
+            null
+          } catch (error: SecurityException) {
+            Log.w(TAG, "Audio source size permission is unavailable.", error)
+            null
+          }
+        } else {
           null
         }
-      } else {
-        null
-      }
       buildList {
         addAll(properties)
-        addProperty(R.string.ui_file_size, fileSize?.let { android.text.format.Formatter.formatFileSize(appContext, it) })
+        addProperty(
+          R.string.ui_file_size,
+          fileSize?.let {
+            android.text.format.Formatter
+              .formatFileSize(appContext, it)
+          },
+        )
         addProperty(R.string.media_info_file_path, path)
       }
     }
 
   // Audio state
-  val maxVolume = (appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-  val currentVolume = MutableStateFlow((appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).getStreamVolume(AudioManager.STREAM_MUSIC))
+  val maxVolume =
+    (
+      appContext.getSystemService(
+        Context.AUDIO_SERVICE,
+      ) as AudioManager
+    ).getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+  val currentVolume =
+    MutableStateFlow(
+      (appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).getStreamVolume(AudioManager.STREAM_MUSIC),
+    )
   val currentVolumePercent = MutableStateFlow(systemVolumeToPercent(currentVolume.value))
 
   // UI state
@@ -2188,10 +2413,11 @@ class PlayerViewModel(
   val areControlsLocked: StateFlow<Boolean> = _areControlsLocked.asStateFlow()
 
   val playerUpdate = MutableStateFlow<PlayerUpdates>(PlayerUpdates.None)
-fun restartFromBeginning() {
-  seekTo(0)
-  runCatching { PlaybackSession.setPropertyBoolean("pause", false) }
-}
+
+  fun restartFromBeginning() {
+    seekTo(0)
+    runCatching { PlaybackSession.setPropertyBoolean("pause", false) }
+  }
 
   val isBrightnessSliderShown = MutableStateFlow(false)
   val isVolumeSliderShown = MutableStateFlow(false)
@@ -2236,14 +2462,23 @@ fun restartFromBeginning() {
     } else {
       val (item, positionMs) = PlaybackSession.bookmarkSnapshot() ?: return false
       if (bookmarkMediaId(item) != mediaId) return false
-      val timelinePosition = item.audiobook?.let { info ->
-        AudiobookPlayback.book.value?.takeIf { it.book.id == info.bookId }?.positionInBook(info.trackId, positionMs)
-      } ?: positionMs
+      val timelinePosition =
+        item.audiobook?.let { info ->
+          AudiobookPlayback.book.value
+            ?.takeIf { it.book.id == info.bookId }
+            ?.positionInBook(info.trackId, positionMs)
+        } ?: positionMs
       val chapter = sourceChapters.value.lastOrNull { it.start * 1000 <= timelinePosition }?.name ?: currentMediaTitle
-      val time = android.text.format.DateUtils.formatElapsedTime(timelinePosition / 1000)
-      _bookmarkDraft.value = app.gyrolet.mpvrx.database.entities.PlaybackBookmarkEntity(
-        mediaId = mediaId, bookTrackId = item.audiobook?.trackId, positionMs = positionMs, title = "$chapter $time".trim(),
-      )
+      val time =
+        android.text.format.DateUtils
+          .formatElapsedTime(timelinePosition / 1000)
+      _bookmarkDraft.value =
+        app.gyrolet.mpvrx.database.entities.PlaybackBookmarkEntity(
+          mediaId = mediaId,
+          bookTrackId = item.audiobook?.trackId,
+          positionMs = positionMs,
+          title = "$chapter $time".trim(),
+        )
     }
     return true
   }
@@ -2253,9 +2488,18 @@ fun restartFromBeginning() {
     return AudiobookPlayback.book.value?.positionInBook(trackId, bookmark.positionMs) ?: bookmark.positionMs
   }
 
-  suspend fun savePlaybackBookmark(bookmark: app.gyrolet.mpvrx.database.entities.PlaybackBookmarkEntity, title: String) {
+  suspend fun savePlaybackBookmark(
+    bookmark: app.gyrolet.mpvrx.database.entities.PlaybackBookmarkEntity,
+    title: String,
+  ) {
     require(title.isNotBlank())
-    if (bookmark.id == 0L) playbackBookmarkDao.add(bookmark.copy(title = title.trim())) else playbackBookmarkDao.rename(bookmark.id, title.trim())
+    if (bookmark.id ==
+      0L
+    ) {
+      playbackBookmarkDao.add(bookmark.copy(title = title.trim()))
+    } else {
+      playbackBookmarkDao.rename(bookmark.id, title.trim())
+    }
   }
 
   suspend fun deletePlaybackBookmark(bookmark: app.gyrolet.mpvrx.database.entities.PlaybackBookmarkEntity) {
@@ -2265,27 +2509,47 @@ fun restartFromBeginning() {
   fun seekToBookmark(bookmark: app.gyrolet.mpvrx.database.entities.PlaybackBookmarkEntity) {
     if (bookmark.mediaId != bookmarkMediaId(PlaybackSession.state.value.currentItem)) return
     cancelScrubSeeks()
-    if (bookmark.bookTrackId != null) AudiobookPlayback.seekToBookmark(bookmark.bookTrackId, bookmark.positionMs)
-    else PlaybackSession.command("seek", (bookmark.positionMs / 1000.0).toString(), "absolute+exact")
+    if (bookmark.bookTrackId != null) {
+      AudiobookPlayback.seekToBookmark(bookmark.bookTrackId, bookmark.positionMs)
+    } else {
+      PlaybackSession.command("seek", (bookmark.positionMs / 1000.0).toString(), "absolute+exact")
+    }
   }
 
   fun seekToPlaybackChapter(chapter: dev.vivvvek.seeker.Segment) {
     if (!chapter.start.isFinite() || chapter.start < 0) return
     cancelScrubSeeks()
-    if (PlaybackSession.state.value.currentItem?.audiobook != null) AudiobookPlayback.seekInBook((chapter.start * 1000).toLong())
-    else PlaybackSession.command("seek", chapter.start.toString(), "absolute+exact")
+    if (PlaybackSession.state.value.currentItem
+        ?.audiobook !=
+      null
+    ) {
+      AudiobookPlayback.seekInBook((chapter.start * 1000).toLong())
+    } else {
+      PlaybackSession.command("seek", chapter.start.toString(), "absolute+exact")
+    }
   }
 
   fun stepPlaybackChapter(direction: Int) {
     if (direction !in setOf(-1, 1)) return
     val (item, positionMs) = PlaybackSession.bookmarkSnapshot() ?: return
-    val position = item.audiobook?.let { info ->
-      AudiobookPlayback.book.value?.takeIf { it.book.id == info.bookId }?.positionInBook(info.trackId, positionMs)
-    } ?: positionMs
+    val position =
+      item.audiobook?.let { info ->
+        AudiobookPlayback.book.value
+          ?.takeIf { it.book.id == info.bookId }
+          ?.positionInBook(info.trackId, positionMs)
+      } ?: positionMs
     val chapters = playbackChapters.value
     val index = chapters.indexOfLast { it.start * 1000 <= position }
     val current = chapters.getOrNull(index)
-    val target = if (direction < 0 && current != null && position - current.start * 1000 > 3000) current else chapters.getOrNull(index + direction)
+    val target =
+      if (direction < 0 &&
+        current != null &&
+        position - current.start * 1000 > 3000
+      ) {
+        current
+      } else {
+        chapters.getOrNull(index + direction)
+      }
     target?.let(::seekToPlaybackChapter)
   }
 
@@ -2295,10 +2559,16 @@ fun restartFromBeginning() {
     val track = book.tracks.firstOrNull { it.id == progress.item.trackId } ?: return
     val offset = book.positionInBook(track.id, 0)
     val position = offset + progress.positionMs
-    val nextStart = playbackChapters.value.firstOrNull { it.start * 1000 > position }?.start?.times(1000)?.toLong()
+    val nextStart =
+      playbackChapters.value
+        .firstOrNull { it.start * 1000 > position }
+        ?.start
+        ?.times(1000)
+        ?.toLong()
     val localEnd = nextStart?.minus(offset)?.coerceAtMost(track.durationMs) ?: track.durationMs
     AudiobookPlayback.setTimer(null, localEnd)
   }
+
   val isPlaylistSwipeActive = MutableStateFlow(false)
   val playlistSwipeOffset = MutableStateFlow(0f)
   val panelShown = MutableStateFlow(Panels.None)
@@ -2351,9 +2621,7 @@ fun restartFromBeginning() {
   val currentAspectRatio: StateFlow<Double> = _currentAspectRatio.asStateFlow()
 
   // Timer
-  private var timerJob: Job? = null
-  private val _remainingTime = MutableStateFlow(0)
-  val remainingTime: StateFlow<Int> = _remainingTime.asStateFlow()
+  val remainingTime = PlaybackSession.sleepTimerRemaining
 
   // Media title for subtitle association
   var currentMediaTitle: String = ""
@@ -2445,13 +2713,13 @@ fun restartFromBeginning() {
   private val _hdrScreenMode = MutableStateFlow(initialHdrScreenMode())
   val hdrScreenMode: StateFlow<HdrScreenMode> = _hdrScreenMode.asStateFlow()
 
-  private val _isGpuNextEnabled = MutableStateFlow(decoderPreferences.gpuNext.get())
-  private val _isVulkanEnabled = MutableStateFlow(decoderPreferences.useVulkan.get())
+  private val gpuNextEnabledState = MutableStateFlow(decoderPreferences.gpuNext.get())
+  private val vulkanEnabledState = MutableStateFlow(decoderPreferences.useVulkan.get())
 
   /** Whether the renderer can send HDR to the display, which modes with needsNativeHdrOutput need. */
   val isNativeHdrOutputAvailable: StateFlow<Boolean> =
-    combine(_isGpuNextEnabled, _isVulkanEnabled) { gpuNext, vulkan -> gpuNext && vulkan }
-      .stateIn(viewModelScope, SharingStarted.Eagerly, _isGpuNextEnabled.value && _isVulkanEnabled.value)
+    combine(gpuNextEnabledState, vulkanEnabledState) { gpuNext, vulkan -> gpuNext && vulkan }
+      .stateIn(viewModelScope, SharingStarted.Eagerly, gpuNextEnabledState.value && vulkanEnabledState.value)
 
   private val _isHdrScreenOutputPipelineReady = MutableStateFlow(isHdrScreenOutputAvailable())
   val isHdrScreenOutputPipelineReady: StateFlow<Boolean> = _isHdrScreenOutputPipelineReady.asStateFlow()
@@ -2492,14 +2760,25 @@ fun restartFromBeginning() {
   val ambientOpacity: StateFlow<Float> = _ambientOpacity.asStateFlow()
 
   private val _ambientGlowEdgeBlend =
-    MutableStateFlow(playerPreferences.ambientGlowEdgeBlend.get().takeIf { it.isFinite() }?.coerceIn(0f, 0.1f) ?: 0f)
+    MutableStateFlow(
+      playerPreferences.ambientGlowEdgeBlend
+        .get()
+        .takeIf { it.isFinite() }
+        ?.coerceIn(0f, 0.1f) ?: 0f,
+    )
   val ambientGlowEdgeBlend: StateFlow<Float> = _ambientGlowEdgeBlend.asStateFlow()
 
   private val _ambientYouTubeEdgeBlend =
-    MutableStateFlow(playerPreferences.ambientYouTubeEdgeBlend.get().takeIf { it.isFinite() }?.coerceIn(0f, 0.1f) ?: 0f)
+    MutableStateFlow(
+      playerPreferences.ambientYouTubeEdgeBlend
+        .get()
+        .takeIf { it.isFinite() }
+        ?.coerceIn(0f, 0.1f) ?: 0f,
+    )
   val ambientYouTubeEdgeBlend: StateFlow<Float> = _ambientYouTubeEdgeBlend.asStateFlow()
 
   @Volatile private var lastAmbientGeometry: AmbientGeometry? = null
+
   @Volatile private var isAmbientPipActive = false
   private var ambientDebounceJob: kotlinx.coroutines.Job? = null
   private val ambientScheduleLock = Any()
@@ -2507,10 +2786,11 @@ fun restartFromBeginning() {
   private val ambientUpdateGeneration = AtomicLong()
   private val _isAmbientLifecycleActive = MutableStateFlow(false)
   val isAmbientLifecycleActive: StateFlow<Boolean> = _isAmbientLifecycleActive.asStateFlow()
+
   @Volatile private var ambientShaderFile: java.io.File? = null
 
   /**
-  * Caches the [AmbientGlowShaderSpec] that was last compiled into a GLSL file.
+   * Caches the [AmbientGlowShaderSpec] that was last compiled into a GLSL file.
    * When [updateAmbientStretch] is called but every parameter is identical to
    * the previously compiled spec, the expensive string-build + file-write +
    * MPV shader-reload cycle is skipped entirely.
@@ -2567,6 +2847,7 @@ fun restartFromBeginning() {
   private val ppRenderLock = Any()
   private val ppUpdateGeneration = AtomicLong()
   private var ppDebounceJob: Job? = null
+
   @Volatile private var lastCompiledPpSpec: Pair<PostProcessingPreset, PostProcessingParams>? = null
 
   // ==================== Motion Interpolation (FongMi) ======================
@@ -2596,6 +2877,7 @@ fun restartFromBeginning() {
 
   @Volatile
   private var customButtonsScriptPaths: Map<CustomButtonScriptLanguage, String> = emptyMap()
+
   @Volatile
   private var customButtonsScriptVersions: Map<CustomButtonScriptLanguage, String> = emptyMap()
   private val legacyCustomButtonsLoadedFlagProperty = "user-data/mpvrx/custombuttons_loaded"
@@ -2631,11 +2913,22 @@ fun restartFromBeginning() {
       audioPreferences.floatingLyricsEnabled.changes().distinctUntilChanged().collectLatest { enabled ->
         if (!enabled) return@collectLatest
         try {
-          combine(lyricsUiState, _isMpvCoreReady, isAudioOnly, PlaybackSession.state) { lyrics, ready, audio, session ->
+          combine(
+            lyricsUiState,
+            mpvCoreReadyState,
+            isAudioOnly,
+            PlaybackSession.state,
+          ) { lyrics, ready, audio, session ->
             val item = session.currentItem
             val path = item?.originalUri
-            if (ready && audio && item != null && item.audiobook == null && !path.isNullOrBlank() &&
-              session.generation > 0L && lyricsStateGeneration == session.generation && lyricsStatePath == path
+            if (ready &&
+              audio &&
+              item != null &&
+              item.audiobook == null &&
+              !path.isNullOrBlank() &&
+              session.generation > 0L &&
+              lyricsStateGeneration == session.generation &&
+              lyricsStatePath == path
             ) {
               PlaybackLyricsSnapshot(
                 mediaPath = path,
@@ -2662,7 +2955,8 @@ fun restartFromBeginning() {
       }
     }
     // Clean up any stale ambient shader files left in cacheDir from previous abnormal exits
-    appContext.cacheDir.listFiles { _, name -> name.startsWith("ambient_") && name.endsWith(".glsl") }
+    appContext.cacheDir
+      .listFiles { _, name -> name.startsWith("ambient_") && name.endsWith(".glsl") }
       ?.forEach { runCatching { it.delete() } }
     // Immediately clear old lyrics when a track changes, even without a foreground Activity.
     // Allow mpv to finish publishing the next song's tags before the fallback lookup.
@@ -2684,13 +2978,13 @@ fun restartFromBeginning() {
     }
     viewModelScope.launch {
       decoderPreferences.gpuNext.changes().collect { enabled ->
-        _isGpuNextEnabled.value = enabled
+        gpuNextEnabledState.value = enabled
         reconcileHdrModeWithRenderer()
       }
     }
     viewModelScope.launch {
       decoderPreferences.useVulkan.changes().collect { enabled ->
-        _isVulkanEnabled.value = enabled
+        vulkanEnabledState.value = enabled
         reconcileHdrModeWithRenderer()
       }
     }
@@ -2732,7 +3026,11 @@ fun restartFromBeginning() {
         .distinctUntilChanged()
         .collect {
           val phase = PlaybackSession.state.value.phase
-          if (!_isMpvCoreReady.value || (phase != PlaybackPhase.READY && phase != PlaybackPhase.BACKGROUND)) return@collect
+          if (!mpvCoreReadyState.value ||
+            (phase != PlaybackPhase.READY && phase != PlaybackPhase.BACKGROUND)
+          ) {
+            return@collect
+          }
           val position = PlaybackSession.getPropertyDouble("time-pos") ?: return@collect
           maybeAutoSkipIntro(position)
         }
@@ -2750,9 +3048,9 @@ fun restartFromBeginning() {
       while (isActive) {
         val playbackPhase = PlaybackSession.state.value.phase
         val hasActiveTimeline = playbackPhase == PlaybackPhase.READY || playbackPhase == PlaybackPhase.BACKGROUND
-        if (!_isMpvCoreReady.value || !hasActiveTimeline) {
+        if (!mpvCoreReadyState.value || !hasActiveTimeline) {
           // A collapsed in-app sheet keeps its state for the session; it must not keep waking up.
-          if (hostedInBrowser && !_isMpvCoreReady.value) _isMpvCoreReady.first { it } else delay(250L)
+          if (hostedInBrowser && !mpvCoreReadyState.value) mpvCoreReadyState.first { it } else delay(250L)
           continue
         }
         runCatching {
@@ -2785,7 +3083,7 @@ fun restartFromBeginning() {
     // which would otherwise manifest as dropped frames and accelerated battery drain.
     viewModelScope.launch(playbackStateDispatcher) {
       while (isActive) {
-        if (_isMpvCoreReady.value && paused == false) {
+        if (mpvCoreReadyState.value && paused == false) {
           val newHeadroom = ThermalMonitor.getHeadroom(appContext)
           if (kotlin.math.abs(newHeadroom - thermalHeadroom) > 0.08f) {
             thermalHeadroom = newHeadroom
@@ -2806,7 +3104,7 @@ fun restartFromBeginning() {
     // Update precise duration when the integer duration changes (avoid polling)
     viewModelScope.launch(playbackStateDispatcher) {
       _duration.collect { observedDuration ->
-        if (!_isMpvCoreReady.value) return@collect
+        if (!mpvCoreReadyState.value) return@collect
         if (observedDuration == null || observedDuration <= 0) {
           _preciseDuration.value = 0f
           return@collect
@@ -2834,40 +3132,44 @@ fun restartFromBeginning() {
 
     // Crop, aspect and ambient work belongs to the video player's surface, never to the in-app sheet.
 
-    if (!hostedInBrowser) viewModelScope.launch {
-      val activeGeneration =
-        PlaybackSession.state
-          .map { state ->
-            state.generation.takeIf {
-              state.surfaceAttached &&
-                (state.phase == PlaybackPhase.READY || state.phase == PlaybackPhase.BACKGROUND)
-            }
-          }.distinctUntilChanged()
+    if (!hostedInBrowser) {
+      viewModelScope.launch {
+        val activeGeneration =
+          PlaybackSession.state
+            .map { state ->
+              state.generation.takeIf {
+                state.surfaceAttached &&
+                  (state.phase == PlaybackPhase.READY || state.phase == PlaybackPhase.BACKGROUND)
+              }
+            }.distinctUntilChanged()
 
-      combine(
-        PlaybackSession.propString["video-crop"],
-        activeGeneration,
-        _isMpvCoreReady,
-      ) { crop, generation, coreReady -> Triple(crop, generation, coreReady) }
-        .distinctUntilChanged()
-        .collect { (_, generation, coreReady) ->
-          if (!coreReady || generation == null) {
-            disableAmbientShader()
-            return@collect
+        combine(
+          PlaybackSession.propString["video-crop"],
+          activeGeneration,
+          mpvCoreReadyState,
+        ) { crop, generation, coreReady -> Triple(crop, generation, coreReady) }
+          .distinctUntilChanged()
+          .collect { (_, generation, coreReady) ->
+            if (!coreReady || generation == null) {
+              disableAmbientShader()
+              return@collect
+            }
+            refreshStretchAspectAfterCropChange()
+            restartAmbientIfActive()
           }
-          refreshStretchAspectAfterCropChange()
-          restartAmbientIfActive()
-        }
+      }
     }
 
-    if (!hostedInBrowser) viewModelScope.launch {
-      combine(
-        PlaybackSession.propInt["osd-width"],
-        PlaybackSession.propInt["osd-height"],
-        PlaybackSession.propInt["video-out-params/dw"],
-        PlaybackSession.propInt["video-out-params/dh"],
-        PlaybackSession.propInt["video-out-params/rotate"],
-      ) { _, _, _, _, _ -> Unit }.collect { onAmbientGeometryChanged() }
+    if (!hostedInBrowser) {
+      viewModelScope.launch {
+        combine(
+          PlaybackSession.propInt["osd-width"],
+          PlaybackSession.propInt["osd-height"],
+          PlaybackSession.propInt["video-out-params/dw"],
+          PlaybackSession.propInt["video-out-params/dh"],
+          PlaybackSession.propInt["video-out-params/rotate"],
+        ) { _, _, _, _, _ -> Unit }.collect { onAmbientGeometryChanged() }
+      }
     }
 
     viewModelScope.launch {
@@ -2942,62 +3244,72 @@ fun restartFromBeginning() {
         // Re-sending the unchanged filter chain to a playing core rebuilds it and audibly hiccups.
         .drop(if (hostedInBrowser) 1 else 0)
         .collect {
-          if (!_isMpvCoreReady.value) return@collect
+          if (!mpvCoreReadyState.value) return@collect
           applyEqualizerMpvFilters(immediate = true)
         }
     }
 
-    if (!hostedInBrowser) viewModelScope.launch {
-      combine(
-        ytdlPreferences.writeSubs.changes(),
-        ytdlPreferences.writeAutoSubs.changes(),
-        ytdlPreferences.subtitleLanguages.changes(),
-        subtitlesPreferences.preferredLanguages.changes(),
-      ) { _, _, _, _ -> YtdlpOptionSettings.fromPreferences(ytdlPreferences, subtitlesPreferences) }
-        .distinctUntilChanged()
-        .drop(1)
-        .collect {
-          if (_isMpvCoreReady.value && !MpvConfigOverridePolicy.isOwnedByMpvConf("ytdl-raw-options")) {
-            host?.reloadCurrentYtdlSubtitles()
+    if (!hostedInBrowser) {
+      viewModelScope.launch {
+        combine(
+          ytdlPreferences.writeSubs.changes(),
+          ytdlPreferences.writeAutoSubs.changes(),
+          ytdlPreferences.subtitleLanguages.changes(),
+          subtitlesPreferences.preferredLanguages.changes(),
+        ) { _, _, _, _ -> YtdlpOptionSettings.fromPreferences(ytdlPreferences, subtitlesPreferences) }
+          .distinctUntilChanged()
+          .drop(1)
+          .collect {
+            if (mpvCoreReadyState.value && !MpvConfigOverridePolicy.isOwnedByMpvConf("ytdl-raw-options")) {
+              host?.reloadCurrentYtdlSubtitles()
+            }
           }
-        }
+      }
     }
 
     // Embedded settings do not leave/resume the Activity. Apply these preference changes to
     // the active core as they happen, preserving the current session on the initial emission.
     viewModelScope.launch(playbackStateDispatcher) {
       audioPreferences.audioPitchCorrection.changes().distinctUntilChanged().drop(1).collect { enabled ->
-        if (_isMpvCoreReady.value) PlaybackSession.setPropertyBoolean("audio-pitch-correction", enabled)
+        if (mpvCoreReadyState.value) PlaybackSession.setPropertyBoolean("audio-pitch-correction", enabled)
       }
     }
     viewModelScope.launch(playbackStateDispatcher) {
       audioPreferences.audioPassthrough.changes().distinctUntilChanged().drop(1).collect { passthrough ->
         // mpv reopens the audio decoder and falls back to PCM if the output rejects the format.
         // Set the output first, so that reopening uses AudioTrack while passthrough is on.
-        if (_isMpvCoreReady.value) {
+        if (mpvCoreReadyState.value) {
           PlaybackSession.setPropertyString("ao", audioPreferences.mpvAudioOutput())
           PlaybackSession.setPropertyString("audio-spdif", passthrough.codecs)
         }
       }
     }
     // FongMi's mpv reports that fallback. Say so once per setting, not on every file of a playlist.
-    if (FongMiMpv.isBuildSupported && !hostedInBrowser) viewModelScope.launch {
-      var notified = false
-      launch { audioPreferences.audioPassthrough.changes().drop(1).collect { notified = false } }
-      PlaybackSession.propBoolean[FongMiMpv.AUDIO_PASSTHROUGH_FAILED]
-        .map { it == true }
-        .distinctUntilChanged()
-        .collect { failed ->
-          if (failed && !notified && audioPreferences.audioPassthrough.get() != AudioPassthrough.Off) {
-            notified = true
-            showToast(appContext.getString(R.string.player_passthrough_failed))
-          }
+    if (FongMiMpv.isBuildSupported && !hostedInBrowser) {
+      viewModelScope.launch {
+        var notified = false
+        launch {
+          audioPreferences.audioPassthrough
+            .changes()
+            .drop(1)
+            .collect { notified = false }
         }
+        PlaybackSession.propBoolean[FongMiMpv.AUDIO_PASSTHROUGH_FAILED]
+          .map { it == true }
+          .distinctUntilChanged()
+          .collect { failed ->
+            if (failed && !notified && audioPreferences.audioPassthrough.get() != AudioPassthrough.Off) {
+              notified = true
+              showToast(appContext.getString(R.string.player_passthrough_failed))
+            }
+          }
+      }
     }
     viewModelScope.launch(playbackStateDispatcher) {
       audioPreferences.audioOutput.changes().distinctUntilChanged().drop(1).collect { output ->
         // Passthrough keeps AudioTrack; the choice applies once passthrough is off again.
-        if (_isMpvCoreReady.value && audioPreferences.mpvAudioOutput() == output.mpvValue &&
+        if (mpvCoreReadyState.value &&
+          audioPreferences.mpvAudioOutput() == output.mpvValue &&
           !MpvConfigOverridePolicy.isOwnedByMpvConf("ao")
         ) {
           PlaybackSession.setPropertyString("ao", output.mpvValue)
@@ -3007,14 +3319,14 @@ fun restartFromBeginning() {
     }
     viewModelScope.launch(playbackStateDispatcher) {
       subtitlesPreferences.overrideAssSubs.changes().distinctUntilChanged().drop(1).collect { force ->
-        if (_isMpvCoreReady.value) {
+        if (mpvCoreReadyState.value) {
           applySubtitleLayout(subtitlesPreferences.subPos.get(), force, subtitlesPreferences.secondarySubPos.get())
         }
       }
     }
     viewModelScope.launch(playbackStateDispatcher) {
       subtitlesPreferences.scaleByWindow.changes().distinctUntilChanged().drop(1).collect { enabled ->
-        if (_isMpvCoreReady.value) {
+        if (mpvCoreReadyState.value) {
           val value = if (enabled) "yes" else "no"
           PlaybackSession.setPropertyString("sub-scale-by-window", value)
           PlaybackSession.setPropertyString("sub-use-margins", value)
@@ -3028,7 +3340,7 @@ fun restartFromBeginning() {
       combine(_duration, abLoopState, playerPreferences.usePreciseSeeking.changes()) { duration, abLoop, usePrecise ->
         Triple(duration ?: 0, abLoop.a != null || abLoop.b != null, usePrecise)
       }.collect { (duration, isLoopActive, usePrecise) ->
-        if (!_isMpvCoreReady.value || duration <= 0) return@collect
+        if (!mpvCoreReadyState.value || duration <= 0) return@collect
         val precise = usePrecise || duration < 120 || isLoopActive
         PlaybackSession.setPropertyString("hr-seek", if (precise) "yes" else "no")
         PlaybackSession.setPropertyString("hr-seek-framedrop", if (precise) "no" else "yes")
@@ -3037,9 +3349,11 @@ fun restartFromBeginning() {
 
     // Refresh custom buttons whenever their configuration changes. Their scripts live in the
     // shared core, so only the player screen that loaded them may rebuild them.
-    if (!hostedInBrowser) viewModelScope.launch {
-      playerPreferences.customButtons.changes().drop(1).collect {
-        setupCustomButtons()
+    if (!hostedInBrowser) {
+      viewModelScope.launch {
+        playerPreferences.customButtons.changes().drop(1).collect {
+          setupCustomButtons()
+        }
       }
     }
 
@@ -3079,7 +3393,7 @@ fun restartFromBeginning() {
    * script, a `filesDir/scripts` write and a Main-thread hop — from Activity construction.
    */
   fun onMpvCoreInitialized() {
-    _isMpvCoreReady.value = true
+    mpvCoreReadyState.value = true
     scheduleAmbientUpdate(0)
     startMpvStateCollectors()
     motionInterpolation.refresh()
@@ -3093,7 +3407,7 @@ fun restartFromBeginning() {
   fun onMpvCoreStopping() {
     stopRealtimeSubtitles(showToastMessage = false)
     disableAmbientShader()
-    _isMpvCoreReady.value = false
+    mpvCoreReadyState.value = false
     isMpvReadyForCustomButtons = false
     runCatching { syncplayManager.clearPlayerBindings() }
     mpvStateCollectorsJob?.cancel()
@@ -3104,7 +3418,7 @@ fun restartFromBeginning() {
     _paused.value = null
     _pos.value = null
     _duration.value = null
-    _volumeBoostCap.value = null
+    volumeBoostCapState.value = null
     _precisePosition.value = 0f
     _preciseDuration.value = 0f
   }
@@ -3124,8 +3438,12 @@ fun restartFromBeginning() {
       viewModelScope.launch(playbackStateDispatcher) {
         // Seed the timeline before the polling loop wakes, so the sheet never opens at 0:00.
         PlaybackSession.getPropertyDouble("time-pos")?.let { _precisePosition.value = it.toFloat() }
-        PlaybackSession.getPropertyDouble("duration")?.takeIf { it > 0.0 }?.let { _preciseDuration.value = it.toFloat() }
-        _isMpvCoreReady.value = true
+        PlaybackSession
+          .getPropertyDouble(
+            "duration",
+          )?.takeIf { it > 0.0 }
+          ?.let { _preciseDuration.value = it.toFloat() }
+        mpvCoreReadyState.value = true
         startMpvStateCollectors()
         refreshPlaylistItems()
         launch {
@@ -3178,7 +3496,7 @@ fun restartFromBeginning() {
     // Queued behind any attach work on the same single-threaded dispatcher, so it always wins.
     viewModelScope.launch(playbackStateDispatcher) {
       if (detachedPlaybackJob != null) return@launch
-      _isMpvCoreReady.value = false
+      mpvCoreReadyState.value = false
       mpvStateCollectorsJob?.cancel()
       mpvStateCollectorsJob = null
     }
@@ -3200,7 +3518,7 @@ fun restartFromBeginning() {
           }
         }
         launch { PlaybackSession.propInt["duration"].collect { _duration.value = it } }
-        launch { PlaybackSession.propInt["volume-max"].collect { _volumeBoostCap.value = it } }
+        launch { PlaybackSession.propInt["volume-max"].collect { volumeBoostCapState.value = it } }
         launch {
           var wasSeeking = false
           PlaybackSession.propBoolean["seeking"].collect { seeking ->
@@ -3212,7 +3530,11 @@ fun restartFromBeginning() {
               wasSeeking -> {
                 wasSeeking = false
                 if (_isRealtimeSubsActive.value) {
-                  val positionMs = ((PlaybackSession.getPropertyDouble("time-pos") ?: _precisePosition.value.toDouble()) * 1000).toLong()
+                  val positionMs =
+                    (
+                      (PlaybackSession.getPropertyDouble("time-pos") ?: _precisePosition.value.toDouble()) *
+                        1000
+                    ).toLong()
                   realtimeSubtitleService.seekTo(positionMs)
                 }
               }
@@ -3512,12 +3834,16 @@ fun restartFromBeginning() {
                       loadCustomButtonsScript(File(path), target)
                     }
                   if (!loaded) {
-                    app.gyrolet.mpvrx.utils.logging.Log.w("PlayerViewModel", "Failed to load ${target.fileName}")
+                    app.gyrolet.mpvrx.utils.logging.Log
+                      .w("PlayerViewModel", "Failed to load ${target.fileName}")
                   }
                 }
               }
             } else {
-              app.gyrolet.mpvrx.utils.logging.Log.d("PlayerViewModel", "Deferring custom button scripts until MPV is ready")
+              app.gyrolet.mpvrx.utils.logging.Log.d(
+                "PlayerViewModel",
+                "Deferring custom button scripts until MPV is ready",
+              )
             }
           } else {
             customButtonsScriptPaths = emptyMap()
@@ -3528,7 +3854,8 @@ fun restartFromBeginning() {
             }
           }
         } catch (e: Exception) {
-          app.gyrolet.mpvrx.utils.logging.Log.e("PlayerViewModel", "Error setting up custom buttons", e)
+          app.gyrolet.mpvrx.utils.logging.Log
+            .e("PlayerViewModel", "Error setting up custom buttons", e)
         }
       }
   }
@@ -3556,7 +3883,10 @@ fun restartFromBeginning() {
 
           val file = File(scriptPath)
           if (!file.exists()) {
-            app.gyrolet.mpvrx.utils.logging.Log.w("PlayerViewModel", "${target.fileName} missing during $reason, rebuilding")
+            app.gyrolet.mpvrx.utils.logging.Log.w(
+              "PlayerViewModel",
+              "${target.fileName} missing during $reason, rebuilding",
+            )
             rebuildNeeded = true
             break
           }
@@ -3566,7 +3896,8 @@ fun restartFromBeginning() {
               loadCustomButtonsScript(file, target)
             }
           if (!loaded) {
-            app.gyrolet.mpvrx.utils.logging.Log.w("PlayerViewModel", "${target.fileName} load failed during $reason")
+            app.gyrolet.mpvrx.utils.logging.Log
+              .w("PlayerViewModel", "${target.fileName} load failed during $reason")
           }
         }
       }
@@ -3587,16 +3918,22 @@ fun restartFromBeginning() {
     // Reopening a window against the same core must not spawn another script instance. The
     // version flags belong to that core, so a rebuilt core still loads the generated file.
     val version = customButtonsScriptVersions[target.language]
-    if (version != null && isCustomButtonsScriptLoaded(target) &&
+    if (version != null &&
+      isCustomButtonsScriptLoaded(target) &&
       PlaybackSession.getPropertyString(target.versionProperty) == version
-    ) return true
+    ) {
+      return true
+    }
     runCatching { PlaybackSession.setPropertyString(target.loadedFlagProperty, "0") }
 
     return runCatching {
       PlaybackSession.command("load-script", file.absolutePath)
       true
     }.getOrElse {
-      app.gyrolet.mpvrx.utils.logging.Log.w("PlayerViewModel", "load-script failed for ${target.fileName}: ${it.message}")
+      app.gyrolet.mpvrx.utils.logging.Log.w(
+        "PlayerViewModel",
+        "load-script failed for ${target.fileName}: ${it.message}",
+      )
       false
     }
   }
@@ -3793,10 +4130,13 @@ fun restartFromBeginning() {
   )
 
   private val scrubSeeks = Channel<ScrubSeek>(Channel.CONFLATED)
+
   // Every scrub request and every other seek takes a new serial; the worker skips all but the newest.
   private val scrubSerial = AtomicLong()
+
   // Bumped by seeks from other paths. A scrub seek from an older epoch must never reach mpv after them.
   private val scrubEpoch = AtomicLong()
+
   // Serial of the final request whose target the thumb holds until mpv lands there, or 0.
   private val settlingScrubSerial = AtomicLong()
   private val scrubSeekWorker: Job by lazy { launchScrubSeekWorker() }
@@ -3815,11 +4155,14 @@ fun restartFromBeginning() {
   private companion object {
     const val TAG = "PlayerViewModel"
     const val AUTO_SHOW_SKIP_CHIP_DURATION = 10.0
+
     // mpv-android's seekbar step (SEEK_BAR_PRECISION = 2). Finer moves only re-decode the same frame.
     const val SCRUB_SEEK_STEP_SECONDS = 0.5
+
     // mpv keeps `seeking` set while seeks queue up, so this much idle time means the last one landed.
     const val SCRUB_SETTLE_IDLE_MS = 120L
     const val SCRUB_SETTLE_POLL_MS = 16L
+
     // Never hold the thumb longer than this on a stream that cannot finish its seek.
     const val SCRUB_SETTLE_TIMEOUT_MS = 1_500L
     const val FRAME_SEEK_POLL_INTERVAL_MS = 10L
@@ -3831,10 +4174,25 @@ fun restartFromBeginning() {
     const val FRAME_SEEK_CORRECTION_SETTLE_MS = 40L
     val QUALITY_HEIGHT_REGEX = Regex("""(?i)(\d{3,4})p""")
     val EDITION_BITRATE_REGEX = Regex("""Bitrate:\s*([\d.]+)\s*(kbps|Mbps)""", RegexOption.IGNORE_CASE)
-    val VIDEO_QUALITY_STREAM_SCHEMES = setOf(
-      "http", "https", "ftp", "ftps", "rtmp", "rtmps", "rtsp", "rtsps", "mms", "mmsh",
-      "srt", "rist", "udp", "tcp", NetworkPlaybackUri.SCHEME, XtreamPlaybackUri.SCHEME,
-    )
+    val VIDEO_QUALITY_STREAM_SCHEMES =
+      setOf(
+        "http",
+        "https",
+        "ftp",
+        "ftps",
+        "rtmp",
+        "rtmps",
+        "rtsp",
+        "rtsps",
+        "mms",
+        "mmsh",
+        "srt",
+        "rist",
+        "udp",
+        "tcp",
+        NetworkPlaybackUri.SCHEME,
+        XtreamPlaybackUri.SCHEME,
+      )
     val MPV_ONLY_PSEUDO_PROTOCOLS =
       setOf("fd", "fdclose", "edl", "memory", "null", "av", "lavf", "archive", "slice", "mf", "hex", "bd", "dvd", "dvb")
     const val PLAYLIST_METADATA_PREFETCH_RADIUS = 40
@@ -3897,21 +4255,7 @@ fun restartFromBeginning() {
 
   // ==================== Timer ====================
 
-  fun startTimer(seconds: Int) {
-    timerJob?.cancel()
-    _remainingTime.value = seconds
-    if (seconds < 1) return
-
-    timerJob =
-      viewModelScope.launch {
-        for (time in seconds downTo 0) {
-          _remainingTime.value = time
-          delay(1000)
-        }
-        PlaybackSession.setPropertyBoolean("pause", true)
-        showToast(appContext.getString(R.string.toast_sleep_timer_ended))
-      }
-  }
+  fun startTimer(seconds: Int) = PlaybackSession.startSleepTimer(seconds)
 
   // ==================== Decoder ====================
 
@@ -3972,15 +4316,19 @@ fun restartFromBeginning() {
         }
 
         if (!forRestore && audioTracks.value.any { it.externalFilename == path }) {
-          app.gyrolet.mpvrx.utils.logging.Log.d("PlayerViewModel", "Audio already loaded by MPV, skipping audio-add: $path")
+          app.gyrolet.mpvrx.utils.logging.Log.d(
+            "PlayerViewModel",
+            "Audio already loaded by MPV, skipping audio-add: $path",
+          )
           return@withLock
         }
 
         val title = getFileNameFromUri(uri)?.substringBeforeLast(".")?.ifBlank { null }
         if (forRestore) {
-          val added = withContext(Dispatchers.IO) {
-            ExternalAudioDiscovery.addIfAbsent(path, restoreGeneration, title)
-          }
+          val added =
+            withContext(Dispatchers.IO) {
+              ExternalAudioDiscovery.addIfAbsent(path, restoreGeneration, title)
+            }
           if (!added) return@withLock
         } else {
           withContext(Dispatchers.Main) {
@@ -3998,7 +4346,8 @@ fun restartFromBeginning() {
             showToast("Failed to load audio: ${e.message}")
           }
         }
-        app.gyrolet.mpvrx.utils.logging.Log.e("PlayerViewModel", "Error adding audio", e)
+        app.gyrolet.mpvrx.utils.logging.Log
+          .e("PlayerViewModel", "Error adding audio", e)
       }
     }
   }
@@ -4021,7 +4370,8 @@ fun restartFromBeginning() {
     subtitleAddMutex.withLock {
       val uriString = uri.toString()
       if (_externalSubtitles.contains(uriString)) {
-        app.gyrolet.mpvrx.utils.logging.Log.d("PlayerViewModel", "Subtitle already tracked, skipping: $uriString")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("PlayerViewModel", "Subtitle already tracked, skipping: $uriString")
         return@withLock
       }
 
@@ -4059,7 +4409,10 @@ fun restartFromBeginning() {
         // Check if MPV already auto-loaded this subtitle (prevents duplication)
         val existingTrack = subtitleTracks.value.find { it.externalFilename == mpvPath }
         if (existingTrack != null) {
-          app.gyrolet.mpvrx.utils.logging.Log.d("PlayerViewModel", "Subtitle already loaded by MPV, skipping sub-add: $mpvPath")
+          app.gyrolet.mpvrx.utils.logging.Log.d(
+            "PlayerViewModel",
+            "Subtitle already loaded by MPV, skipping sub-add: $mpvPath",
+          )
           if (select) {
             withContext(Dispatchers.Main) {
               runCatching { PlaybackSession.setPropertyInt("sid", existingTrack.id) }
@@ -4100,8 +4453,7 @@ fun restartFromBeginning() {
   private var translationJob: Job? = null
 
   /** Reopen a picked subtitle using its original content URI instead of mpv's private fd path. */
-  internal fun clipSubtitleSource(externalPath: String): String =
-    mpvPathToUriMap[externalPath] ?: externalPath
+  internal fun clipSubtitleSource(externalPath: String): String = mpvPathToUriMap[externalPath] ?: externalPath
 
   fun translateSubtitle(
     track: TrackNode,
@@ -4281,7 +4633,8 @@ fun restartFromBeginning() {
         ?.takeIf(String::isNotBlank)
         ?.let { path -> mpvPathToUriMap[path] ?: path }
     val runtimeSource =
-      PlaybackSession.getPropertyString("stream-open-filename")
+      PlaybackSession
+        .getPropertyString("stream-open-filename")
         ?.takeIf(String::isNotBlank)
         ?: PlaybackSession.getPropertyString("path")?.takeIf(String::isNotBlank)
     val source =
@@ -4318,7 +4671,11 @@ fun restartFromBeginning() {
 
     stopRealtimeSubtitles(showToastMessage = false)
     val sessionId = ++realtimeSubtitleSessionId
-    val sourceLanguage = aiPreferences.sttLanguage.get().trim().takeIf(String::isNotBlank)
+    val sourceLanguage =
+      aiPreferences.sttLanguage
+        .get()
+        .trim()
+        .takeIf(String::isNotBlank)
     val resolvedTargetLanguage = targetLanguage.trim().takeIf(String::isNotBlank)
     val startPositionMs = (_precisePosition.value * 1000f).toLong().coerceIn(0L, videoDurationMs)
     val playbackGeneration = PlaybackSession.state.value.generation
@@ -4343,7 +4700,11 @@ fun restartFromBeginning() {
       scope = viewModelScope,
       positionProvider = { (_precisePosition.value * 1000f).toLong() },
       onProgress = { progress ->
-        if (sessionId != realtimeSubtitleSessionId || playbackGeneration != PlaybackSession.state.value.generation) return@start
+        if (sessionId != realtimeSubtitleSessionId ||
+          playbackGeneration != PlaybackSession.state.value.generation
+        ) {
+          return@start
+        }
         _realtimeSubsProgress.value = progress.chunkIndex.toFloat() / progress.totalChunks.coerceAtLeast(1)
         _realtimeSubsStatus.value = progress.stage
       },
@@ -4351,7 +4712,11 @@ fun restartFromBeginning() {
         updateRealtimeSubtitleContent(sessionId, playbackGeneration, srtContent)
       },
       onComplete = {
-        if (sessionId != realtimeSubtitleSessionId || playbackGeneration != PlaybackSession.state.value.generation) return@start
+        if (sessionId != realtimeSubtitleSessionId ||
+          playbackGeneration != PlaybackSession.state.value.generation
+        ) {
+          return@start
+        }
         _isRealtimeSubsActive.value = false
         _realtimeSubsProgress.value = 0f
         _realtimeSubsStatus.value = ""
@@ -4359,7 +4724,11 @@ fun restartFromBeginning() {
         showToast(appContext.getString(R.string.realtime_subtitles_complete))
       },
       onError = { error ->
-        if (sessionId != realtimeSubtitleSessionId || playbackGeneration != PlaybackSession.state.value.generation) return@start
+        if (sessionId != realtimeSubtitleSessionId ||
+          playbackGeneration != PlaybackSession.state.value.generation
+        ) {
+          return@start
+        }
         _isRealtimeSubsActive.value = false
         _realtimeSubsProgress.value = 0f
         _realtimeSubsStatus.value = ""
@@ -4378,13 +4747,21 @@ fun restartFromBeginning() {
     viewModelScope.launch(Dispatchers.IO) {
       try {
         realtimeSubtitleUpdateMutex.withLock {
-          if (sessionId != realtimeSubtitleSessionId || playbackGeneration != PlaybackSession.state.value.generation) return@withLock
+          if (sessionId != realtimeSubtitleSessionId ||
+            playbackGeneration != PlaybackSession.state.value.generation
+          ) {
+            return@withLock
+          }
           val file = realtimeSrtFile ?: return@withLock
           FileOutputStream(file, false).use { output ->
             output.write(content.toByteArray())
             output.fd.sync()
           }
-          if (sessionId != realtimeSubtitleSessionId || playbackGeneration != PlaybackSession.state.value.generation) return@withLock
+          if (sessionId != realtimeSubtitleSessionId ||
+            playbackGeneration != PlaybackSession.state.value.generation
+          ) {
+            return@withLock
+          }
 
           val path = file.absolutePath
           var trackId = realtimeSubtitleTrackId ?: findRealtimeSubtitleTrackId(path)
@@ -4393,7 +4770,9 @@ fun restartFromBeginning() {
               PlaybackSession.command("sub-add", path, "select")
             }
             trackId = awaitRealtimeSubtitleTrackId(path, sessionId, playbackGeneration)
-            if (sessionId != realtimeSubtitleSessionId || playbackGeneration != PlaybackSession.state.value.generation) {
+            if (sessionId != realtimeSubtitleSessionId ||
+              playbackGeneration != PlaybackSession.state.value.generation
+            ) {
               trackId?.let { staleTrackId ->
                 withContext(Dispatchers.Main) {
                   PlaybackSession.command("sub-remove", staleTrackId.toString())
@@ -4546,10 +4925,12 @@ fun restartFromBeginning() {
     // Clean up common buggy patterns in fallback dir
     val backupParent = backupFile.parentFile
     if (backupParent != null) {
-      listOf(".AI.$extension", "$targetLanguage.AI.$extension", "..AI.$extension").filter { it.isNotBlank() }.forEach { pattern ->
-        val buggy = File(backupParent, pattern)
-        if (buggy.exists() && buggy.name != newFileName) buggy.delete()
-      }
+      listOf(".AI.$extension", "$targetLanguage.AI.$extension", "..AI.$extension")
+        .filter { it.isNotBlank() }
+        .forEach { pattern ->
+          val buggy = File(backupParent, pattern)
+          if (buggy.exists() && buggy.name != newFileName) buggy.delete()
+        }
     }
     return backupFile.toUri()
   }
@@ -4586,7 +4967,8 @@ fun restartFromBeginning() {
           }
         }
       } catch (e: Exception) {
-        app.gyrolet.mpvrx.utils.logging.Log.e("PlayerViewModel", "Error scanning local subtitles: ${e.message}", e)
+        app.gyrolet.mpvrx.utils.logging.Log
+          .e("PlayerViewModel", "Error scanning local subtitles: ${e.message}", e)
       }
 
       // Auto-select the first external subtitle if the video has no embedded subtitle track active
@@ -4800,9 +5182,11 @@ fun restartFromBeginning() {
       viewModelScope.launch {
         val outcome = introDbRepository.lookupSegments(lookupRequest)
         if (
-          generation != introLookupGeneration || PlaybackSession.state.value.generation != playbackGeneration ||
+          generation != introLookupGeneration ||
+          PlaybackSession.state.value.generation != playbackGeneration ||
           currentMediaTitle != lookupKey ||
-          !playerPreferences.enableIntroDb.get() || playerPreferences.introSegmentProvider.get() != provider
+          !playerPreferences.enableIntroDb.get() ||
+          playerPreferences.introSegmentProvider.get() != provider
         ) {
           return@launch
         }
@@ -5481,7 +5865,10 @@ fun restartFromBeginning() {
       if (wasPaused) {
         val focusGranted = withContext(Dispatchers.Main) { host?.requestAudioFocus() ?: false }
         if (!focusGranted) return@launch
-        if (PlaybackSession.state.value.currentItem?.audiobook != null && PlaybackSession.getPropertyBoolean("eof-reached") == true) {
+        if (PlaybackSession.state.value.currentItem
+            ?.audiobook != null &&
+          PlaybackSession.getPropertyBoolean("eof-reached") == true
+        ) {
           AudiobookPlayback.resumeAtEnd()
           return@launch
         }
@@ -5542,7 +5929,6 @@ fun restartFromBeginning() {
     seekBarVisibleForPolling = false
   }
 
-
   /**
    * Cancels UI-originated native work before PlayerActivity releases its Surface.
    */
@@ -5578,7 +5964,9 @@ fun restartFromBeginning() {
     cancelFrameSeek()
     cancelScrubSeeks()
     if (offset == 0) return
-    if (PlaybackSession.state.value.currentItem?.audiobook != null) {
+    if (PlaybackSession.state.value.currentItem
+        ?.audiobook != null
+    ) {
       AudiobookPlayback.seekBy(offset)
       return
     }
@@ -5607,10 +5995,11 @@ fun restartFromBeginning() {
     }
     // TV does not compose GestureHandler, which owns the phone's feedback reset. Restart on
     // every remote repeat, including identical steps at a media boundary, then fade out at rest.
-    tvSeekFeedbackJob = viewModelScope.launch {
-      delay(800L)
-      _seekState.value = SeekState()
-    }
+    tvSeekFeedbackJob =
+      viewModelScope.launch {
+        delay(800L)
+        _seekState.value = SeekState()
+      }
     seekBy(offset)
   }
 
@@ -5761,7 +6150,14 @@ fun restartFromBeginning() {
           // A release at the end always seeks: the live step landed on a keyframe before it.
           val needsSeek =
             seek.target.isFinite() &&
-              (seek.toEnd || !seek.isFinal || lastSent.isNaN() || abs(seek.target - lastSent) >= SCRUB_SEEK_STEP_SECONDS)
+              (
+                seek.toEnd ||
+                  !seek.isFinal ||
+                  lastSent.isNaN() ||
+                  abs(
+                    seek.target - lastSent,
+                  ) >= SCRUB_SEEK_STEP_SECONDS
+              )
           // Unlike setting time-pos, `seek` lets mpv show a frame from each spot before taking the next one.
           // A seek from another path voids this one; that check runs under the native lock, so this
           // seek can never land after it. A newer scrub target merely follows this one.
@@ -5966,7 +6362,11 @@ fun restartFromBeginning() {
     val newPercent = volumePercent.coerceIn(0, 100)
     val newVolume = percentToSystemVolume(newPercent)
     val flags = if (isAudioOnly.value) AudioManager.FLAG_SHOW_UI else 0
-    (appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, flags)
+    (
+      appContext.getSystemService(
+        Context.AUDIO_SERVICE,
+      ) as AudioManager
+    ).setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, flags)
     currentVolume.value = syncCurrentSystemVolume()
     currentVolumePercent.value = newPercent
 
@@ -5984,7 +6384,11 @@ fun restartFromBeginning() {
   ) {
     val newVolume = volume.coerceIn(0..maxVolume)
     val flags = if (showUi || isAudioOnly.value) AudioManager.FLAG_SHOW_UI else 0
-    (appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, flags)
+    (
+      appContext.getSystemService(
+        Context.AUDIO_SERVICE,
+      ) as AudioManager
+    ).setStreamVolume(AudioManager.STREAM_MUSIC, newVolume, flags)
     currentVolume.value = syncCurrentSystemVolume()
 
     if (currentVolume.value < maxVolume) {
@@ -6009,7 +6413,9 @@ fun restartFromBeginning() {
   private var speedGestureJob: Job? = null
   private val pendingSubtitleProperties = ConcurrentHashMap<String, Float>()
   private val subtitleFlushQueued = AtomicBoolean(false)
+
   @Volatile private var savedSubtitleBoxStyle: SubtitleGestureBoxStyle? = null
+
   @Volatile private var hiddenSubtitleVisibility: String? = null
   private var lastSubtitleGestureText: String? = null
 
@@ -6021,29 +6427,36 @@ fun restartFromBeginning() {
     require(speed.isFinite() && speed > 0f)
     if (!PlaybackSession.isCurrentGeneration(expectedGeneration) ||
       MpvConfigOverridePolicy.isOwnedByMpvConf("speed")
-    ) return
+    ) {
+      return
+    }
 
     speedGestureJob?.cancel()
-    speedGestureJob = viewModelScope.launch(gesturePropertyDispatcher) {
-      val startSpeed = if (ramp) {
-        PlaybackSession.readLoadedMedia(expectedGeneration) { reader -> reader.double("speed")?.toFloat() }
-          ?: return@launch
-      } else {
-        speed
+    speedGestureJob =
+      viewModelScope.launch(gesturePropertyDispatcher) {
+        val startSpeed =
+          if (ramp) {
+            PlaybackSession.readLoadedMedia(expectedGeneration) { reader -> reader.double("speed")?.toFloat() }
+              ?: return@launch
+          } else {
+            speed
+          }
+        if (ramp && startSpeed == speed) return@launch
+        val steps = if (ramp) 5 else 1
+        for (step in 1..steps) {
+          ensureActive()
+          val value = if (step == steps) speed else startSpeed + (speed - startSpeed) * step / steps
+          if (!PlaybackSession.setPlaybackSpeedForGeneration(expectedGeneration, value) { isActive }) return@launch
+          if (step < steps) delay(16)
+        }
       }
-      if (ramp && startSpeed == speed) return@launch
-      val steps = if (ramp) 5 else 1
-      for (step in 1..steps) {
-        ensureActive()
-        val value = if (step == steps) speed else startSpeed + (speed - startSpeed) * step / steps
-        if (!PlaybackSession.setPlaybackSpeedForGeneration(expectedGeneration, value) { isActive }) return@launch
-        if (step < steps) delay(16)
-      }
-    }
   }
 
   /** Only the newest value per property reaches mpv, so fast drags never queue up stale frames. */
-  private fun queueSubtitleProperty(property: String, value: Float) {
+  private fun queueSubtitleProperty(
+    property: String,
+    value: Float,
+  ) {
     if (MpvConfigOverridePolicy.isOwnedByMpvConf(property)) return
     pendingSubtitleProperties[property] = value
     if (!subtitleFlushQueued.compareAndSet(false, true)) return
@@ -6055,13 +6468,20 @@ fun restartFromBeginning() {
     }
   }
 
-  fun previewSubtitlePosition(position: Float, target: SubtitleGestureTarget) {
+  fun previewSubtitlePosition(
+    position: Float,
+    target: SubtitleGestureTarget,
+  ) {
     val newPosition = position.coerceIn(0f, 150f)
     queueSubtitleProperty("${target.prefix}-pos", newPosition)
-    val label = appContext.getString(
-      if (target == SubtitleGestureTarget.Secondary) R.string.player_sheets_secondary_sub_position
-      else R.string.player_sheets_sub_primary_position,
-    )
+    val label =
+      appContext.getString(
+        if (target == SubtitleGestureTarget.Secondary) {
+          R.string.player_sheets_secondary_sub_position
+        } else {
+          R.string.player_sheets_sub_primary_position
+        },
+      )
     val text = "$label: ${newPosition.roundToInt()}%"
     if (text != lastSubtitleGestureText) {
       lastSubtitleGestureText = text
@@ -6069,14 +6489,27 @@ fun restartFromBeginning() {
     }
   }
 
-  fun previewSubtitleScale(scale: Float, target: SubtitleGestureTarget) {
+  fun previewSubtitleScale(
+    scale: Float,
+    target: SubtitleGestureTarget,
+  ) {
     queueSubtitleProperty("${target.prefix}-scale", scale)
   }
 
-  fun persistSubtitleGesturePosition(target: SubtitleGestureTarget, position: Float) {
+  fun persistSubtitleGesturePosition(
+    target: SubtitleGestureTarget,
+    position: Float,
+  ) {
     lastSubtitleGestureText = null
     if (MpvConfigOverridePolicy.isOwnedByMpvConf("${target.prefix}-pos")) return
-    val preference = if (target == SubtitleGestureTarget.Secondary) subtitlesPreferences.secondarySubPos else subtitlesPreferences.subPos
+    val preference =
+      if (target ==
+        SubtitleGestureTarget.Secondary
+      ) {
+        subtitlesPreferences.secondarySubPos
+      } else {
+        subtitlesPreferences.subPos
+      }
     val rounded = clampSubtitlePosition(position.roundToInt())
     if (preference.get() != rounded) preference.set(rounded)
   }
@@ -6085,22 +6518,27 @@ fun restartFromBeginning() {
    * mpv's own background box outlines the real rendered glyphs while a subtitle is dragged or pinched.
    * The style is shared by both tracks, so the other track is hidden until release when [target] is set.
    */
-  fun setSubtitleGestureHighlight(active: Boolean, target: SubtitleGestureTarget? = null) {
+  fun setSubtitleGestureHighlight(
+    active: Boolean,
+    target: SubtitleGestureTarget? = null,
+  ) {
     viewModelScope.launch(gesturePropertyDispatcher) {
       if (active) {
         if (savedSubtitleBoxStyle != null) return@launch
-        val style = SubtitleGestureBoxStyle(
-          PlaybackSession.getPropertyString("sub-border-style"),
-          PlaybackSession.getPropertyString("sub-back-color"),
-          PlaybackSession.getPropertyString("sub-shadow-offset"),
-        )
+        val style =
+          SubtitleGestureBoxStyle(
+            PlaybackSession.getPropertyString("sub-border-style"),
+            PlaybackSession.getPropertyString("sub-back-color"),
+            PlaybackSession.getPropertyString("sub-shadow-offset"),
+          )
         savedSubtitleBoxStyle = style
         // For background-box, mpv uses sub-shadow-offset as padding around all text lines.
         // Keep larger user margins; restore the exact original value when the gesture ends.
-        val padding = maxOf(
-          style.shadowOffset?.toFloatOrNull() ?: subtitlesPreferences.shadowOffset.get().toFloat(),
-          SUBTITLE_GESTURE_HIGHLIGHT_PADDING,
-        )
+        val padding =
+          maxOf(
+            style.shadowOffset?.toFloatOrNull() ?: subtitlesPreferences.shadowOffset.get().toFloat(),
+            SUBTITLE_GESTURE_HIGHLIGHT_PADDING,
+          )
         PlaybackSession.setPropertyFloat("sub-shadow-offset", padding)
         PlaybackSession.setPropertyString("sub-border-style", "background-box")
         PlaybackSession.setPropertyString("sub-back-color", SUBTITLE_GESTURE_HIGHLIGHT_COLOR)
@@ -6122,7 +6560,10 @@ fun restartFromBeginning() {
     val style = savedSubtitleBoxStyle ?: return
     savedSubtitleBoxStyle = null
     // mpv may not have reported a value at gesture start; fall back to the user's saved choice.
-    PlaybackSession.setPropertyString("sub-border-style", style.borderStyle ?: subtitlesPreferences.borderStyle.get().value)
+    PlaybackSession.setPropertyString(
+      "sub-border-style",
+      style.borderStyle ?: subtitlesPreferences.borderStyle.get().value,
+    )
     PlaybackSession.setPropertyString(
       "sub-back-color",
       style.backgroundColor ?: subtitlesPreferences.backgroundColor.get().toColorHexString(),
@@ -6141,7 +6582,12 @@ fun restartFromBeginning() {
   }
 
   private fun syncCurrentSystemVolume(): Int {
-    val systemVolume = (appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager).getStreamVolume(AudioManager.STREAM_MUSIC)
+    val systemVolume =
+      (
+        appContext.getSystemService(
+          Context.AUDIO_SERVICE,
+        ) as AudioManager
+      ).getStreamVolume(AudioManager.STREAM_MUSIC)
     currentVolume.value = systemVolume
     currentVolumePercent.value = systemVolumeToPercent(systemVolume)
     return systemVolume
@@ -6183,6 +6629,7 @@ fun restartFromBeginning() {
       VideoAspect.Stretch -> {
         // To STRETCH: Calculate screen ratio accounting for video rotation
         val currentHost = host ?: return
+
         @Suppress("DEPRECATION")
         val dm = DisplayMetrics()
         @Suppress("DEPRECATION")
@@ -6459,15 +6906,23 @@ fun restartFromBeginning() {
 
   // ==================== Video Zoom ====================
 
-  internal fun videoZoomSnapTargets(width: Float, height: Float): List<Float> {
-    if (isAudioOnly.value || width <= 0f || height <= 0f ||
+  internal fun videoZoomSnapTargets(
+    width: Float,
+    height: Float,
+  ): List<Float> {
+    if (isAudioOnly.value ||
+      width <= 0f ||
+      height <= 0f ||
       MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.VIDEO_ZOOM) ||
       PlaybackSession.getPropertyBoolean("keepaspect") == false
-    ) return emptyList()
+    ) {
+      return emptyList()
+    }
     val videoWidth = PlaybackSession.getPropertyInt("video-out-params/w") ?: return emptyList()
     val videoHeight = PlaybackSession.getPropertyInt("video-out-params/h") ?: return emptyList()
-    val aspect = VideoAspectGeometry.currentEffectiveDisplayAspect(videoWidth.toDouble(), videoHeight.toDouble())
-      ?: return emptyList()
+    val aspect =
+      VideoAspectGeometry.currentEffectiveDisplayAspect(videoWidth.toDouble(), videoHeight.toDouble())
+        ?: return emptyList()
     val panscan = PlaybackSession.getPropertyDouble("panscan") ?: 0.0
     return videoZoomStops(width / height.toDouble(), aspect, panscan)
   }
@@ -6596,7 +7051,15 @@ fun restartFromBeginning() {
         var exactPassCount = 0
         while (exactPassCount < FRAME_SEEK_EXACT_PASSES) {
           exactPassCount += 1
-          if (!PlaybackSession.commandForGeneration(generation, "seek", refinedPosition.toString(), "absolute+exact")) return@launch
+          if (!PlaybackSession.commandForGeneration(
+              generation,
+              "seek",
+              refinedPosition.toString(),
+              "absolute+exact",
+            )
+          ) {
+            return@launch
+          }
           awaitFrameSeekSettled()
           if (!PlaybackSession.isCurrentGeneration(generation)) return@launch
           val observedFrame = PlaybackSession.getPropertyInt("estimated-frame-number") ?: break
@@ -6617,7 +7080,9 @@ fun restartFromBeginning() {
                     "no-osd",
                     if (frameDelta > 0) "frame-step" else "frame-back-step",
                   )
-                ) return@launch
+                ) {
+                  return@launch
+                }
                 delay(FRAME_SEEK_CORRECTION_INTERVAL_MS)
               }
               kotlin.math.abs(frameDelta)
@@ -6785,7 +7250,9 @@ fun restartFromBeginning() {
       val uri = Uri.parse(item.originalUri)
       val book = AudiobookPlayback.book.value?.takeIf { it.book.id == item.audiobook?.bookId }
       val bookTrack = book?.tracks?.firstOrNull { it.id == item.audiobook?.trackId }
-      val title = bookTrack?.title?.takeIf(String::isNotBlank) ?: item.title?.takeIf { it.isNotBlank() } ?: uri.lastPathSegment.orEmpty()
+      val title =
+        bookTrack?.title?.takeIf(String::isNotBlank) ?: item.title?.takeIf { it.isNotBlank() }
+          ?: uri.lastPathSegment.orEmpty()
       val resolvedUri =
         if (uri.scheme == "content") {
           uri.extractLocalPath()?.let { Uri.fromFile(File(it)) } ?: uri
@@ -6796,19 +7263,19 @@ fun restartFromBeginning() {
       val path = localPath ?: resolvedUri.path?.takeIf { File(it).exists() } ?: resolvedUri.toString()
       val isAudio =
         isAudioOnly.value ||
-        item.mimeType?.startsWith("audio/", ignoreCase = true) == true ||
-        path
-          .substringBefore('?')
-          .substringBefore('#')
-          .substringAfterLast('.', "")
-          .lowercase() in FileTypeUtils.AUDIO_EXTENSIONS ||
-        resolvedUri.toString().lowercase().contains("audio") ||
-        uri.toString().lowercase().contains("audio") ||
-        resolvedUri.toString().lowercase().contains("stream.view") ||
-        uri.toString().lowercase().contains("stream.view") ||
-        resolvedUri.toString().lowercase().contains("/rest/stream") ||
-        uri.toString().lowercase().contains("/rest/stream") ||
-        (item.artist?.isNotBlank() == true && item.durationSeconds != null)
+          item.mimeType?.startsWith("audio/", ignoreCase = true) == true ||
+          path
+            .substringBefore('?')
+            .substringBefore('#')
+            .substringAfterLast('.', "")
+            .lowercase() in FileTypeUtils.AUDIO_EXTENSIONS ||
+          resolvedUri.toString().lowercase().contains("audio") ||
+          uri.toString().lowercase().contains("audio") ||
+          resolvedUri.toString().lowercase().contains("stream.view") ||
+          uri.toString().lowercase().contains("stream.view") ||
+          resolvedUri.toString().lowercase().contains("/rest/stream") ||
+          uri.toString().lowercase().contains("/rest/stream") ||
+          (item.artist?.isNotBlank() == true && item.durationSeconds != null)
       val isCurrentlyPlaying = index == queue.currentIndex
 
       // Try to get from cache first (synchronized access)
@@ -6854,7 +7321,11 @@ fun restartFromBeginning() {
   }
 
   private fun getVideoMetadata(uri: Uri): Pair<String, String> {
-    if (app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia.isPlaybackUri(uri.toString())) return "" to ""
+    if (app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
+        .isPlaybackUri(uri.toString())
+    ) {
+      return "" to ""
+    }
     val resolvedUri =
       if (uri.scheme == "content") {
         uri.extractLocalPath()?.let { Uri.fromFile(File(it)) } ?: uri
@@ -6903,7 +7374,8 @@ fun restartFromBeginning() {
 
       retriever.playlistMetadata()
     } catch (e: Exception) {
-      app.gyrolet.mpvrx.utils.logging.Log.e("PlayerViewModel", "Failed to get video metadata for $resolvedUri", e)
+      app.gyrolet.mpvrx.utils.logging.Log
+        .e("PlayerViewModel", "Failed to get video metadata for $resolvedUri", e)
       "" to ""
     } finally {
       try {
@@ -6914,7 +7386,9 @@ fun restartFromBeginning() {
     }
   }
 
-  private suspend fun getVideoMetadata(item: app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem): Pair<String, String> {
+  private suspend fun getVideoMetadata(
+    item: app.gyrolet.mpvrx.ui.player.controls.components.sheets.PlaylistItem,
+  ): Pair<String, String> {
     val connectionId = item.networkConnectionId
     if (!item.isAudio && connectionId != null && item.networkPath.isNotBlank()) {
       return getNetworkVideoMetadata(connectionId, item.networkPath)
@@ -6948,7 +7422,8 @@ fun restartFromBeginning() {
           )
           retriever.playlistMetadata()
         } catch (e: Exception) {
-          app.gyrolet.mpvrx.utils.logging.Log.w("PlayerViewModel", "Failed to get network video metadata", e)
+          app.gyrolet.mpvrx.utils.logging.Log
+            .w("PlayerViewModel", "Failed to get network video metadata", e)
           "" to ""
         } finally {
           runCatching { retriever.release() }
@@ -7153,7 +7628,10 @@ fun restartFromBeginning() {
 
         _playlistItems.value = updatedItems
 
-        if (forceMetadata && PlaybackSession.state.value.currentItem?.audiobook == null) {
+        if (forceMetadata &&
+          PlaybackSession.state.value.currentItem
+            ?.audiobook == null
+        ) {
           // Load metadata only when the playlist sheet is actually in use.
           loadPlaylistMetadataAsync(updatedItems)
         }
@@ -7204,11 +7682,13 @@ fun restartFromBeginning() {
           }.filter { item ->
             item.duration.isBlank() || (!item.isAudio && item.resolution.isBlank())
           }.filter { item ->
-            item.networkConnectionId == null || abs(item.index - currentIndex) <= PLAYLIST_NETWORK_METADATA_PREFETCH_RADIUS
+            item.networkConnectionId == null ||
+              abs(item.index - currentIndex) <= PLAYLIST_NETWORK_METADATA_PREFETCH_RADIUS
           }
 
-          val pendingEntries = metadataItems.mapTo(mutableSetOf()) { it.queueEntryId }
-          _playlistItems.value = _playlistItems.value.map { item ->
+        val pendingEntries = metadataItems.mapTo(mutableSetOf()) { it.queueEntryId }
+        _playlistItems.value =
+          _playlistItems.value.map { item ->
             item.copy(metadataLoading = item.queueEntryId in pendingEntries)
           }
 
@@ -7441,7 +7921,11 @@ fun restartFromBeginning() {
     // Runs before isNativeHdrOutputAvailable exists, so read the renderer preferences directly.
     return if (savedMode.needsNativeHdrOutput &&
       !(decoderPreferences.gpuNext.get() && decoderPreferences.useVulkan.get())
-    ) HdrScreenMode.fallbackMode else savedMode
+    ) {
+      HdrScreenMode.fallbackMode
+    } else {
+      savedMode
+    }
   }
 
   private fun reconcileHdrModeWithRenderer() {
@@ -7571,7 +8055,7 @@ fun restartFromBeginning() {
 
   private fun isAmbientRuntimeActive(): Boolean =
     _isAmbientLifecycleActive.value &&
-      _isMpvCoreReady.value &&
+      mpvCoreReadyState.value &&
       _isAmbientEnabled.value &&
       !isAmbientPipActive &&
       !isAudioOnly.value &&
@@ -7595,9 +8079,12 @@ fun restartFromBeginning() {
   fun toggleAmbientMode() {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
     // Every style but YouTube is a shader, which MediaCodec embed never draws.
-    if (!_isAmbientEnabled.value && _ambientStyle.value != AmbientStyle.YouTube &&
+    if (!_isAmbientEnabled.value &&
+      _ambientStyle.value != AmbientStyle.YouTube &&
       MediaCodecEmbed.blocks(appContext, R.string.btn_label_ambient)
-    ) return
+    ) {
+      return
+    }
     _isAmbientEnabled.value = !_isAmbientEnabled.value
     playerPreferences.isAmbientEnabled.set(_isAmbientEnabled.value)
     if (_isAmbientEnabled.value) {
@@ -7672,9 +8159,12 @@ fun restartFromBeginning() {
   fun setAmbientStyle(style: AmbientStyle) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT)) return
     if (_ambientStyle.value == style) return
-    if (_isAmbientEnabled.value && style != AmbientStyle.YouTube &&
+    if (_isAmbientEnabled.value &&
+      style != AmbientStyle.YouTube &&
       MediaCodecEmbed.blocks(appContext, R.string.btn_label_ambient)
-    ) return
+    ) {
+      return
+    }
     _ambientStyle.value = style
     playerPreferences.ambientStyle.set(style)
     syncAmbientParamsForStyle(style)
@@ -7752,7 +8242,10 @@ fun restartFromBeginning() {
     scheduleAmbientUpdate(200)
   }
 
-  fun setAmbientEdgeBlend(style: AmbientStyle, edgeBlend: Float) {
+  fun setAmbientEdgeBlend(
+    style: AmbientStyle,
+    edgeBlend: Float,
+  ) {
     val clamped = edgeBlend.takeIf { it.isFinite() }?.coerceIn(0f, 0.1f) ?: 0f
     when (style) {
       AmbientStyle.Glow -> {
@@ -8149,8 +8642,9 @@ fun restartFromBeginning() {
     isPowerSaveMode: Boolean = false,
   ) {
     if (!_isAmbientEnabled.value) return
-    val shouldThrottle = _isAmbientBatterySaver.value &&
-      (!isCharging || isPowerSaveMode || (level in 0..19))
+    val shouldThrottle =
+      _isAmbientBatterySaver.value &&
+        (!isCharging || isPowerSaveMode || (level in 0..19))
 
     if (shouldThrottle) {
       applyBatterySaverPolicy()
@@ -8172,60 +8666,74 @@ fun restartFromBeginning() {
       }
       val currentStyle = _ambientStyle.value
       val samples = ThermalMonitor.clampAmbientSampleBudget(_ambientBlurSamples.value, thermalHeadroom)
-      val glowSpec = if (currentStyle == AmbientStyle.Glow) {
-        buildAmbientSpec(
-          context = geometry.picture,
-          blurSamples = samples,
-          maxRadius = _ambientMaxRadius.value,
-          glowIntensity = _ambientGlowIntensity.value,
-          satBoost = _ambientSatBoost.value,
-          vignetteStrength = _ambientVignetteStrength.value,
-          warmth = _ambientWarmth.value,
-          fadeCurve = _ambientFadeCurve.value,
-          opacity = _ambientOpacity.value,
-          edgeBlend = _ambientGlowEdgeBlend.value,
-        )
-      } else null
-      val fxSpec = if (currentStyle != AmbientStyle.Glow && currentStyle != AmbientStyle.YouTube) {
-        FxAmbientShaderSpec(
-          style = currentStyle,
-          scaleX = geometry.picture.scaleX,
-          scaleY = geometry.picture.scaleY,
-          centerX = geometry.picture.centerX,
-          centerY = geometry.picture.centerY,
-          blurSamples = samples,
-          spread = _ambientMaxRadius.value,
-          intensity = _ambientGlowIntensity.value,
-          satBoost = _ambientSatBoost.value,
-          vignetteStrength = _ambientVignetteStrength.value,
-          warmth = _ambientWarmth.value,
-          fadeCurve = _ambientFadeCurve.value,
-          opacity = _ambientOpacity.value,
-        )
-      } else null
+      val glowSpec =
+        if (currentStyle == AmbientStyle.Glow) {
+          buildAmbientSpec(
+            context = geometry.picture,
+            blurSamples = samples,
+            maxRadius = _ambientMaxRadius.value,
+            glowIntensity = _ambientGlowIntensity.value,
+            satBoost = _ambientSatBoost.value,
+            vignetteStrength = _ambientVignetteStrength.value,
+            warmth = _ambientWarmth.value,
+            fadeCurve = _ambientFadeCurve.value,
+            opacity = _ambientOpacity.value,
+            edgeBlend = _ambientGlowEdgeBlend.value,
+          )
+        } else {
+          null
+        }
+      val fxSpec =
+        if (currentStyle != AmbientStyle.Glow && currentStyle != AmbientStyle.YouTube) {
+          FxAmbientShaderSpec(
+            style = currentStyle,
+            scaleX = geometry.picture.scaleX,
+            scaleY = geometry.picture.scaleY,
+            centerX = geometry.picture.centerX,
+            centerY = geometry.picture.centerY,
+            blurSamples = samples,
+            spread = _ambientMaxRadius.value,
+            intensity = _ambientGlowIntensity.value,
+            satBoost = _ambientSatBoost.value,
+            vignetteStrength = _ambientVignetteStrength.value,
+            warmth = _ambientWarmth.value,
+            fadeCurve = _ambientFadeCurve.value,
+            opacity = _ambientOpacity.value,
+          )
+        } else {
+          null
+        }
       if (glowSpec == null && fxSpec == null) return
-      val shaderIsCurrent = synchronized(ambientRenderLock) {
-        geometry == lastAmbientGeometry && glowSpec == lastCompiledSpec && fxSpec == lastCompiledFxSpec &&
-          ambientShaderFile?.exists() == true && PlaybackSession.isAmbientShaderActive
-      }
+      val shaderIsCurrent =
+        synchronized(ambientRenderLock) {
+          geometry == lastAmbientGeometry &&
+            glowSpec == lastCompiledSpec &&
+            fxSpec == lastCompiledFxSpec &&
+            ambientShaderFile?.exists() == true &&
+            PlaybackSession.isAmbientShaderActive
+        }
       if (shaderIsCurrent) return
-      val shaderCode = when (currentStyle) {
-        AmbientStyle.Glow -> AmbientShaderBuilder.build(appContext, checkNotNull(glowSpec))
-        AmbientStyle.Ambilight -> FxAmbientShaderBuilder.buildAmbilight(appContext, checkNotNull(fxSpec))
-        AmbientStyle.Cinema -> FxAmbientShaderBuilder.buildCinema(appContext, checkNotNull(fxSpec))
-        AmbientStyle.Echo -> FxAmbientShaderBuilder.buildEcho(appContext, checkNotNull(fxSpec))
-        AmbientStyle.Mirror -> FxAmbientShaderBuilder.buildMirror(appContext, checkNotNull(fxSpec))
-        AmbientStyle.YouTube -> return
-      }
+      val shaderCode =
+        when (currentStyle) {
+          AmbientStyle.Glow -> AmbientShaderBuilder.build(appContext, checkNotNull(glowSpec))
+          AmbientStyle.Ambilight -> FxAmbientShaderBuilder.buildAmbilight(appContext, checkNotNull(fxSpec))
+          AmbientStyle.Cinema -> FxAmbientShaderBuilder.buildCinema(appContext, checkNotNull(fxSpec))
+          AmbientStyle.Echo -> FxAmbientShaderBuilder.buildEcho(appContext, checkNotNull(fxSpec))
+          AmbientStyle.Mirror -> FxAmbientShaderBuilder.buildMirror(appContext, checkNotNull(fxSpec))
+          AmbientStyle.YouTube -> return
+        }
       val newFile = File.createTempFile("ambient_", ".glsl", appContext.cacheDir)
       var installed = false
       try {
         withContext(kotlinx.coroutines.Dispatchers.IO) { newFile.writeText(shaderCode) }
         currentCoroutineContext().ensureActive()
         synchronized(ambientRenderLock) {
-          if (generation != ambientUpdateGeneration.get() || !isAmbientShaderRuntimeActive() ||
+          if (generation != ambientUpdateGeneration.get() ||
+            !isAmbientShaderRuntimeActive() ||
             currentStyle != _ambientStyle.value
-          ) return@synchronized
+          ) {
+            return@synchronized
+          }
           installed = PlaybackSession.installAmbientShader(newFile.absolutePath, geometry, playbackGeneration)
           if (installed) {
             val previous = ambientShaderFile
@@ -8248,7 +8756,7 @@ fun restartFromBeginning() {
   }
 
   /**
-  * Builds an [AmbientGlowShaderSpec] from the current ambient parameter values.
+   * Builds an [AmbientGlowShaderSpec] from the current ambient parameter values.
    * The spec is a lightweight data class that captures all shader inputs;
    * [AmbientShaderBuilder.build] converts it to a GLSL string only when the
    * spec has actually changed from the last compiled version.
@@ -8290,7 +8798,9 @@ fun restartFromBeginning() {
   fun togglePostProcessing() {
     if (!_isPostProcessingEnabled.value &&
       MediaCodecEmbed.blocks(appContext, R.string.btn_label_post_processing)
-    ) return
+    ) {
+      return
+    }
     _isPostProcessingEnabled.value = !_isPostProcessingEnabled.value
     playerPreferences.isPostProcessingEnabled.set(_isPostProcessingEnabled.value)
     if (_isPostProcessingEnabled.value) {
@@ -8403,7 +8913,7 @@ fun restartFromBeginning() {
       try {
         withContext(kotlinx.coroutines.Dispatchers.IO) {
           shaderSources.forEachIndexed { index, source ->
-            val file = java.io.File(appContext.cacheDir, "pp_${baseSeq}_${index}.glsl")
+            val file = java.io.File(appContext.cacheDir, "pp_${baseSeq}_$index.glsl")
             file.writeText(source)
             writtenFiles.add(file)
           }

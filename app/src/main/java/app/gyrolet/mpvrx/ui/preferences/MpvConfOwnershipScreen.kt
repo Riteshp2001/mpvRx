@@ -9,17 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import app.gyrolet.mpvrx.ui.tv.tvContentFocus
-
-import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
-import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
-import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,10 +19,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -51,7 +44,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -62,6 +57,10 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.ExpandableCard
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.ui.tv.tvContentFocus
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
@@ -96,10 +95,11 @@ object MpvConfOwnershipScreen : ScrollableSettingsScreen {
       },
     ) { padding ->
       LazyColumn(
-        modifier = Modifier
-          .fillMaxSize()
+        modifier =
+          Modifier
+            .fillMaxSize()
             .tvContentFocus()
-          .padding(padding),
+            .padding(padding),
         contentPadding = settingsContentPadding(PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp)),
         verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
       ) {
@@ -143,9 +143,10 @@ private fun OwnershipSummaryCard(
     shape = MaterialTheme.shapes.extraLargeIncreased,
   ) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(16.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(16.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -289,28 +290,36 @@ private fun OwnershipGroupCard(
           val optionShape = rememberConnectedShape(index, options.size, ConnectedLayout.Vertical)
           val checked = optionName in selectedOptions
           Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .clip(optionShape)
-              .background(if (checked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainerHigh)
-              .toggleable(value = checked, role = Role.Checkbox) {
-                onSelectionChange(
-                  if (checked) selectedOptions - optionName else selectedOptions + optionName,
-                )
-              }
-              .heightIn(min = 48.dp)
-              .padding(horizontal = 8.dp, vertical = 4.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .clip(optionShape)
+                .background(
+                  if (checked) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(
+                      alpha = 0.5f,
+                    )
+                  } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                  },
+                ).toggleable(value = checked, role = Role.Checkbox) {
+                  onSelectionChange(
+                    if (checked) selectedOptions - optionName else selectedOptions + optionName,
+                  )
+                }.heightIn(min = 48.dp)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
           ) {
             Checkbox(checked = checked, onCheckedChange = null)
             Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
               Text(text = optionName, style = MaterialTheme.typography.bodyMedium)
-              val description = when (optionName) {
-                "inverse-tone-mapping" -> R.string.hdr_linear_inverse_ownership
-                "tone-mapping" -> R.string.hdr_linear_tone_ownership
-                else -> null
-              }
+              val description =
+                when (optionName) {
+                  "inverse-tone-mapping" -> R.string.hdr_linear_inverse_ownership
+                  "tone-mapping" -> R.string.hdr_linear_tone_ownership
+                  else -> null
+                }
               description?.let {
                 Text(
                   text = stringResource(it),

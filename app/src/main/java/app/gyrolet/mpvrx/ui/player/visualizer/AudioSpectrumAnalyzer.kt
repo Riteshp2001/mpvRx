@@ -93,11 +93,12 @@ class AudioSpectrumAnalyzer(
 
     // Blend waveform energy with FFT energy so they don't fight each other
     val currentFftEnergy = features.energy
-    features.energy = if (currentFftEnergy > 0.01f) {
-      (currentFftEnergy * ENERGY_FFT_WEIGHT + rmsBoosted * ENERGY_WAVEFORM_WEIGHT).coerceIn(0f, 1f)
-    } else {
-      rmsBoosted
-    }
+    features.energy =
+      if (currentFftEnergy > 0.01f) {
+        (currentFftEnergy * ENERGY_FFT_WEIGHT + rmsBoosted * ENERGY_WAVEFORM_WEIGHT).coerceIn(0f, 1f)
+      } else {
+        rmsBoosted
+      }
     features.active = true
     features.markCaptureReceived()
   }
@@ -121,12 +122,18 @@ class AudioSpectrumAnalyzer(
     val midCutoffBin = (2000f / binHz).toInt().coerceIn(lowMidCutoffBin + 1, halfSize)
     val highMidCutoffBin = (6000f / binHz).toInt().coerceIn(midCutoffBin + 1, halfSize)
 
-    var subBassSum = 0f; var subBassCount = 0
-    var bassSum = 0f; var bassCount = 0
-    var lowMidSum = 0f; var lowMidCount = 0
-    var midSum = 0f; var midCount = 0
-    var highMidSum = 0f; var highMidCount = 0
-    var trebleSum = 0f; var trebleCount = 0
+    var subBassSum = 0f
+    var subBassCount = 0
+    var bassSum = 0f
+    var bassCount = 0
+    var lowMidSum = 0f
+    var lowMidCount = 0
+    var midSum = 0f
+    var midCount = 0
+    var highMidSum = 0f
+    var highMidCount = 0
+    var trebleSum = 0f
+    var trebleCount = 0
 
     var weightedFreqSum = 0f
     var magSum = 0f
@@ -165,12 +172,30 @@ class AudioSpectrumAnalyzer(
 
       // Frequency band accumulation
       when {
-        k < subBassCutoffBin -> { subBassSum += rawMag; subBassCount++ }
-        k < bassCutoffBin -> { bassSum += rawMag; bassCount++ }
-        k < lowMidCutoffBin -> { lowMidSum += rawMag; lowMidCount++ }
-        k < midCutoffBin -> { midSum += rawMag; midCount++ }
-        k < highMidCutoffBin -> { highMidSum += rawMag; highMidCount++ }
-        else -> { trebleSum += rawMag; trebleCount++ }
+        k < subBassCutoffBin -> {
+          subBassSum += rawMag
+          subBassCount++
+        }
+        k < bassCutoffBin -> {
+          bassSum += rawMag
+          bassCount++
+        }
+        k < lowMidCutoffBin -> {
+          lowMidSum += rawMag
+          lowMidCount++
+        }
+        k < midCutoffBin -> {
+          midSum += rawMag
+          midCount++
+        }
+        k < highMidCutoffBin -> {
+          highMidSum += rawMag
+          highMidCount++
+        }
+        else -> {
+          trebleSum += rawMag
+          trebleCount++
+        }
       }
 
       // Logarithmic band mapping
@@ -195,11 +220,12 @@ class AudioSpectrumAnalyzer(
     }
 
     // Adaptive peak energy tracking for Automatic Gain Control (AGC)
-    peakEnergyTracker = if (frameMaxMag > peakEnergyTracker) {
-      peakEnergyTracker * 0.7f + frameMaxMag * 0.3f
-    } else {
-      (peakEnergyTracker * 0.995f).coerceAtLeast(0.15f)
-    }
+    peakEnergyTracker =
+      if (frameMaxMag > peakEnergyTracker) {
+        peakEnergyTracker * 0.7f + frameMaxMag * 0.3f
+      } else {
+        (peakEnergyTracker * 0.995f).coerceAtLeast(0.15f)
+      }
     val agcScale = 1.0f / peakEnergyTracker
 
     for (i in 0 until 64) {
@@ -221,11 +247,12 @@ class AudioSpectrumAnalyzer(
 
     val fftEnergy = (subBass * 0.25f + bass * 0.35f + lowMid * 0.15f + mid * 0.15f + treble * 0.10f).coerceIn(0f, 1f)
 
-    val centroid = if (magSum > 0.001f) {
-      (weightedFreqSum / magSum / nyquist).coerceIn(0f, 1f)
-    } else {
-      features.centroid
-    }
+    val centroid =
+      if (magSum > 0.001f) {
+        (weightedFreqSum / magSum / nyquist).coerceIn(0f, 1f)
+      } else {
+        features.centroid
+      }
 
     // Adaptive Spectral Flux beat & onset detection
     avgFluxTracker = avgFluxTracker * 0.92f + spectralFlux * 0.08f
@@ -245,11 +272,12 @@ class AudioSpectrumAnalyzer(
     features.centroid = features.centroid * 0.6f + centroid * 0.4f
 
     val currentWaveformEnergy = features.energy
-    features.energy = if (currentWaveformEnergy > 0.01f) {
-      (currentWaveformEnergy * ENERGY_WAVEFORM_WEIGHT + fftEnergy * ENERGY_FFT_WEIGHT).coerceIn(0f, 1f)
-    } else {
-      fftEnergy
-    }
+    features.energy =
+      if (currentWaveformEnergy > 0.01f) {
+        (currentWaveformEnergy * ENERGY_WAVEFORM_WEIGHT + fftEnergy * ENERGY_FFT_WEIGHT).coerceIn(0f, 1f)
+      } else {
+        fftEnergy
+      }
 
     features.beat = if (beatDetected) 1f else 0f
     features.active = true

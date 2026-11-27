@@ -26,8 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
-import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,6 +42,7 @@ import app.gyrolet.mpvrx.database.repository.NetworkStreamEntryRepository
 import app.gyrolet.mpvrx.domain.torrent.isTorrentSource
 import app.gyrolet.mpvrx.domain.torrent.normalizeTorrentSource
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
@@ -54,6 +53,7 @@ import app.gyrolet.mpvrx.utils.media.SharedUrlExtractor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,10 +101,13 @@ fun PlayLinkSheet(
           val artworkUrl =
             firstEntry?.thumbnailUrl
               ?: if (
-                app.gyrolet.mpvrx.utils.media.HttpUtils.isMusicStreamingUrl(selectedUri) ||
-                  app.gyrolet.mpvrx.utils.media.HttpUtils.isYouTubeUrl(selectedUri)
+                app.gyrolet.mpvrx.utils.media.HttpUtils
+                  .isMusicStreamingUrl(selectedUri) ||
+                app.gyrolet.mpvrx.utils.media.HttpUtils
+                  .isYouTubeUrl(selectedUri)
               ) {
-                app.gyrolet.mpvrx.utils.media.HttpUtils.fetchMusicStreamingArtwork(selectedSource)
+                app.gyrolet.mpvrx.utils.media.HttpUtils
+                  .fetchMusicStreamingArtwork(selectedSource)
               } else {
                 null
               }
@@ -124,8 +127,13 @@ fun PlayLinkSheet(
               )
 
               val uri = selectedUri
-              if (firstEntry == null && app.gyrolet.mpvrx.utils.media.HttpUtils.isYouTubeUrl(uri)) {
-                val ytMeta = app.gyrolet.mpvrx.utils.media.HttpUtils.fetchYouTubeMetadata(playableSource)
+              if (firstEntry == null &&
+                app.gyrolet.mpvrx.utils.media.HttpUtils
+                  .isYouTubeUrl(uri)
+              ) {
+                val ytMeta =
+                  app.gyrolet.mpvrx.utils.media.HttpUtils
+                    .fetchYouTubeMetadata(playableSource)
                 if (ytMeta != null && ytMeta.title.isNotBlank()) {
                   RecentlyPlayedOps.updateVideoMetadata(
                     filePath = selectedSource,
@@ -165,25 +173,19 @@ fun PlayLinkSheet(
   ResponsiveBottomSheet(
     onDismissRequest = handleDismiss,
     modifier = modifier,
+    title =
+      androidx.compose.ui.res
+        .stringResource(app.gyrolet.mpvrx.R.string.ui_play_link),
+    leadingIcon = Icons.RoundedFilled.Link,
   ) {
     Column(
       modifier =
         Modifier
           .fillMaxWidth()
-          .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 16.dp)
+          .padding(horizontal = 16.dp, vertical = 12.dp)
           .verticalScroll(rememberScrollState()),
-      verticalArrangement = Arrangement.spacedBy(16.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      // Title
-      Text(
-        text =
-          androidx.compose.ui.res
-            .stringResource(app.gyrolet.mpvrx.R.string.ui_play_link),
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Medium,
-        color = MaterialTheme.colorScheme.onSurface,
-      )
-
       // URL Input
       Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -249,15 +251,26 @@ fun PlayLinkSheet(
                 // Torrents download through the torrent flow.
                 onPlayLink(playableSource)
               } else {
-                when (linkDownloadCoordinator.enqueue(playableSource, MediaInfoParser.parseStreamTitle(playableSource))) {
+                when (
+                  linkDownloadCoordinator.enqueue(
+                    playableSource,
+                    MediaInfoParser.parseStreamTitle(playableSource),
+                  )
+                ) {
                   app.gyrolet.mpvrx.domain.download.LinkDownloadCoordinator.Route.UNSUPPORTED ->
                     app.gyrolet.mpvrx.ui.components.AppToast
-                      .makeText(context, app.gyrolet.mpvrx.R.string.downloads_location_invalid, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT)
-                      .show()
+                      .makeText(
+                        context,
+                        app.gyrolet.mpvrx.R.string.downloads_location_invalid,
+                        app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
+                      ).show()
                   else ->
                     app.gyrolet.mpvrx.ui.components.AppToast
-                      .makeText(context, app.gyrolet.mpvrx.R.string.downloads_started, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT)
-                      .show()
+                      .makeText(
+                        context,
+                        app.gyrolet.mpvrx.R.string.downloads_started,
+                        app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
+                      ).show()
                 }
               }
               onDismiss()
@@ -288,7 +301,9 @@ fun PlayLinkSheet(
             )
           } else {
             Text(
-              text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play),
+              text =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
               fontWeight = FontWeight.SemiBold,
             )
           }

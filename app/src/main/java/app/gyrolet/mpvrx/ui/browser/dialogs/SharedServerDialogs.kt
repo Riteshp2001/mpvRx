@@ -14,7 +14,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import app.gyrolet.mpvrx.data.network.ServerUrlUtils
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,13 +44,11 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,7 +58,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -72,10 +68,13 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.data.network.ServerUrlUtils
+import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
 import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.ui.components.themedSegmentedButtonColors
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -118,55 +117,23 @@ fun SharedAddServerDialog(
     onDismissRequest = onDismiss,
     dismissEnabled = !isLoading,
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    title = title,
+    subtitle = subtitle,
+    leadingContent = headerIcon,
+    leadingIcon = Icons.RoundedFilled.BringYourOwnIp,
+    actions = {
+      PlayerSheetAction(Icons.RoundedFilled.Close, stringResource(R.string.ui_close), onDismiss, enabled = !isLoading)
+    },
   ) {
     Column(
       modifier =
         Modifier
           .fillMaxWidth()
           .verticalScroll(rememberScrollState())
-          .padding(horizontal = 24.dp)
+          .padding(horizontal = 16.dp, vertical = 12.dp)
           .navigationBarsPadding(),
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-      // Header
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Column(modifier = Modifier.weight(1f)) {
-          Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-          ) {
-            if (headerIcon != null) {
-              headerIcon()
-            }
-            Text(
-              text = title,
-              modifier = Modifier.weight(1f).semantics { heading() },
-              style = MaterialTheme.typography.headlineSmallEmphasized,
-              color = MaterialTheme.colorScheme.onSurface,
-            )
-          }
-          Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-        IconButton(
-          onClick = { if (!isLoading) onDismiss() },
-          enabled = !isLoading,
-        ) {
-          Icon(
-            imageVector = Icons.RoundedFilled.Close,
-            contentDescription = stringResource(R.string.ui_close),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-      }
-
       // Server URL Input
       OutlinedTextField(
         value = serverUrl,
@@ -314,7 +281,12 @@ fun SharedAddServerDialog(
           trailingIcon = {
             IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
               Icon(
-                imageVector = if (isPasswordVisible) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility,
+                imageVector =
+                  if (isPasswordVisible) {
+                    Icons.RoundedFilled.VisibilityOff
+                  } else {
+                    Icons.RoundedFilled.Visibility
+                  },
                 contentDescription = if (isPasswordVisible) "Hide password" else "Show password",
               )
             }
@@ -474,40 +446,20 @@ fun <T> SharedManageServersDialog(
   ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    title = title,
+    subtitle = "${servers.size} configured server${if (servers.size == 1) "" else "s"}",
+    leadingIcon = Icons.RoundedFilled.BringYourOwnIp,
+    actions = { PlayerSheetAction(Icons.RoundedFilled.Close, stringResource(R.string.ui_close), onDismiss) },
   ) {
     Column(
       modifier =
         Modifier
           .fillMaxWidth()
           .verticalScroll(rememberScrollState())
-          .padding(horizontal = 24.dp)
+          .padding(horizontal = 16.dp, vertical = 12.dp)
           .navigationBarsPadding(),
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-      // Header
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Column(modifier = Modifier.weight(1f)) {
-          Text(
-            text = title,
-            modifier = Modifier.semantics { heading() },
-            style = MaterialTheme.typography.headlineSmallEmphasized,
-            color = MaterialTheme.colorScheme.onSurface,
-          )
-          Text(
-            text = "${servers.size} configured server${if (servers.size == 1) "" else "s"}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-        TextButton(onClick = onDismiss) {
-          Text(stringResource(R.string.ui_close))
-        }
-      }
-
       if (servers.isEmpty()) {
         Card(
           shape = RoundedCornerShape(16.dp),

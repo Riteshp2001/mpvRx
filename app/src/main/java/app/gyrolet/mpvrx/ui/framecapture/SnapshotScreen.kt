@@ -90,7 +90,6 @@ import org.koin.compose.koinInject
  */
 @Serializable
 object SnapshotScreen : Screen {
-
   @Composable
   override fun Content() {
     val context = LocalContext.current
@@ -237,7 +236,11 @@ object SnapshotScreen : Screen {
       val selectedFolders = library.folders.filter { it.id in folderSelection.selectedIds }
       SnapshotDeleteFolderDialog(
         folderCount = selectedFolders.size,
-        paths = library.allCaptures.filter { it.folderId in folderSelection.selectedIds }.mapNotNull { it.imageUri ?: it.imagePath },
+        paths =
+          library.allCaptures.filter { it.folderId in folderSelection.selectedIds }.mapNotNull {
+            it.imageUri
+              ?: it.imagePath
+          },
         snapshotCount = selectedFolders.sumOf { it.captureCount },
         onConfirm = {
           confirmFolderDelete = false
@@ -251,7 +254,11 @@ object SnapshotScreen : Screen {
     if (confirmCaptureDelete) {
       SnapshotDeleteConfirmDialog(
         count = captureSelection.selectedCount,
-        paths = library.allCaptures.filter { it.id in captureSelection.selectedIds }.mapNotNull { it.imageUri ?: it.imagePath },
+        paths =
+          library.allCaptures.filter { it.id in captureSelection.selectedIds }.mapNotNull {
+            it.imageUri
+              ?: it.imagePath
+          },
         onConfirm = {
           confirmCaptureDelete = false
           viewModel.deleteCaptures(captureSelection.selectedIds)

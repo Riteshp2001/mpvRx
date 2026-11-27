@@ -46,9 +46,10 @@ object MediaStoreGenerationGuard {
       val volumes = MediaStore.getExternalVolumeNames(context)
       // No external volume is a legitimate state (an emulator image with no mounted media), not a
       // failure, so this still yields a stable token.
-      val perVolume = volumes.sorted().map { volume ->
-        "$volume=${MediaStore.getGeneration(context, volume)}:${playableCount(context, volume)}"
-      }
+      val perVolume =
+        volumes.sorted().map { volume ->
+          "$volume=${MediaStore.getGeneration(context, volume)}:${playableCount(context, volume)}"
+        }
       // getVersion changes when MediaProvider is upgraded or its schema resets, which can renumber
       // generations; folding it in makes that a guaranteed mismatch instead of a false match.
       val providerVersion = runCatching { MediaStore.getVersion(context) }.getOrDefault("")
@@ -67,7 +68,10 @@ object MediaStoreGenerationGuard {
    * video/audio row modified after the recorded generation, and the same number of such rows
    * (deletions do not leave a modified row behind), means the previous scan is still exact.
    */
-  fun isTokenCurrent(context: Context, recorded: String): Boolean {
+  fun isTokenCurrent(
+    context: Context,
+    recorded: String,
+  ): Boolean {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
     return runCatching {
       val parts = recorded.split('|', limit = 3)
@@ -93,18 +97,30 @@ object MediaStoreGenerationGuard {
     }.getOrDefault(false)
   }
 
-  private fun playableCount(context: Context, volume: String): Int =
+  private fun playableCount(
+    context: Context,
+    volume: String,
+  ): Int =
     countRows(context, MediaStore.Video.Media.getContentUri(volume), null, null) +
       countRows(context, MediaStore.Audio.Media.getContentUri(volume), null, null)
 
-  private fun modifiedPlayableCount(context: Context, volume: String, sinceGeneration: Long): Int {
+  private fun modifiedPlayableCount(
+    context: Context,
+    volume: String,
+    sinceGeneration: Long,
+  ): Int {
     val selection = "${MediaStore.MediaColumns.GENERATION_MODIFIED} > ?"
     val args = arrayOf(sinceGeneration.toString())
     return countRows(context, MediaStore.Video.Media.getContentUri(volume), selection, args) +
       countRows(context, MediaStore.Audio.Media.getContentUri(volume), selection, args)
   }
 
-  private fun countRows(context: Context, uri: android.net.Uri, selection: String?, args: Array<String>?): Int =
+  private fun countRows(
+    context: Context,
+    uri: android.net.Uri,
+    selection: String?,
+    args: Array<String>?,
+  ): Int =
     context.contentResolver
       .query(uri, arrayOf(MediaStore.MediaColumns._ID), selection, args, null)
       ?.use { it.count } ?: 0
@@ -113,7 +129,10 @@ object MediaStoreGenerationGuard {
    * Records the MediaStore state that a just-completed scan observed. A null token is ignored so the
    * stored value can never be downgraded to something a later comparison would accept.
    */
-  fun remember(context: Context, token: String?) {
+  fun remember(
+    context: Context,
+    token: String?,
+  ) {
     if (token == null) return
     runCatching {
       prefs(context).edit().putString(KEY_TOKEN, token).apply()
@@ -190,6 +209,5 @@ object MediaStoreGenerationGuard {
         Log.w(TAG, "Could not read stored MediaStore generation", error)
       }.getOrNull()
 
-  private fun prefs(context: Context) =
-    context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+  private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }

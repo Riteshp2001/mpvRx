@@ -11,10 +11,17 @@ package app.gyrolet.mpvrx.domain.network
 
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 
-internal val NETWORK_IMAGE_MIME_TYPES = setOf(
-  "image/jpeg", "image/png", "image/webp", "image/gif",
-  "image/bmp", "image/heic", "image/heif", "image/avif"
-)
+internal val NETWORK_IMAGE_MIME_TYPES =
+  setOf(
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/bmp",
+    "image/heic",
+    "image/heif",
+    "image/avif",
+  )
 
 internal fun NetworkFile.isNetworkImageFile(): Boolean {
   if (isDirectory) return false

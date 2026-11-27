@@ -30,7 +30,10 @@ enum class JellyfinAuthMode {
   TOKEN,
 }
 
-enum class JellyfinSortBy(val apiValue: String, val displayName: String) {
+enum class JellyfinSortBy(
+  val apiValue: String,
+  val displayName: String,
+) {
   NAME("SortName", "Title"),
   DATE_ADDED("DateCreated", "Recently Added"),
   DATE_PLAYED("DatePlayed", "Recently Played"),
@@ -40,12 +43,17 @@ enum class JellyfinSortBy(val apiValue: String, val displayName: String) {
   RANDOM("Random", "Random"),
 }
 
-enum class JellyfinSortOrder(val apiValue: String, val displayName: String) {
+enum class JellyfinSortOrder(
+  val apiValue: String,
+  val displayName: String,
+) {
   ASCENDING("Ascending", "Ascending"),
   DESCENDING("Descending", "Descending"),
 }
 
-enum class JellyfinSearchCategory(val displayName: String) {
+enum class JellyfinSearchCategory(
+  val displayName: String,
+) {
   ALL("All"),
   MOVIES("Movies"),
   SHOWS("TV Shows"),
@@ -165,13 +173,28 @@ data class JellyfinItem(
     get() = people.filter { it.type.equals("Director", ignoreCase = true) }.distinctBy { it.id }
 
   val writers: List<JellyfinPerson>
-    get() = people.filter { it.type.equals("Writer", ignoreCase = true) || it.type.equals("Writing", ignoreCase = true) }.distinctBy { it.id }
+    get() =
+      people
+        .filter {
+          it.type.equals("Writer", ignoreCase = true) || it.type.equals("Writing", ignoreCase = true)
+        }.distinctBy { it.id }
 
   val producers: List<JellyfinPerson>
-    get() = people.filter { it.type.equals("Producer", ignoreCase = true) || it.type.equals("ExecutiveProducer", ignoreCase = true) }.distinctBy { it.id }
+    get() =
+      people
+        .filter {
+          it.type.equals("Producer", ignoreCase = true) ||
+            it.type.equals("ExecutiveProducer", ignoreCase = true)
+        }.distinctBy { it.id }
 
   val actors: List<JellyfinPerson>
-    get() = people.filter { it.type.equals("Actor", ignoreCase = true) || it.type.equals("GuestStar", ignoreCase = true) || it.type == null }.distinctBy { it.id to (it.role ?: "") }
+    get() =
+      people
+        .filter {
+          it.type.equals("Actor", ignoreCase = true) ||
+            it.type.equals("GuestStar", ignoreCase = true) ||
+            it.type == null
+        }.distinctBy { it.id to (it.role ?: "") }
 
   val isVideo: Boolean
     get() = type == "Movie" || type == "Episode" || type == "Video"

@@ -80,8 +80,9 @@ import org.koin.compose.koinInject
  * folder's contents.
  */
 @Serializable
-data class SnapshotFolderScreen(val folderId: Long) : Screen {
-
+data class SnapshotFolderScreen(
+  val folderId: Long,
+) : Screen {
   @Composable
   override fun Content() {
     val context = LocalContext.current

@@ -9,11 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.jellyfin
 
-import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
-import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
-import app.gyrolet.mpvrx.ui.tv.tvScrollWhenFocusCannotMove
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -63,8 +58,15 @@ import app.gyrolet.mpvrx.domain.jellyfin.JellyfinPerson
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
+import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
+import app.gyrolet.mpvrx.ui.tv.tvScrollWhenFocusCannotMove
 
-private enum class PersonMediaFilter(val label: String) {
+private enum class PersonMediaFilter(
+  val label: String,
+) {
   ALL("All"),
   MOVIES("Movies"),
   SERIES("TV Shows"),
@@ -91,25 +93,27 @@ fun JellyfinPersonSheet(
     contentColor = MaterialTheme.colorScheme.onSurface,
   ) {
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .tvInitialFocus(initialFocus)
-        .tvFocusGroup()
-        .tvScrollWhenFocusCannotMove(scrollState)
-        .verticalScroll(scrollState)
-        .padding(horizontal = 16.dp, vertical = 8.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .tvInitialFocus(initialFocus)
+          .tvFocusGroup()
+          .tvScrollWhenFocusCannotMove(scrollState)
+          .verticalScroll(scrollState)
+          .padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       // ── Person Hero Header ──────────────────────────────────────────
-      val avatarUrl = remember(server.serverUrl, person.id, person.primaryImageTag, server.accessToken) {
-        JellyfinClient.getImageUrl(
-          serverUrl = server.serverUrl,
-          itemId = person.id,
-          imageTag = person.primaryImageTag,
-          maxWidth = 300,
-          token = server.accessToken,
-        )
-      }
+      val avatarUrl =
+        remember(server.serverUrl, person.id, person.primaryImageTag, server.accessToken) {
+          JellyfinClient.getImageUrl(
+            serverUrl = server.serverUrl,
+            itemId = person.id,
+            imageTag = person.primaryImageTag,
+            maxWidth = 300,
+            token = server.accessToken,
+          )
+        }
 
       Surface(
         shape = RoundedCornerShape(20.dp),
@@ -117,17 +121,18 @@ fun JellyfinPersonSheet(
         modifier = Modifier.fillMaxWidth(),
       ) {
         Box(
-          modifier = Modifier
-            .fillMaxWidth()
-            .background(
-              Brush.verticalGradient(
-                colors = listOf(
-                  MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
-                  Color.Transparent,
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .background(
+                Brush.verticalGradient(
+                  colors =
+                    listOf(
+                      MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f),
+                      Color.Transparent,
+                    ),
                 ),
-              ),
-            )
-            .padding(16.dp),
+              ).padding(16.dp),
         ) {
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -140,16 +145,18 @@ fun JellyfinPersonSheet(
                 url = avatarUrl,
                 contentDescription = person.name,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                  .size(80.dp)
-                  .clip(CircleShape),
+                modifier =
+                  Modifier
+                    .size(80.dp)
+                    .clip(CircleShape),
               )
             } else {
               Box(
-                modifier = Modifier
-                  .size(80.dp)
-                  .clip(CircleShape)
-                  .background(MaterialTheme.colorScheme.primaryContainer),
+                modifier =
+                  Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center,
               ) {
                 Text(
@@ -190,11 +197,12 @@ fun JellyfinPersonSheet(
               if (!isLoading && media.isNotEmpty()) {
                 val movieCount = media.count { it.type == "Movie" }
                 val seriesCount = media.count { it.isSeries || it.type == "Series" }
-                val stats = buildList {
-                  if (movieCount > 0) add("$movieCount ${if (movieCount == 1) "Movie" else "Movies"}")
-                  if (seriesCount > 0) add("$seriesCount ${if (seriesCount == 1) "Series" else "Series"}")
-                  if (isEmpty()) add("${media.size} Titles")
-                }.joinToString(" • ")
+                val stats =
+                  buildList {
+                    if (movieCount > 0) add("$movieCount ${if (movieCount == 1) "Movie" else "Movies"}")
+                    if (seriesCount > 0) add("$seriesCount ${if (seriesCount == 1) "Series" else "Series"}")
+                    if (isEmpty()) add("${media.size} Titles")
+                  }.joinToString(" • ")
 
                 Surface(
                   shape = RoundedCornerShape(8.dp),
@@ -223,10 +231,11 @@ fun JellyfinPersonSheet(
           modifier = Modifier.fillMaxWidth(),
         ) {
           Column(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(14.dp)
-              .animateContentSize(),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+                .animateContentSize(),
             verticalArrangement = Arrangement.spacedBy(6.dp),
           ) {
             Text(
@@ -272,13 +281,14 @@ fun JellyfinPersonSheet(
         val movies = remember(media) { media.filter { it.type == "Movie" } }
         val series = remember(media) { media.filter { it.isSeries || it.type == "Series" } }
 
-        val filteredMedia = remember(media, selectedFilter) {
-          when (selectedFilter) {
-            PersonMediaFilter.ALL -> media
-            PersonMediaFilter.MOVIES -> movies
-            PersonMediaFilter.SERIES -> series
+        val filteredMedia =
+          remember(media, selectedFilter) {
+            when (selectedFilter) {
+              PersonMediaFilter.ALL -> media
+              PersonMediaFilter.MOVIES -> movies
+              PersonMediaFilter.SERIES -> series
+            }
           }
-        }
 
         Row(
           modifier = Modifier.fillMaxWidth(),
@@ -295,11 +305,12 @@ fun JellyfinPersonSheet(
           if (movies.isNotEmpty() && series.isNotEmpty()) {
             Row(modifier = Modifier.tvFocusGroup(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
               PersonMediaFilter.entries.forEach { filter ->
-                val count = when (filter) {
-                  PersonMediaFilter.ALL -> media.size
-                  PersonMediaFilter.MOVIES -> movies.size
-                  PersonMediaFilter.SERIES -> series.size
-                }
+                val count =
+                  when (filter) {
+                    PersonMediaFilter.ALL -> media.size
+                    PersonMediaFilter.MOVIES -> movies.size
+                    PersonMediaFilter.SERIES -> series.size
+                  }
                 if (count > 0) {
                   FilterChip(
                     modifier = Modifier.tvFocusHighlight(RoundedCornerShape(10.dp), clipToShape = false),
@@ -307,10 +318,11 @@ fun JellyfinPersonSheet(
                     onClick = { selectedFilter = filter },
                     label = { Text("${filter.label} ($count)", style = MaterialTheme.typography.labelSmall) },
                     shape = RoundedCornerShape(10.dp),
-                    colors = FilterChipDefaults.filterChipColors(
-                      selectedContainerColor = MaterialTheme.colorScheme.primary,
-                      selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
+                    colors =
+                      FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                      ),
                   )
                 }
               }
@@ -320,9 +332,10 @@ fun JellyfinPersonSheet(
 
         if (isLoading) {
           Box(
-            modifier = Modifier
-              .fillMaxWidth()
-              .height(180.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .height(180.dp),
             contentAlignment = Alignment.Center,
           ) {
             CircularProgressIndicator(
@@ -337,9 +350,10 @@ fun JellyfinPersonSheet(
             modifier = Modifier.fillMaxWidth(),
           ) {
             Column(
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(24.dp),
               horizontalAlignment = Alignment.CenterHorizontally,
               verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -354,7 +368,14 @@ fun JellyfinPersonSheet(
         } else {
           // Responsive 3-column or 2-column Grid
           BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val columns = if (maxWidth >= 600.dp) 4 else if (maxWidth >= 400.dp) 3 else 2
+            val columns =
+              if (maxWidth >= 600.dp) {
+                4
+              } else if (maxWidth >= 400.dp) {
+                3
+              } else {
+                2
+              }
             val spacing = 10.dp
             val totalSpacing = spacing * (columns - 1)
             val cardWidth = (maxWidth - totalSpacing) / columns

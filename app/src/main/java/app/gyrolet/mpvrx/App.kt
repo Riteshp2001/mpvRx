@@ -12,8 +12,8 @@ package app.gyrolet.mpvrx
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.Application
-import android.content.ComponentName
 import android.content.ComponentCallbacks2
+import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
@@ -28,24 +28,24 @@ import app.gyrolet.mpvrx.di.DatabaseModule
 import app.gyrolet.mpvrx.di.FileManagerModule
 import app.gyrolet.mpvrx.di.PreferencesModule
 import app.gyrolet.mpvrx.domain.kodi.KodiIntegration
+import app.gyrolet.mpvrx.domain.network.NetworkImageRepository
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SettingsRestoreGuard
-import app.gyrolet.mpvrx.remote.TvInputDispatcher
-import app.gyrolet.mpvrx.remote.TvRemoteServer
 import app.gyrolet.mpvrx.presentation.crash.AppLogBuffer
 import app.gyrolet.mpvrx.presentation.crash.AppLogFile
 import app.gyrolet.mpvrx.presentation.crash.AppLogging
 import app.gyrolet.mpvrx.presentation.crash.CrashMonitor
 import app.gyrolet.mpvrx.presentation.crash.LogcatTap
-import app.gyrolet.mpvrx.domain.network.NetworkImageRepository
+import app.gyrolet.mpvrx.remote.TvInputDispatcher
+import app.gyrolet.mpvrx.remote.TvRemoteServer
 import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.player.MediaPlayerWidget
 import app.gyrolet.mpvrx.ui.player.PlaybackActivityOwner
-import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackPerformanceTrace
+import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.theme.AppTheme
@@ -61,9 +61,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -79,7 +79,11 @@ class App :
   androidx.work.Configuration.Provider,
   Application.ActivityLifecycleCallbacks {
   override val workManagerConfiguration: androidx.work.Configuration
-    get() = androidx.work.Configuration.Builder().setMinimumLoggingLevel(Log.WARN).build()
+    get() =
+      androidx.work.Configuration
+        .Builder()
+        .setMinimumLoggingLevel(Log.WARN)
+        .build()
   private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
   private val networkAutoConnectStarted = AtomicBoolean(false)
   private val metadataMaintenanceStarted = AtomicBoolean(false)
@@ -90,7 +94,10 @@ class App :
   private val inKodiProcess by lazy {
     KodiIntegration.isKodiProcess(CrashMonitor.currentProcessName(), packageName)
   }
-  private val mediaStoreLiveMonitor by lazy { app.gyrolet.mpvrx.utils.media.MediaStoreLiveMonitor(this, applicationScope) }
+  private val mediaStoreLiveMonitor by lazy {
+    app.gyrolet.mpvrx.utils.media
+      .MediaStoreLiveMonitor(this, applicationScope)
+  }
 
   private data class WidgetAppearanceState(
     val darkMode: DarkMode,
@@ -112,6 +119,7 @@ class App :
   companion object {
     private val _foregroundState = MutableStateFlow(false)
     val foregroundState = _foregroundState.asStateFlow()
+
     @Volatile var isInForeground: Boolean = false
       private set(value) {
         field = value
@@ -120,6 +128,7 @@ class App :
     private const val TAG = "App"
     private const val POST_START_MAINTENANCE_DELAY_MS = 10_000L
     private const val THUMBNAIL_WARMUP_DELAY_MS = 1_500L
+
     // Was 3 minutes, shorter than a normal folder browse-through. Every open inside that window
     // paid a full core rebuild: initOptions() plus MPVLib.init() (mpv.conf + Lua scripts).
     private const val IDLE_MPV_CORE_GRACE_MS = 20L * 60L * 1000L
@@ -140,7 +149,8 @@ class App :
   override fun onCreate() {
     super.onCreate()
     if (inKodiProcess) return
-    app.gyrolet.mpvrx.utils.device.DevicePerformance.init(this)
+    app.gyrolet.mpvrx.utils.device.DevicePerformance
+      .init(this)
 
     // Material3 alpha29 brings Compose UI 1.13.0-alpha01, which re-enables out-of-frame
     // IME dispatch. Batch StopInput/StartInput on the next frame so focus transfers don't
@@ -151,8 +161,10 @@ class App :
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         Application.getProcessName()
       } else {
-        getSystemService(ActivityManager::class.java).runningAppProcesses
-          ?.firstOrNull { it.pid == Process.myPid() }?.processName
+        getSystemService(ActivityManager::class.java)
+          .runningAppProcesses
+          ?.firstOrNull { it.pid == Process.myPid() }
+          ?.processName
       }
     if (processName == "$packageName:crash") {
       AppLogFile.disable()
@@ -186,13 +198,15 @@ class App :
     }
     val advancedPreferences = getKoin().get<AdvancedPreferences>()
     applicationScope.launch {
-      advancedPreferences.debugLogSizeMb.changes()
+      advancedPreferences.debugLogSizeMb
+        .changes()
         .distinctUntilChanged()
         .collect { AppLogBuffer.setCapacityMb(it) }
     }
     // Verbose logging is for debugging, where decoder, GPU driver and library lines matter too.
     applicationScope.launch {
-      advancedPreferences.verboseLogging.changes()
+      advancedPreferences.verboseLogging
+        .changes()
         .distinctUntilChanged()
         .collect { LogcatTap.setEnabled(it) }
     }
@@ -200,8 +214,10 @@ class App :
     if (BuildConfig.ENABLE_UPDATE_FEATURE) {
       applicationScope.launch(Dispatchers.IO) {
         delay(1_500L)
-        runCatching { app.gyrolet.mpvrx.domain.update.UpdateWork.monitor(this@App) }
-          .onFailure { Log.w(TAG, "Update work monitoring stopped", it) }
+        runCatching {
+          app.gyrolet.mpvrx.domain.update.UpdateWork
+            .monitor(this@App)
+        }.onFailure { Log.w(TAG, "Update work monitoring stopped", it) }
       }
     }
     PlaybackSession.addObserver(PlaybackPerformanceTrace)
@@ -333,8 +349,7 @@ class App :
           stalled = coreIdle == true || pausedForCache == true,
           resetVersion = resetVersion,
         )
-      }
-        .distinctUntilChanged()
+      }.distinctUntilChanged()
         .collectLatest { (item, generation, phase, paused, stalled, resetVersion) ->
           if (item == null || paused || stalled || phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)) {
             return@collectLatest
@@ -395,7 +410,8 @@ class App :
     if (!preferences.autoBackupEnabled.get() || !settingsAutoBackupRunning.compareAndSet(false, true)) return
     applicationScope.launch(Dispatchers.IO) {
       try {
-        getKoin().get<app.gyrolet.mpvrx.preferences.SettingsManager>()
+        getKoin()
+          .get<app.gyrolet.mpvrx.preferences.SettingsManager>()
           .autoBackupIfChanged(folderUri)
           .onFailure { error -> Log.e(TAG, "Automatic settings backup failed", error) }
       } finally {
@@ -416,7 +432,12 @@ class App :
     if (playerActivity.continuesPlaybackInBackground()) return
 
     val state = PlaybackSession.state.value
-    if (state.currentItem == null || state.phase == PlaybackPhase.IDLE || state.phase == PlaybackPhase.UNINITIALIZED) return
+    if (state.currentItem == null ||
+      state.phase == PlaybackPhase.IDLE ||
+      state.phase == PlaybackPhase.UNINITIALIZED
+    ) {
+      return
+    }
 
     PlaybackSession.setPropertyBoolean("pause", true)
     playerActivity.abandonAudioFocus()
@@ -441,8 +462,10 @@ class App :
     TvInputDispatcher.onActivityResumed(activity)
     if (BuildConfig.ENABLE_UPDATE_FEATURE) {
       applicationScope.launch(Dispatchers.IO) {
-        runCatching { app.gyrolet.mpvrx.domain.update.UpdateInstaller.onForeground(this@App) }
-          .onFailure { Log.w(TAG, "Could not resume update installation", it) }
+        runCatching {
+          app.gyrolet.mpvrx.domain.update.UpdateInstaller
+            .onForeground(this@App)
+        }.onFailure { Log.w(TAG, "Could not resume update installation", it) }
       }
     }
     when (activity) {
@@ -501,10 +524,11 @@ class App :
   private fun startIdleMpvCoreReaper() {
     applicationScope.launch {
       combine(PlaybackSession.state, PlaybackActivityOwner.hasOwner) { state, hasOwner ->
-        !hasOwner && state.phase == PlaybackPhase.IDLE &&
-            state.currentItem == null &&
-            !state.surfaceAttached &&
-            PlaybackSession.isInitialized
+        !hasOwner &&
+          state.phase == PlaybackPhase.IDLE &&
+          state.currentItem == null &&
+          !state.surfaceAttached &&
+          PlaybackSession.isInitialized
       }.distinctUntilChanged().collectLatest { isFullyIdle ->
         if (!isFullyIdle) return@collectLatest
 
@@ -546,13 +570,15 @@ class App :
     if (!BuildConfig.DEBUG) return
 
     StrictMode.setThreadPolicy(
-      StrictMode.ThreadPolicy.Builder()
+      StrictMode.ThreadPolicy
+        .Builder()
         .detectAll()
         .penaltyLog()
         .build(),
     )
     StrictMode.setVmPolicy(
-      StrictMode.VmPolicy.Builder()
+      StrictMode.VmPolicy
+        .Builder()
         .detectAll()
         .penaltyLog()
         .build(),
@@ -599,11 +625,13 @@ class App :
         delay(POST_START_MAINTENANCE_DELAY_MS)
         app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia.clearLegacyCache(
           this@App,
-          PlaybackSession.state.value.currentItem?.originalUri,
+          PlaybackSession.state.value.currentItem
+            ?.originalUri,
         )
         val imageRepository: NetworkImageRepository = getKoin().get()
         imageRepository.evictStaleImageCaches()
-        app.gyrolet.mpvrx.presentation.components.RemoteImageLoader.trimDiskCache(this@App)
+        app.gyrolet.mpvrx.presentation.components.RemoteImageLoader
+          .trimDiskCache(this@App)
         Log.d(TAG, "Network image cache cleanup completed")
       } catch (cancellation: CancellationException) {
         imageCacheCleanupStarted.set(false)

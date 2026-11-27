@@ -624,6 +624,9 @@
   <string name="player_sheets_filters_sharpness">Sharpness</string>
   <string name="player_sheets_filters_warning">Some filters may not work on your current video driver</string>
   <string name="player_sheets_speed_make_default">Make default speed</string>
+  <string name="player_speed_decrease">Decrease playback speed</string>
+  <string name="player_speed_increase">Increase playback speed</string>
+  <string name="music_play_all">Play all</string>
   <string name="player_sheets_decoder_formatted" formatted="false">%s (%s)</string>
   <string name="numeric_chooser_value_too_big">Value too big</string>
   <string name="numeric_chooser_value_too_small">Value too small</string>
@@ -654,6 +657,10 @@
   <string name="timer_picker_enter_timer">Enter time</string>
   <string name="timer_title">Sleep timer</string>
   <string name="timer_remaining">%s remaining</string>
+  <string name="timer_one_hour_short">1 hr</string>
+  <string name="timer_custom">Custom</string>
+  <string name="timer_end_of_song">End of song</string>
+  <string name="timer_turn_off">Turn off timer</string>
   <string name="toast_sleep_timer_ended">Sleep timer ended</string>
   <string name="volume_slider_absolute_value" translatable="false">%d</string>
   <string name="github_repo_url" translatable="false">https://github.com/Riteshp2001/mpvRx</string>

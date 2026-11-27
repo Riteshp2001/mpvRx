@@ -16,14 +16,6 @@ import android.net.NetworkCapabilities
 import app.gyrolet.mpvrx.domain.network.NetworkPath
 import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.network.SharedHttpClient
-import java.io.IOException
-import java.net.DatagramPacket
-import java.net.DatagramSocket
-import java.net.Inet4Address
-import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.nio.ByteBuffer
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -34,6 +26,14 @@ import kotlinx.coroutines.launch
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.IOException
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.Inet4Address
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.nio.ByteBuffer
+import java.util.concurrent.TimeUnit
 
 /**
  * Finds file servers that do not advertise themselves. Windows PCs, most NAS boxes and routers
@@ -43,12 +43,20 @@ import okhttp3.Request
  * SSH greeting, a WebDAV reply to OPTIONS. It runs only while the user scans, sends no
  * credentials, and is bounded in subnet size, time and parallelism.
  */
-internal class LanServiceScanner(context: Context) {
+internal class LanServiceScanner(
+  context: Context,
+) {
   private val manager = context.applicationContext.getSystemService(ConnectivityManager::class.java)
 
-  private enum class Probe(val port: Int, val protocol: NetworkProtocol, val greeting: String? = null, val https: Boolean = false) {
+  private enum class Probe(
+    val port: Int,
+    val protocol: NetworkProtocol,
+    val greeting: String? = null,
+    val https: Boolean = false,
+  ) {
     SMB(445, NetworkProtocol.SMB),
     FTP(21, NetworkProtocol.FTP, greeting = "220"),
+
     // Common ports of FTP server apps on phones and of unprivileged desktop servers.
     FTP_ALTERNATE(2121, NetworkProtocol.FTP, greeting = "220"),
     FTP_ANDROID(2221, NetworkProtocol.FTP, greeting = "220"),
@@ -60,16 +68,17 @@ internal class LanServiceScanner(context: Context) {
     WEBDAVS_SYNOLOGY(5006, NetworkProtocol.WEBDAV, https = true),
   }
 
-  suspend fun scan(onServer: (ServerSuggestion) -> Unit) = coroutineScope {
-    // Blocking connects, one thread each, so an address with nothing on it costs one timeout.
-    val dispatcher = Dispatchers.IO.limitedParallelism(MAX_PARALLEL)
-    localSubnets().forEach { subnet ->
-      val http = webDavClient(subnet.network)
-      subnet.hosts().forEach { host ->
-        launch(dispatcher) { scanHost(subnet.network, http, host, onServer) }
+  suspend fun scan(onServer: (ServerSuggestion) -> Unit) =
+    coroutineScope {
+      // Blocking connects, one thread each, so an address with nothing on it costs one timeout.
+      val dispatcher = Dispatchers.IO.limitedParallelism(MAX_PARALLEL)
+      localSubnets().forEach { subnet ->
+        val http = webDavClient(subnet.network)
+        subnet.hosts().forEach { host ->
+          launch(dispatcher) { scanHost(subnet.network, http, host, onServer) }
+        }
       }
     }
-  }
 
   private suspend fun scanHost(
     network: Network,
@@ -102,14 +111,22 @@ internal class LanServiceScanner(context: Context) {
     }
     val path = webDavPath(http, address, probe) ?: return null
     return ServerSuggestion(
-      name = "", host = address, protocol = NetworkProtocol.WEBDAV, port = probe.port,
+      name = "",
+      host = address,
+      protocol = NetworkProtocol.WEBDAV,
+      port = probe.port,
       path = path.takeUnless { it == "/" }?.let { runCatching { NetworkPath.from(it).value }.getOrNull() },
-      useHttps = probe.https, source = ServerSuggestionSource.DISCOVERED,
+      useHttps = probe.https,
+      source = ServerSuggestionSource.DISCOVERED,
     )
   }
 
   /** Whether [probe]'s port accepts a connection and, where the protocol greets first, greets as it. */
-  private fun answers(network: Network, host: Inet4Address, probe: Probe): Boolean =
+  private fun answers(
+    network: Network,
+    host: Inet4Address,
+    probe: Probe,
+  ): Boolean =
     try {
       network.socketFactory.createSocket().use { socket ->
         socket.connect(InetSocketAddress(host, probe.port), CONNECT_TIMEOUT_MS)
@@ -132,20 +149,34 @@ internal class LanServiceScanner(context: Context) {
     }
 
   /** The first usual WebDAV root that answers OPTIONS as WebDAV, or null for another web server. */
-  private fun webDavPath(http: OkHttpClient, address: String, probe: Probe): String? {
+  private fun webDavPath(
+    http: OkHttpClient,
+    address: String,
+    probe: Probe,
+  ): String? {
     for (path in WEBDAV_PATHS) {
-      val url = HttpUrl.Builder()
-        .scheme(if (probe.https) "https" else "http")
-        .host(address)
-        .port(probe.port)
-        .encodedPath(path)
-        .build()
-      val request = Request.Builder().url(url).method("OPTIONS", null).build()
+      val url =
+        HttpUrl
+          .Builder()
+          .scheme(if (probe.https) "https" else "http")
+          .host(address)
+          .port(probe.port)
+          .encodedPath(path)
+          .build()
+      val request =
+        Request
+          .Builder()
+          .url(url)
+          .method("OPTIONS", null)
+          .build()
       val isWebDav =
         try {
           http.newCall(request).execute().use { response ->
             response.header("DAV") != null ||
-              listOfNotNull(response.header("Allow"), response.header("Public")).any { it.contains("PROPFIND", true) } ||
+              listOfNotNull(
+                response.header("Allow"),
+                response.header("Public"),
+              ).any { it.contains("PROPFIND", true) } ||
               // Synology's WebDAV ports ask for credentials before saying anything else.
               (response.code == 401 && probe.port in SYNOLOGY_WEBDAV_PORTS)
           }
@@ -172,7 +203,11 @@ internal class LanServiceScanner(context: Context) {
       dns { name -> network.getAllByName(name).toList() }
     }
 
-  private class Subnet(val network: Network, private val self: Inet4Address, private val prefix: Int) {
+  private class Subnet(
+    val network: Network,
+    private val self: Inet4Address,
+    private val prefix: Int,
+  ) {
     /** Every other address of the subnet; a larger one is swept only in this device's /24. */
     fun hosts(): List<Inet4Address> {
       val bits = prefix.coerceIn(MIN_PREFIX, MAX_PREFIX)
@@ -194,18 +229,24 @@ internal class LanServiceScanner(context: Context) {
         val capabilities = connectivity.getNetworkCapabilities(network) ?: return@mapNotNull null
         if (!capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
           !capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
-        ) return@mapNotNull null
-        val link = connectivity.getLinkProperties(network)?.linkAddresses.orEmpty().firstOrNull { link ->
-          val address = link.address
-          address is Inet4Address && !address.isLoopbackAddress && !address.isLinkLocalAddress
-        } ?: return@mapNotNull null
+        ) {
+          return@mapNotNull null
+        }
+        val link =
+          connectivity.getLinkProperties(network)?.linkAddresses.orEmpty().firstOrNull { link ->
+            val address = link.address
+            address is Inet4Address && !address.isLoopbackAddress && !address.isLinkLocalAddress
+          } ?: return@mapNotNull null
         Subnet(network, link.address as Inet4Address, link.prefixLength)
       }
     }.getOrDefault(emptyList())
   }
 
   /** The host's NetBIOS computer name (node status query, UDP 137), or null without one. */
-  private fun netbiosName(network: Network, host: Inet4Address): String? =
+  private fun netbiosName(
+    network: Network,
+    host: Inet4Address,
+  ): String? =
     try {
       DatagramSocket().use { socket ->
         network.bindSocket(socket)
@@ -237,20 +278,33 @@ internal class LanServiceScanner(context: Context) {
     /** NBSTAT query for the wildcard name "*", as `nmblookup -A` sends it. */
     private val NODE_STATUS_REQUEST: ByteArray =
       byteArrayOf(
-        0x4D, 0x52, // transaction id
-        0x00, 0x00, // flags
-        0x00, 0x01, // one question
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // no answer, authority or additional records
+        0x4D,
+        0x52, // transaction id
+        0x00,
+        0x00, // flags
+        0x00,
+        0x01, // one question
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00, // no answer, authority or additional records
         0x20, // the encoded name is 32 bytes
       ) + "CK".toByteArray(Charsets.US_ASCII) + "A".repeat(30).toByteArray(Charsets.US_ASCII) +
         byteArrayOf(
           0x00, // end of name
-          0x00, 0x21, // NBSTAT
-          0x00, 0x01, // IN
+          0x00,
+          0x21, // NBSTAT
+          0x00,
+          0x01, // IN
         )
 
     /** The first unique workstation or server name of a node status reply. */
-    internal fun parseNodeStatus(reply: ByteArray, length: Int): String? {
+    internal fun parseNodeStatus(
+      reply: ByteArray,
+      length: Int,
+    ): String? {
       if (length < 12) return null
       val answers = ((reply[6].toInt() and 0xFF) shl 8) or (reply[7].toInt() and 0xFF)
       if (answers < 1) return null

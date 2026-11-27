@@ -23,10 +23,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import app.gyrolet.mpvrx.presentation.components.AppComboBoxAnchor as ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,12 +39,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.domain.syncplay.SyncplayManager
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayConnectionFailure
 import app.gyrolet.mpvrx.domain.syncplay.SyncplayEndpoint
+import app.gyrolet.mpvrx.domain.syncplay.SyncplayManager
 import app.gyrolet.mpvrx.presentation.components.AppComboBoxMenu
 import app.gyrolet.mpvrx.presentation.components.AppComboBoxOption
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppComboBoxAnchor as ExposedDropdownMenuBox
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 /**
  * Syncplay controls rendered directly inside the Network > Syncplay tab.
@@ -157,8 +157,11 @@ fun SyncplayPanel(syncplayManager: SyncplayManager = koinInject()) {
             modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable),
           )
           AppComboBoxMenu(expanded = serversExpanded, onDismissRequest = { serversExpanded = false }) {
-            val endpoints = (listOf(savedCredentials.host to savedCredentials.port) +
-              (8995..8999).map { "syncplay.pl" to it }).distinct()
+            val endpoints =
+              (
+                listOf(savedCredentials.host to savedCredentials.port) +
+                  (8995..8999).map { "syncplay.pl" to it }
+              ).distinct()
             endpoints.forEachIndexed { index, (server, serverPort) ->
               AppComboBoxOption(
                 text = "${if (':' in server) "[$server]" else server}:$serverPort",
@@ -168,7 +171,11 @@ fun SyncplayPanel(syncplayManager: SyncplayManager = koinInject()) {
                 trailingContent = {
                   Text(stringResource(R.string.syncplay_title), style = MaterialTheme.typography.labelSmall)
                 },
-                onClick = { host = server; port = serverPort.toString(); serversExpanded = false },
+                onClick = {
+                  host = server
+                  port = serverPort.toString()
+                  serversExpanded = false
+                },
               )
             }
           }
@@ -221,16 +228,18 @@ fun SyncplayPanel(syncplayManager: SyncplayManager = koinInject()) {
           Text(
             text =
               if (state.connectionFailed) {
-                stringResource(when (state.connectionFailure) {
-                  SyncplayConnectionFailure.NAME_LOOKUP -> R.string.syncplay_failure_dns
-                  SyncplayConnectionFailure.REFUSED -> R.string.syncplay_failure_refused
-                  SyncplayConnectionFailure.TIMEOUT -> R.string.syncplay_failure_timeout
-                  SyncplayConnectionFailure.UNREACHABLE -> R.string.syncplay_failure_unreachable
-                  SyncplayConnectionFailure.HANDSHAKE_TIMEOUT -> R.string.syncplay_failure_handshake
-                  SyncplayConnectionFailure.CLOSED -> R.string.syncplay_failure_closed
-                  SyncplayConnectionFailure.PROTOCOL -> R.string.syncplay_failure_protocol
-                  else -> R.string.syncplay_failure_network
-                })
+                stringResource(
+                  when (state.connectionFailure) {
+                    SyncplayConnectionFailure.NAME_LOOKUP -> R.string.syncplay_failure_dns
+                    SyncplayConnectionFailure.REFUSED -> R.string.syncplay_failure_refused
+                    SyncplayConnectionFailure.TIMEOUT -> R.string.syncplay_failure_timeout
+                    SyncplayConnectionFailure.UNREACHABLE -> R.string.syncplay_failure_unreachable
+                    SyncplayConnectionFailure.HANDSHAKE_TIMEOUT -> R.string.syncplay_failure_handshake
+                    SyncplayConnectionFailure.CLOSED -> R.string.syncplay_failure_closed
+                    SyncplayConnectionFailure.PROTOCOL -> R.string.syncplay_failure_protocol
+                    else -> R.string.syncplay_failure_network
+                  },
+                )
               } else {
                 stringResource(R.string.syncplay_error, state.error.orEmpty())
               },

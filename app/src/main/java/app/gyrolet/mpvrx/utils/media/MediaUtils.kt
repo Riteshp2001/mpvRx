@@ -85,15 +85,18 @@ object MediaUtils {
     val selectedIndex = startIndex.coerceIn(queueItems.indices)
     if (userScriptRuntimeNeedsReload()) {
       val token = PreparedPlaybackLaunchStore.stage(queueItems, selectedIndex, isExplicitQueue = true)
-      startPlayer(context, Intent(context, PlayerActivity::class.java)
-        .setAction(Intent.ACTION_VIEW)
-        .setData(Uri.parse(queueItems[selectedIndex].originalUri))
-        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        .putExtra("internal_launch", true)
-        .putExtra("is_audio", true)
-        .putExtra(PlayerActivity.EXTRA_PREPARED_PLAYBACK_QUEUE, true)
-        .putExtra(PlayerActivity.EXTRA_PREPARED_PLAYBACK_TOKEN, token)
-        .putExtra("playlist_index", selectedIndex))
+      startPlayer(
+        context,
+        Intent(context, PlayerActivity::class.java)
+          .setAction(Intent.ACTION_VIEW)
+          .setData(Uri.parse(queueItems[selectedIndex].originalUri))
+          .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+          .putExtra("internal_launch", true)
+          .putExtra("is_audio", true)
+          .putExtra(PlayerActivity.EXTRA_PREPARED_PLAYBACK_QUEUE, true)
+          .putExtra(PlayerActivity.EXTRA_PREPARED_PLAYBACK_TOKEN, token)
+          .putExtra("playlist_index", selectedIndex),
+      )
       return
     }
     PlaybackSession.replaceQueue(queueItems, selectedIndex, isExplicitQueue = true)
@@ -114,15 +117,14 @@ object MediaUtils {
       }
     // Music in the mini player always has its media notification. This runs from visible UI, which
     // may always start a media foreground service.
-    runCatching {
-      MediaPlaybackService.requestForegroundStart(context, serviceIntent)
-    }.onFailure { error ->
-      app.gyrolet.mpvrx.utils.logging.Log.e("MediaUtils", "Could not start the playback service for the mini player", error)
-    }
+    MediaPlaybackService.startBackground(context, serviceIntent)
   }
 
   private fun userScriptRuntimeNeedsReload(): Boolean {
-    val preferences = org.koin.core.context.GlobalContext.get().get<app.gyrolet.mpvrx.preferences.AdvancedPreferences>()
+    val preferences =
+      org.koin.core.context.GlobalContext
+        .get()
+        .get<app.gyrolet.mpvrx.preferences.AdvancedPreferences>()
     return PlaybackSession.userScriptsNeedReload(preferences.userScriptsConfigurationKey())
   }
 
@@ -183,7 +185,13 @@ object MediaUtils {
         putExtra(PlayerActivity.EXTRA_VIDEO_HEIGHT, selected.height)
         putExtra(PlayerActivity.EXTRA_VIDEO_ROTATION, selected.rotation)
       }
-    ContainerGeometryProbe.prefetch(localPlaybackPath(selected), selected.width, selected.height, selected.rotation, selected.isAudio)
+    ContainerGeometryProbe.prefetch(
+      localPlaybackPath(selected),
+      selected.width,
+      selected.height,
+      selected.rotation,
+      selected.isAudio,
+    )
     PlaybackPerformanceTrace.mark("OPEN_REQUEST", "source=$launchSource queue=${videos.size}")
     startPlayer(context, intent)
   }
@@ -203,19 +211,27 @@ object MediaUtils {
     } catch (error: SecurityException) {
       val uri = intent.data
       if (uri == null || !isStillReadable(context, uri)) {
-        app.gyrolet.mpvrx.utils.logging.Log.w("MediaUtils", "Not opening $uri: the file no longer exists", error)
+        app.gyrolet.mpvrx.utils.logging.Log
+          .w("MediaUtils", "Not opening $uri: the file no longer exists", error)
         app.gyrolet.mpvrx.ui.components.AppToast
-          .makeText(context, app.gyrolet.mpvrx.R.string.toast_media_file_missing, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG)
-          .show()
+          .makeText(
+            context,
+            app.gyrolet.mpvrx.R.string.toast_media_file_missing,
+            app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG,
+          ).show()
         MediaLibraryEvents.notifyChanged()
         return
       }
-      app.gyrolet.mpvrx.utils.logging.Log.w("MediaUtils", "Opening $uri without forwarding its read grant", error)
+      app.gyrolet.mpvrx.utils.logging.Log
+        .w("MediaUtils", "Opening $uri without forwarding its read grant", error)
     }
     // The player runs as this app, so it reads what the app can read without a grant of its own.
     intent.removeFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
     runCatching { context.startActivity(intent) }
-      .onFailure { error -> app.gyrolet.mpvrx.utils.logging.Log.e("MediaUtils", "Could not open the player", error) }
+      .onFailure { error ->
+        app.gyrolet.mpvrx.utils.logging.Log
+          .e("MediaUtils", "Could not open the player", error)
+      }
   }
 
   private fun isStillReadable(
@@ -226,7 +242,8 @@ object MediaUtils {
       "file" -> uri.path?.let { File(it).isFile } == true
       "content" ->
         runCatching {
-          context.contentResolver.query(uri, arrayOf(android.provider.BaseColumns._ID), null, null, null)
+          context.contentResolver
+            .query(uri, arrayOf(android.provider.BaseColumns._ID), null, null, null)
             ?.use { it.moveToFirst() } == true
         }.getOrDefault(false)
       else -> true
@@ -301,7 +318,8 @@ object MediaUtils {
         }
         source is Uri -> source
         else -> {
-          app.gyrolet.mpvrx.utils.logging.Log.e("MediaUtils", "Unsupported source type: ${source::class.java}")
+          app.gyrolet.mpvrx.utils.logging.Log
+            .e("MediaUtils", "Unsupported source type: ${source::class.java}")
           return
         }
       }
@@ -415,9 +433,10 @@ object MediaUtils {
       playlistArtists = playlistArtists,
       playlistArtworkUrls = playlistArtworkUrls,
       isAudio = isAudioMedia,
-      playlistDurationsSeconds = playlistDurationsSeconds.ifEmpty {
-        videoSource?.let { listOf((it.duration / 1000L).toInt().takeIf { d -> d > 0 } ?: 0) } ?: emptyList()
-      },
+      playlistDurationsSeconds =
+        playlistDurationsSeconds.ifEmpty {
+          videoSource?.let { listOf((it.duration / 1000L).toInt().takeIf { d -> d > 0 } ?: 0) } ?: emptyList()
+        },
     )
     PlaybackPerformanceTrace.mark(
       "OPEN_REQUEST",
@@ -428,7 +447,9 @@ object MediaUtils {
 
   internal fun playbackIdentity(video: Video): String =
     if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && video.uri.scheme == "content") {
-      app.gyrolet.mpvrx.ui.browser.videolist.videoPlaybackIdentifiers(video).first()
+      app.gyrolet.mpvrx.ui.browser.videolist
+        .videoPlaybackIdentifiers(video)
+        .first()
     } else if (video.uri.scheme.equals("archive", ignoreCase = true)) {
       PlaybackIdentity.forUri(video.uri.toString())
     } else {
@@ -436,9 +457,10 @@ object MediaUtils {
         ?: PlaybackIdentity.forUri(video.uri.toString())
     }
 
-  private fun localPlaybackPath(video: Video): String? = video.path.takeIf { path ->
-    path.isNotBlank() && Uri.parse(path).scheme?.lowercase() in setOf(null, "file")
-  }
+  private fun localPlaybackPath(video: Video): String? =
+    video.path.takeIf { path ->
+      path.isNotBlank() && Uri.parse(path).scheme?.lowercase() in setOf(null, "file")
+    }
 
   private fun String?.isHistoryResumeLaunch(): Boolean =
     this == "recently_played" ||
@@ -531,7 +553,11 @@ object MediaUtils {
       intent.putExtra("playlistIndex", selectedIndex)
       intent.putExtra("playlist_index", selectedIndex)
     }
-    val selectedDuration = playlistDurationsSeconds.getOrNull(if (playlist.isNotEmpty()) playlistIndex else 0)?.takeIf { it > 0 }
+    val selectedDuration =
+      playlistDurationsSeconds.getOrNull(if (playlist.isNotEmpty()) playlistIndex else 0)?.takeIf {
+        it >
+          0
+      }
     if (selectedDuration != null) {
       intent.putExtra("duration", selectedDuration)
     }
@@ -638,7 +664,8 @@ object MediaUtils {
     videos: List<Video>,
   ) {
     if (videos.isEmpty()) {
-      app.gyrolet.mpvrx.utils.logging.Log.w("MediaUtils", "Cannot share: video list is empty")
+      app.gyrolet.mpvrx.utils.logging.Log
+        .w("MediaUtils", "Cannot share: video list is empty")
       return
     }
 
@@ -647,10 +674,12 @@ object MediaUtils {
         try {
           FileProvider.getUriForFile(context, "${context.packageName}.provider", File(v.path))
         } catch (e: IllegalArgumentException) {
-          app.gyrolet.mpvrx.utils.logging.Log.e("MediaUtils", "FileProvider failed for ${v.path}: ${e.message}")
+          app.gyrolet.mpvrx.utils.logging.Log
+            .e("MediaUtils", "FileProvider failed for ${v.path}: ${e.message}")
           null
         } catch (e: Exception) {
-          app.gyrolet.mpvrx.utils.logging.Log.e("MediaUtils", "Failed to generate URI for ${v.path}", e)
+          app.gyrolet.mpvrx.utils.logging.Log
+            .e("MediaUtils", "Failed to generate URI for ${v.path}", e)
           null
         }
       }
@@ -658,12 +687,14 @@ object MediaUtils {
     val uris = videos.mapNotNull { toSharableUri(it) }
 
     if (uris.isEmpty()) {
-      app.gyrolet.mpvrx.utils.logging.Log.w("MediaUtils", "Cannot share: no valid URIs generated for any videos")
+      app.gyrolet.mpvrx.utils.logging.Log
+        .w("MediaUtils", "Cannot share: no valid URIs generated for any videos")
       return
     }
 
     if (uris.size < videos.size) {
-      app.gyrolet.mpvrx.utils.logging.Log.w("MediaUtils", "Only ${uris.size}/${videos.size} videos could be shared")
+      app.gyrolet.mpvrx.utils.logging.Log
+        .w("MediaUtils", "Only ${uris.size}/${videos.size} videos could be shared")
     }
 
     val intent =
@@ -724,5 +755,4 @@ object MediaUtils {
       }
     }
   }
-
 }

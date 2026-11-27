@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.player
 
 import android.content.Context
@@ -15,8 +15,8 @@ import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentSpeed
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
-import app.gyrolet.mpvrx.ui.player.controls.formatClock
 import app.gyrolet.mpvrx.ui.player.controls.BatterySnapshot
+import app.gyrolet.mpvrx.ui.player.controls.formatClock
 import app.gyrolet.mpvrx.ui.player.controls.readBatterySnapshot
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -37,6 +37,7 @@ internal fun readSessionBatteryReading(
   battery: BatterySnapshot = readBatterySnapshot(context),
 ): SessionBatteryReading {
   val manager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+
   fun counter(property: Int): Long? =
     manager?.getLongProperty(property)?.takeIf {
       it > 0L || (it == 0L && battery.levelPercent == 0.0)
@@ -68,7 +69,10 @@ internal class StatisticsDiagnostics(
     KoinJavaComponent.get<TorrentStreamingEngine>(TorrentStreamingEngine::class.java)
   }
 
-  fun sample(state: PlaybackSessionState, context: Context): JsonObject {
+  fun sample(
+    state: PlaybackSessionState,
+    context: Context,
+  ): JsonObject {
     val locale = context.resources.configuration.locales[0] ?: Locale.ROOT
     val now = SystemClock.elapsedRealtime()
     val cpu = Process.getElapsedCpuTime()
@@ -125,23 +129,24 @@ internal class StatisticsDiagnostics(
       }
     val activeSeconds = activeTimeMs / 1000L
     val cacheText =
-      PlaybackSession.readLoadedMedia(state.generation) { properties ->
-        val cache = properties.node("demuxer-cache-state")?.asMap() ?: return@readLoadedMedia null
-        Triple(
-          cache["cache-duration"]?.asDouble() ?: properties.double("demuxer-cache-duration"),
-          cache["fw-bytes"]?.asInt(),
-          cache["file-cache-bytes"]?.asInt(),
-        )
-      }?.let { (duration, packets, file) ->
-        duration?.takeIf { it.isFinite() && it >= 0.0 }?.let {
-          context.getString(
-            R.string.diagnostics_playback_cache_value,
-            it,
-            formatCacheBytes(packets),
-            file?.let(::formatCacheBytes) ?: context.getString(R.string.generic_disabled),
+      PlaybackSession
+        .readLoadedMedia(state.generation) { properties ->
+          val cache = properties.node("demuxer-cache-state")?.asMap() ?: return@readLoadedMedia null
+          Triple(
+            cache["cache-duration"]?.asDouble() ?: properties.double("demuxer-cache-duration"),
+            cache["fw-bytes"]?.asInt(),
+            cache["file-cache-bytes"]?.asInt(),
           )
+        }?.let { (duration, packets, file) ->
+          duration?.takeIf { it.isFinite() && it >= 0.0 }?.let {
+            context.getString(
+              R.string.diagnostics_playback_cache_value,
+              it,
+              formatCacheBytes(packets),
+              file?.let(::formatCacheBytes) ?: context.getString(R.string.generic_disabled),
+            )
+          }
         }
-      }
     val torrent =
       if (state.currentItem?.torrentFileIndex != null) torrentEngine.state.value else TorrentStreamingState.Idle
 
@@ -230,7 +235,11 @@ internal class StatisticsDiagnostics(
     }
   }
 
-  private fun sessionBatteryUse(context: Context, generation: Long, battery: BatterySnapshot): String {
+  private fun sessionBatteryUse(
+    context: Context,
+    generation: Long,
+    battery: BatterySnapshot,
+  ): String {
     val baseline =
       PlaybackSession.readSessionBatteryBaseline(generation)
         ?: return "--"
@@ -295,7 +304,10 @@ internal class StatisticsDiagnostics(
       },
     )
 
-  private fun section(title: String, rows: List<Pair<String, String>>): JsonObject =
+  private fun section(
+    title: String,
+    rows: List<Pair<String, String>>,
+  ): JsonObject =
     buildJsonObject {
       put("title", title)
       put(
@@ -313,6 +325,5 @@ internal class StatisticsDiagnostics(
       )
     }
 
-  private fun formatCacheBytes(value: Long?): String =
-    value?.takeIf { it >= 0L }?.let(::formatTorrentBytes) ?: "--"
+  private fun formatCacheBytes(value: Long?): String = value?.takeIf { it >= 0L }?.let(::formatTorrentBytes) ?: "--"
 }

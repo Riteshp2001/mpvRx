@@ -131,7 +131,8 @@ object TreeViewScanner {
 
       // Recompute recursive counts after removing blacklisted branches, otherwise their
       // old parent counters leave empty phantom folders visible in Tree view.
-      val visibleFolders = filterBlacklistedTree(context, withExtraFolders(context, allFolders, extraFolders), blacklistedPaths)
+      val visibleFolders =
+        filterBlacklistedTree(context, withExtraFolders(context, allFolders, extraFolders), blacklistedPaths)
       getEffectiveChildren(parentPath, indexDirectChildren(visibleFolders), maxAutoFlattenLevels)
         .map(::toFolderData)
         .sortedBy { it.name.lowercase(Locale.getDefault()) }
@@ -632,7 +633,11 @@ object TreeViewScanner {
             if (folder.excluded) continue
             if (!app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && !existenceCache.exists(file)) continue
             val duration = cursor.getLong(durationColumn)
-            if (!options.includesPath(folder.path) || !options.includesMedia(cursor.getLong(sizeColumn), duration, isAudio = true)) continue
+            if (!options.includesPath(folder.path) ||
+              !options.includesMedia(cursor.getLong(sizeColumn), duration, isAudio = true)
+            ) {
+              continue
+            }
             audioByFolder.getOrPut(folder.key) { FolderAggregate(folder.path) }.videos +=
               VideoInfo(
                 displayName = cursor.getString(nameColumn) ?: file.name,
@@ -770,8 +775,12 @@ object TreeViewScanner {
               if (FileTypeUtils.isSupportedMediaFile(file, options)) {
                 if (!options.includesPath(directory.absolutePath) || !options.includesSize(stat.size)) continue
                 val isAudio = FileTypeUtils.isAudioFile(file)
-                val duration = if (isAudio || options.filtersDuration(isAudio = false))
-                  FileTypeUtils.getDurationMs(file) else 0L
+                val duration =
+                  if (isAudio || options.filtersDuration(isAudio = false)) {
+                    FileTypeUtils.getDurationMs(file)
+                  } else {
+                    0L
+                  }
                 if (options.includesMedia(stat.size, duration, isAudio)) {
                   mediaFiles.add(file)
                   mediaStats[file] = stat

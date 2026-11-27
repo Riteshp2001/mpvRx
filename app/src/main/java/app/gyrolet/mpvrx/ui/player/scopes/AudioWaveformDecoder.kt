@@ -53,9 +53,11 @@ internal object AudioWaveformDecoder {
       setDataSource(extractor, context, source)
       val extractorTrack = resolveTrackIndex(extractor, track, audioTrackOrdinal)
       val inputFormat = extractor.getTrackFormat(extractorTrack)
-      val mime = inputFormat.getString(MediaFormat.KEY_MIME)
-        ?.takeIf { it.startsWith("audio/") }
-        ?: error("Selected stream is not audio")
+      val mime =
+        inputFormat
+          .getString(MediaFormat.KEY_MIME)
+          ?.takeIf { it.startsWith("audio/") }
+          ?: error("Selected stream is not audio")
 
       extractor.selectTrack(extractorTrack)
       codec = MediaCodec.createDecoderByType(mime)
@@ -63,7 +65,8 @@ internal object AudioWaveformDecoder {
       codec.start()
 
       val durationUs =
-        inputFormat.longOrNull(MediaFormat.KEY_DURATION)
+        inputFormat
+          .longOrNull(MediaFormat.KEY_DURATION)
           ?.takeIf { it > 0L }
           ?: (durationSeconds.coerceAtLeast(0.1f) * 1_000_000L).toLong()
       var outputFormat = inputFormat
@@ -97,19 +100,23 @@ internal object AudioWaveformDecoder {
             if (outputIndex >= 0) {
               val outputBuffer = codec.getOutputBuffer(outputIndex)
               if (outputBuffer != null && bufferInfo.size > 0) {
-                val channelCount = outputFormat.integerOrNull(MediaFormat.KEY_CHANNEL_COUNT)?.coerceAtLeast(1)
-                  ?: track.demuxChannelCount?.toInt()?.coerceAtLeast(1)
-                  ?: 2
-                val sampleRate = outputFormat.integerOrNull(MediaFormat.KEY_SAMPLE_RATE)?.coerceAtLeast(1)
-                  ?: track.demuxSampleRate?.toInt()?.coerceAtLeast(1)
-                  ?: 48_000
-                val pcmEncoding = outputFormat.integerOrNull(MediaFormat.KEY_PCM_ENCODING) ?: AudioFormat.ENCODING_PCM_16BIT
-                val currentAccumulator = accumulator ?: WaveformAccumulator(
-                  width = columnCount.coerceIn(256, 4_096),
-                  channelCount = channelCount,
-                  durationUs = durationUs,
-                  sampleRate = sampleRate,
-                ).also { accumulator = it }
+                val channelCount =
+                  outputFormat.integerOrNull(MediaFormat.KEY_CHANNEL_COUNT)?.coerceAtLeast(1)
+                    ?: track.demuxChannelCount?.toInt()?.coerceAtLeast(1)
+                    ?: 2
+                val sampleRate =
+                  outputFormat.integerOrNull(MediaFormat.KEY_SAMPLE_RATE)?.coerceAtLeast(1)
+                    ?: track.demuxSampleRate?.toInt()?.coerceAtLeast(1)
+                    ?: 48_000
+                val pcmEncoding =
+                  outputFormat.integerOrNull(MediaFormat.KEY_PCM_ENCODING) ?: AudioFormat.ENCODING_PCM_16BIT
+                val currentAccumulator =
+                  accumulator ?: WaveformAccumulator(
+                    width = columnCount.coerceIn(256, 4_096),
+                    channelCount = channelCount,
+                    durationUs = durationUs,
+                    sampleRate = sampleRate,
+                  ).also { accumulator = it }
                 currentAccumulator.consume(
                   buffer = outputBuffer,
                   offset = bufferInfo.offset,
@@ -125,8 +132,9 @@ internal object AudioWaveformDecoder {
         }
       }
 
-      val waveform = accumulator?.finish(channelLabels(track, accumulator.channelCount))
-        ?: error("Decoder produced no audio samples")
+      val waveform =
+        accumulator?.finish(channelLabels(track, accumulator.channelCount))
+          ?: error("Decoder produced no audio samples")
       return AudioWaveformData(
         trackId = track.id,
         durationSeconds = durationUs / 1_000_000f,
@@ -159,10 +167,12 @@ internal object AudioWaveformDecoder {
     track: TrackNode,
     audioTrackOrdinal: Int,
   ): Int {
-    track.ffIndex?.toInt()?.takeIf { index ->
-      index in 0 until extractor.trackCount &&
-        extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
-    }?.let { return it }
+    track.ffIndex
+      ?.toInt()
+      ?.takeIf { index ->
+        index in 0 until extractor.trackCount &&
+          extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
+      }?.let { return it }
 
     val audioTracks =
       (0 until extractor.trackCount).filter { index ->
@@ -173,7 +183,10 @@ internal object AudioWaveformDecoder {
       ?: error("No decodable audio stream found")
   }
 
-  private fun channelLabels(track: TrackNode, count: Int): List<String> {
+  private fun channelLabels(
+    track: TrackNode,
+    count: Int,
+  ): List<String> {
     val normalized = track.demuxChannels.orEmpty().lowercase()
     val known =
       when (normalized) {
@@ -264,7 +277,11 @@ internal object AudioWaveformDecoder {
         else -> 2
       }
 
-    private fun readSample(buffer: ByteBuffer, offset: Int, encoding: Int): Float =
+    private fun readSample(
+      buffer: ByteBuffer,
+      offset: Int,
+      encoding: Int,
+    ): Float =
       when (encoding) {
         AudioFormat.ENCODING_PCM_FLOAT -> buffer.getFloat(offset)
         AudioFormat.ENCODING_PCM_32BIT -> buffer.getInt(offset) / Int.MAX_VALUE.toFloat()

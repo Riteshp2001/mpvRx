@@ -43,7 +43,10 @@ object AppTextFieldDefaults {
 }
 
 @Composable
-private fun appInputShape(interactionSource: MutableInteractionSource, shape: Shape?): Shape {
+private fun appInputShape(
+  interactionSource: MutableInteractionSource,
+  shape: Shape?,
+): Shape {
   if (shape != null) return shape
   LocalAppInputShape.current?.let { return it }
   val focused by interactionSource.collectIsFocusedAsState()

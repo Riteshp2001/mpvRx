@@ -11,7 +11,6 @@ import app.gyrolet.mpvrx.domain.lyrics.SyncedWord
 import java.util.regex.Pattern
 
 object LyricsUtils {
-
   // The fractional component is optional in standard LRC. In particular, many embedded USLT
   // tags contain whole-second timestamps such as `[00:54]`; treating those as plain text leaks
   // the timestamp into the UI and disables the synced-line animations.
@@ -39,11 +38,12 @@ object LyricsUtils {
     lyricsText.lines().forEach { rawLine ->
       // Embedded tags sometimes prefix each lyric with a vocalist channel (for example "v1:").
       // Treat that as metadata, and leave online/user-edited lyrics untouched.
-      val line = if (sourceType == LyricsSourceType.EMBEDDED) {
-        stripEmbeddedVocalistPrefix(rawLine.trim())
-      } else {
-        rawLine.trim()
-      }
+      val line =
+        if (sourceType == LyricsSourceType.EMBEDDED) {
+          stripEmbeddedVocalistPrefix(rawLine.trim())
+        } else {
+          rawLine.trim()
+        }
       if (line.isEmpty() || LRC_METADATA_PATTERN.matcher(line).matches()) return@forEach
 
       val lineMatcher = LRC_LINE_REGEX.matcher(line)
@@ -52,9 +52,10 @@ object LyricsUtils {
         val minutes = lineMatcher.group(1)?.toLong() ?: 0
         val seconds = lineMatcher.group(2)?.toLong() ?: 0
         val fraction = fractionToMillis(lineMatcher.group(3))
-        val rawText = (lineMatcher.group(4) ?: "").let { text ->
-          if (sourceType == LyricsSourceType.EMBEDDED) stripEmbeddedVocalistPrefix(text) else text.trim()
-        }
+        val rawText =
+          (lineMatcher.group(4) ?: "").let { text ->
+            if (sourceType == LyricsSourceType.EMBEDDED) stripEmbeddedVocalistPrefix(text) else text.trim()
+          }
 
         val lineTimestamp = (minutes * 60 * 1000 + seconds * 1000 + fraction).toInt()
 
@@ -80,21 +81,22 @@ object LyricsUtils {
           }
         }
 
-        val (finalLine, inlineTranslation) = when {
-          displayText.contains("\n") -> {
-            val p = displayText.split("\n", limit = 2)
-            Pair(p[0].trim(), p.getOrNull(1)?.trim())
+        val (finalLine, inlineTranslation) =
+          when {
+            displayText.contains("\n") -> {
+              val p = displayText.split("\n", limit = 2)
+              Pair(p[0].trim(), p.getOrNull(1)?.trim())
+            }
+            displayText.contains(" / ") -> {
+              val p = displayText.split(" / ", limit = 2)
+              Pair(p[0].trim(), p.getOrNull(1)?.trim())
+            }
+            displayText.contains(" | ") -> {
+              val p = displayText.split(" | ", limit = 2)
+              Pair(p[0].trim(), p.getOrNull(1)?.trim())
+            }
+            else -> Pair(displayText, null)
           }
-          displayText.contains(" / ") -> {
-            val p = displayText.split(" / ", limit = 2)
-            Pair(p[0].trim(), p.getOrNull(1)?.trim())
-          }
-          displayText.contains(" | ") -> {
-            val p = displayText.split(" | ", limit = 2)
-            Pair(p[0].trim(), p.getOrNull(1)?.trim())
-          }
-          else -> Pair(displayText, null)
-        }
 
         val lastLine = syncedLines.lastOrNull()
         if (lastLine != null && lastLine.time == lineTimestamp && lastLine.translation == null) {

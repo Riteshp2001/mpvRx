@@ -11,13 +11,25 @@
 
 package app.gyrolet.mpvrx.ui.player.ytdlp
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
-import androidx.compose.material3.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -79,7 +91,8 @@ fun YtdlpInstallationStatus(
     when {
       info == null -> stringResource(R.string.ui_reading_installed_version)
       !isInstalled -> stringResource(R.string.ui_install_stable_to_play_web_links)
-      version != null && shortCommitHash != null &&
+      version != null &&
+        shortCommitHash != null &&
         info.channel in setOf(YtdlpReleaseChannel.NIGHTLY, YtdlpReleaseChannel.MASTER) ->
         stringResource(R.string.ui_yt_dlp_build_and_commit, version, shortCommitHash)
       version != null -> stringResource(R.string.ui_yt_dlp_version, version)

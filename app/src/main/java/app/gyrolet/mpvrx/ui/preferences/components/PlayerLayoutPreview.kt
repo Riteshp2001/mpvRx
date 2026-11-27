@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.preferences.components
 
 import androidx.compose.foundation.background
@@ -31,8 +31,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.Layout
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -55,14 +55,14 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.AdaptiveControlsContainer
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
+import app.gyrolet.mpvrx.ui.player.controls.BottomSlot
 import app.gyrolet.mpvrx.ui.player.controls.LandscapeActionGroup
 import app.gyrolet.mpvrx.ui.player.controls.LandscapeActionSize
 import app.gyrolet.mpvrx.ui.player.controls.LandscapeControlsRow
-import app.gyrolet.mpvrx.ui.player.controls.BottomSlot
 import app.gyrolet.mpvrx.ui.player.controls.PlaybackControlsGeometry
-import app.gyrolet.mpvrx.ui.player.controls.PortraitSectionGap
 import app.gyrolet.mpvrx.ui.player.controls.PlayerButtonTheme
 import app.gyrolet.mpvrx.ui.player.controls.PlayerControlsContentTheme
+import app.gyrolet.mpvrx.ui.player.controls.PortraitSectionGap
 import app.gyrolet.mpvrx.ui.player.controls.VideoControlsLayoutPreset
 import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButtonsBackground
@@ -96,7 +96,11 @@ internal fun PlayerLayoutPreview(
   val seekbarStyle by appearance.seekbarStyle.collectAsState()
   val glassEnabled by appearance.liquidGlassEnabled.collectAsState()
   val playbackPreference =
-    if (region.isPortrait) appearance.portraitPlaybackControlsPlacement else appearance.landscapePlaybackControlsPlacement
+    if (region.isPortrait) {
+      appearance.portraitPlaybackControlsPlacement
+    } else {
+      appearance.landscapePlaybackControlsPlacement
+    }
   val playbackControlsPlacement by playbackPreference.collectAsState()
   val wavy by koinInject<PlayerPreferences>().useWavySeekbar.collectAsState()
   val title = stringResource(region.titleRes)
@@ -104,16 +108,18 @@ internal fun PlayerLayoutPreview(
   val shortSide = minOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1).dp
   val longSide = maxOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1).dp
   val isTablet = configuration.smallestScreenWidthDp >= 600
-  val sceneWidth = if (region.isPortrait) {
-    if (isTablet) 360.dp else shortSide
-  } else {
-    if (isTablet) 720.dp else longSide
-  }
-  val sceneHeight = if (region.isPortrait) {
-    if (isTablet) (sceneWidth * (16f / 9f)) else longSide
-  } else {
-    if (isTablet) (sceneWidth / (16f / 9f)) else shortSide
-  }
+  val sceneWidth =
+    if (region.isPortrait) {
+      if (isTablet) 360.dp else shortSide
+    } else {
+      if (isTablet) 720.dp else longSide
+    }
+  val sceneHeight =
+    if (region.isPortrait) {
+      if (isTablet) (sceneWidth * (16f / 9f)) else longSide
+    } else {
+      if (isTablet) (sceneWidth / (16f / 9f)) else shortSide
+    }
   Surface(modifier, shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerLow) {
     Column(Modifier.fillMaxSize().padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
       Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -135,37 +141,52 @@ internal fun PlayerLayoutPreview(
           }
         }
       }
-      if (expanded) BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-        val ratio = sceneWidth / sceneHeight
-        val frameWidth = minOf(maxWidth, maxHeight * ratio)
-        val frameHeight = frameWidth / ratio
-        val scale = (frameWidth / sceneWidth).coerceAtLeast(0f)
-        Layout(
-          modifier = Modifier.size(frameWidth, frameHeight).clip(MaterialTheme.shapes.large)
-            .clearAndSetSemantics { contentDescription = title },
-          content = {
-            CompositionLocalProvider(
-              LocalLayoutDirection provides LayoutDirection.Ltr,
-              LocalForceDarkPlayerButtonsBackground provides forceDark,
-              LocalPlayerButtonsOpacity provides opacity,
-            ) {
-              PlayerButtonTheme {
-                PlayerControlsContentTheme {
-                  PreviewScene(
-                    region, topRightButtons, bottomRightButtons, bottomLeftButtons, portraitBottomButtons,
-                    preset, playbackControlsPlacement, playlist, glassEnabled, seekbarStyle, wavy, sceneWidth,
-                  )
+      if (expanded) {
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+          val ratio = sceneWidth / sceneHeight
+          val frameWidth = minOf(maxWidth, maxHeight * ratio)
+          val frameHeight = frameWidth / ratio
+          val scale = (frameWidth / sceneWidth).coerceAtLeast(0f)
+          Layout(
+            modifier =
+              Modifier
+                .size(frameWidth, frameHeight)
+                .clip(MaterialTheme.shapes.large)
+                .clearAndSetSemantics { contentDescription = title },
+            content = {
+              CompositionLocalProvider(
+                LocalLayoutDirection provides LayoutDirection.Ltr,
+                LocalForceDarkPlayerButtonsBackground provides forceDark,
+                LocalPlayerButtonsOpacity provides opacity,
+              ) {
+                PlayerButtonTheme {
+                  PlayerControlsContentTheme {
+                    PreviewScene(
+                      region,
+                      topRightButtons,
+                      bottomRightButtons,
+                      bottomLeftButtons,
+                      portraitBottomButtons,
+                      preset,
+                      playbackControlsPlacement,
+                      playlist,
+                      glassEnabled,
+                      seekbarStyle,
+                      wavy,
+                      sceneWidth,
+                    )
+                  }
                 }
               }
-            }
-          },
-        ) { measurables, constraints ->
-          val scene = measurables.single().measure(Constraints.fixed(sceneWidth.roundToPx(), sceneHeight.roundToPx()))
-          layout(constraints.maxWidth, constraints.maxHeight) {
-            scene.placeWithLayer(0, 0) {
-              scaleX = scale
-              scaleY = scale
-              transformOrigin = TransformOrigin(0f, 0f)
+            },
+          ) { measurables, constraints ->
+            val scene = measurables.single().measure(Constraints.fixed(sceneWidth.roundToPx(), sceneHeight.roundToPx()))
+            layout(constraints.maxWidth, constraints.maxHeight) {
+              scene.placeWithLayer(0, 0) {
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(0f, 0f)
+              }
             }
           }
         }
@@ -191,18 +212,31 @@ private fun PreviewScene(
 ) {
   val spacing = MaterialTheme.spacing
   val hasActions =
-    if (region.isPortrait) portraitBottomButtons.isNotEmpty()
-    else bottomRightButtons.isNotEmpty() || bottomLeftButtons.isNotEmpty()
+    if (region.isPortrait) {
+      portraitBottomButtons.isNotEmpty()
+    } else {
+      bottomRightButtons.isNotEmpty() || bottomLeftButtons.isNotEmpty()
+    }
   val sharedLandscapeRow = !region.isPortrait && playbackControlsPlacement != PlaybackControlsPlacement.Center
   val geometry = resolvePlaybackControlsGeometry(sceneWidth, spacing, landscape = sharedLandscapeRow)
-  val layout = resolveBottomControlsLayout(
-    preset.seekbarPlacement, hasActions, playbackControlsPlacement, sharedLandscapeRow = sharedLandscapeRow,
-  )
+  val layout =
+    resolveBottomControlsLayout(
+      preset.seekbarPlacement,
+      hasActions,
+      playbackControlsPlacement,
+      sharedLandscapeRow = sharedLandscapeRow,
+    )
   val highlightShape = MaterialTheme.shapes.medium
   val highlightColor = MaterialTheme.colorScheme.primary
+
   fun highlightRegion(selected: Boolean): Modifier =
-    if (selected) Modifier.background(highlightColor.copy(alpha = 0.14f), highlightShape)
-      .border(2.dp, highlightColor, highlightShape) else Modifier
+    if (selected) {
+      Modifier
+        .background(highlightColor.copy(alpha = 0.14f), highlightShape)
+        .border(2.dp, highlightColor, highlightShape)
+    } else {
+      Modifier
+    }
   val previewLandscapeButton: @Composable (PlayerButton) -> Unit = { button ->
     PreviewIcon(button.icon, LandscapeActionSize)
   }
@@ -212,28 +246,39 @@ private fun PreviewScene(
     Box(Modifier.fillMaxSize().captureLiquidGlassBackdrop(backdrop, glassEnabled).background(background))
     CompositionLocalProvider(LocalKyantPlayerBackdrop provides backdrop.takeIf { glassEnabled }) {
       Row(
-        Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = spacing.large, vertical = spacing.small),
+        Modifier
+          .align(
+            Alignment.TopCenter,
+          ).fillMaxWidth()
+          .padding(horizontal = spacing.large, vertical = spacing.small),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(spacing.small),
       ) {
         Row(
-          Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically,
+          Modifier.weight(1f),
+          verticalAlignment = Alignment.CenterVertically,
           horizontalArrangement = Arrangement.spacedBy(spacing.small),
         ) {
           PreviewIcon(Icons.RoundedFilled.ArrowBack, 48.dp)
           Text(
-            stringResource(R.string.ui_video_title), color = Color.White,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+            stringResource(R.string.ui_video_title),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
           )
         }
         if (!region.isPortrait) {
           LandscapeActionGroup(
             buttons = topRightButtons,
-            modifier = Modifier.widthIn(
-              max = (sceneWidth - spacing.large * 2 - LandscapeActionSize - spacing.extraSmall)
-                .coerceAtLeast(LandscapeActionSize),
-            ).then(highlightRegion(region == ControlRegion.TOP_RIGHT))
-              .fadingHorizontalScroll(rememberScrollState(), reverseScrolling = true, shadowRoom = 0.dp),
+            modifier =
+              Modifier
+                .widthIn(
+                  max =
+                    (sceneWidth - spacing.large * 2 - LandscapeActionSize - spacing.extraSmall)
+                      .coerceAtLeast(LandscapeActionSize),
+                ).then(highlightRegion(region == ControlRegion.TOP_RIGHT))
+                .fadingHorizontalScroll(rememberScrollState(), reverseScrolling = true, shadowRoom = 0.dp),
             endAligned = true,
             fillWidth = false,
             renderButton = previewLandscapeButton,
@@ -242,35 +287,54 @@ private fun PreviewScene(
       }
       if (playbackControlsPlacement == PlaybackControlsPlacement.Center) {
         PreviewPlayback(
-          playlist, geometry,
-          if (region.isPortrait) Modifier.align(Alignment.Center).fillMaxWidth().padding(horizontal = spacing.large)
-          else Modifier.align(Alignment.Center),
+          playlist,
+          geometry,
+          if (region.isPortrait) {
+            Modifier.align(Alignment.Center).fillMaxWidth().padding(horizontal = spacing.large)
+          } else {
+            Modifier.align(Alignment.Center)
+          },
         )
       }
       Column(
-        Modifier.align(Alignment.BottomCenter).fillMaxWidth()
-          .padding(horizontal = if (region.isPortrait) spacing.large else 0.dp,
-            vertical = if (region.isPortrait) PortraitSectionGap else spacing.medium),
+        Modifier
+          .align(Alignment.BottomCenter)
+          .fillMaxWidth()
+          .padding(
+            horizontal = if (region.isPortrait) spacing.large else 0.dp,
+            vertical = if (region.isPortrait) PortraitSectionGap else spacing.medium,
+          ),
         verticalArrangement = Arrangement.spacedBy(if (region.isPortrait) PortraitSectionGap else spacing.extraSmall),
       ) {
         layout.bottomToTop.asReversed().forEach { slot ->
           when (slot) {
-            BottomSlot.Seekbar -> Box(Modifier.padding(horizontal = if (region.isPortrait) 0.dp else spacing.large)) {
-              SeekbarStylePreview(seekbarStyle, useWavySeekbar = wavy)
-            }
+            BottomSlot.Seekbar ->
+              Box(Modifier.padding(horizontal = if (region.isPortrait) 0.dp else spacing.large)) {
+                SeekbarStylePreview(seekbarStyle, useWavySeekbar = wavy)
+              }
             BottomSlot.Playback -> {
               if (region.isPortrait) {
                 PreviewPlayback(
-                  playlist, geometry,
+                  playlist,
+                  geometry,
                   Modifier.fillMaxWidth(),
                 )
               } else {
                 LandscapeControlsRow(
                   leftButtons = bottomLeftButtons,
                   rightButtons = bottomRightButtons,
-                  playbackWidth = if (playlist) geometry.playPauseSize + geometry.skipButtonSize * 2 + geometry.buttonGap * 2
-                    else geometry.playPauseSize,
-                  modifier = Modifier.padding(horizontal = spacing.medium, vertical = if (glassEnabled) 8.dp else 0.dp),
+                  playbackWidth =
+                    if (playlist) {
+                      geometry.playPauseSize + geometry.skipButtonSize * 2 +
+                        geometry.buttonGap * 2
+                    } else {
+                      geometry.playPauseSize
+                    },
+                  modifier =
+                    Modifier.padding(
+                      horizontal = spacing.medium,
+                      vertical = if (glassEnabled) 8.dp else 0.dp,
+                    ),
                   leftModifier = highlightRegion(region == ControlRegion.BOTTOM_LEFT),
                   rightModifier = highlightRegion(region == ControlRegion.BOTTOM_RIGHT),
                   renderButton = previewLandscapeButton,
@@ -301,14 +365,18 @@ private fun PreviewScene(
                 ) {
                   if (left.isNotEmpty()) {
                     PreviewButtons(
-                      left, region == ControlRegion.BOTTOM_LEFT,
-                      Modifier.weight(1f), buttonGap = actionGap,
+                      left,
+                      region == ControlRegion.BOTTOM_LEFT,
+                      Modifier.weight(1f),
+                      buttonGap = actionGap,
                     )
                   }
                   if (right.isNotEmpty()) {
                     PreviewButtons(
-                      right, region == ControlRegion.BOTTOM_RIGHT || region == ControlRegion.PORTRAIT_BOTTOM,
-                      Modifier.weight(1f), endAligned = !region.isPortrait,
+                      right,
+                      region == ControlRegion.BOTTOM_RIGHT || region == ControlRegion.PORTRAIT_BOTTOM,
+                      Modifier.weight(1f),
+                      endAligned = !region.isPortrait,
                       centered = region.isPortrait,
                       buttonGap = actionGap,
                     )
@@ -334,36 +402,66 @@ private fun PreviewButtons(
 ) {
   val shape = MaterialTheme.shapes.medium
   Box(
-    modifier.heightIn(min = 48.dp)
+    modifier
+      .heightIn(min = 48.dp)
       .then(
-        if (highlighted) Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f), shape)
-          .border(2.dp, MaterialTheme.colorScheme.primary, shape)
-        else Modifier,
+        if (highlighted) {
+          Modifier
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f), shape)
+            .border(2.dp, MaterialTheme.colorScheme.primary, shape)
+        } else {
+          Modifier
+        },
       ),
   ) {
     Row(
       Modifier.fillMaxWidth().fadingHorizontalScroll(rememberScrollState(), shadowRoom = 0.dp),
-      horizontalArrangement = Arrangement.spacedBy(
-        buttonGap,
-        if (endAligned) Alignment.End else if (centered) Alignment.CenterHorizontally else Alignment.Start,
-      ),
+      horizontalArrangement =
+        Arrangement.spacedBy(
+          buttonGap,
+          if (endAligned) {
+            Alignment.End
+          } else if (centered) {
+            Alignment.CenterHorizontally
+          } else {
+            Alignment.Start
+          },
+        ),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       buttons.forEach { button ->
         AdaptiveControlsContainer(
-          onClick = {}, isInteractive = false, buttonSize = 48.dp,
+          onClick = {},
+          isInteractive = false,
+          buttonSize = 48.dp,
           color = Color.Unspecified,
-          horizontalPadding = if (button == PlayerButton.VIDEO_TITLE || button == PlayerButton.CURRENT_CHAPTER) 12.dp else 0.dp,
-          modifier = if (button == PlayerButton.VIDEO_TITLE || button == PlayerButton.CURRENT_CHAPTER) Modifier else Modifier.size(48.dp),
+          horizontalPadding =
+            if (button == PlayerButton.VIDEO_TITLE ||
+              button == PlayerButton.CURRENT_CHAPTER
+            ) {
+              12.dp
+            } else {
+              0.dp
+            },
+          modifier =
+            if (button == PlayerButton.VIDEO_TITLE ||
+              button == PlayerButton.CURRENT_CHAPTER
+            ) {
+              Modifier
+            } else {
+              Modifier.size(48.dp)
+            },
         ) {
           when (button) {
             PlayerButton.VIDEO_TITLE -> Text(stringResource(R.string.ui_video_title), maxLines = 1)
             PlayerButton.CURRENT_CHAPTER -> Text(stringResource(R.string.ui_1_06_chapter_1), maxLines = 1)
             PlayerButton.AB_LOOP -> AbLoopIcon(Modifier.size(30.dp))
-            else -> Icon(
-              button.icon, null,
-              Modifier.size(24.dp).then(if (button == PlayerButton.VERTICAL_FLIP) Modifier.rotate(90f) else Modifier),
-            )
+            else ->
+              Icon(
+                button.icon,
+                null,
+                Modifier.size(24.dp).then(if (button == PlayerButton.VERTICAL_FLIP) Modifier.rotate(90f) else Modifier),
+              )
           }
         }
       }
@@ -389,13 +487,18 @@ private fun PreviewPlayback(
 }
 
 @Composable
-private fun PreviewIcon(icon: AppIcon, size: Dp) {
+private fun PreviewIcon(
+  icon: AppIcon,
+  size: Dp,
+) {
   AdaptiveControlsContainer(
-    onClick = {}, isInteractive = false, modifier = Modifier.size(size),
+    onClick = {},
+    isInteractive = false,
+    modifier = Modifier.size(size),
     color = Color.Unspecified,
-    buttonSize = size, horizontalPadding = 0.dp,
+    buttonSize = size,
+    horizontalPadding = 0.dp,
   ) {
     Icon(icon, null, Modifier.size(size / 2))
   }
 }
-

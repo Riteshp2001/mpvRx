@@ -142,7 +142,10 @@ internal class RangeChunkCache(
     }
   }
 
-  private data class Key(val path: NetworkPath, val index: Long)
+  private data class Key(
+    val path: NetworkPath,
+    val index: Long,
+  )
 
   private val lock = Any()
   private val resident = LinkedHashMap<Key, Chunk>(16, 0.75f, true)

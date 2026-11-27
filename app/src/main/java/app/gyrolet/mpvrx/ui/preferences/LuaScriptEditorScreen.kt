@@ -91,7 +91,6 @@ import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton
 import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu
 import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.ui.editor.MpvHelpScreen
 import app.gyrolet.mpvrx.ui.editor.MpvScriptEditor
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -120,11 +119,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import java.io.File
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 @Serializable
 data class LuaScriptEditorScreen(
   val scriptName: String?,
-) : Screen, TvEdgeToEdgeScreen {
+) : Screen,
+  TvEdgeToEdgeScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -665,8 +666,12 @@ data class LuaScriptEditorScreen(
                     modifier =
                       Modifier
                         .height(38.dp)
-                        .appPressFeedback(saveInteraction, enabled = canSave, pressedScale = 0.96f, reduceMotion = reduceMotion)
-                        .tvFocusHighlight(CircleShape),
+                        .appPressFeedback(
+                          saveInteraction,
+                          enabled = canSave,
+                          pressedScale = 0.96f,
+                          reduceMotion = reduceMotion,
+                        ).tvFocusHighlight(CircleShape),
                   ) {
                     Row(
                       modifier = Modifier.padding(horizontal = 14.dp),
@@ -1043,4 +1048,3 @@ private fun ScriptExtensionSegment(
     }
   }
 }
-

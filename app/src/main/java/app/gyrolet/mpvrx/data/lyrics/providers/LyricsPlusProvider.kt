@@ -106,12 +106,26 @@ internal object LyricsPlusProvider : LyricsProviderClient {
 
   private fun parse(response: Response): Lyrics? {
     if (response.type.equals("None", ignoreCase = true)) {
-      return lyricsFromPlain(response.lyrics.orEmpty().mapNotNull { it.text }.joinToString("\n"))
+      return lyricsFromPlain(
+        response.lyrics
+          .orEmpty()
+          .mapNotNull { it.text }
+          .joinToString("\n"),
+      )
     }
     val sung =
       response.lyrics.orEmpty().mapNotNull { line ->
         val start = line.time?.inMs() ?: return@mapNotNull null
-        val words = if (response.type.equals("Line", ignoreCase = true)) emptyList() else mergeSyllables(line.syllabus.orEmpty())
+        val words =
+          if (response.type.equals(
+              "Line",
+              ignoreCase = true,
+            )
+          ) {
+            emptyList()
+          } else {
+            mergeSyllables(line.syllabus.orEmpty())
+          }
         val built =
           when {
             words.isNotEmpty() ->

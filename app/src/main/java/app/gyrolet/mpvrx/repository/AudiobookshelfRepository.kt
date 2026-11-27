@@ -26,34 +26,27 @@ class AudiobookshelfRepository(
   val allServers: Flow<List<AudiobookshelfServer>> =
     dao.getAllServers().map { list -> list.map { it.toDomain() } }
 
-  suspend fun getServerById(id: Long): AudiobookshelfServer? =
-    dao.getServerById(id)?.toDomain()
+  suspend fun getServerById(id: Long): AudiobookshelfServer? = dao.getServerById(id)?.toDomain()
 
-  suspend fun saveServer(server: AudiobookshelfServer): Long =
-    dao.insert(AudiobookshelfServerEntity.fromDomain(server))
+  suspend fun saveServer(server: AudiobookshelfServer): Long = dao.insert(AudiobookshelfServerEntity.fromDomain(server))
 
-  suspend fun updateServer(server: AudiobookshelfServer) =
-    dao.update(AudiobookshelfServerEntity.fromDomain(server))
+  suspend fun updateServer(server: AudiobookshelfServer) = dao.update(AudiobookshelfServerEntity.fromDomain(server))
 
-  suspend fun deleteServer(server: AudiobookshelfServer) =
-    dao.delete(AudiobookshelfServerEntity.fromDomain(server))
+  suspend fun deleteServer(server: AudiobookshelfServer) = dao.delete(AudiobookshelfServerEntity.fromDomain(server))
 
-  suspend fun deleteServerById(id: Long) =
-    dao.deleteById(id)
+  suspend fun deleteServerById(id: Long) = dao.deleteById(id)
 
   suspend fun login(
     serverUrl: String,
     username: String,
     password: String,
-  ): Result<AudiobookshelfServer> =
-    client.login(serverUrl, username, password)
+  ): Result<AudiobookshelfServer> = client.login(serverUrl, username, password)
 
   suspend fun verifyToken(
     serverUrl: String,
     token: String,
     name: String = "",
-  ): Result<AudiobookshelfServer> =
-    client.verifyToken(serverUrl, token, name)
+  ): Result<AudiobookshelfServer> = client.verifyToken(serverUrl, token, name)
 
   suspend fun getLibraries(server: AudiobookshelfServer): Result<List<AudiobookshelfLibrary>> =
     client.getLibraries(server)
@@ -66,14 +59,12 @@ class AudiobookshelfRepository(
     sort: String? = null,
     desc: Boolean = false,
     filter: String? = null,
-  ): Result<List<AudiobookshelfBook>> =
-    client.getItems(server, libraryId, page, limit, sort, desc, filter)
+  ): Result<List<AudiobookshelfBook>> = client.getItems(server, libraryId, page, limit, sort, desc, filter)
 
   suspend fun getItemDetails(
     server: AudiobookshelfServer,
     itemId: String,
-  ): Result<AudiobookshelfBook> =
-    client.getItemDetails(server, itemId)
+  ): Result<AudiobookshelfBook> = client.getItemDetails(server, itemId)
 
   suspend fun syncProgress(
     server: AudiobookshelfServer,
@@ -81,8 +72,7 @@ class AudiobookshelfRepository(
     currentTimeSeconds: Double,
     durationSeconds: Double,
     isFinished: Boolean = false,
-  ): Result<Unit> =
-    client.syncProgress(server, itemId, currentTimeSeconds, durationSeconds, isFinished)
+  ): Result<Unit> = client.syncProgress(server, itemId, currentTimeSeconds, durationSeconds, isFinished)
 
   suspend fun syncProgress(
     serverId: Long,
@@ -95,15 +85,26 @@ class AudiobookshelfRepository(
     return client.syncProgress(server, itemId, currentTimeSeconds, durationSeconds, isFinished)
   }
 
-  fun getCoverUrl(server: AudiobookshelfServer, itemId: String): String =
-    client.getCoverUrl(server, itemId)
+  fun getCoverUrl(
+    server: AudiobookshelfServer,
+    itemId: String,
+  ): String = client.getCoverUrl(server, itemId)
 
-  suspend fun updateCoverUrl(server: AudiobookshelfServer, itemId: String, coverUrl: String): Result<Unit> =
-    client.updateCoverUrl(server, itemId, coverUrl)
+  suspend fun updateCoverUrl(
+    server: AudiobookshelfServer,
+    itemId: String,
+    coverUrl: String,
+  ): Result<Unit> = client.updateCoverUrl(server, itemId, coverUrl)
 
-  suspend fun quickMatch(server: AudiobookshelfServer, itemId: String, provider: String = "audible"): Result<Unit> =
-    client.quickMatch(server, itemId, provider)
+  suspend fun quickMatch(
+    server: AudiobookshelfServer,
+    itemId: String,
+    provider: String = "audible",
+  ): Result<Unit> = client.quickMatch(server, itemId, provider)
 
-  fun getTrackStreamUrl(server: AudiobookshelfServer, track: AudiobookshelfTrack, bookId: String): String =
-    client.getTrackStreamUrl(server, track, bookId)
+  fun getTrackStreamUrl(
+    server: AudiobookshelfServer,
+    track: AudiobookshelfTrack,
+    bookId: String,
+  ): String = client.getTrackStreamUrl(server, track, bookId)
 }

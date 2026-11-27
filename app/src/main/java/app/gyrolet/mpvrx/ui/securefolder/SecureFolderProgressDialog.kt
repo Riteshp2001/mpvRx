@@ -52,19 +52,38 @@ fun SecureFolderProgressDialog(
     text = {
       Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (progress.currentFile.isNotBlank()) {
-          Text(progress.currentFile, style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1, overflow = TextOverflow.Ellipsis)
+          Text(
+            progress.currentFile,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
         }
-        LinearProgressIndicator(progress = { progress.overallProgress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+        LinearProgressIndicator(
+          progress = { progress.overallProgress.coerceIn(0f, 1f) },
+          modifier = Modifier.fillMaxWidth(),
+        )
         val totalFiles = progress.totalFiles
         Text(
-          text = if (totalFiles > 0) stringResource(R.string.secure_folder_progress_format,
-            progress.currentFileIndex.coerceAtMost(totalFiles), totalFiles, (progress.overallProgress * 100).toInt())
-          else "${(progress.overallProgress * 100).toInt()}%",
+          text =
+            if (totalFiles > 0) {
+              stringResource(
+                R.string.secure_folder_progress_format,
+                progress.currentFileIndex.coerceAtMost(totalFiles),
+                totalFiles,
+                (progress.overallProgress * 100).toInt(),
+              )
+            } else {
+              "${(progress.overallProgress * 100).toInt()}%"
+            },
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (progress.error != null) Text(progress.error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        if (progress.error !=
+          null
+        ) {
+          Text(progress.error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
       }
     },
     confirmButton = {

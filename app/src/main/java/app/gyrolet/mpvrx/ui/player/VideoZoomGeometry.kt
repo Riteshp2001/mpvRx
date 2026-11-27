@@ -1,10 +1,10 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 package app.gyrolet.mpvrx.ui.player
 
-import kotlin.math.pow
 import kotlin.math.abs
 import kotlin.math.log2
+import kotlin.math.pow
 
 fun videoZoomMultiplier(zoom: Float): Float = 2f.pow(zoom.coerceIn(-1f, 3f))
 
@@ -17,7 +17,13 @@ internal fun videoZoomStops(
   videoAspect: Double,
   panscan: Double,
 ): List<Float> {
-  if (!viewportAspect.isFinite() || viewportAspect <= 0 || !videoAspect.isFinite() || videoAspect <= 0) return emptyList()
+  if (!viewportAspect.isFinite() ||
+    viewportAspect <= 0 ||
+    !videoAspect.isFinite() ||
+    videoAspect <= 0
+  ) {
+    return emptyList()
+  }
   val widthScale = maxOf(1.0, viewportAspect / videoAspect)
   val heightScale = maxOf(1.0, videoAspect / viewportAspect)
   val fillScale = maxOf(widthScale, heightScale)
@@ -26,7 +32,11 @@ internal fun videoZoomStops(
   return scales.map { log2(it / baseScale).toFloat() }.filter { it in -1f..3f }.distinct()
 }
 
-internal fun nearestVideoZoomStop(zoom: Float, stops: List<Float>, heldStop: Float? = null): Float? {
+internal fun nearestVideoZoomStop(
+  zoom: Float,
+  stops: List<Float>,
+  heldStop: Float? = null,
+): Float? {
   if (heldStop != null && abs(zoom - heldStop) <= ZOOM_SNAP_RELEASE) return heldStop
   return stops.minByOrNull { abs(zoom - it) }?.takeIf { abs(zoom - it) <= ZOOM_SNAP_ENTER }
 }

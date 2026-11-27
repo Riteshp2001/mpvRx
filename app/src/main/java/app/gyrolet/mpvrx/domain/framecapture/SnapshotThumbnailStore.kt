@@ -38,7 +38,6 @@ class SnapshotThumbnailStore(
   private val scope: CoroutineScope,
   private val targetMaxPx: Int = SnapshotImageLoader.THUMBNAIL_MAX_PX,
 ) {
-
   private val _thumbnails = MutableStateFlow<Map<Long, Bitmap>>(emptyMap())
   val thumbnails: StateFlow<Map<Long, Bitmap>> = _thumbnails.asStateFlow()
 

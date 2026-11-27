@@ -45,7 +45,8 @@ internal object BiniLyricsProvider : LyricsProviderClient {
   private suspend fun identify(query: LyricsFetchQuery): Hit? {
     val isrc = query.isrc?.takeIf { it.isNotBlank() }
     if (isrc != null) {
-      load(buildUrl(BASE, "isrc" to isrc)).firstOrNull { it.isrc.equals(isrc, ignoreCase = true) }
+      load(buildUrl(BASE, "isrc" to isrc))
+        .firstOrNull { it.isrc.equals(isrc, ignoreCase = true) }
         ?.let { return it }
     }
     for (ref in query.candidates()) {
@@ -58,9 +59,10 @@ internal object BiniLyricsProvider : LyricsProviderClient {
           "album" to query.album,
           "duration" to seconds,
         ) ?: continue
-      load(url).firstOrNull { hit ->
-        LyricsTrackMatcher.matches(ref, hit.trackName, hit.artistName, query.durationMs / 1000, hit.duration ?: 0.0)
-      }?.let { return it }
+      load(url)
+        .firstOrNull { hit ->
+          LyricsTrackMatcher.matches(ref, hit.trackName, hit.artistName, query.durationMs / 1000, hit.duration ?: 0.0)
+        }?.let { return it }
     }
     return null
   }

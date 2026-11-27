@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.presentation.components
 
 import androidx.compose.foundation.BorderStroke
@@ -38,6 +38,7 @@ import app.gyrolet.mpvrx.ui.theme.appDialogEnter
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 
 internal enum class DialogActionEmphasis { None, Primary, Secondary }
+
 internal val LocalDialogActionEmphasis = staticCompositionLocalOf { DialogActionEmphasis.None }
 
 /** Shared expressive shell; callers retain their dismissal, input, focus and action behavior. */
@@ -90,13 +91,19 @@ fun AppAlertDialog(
               verticalAlignment = Alignment.CenterVertically,
             ) {
               if (icon != null) {
-                Surface(shape = MaterialTheme.shapes.largeIncreased, color = Color.Transparent, contentColor = iconContentColor) {
+                Surface(
+                  shape = MaterialTheme.shapes.largeIncreased,
+                  color = Color.Transparent,
+                  contentColor = iconContentColor,
+                ) {
                   Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { icon() }
                 }
               }
               if (title != null) {
                 Box(Modifier.weight(1f).semantics { heading() }) {
-                  ProvideTextStyle(MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)) { title() }
+                  ProvideTextStyle(
+                    MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                  ) { title() }
                 }
               }
             }
@@ -127,11 +134,15 @@ fun AppAlertDialog(
               verticalAlignment = Alignment.CenterVertically,
             ) {
               if (dismissButton != null) {
-                CompositionLocalProvider(LocalDialogActionEmphasis provides DialogActionEmphasis.Secondary) { dismissButton() }
+                CompositionLocalProvider(
+                  LocalDialogActionEmphasis provides DialogActionEmphasis.Secondary,
+                ) { dismissButton() }
               }
               // Wrap the confirmation so unused width does not become a gap after Cancel.
               Box(Modifier.weight(1f, fill = false), contentAlignment = Alignment.CenterEnd) {
-                CompositionLocalProvider(LocalDialogActionEmphasis provides DialogActionEmphasis.Primary) { confirmButton() }
+                CompositionLocalProvider(
+                  LocalDialogActionEmphasis provides DialogActionEmphasis.Primary,
+                ) { confirmButton() }
               }
             }
           } else {
@@ -141,9 +152,13 @@ fun AppAlertDialog(
               verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
               if (dismissButton != null) {
-                CompositionLocalProvider(LocalDialogActionEmphasis provides DialogActionEmphasis.Secondary) { dismissButton() }
+                CompositionLocalProvider(
+                  LocalDialogActionEmphasis provides DialogActionEmphasis.Secondary,
+                ) { dismissButton() }
               }
-              CompositionLocalProvider(LocalDialogActionEmphasis provides DialogActionEmphasis.Primary) { confirmButton() }
+              CompositionLocalProvider(
+                LocalDialogActionEmphasis provides DialogActionEmphasis.Primary,
+              ) { confirmButton() }
             }
           }
         }

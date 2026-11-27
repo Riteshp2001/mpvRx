@@ -20,7 +20,6 @@ import app.gyrolet.mpvrx.domain.lyrics.LyricsTiming
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.EmbeddedLyricsExtractor
-import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.File
 
 /** Lyrics for one track, plus which of its sources they came from. */
 data class LyricsResult(
@@ -111,10 +111,11 @@ class LyricsRepository(
         """[\(\[\{\uFF08\uFF3B\uFF5B\u3010\u300E\u300C\u3014\u3008\u300A]([^)\]\}\uFF09\uFF3D\uFF5D\u3011\u300F\u300D\u3015\u3009\u300B\u300C]*)[\)\]\}\uFF09\uFF3D\uFF5D\u3011\u300F\u300D\u3015\u3009\u300B\u300C]""",
       )
     private val TRACK_NO_REGEX = Regex("""^\s*\d{1,3}\s*[\._-]\s+""")
-    private val RECORDING_VERSION_REGEX = Regex(
-      """\b(live|remix|remixed|mix|acoustic|unplugged|instrumental|karaoke|demo|edit|cover|sped|slowed|nightcore|lofi|extended|remaster|remastered)\b""",
-      RegexOption.IGNORE_CASE,
-    )
+    private val RECORDING_VERSION_REGEX =
+      Regex(
+        """\b(live|remix|remixed|mix|acoustic|unplugged|instrumental|karaoke|demo|edit|cover|sped|slowed|nightcore|lofi|extended|remaster|remastered)\b""",
+        RegexOption.IGNORE_CASE,
+      )
     private val YOUTUBE_ID_REGEX = Regex("""\s*\[[a-zA-Z0-9_-]{6,16}\]\s*$""")
     private val MEDIA_EXT_REGEX =
       Regex(
@@ -163,13 +164,16 @@ class LyricsRepository(
   private val registry = LyricsProviderRegistry(lrcLibApiService)
   private val playbackLyricsLock = Any()
   private var playbackLyricsOwner: Any? = null
-  private val _playbackLyrics = MutableStateFlow<PlaybackLyricsSnapshot?>(null)
-  internal val playbackLyrics = _playbackLyrics.asStateFlow()
+  private val playbackLyricsState = MutableStateFlow<PlaybackLyricsSnapshot?>(null)
+  internal val playbackLyrics = playbackLyricsState.asStateFlow()
 
-  internal fun publishPlaybackLyrics(owner: Any, snapshot: PlaybackLyricsSnapshot) {
+  internal fun publishPlaybackLyrics(
+    owner: Any,
+    snapshot: PlaybackLyricsSnapshot,
+  ) {
     synchronized(playbackLyricsLock) {
       playbackLyricsOwner = owner
-      _playbackLyrics.value = snapshot
+      playbackLyricsState.value = snapshot
     }
   }
 
@@ -177,7 +181,7 @@ class LyricsRepository(
     synchronized(playbackLyricsLock) {
       if (playbackLyricsOwner === owner) {
         playbackLyricsOwner = null
-        _playbackLyrics.value = _playbackLyrics.value?.copy(publisherActive = false)
+        playbackLyricsState.value = playbackLyricsState.value?.copy(publisherActive = false)
       }
     }
   }
@@ -199,8 +203,10 @@ class LyricsRepository(
     val autoFetchOnline: Boolean,
   )
 
-  private fun cacheKey(mediaPath: String, allowOnline: Boolean): CacheKey =
-    CacheKey(mediaPath, allowOnline, audioPreferences.lyricsAutoFetchOnline.get())
+  private fun cacheKey(
+    mediaPath: String,
+    allowOnline: Boolean,
+  ): CacheKey = CacheKey(mediaPath, allowOnline, audioPreferences.lyricsAutoFetchOnline.get())
 
   private val cache = LruCache<CacheKey, LyricsResult>(64)
   private val providerCache = LyricsProviderCache(File(context.cacheDir, "lyrics/providers-v4"))
@@ -230,13 +236,17 @@ class LyricsRepository(
         ?.trim()
         .orEmpty()
         .ifBlank { step1 }
-    val step2 = BRACKETED_REGEX.replace(firstSeg) { match ->
-      if (RECORDING_VERSION_REGEX.containsMatchIn(match.value)) match.value else ""
-    }.trim()
+    val step2 =
+      BRACKETED_REGEX
+        .replace(firstSeg) { match ->
+          if (RECORDING_VERSION_REGEX.containsMatchIn(match.value)) match.value else ""
+        }.trim()
     val step3 = step2.split(" feat.", " ft.", " featuring", " Feat.", " Ft.", " feat ", " ft ").first().trim()
-    val step4 = YOUTUBE_NOISE_REGEX.replace(step3) { match ->
-      if (RECORDING_VERSION_REGEX.matches(match.value)) match.value else ""
-    }.trim()
+    val step4 =
+      YOUTUBE_NOISE_REGEX
+        .replace(step3) { match ->
+          if (RECORDING_VERSION_REGEX.matches(match.value)) match.value else ""
+        }.trim()
     return step4.ifBlank { step3.ifBlank { step1 } }
   }
 
@@ -249,17 +259,28 @@ class LyricsRepository(
   private fun isLikelyChannelOrLabel(artist: String?): Boolean {
     val lower = artist?.trim().orEmpty().lowercase()
     if (lower.isBlank() || lower in UNKNOWN_ARTISTS) return true
-    return lower.endsWith(" music") || lower.endsWith(" records") ||
-      lower.endsWith(" official") || lower.endsWith(" entertainment") ||
-      lower.endsWith(" channel") || lower.endsWith(" series") ||
-      lower.endsWith(" films") || lower.endsWith(" company") ||
-      lower.endsWith(" vevo") || lower.contains("t-series") ||
-      lower.contains("tseries") || lower.contains("saregama") ||
-      lower.contains("zee music") || lower.contains("sony music") ||
-      lower.contains("tips official") || lower.contains("yrf") ||
-      lower.contains("speed records") || lower.contains("geet mp3") ||
-      lower.contains("desire music") || lower.contains("lofi girl") ||
-      lower.contains("aditya music") || lower.contains("lahari music")
+    return lower.endsWith(" music") ||
+      lower.endsWith(" records") ||
+      lower.endsWith(" official") ||
+      lower.endsWith(" entertainment") ||
+      lower.endsWith(" channel") ||
+      lower.endsWith(" series") ||
+      lower.endsWith(" films") ||
+      lower.endsWith(" company") ||
+      lower.endsWith(" vevo") ||
+      lower.contains("t-series") ||
+      lower.contains("tseries") ||
+      lower.contains("saregama") ||
+      lower.contains("zee music") ||
+      lower.contains("sony music") ||
+      lower.contains("tips official") ||
+      lower.contains("yrf") ||
+      lower.contains("speed records") ||
+      lower.contains("geet mp3") ||
+      lower.contains("desire music") ||
+      lower.contains("lofi girl") ||
+      lower.contains("aditya music") ||
+      lower.contains("lahari music")
   }
 
   /**
@@ -339,10 +360,13 @@ class LyricsRepository(
       val requestedProvider = preferredProvider
       if (!forceRefresh && !forceOnline) {
         cache.get(cacheKey)?.let { existing ->
-          if (!allowOnline || existing.embeddedLyrics?.isValid() == true ||
+          if (!allowOnline ||
+            existing.embeddedLyrics?.isValid() == true ||
             !audioPreferences.lyricsAutoFetchOnline.get() ||
             existing.preferredOnlineProvider == requestedProvider
-          ) return@withContext existing
+          ) {
+            return@withContext existing
+          }
           switchProvider(mediaPath, requestedProvider, allowOnline)?.let { return@withContext it }
         }
       }
@@ -355,8 +379,12 @@ class LyricsRepository(
       // Never delay usable embedded/local lyrics for an automatic provider search.
       // An explicit Search Online action can override this preference.
       val online =
-        if (allowOnline && (forceOnline ||
-            (audioPreferences.lyricsAutoFetchOnline.get() && embedded?.isValid() != true))) {
+        if (allowOnline &&
+          (
+            forceOnline ||
+              (audioPreferences.lyricsAutoFetchOnline.get() && embedded?.isValid() != true)
+          )
+        ) {
           fetchOnlineLyrics(
             rawTitle = title,
             rawArtist = artist,
@@ -579,8 +607,9 @@ class LyricsRepository(
       )
     if (loose.refs.isEmpty()) return raced
     val outcome = registry.fetch(LyricsProvider.LRCLIB, loose)
-    val lyrics = (outcome as? ProviderOutcome.Found)?.lyrics?.takeIf { it.isValid() && it.fitsLength(query.durationMs) }
-      ?: return raced
+    val lyrics =
+      (outcome as? ProviderOutcome.Found)?.lyrics?.takeIf { it.isValid() && it.fitsLength(query.durationMs) }
+        ?: return raced
     Log.d(TAG, "Nothing answered the race; using the loose LRCLIB title match")
     return OnlineLyricsResult(
       provider = LyricsProvider.LRCLIB,
@@ -601,9 +630,10 @@ class LyricsRepository(
    */
   private fun Lyrics.fitsLength(durationMs: Int): Boolean {
     if (durationMs <= 0) return true
-    val last = synced?.filter { it.line.isNotBlank() }?.maxOfOrNull { line ->
-      maxOf(line.time, line.words?.maxOfOrNull { it.time } ?: 0)
-    } ?: return true
+    val last =
+      synced?.filter { it.line.isNotBlank() }?.maxOfOrNull { line ->
+        maxOf(line.time, line.words?.maxOfOrNull { it.time } ?: 0)
+      } ?: return true
     return last.toLong() <= durationMs.toLong() + LENGTH_OVERRUN_MS
   }
 
@@ -623,9 +653,10 @@ class LyricsRepository(
       val jobs =
         LyricsProvider.available.filterNot { it in excluded }.map { provider ->
           val start = if (provider in LyricsProvider.LAZY_PROVIDERS) CoroutineStart.LAZY else CoroutineStart.DEFAULT
-          provider to async(Dispatchers.IO, start = start) {
-            cached[provider]?.let(ProviderOutcome::Found) ?: fetchProvider(provider, query, mediaPath)
-          }
+          provider to
+            async(Dispatchers.IO, start = start) {
+              cached[provider]?.let(ProviderOutcome::Found) ?: fetchProvider(provider, query, mediaPath)
+            }
         }
 
       try {
@@ -766,34 +797,38 @@ class LyricsRepository(
       }
     val lyrics = result.lyrics?.takeIf { it.isValid() }
     val updated =
-      existing.copy(
-        onlineByProvider = byProvider,
-        onlineLyrics = lyrics ?: existing.onlineLyrics,
-        onlineProvider = result.provider ?: existing.onlineProvider,
-        preferredOnlineProvider =
-          if (result.raced) {
-            null
-          } else {
-            result.provider ?: existing.preferredOnlineProvider
-          },
-        autoOnlineLyrics = if (result.raced) lyrics else existing.autoOnlineLyrics,
-        autoOnlineProvider = if (result.raced) result.provider else existing.autoOnlineProvider,
-        selectedSource = if (lyrics != null) LyricsSourceType.ONLINE else existing.selectedSource,
-        activeLyrics = if (lyrics != null) lyrics else existing.activeLyrics,
-        availableSources =
-          if (lyrics != null) {
-            (existing.availableSources + LyricsSourceType.ONLINE).distinct()
-          } else {
-            existing.availableSources
-          },
-      ).withOutcomes(result)
+      existing
+        .copy(
+          onlineByProvider = byProvider,
+          onlineLyrics = lyrics ?: existing.onlineLyrics,
+          onlineProvider = result.provider ?: existing.onlineProvider,
+          preferredOnlineProvider =
+            if (result.raced) {
+              null
+            } else {
+              result.provider ?: existing.preferredOnlineProvider
+            },
+          autoOnlineLyrics = if (result.raced) lyrics else existing.autoOnlineLyrics,
+          autoOnlineProvider = if (result.raced) result.provider else existing.autoOnlineProvider,
+          selectedSource = if (lyrics != null) LyricsSourceType.ONLINE else existing.selectedSource,
+          activeLyrics = if (lyrics != null) lyrics else existing.activeLyrics,
+          availableSources =
+            if (lyrics != null) {
+              (existing.availableSources + LyricsSourceType.ONLINE).distinct()
+            } else {
+              existing.availableSources
+            },
+        ).withOutcomes(result)
     cache.put(cacheKey, updated)
     return updated
   }
 
   fun hasEditedLyrics(mediaPath: String): Boolean = editedLyricsStore.contains(mediaPath)
 
-  suspend fun saveEditedLyrics(mediaPath: String, lyrics: Lyrics) = withContext(Dispatchers.IO) {
+  suspend fun saveEditedLyrics(
+    mediaPath: String,
+    lyrics: Lyrics,
+  ) = withContext(Dispatchers.IO) {
     val edited = lyrics.copy(areFromRemote = false, sourceType = LyricsSourceType.LOCAL)
     editedLyricsStore.write(mediaPath, edited)
     cache.snapshot().forEach { (key, existing) ->
@@ -804,7 +839,11 @@ class LyricsRepository(
             embeddedLyrics = edited,
             activeLyrics = edited,
             selectedSource = LyricsSourceType.LOCAL,
-            availableSources = (existing.availableSources.filter { it == LyricsSourceType.ONLINE } + LyricsSourceType.LOCAL).distinct(),
+            availableSources =
+              (
+                existing.availableSources.filter { it == LyricsSourceType.ONLINE } +
+                  LyricsSourceType.LOCAL
+              ).distinct(),
             hasSavedEdits = true,
           ),
         )
@@ -812,10 +851,15 @@ class LyricsRepository(
     }
   }
 
-  suspend fun removeEditedLyrics(mediaPath: String) = withContext(Dispatchers.IO) {
-    editedLyricsStore.remove(mediaPath)
-    cache.snapshot().keys.filter { it.mediaPath == mediaPath }.forEach { cache.remove(it) }
-  }
+  suspend fun removeEditedLyrics(mediaPath: String) =
+    withContext(Dispatchers.IO) {
+      editedLyricsStore.remove(mediaPath)
+      cache
+        .snapshot()
+        .keys
+        .filter { it.mediaPath == mediaPath }
+        .forEach { cache.remove(it) }
+    }
 
   fun invalidate(
     mediaPath: String,

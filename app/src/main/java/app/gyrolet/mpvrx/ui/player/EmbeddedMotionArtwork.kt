@@ -22,28 +22,38 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import java.nio.ByteBuffer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.nio.ByteBuffer
 
 /** Keep compressed motion covers bounded; regular bitmaps remain the fallback. */
 internal object EmbeddedMotionArtwork {
   private const val MAX_ENCODED_BYTES = 8 * 1024 * 1024
 
   fun animatedBytes(bytes: ByteArray?): ByteArray? {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P || bytes == null ||
-      bytes.size > MAX_ENCODED_BYTES || bytes.size < 21
-    ) return null
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P ||
+      bytes == null ||
+      bytes.size > MAX_ENCODED_BYTES ||
+      bytes.size < 21
+    ) {
+      return null
+    }
 
     val gif = bytes.matchesAscii(0, "GIF87a") || bytes.matchesAscii(0, "GIF89a")
-    val animatedWebp = bytes.matchesAscii(0, "RIFF") &&
-      bytes.matchesAscii(8, "WEBP") && bytes.matchesAscii(12, "VP8X") &&
-      (bytes[20].toInt() and 0x02) != 0
+    val animatedWebp =
+      bytes.matchesAscii(0, "RIFF") &&
+        bytes.matchesAscii(8, "WEBP") &&
+        bytes.matchesAscii(12, "VP8X") &&
+        (bytes[20].toInt() and 0x02) != 0
     return bytes.takeIf { gif || animatedWebp }
   }
 
-  private fun ByteArray.matchesAscii(offset: Int, value: String): Boolean =
-    offset >= 0 && size >= offset + value.length &&
+  private fun ByteArray.matchesAscii(
+    offset: Int,
+    value: String,
+  ): Boolean =
+    offset >= 0 &&
+      size >= offset + value.length &&
       value.indices.all { i -> this[offset + i].toInt() == value[i].code }
 }
 
@@ -52,14 +62,17 @@ internal object EmbeddedMotionArtwork {
 internal fun rememberMotionArtworkDrawable(bytes: ByteArray?): AnimatedImageDrawable? {
   val image by produceState<AnimatedImageDrawable?>(initialValue = null, key1 = bytes) {
     value =
-      if (bytes == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.P) null
-      else withContext(Dispatchers.Default) {
-        runCatching {
-          ImageDecoder.decodeDrawable(ImageDecoder.createSource(ByteBuffer.wrap(bytes))) { decoder, info, _ ->
-            val largest = maxOf(info.size.width, info.size.height)
-            if (largest > 1024) decoder.setTargetSampleSize((largest + 1023) / 1024)
-          } as? AnimatedImageDrawable
-        }.getOrNull()
+      if (bytes == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+        null
+      } else {
+        withContext(Dispatchers.Default) {
+          runCatching {
+            ImageDecoder.decodeDrawable(ImageDecoder.createSource(ByteBuffer.wrap(bytes))) { decoder, info, _ ->
+              val largest = maxOf(info.size.width, info.size.height)
+              if (largest > 1024) decoder.setTargetSampleSize((largest + 1023) / 1024)
+            } as? AnimatedImageDrawable
+          }.getOrNull()
+        }
       }
   }
   return image
@@ -90,6 +103,7 @@ internal fun MotionArtworkImage(
   )
   DisposableEffect(drawable, lifecycleOwner, isPlaying) {
     val lifecycle = lifecycleOwner.lifecycle
+
     fun syncAnimation() {
       if (isPlaying && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
         drawable.start()

@@ -13,7 +13,6 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Environment
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,13 +25,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -60,14 +57,15 @@ import app.gyrolet.mpvrx.preferences.SettingsManager
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
-import app.gyrolet.mpvrx.presentation.crash.CrashActivity
 import app.gyrolet.mpvrx.presentation.crash.AppLogBuffer
+import app.gyrolet.mpvrx.presentation.crash.CrashActivity
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.MpvConfigCache
-import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.preferences.components.PreferenceAction
 import app.gyrolet.mpvrx.ui.preferences.components.RestartRequiredDialog
+import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -79,13 +77,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
-import app.gyrolet.mpvrx.ui.preferences.components.PreferenceAction
-import app.gyrolet.mpvrx.ui.preferences.components.AppPreference as Preference
-import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference as SliderPreference
 import org.koin.compose.koinInject
 import java.io.File
 import java.util.Locale
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
+import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AppPreference as Preference
+import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference as SliderPreference
 
 private enum class AppLanguage(
   val languageTag: String,
@@ -252,15 +252,22 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
           if (root.findChildIgnoreCase(name) == null) root.createDirectory(name)
         }
         if (downloadLocations.setLocationUnderTree(uri, "Downloads") == null) {
-          Toast.makeText(context, context.getString(R.string.onboarding_configuration_restore_failed, unknownError), Toast.LENGTH_LONG).show()
+          Toast
+            .makeText(
+              context,
+              context.getString(R.string.onboarding_configuration_restore_failed, unknownError),
+              Toast.LENGTH_LONG,
+            ).show()
         }
         if (autoBackupEnabled) {
           scope.launch {
-            settingsManager.autoBackupIfChanged(uriString).onSuccess {
-              lastAutoBackupTime = settingsManager.lastAutoBackupTime()
-            }.onFailure { error ->
-              Toast.makeText(context, error.message ?: unknownError, Toast.LENGTH_LONG).show()
-            }
+            settingsManager
+              .autoBackupIfChanged(uriString)
+              .onSuccess {
+                lastAutoBackupTime = settingsManager.lastAutoBackupTime()
+              }.onFailure { error ->
+                Toast.makeText(context, error.message ?: unknownError, Toast.LENGTH_LONG).show()
+              }
           }
         }
       }
@@ -355,7 +362,10 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
         ) {
           // Backup & Restore Section
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.First, title = stringResource(R.string.pref_section_backup_restore))
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.First,
+              title = stringResource(R.string.pref_section_backup_restore),
+            )
           }
 
           item {
@@ -368,11 +378,13 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
                   preferences.autoBackupEnabled.set(enabled)
                   if (enabled) {
                     scope.launch {
-                      settingsManager.autoBackupIfChanged(configurationFolderUri).onSuccess {
-                        lastAutoBackupTime = settingsManager.lastAutoBackupTime()
-                      }.onFailure { error ->
-                        Toast.makeText(context, error.message ?: unknownError, Toast.LENGTH_LONG).show()
-                      }
+                      settingsManager
+                        .autoBackupIfChanged(configurationFolderUri)
+                        .onSuccess {
+                          lastAutoBackupTime = settingsManager.lastAutoBackupTime()
+                        }.onFailure { error ->
+                          Toast.makeText(context, error.message ?: unknownError, Toast.LENGTH_LONG).show()
+                        }
                     }
                   }
                 },
@@ -384,7 +396,8 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
                     } else if (lastAutoBackupTime > 0L) {
                       stringResource(
                         R.string.pref_auto_backup_last_backup,
-                        android.text.format.DateUtils.getRelativeTimeSpanString(lastAutoBackupTime),
+                        android.text.format.DateUtils
+                          .getRelativeTimeSpanString(lastAutoBackupTime),
                       )
                     } else {
                       stringResource(R.string.pref_auto_backup_summary)
@@ -397,111 +410,114 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
               PreferenceDivider()
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_export_settings_title),
-                title = { Text(text = stringResource(R.string.pref_export_settings_title)) },
-                summary = {
-                  Text(
-                    text = stringResource(R.string.pref_export_settings_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                icon = {
-                  Icon(
-                    Icons.RoundedFilled.FileUpload,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                  )
-                },
-                onClick = {
-                  exportLauncher.launch(settingsManager.getDefaultExportFilename())
-                },
-              )
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_export_settings_title),
+                  title = { Text(text = stringResource(R.string.pref_export_settings_title)) },
+                  summary = {
+                    Text(
+                      text = stringResource(R.string.pref_export_settings_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  icon = {
+                    Icon(
+                      Icons.RoundedFilled.FileUpload,
+                      contentDescription = null,
+                      tint = MaterialTheme.colorScheme.primary,
+                    )
+                  },
+                  onClick = {
+                    exportLauncher.launch(settingsManager.getDefaultExportFilename())
+                  },
+                )
               }
 
               PreferenceDivider()
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_import_settings_title),
-                title = { Text(text = stringResource(R.string.pref_import_settings_title)) },
-                summary = {
-                  Text(
-                    text = stringResource(R.string.pref_import_settings_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                icon = {
-                  Icon(
-                    Icons.RoundedFilled.FileDownload,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                  )
-                },
-                onClick = {
-                  importLauncher.launch(arrayOf("text/xml", "application/xml", "*/*"))
-                },
-              )
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_import_settings_title),
+                  title = { Text(text = stringResource(R.string.pref_import_settings_title)) },
+                  summary = {
+                    Text(
+                      text = stringResource(R.string.pref_import_settings_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  icon = {
+                    Icon(
+                      Icons.RoundedFilled.FileDownload,
+                      contentDescription = null,
+                      tint = MaterialTheme.colorScheme.primary,
+                    )
+                  },
+                  onClick = {
+                    importLauncher.launch(arrayOf("text/xml", "application/xml", "*/*"))
+                  },
+                )
               }
             }
           }
 
           // Storage Root Section
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_storage_root))
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
+              title = stringResource(R.string.pref_section_storage_root),
+            )
           }
 
           item {
             PreferenceCard {
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_mpv_conf_storage_location),
-                title = { Text(stringResource(R.string.pref_advanced_mpv_conf_storage_location)) },
-                summary = {
-                  Text(
-                    text =
-                      if (baseStorageFolder.isNotEmpty()) {
-                        getSimplifiedStoragePath(baseStorageFolder)
-                      } else {
-                        stringResource(R.string.pref_base_storage_folder_summary)
-                      },
-                    color = MaterialTheme.colorScheme.outline,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                  )
-                },
-                icon = {
-                  Icon(
-                    Icons.RoundedFilled.Folder,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                  )
-                },
-                onClick = { storageRootPicker.launch(null) },
-              )
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_mpv_conf_storage_location),
+                  title = { Text(stringResource(R.string.pref_advanced_mpv_conf_storage_location)) },
+                  summary = {
+                    Text(
+                      text =
+                        if (baseStorageFolder.isNotEmpty()) {
+                          getSimplifiedStoragePath(baseStorageFolder)
+                        } else {
+                          stringResource(R.string.pref_base_storage_folder_summary)
+                        },
+                      color = MaterialTheme.colorScheme.outline,
+                      maxLines = 1,
+                      overflow = TextOverflow.Ellipsis,
+                    )
+                  },
+                  icon = {
+                    Icon(
+                      Icons.RoundedFilled.Folder,
+                      contentDescription = null,
+                      tint = MaterialTheme.colorScheme.primary,
+                    )
+                  },
+                  onClick = { storageRootPicker.launch(null) },
+                )
               }
 
               if (baseStorageFolder.isNotEmpty()) {
                 PreferenceDivider()
                 ExpressivePreferenceItem {
-                Preference(
-                  title = { Text(stringResource(R.string.pref_clear_storage_root_title)) },
-                  icon = {
-                    Icon(
-                      Icons.RoundedFilled.Clear,
-                      contentDescription = null,
-                      tint = MaterialTheme.colorScheme.error,
-                    )
-                  },
-                  onClick = {
-                    if (subtitlesPreferences.fontsFolder.get() == baseStorageFolder) {
-                      subtitlesPreferences.fontsFolder.set("")
-                    }
-                    foldersPreferences.baseStorageFolder.set("")
-                    preferences.mpvConfStorageUri.set("")
-                    subtitlesPreferences.subtitleSaveFolder.set("")
-                  },
-                )
+                  Preference(
+                    title = { Text(stringResource(R.string.pref_clear_storage_root_title)) },
+                    icon = {
+                      Icon(
+                        Icons.RoundedFilled.Clear,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                      )
+                    },
+                    onClick = {
+                      if (subtitlesPreferences.fontsFolder.get() == baseStorageFolder) {
+                        subtitlesPreferences.fontsFolder.set("")
+                      }
+                      foldersPreferences.baseStorageFolder.set("")
+                      preferences.mpvConfStorageUri.set("")
+                      subtitlesPreferences.subtitleSaveFolder.set("")
+                    },
+                  )
                 }
               }
             }
@@ -509,7 +525,10 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
 
           // MPV Configuration Section
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_mpv_config))
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
+              title = stringResource(R.string.pref_section_mpv_config),
+            )
           }
 
           item {
@@ -521,8 +540,10 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
               LaunchedEffect(mpvConfStorageLocation) {
                 if (mpvConfStorageLocation.isBlank()) return@LaunchedEffect
                 withContext(Dispatchers.IO) {
-                  val tree = runCatching { DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri()) }.getOrNull()
-                    ?: return@withContext
+                  val tree =
+                    runCatching { DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri()) }.getOrNull()
+                      ?: return@withContext
+
                   fun readConfig(fileName: String): String? =
                     runCatching {
                       tree.findFile(fileName)?.takeIf { it.exists() }?.let { configFile ->
@@ -547,21 +568,21 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
               }
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_mpv_conf),
-                title = { Text(stringResource(R.string.pref_advanced_mpv_conf)) },
-                summary = {
-                  val firstLine = mpvConf.lines().firstOrNull()
-                  if (firstLine != null && firstLine.isNotBlank()) {
-                    Text(firstLine, color = MaterialTheme.colorScheme.outline)
-                  } else {
-                    Text(stringResource(R.string.pref_config_edit_summary), color = MaterialTheme.colorScheme.outline)
-                  }
-                },
-                onClick = {
-                  backStack.navigateTo(ConfigEditorScreen(ConfigEditorScreen.ConfigType.MPV_CONF))
-                },
-              )
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_mpv_conf),
+                  title = { Text(stringResource(R.string.pref_advanced_mpv_conf)) },
+                  summary = {
+                    val firstLine = mpvConf.lines().firstOrNull()
+                    if (firstLine != null && firstLine.isNotBlank()) {
+                      Text(firstLine, color = MaterialTheme.colorScheme.outline)
+                    } else {
+                      Text(stringResource(R.string.pref_config_edit_summary), color = MaterialTheme.colorScheme.outline)
+                    }
+                  },
+                  onClick = {
+                    backStack.navigateTo(ConfigEditorScreen(ConfigEditorScreen.ConfigType.MPV_CONF))
+                  },
+                )
               }
 
               PreferenceDivider()
@@ -574,28 +595,31 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
               PreferenceDivider()
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_input_conf),
-                title = { Text(stringResource(R.string.pref_advanced_input_conf)) },
-                summary = {
-                  val firstLine = inputConf.lines().firstOrNull()
-                  if (firstLine != null && firstLine.isNotBlank()) {
-                    Text(firstLine, color = MaterialTheme.colorScheme.outline)
-                  } else {
-                    Text(stringResource(R.string.pref_config_edit_summary), color = MaterialTheme.colorScheme.outline)
-                  }
-                },
-                onClick = {
-                  backStack.navigateTo(ConfigEditorScreen(ConfigEditorScreen.ConfigType.INPUT_CONF))
-                },
-              )
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_input_conf),
+                  title = { Text(stringResource(R.string.pref_advanced_input_conf)) },
+                  summary = {
+                    val firstLine = inputConf.lines().firstOrNull()
+                    if (firstLine != null && firstLine.isNotBlank()) {
+                      Text(firstLine, color = MaterialTheme.colorScheme.outline)
+                    } else {
+                      Text(stringResource(R.string.pref_config_edit_summary), color = MaterialTheme.colorScheme.outline)
+                    }
+                  },
+                  onClick = {
+                    backStack.navigateTo(ConfigEditorScreen(ConfigEditorScreen.ConfigType.INPUT_CONF))
+                  },
+                )
               }
             }
           }
 
           // Scripts Section
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_scripts))
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
+              title = stringResource(R.string.pref_section_scripts),
+            )
           }
 
           item {
@@ -619,56 +643,56 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
               PreferenceDivider()
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_manage_lua_scripts_title),
-                title = { Text(stringResource(R.string.pref_manage_lua_scripts_title)) },
-                summary = {
-                  when {
-                    mpvConfStorageLocation.isBlank() || !enableLuaScripts ->
-                      Text(
-                        stringResource(R.string.pref_manage_scripts_summary_disabled),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    selectedScripts.isEmpty() ->
-                      Text(
-                        stringResource(R.string.pref_manage_scripts_summary_none),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    selectedScripts.size == 1 ->
-                      Text(
-                        stringResource(R.string.pref_manage_scripts_summary_singular),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    else ->
-                      Text(
-                        stringResource(R.string.pref_manage_scripts_summary_plural, selectedScripts.size),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                  }
-                },
-                onClick = {
-                  backStack.navigateTo(LuaScriptsScreen)
-                },
-                enabled = mpvConfStorageLocation.isNotBlank() && enableLuaScripts,
-              )
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_manage_lua_scripts_title),
+                  title = { Text(stringResource(R.string.pref_manage_lua_scripts_title)) },
+                  summary = {
+                    when {
+                      mpvConfStorageLocation.isBlank() || !enableLuaScripts ->
+                        Text(
+                          stringResource(R.string.pref_manage_scripts_summary_disabled),
+                          color = MaterialTheme.colorScheme.outline,
+                        )
+                      selectedScripts.isEmpty() ->
+                        Text(
+                          stringResource(R.string.pref_manage_scripts_summary_none),
+                          color = MaterialTheme.colorScheme.outline,
+                        )
+                      selectedScripts.size == 1 ->
+                        Text(
+                          stringResource(R.string.pref_manage_scripts_summary_singular),
+                          color = MaterialTheme.colorScheme.outline,
+                        )
+                      else ->
+                        Text(
+                          stringResource(R.string.pref_manage_scripts_summary_plural, selectedScripts.size),
+                          color = MaterialTheme.colorScheme.outline,
+                        )
+                    }
+                  },
+                  onClick = {
+                    backStack.navigateTo(LuaScriptsScreen)
+                  },
+                  enabled = mpvConfStorageLocation.isNotBlank() && enableLuaScripts,
+                )
               }
 
               PreferenceDivider()
 
               DevicePreference(R.string.pref_custom_buttons_title) {
                 ExpressivePreferenceItem {
-                Preference(
-                  title = { Text(stringResource(R.string.pref_custom_buttons_title)) },
-                  summary = {
-                    Text(
-                      stringResource(R.string.pref_custom_buttons_summary),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                  onClick = {
-                    backStack.navigateTo(app.gyrolet.mpvrx.ui.preferences.CustomButtonScreen)
-                  },
-                )
+                  Preference(
+                    title = { Text(stringResource(R.string.pref_custom_buttons_title)) },
+                    summary = {
+                      Text(
+                        stringResource(R.string.pref_custom_buttons_summary),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                    onClick = {
+                      backStack.navigateTo(app.gyrolet.mpvrx.ui.preferences.CustomButtonScreen)
+                    },
+                  )
                 }
               }
             }
@@ -708,7 +732,10 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
 
           // Data & Cache Section
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_data_cache))
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
+              title = stringResource(R.string.pref_section_data_cache),
+            )
           }
 
           item {
@@ -752,25 +779,25 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
                 }
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_clear_playback_history),
-                title = { Text(stringResource(R.string.pref_advanced_clear_playback_history)) },
-                summary = {
-                  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                      stringResource(R.string.pref_advanced_clear_playback_history_confirm_subtitle),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                    Text(
-                      playbackHistorySummary,
-                      color = MaterialTheme.colorScheme.outline,
-                      style = MaterialTheme.typography.bodySmall,
-                    )
-                  }
-                },
-                onClick = { isConfirmDialogShown = true },
-                action = PreferenceAction.Dialog,
-              )
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_clear_playback_history),
+                  title = { Text(stringResource(R.string.pref_advanced_clear_playback_history)) },
+                  summary = {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                      Text(
+                        stringResource(R.string.pref_advanced_clear_playback_history_confirm_subtitle),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                      Text(
+                        playbackHistorySummary,
+                        color = MaterialTheme.colorScheme.outline,
+                        style = MaterialTheme.typography.bodySmall,
+                      )
+                    }
+                  },
+                  onClick = { isConfirmDialogShown = true },
+                  action = PreferenceAction.Dialog,
+                )
               }
 
               if (isConfirmDialogShown) {
@@ -867,88 +894,88 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
               }
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_clear_config_cache_title),
-                title = { Text(text = stringResource(R.string.pref_clear_config_cache_title)) },
-                summary = {
-                  val sizeStr = formatFileSize(configCacheSize)
-                  Column {
-                    Text(
-                      text = stringResource(R.string.pref_config_cache_summary),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                    Text(
-                      text = stringResource(R.string.pref_config_cache_size, sizeStr),
-                      color = MaterialTheme.colorScheme.outline,
-                      style = MaterialTheme.typography.bodySmall,
-                    )
-                  }
-                },
-                onClick = {
-                  scope.launch(Dispatchers.IO) {
-                    runCatching {
-                      listOf(
-                        File(context.filesDir, "mpv.conf"),
-                        File(context.filesDir, "input.conf"),
-                      ).forEach { file ->
-                        check(!file.exists() || file.delete()) {
-                          "Unable to clear config cache file: ${file.absolutePath}"
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_clear_config_cache_title),
+                  title = { Text(text = stringResource(R.string.pref_clear_config_cache_title)) },
+                  summary = {
+                    val sizeStr = formatFileSize(configCacheSize)
+                    Column {
+                      Text(
+                        text = stringResource(R.string.pref_config_cache_summary),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                      Text(
+                        text = stringResource(R.string.pref_config_cache_size, sizeStr),
+                        color = MaterialTheme.colorScheme.outline,
+                        style = MaterialTheme.typography.bodySmall,
+                      )
+                    }
+                  },
+                  onClick = {
+                    scope.launch(Dispatchers.IO) {
+                      runCatching {
+                        listOf(
+                          File(context.filesDir, "mpv.conf"),
+                          File(context.filesDir, "input.conf"),
+                        ).forEach { file ->
+                          check(!file.exists() || file.delete()) {
+                            "Unable to clear config cache file: ${file.absolutePath}"
+                          }
+                        }
+                        preferences.mpvConf.delete()
+                        preferences.inputConf.delete()
+                      }.onSuccess {
+                        withContext(Dispatchers.Main) {
+                          mpvConf = ""
+                          configCacheSize = 0L
+                          Toast
+                            .makeText(
+                              context,
+                              context.getString(R.string.pref_config_cache_cleared_toast),
+                              Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                      }.onFailure { error ->
+                        withContext(Dispatchers.Main) {
+                          Toast
+                            .makeText(
+                              context,
+                              context.getString(
+                                R.string.pref_failed_to_clear,
+                                error.message ?: context.getString(R.string.generic_unknown_error),
+                              ),
+                              Toast.LENGTH_LONG,
+                            ).show()
                         }
                       }
-                      preferences.mpvConf.delete()
-                      preferences.inputConf.delete()
-                    }.onSuccess {
-                      withContext(Dispatchers.Main) {
-                        mpvConf = ""
-                        configCacheSize = 0L
-                        Toast
-                          .makeText(
-                            context,
-                            context.getString(R.string.pref_config_cache_cleared_toast),
-                            Toast.LENGTH_SHORT,
-                          ).show()
-                      }
-                    }.onFailure { error ->
-                      withContext(Dispatchers.Main) {
-                        Toast
-                          .makeText(
-                            context,
-                            context.getString(
-                              R.string.pref_failed_to_clear,
-                              error.message ?: context.getString(R.string.generic_unknown_error),
-                            ),
-                            Toast.LENGTH_LONG,
-                          ).show()
-                      }
                     }
-                  }
-                },
-              )
+                  },
+                )
               }
 
               PreferenceDivider()
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_clear_thumbnail_cache_title),
-                title = { Text(text = stringResource(R.string.pref_clear_thumbnail_cache_title)) },
-                summary = {
-                  val sizeStr = formatFileSize(thumbnailCacheSize)
-                  Column {
-                    Text(
-                      text = stringResource(R.string.pref_thumbnail_cache_summary),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                    Text(
-                      text = stringResource(R.string.pref_thumbnail_cache_size, sizeStr),
-                      color = MaterialTheme.colorScheme.outline,
-                      style = MaterialTheme.typography.bodySmall,
-                    )
-                  }
-                },
-                onClick = { isClearThumbsConfirmShown = true },
-                action = PreferenceAction.Dialog,
-              )
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_clear_thumbnail_cache_title),
+                  title = { Text(text = stringResource(R.string.pref_clear_thumbnail_cache_title)) },
+                  summary = {
+                    val sizeStr = formatFileSize(thumbnailCacheSize)
+                    Column {
+                      Text(
+                        text = stringResource(R.string.pref_thumbnail_cache_summary),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                      Text(
+                        text = stringResource(R.string.pref_thumbnail_cache_size, sizeStr),
+                        color = MaterialTheme.colorScheme.outline,
+                        style = MaterialTheme.typography.bodySmall,
+                      )
+                    }
+                  },
+                  onClick = { isClearThumbsConfirmShown = true },
+                  action = PreferenceAction.Dialog,
+                )
               }
 
               if (isClearThumbsConfirmShown) {
@@ -993,57 +1020,60 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
               PreferenceDivider()
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_clear_fonts_cache),
-                title = { Text(text = stringResource(id = R.string.pref_advanced_clear_fonts_cache)) },
-                summary = {
-                  val sizeStr = formatFileSize(fontsCacheSize)
-                  Text(
-                    text = stringResource(R.string.pref_fonts_cache_size, sizeStr, fontsFileCount),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                onClick = {
-                  scope.launch(Dispatchers.IO) {
-                    val fontsDir = File(context.filesDir, "fonts")
-                    runCatching {
-                      check(!fontsDir.exists() || fontsDir.deleteRecursively()) {
-                        "Unable to clear fonts cache directory: ${fontsDir.absolutePath}"
-                      }
-                    }.onSuccess {
-                      withContext(Dispatchers.Main) {
-                        fontsCacheSize = 0L
-                        fontsFileCount = 0
-                        Toast
-                          .makeText(
-                            context,
-                            fontsCacheClearedMessage,
-                            Toast.LENGTH_SHORT,
-                          ).show()
-                      }
-                    }.onFailure { error ->
-                      withContext(Dispatchers.Main) {
-                        Toast
-                          .makeText(
-                            context,
-                            context.getString(
-                              R.string.pref_failed_to_clear,
-                              error.message ?: context.getString(R.string.generic_unknown_error),
-                            ),
-                            Toast.LENGTH_LONG,
-                          ).show()
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_clear_fonts_cache),
+                  title = { Text(text = stringResource(id = R.string.pref_advanced_clear_fonts_cache)) },
+                  summary = {
+                    val sizeStr = formatFileSize(fontsCacheSize)
+                    Text(
+                      text = stringResource(R.string.pref_fonts_cache_size, sizeStr, fontsFileCount),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  onClick = {
+                    scope.launch(Dispatchers.IO) {
+                      val fontsDir = File(context.filesDir, "fonts")
+                      runCatching {
+                        check(!fontsDir.exists() || fontsDir.deleteRecursively()) {
+                          "Unable to clear fonts cache directory: ${fontsDir.absolutePath}"
+                        }
+                      }.onSuccess {
+                        withContext(Dispatchers.Main) {
+                          fontsCacheSize = 0L
+                          fontsFileCount = 0
+                          Toast
+                            .makeText(
+                              context,
+                              fontsCacheClearedMessage,
+                              Toast.LENGTH_SHORT,
+                            ).show()
+                        }
+                      }.onFailure { error ->
+                        withContext(Dispatchers.Main) {
+                          Toast
+                            .makeText(
+                              context,
+                              context.getString(
+                                R.string.pref_failed_to_clear,
+                                error.message ?: context.getString(R.string.generic_unknown_error),
+                              ),
+                              Toast.LENGTH_LONG,
+                            ).show()
+                        }
                       }
                     }
-                  }
-                },
-              )
+                  },
+                )
               }
             }
           }
 
           // Logging, diagnostics & privacy Section
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_logging))
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Last,
+              title = stringResource(R.string.pref_section_logging),
+            )
           }
 
           item {
@@ -1068,53 +1098,60 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
               PreferenceDivider()
 
               ExpressivePreferenceItem {
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_debug_log_size_title),
-                value = debugLogSizeMb.toFloat(),
-                onValueChange = { value -> preferences.debugLogSizeMb.set(value.toInt().coerceIn(1, 10)) },
-                sliderValue = debugLogSizeMb.toFloat(),
-                onSliderValueChange = { value -> preferences.debugLogSizeMb.set(value.toInt().coerceIn(1, 10)) },
-                title = { Text(stringResource(R.string.pref_debug_log_size_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_debug_log_size_summary, debugLogSizeMb),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                valueRange = 1f..10f,
-                valueSteps = 8,
-              )
+                SliderPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_debug_log_size_title),
+                  value = debugLogSizeMb.toFloat(),
+                  onValueChange = { value -> preferences.debugLogSizeMb.set(value.toInt().coerceIn(1, 10)) },
+                  sliderValue = debugLogSizeMb.toFloat(),
+                  onSliderValueChange = { value -> preferences.debugLogSizeMb.set(value.toInt().coerceIn(1, 10)) },
+                  title = { Text(stringResource(R.string.pref_debug_log_size_title)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_debug_log_size_summary, debugLogSizeMb),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  valueRange = 1f..10f,
+                  valueSteps = 8,
+                )
               }
 
               PreferenceDivider()
 
               ExpressivePreferenceItem {
-              Preference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_dump_logs_title),
-                title = { Text(stringResource(R.string.pref_advanced_dump_logs_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_advanced_dump_logs_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                onClick = {
-                  scope.launch(Dispatchers.IO) {
-                    val deviceInfo = CrashActivity.collectDeviceInfo()
-                    val deviceInfoBytes = deviceInfo.toByteArray(Charsets.UTF_8).size
-                    val appLog = AppLogBuffer.text(
-                      maxBytes = (debugLogSizeMb.coerceIn(1, 10) * 1024 * 1024 - deviceInfoBytes - 64).coerceAtLeast(0),
+                Preference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_dump_logs_title),
+                  title = { Text(stringResource(R.string.pref_advanced_dump_logs_title)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_advanced_dump_logs_summary),
+                      color = MaterialTheme.colorScheme.outline,
                     )
+                  },
+                  onClick = {
+                    scope.launch(Dispatchers.IO) {
+                      val deviceInfo = CrashActivity.collectDeviceInfo()
+                      val deviceInfoBytes = deviceInfo.toByteArray(Charsets.UTF_8).size
+                      val appLog =
+                        AppLogBuffer.text(
+                          maxBytes =
+                            (
+                              debugLogSizeMb.coerceIn(
+                                1,
+                                10,
+                              ) * 1024 * 1024 - deviceInfoBytes - 64
+                            ).coerceAtLeast(0),
+                        )
 
-                    SafeClipboard.copyPlainText(
-                      context = context,
-                      label = "mpvrx_logs",
-                      text = CrashActivity.concatLogs(deviceInfo, null, appLog),
-                    )
-                    CrashActivity.shareLogs(deviceInfo, null, appLog, activity)
-                  }
-                },
-              )
+                      SafeClipboard.copyPlainText(
+                        context = context,
+                        label = "mpvrx_logs",
+                        text = CrashActivity.concatLogs(deviceInfo, null, appLog),
+                      )
+                      CrashActivity.shareLogs(deviceInfo, null, appLog, activity)
+                    }
+                  },
+                )
               }
             }
           }
@@ -1128,4 +1165,5 @@ fun getSimplifiedPathFromUri(uri: String): String =
   File(Environment.getExternalStorageDirectory(), Uri.decode(uri).substringAfterLast(":")).canonicalPath
 
 private fun formatFileSize(bytes: Long): String =
-  app.gyrolet.mpvrx.utils.storage.VideoScanUtils.formatFileSize(bytes)
+  app.gyrolet.mpvrx.utils.storage.VideoScanUtils
+    .formatFileSize(bytes)

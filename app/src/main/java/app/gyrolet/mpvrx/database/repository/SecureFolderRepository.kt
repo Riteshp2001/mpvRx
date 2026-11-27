@@ -225,11 +225,15 @@ class SecureFolderRepository(
     var bytesDone = 0L
     var operationError: Exception? = null
 
-    fun recordFailure(video: Video, error: Exception) {
-      val failure = IOException(
-        "${video.displayName}: ${error.localizedMessage ?: error.javaClass.simpleName}",
-        error,
-      )
+    fun recordFailure(
+      video: Video,
+      error: Exception,
+    ) {
+      val failure =
+        IOException(
+          "${video.displayName}: ${error.localizedMessage ?: error.javaClass.simpleName}",
+          error,
+        )
       if (operationError == null) operationError = failure
       _progress.value = _progress.value.copy(error = failure.message)
     }
@@ -246,21 +250,27 @@ class SecureFolderRepository(
           val destFile = uniqueFileIn(destDir, fileName)
           destination = destFile
           updateProgress(fileName, index + 1, videos.size, 0f, bytesDone, totalBytes)
-          val copiedBytes = copyScopedSource(context, video, destFile) { progress ->
-            updateProgress(
-              fileName, index + 1, videos.size, progress,
-              bytesDone + (video.size.coerceAtLeast(0L) * progress).toLong(), totalBytes,
-            )
-          }
+          val copiedBytes =
+            copyScopedSource(context, video, destFile) { progress ->
+              updateProgress(
+                fileName,
+                index + 1,
+                videos.size,
+                progress,
+                bytesDone + (video.size.coerceAtLeast(0L) * progress).toLong(),
+                totalBytes,
+              )
+            }
           val originalPath = ScopedHiddenFolderScanner.localPathOf(video.uri) ?: video.path
-          val entity = SecureMediaEntity(
-            originalPath = originalPath,
-            secureFilePath = destFile.absolutePath,
-            fileName = fileName,
-            fileSize = copiedBytes,
-            mimeType = resolveMimeType(video.mimeType, fileName),
-            dateHidden = System.currentTimeMillis(),
-          )
+          val entity =
+            SecureMediaEntity(
+              originalPath = originalPath,
+              secureFilePath = destFile.absolutePath,
+              fileName = fileName,
+              fileSize = copiedBytes,
+              mimeType = resolveMimeType(video.mimeType, fileName),
+              dateHidden = System.currentTimeMillis(),
+            )
           // Record the verified copy before Android can delete the source, including across cancellation.
           withContext(NonCancellable) {
             val entityId = dao.insert(entity)
@@ -324,10 +334,11 @@ class SecureFolderRepository(
         }
       }
       MediaLibraryEvents.notifyChanged()
-      _progress.value = _progress.value.copy(
-        isComplete = true,
-        overallProgress = if (_progress.value.isCancelled) _progress.value.overallProgress else 1f,
-      )
+      _progress.value =
+        _progress.value.copy(
+          isComplete = true,
+          overallProgress = if (_progress.value.isCancelled) _progress.value.overallProgress else 1f,
+        )
     }
 
     val succeeded = videos.filter { it.uri in deletedUris }.map { it.id }
@@ -345,17 +356,19 @@ class SecureFolderRepository(
     destination: File,
     onProgress: (Float) -> Unit,
   ): Long {
-    val descriptor = context.contentResolver.openAssetFileDescriptor(video.uri, "r")
-      ?: throw IOException("Could not open ${video.displayName}")
+    val descriptor =
+      context.contentResolver.openAssetFileDescriptor(video.uri, "r")
+        ?: throw IOException("Could not open ${video.displayName}")
     return descriptor.use { source ->
       // Cached MediaStore sizes are progress hints, not proof of an unknown-length stream's size.
       val expectedSize = source.length.takeIf { it >= 0L }
       val progressSize = expectedSize ?: video.size.coerceAtLeast(0L)
-      val copied = source.createInputStream().use { input ->
-        FileOutputStream(destination).use { output ->
-          copyWithProgress(input, output, progressSize, onProgress).also { output.fd.sync() }
+      val copied =
+        source.createInputStream().use { input ->
+          FileOutputStream(destination).use { output ->
+            copyWithProgress(input, output, progressSize, onProgress).also { output.fd.sync() }
+          }
         }
-      }
       if (destination.length() != copied || (expectedSize != null && copied != expectedSize)) {
         throw IOException("Copy verification failed for ${video.displayName}")
       }
@@ -563,43 +576,49 @@ class SecureFolderRepository(
     val resolver = context.contentResolver
     val mimeType = resolveMimeType(entity.mimeType, entity.fileName)
     val location = resolveScopedRestoreLocation(context, entity.originalPath, mimeType)
-    val values = ContentValues().apply {
-      put(MediaStore.MediaColumns.DISPLAY_NAME, entity.fileName)
-      put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-      put(MediaStore.MediaColumns.IS_PENDING, 1)
-    }
-    fun insertPending(target: ScopedRestoreLocation): Uri {
-      val targetValues = ContentValues(values).apply {
-        put(MediaStore.MediaColumns.RELATIVE_PATH, target.relativePath)
+    val values =
+      ContentValues().apply {
+        put(MediaStore.MediaColumns.DISPLAY_NAME, entity.fileName)
+        put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+        put(MediaStore.MediaColumns.IS_PENDING, 1)
       }
+
+    fun insertPending(target: ScopedRestoreLocation): Uri {
+      val targetValues =
+        ContentValues(values).apply {
+          put(MediaStore.MediaColumns.RELATIVE_PATH, target.relativePath)
+        }
       return resolver.insert(target.collection, targetValues)
         ?: throw IOException("Could not create restored media for ${entity.fileName}")
     }
 
     // Inserting a new row lets MediaStore allocate a collision-safe name without overwriting a file.
-    val restoredUri = try {
-      insertPending(location)
-    } catch (error: Exception) {
-      if (error !is SecurityException && error !is IllegalArgumentException && error !is IOException) throw error
-      val fallback = resolveScopedRestoreLocation(context, "", mimeType)
-      if (location == fallback) throw error
-      Log.w(TAG, "Original restore location rejected; retrying in ${fallback.relativePath}", error)
+    val restoredUri =
       try {
-        insertPending(fallback)
-      } catch (fallbackError: Exception) {
-        fallbackError.addSuppressed(error)
-        throw fallbackError
+        insertPending(location)
+      } catch (error: Exception) {
+        if (error !is SecurityException && error !is IllegalArgumentException && error !is IOException) throw error
+        val fallback = resolveScopedRestoreLocation(context, "", mimeType)
+        if (location == fallback) throw error
+        Log.w(TAG, "Original restore location rejected; retrying in ${fallback.relativePath}", error)
+        try {
+          insertPending(fallback)
+        } catch (fallbackError: Exception) {
+          fallbackError.addSuppressed(error)
+          throw fallbackError
+        }
       }
-    }
     var published = false
 
     try {
       val expectedSize = secureFile.length()
-      val copied = FileInputStream(secureFile).use { input ->
-        val output = resolver.openOutputStream(restoredUri, "w")
-          ?: throw IOException("Could not open restored media for ${entity.fileName}")
-        output.use { copyWithProgress(input, it, expectedSize, onProgress) }
-      }
+      val copied =
+        FileInputStream(secureFile).use { input ->
+          val output =
+            resolver.openOutputStream(restoredUri, "w")
+              ?: throw IOException("Could not open restored media for ${entity.fileName}")
+          output.use { copyWithProgress(input, it, expectedSize, onProgress) }
+        }
       if (copied != expectedSize || scopedContentLength(context, restoredUri) != expectedSize) {
         throw IOException("Restore verification failed for ${entity.fileName}")
       }
@@ -607,12 +626,13 @@ class SecureFolderRepository(
       checkCancellation()
       withContext(NonCancellable) {
         checkCancellation()
-        val publishedRows = resolver.update(
-          restoredUri,
-          ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) },
-          null,
-          null,
-        )
+        val publishedRows =
+          resolver.update(
+            restoredUri,
+            ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) },
+            null,
+            null,
+          )
         if (publishedRows <= 0) throw IOException("Could not publish restored media for ${entity.fileName}")
         published = true
         dao.deleteById(entity.id)
@@ -647,45 +667,65 @@ class SecureFolderRepository(
   ): ScopedRestoreLocation {
     val audio = mimeType.startsWith("audio/")
     val video = mimeType.startsWith("video/")
-    val defaultDirectory = when {
-      audio -> Environment.DIRECTORY_MUSIC
-      video -> Environment.DIRECTORY_MOVIES
-      else -> Environment.DIRECTORY_DOWNLOADS
-    }
-    fun collection(volume: String, downloads: Boolean): Uri = when {
-      downloads -> MediaStore.Downloads.getContentUri(volume)
-      audio -> MediaStore.Audio.Media.getContentUri(volume)
-      else -> MediaStore.Video.Media.getContentUri(volume)
-    }
+    val defaultDirectory =
+      when {
+        audio -> Environment.DIRECTORY_MUSIC
+        video -> Environment.DIRECTORY_MOVIES
+        else -> Environment.DIRECTORY_DOWNLOADS
+      }
 
-    val localPath = if (originalPath.startsWith("content://")) {
-      ScopedHiddenFolderScanner.localPathOf(Uri.parse(originalPath))
-    } else {
-      originalPath
-    }
+    fun collection(
+      volume: String,
+      downloads: Boolean,
+    ): Uri =
+      when {
+        downloads -> MediaStore.Downloads.getContentUri(volume)
+        audio -> MediaStore.Audio.Media.getContentUri(volume)
+        else -> MediaStore.Video.Media.getContentUri(volume)
+      }
+
+    val localPath =
+      if (originalPath.startsWith("content://")) {
+        ScopedHiddenFolderScanner.localPathOf(Uri.parse(originalPath))
+      } else {
+        originalPath
+      }
     val originalParent = localPath?.let { File(it).parent }
-    val audioDirectories = setOf(
-      Environment.DIRECTORY_MUSIC, Environment.DIRECTORY_PODCASTS, Environment.DIRECTORY_RINGTONES,
-      Environment.DIRECTORY_ALARMS, Environment.DIRECTORY_NOTIFICATIONS, Environment.DIRECTORY_AUDIOBOOKS,
-    ) + if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setOf(Environment.DIRECTORY_RECORDINGS) else emptySet()
+    val audioDirectories =
+      setOf(
+        Environment.DIRECTORY_MUSIC,
+        Environment.DIRECTORY_PODCASTS,
+        Environment.DIRECTORY_RINGTONES,
+        Environment.DIRECTORY_ALARMS,
+        Environment.DIRECTORY_NOTIFICATIONS,
+        Environment.DIRECTORY_AUDIOBOOKS,
+      ) + if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) setOf(Environment.DIRECTORY_RECORDINGS) else emptySet()
 
     for (volume in MediaStore.getExternalVolumeNames(context)) {
-      val root = if (volume == MediaStore.VOLUME_EXTERNAL_PRIMARY) {
-        Environment.getExternalStorageDirectory().absolutePath
-      } else {
-        "/storage/$volume"
-      }
+      val root =
+        if (volume == MediaStore.VOLUME_EXTERNAL_PRIMARY) {
+          Environment.getExternalStorageDirectory().absolutePath
+        } else {
+          "/storage/$volume"
+        }
       if (originalParent == null || !originalParent.startsWith("$root/", ignoreCase = true)) continue
       val relativePath = originalParent.substring(root.length + 1).trimEnd('/')
       val segments = relativePath.split('/')
       if (segments.any { it.isBlank() || it == ".." || it.startsWith(".") }) continue
       val topDirectory = segments.first()
       val downloads = topDirectory == Environment.DIRECTORY_DOWNLOADS
-      val supported = downloads ||
-        (audio && topDirectory in audioDirectories) ||
-        (video && topDirectory in setOf(
-          Environment.DIRECTORY_MOVIES, Environment.DIRECTORY_DCIM, Environment.DIRECTORY_PICTURES,
-        ))
+      val supported =
+        downloads ||
+          (audio && topDirectory in audioDirectories) ||
+          (
+            video &&
+              topDirectory in
+              setOf(
+                Environment.DIRECTORY_MOVIES,
+                Environment.DIRECTORY_DCIM,
+                Environment.DIRECTORY_PICTURES,
+              )
+          )
       if (supported) return ScopedRestoreLocation(collection(volume, downloads), "$relativePath/")
     }
 
@@ -697,16 +737,23 @@ class SecureFolderRepository(
     )
   }
 
-  private fun resolveMimeType(mimeType: String, fileName: String): String =
+  private fun resolveMimeType(
+    mimeType: String,
+    fileName: String,
+  ): String =
     if (mimeType.isBlank() || mimeType.endsWith("/*") || mimeType == "application/octet-stream") {
       FileTypeUtils.getMimeTypeFromExtension(File(fileName).extension)
     } else {
       mimeType
     }
 
-  private suspend fun scopedContentLength(context: Context, uri: Uri): Long {
-    val descriptor = context.contentResolver.openAssetFileDescriptor(uri, "r")
-      ?: throw IOException("Could not verify restored media: $uri")
+  private suspend fun scopedContentLength(
+    context: Context,
+    uri: Uri,
+  ): Long {
+    val descriptor =
+      context.contentResolver.openAssetFileDescriptor(uri, "r")
+        ?: throw IOException("Could not verify restored media: $uri")
     return descriptor.use { source ->
       if (source.length >= 0L) {
         source.length
@@ -733,16 +780,18 @@ class SecureFolderRepository(
   /** URI grants do not grant filesystem access; only reuse an absolute, writable local folder. */
   private fun resolveRestoreTarget(entity: SecureMediaEntity): File {
     val originalUri = Uri.parse(entity.originalPath)
-    val originalLocalPath = when (originalUri.scheme) {
-      "content" -> ScopedHiddenFolderScanner.localPathOf(originalUri)
-      "file" -> originalUri.path
-      null -> entity.originalPath
-      else -> null
-    }
-    val originalParent = originalLocalPath
-      ?.let { File(it) }
-      ?.takeIf { it.isAbsolute }
-      ?.parentFile
+    val originalLocalPath =
+      when (originalUri.scheme) {
+        "content" -> ScopedHiddenFolderScanner.localPathOf(originalUri)
+        "file" -> originalUri.path
+        null -> entity.originalPath
+        else -> null
+      }
+    val originalParent =
+      originalLocalPath
+        ?.let { File(it) }
+        ?.takeIf { it.isAbsolute }
+        ?.parentFile
     if (originalParent != null &&
       (originalParent.isDirectory || originalParent.mkdirs()) &&
       originalParent.canWrite()
@@ -751,11 +800,12 @@ class SecureFolderRepository(
     }
 
     val mimeType = resolveMimeType(entity.mimeType, entity.fileName)
-    val directory = when {
-      mimeType.startsWith("audio/") -> Environment.DIRECTORY_MUSIC
-      mimeType.startsWith("video/") -> Environment.DIRECTORY_MOVIES
-      else -> Environment.DIRECTORY_DOWNLOADS
-    }
+    val directory =
+      when {
+        mimeType.startsWith("audio/") -> Environment.DIRECTORY_MUSIC
+        mimeType.startsWith("video/") -> Environment.DIRECTORY_MOVIES
+        else -> Environment.DIRECTORY_DOWNLOADS
+      }
     val fallback = File(Environment.getExternalStoragePublicDirectory(directory), "Restored")
     Log.i(TAG, "Original restore folder is unavailable or not writable; using ${fallback.absolutePath}")
     return uniqueFileIn(fallback, entity.fileName)
@@ -765,8 +815,12 @@ class SecureFolderRepository(
     dir: File,
     fileName: String,
   ): File {
-    require(fileName.isNotBlank() && File(fileName).name == fileName &&
-      fileName != "." && fileName != ".." && '\u0000' !in fileName
+    require(
+      fileName.isNotBlank() &&
+        File(fileName).name == fileName &&
+        fileName != "." &&
+        fileName != ".." &&
+        '\u0000' !in fileName,
     ) { "Invalid media filename" }
     if (!dir.isDirectory && !dir.mkdirs()) throw IOException("Could not create media directory: ${dir.absolutePath}")
     var candidate = File(dir, fileName)

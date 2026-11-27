@@ -16,7 +16,7 @@ import androidx.core.graphics.ColorUtils
 import androidx.palette.graphics.Palette
 
 /** Name used for the auto-generated, wallpaper-derived custom theme. */
-const val WallpaperDerivedThemeName = "__wallpaper__"
+const val WALLPAPER_DERIVED_THEME_NAME = "__wallpaper__"
 
 /**
  * Extracts a [CustomThemeDefinition] from a wallpaper bitmap using [Palette].
@@ -46,7 +46,7 @@ fun extractThemeFromWallpaper(bitmap: Bitmap): CustomThemeDefinition? {
   val backgroundSeed = palette.dominantSwatch?.rgb ?: primarySeed
 
   return CustomThemeDefinition(
-    name = WallpaperDerivedThemeName,
+    name = WALLPAPER_DERIVED_THEME_NAME,
     primaryLight = Color(primarySeed).toToneForLight(),
     primaryDark = Color(primarySeed).toToneForDark(),
     secondaryLight = Color(secondarySeed).toToneForLight(),

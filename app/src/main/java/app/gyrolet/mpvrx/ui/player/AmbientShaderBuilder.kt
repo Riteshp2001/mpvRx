@@ -75,14 +75,19 @@ fun matchesGlowPreset(
     closeTo(fadeCurve, preset.fadeCurve) &&
     closeTo(opacity, preset.opacity)
 
-private fun closeTo(left: Float, right: Float, tolerance: Float = 0.01f): Boolean = abs(left - right) <= tolerance
+private fun closeTo(
+  left: Float,
+  right: Float,
+  tolerance: Float = 0.01f,
+): Boolean = abs(left - right) <= tolerance
 
 private const val GOLDEN_ANGLE = 2.399963229728653
 
 private fun glslFloat(value: Double): String {
   val normalized = if (abs(value) < 0.0000005) 0.0 else value
   val formatted =
-    String.format(Locale.US, "%.8f", normalized)
+    String
+      .format(Locale.US, "%.8f", normalized)
       .trimEnd('0')
       .trimEnd('.')
   return if (formatted.contains('.')) formatted else "$formatted.0"
@@ -195,84 +200,84 @@ highp vec3 dither_out(highp vec3 c, highp vec2 p) {
  */
 private val GLSL_VIDEO_PROLOGUE =
   """
-    highp vec2 uv = HOOKED_pos;
-    highp vec2 video_uv = (uv - vec2(CENTER_X, CENTER_Y)) * vec2(SCALE_X, SCALE_Y) + 0.5;
+  highp vec2 uv = HOOKED_pos;
+  highp vec2 video_uv = (uv - vec2(CENTER_X, CENTER_Y)) * vec2(SCALE_X, SCALE_Y) + 0.5;
 
-    // Stay half a texel inside the decoded frame when sampling the video edge.
-    highp vec2 half_texel = vec2(0.5) / HOOKED_size;
-    highp vec2 safe_min = half_texel;
-    highp vec2 safe_max = vec2(1.0) - half_texel;
+  // Stay half a texel inside the decoded frame when sampling the video edge.
+  highp vec2 half_texel = vec2(0.5) / HOOKED_size;
+  highp vec2 safe_min = half_texel;
+  highp vec2 safe_max = vec2(1.0) - half_texel;
 
-    bool inside_video = video_uv.x >= 0.0 && video_uv.x <= 1.0 &&
-              video_uv.y >= 0.0 && video_uv.y <= 1.0;
-    highp float video_weight = 0.0;
-    if (inside_video) {
-      highp vec2 video_size = HOOKED_size / vec2(SCALE_X, SCALE_Y);
-      highp float blend_width = EDGE_BLEND * min(video_size.x, video_size.y);
-      highp float inside_dist = blend_width;
-      if (CENTER_X - 0.5 / SCALE_X > 0.0) {
-        inside_dist = min(inside_dist, video_uv.x * video_size.x);
-      }
-      if (CENTER_X + 0.5 / SCALE_X < 1.0) {
-        inside_dist = min(inside_dist, (1.0 - video_uv.x) * video_size.x);
-      }
-      if (CENTER_Y - 0.5 / SCALE_Y > 0.0) {
-        inside_dist = min(inside_dist, video_uv.y * video_size.y);
-      }
-      if (CENTER_Y + 0.5 / SCALE_Y < 1.0) {
-        inside_dist = min(inside_dist, (1.0 - video_uv.y) * video_size.y);
-      }
-      if (EDGE_BLEND <= 0.0 || inside_dist >= blend_width) {
-        return HOOKED_tex(clamp(video_uv, safe_min, safe_max));
-      }
-      video_weight = smoothstep(0.0, blend_width, inside_dist);
+  bool inside_video = video_uv.x >= 0.0 && video_uv.x <= 1.0 &&
+            video_uv.y >= 0.0 && video_uv.y <= 1.0;
+  highp float video_weight = 0.0;
+  if (inside_video) {
+    highp vec2 video_size = HOOKED_size / vec2(SCALE_X, SCALE_Y);
+    highp float blend_width = EDGE_BLEND * min(video_size.x, video_size.y);
+    highp float inside_dist = blend_width;
+    if (CENTER_X - 0.5 / SCALE_X > 0.0) {
+      inside_dist = min(inside_dist, video_uv.x * video_size.x);
     }
+    if (CENTER_X + 0.5 / SCALE_X < 1.0) {
+      inside_dist = min(inside_dist, (1.0 - video_uv.x) * video_size.x);
+    }
+    if (CENTER_Y - 0.5 / SCALE_Y > 0.0) {
+      inside_dist = min(inside_dist, video_uv.y * video_size.y);
+    }
+    if (CENTER_Y + 0.5 / SCALE_Y < 1.0) {
+      inside_dist = min(inside_dist, (1.0 - video_uv.y) * video_size.y);
+    }
+    if (EDGE_BLEND <= 0.0 || inside_dist >= blend_width) {
+      return HOOKED_tex(clamp(video_uv, safe_min, safe_max));
+    }
+    video_weight = smoothstep(0.0, blend_width, inside_dist);
+  }
 
-    highp vec2 edge_origin = clamp(video_uv, safe_min, safe_max);
-    highp float edge_dist = length(video_uv - clamp(video_uv, 0.0, 1.0));
+  highp vec2 edge_origin = clamp(video_uv, safe_min, safe_max);
+  highp float edge_dist = length(video_uv - clamp(video_uv, 0.0, 1.0));
 
-    // Interleaved Gradient Noise jitter: avoids rand() sin() overhead and improves GPU cache hits
-    highp float jitter = ign(uv * HOOKED_size) * 6.2831853;
-    highp float jitter_s = sin(jitter);
-    highp float jitter_c = cos(jitter);
-    // Aspect correction uses video dimensions so the Poisson disk stays circular in video space
-    highp float aspect_x = (HOOKED_size.y / HOOKED_size.x) * ASPECT_SCALE_RATIO;
-    highp float jitter_c_aspect = jitter_c * aspect_x;
-    highp float jitter_s_aspect = jitter_s * aspect_x;
+  // Interleaved Gradient Noise jitter: avoids rand() sin() overhead and improves GPU cache hits
+  highp float jitter = ign(uv * HOOKED_size) * 6.2831853;
+  highp float jitter_s = sin(jitter);
+  highp float jitter_c = cos(jitter);
+  // Aspect correction uses video dimensions so the Poisson disk stays circular in video space
+  highp float aspect_x = (HOOKED_size.y / HOOKED_size.x) * ASPECT_SCALE_RATIO;
+  highp float jitter_c_aspect = jitter_c * aspect_x;
+  highp float jitter_s_aspect = jitter_s * aspect_x;
   """.trimIndent().prependIndent("    ")
 
 /** End of hook(): vignette, opacity, and the optional edge and bezel blends. */
 private val GLSL_AMBIENT_EPILOGUE =
   """
-    highp float vig_r = length(uv - 0.5) * 2.0;
-    ambient_rgb *= mix(1.0, 1.0 - smoothstep(0.1, 1.3, vig_r), VIGNETTE_STR);
-    ambient_rgb *= OPACITY;
+  highp float vig_r = length(uv - 0.5) * 2.0;
+  ambient_rgb *= mix(1.0, 1.0 - smoothstep(0.1, 1.3, vig_r), VIGNETTE_STR);
+  ambient_rgb *= OPACITY;
 
-    // FIX 7 (part a): dither before quantisation to the 8-bit swapchain so the
-    // exponential fade into true black never shows stair-step contour lines.
-    // Noise amplitude tracks peak channel so silence on pure black is guaranteed.
-    ambient_rgb = dither_out(ambient_rgb, uv * HOOKED_size);
+  // FIX 7 (part a): dither before quantisation to the 8-bit swapchain so the
+  // exponential fade into true black never shows stair-step contour lines.
+  // Noise amplitude tracks peak channel so silence on pure black is guaranteed.
+  ambient_rgb = dither_out(ambient_rgb, uv * HOOKED_size);
 
-    highp vec4 ambient_out = vec4(ambient_rgb, 1.0);
+  highp vec4 ambient_out = vec4(ambient_rgb, 1.0);
 
-    if (inside_video) {
-      return mix(ambient_out, HOOKED_tex(clamp(video_uv, safe_min, safe_max)), video_weight);
-    }
+  if (inside_video) {
+    return mix(ambient_out, HOOKED_tex(clamp(video_uv, safe_min, safe_max)), video_weight);
+  }
 
-    // A zero bezel means a hard, gap-free handoff from video to ambience.
-    if (BEZEL_DEPTH <= 0.0) {
-      return ambient_out;
-    }
+  // A zero bezel means a hard, gap-free handoff from video to ambience.
+  if (BEZEL_DEPTH <= 0.0) {
+    return ambient_out;
+  }
 
-    // FIX 7 (part b): Euclidean (L2) corner distance instead of Chebyshev (L∞).
-    // max(dx,dy) produced sharp diamond-shaped seams at pillarbox/letterbox corners;
-    // length() gives a smooth circular transition matching real-world bezel curvature.
-    highp vec2 outside_dist = max(max(-video_uv, video_uv - vec2(1.0)), vec2(0.0));
-    highp float dist_to_edge = length(outside_dist);
-    highp float bezel_alpha = smoothstep(0.0, BEZEL_DEPTH, dist_to_edge);
+  // FIX 7 (part b): Euclidean (L2) corner distance instead of Chebyshev (L∞).
+  // max(dx,dy) produced sharp diamond-shaped seams at pillarbox/letterbox corners;
+  // length() gives a smooth circular transition matching real-world bezel curvature.
+  highp vec2 outside_dist = max(max(-video_uv, video_uv - vec2(1.0)), vec2(0.0));
+  highp float dist_to_edge = length(outside_dist);
+  highp float bezel_alpha = smoothstep(0.0, BEZEL_DEPTH, dist_to_edge);
 
-    vec4 edge_pixel = HOOKED_tex(edge_origin);
-    return mix(edge_pixel, ambient_out, bezel_alpha);
+  vec4 edge_pixel = HOOKED_tex(edge_origin);
+  return mix(edge_pixel, ambient_out, bezel_alpha);
   """.trimIndent().prependIndent("    ")
 
 object AmbientShaderBuilder {
@@ -365,6 +370,6 @@ $GLSL_VIDEO_PROLOGUE
 
 $GLSL_AMBIENT_EPILOGUE
 }
-    """.trimIndent()
+      """.trimIndent()
   }
 }

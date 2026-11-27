@@ -44,5 +44,4 @@ interface DirectoryScanDao {
     path: String,
     pathPrefix: String,
   )
-
 }

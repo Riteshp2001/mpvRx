@@ -25,7 +25,7 @@ import java.util.Locale
 
 val SystemTypography = Typography().withExpressiveEmphasis()
 
-private const val GoogleSansRoundedAxis = 100f
+private const val GOOGLE_SANS_ROUNDED_AXIS = 100f
 
 @OptIn(ExperimentalTextApi::class)
 val GoogleSansRounded =
@@ -36,7 +36,7 @@ val GoogleSansRounded =
       variationSettings =
         FontVariation.Settings(
           FontVariation.weight(FontWeight.Thin.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -45,7 +45,7 @@ val GoogleSansRounded =
       variationSettings =
         FontVariation.Settings(
           FontVariation.weight(FontWeight.ExtraLight.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -54,7 +54,7 @@ val GoogleSansRounded =
       variationSettings =
         FontVariation.Settings(
           FontVariation.weight(FontWeight.Light.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -63,7 +63,7 @@ val GoogleSansRounded =
       variationSettings =
         FontVariation.Settings(
           FontVariation.weight(FontWeight.Normal.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -72,7 +72,7 @@ val GoogleSansRounded =
       variationSettings =
         FontVariation.Settings(
           FontVariation.weight(FontWeight.Medium.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -81,7 +81,7 @@ val GoogleSansRounded =
       variationSettings =
         FontVariation.Settings(
           FontVariation.weight(FontWeight.SemiBold.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -90,7 +90,7 @@ val GoogleSansRounded =
       variationSettings =
         FontVariation.Settings(
           FontVariation.weight(FontWeight.Bold.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -99,7 +99,7 @@ val GoogleSansRounded =
       variationSettings =
         FontVariation.Settings(
           FontVariation.weight(FontWeight.ExtraBold.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -108,7 +108,7 @@ val GoogleSansRounded =
       variationSettings =
         FontVariation.Settings(
           FontVariation.weight(FontWeight.Black.weight),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
   )
@@ -132,7 +132,7 @@ val GoogleSansExpressiveDisplay =
           FontVariation.width(110f),
           FontVariation.slant(-4f),
           FontVariation.Setting("GRAD", 60f),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -144,7 +144,7 @@ val GoogleSansExpressiveDisplay =
           FontVariation.width(111f),
           FontVariation.slant(-4f),
           FontVariation.Setting("GRAD", 70f),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -156,7 +156,7 @@ val GoogleSansExpressiveDisplay =
           FontVariation.width(112f),
           FontVariation.slant(-4f),
           FontVariation.Setting("GRAD", 80f),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -168,7 +168,7 @@ val GoogleSansExpressiveDisplay =
           FontVariation.width(112f),
           FontVariation.slant(-3f),
           FontVariation.Setting("GRAD", 90f),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
     Font(
@@ -180,7 +180,7 @@ val GoogleSansExpressiveDisplay =
           FontVariation.width(112f),
           FontVariation.slant(-2f),
           FontVariation.Setting("GRAD", 100f),
-          FontVariation.Setting("ROND", GoogleSansRoundedAxis),
+          FontVariation.Setting("ROND", GOOGLE_SANS_ROUNDED_AXIS),
         ),
     ),
   )
@@ -191,13 +191,48 @@ fun typographyWithFontFamily(
 ): Typography =
   SystemTypography.run {
     copy(
-      displayLarge = displayLarge.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.Black, letterSpacing = 0.sp),
-      displayMedium = displayMedium.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.ExtraBold, letterSpacing = 0.sp),
-      displaySmall = displaySmall.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.Bold, letterSpacing = 0.sp),
-      headlineLarge = headlineLarge.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.Bold, letterSpacing = 0.sp),
-      headlineMedium = headlineMedium.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
-      headlineSmall = headlineSmall.copy(fontFamily = displayFontFamily, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp),
-      titleLarge = titleLarge.copy(fontFamily = fontFamily, fontWeight = FontWeight.Medium, letterSpacing = 0.sp),
+      displayLarge =
+        displayLarge.copy(
+          fontFamily = displayFontFamily,
+          fontWeight = FontWeight.Black,
+          letterSpacing = 0.sp,
+        ),
+      displayMedium =
+        displayMedium.copy(
+          fontFamily = displayFontFamily,
+          fontWeight = FontWeight.ExtraBold,
+          letterSpacing = 0.sp,
+        ),
+      displaySmall =
+        displaySmall.copy(
+          fontFamily = displayFontFamily,
+          fontWeight = FontWeight.Bold,
+          letterSpacing = 0.sp,
+        ),
+      headlineLarge =
+        headlineLarge.copy(
+          fontFamily = displayFontFamily,
+          fontWeight = FontWeight.Bold,
+          letterSpacing = 0.sp,
+        ),
+      headlineMedium =
+        headlineMedium.copy(
+          fontFamily = displayFontFamily,
+          fontWeight = FontWeight.SemiBold,
+          letterSpacing = 0.sp,
+        ),
+      headlineSmall =
+        headlineSmall.copy(
+          fontFamily = displayFontFamily,
+          fontWeight = FontWeight.SemiBold,
+          letterSpacing = 0.sp,
+        ),
+      titleLarge =
+        titleLarge.copy(
+          fontFamily = fontFamily,
+          fontWeight = FontWeight.Medium,
+          letterSpacing = 0.sp,
+        ),
       titleMedium = titleMedium.copy(fontFamily = fontFamily, fontWeight = FontWeight.Medium, letterSpacing = 0.sp),
       titleSmall = titleSmall.copy(fontFamily = fontFamily, fontWeight = FontWeight.Medium, letterSpacing = 0.sp),
       bodyLarge = bodyLarge.copy(fontFamily = fontFamily, fontWeight = FontWeight.Normal, letterSpacing = 0.sp),
@@ -224,8 +259,7 @@ fun expressiveDisplayFontForText(text: String): FontFamily {
   return if (fontFamily == GoogleSansRounded) GoogleSansExpressiveDisplay else fontFamily
 }
 
-fun localeRequiresSystemFont(locale: Locale): Boolean =
-  locale.getDisplayName(locale).requiresSystemFontFallback()
+fun localeRequiresSystemFont(locale: Locale): Boolean = locale.getDisplayName(locale).requiresSystemFontFallback()
 
 private fun String.requiresSystemFontFallback(): Boolean {
   var index = 0

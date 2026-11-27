@@ -9,9 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.jellyfin.seerr
 
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
-import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,10 +64,13 @@ import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.components.InlineSearchBar
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.tv.TvScreenFocusHost
 import app.gyrolet.mpvrx.ui.tv.tvContentFocus
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
 import app.gyrolet.mpvrx.ui.utils.LocalNavigationPageActive
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
+import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,21 +115,27 @@ fun SeerrContent(
     }
 
   Column(
-    modifier = modifier
-      .fillMaxSize()
-      .background(app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor()),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .background(
+          app.gyrolet.mpvrx.ui.theme
+            .wallpaperAwareBackgroundColor(),
+        ),
   ) {
     // Top Bar Container
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .background(headerContainerColor),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .background(headerContainerColor),
     ) {
       if (isSearching) {
         Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 16.dp, vertical = 6.dp),
           verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
           InlineSearchBar(
@@ -185,12 +191,15 @@ fun SeerrContent(
             ) {
               if (uiState.isConnected) {
                 val rawAvatar = uiState.currentUser?.avatar
-                val avatarUrl = when {
-                  rawAvatar.isNullOrBlank() -> null
-                  rawAvatar.startsWith("http") -> rawAvatar
-                  !uiState.serverUrl.isNullOrBlank() -> "${uiState.serverUrl.trimEnd('/')}/${rawAvatar.trimStart('/')}"
-                  else -> null
-                }
+                val avatarUrl =
+                  when {
+                    rawAvatar.isNullOrBlank() -> null
+                    rawAvatar.startsWith("http") -> rawAvatar
+                    !uiState.serverUrl.isNullOrBlank() -> "${uiState.serverUrl.trimEnd(
+                      '/',
+                    )}/${rawAvatar.trimStart('/')}"
+                    else -> null
+                  }
 
                 if (avatarUrl != null) {
                   app.gyrolet.mpvrx.presentation.components.RemoteImage(
@@ -198,9 +207,10 @@ fun SeerrContent(
                     url = avatarUrl,
                     contentDescription = stringResource(R.string.seerr_connect_server),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    modifier = Modifier
-                      .size(26.dp)
-                      .clip(CircleShape),
+                    modifier =
+                      Modifier
+                        .size(26.dp)
+                        .clip(CircleShape),
                   )
                 } else {
                   Surface(
@@ -210,7 +220,11 @@ fun SeerrContent(
                   ) {
                     Box(contentAlignment = Alignment.Center) {
                       Text(
-                        text = (uiState.currentUser?.displayName ?: uiState.currentUser?.username ?: "U").take(1).uppercase(),
+                        text =
+                          (uiState.currentUser?.displayName ?: uiState.currentUser?.username ?: "U")
+                            .take(
+                              1,
+                            ).uppercase(),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -236,222 +250,229 @@ fun SeerrContent(
     val isRefreshing = remember { mutableStateOf(false) }
 
     Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .weight(1f),
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .weight(1f),
     ) {
       TvScreenFocusHost(
         scope = listOf("seerr", uiState.serverUrl, isSearching),
         safeArea = false,
-        active = LocalNavigationPageActive.current && !isSearching && !uiState.isDetailSheetOpen && !uiState.isConnectionDialogOpen,
+        active =
+          LocalNavigationPageActive.current &&
+            !isSearching &&
+            !uiState.isDetailSheetOpen &&
+            !uiState.isConnectionDialogOpen,
         focusRequestKey = uiState.isConnected to uiState.isLoadingContent,
       ) {
-      if (!uiState.isConnected) {
-        // Not Connected CTA
-        Box(
-          modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-          contentAlignment = Alignment.Center,
-        ) {
-          Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            modifier = Modifier.fillMaxWidth(),
+        if (!uiState.isConnected) {
+          // Not Connected CTA
+          Box(
+            modifier =
+              Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center,
           ) {
-            Column(
-              modifier = Modifier
-                .fillMaxWidth()
-                .padding(28.dp),
-              horizontalAlignment = Alignment.CenterHorizontally,
-              verticalArrangement = Arrangement.spacedBy(16.dp),
+            Card(
+              shape = RoundedCornerShape(24.dp),
+              colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+              elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+              modifier = Modifier.fillMaxWidth(),
             ) {
-              Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(64.dp),
+              Column(
+                modifier =
+                  Modifier
+                    .fillMaxWidth()
+                    .padding(28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
               ) {
-                Box(contentAlignment = Alignment.Center) {
-                  Icon(
-                    Icons.RoundedFilled.Explore,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(32.dp),
+                Surface(
+                  shape = CircleShape,
+                  color = MaterialTheme.colorScheme.primaryContainer,
+                  modifier = Modifier.size(64.dp),
+                ) {
+                  Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                      Icons.RoundedFilled.Explore,
+                      contentDescription = null,
+                      tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                      modifier = Modifier.size(32.dp),
+                    )
+                  }
+                }
+
+                Text(
+                  text = stringResource(R.string.seerr_not_connected),
+                  style = MaterialTheme.typography.titleMedium,
+                  fontWeight = FontWeight.Bold,
+                  textAlign = TextAlign.Center,
+                )
+
+                Text(
+                  text = stringResource(R.string.seerr_connect_cta),
+                  style = MaterialTheme.typography.bodyMedium,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                  textAlign = TextAlign.Center,
+                )
+
+                Button(
+                  onClick = { viewModel.openConnectionDialog() },
+                  colors =
+                    ButtonDefaults.buttonColors(
+                      containerColor = MaterialTheme.colorScheme.primary,
+                      contentColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                  shape = RoundedCornerShape(12.dp),
+                  modifier = Modifier.fillMaxWidth().tvFocusHighlight(RoundedCornerShape(12.dp), clipToShape = false),
+                ) {
+                  Icon(Icons.RoundedFilled.Link, contentDescription = null, modifier = Modifier.size(18.dp))
+                  Spacer(modifier = Modifier.width(8.dp))
+                  Text(stringResource(R.string.seerr_connect_server), fontWeight = FontWeight.Bold)
+                }
+              }
+            }
+          }
+        } else if (isSearching) {
+          // Search Results View
+          if (uiState.isSearching) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+              CircularProgressIndicator()
+            }
+          } else if (uiState.searchResults.isEmpty() && uiState.searchQuery.isNotBlank()) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+              Text(
+                text = "No results found for \"${uiState.searchQuery}\"",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+            }
+          } else {
+            LazyVerticalGrid(
+              columns = GridCells.Adaptive(130.dp),
+              contentPadding = PaddingValues(16.dp),
+              horizontalArrangement = Arrangement.spacedBy(12.dp),
+              verticalArrangement = Arrangement.spacedBy(16.dp),
+              modifier = Modifier.fillMaxSize().tvContentFocus(),
+            ) {
+              items(uiState.searchResults, key = { "${it.mediaType}_${it.id}" }) { item ->
+                SeerrMediaCard(
+                  item = item,
+                  onClick = { viewModel.openDetail(item) },
+                  cardWidth = 140.dp,
+                )
+              }
+            }
+          }
+        } else {
+          // Dashboard with PullRefresh
+          PullRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.loadDashboard() },
+            modifier = Modifier.fillMaxSize(),
+          ) {
+            LazyColumn(
+              contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
+              verticalArrangement = Arrangement.spacedBy(18.dp),
+              modifier = Modifier.fillMaxSize().tvContentFocus(),
+            ) {
+              // 1. Recently Added Section on Top
+              if (uiState.recentlyAdded.isNotEmpty()) {
+                item {
+                  SeerrSliderRow(
+                    title = stringResource(R.string.seerr_recently_added),
+                    items = uiState.recentlyAdded,
+                    onItemClick = viewModel::openDetail,
                   )
                 }
               }
 
-              Text(
-                text = stringResource(R.string.seerr_not_connected),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-              )
-
-              Text(
-                text = stringResource(R.string.seerr_connect_cta),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-              )
-
-              Button(
-                onClick = { viewModel.openConnectionDialog() },
-                colors = ButtonDefaults.buttonColors(
-                  containerColor = MaterialTheme.colorScheme.primary,
-                  contentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().tvFocusHighlight(RoundedCornerShape(12.dp), clipToShape = false),
-              ) {
-                Icon(Icons.RoundedFilled.Link, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.seerr_connect_server), fontWeight = FontWeight.Bold)
-              }
-            }
-          }
-        }
-      } else if (isSearching) {
-        // Search Results View
-        if (uiState.isSearching) {
-          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-          }
-        } else if (uiState.searchResults.isEmpty() && uiState.searchQuery.isNotBlank()) {
-          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-              text = "No results found for \"${uiState.searchQuery}\"",
-              style = MaterialTheme.typography.bodyLarge,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          }
-        } else {
-          LazyVerticalGrid(
-            columns = GridCells.Adaptive(130.dp),
-            contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxSize().tvContentFocus(),
-          ) {
-            items(uiState.searchResults, key = { "${it.mediaType}_${it.id}" }) { item ->
-              SeerrMediaCard(
-                item = item,
-                onClick = { viewModel.openDetail(item) },
-                cardWidth = 140.dp,
-              )
-            }
-          }
-        }
-      } else {
-        // Dashboard with PullRefresh
-        PullRefreshBox(
-          isRefreshing = isRefreshing,
-          onRefresh = { viewModel.loadDashboard() },
-          modifier = Modifier.fillMaxSize(),
-        ) {
-          LazyColumn(
-            contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-            modifier = Modifier.fillMaxSize().tvContentFocus(),
-          ) {
-            // 1. Recently Added Section on Top
-            if (uiState.recentlyAdded.isNotEmpty()) {
-              item {
-                SeerrSliderRow(
-                  title = stringResource(R.string.seerr_recently_added),
-                  items = uiState.recentlyAdded,
-                  onItemClick = viewModel::openDetail,
-                )
-              }
-            }
-
-            // 2. Combined Requests (Active & Available) Carousel
-            val combinedRequests = uiState.activeRequests + uiState.availableRequests
-            if (combinedRequests.isNotEmpty()) {
-              item {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                  SeerrSectionHeader(title = stringResource(R.string.seerr_requests))
-                  LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth().tvFocusGroup(),
-                  ) {
-                    items(combinedRequests, key = { it.id }) { req ->
-                      SeerrRequestCard(
-                        request = req,
-                        baseUrl = uiState.serverUrl,
-                        isAdmin = uiState.currentUser?.isAdmin() == true,
-                        onClick = { viewModel.openDetailFromRequest(req) },
-                        onApprove = { viewModel.approveRequest(req.id) },
-                        onDecline = { viewModel.declineRequest(req.id) },
-                        onDelete = { viewModel.deleteRequest(req.id, req.media.tmdbId, req.media.mediaType) },
-                      )
+              // 2. Combined Requests (Active & Available) Carousel
+              val combinedRequests = uiState.activeRequests + uiState.availableRequests
+              if (combinedRequests.isNotEmpty()) {
+                item {
+                  Column(modifier = Modifier.fillMaxWidth()) {
+                    SeerrSectionHeader(title = stringResource(R.string.seerr_requests))
+                    LazyRow(
+                      contentPadding = PaddingValues(horizontal = 16.dp),
+                      horizontalArrangement = Arrangement.spacedBy(12.dp),
+                      modifier = Modifier.fillMaxWidth().tvFocusGroup(),
+                    ) {
+                      items(combinedRequests, key = { it.id }) { req ->
+                        SeerrRequestCard(
+                          request = req,
+                          baseUrl = uiState.serverUrl,
+                          isAdmin = uiState.currentUser?.isAdmin() == true,
+                          onClick = { viewModel.openDetailFromRequest(req) },
+                          onApprove = { viewModel.approveRequest(req.id) },
+                          onDecline = { viewModel.declineRequest(req.id) },
+                          onDelete = { viewModel.deleteRequest(req.id, req.media.tmdbId, req.media.mediaType) },
+                        )
+                      }
                     }
                   }
                 }
               }
-            }
 
-            // 3. Trending
-            if (uiState.trendingItems.isNotEmpty()) {
-              item {
-                SeerrSliderRow(
-                  title = stringResource(R.string.seerr_trending),
-                  items = uiState.trendingItems,
-                  onItemClick = viewModel::openDetail,
-                )
+              // 3. Trending
+              if (uiState.trendingItems.isNotEmpty()) {
+                item {
+                  SeerrSliderRow(
+                    title = stringResource(R.string.seerr_trending),
+                    items = uiState.trendingItems,
+                    onItemClick = viewModel::openDetail,
+                  )
+                }
               }
-            }
 
-            // Popular Movies
-            if (uiState.popularMovies.isNotEmpty()) {
-              item {
-                SeerrSliderRow(
-                  title = stringResource(R.string.seerr_popular_movies),
-                  items = uiState.popularMovies,
-                  onItemClick = viewModel::openDetail,
-                )
+              // Popular Movies
+              if (uiState.popularMovies.isNotEmpty()) {
+                item {
+                  SeerrSliderRow(
+                    title = stringResource(R.string.seerr_popular_movies),
+                    items = uiState.popularMovies,
+                    onItemClick = viewModel::openDetail,
+                  )
+                }
               }
-            }
 
-            // Popular TV Shows
-            if (uiState.popularTv.isNotEmpty()) {
-              item {
-                SeerrSliderRow(
-                  title = stringResource(R.string.seerr_popular_tv),
-                  items = uiState.popularTv,
-                  onItemClick = viewModel::openDetail,
-                )
+              // Popular TV Shows
+              if (uiState.popularTv.isNotEmpty()) {
+                item {
+                  SeerrSliderRow(
+                    title = stringResource(R.string.seerr_popular_tv),
+                    items = uiState.popularTv,
+                    onItemClick = viewModel::openDetail,
+                  )
+                }
               }
-            }
 
-            // Upcoming Movies
-            if (uiState.upcomingMovies.isNotEmpty()) {
-              item {
-                SeerrSliderRow(
-                  title = stringResource(R.string.seerr_upcoming_movies),
-                  items = uiState.upcomingMovies,
-                  onItemClick = viewModel::openDetail,
-                )
+              // Upcoming Movies
+              if (uiState.upcomingMovies.isNotEmpty()) {
+                item {
+                  SeerrSliderRow(
+                    title = stringResource(R.string.seerr_upcoming_movies),
+                    items = uiState.upcomingMovies,
+                    onItemClick = viewModel::openDetail,
+                  )
+                }
               }
-            }
 
-            // Upcoming TV Shows
-            if (uiState.upcomingTv.isNotEmpty()) {
-              item {
-                SeerrSliderRow(
-                  title = stringResource(R.string.seerr_upcoming_tv),
-                  items = uiState.upcomingTv,
-                  onItemClick = viewModel::openDetail,
-                )
+              // Upcoming TV Shows
+              if (uiState.upcomingTv.isNotEmpty()) {
+                item {
+                  SeerrSliderRow(
+                    title = stringResource(R.string.seerr_upcoming_tv),
+                    items = uiState.upcomingTv,
+                    onItemClick = viewModel::openDetail,
+                  )
+                }
               }
             }
           }
         }
       }
-    }
-
     }
 
     // Detail Bottom Sheet
@@ -471,12 +492,16 @@ fun SeerrContent(
         onDecline = viewModel::declineRequest,
         onDeleteRequest = { reqId ->
           val tmdbId = uiState.selectedSearchItem?.id ?: uiState.selectedMediaDetails?.id
-          val type = uiState.selectedSearchItem?.mediaType ?: if (uiState.selectedMediaDetails?.seasons != null) "tv" else "movie"
+          val type =
+            uiState.selectedSearchItem?.mediaType
+              ?: if (uiState.selectedMediaDetails?.seasons != null) "tv" else "movie"
           viewModel.deleteRequest(reqId, tmdbId, type)
         },
         onDeleteMedia = { mediaId ->
           val tmdbId = uiState.selectedSearchItem?.id ?: uiState.selectedMediaDetails?.id
-          val type = uiState.selectedSearchItem?.mediaType ?: if (uiState.selectedMediaDetails?.seasons != null) "tv" else "movie"
+          val type =
+            uiState.selectedSearchItem?.mediaType
+              ?: if (uiState.selectedMediaDetails?.seasons != null) "tv" else "movie"
           viewModel.deleteMedia(mediaId, tmdbId, type)
         },
         onOpenJellyfinItem = { id ->

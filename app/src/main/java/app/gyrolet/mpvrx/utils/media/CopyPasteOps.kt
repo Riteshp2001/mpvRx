@@ -337,22 +337,26 @@ object CopyPasteOps {
         if (!space.fits) return@withContext notEnoughSpace(context, space)
 
         resetOperation()
-        val copiedUris = performTreeCopyOperation(
-          context, videos, destinationTreeUri,
-          completeOnCopy = !app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY,
-        )
+        val copiedUris =
+          performTreeCopyOperation(
+            context,
+            videos,
+            destinationTreeUri,
+            completeOnCopy = !app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY,
+          )
 
         // Delete all source files in a single batch to show one permission dialog
         checkCancellation()
         val moved = mutableListOf<Video>()
-        val (deleted, failed) = if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
-          PermissionUtils.StorageOps.deleteScopedVideosForMove(context, videos) {
-            moved += it
-            onMoved(it)
+        val (deleted, failed) =
+          if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
+            PermissionUtils.StorageOps.deleteScopedVideosForMove(context, videos) {
+              moved += it
+              onMoved(it)
+            }
+          } else {
+            PermissionUtils.StorageOps.deleteVideos(context, videos, onMoved)
           }
-        } else {
-          PermissionUtils.StorageOps.deleteVideos(context, videos, onMoved)
-        }
         if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
           moved.forEach { video ->
             val newUri = copiedUris[videos.indexOf(video)]
@@ -800,7 +804,12 @@ object CopyPasteOps {
     return current
   }
 
-  private fun deviceId(file: File): Long? = runCatching { android.system.Os.stat(file.absolutePath).st_dev }.getOrNull()
+  private fun deviceId(file: File): Long? =
+    runCatching {
+      android.system.Os
+        .stat(file.absolutePath)
+        .st_dev
+    }.getOrNull()
 
   private fun availableBytes(directory: File): Long? =
     runCatching { StatFs(directory.absolutePath).availableBytes }.getOrNull()

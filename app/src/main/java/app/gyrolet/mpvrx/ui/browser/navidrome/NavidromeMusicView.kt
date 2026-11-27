@@ -20,13 +20,11 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import app.gyrolet.mpvrx.ui.utils.NavigationPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -39,6 +37,7 @@ import app.gyrolet.mpvrx.domain.navidrome.NavidromePlaylist
 import app.gyrolet.mpvrx.domain.navidrome.NavidromeServer
 import app.gyrolet.mpvrx.domain.navidrome.NavidromeSong
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.repository.NavidromeRepository
 import app.gyrolet.mpvrx.ui.browser.music.MusicSortField
 import app.gyrolet.mpvrx.ui.browser.music.MusicSortOrder
@@ -49,6 +48,7 @@ import app.gyrolet.mpvrx.ui.browser.music.SharedMusicGridCard
 import app.gyrolet.mpvrx.ui.browser.music.SharedMusicTrackListItem
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.utils.NavigationPager
 import org.koin.compose.koinInject
 
 @Composable
@@ -75,9 +75,13 @@ fun NavidromeMusicView(
 
   NavigationPager(
     state = pagerState,
-    modifier = modifier
-      .fillMaxSize()
-      .background(app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor()),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .background(
+          app.gyrolet.mpvrx.ui.theme
+            .wallpaperAwareBackgroundColor(),
+        ),
     beyondViewportPageCount = 1,
     key = { page -> visibleTabs.getOrNull(page) ?: page },
   ) { page ->
@@ -110,35 +114,46 @@ fun NavidromeMusicView(
               CircularProgressIndicator()
             }
           } else {
-            val sortedTracks = remember(uiState.tracks, uiState.sortField, uiState.sortOrder) {
-              val sorted = when (uiState.sortField) {
-                MusicSortField.TITLE -> uiState.tracks.sortedBy { it.title.lowercase() }
-                MusicSortField.ARTIST -> uiState.tracks.sortedBy { it.artist.lowercase() }
-                MusicSortField.ALBUM -> uiState.tracks.sortedBy { it.album.lowercase() }
-                MusicSortField.DURATION -> uiState.tracks.sortedBy { it.durationSeconds }
-                MusicSortField.YEAR -> uiState.tracks.sortedBy { it.year ?: 0 }
-                else -> uiState.tracks.sortedBy { it.title.lowercase() }
+            val sortedTracks =
+              remember(uiState.tracks, uiState.sortField, uiState.sortOrder) {
+                val sorted =
+                  when (uiState.sortField) {
+                    MusicSortField.TITLE -> uiState.tracks.sortedBy { it.title.lowercase() }
+                    MusicSortField.ARTIST -> uiState.tracks.sortedBy { it.artist.lowercase() }
+                    MusicSortField.ALBUM -> uiState.tracks.sortedBy { it.album.lowercase() }
+                    MusicSortField.DURATION -> uiState.tracks.sortedBy { it.durationSeconds }
+                    MusicSortField.YEAR -> uiState.tracks.sortedBy { it.year ?: 0 }
+                    else -> uiState.tracks.sortedBy { it.title.lowercase() }
+                  }
+                if (uiState.sortOrder == MusicSortOrder.DESCENDING) sorted.reversed() else sorted
               }
-              if (uiState.sortOrder == MusicSortOrder.DESCENDING) sorted.reversed() else sorted
-            }
 
             if (uiState.viewMode == MusicViewMode.GRID) {
               LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = gridCoverArtSizeDp.dp),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = navigationBarHeight + 84.dp),
+                contentPadding =
+                  PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom =
+                      navigationBarHeight + 84.dp,
+                  ),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
               ) {
                 items(sortedTracks, key = { it.id }) { song ->
-                  val isPlaying = remember(currentSessionItem, song.id) {
-                    if (currentSessionItem == null || song.id.isBlank()) false
-                    else {
-                      val orig = currentSessionItem.originalUri
-                      val play = currentSessionItem.playableUri
-                      orig.contains(song.id, ignoreCase = true) || play.contains(song.id, ignoreCase = true)
+                  val isPlaying =
+                    remember(currentSessionItem, song.id) {
+                      if (currentSessionItem == null || song.id.isBlank()) {
+                        false
+                      } else {
+                        val orig = currentSessionItem.originalUri
+                        val play = currentSessionItem.playableUri
+                        orig.contains(song.id, ignoreCase = true) || play.contains(song.id, ignoreCase = true)
+                      }
                     }
-                  }
                   SharedMusicGridCard(
                     title = song.title,
                     subtitle = song.artist,
@@ -152,17 +167,26 @@ fun NavidromeMusicView(
             } else {
               LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = navigationBarHeight + 84.dp),
+                contentPadding =
+                  PaddingValues(
+                    start = 0.dp,
+                    top = 8.dp,
+                    end = 0.dp,
+                    bottom =
+                      navigationBarHeight + 84.dp,
+                  ),
               ) {
                 items(sortedTracks, key = { it.id }) { song ->
-                  val isPlaying = remember(currentSessionItem, song.id) {
-                    if (currentSessionItem == null || song.id.isBlank()) false
-                    else {
-                      val orig = currentSessionItem.originalUri
-                      val play = currentSessionItem.playableUri
-                      orig.contains(song.id, ignoreCase = true) || play.contains(song.id, ignoreCase = true)
+                  val isPlaying =
+                    remember(currentSessionItem, song.id) {
+                      if (currentSessionItem == null || song.id.isBlank()) {
+                        false
+                      } else {
+                        val orig = currentSessionItem.originalUri
+                        val play = currentSessionItem.playableUri
+                        orig.contains(song.id, ignoreCase = true) || play.contains(song.id, ignoreCase = true)
+                      }
                     }
-                  }
                   SharedMusicTrackListItem(
                     title = song.title,
                     subtitle = "${song.artist} • ${song.album}",
@@ -186,23 +210,32 @@ fun NavidromeMusicView(
               CircularProgressIndicator()
             }
           } else {
-            val sortedAlbums = remember(uiState.albums, uiState.sortField, uiState.sortOrder) {
-              val sorted = when (uiState.sortField) {
-                MusicSortField.TITLE -> uiState.albums.sortedBy { it.title.lowercase() }
-                MusicSortField.ARTIST -> uiState.albums.sortedBy { it.artist.lowercase() }
-                MusicSortField.YEAR -> uiState.albums.sortedBy { it.year ?: 0 }
-                MusicSortField.TRACK_COUNT -> uiState.albums.sortedBy { it.songCount }
-                MusicSortField.DURATION -> uiState.albums.sortedBy { it.durationSeconds }
-                else -> uiState.albums.sortedBy { it.title.lowercase() }
+            val sortedAlbums =
+              remember(uiState.albums, uiState.sortField, uiState.sortOrder) {
+                val sorted =
+                  when (uiState.sortField) {
+                    MusicSortField.TITLE -> uiState.albums.sortedBy { it.title.lowercase() }
+                    MusicSortField.ARTIST -> uiState.albums.sortedBy { it.artist.lowercase() }
+                    MusicSortField.YEAR -> uiState.albums.sortedBy { it.year ?: 0 }
+                    MusicSortField.TRACK_COUNT -> uiState.albums.sortedBy { it.songCount }
+                    MusicSortField.DURATION -> uiState.albums.sortedBy { it.durationSeconds }
+                    else -> uiState.albums.sortedBy { it.title.lowercase() }
+                  }
+                if (uiState.sortOrder == MusicSortOrder.DESCENDING) sorted.reversed() else sorted
               }
-              if (uiState.sortOrder == MusicSortOrder.DESCENDING) sorted.reversed() else sorted
-            }
 
             if (uiState.viewMode == MusicViewMode.GRID) {
               LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = gridCoverArtSizeDp.dp),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = navigationBarHeight + 84.dp),
+                contentPadding =
+                  PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom =
+                      navigationBarHeight + 84.dp,
+                  ),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
               ) {
@@ -219,7 +252,14 @@ fun NavidromeMusicView(
             } else {
               LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = navigationBarHeight + 84.dp),
+                contentPadding =
+                  PaddingValues(
+                    start = 0.dp,
+                    top = 8.dp,
+                    end = 0.dp,
+                    bottom =
+                      navigationBarHeight + 84.dp,
+                  ),
               ) {
                 items(sortedAlbums, key = { it.id }) { album ->
                   SharedMusicTrackListItem(
@@ -242,19 +282,28 @@ fun NavidromeMusicView(
               CircularProgressIndicator()
             }
           } else {
-            val sortedArtists = remember(uiState.artists, uiState.sortField, uiState.sortOrder) {
-              val sorted = when (uiState.sortField) {
-                MusicSortField.TRACK_COUNT -> uiState.artists.sortedBy { it.albumCount }
-                else -> uiState.artists.sortedBy { it.name.lowercase() }
+            val sortedArtists =
+              remember(uiState.artists, uiState.sortField, uiState.sortOrder) {
+                val sorted =
+                  when (uiState.sortField) {
+                    MusicSortField.TRACK_COUNT -> uiState.artists.sortedBy { it.albumCount }
+                    else -> uiState.artists.sortedBy { it.name.lowercase() }
+                  }
+                if (uiState.sortOrder == MusicSortOrder.DESCENDING) sorted.reversed() else sorted
               }
-              if (uiState.sortOrder == MusicSortOrder.DESCENDING) sorted.reversed() else sorted
-            }
 
             if (uiState.viewMode == MusicViewMode.GRID) {
               LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = (gridCoverArtSizeDp * 1.1f).toInt().dp),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = navigationBarHeight + 84.dp),
+                contentPadding =
+                  PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom =
+                      navigationBarHeight + 84.dp,
+                  ),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
               ) {
@@ -272,7 +321,14 @@ fun NavidromeMusicView(
             } else {
               LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = navigationBarHeight + 84.dp),
+                contentPadding =
+                  PaddingValues(
+                    start = 0.dp,
+                    top = 8.dp,
+                    end = 0.dp,
+                    bottom =
+                      navigationBarHeight + 84.dp,
+                  ),
               ) {
                 items(sortedArtists, key = { it.id }) { artist ->
                   SharedMusicTrackListItem(
@@ -296,23 +352,35 @@ fun NavidromeMusicView(
               CircularProgressIndicator()
             }
           } else {
-            val sortedPlaylists = remember(uiState.playlists, uiState.sortField, uiState.sortOrder) {
-              val favorites = uiState.playlists.filter { it.id == "virtual_favorites_playlist" || it.id == "favorites" }
-              val others = uiState.playlists.filter { it.id != "virtual_favorites_playlist" && it.id != "favorites" }
-              val sorted = when (uiState.sortField) {
-                MusicSortField.TRACK_COUNT -> others.sortedBy { it.songCount }
-                MusicSortField.DURATION -> others.sortedBy { it.durationSeconds }
-                else -> others.sortedBy { it.name.lowercase() }
+            val sortedPlaylists =
+              remember(uiState.playlists, uiState.sortField, uiState.sortOrder) {
+                val favorites =
+                  uiState.playlists.filter {
+                    it.id == "virtual_favorites_playlist" || it.id == "favorites"
+                  }
+                val others = uiState.playlists.filter { it.id != "virtual_favorites_playlist" && it.id != "favorites" }
+                val sorted =
+                  when (uiState.sortField) {
+                    MusicSortField.TRACK_COUNT -> others.sortedBy { it.songCount }
+                    MusicSortField.DURATION -> others.sortedBy { it.durationSeconds }
+                    else -> others.sortedBy { it.name.lowercase() }
+                  }
+                val result = if (uiState.sortOrder == MusicSortOrder.DESCENDING) sorted.reversed() else sorted
+                favorites + result
               }
-              val result = if (uiState.sortOrder == MusicSortOrder.DESCENDING) sorted.reversed() else sorted
-              favorites + result
-            }
 
             if (uiState.viewMode == MusicViewMode.GRID) {
               LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = gridCoverArtSizeDp.dp),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = navigationBarHeight + 84.dp),
+                contentPadding =
+                  PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp,
+                    bottom =
+                      navigationBarHeight + 84.dp,
+                  ),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
               ) {
@@ -321,7 +389,14 @@ fun NavidromeMusicView(
                     title = playlist.name,
                     subtitle = formatNavidromePlaylistSubtitle(playlist),
                     artworkUrl = navidromeRepository.getCoverArtUrl(server, playlist.coverArtId),
-                    fallbackIcon = if (playlist.id == "virtual_favorites_playlist" || playlist.id == "favorites") Icons.RoundedFilled.Favorite else Icons.RoundedFilled.QueueMusic,
+                    fallbackIcon =
+                      if (playlist.id == "virtual_favorites_playlist" ||
+                        playlist.id == "favorites"
+                      ) {
+                        Icons.RoundedFilled.Favorite
+                      } else {
+                        Icons.RoundedFilled.QueueMusic
+                      },
                     onClick = { onPlaylistClick(playlist) },
                   )
                 }
@@ -329,7 +404,14 @@ fun NavidromeMusicView(
             } else {
               LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 0.dp, top = 8.dp, end = 0.dp, bottom = navigationBarHeight + 84.dp),
+                contentPadding =
+                  PaddingValues(
+                    start = 0.dp,
+                    top = 8.dp,
+                    end = 0.dp,
+                    bottom =
+                      navigationBarHeight + 84.dp,
+                  ),
               ) {
                 items(sortedPlaylists, key = { it.id }) { playlist ->
                   SharedMusicTrackListItem(
@@ -337,7 +419,14 @@ fun NavidromeMusicView(
                     subtitle = if (playlist.songCount == 1) "1 track" else "${playlist.songCount} tracks",
                     durationSeconds = playlist.durationSeconds.takeIf { it > 0 }?.toLong(),
                     artworkUrl = navidromeRepository.getCoverArtUrl(server, playlist.coverArtId),
-                    fallbackIcon = if (playlist.id == "virtual_favorites_playlist" || playlist.id == "favorites") Icons.RoundedFilled.Favorite else Icons.RoundedFilled.QueueMusic,
+                    fallbackIcon =
+                      if (playlist.id == "virtual_favorites_playlist" ||
+                        playlist.id == "favorites"
+                      ) {
+                        Icons.RoundedFilled.Favorite
+                      } else {
+                        Icons.RoundedFilled.QueueMusic
+                      },
                     coverArtSizeDp = coverArtSizeDp,
                     onClick = { onPlaylistClick(playlist) },
                   )
@@ -395,7 +484,15 @@ private fun NavidromeHomeContent(
           getSubtitle = { formatNavidromePlaylistSubtitle(it) },
           getArtworkUrl = { navidromeRepository.getCoverArtUrl(server, it.coverArtId) },
           fallbackIcon = Icons.RoundedFilled.QueueMusic,
-          getFallbackIcon = { if (it.id == "virtual_favorites_playlist" || it.id == "favorites") Icons.RoundedFilled.Favorite else Icons.RoundedFilled.QueueMusic },
+          getFallbackIcon = {
+            if (it.id == "virtual_favorites_playlist" ||
+              it.id == "favorites"
+            ) {
+              Icons.RoundedFilled.Favorite
+            } else {
+              Icons.RoundedFilled.QueueMusic
+            }
+          },
           onClick = onPlaylistClick,
           onSeeAllClick = { onTabSelected(NavidromeMusicTab.PLAYLISTS) },
           cardWidth = 140.dp,

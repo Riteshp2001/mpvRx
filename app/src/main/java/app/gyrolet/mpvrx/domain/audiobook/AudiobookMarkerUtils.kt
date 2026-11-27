@@ -35,13 +35,14 @@ object AudiobookMarkerUtils {
   fun registerAudiobookPath(pathOrUri: String?) {
     if (pathOrUri.isNullOrBlank()) return
     var added = knownAudiobookPaths.add(pathOrUri)
-    val dirPath = when {
-      pathOrUri.startsWith("content://") -> null
-      else -> {
-        val file = File(pathOrUri)
-        if (file.isDirectory) file.absolutePath else file.parent
+    val dirPath =
+      when {
+        pathOrUri.startsWith("content://") -> null
+        else -> {
+          val file = File(pathOrUri)
+          if (file.isDirectory) file.absolutePath else file.parent
+        }
       }
-    }
     if (dirPath != null) {
       added = knownAudiobookDirectories.add(dirPath.trimEnd('/')) || added
     }
@@ -68,10 +69,11 @@ object AudiobookMarkerUtils {
 
     directoryCache[path]?.let { return it }
 
-    val result = runCatching {
-      File(directory, AUDIOBOOK_MARKER).isFile ||
-        directory.parentFile?.let(::isAudiobookDirectory) == true
-    }.getOrDefault(false)
+    val result =
+      runCatching {
+        File(directory, AUDIOBOOK_MARKER).isFile ||
+          directory.parentFile?.let(::isAudiobookDirectory) == true
+      }.getOrDefault(false)
 
     directoryCache[path] = result
     return result
@@ -115,7 +117,10 @@ object AudiobookMarkerUtils {
     return isAudiobookDirectory(dir)
   }
 
-  fun resolveUriToDirectory(context: Context, uri: Uri?): File? {
+  fun resolveUriToDirectory(
+    context: Context,
+    uri: Uri?,
+  ): File? {
     if (uri == null) return null
     return runCatching {
       if (DocumentsContract.isTreeUri(uri)) {
@@ -143,13 +148,19 @@ object AudiobookMarkerUtils {
           if (path != null) {
             val f = File(path)
             if (f.isDirectory) f else f.parentFile
-          } else null
+          } else {
+            null
+          }
         }
       }
     }.getOrNull()
   }
 
-  fun ensureMarker(context: Context, folderUri: Uri? = null, document: DocumentFile? = null) {
+  fun ensureMarker(
+    context: Context,
+    folderUri: Uri? = null,
+    document: DocumentFile? = null,
+  ) {
     if (folderUri != null) {
       val dir = resolveUriToDirectory(context, folderUri)
       if (dir != null) {
@@ -203,7 +214,10 @@ object AudiobookMarkerUtils {
     }
   }
 
-  suspend fun syncKnownAudiobooks(context: Context, dao: AudiobookDao) {
+  suspend fun syncKnownAudiobooks(
+    context: Context,
+    dao: AudiobookDao,
+  ) {
     runCatching {
       val tracks = dao.getAllTracks()
       val books = dao.getAllBooks()

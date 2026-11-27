@@ -22,8 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,9 +51,8 @@ import app.gyrolet.mpvrx.domain.audiobookshelf.AudiobookshelfServer
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.domain.navidrome.NavidromeServer
 import app.gyrolet.mpvrx.domain.seerr.JellyseerrUser
-import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
-import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.browser.audiobooks.AddAudiobookshelfServerDialog
 import app.gyrolet.mpvrx.ui.browser.audiobooks.AudiobookshelfViewModel
 import app.gyrolet.mpvrx.ui.browser.jellyfin.AddJellyfinServerDialog
@@ -69,11 +66,13 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
+import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 import app.gyrolet.mpvrx.ui.preferences.components.AppPreference as Preference
 
 @Serializable
 object MediaServersPreferencesScreen : ScrollableSettingsScreen {
-
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
@@ -128,7 +127,8 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
         ) {
           // --- JELLYFIN SECTION ---
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.First, 
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.First,
               title = stringResource(R.string.pref_jellyfin_title),
               modifier = Modifier.settingsSearchTarget(R.string.pref_media_servers_title),
             )
@@ -154,7 +154,14 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
                   }
                   val isActive = server.id == jellyfinUiState.activeServer?.id
                   ServerPreferenceItem(
-                    modifier = if (index == 0) Modifier.settingsSearchTarget(R.string.pref_jellyfin_server_management) else Modifier,
+                    modifier =
+                      if (index ==
+                        0
+                      ) {
+                        Modifier.settingsSearchTarget(R.string.pref_jellyfin_server_management)
+                      } else {
+                        Modifier
+                      },
                     title = {
                       Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -184,7 +191,12 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
                     },
                     summary = {
                       Text(
-                        text = if (server.username.isNotBlank()) "${server.username} • ${server.serverUrl}" else server.serverUrl,
+                        text =
+                          if (server.username.isNotBlank()) {
+                            "${server.username} • ${server.serverUrl}"
+                          } else {
+                            server.serverUrl
+                          },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline,
                         maxLines = 1,
@@ -277,27 +289,27 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
 
                 PreferenceDivider()
                 ExpressivePreferenceItem {
-                Preference(
-                  title = { Text(stringResource(R.string.pref_jellyfin_add_another_server)) },
-                  summary = {
-                    Text(
-                      text = stringResource(R.string.pref_jellyfin_add_another_server_desc),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                  icon = {
-                    Icon(
-                      imageVector = Icons.RoundedFilled.Add,
-                      contentDescription = null,
-                      tint = MaterialTheme.colorScheme.primary,
-                      modifier = Modifier.size(24.dp),
-                    )
-                  },
-                  onClick = {
-                    serverToReauth = null
-                    isAddServerOpen = true
-                  },
-                )
+                  Preference(
+                    title = { Text(stringResource(R.string.pref_jellyfin_add_another_server)) },
+                    summary = {
+                      Text(
+                        text = stringResource(R.string.pref_jellyfin_add_another_server_desc),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                    icon = {
+                      Icon(
+                        imageVector = Icons.RoundedFilled.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                      )
+                    },
+                    onClick = {
+                      serverToReauth = null
+                      isAddServerOpen = true
+                    },
+                  )
                 }
               }
             }
@@ -305,7 +317,10 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
 
           // --- SEERR SECTION ---
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_seerr_title))
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
+              title = stringResource(R.string.pref_seerr_title),
+            )
           }
 
           item {
@@ -426,7 +441,8 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
 
           // --- NAVIDROME SECTION ---
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, 
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
               title = stringResource(R.string.pref_navidrome_title),
             )
           }
@@ -451,7 +467,14 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
                   }
                   val isActive = server.id == navidromeUiState.activeServer?.id
                   ServerPreferenceItem(
-                    modifier = if (index == 0) Modifier.settingsSearchTarget(R.string.pref_navidrome_title) else Modifier,
+                    modifier =
+                      if (index ==
+                        0
+                      ) {
+                        Modifier.settingsSearchTarget(R.string.pref_navidrome_title)
+                      } else {
+                        Modifier
+                      },
                     title = {
                       Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -481,7 +504,12 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
                     },
                     summary = {
                       Text(
-                        text = if (server.username.isNotBlank()) "${server.username} • ${server.serverUrl}" else server.serverUrl,
+                        text =
+                          if (server.username.isNotBlank()) {
+                            "${server.username} • ${server.serverUrl}"
+                          } else {
+                            server.serverUrl
+                          },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline,
                         maxLines = 1,
@@ -574,27 +602,27 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
                 PreferenceDivider()
 
                 ExpressivePreferenceItem {
-                Preference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_navidrome_title),
-                  title = { Text(stringResource(R.string.pref_navidrome_add_another_server)) },
-                  summary = {
-                    Text(
-                      text = stringResource(R.string.pref_navidrome_add_another_server_desc),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                  icon = {
-                    Icon(
-                      imageVector = Icons.RoundedFilled.Add,
-                      contentDescription = null,
-                      tint = MaterialTheme.colorScheme.primary,
-                    )
-                  },
-                  onClick = {
-                    navidromeServerToEdit = null
-                    isAddNavidromeServerOpen = true
-                  },
-                )
+                  Preference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_navidrome_title),
+                    title = { Text(stringResource(R.string.pref_navidrome_add_another_server)) },
+                    summary = {
+                      Text(
+                        text = stringResource(R.string.pref_navidrome_add_another_server_desc),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                    icon = {
+                      Icon(
+                        imageVector = Icons.RoundedFilled.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                      )
+                    },
+                    onClick = {
+                      navidromeServerToEdit = null
+                      isAddNavidromeServerOpen = true
+                    },
+                  )
                 }
               }
             }
@@ -602,7 +630,8 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
 
           // --- AUDIOBOOKSHELF SECTION ---
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Last, 
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Last,
               title = stringResource(R.string.pref_audiobookshelf_title),
             )
           }
@@ -627,7 +656,14 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
                   }
                   val isActive = server.id == audiobookshelfUiState.activeServer?.id
                   ServerPreferenceItem(
-                    modifier = if (index == 0) Modifier.settingsSearchTarget(R.string.pref_audiobookshelf_title) else Modifier,
+                    modifier =
+                      if (index ==
+                        0
+                      ) {
+                        Modifier.settingsSearchTarget(R.string.pref_audiobookshelf_title)
+                      } else {
+                        Modifier
+                      },
                     title = {
                       Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -761,27 +797,27 @@ object MediaServersPreferencesScreen : ScrollableSettingsScreen {
                 PreferenceDivider()
 
                 ExpressivePreferenceItem {
-                Preference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_audiobookshelf_title),
-                  title = { Text(stringResource(R.string.pref_audiobookshelf_add_another_server)) },
-                  summary = {
-                    Text(
-                      text = stringResource(R.string.pref_audiobookshelf_add_another_server_desc),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                  icon = {
-                    Icon(
-                      imageVector = Icons.RoundedFilled.Add,
-                      contentDescription = null,
-                      tint = MaterialTheme.colorScheme.primary,
-                    )
-                  },
-                  onClick = {
-                    audiobookshelfServerToEdit = null
-                    isAddAudiobookshelfServerOpen = true
-                  },
-                )
+                  Preference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_audiobookshelf_title),
+                    title = { Text(stringResource(R.string.pref_audiobookshelf_add_another_server)) },
+                    summary = {
+                      Text(
+                        text = stringResource(R.string.pref_audiobookshelf_add_another_server_desc),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                    icon = {
+                      Icon(
+                        imageVector = Icons.RoundedFilled.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                      )
+                    },
+                    onClick = {
+                      audiobookshelfServerToEdit = null
+                      isAddAudiobookshelfServerOpen = true
+                    },
+                  )
                 }
               }
             }
@@ -953,12 +989,15 @@ private fun JellyfinServerAvatar(
   isActive: Boolean,
   modifier: Modifier = Modifier,
 ) {
-  val avatarUrl = remember(server.serverUrl, server.userId, server.accessToken) {
-    if (server.serverUrl.isNotBlank() && server.userId.isNotBlank()) {
-      val tokenParam = if (server.accessToken.isNotBlank()) "&api_key=${server.accessToken}" else ""
-      "${server.serverUrl.trimEnd('/')}/Users/${server.userId}/Images/Primary?maxWidth=120&quality=80$tokenParam"
-    } else null
-  }
+  val avatarUrl =
+    remember(server.serverUrl, server.userId, server.accessToken) {
+      if (server.serverUrl.isNotBlank() && server.userId.isNotBlank()) {
+        val tokenParam = if (server.accessToken.isNotBlank()) "&api_key=${server.accessToken}" else ""
+        "${server.serverUrl.trimEnd('/')}/Users/${server.userId}/Images/Primary?maxWidth=120&quality=80$tokenParam"
+      } else {
+        null
+      }
+    }
 
   Surface(
     shape = CircleShape,
@@ -974,7 +1013,11 @@ private fun JellyfinServerAvatar(
       modifier = Modifier.fillMaxSize(),
       contentAlignment = Alignment.Center,
     ) {
-      val initial = server.username.trim().take(1).uppercase()
+      val initial =
+        server.username
+          .trim()
+          .take(1)
+          .uppercase()
       if (initial.isNotBlank()) {
         Text(
           text = initial,
@@ -1020,14 +1063,15 @@ private fun SeerrServerAvatar(
   modifier: Modifier = Modifier,
 ) {
   val rawAvatar = currentUser?.avatar
-  val avatarUrl = remember(rawAvatar, serverUrl) {
-    when {
-      rawAvatar.isNullOrBlank() -> null
-      rawAvatar.startsWith("http") -> rawAvatar
-      serverUrl.isNotBlank() -> "${serverUrl.trimEnd('/')}/${rawAvatar.trimStart('/')}"
-      else -> null
+  val avatarUrl =
+    remember(rawAvatar, serverUrl) {
+      when {
+        rawAvatar.isNullOrBlank() -> null
+        rawAvatar.startsWith("http") -> rawAvatar
+        serverUrl.isNotBlank() -> "${serverUrl.trimEnd('/')}/${rawAvatar.trimStart('/')}"
+        else -> null
+      }
     }
-  }
 
   Surface(
     shape = CircleShape,

@@ -19,7 +19,11 @@ import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 
 @Composable
-internal fun AudiobookSheet(sheet: Sheets, onChapterEnd: () -> Unit, onDismiss: () -> Unit) {
+internal fun AudiobookSheet(
+  sheet: Sheets,
+  onChapterEnd: () -> Unit,
+  onDismiss: () -> Unit,
+) {
   val state by PlaybackSession.state.collectAsStateWithLifecycle()
   val info = state.currentItem?.audiobook ?: return
   val activeBook by AudiobookPlayback.book.collectAsStateWithLifecycle()

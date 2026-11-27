@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.navidrome
 
-import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,8 +34,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import app.gyrolet.mpvrx.ui.tv.TvRefreshContainer
-import app.gyrolet.mpvrx.ui.tv.isTelevision
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -63,7 +60,10 @@ import app.gyrolet.mpvrx.preferences.MediaServerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.repository.JellyfinRepository
 import app.gyrolet.mpvrx.repository.NavidromeRepository
+import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
+import app.gyrolet.mpvrx.ui.browser.dialogs.MusicSortDialog
+import app.gyrolet.mpvrx.ui.browser.music.MusicSortField
 import app.gyrolet.mpvrx.ui.browser.music.SharedMusicTrackListItem
 import app.gyrolet.mpvrx.ui.components.InlineSearchBar
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -71,13 +71,13 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.ui.tv.TvRefreshContainer
+import app.gyrolet.mpvrx.ui.tv.isTelevision
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.rememberTabNavigation
-import app.gyrolet.mpvrx.ui.browser.dialogs.MusicSortDialog
-import app.gyrolet.mpvrx.ui.browser.music.MusicSortField
-import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -101,20 +101,22 @@ fun NavidromeContent(
   var isSortDialogOpen by rememberSaveable { mutableStateOf(false) }
   val searchFocusRequester = remember { FocusRequester() }
 
-  val musicTabs = remember {
-    listOf(
-      NavidromeMusicTab.HOME,
-      NavidromeMusicTab.TRACKS,
-      NavidromeMusicTab.ALBUMS,
-      NavidromeMusicTab.ARTISTS,
-      NavidromeMusicTab.PLAYLISTS,
-    )
-  }
+  val musicTabs =
+    remember {
+      listOf(
+        NavidromeMusicTab.HOME,
+        NavidromeMusicTab.TRACKS,
+        NavidromeMusicTab.ALBUMS,
+        NavidromeMusicTab.ARTISTS,
+        NavidromeMusicTab.PLAYLISTS,
+      )
+    }
 
-  val musicPagerState = rememberPagerState(
-    initialPage = 0,
-    pageCount = { musicTabs.size },
-  )
+  val musicPagerState =
+    rememberPagerState(
+      initialPage = 0,
+      pageCount = { musicTabs.size },
+    )
   val navigateMusicTab = rememberTabNavigation(musicPagerState)
 
   LaunchedEffect(musicPagerState.settledPage, musicPagerState.isScrollInProgress) {
@@ -132,7 +134,8 @@ fun NavidromeContent(
   }
 
   // Intercept back button if searching or detail open
-  val isBackEnabled = isSearching || uiState.detailAlbum != null || uiState.detailArtist != null || uiState.detailPlaylist != null
+  val isBackEnabled =
+    isSearching || uiState.detailAlbum != null || uiState.detailArtist != null || uiState.detailPlaylist != null
 
   BackHandler(enabled = isBackEnabled) {
     when {
@@ -156,21 +159,27 @@ fun NavidromeContent(
     }
 
   Column(
-    modifier = modifier
-      .fillMaxSize()
-      .background(app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor()),
+    modifier =
+      modifier
+        .fillMaxSize()
+        .background(
+          app.gyrolet.mpvrx.ui.theme
+            .wallpaperAwareBackgroundColor(),
+        ),
   ) {
     // Top Bar Container
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .background(headerContainerColor),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .background(headerContainerColor),
     ) {
       if (isSearching) {
         Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 16.dp, vertical = 6.dp),
           verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
           InlineSearchBar(
@@ -207,21 +216,38 @@ fun NavidromeContent(
         }
       } else {
         BrowserTopBar(
-          title = if (isMusicOnlyMode) stringResource(R.string.ui_music) else (uiState.activeServer?.name ?: stringResource(R.string.pref_navidrome_title)),
+          title =
+            if (isMusicOnlyMode) {
+              stringResource(R.string.ui_music)
+            } else {
+              (
+                uiState.activeServer?.name
+                  ?: stringResource(R.string.pref_navidrome_title)
+              )
+            },
           isInSelectionMode = false,
           selectedCount = 0,
           totalCount = 0,
           onCancelSelection = { },
-          onSortClick = if (uiState.activeTab != NavidromeMusicTab.HOME) {
-            { isSortDialogOpen = true }
-          } else null,
+          onSortClick =
+            if (uiState.activeTab != NavidromeMusicTab.HOME) {
+              { isSortDialogOpen = true }
+            } else {
+              null
+            },
           onSearchClick = { isSearching = true },
           onSettingsClick = {
             backstack.navigateTo(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
           },
-          titleTrailing = if (isMusicOnlyMode) {
-            { app.gyrolet.mpvrx.ui.browser.music.MusicSourceDropdown() }
-          } else null,
+          titleTrailing =
+            if (isMusicOnlyMode) {
+              {
+                app.gyrolet.mpvrx.ui.browser.music
+                  .MusicSourceDropdown()
+              }
+            } else {
+              null
+            },
         )
       }
 
@@ -419,34 +445,39 @@ fun NavidromeContent(
     }
 
     // Sort & View dialog
-    val availableFields = remember(uiState.activeTab) {
-      when (uiState.activeTab) {
-        NavidromeMusicTab.TRACKS -> listOf(
-          MusicSortField.TITLE,
-          MusicSortField.ARTIST,
-          MusicSortField.ALBUM,
-          MusicSortField.DURATION,
-          MusicSortField.YEAR,
-        )
-        NavidromeMusicTab.ALBUMS -> listOf(
-          MusicSortField.TITLE,
-          MusicSortField.ARTIST,
-          MusicSortField.YEAR,
-          MusicSortField.TRACK_COUNT,
-          MusicSortField.DURATION,
-        )
-        NavidromeMusicTab.ARTISTS -> listOf(
-          MusicSortField.ARTIST,
-          MusicSortField.TRACK_COUNT,
-        )
-        NavidromeMusicTab.PLAYLISTS -> listOf(
-          MusicSortField.TITLE,
-          MusicSortField.TRACK_COUNT,
-          MusicSortField.DURATION,
-        )
-        else -> emptyList()
+    val availableFields =
+      remember(uiState.activeTab) {
+        when (uiState.activeTab) {
+          NavidromeMusicTab.TRACKS ->
+            listOf(
+              MusicSortField.TITLE,
+              MusicSortField.ARTIST,
+              MusicSortField.ALBUM,
+              MusicSortField.DURATION,
+              MusicSortField.YEAR,
+            )
+          NavidromeMusicTab.ALBUMS ->
+            listOf(
+              MusicSortField.TITLE,
+              MusicSortField.ARTIST,
+              MusicSortField.YEAR,
+              MusicSortField.TRACK_COUNT,
+              MusicSortField.DURATION,
+            )
+          NavidromeMusicTab.ARTISTS ->
+            listOf(
+              MusicSortField.ARTIST,
+              MusicSortField.TRACK_COUNT,
+            )
+          NavidromeMusicTab.PLAYLISTS ->
+            listOf(
+              MusicSortField.TITLE,
+              MusicSortField.TRACK_COUNT,
+              MusicSortField.DURATION,
+            )
+          else -> emptyList()
+        }
       }
-    }
 
     MusicSortDialog(
       isOpen = isSortDialogOpen,
@@ -458,9 +489,12 @@ fun NavidromeContent(
       onSortOrderChange = { viewModel.setSortOrder(it) },
       onViewModeChange = { viewModel.setViewMode(it) },
       availableFields = availableFields,
-      trackCountLabel = if (uiState.activeTab == NavidromeMusicTab.ARTISTS) {
-        stringResource(R.string.ui_albums)
-      } else MusicSortField.TRACK_COUNT.displayName,
+      trackCountLabel =
+        if (uiState.activeTab == NavidromeMusicTab.ARTISTS) {
+          stringResource(R.string.ui_albums)
+        } else {
+          MusicSortField.TRACK_COUNT.displayName
+        },
     )
 
     // Add server dialog

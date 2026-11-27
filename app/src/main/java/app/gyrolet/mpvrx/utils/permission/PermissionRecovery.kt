@@ -31,7 +31,10 @@ object PermissionRecovery {
 
   private const val PREFS = "permission_recovery"
 
-  fun isGranted(context: Context, kind: Kind): Boolean =
+  fun isGranted(
+    context: Context,
+    kind: Kind,
+  ): Boolean =
     when (kind) {
       Kind.STORAGE -> isStorageGranted(context)
       Kind.NOTIFICATIONS -> isNotificationGranted(context)
@@ -57,8 +60,7 @@ object PermissionRecovery {
       PackageManager.PERMISSION_GRANTED
 
   /** Standard builds on Android 11+ use All files access, which is granted only on its settings page. */
-  fun usesAllFilesAccess(): Boolean =
-    !BuildConfig.SCOPED_STORAGE_ONLY && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+  fun usesAllFilesAccess(): Boolean = !BuildConfig.SCOPED_STORAGE_ONLY && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
 
   /** The system dialog for [kind], or null when the grant can only be given on a settings page. */
   fun runtimePermission(kind: Kind): String? =
@@ -88,7 +90,10 @@ object PermissionRecovery {
     return pending
   }
 
-  fun acknowledge(context: Context, kinds: Collection<Kind>) {
+  fun acknowledge(
+    context: Context,
+    kinds: Collection<Kind>,
+  ) {
     val edit = prefs(context).edit()
     kinds.forEach { edit.putBoolean(it.name, false) }
     edit.apply()
@@ -98,7 +103,10 @@ object PermissionRecovery {
    * Launches one prompt for every revoked grant that has a system dialog. Revoked all-files access
    * opens its settings page instead, and only when no dialog is launched in the same pass.
    */
-  fun requestRevoked(activity: Activity, dialogLauncher: ActivityResultLauncher<Array<String>>) {
+  fun requestRevoked(
+    activity: Activity,
+    dialogLauncher: ActivityResultLauncher<Array<String>>,
+  ) {
     val pending = pendingRevocations(activity).filter { it == Kind.STORAGE }
     if (pending.isEmpty()) return
     val dialogKinds = pending.filter { runtimePermission(it) != null }
@@ -123,6 +131,5 @@ object PermissionRecovery {
     return intents.any { intent -> runCatching { context.startActivity(intent) }.isSuccess }
   }
 
-  private fun prefs(context: Context) =
-    context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+  private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }

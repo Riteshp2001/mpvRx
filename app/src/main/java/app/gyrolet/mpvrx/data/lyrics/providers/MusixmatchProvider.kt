@@ -80,9 +80,17 @@ internal object MusixmatchProvider : LyricsProviderClient {
   private suspend fun bestTrack(
     ref: TrackRef,
     seconds: Int,
-  ): Track? = searchTrack(ref.title, ref.artist)
-    ?.filter { LyricsTrackMatcher.matches(ref, it.trackName, it.artistName, seconds, it.trackLength?.toDouble() ?: 0.0) }
-    ?.maxByOrNull { score(it, ref.title, ref.artist, seconds) }
+  ): Track? =
+    searchTrack(ref.title, ref.artist)
+      ?.filter {
+        LyricsTrackMatcher.matches(
+          ref,
+          it.trackName,
+          it.artistName,
+          seconds,
+          it.trackLength?.toDouble() ?: 0.0,
+        )
+      }?.maxByOrNull { score(it, ref.title, ref.artist, seconds) }
 
   private fun score(
     track: Track,

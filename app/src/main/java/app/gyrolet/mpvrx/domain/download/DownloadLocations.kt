@@ -58,9 +58,10 @@ class DownloadLocations(
     childName: String,
   ): String? {
     val root = DocumentFile.fromTreeUri(context, treeUri) ?: return null
-    val child = root.findChildIgnoreCase(childName)?.takeIf { it.isDirectory }
-      ?: root.createDirectory(childName)
-      ?: return null
+    val child =
+      root.findChildIgnoreCase(childName)?.takeIf { it.isDirectory }
+        ?: root.createDirectory(childName)
+        ?: return null
     val rootPath = resolveTreeUriToPath(treeUri) ?: return null
     val path = File(rootPath, child.name ?: childName).absolutePath
     val dir = File(path)

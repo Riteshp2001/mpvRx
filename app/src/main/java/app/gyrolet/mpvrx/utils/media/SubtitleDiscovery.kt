@@ -25,7 +25,10 @@ internal object SubtitleDiscovery {
     val size: Long = -1L,
   )
 
-  data class Listing(val entries: List<Entry>, val complete: Boolean = true)
+  data class Listing(
+    val entries: List<Entry>,
+    val complete: Boolean = true,
+  )
 
   private data class Directory(
     val path: String,
@@ -36,23 +39,70 @@ internal object SubtitleDiscovery {
 
   // Keep the permissive legacy formats for explicit filename matches only. A README.txt or
   // unrelated JSON file in a subtitle folder must never become a subtitle track.
-  private val extensions = setOf(
-    "srt", "vtt", "ass", "ssa", "sub", "idx", "sup", "xml", "ttml", "dfxp", "itt",
-    "ebu", "imsc", "usf", "sbv", "srv1", "srv2", "srv3", "json", "sami", "smi",
-    "mpl", "pjs", "stl", "rt", "psb", "cap", "scc", "vttx", "lrc", "krc", "txt", "pgs",
-  )
+  private val extensions =
+    setOf(
+      "srt",
+      "vtt",
+      "ass",
+      "ssa",
+      "sub",
+      "idx",
+      "sup",
+      "xml",
+      "ttml",
+      "dfxp",
+      "itt",
+      "ebu",
+      "imsc",
+      "usf",
+      "sbv",
+      "srv1",
+      "srv2",
+      "srv3",
+      "json",
+      "sami",
+      "smi",
+      "mpl",
+      "pjs",
+      "stl",
+      "rt",
+      "psb",
+      "cap",
+      "scc",
+      "vttx",
+      "lrc",
+      "krc",
+      "txt",
+      "pgs",
+    )
   private val genericExtensions = extensions - setOf("txt", "json", "xml")
   private val separators = Regex("[^\\p{L}\\p{N}]+")
-  private val episodePattern = Regex(
-    "(?:^|[^a-z0-9])(?:s(\\d{1,3})[ ._-]*e(\\d{1,4})|(\\d{1,3})x(\\d{1,4}))(?=$|[^0-9])",
-    RegexOption.IGNORE_CASE,
-  )
+  private val episodePattern =
+    Regex(
+      "(?:^|[^a-z0-9])(?:s(\\d{1,3})[ ._-]*e(\\d{1,4})|(\\d{1,3})x(\\d{1,4}))(?=$|[^0-9])",
+      RegexOption.IGNORE_CASE,
+    )
   private val seasonPattern = Regex("^(?:season|s)[ ._-]*(\\d+)$", RegexOption.IGNORE_CASE)
   private val subtitleFolderNames = setOf("sub", "subs", "subtitle", "subtitles", "caption", "captions")
-  private val trackLabels = setOf(
-    "sub", "subs", "subtitle", "subtitles", "full", "forced", "sdh", "cc", "default",
-    "simplified", "traditional", "hans", "hant", "brazilian", "latin", "american",
-  )
+  private val trackLabels =
+    setOf(
+      "sub",
+      "subs",
+      "subtitle",
+      "subtitles",
+      "full",
+      "forced",
+      "sdh",
+      "cc",
+      "default",
+      "simplified",
+      "traditional",
+      "hans",
+      "hant",
+      "brazilian",
+      "latin",
+      "american",
+    )
   private val languageNames by lazy {
     buildSet {
       for (code in Locale.getISOLanguages()) {
@@ -81,13 +131,16 @@ internal object SubtitleDiscovery {
     if (videoBase.isBlank()) return emptyList()
     val started = System.nanoTime()
     val shouldContinue = { isCurrent() && System.nanoTime() - started < MAX_SCAN_NANOS }
-    val pending = PriorityQueue(compareBy<Directory> {
-      when {
-        it.mediaMatched -> 0
-        it.subtitleFolder -> 1
-        else -> 2
-      }
-    }.thenBy { it.depth }.thenBy { it.path }).apply { add(Directory(directoryPath)) }
+    val pending =
+      PriorityQueue(
+        compareBy<Directory> {
+          when {
+            it.mediaMatched -> 0
+            it.subtitleFolder -> 1
+            else -> 2
+          }
+        }.thenBy { it.depth }.thenBy { it.path },
+      ).apply { add(Directory(directoryPath)) }
     val visited = hashSetOf<String>()
     val matched = mutableListOf<Entry>()
     val generic = mutableListOf<Entry>()
@@ -111,15 +164,20 @@ internal object SubtitleDiscovery {
           videoBase = it.name.substringBeforeLast('.')
           videoEpisode = episode(videoBase)
         }
-        singleVideo = listing.complete && videos.size == 1 &&
+        singleVideo = listing.complete &&
+          videos.size == 1 &&
           videos.single().name.equals(currentVideoName, ignoreCase = true)
       }
       // Generic language tracks only belong to this media when their directory is unambiguous.
       val containsOtherVideo = videos.any { !matchesMedia(it.name.substringBeforeLast('.'), videoBase) }
-      val allowGeneric = directory.depth > 0 && !containsOtherVideo &&
-        (directory.mediaMatched || singleVideo)
-      val indexes = entries.filter { !it.isDirectory && extension(it.name) == "idx" }
-        .mapTo(hashSetOf()) { it.name.substringBeforeLast('.').lowercase(Locale.ROOT) }
+      val allowGeneric =
+        directory.depth > 0 &&
+          !containsOtherVideo &&
+          (directory.mediaMatched || singleVideo)
+      val indexes =
+        entries
+          .filter { !it.isDirectory && extension(it.name) == "idx" }
+          .mapTo(hashSetOf()) { it.name.substringBeforeLast('.').lowercase(Locale.ROOT) }
 
       for (entry in entries) {
         currentCoroutineContext().ensureActive()
@@ -141,24 +199,31 @@ internal object SubtitleDiscovery {
       if (matched.size + generic.size >= MAX_TRACKS) break
       if (directory.depth >= MAX_DEPTH || (directory.depth > 0 && containsOtherVideo)) continue
 
-      val children = entries.filter { entry ->
-        entry.isDirectory && !entry.name.startsWith('.') &&
-          !hasConflictingEpisode(entry.name, videoEpisode) &&
-          !hasConflictingSeason(entry.name, videoEpisode)
-      }.sortedWith(compareBy<Entry> {
-        when {
-          matchesMedia(it.name, videoBase) -> 0
-          normalize(it.name) in subtitleFolderNames -> 1
-          else -> 2
-        }
-      }.thenBy { it.name.lowercase(Locale.ROOT) })
+      val children =
+        entries
+          .filter { entry ->
+            entry.isDirectory &&
+              !entry.name.startsWith('.') &&
+              !hasConflictingEpisode(entry.name, videoEpisode) &&
+              !hasConflictingSeason(entry.name, videoEpisode)
+          }.sortedWith(
+            compareBy<Entry> {
+              when {
+                matchesMedia(it.name, videoBase) -> 0
+                normalize(it.name) in subtitleFolderNames -> 1
+                else -> 2
+              }
+            }.thenBy { it.name.lowercase(Locale.ROOT) },
+          )
       for (child in children) {
-        pending.add(Directory(
-          path = child.path,
-          depth = directory.depth + 1,
-          mediaMatched = directory.mediaMatched || matchesMedia(child.name, videoBase),
-          subtitleFolder = directory.subtitleFolder || normalize(child.name) in subtitleFolderNames,
-        ))
+        pending.add(
+          Directory(
+            path = child.path,
+            depth = directory.depth + 1,
+            mediaMatched = directory.mediaMatched || matchesMedia(child.name, videoBase),
+            subtitleFolder = directory.subtitleFolder || normalize(child.name) in subtitleFolderNames,
+          ),
+        )
       }
     }
     currentCoroutineContext().ensureActive()
@@ -167,7 +232,10 @@ internal object SubtitleDiscovery {
     return (matched.sortedWith(order) + generic.sortedWith(order)).distinctBy { it.path }.take(MAX_TRACKS)
   }
 
-  private fun matchesMedia(candidate: String, videoBase: String): Boolean {
+  private fun matchesMedia(
+    candidate: String,
+    videoBase: String,
+  ): Boolean {
     val name = normalize(candidate)
     val video = normalize(videoBase)
     if (name == video) return true
@@ -181,9 +249,12 @@ internal object SubtitleDiscovery {
   }
 
   private fun isLanguageLabel(name: String): Boolean {
-    val label = normalize(name).split(' ').filter {
-      it.isNotBlank() && it !in trackLabels && it.toIntOrNull() == null
-    }.filterIndexed { index, token -> index == 0 || token !in countryCodes }
+    val label =
+      normalize(name)
+        .split(' ')
+        .filter {
+          it.isNotBlank() && it !in trackLabels && it.toIntOrNull() == null
+        }.filterIndexed { index, token -> index == 0 || token !in countryCodes }
     return label.isNotEmpty() && (label.joinToString(" ") in languageNames || label.all { it in languageNames })
   }
 
@@ -196,11 +267,21 @@ internal object SubtitleDiscovery {
   private fun String.substringBeforeEpisode(): String =
     episodePattern.find(this)?.let { take(it.range.first) }.orEmpty()
 
-  private fun hasConflictingEpisode(name: String, videoEpisode: Pair<Int, Int>?): Boolean =
-    episode(name)?.let { it != videoEpisode } ?: false
+  private fun hasConflictingEpisode(
+    name: String,
+    videoEpisode: Pair<Int, Int>?,
+  ): Boolean = episode(name)?.let { it != videoEpisode } ?: false
 
-  private fun hasConflictingSeason(name: String, videoEpisode: Pair<Int, Int>?): Boolean =
-    seasonPattern.matchEntire(name)?.groupValues?.get(1)?.toIntOrNull()?.let { it != videoEpisode?.first } ?: false
+  private fun hasConflictingSeason(
+    name: String,
+    videoEpisode: Pair<Int, Int>?,
+  ): Boolean =
+    seasonPattern
+      .matchEntire(name)
+      ?.groupValues
+      ?.get(1)
+      ?.toIntOrNull()
+      ?.let { it != videoEpisode?.first } ?: false
 
   private fun normalize(name: String): String = separators.replace(name.lowercase(Locale.ROOT), " ").trim()
 
@@ -209,13 +290,21 @@ internal object SubtitleDiscovery {
 
 /** Small, short-lived listing cache shared by playlist episodes. No subtitle contents are cached. */
 internal class SubtitleDirectoryCache {
-  private data class Cached(val listing: SubtitleDiscovery.Listing, val stamp: Long?, val time: Long)
+  private data class Cached(
+    val listing: SubtitleDiscovery.Listing,
+    val stamp: Long?,
+    val time: Long,
+  )
 
   private val listings = LinkedHashMap<String, Cached>(16, 0.75f, true)
   private var entries = 0
 
   @Synchronized
-  fun get(key: String, stamp: Long?, limit: Int): SubtitleDiscovery.Listing? {
+  fun get(
+    key: String,
+    stamp: Long?,
+    limit: Int,
+  ): SubtitleDiscovery.Listing? {
     val cached = listings[key] ?: return null
     if (cached.stamp != stamp || System.nanoTime() - cached.time > 10_000_000_000L) {
       entries -= cached.listing.entries.size
@@ -229,7 +318,11 @@ internal class SubtitleDirectoryCache {
   }
 
   @Synchronized
-  fun put(key: String, stamp: Long?, listing: SubtitleDiscovery.Listing) {
+  fun put(
+    key: String,
+    stamp: Long?,
+    listing: SubtitleDiscovery.Listing,
+  ) {
     if (!listing.complete || listing.entries.size > SubtitleDiscovery.MAX_ENTRIES) return
     listings.remove(key)?.let { entries -= it.listing.entries.size }
     listings[key] = Cached(listing, stamp, System.nanoTime())

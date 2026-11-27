@@ -132,7 +132,9 @@ class TogetherClient(
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
           if (!response.isSuccessful) {
-            throw Exception("Together generate error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
+            throw Exception(
+              "Together generate error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}",
+            )
           }
           AiResponseParser.openAiCompatible(json, body, "Together")
         }

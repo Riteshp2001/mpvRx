@@ -49,9 +49,7 @@ enum class ResumePlaybackMode(
   ),
 }
 
-
 enum class VideoAspect(
-
   @StringRes val titleRes: Int,
 ) {
   Fit(R.string.player_aspect_fit),
@@ -163,6 +161,7 @@ enum class Sheets {
   Decoders,
   More,
   SleepTimer,
+  MusicSleepTimer,
   VideoZoom,
   AspectRatios,
   Playlist,

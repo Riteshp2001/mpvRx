@@ -14,10 +14,6 @@ import android.os.Build
 import androidx.core.content.pm.PackageInfoCompat
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.network.awaitResponse
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -30,6 +26,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.security.MessageDigest
 
 /** Signals that the resuming attempt must be abandoned and retried without a Range header. */
 private object RetryWithoutRangeSignal : IOException("Stored partial is not resumable")
@@ -38,10 +38,11 @@ class UpdateManager(
   private val context: Context,
 ) {
   private val client = OkHttpClient.Builder().build()
-  private val json = Json {
-    ignoreUnknownKeys = true
-    coerceInputValues = true
-  }
+  private val json =
+    Json {
+      ignoreUnknownKeys = true
+      coerceInputValues = true
+    }
 
   suspend fun checkForUpdate(forceShow: Boolean = false): Release? {
     // Return null immediately if update checks are disabled for this build.
@@ -89,7 +90,12 @@ class UpdateManager(
 
   private suspend fun getLatestRelease(url: String): Release =
     withContext(Dispatchers.IO) {
-      val request = Request.Builder().url(url).header("Cache-Control", "no-cache").build()
+      val request =
+        Request
+          .Builder()
+          .url(url)
+          .header("Cache-Control", "no-cache")
+          .build()
       client.newCall(request).awaitResponse().use { response ->
         if (!response.isSuccessful) throw IOException("Unexpected code $response")
         val responseBody = response.body.string()
@@ -241,7 +247,8 @@ class UpdateManager(
       val alreadyDownloaded = if (allowResume) partial.takeIf { it.isFile }?.length() ?: 0L else 0L
 
       val request =
-        Request.Builder()
+        Request
+          .Builder()
           .url(asset.downloadUrl)
           .apply { if (alreadyDownloaded > 0L) header("Range", "bytes=$alreadyDownloaded-") }
           .build()
@@ -352,24 +359,28 @@ class UpdateManager(
     }
   }
 
-  private fun progressOf(downloaded: Long, total: Long?): Float =
+  private fun progressOf(
+    downloaded: Long,
+    total: Long?,
+  ): Float =
     if (total != null && total > 0L) ((downloaded.toDouble() / total) * 100).toFloat().coerceIn(0f, 99f) else -1f
 
-  suspend fun getApkFile(release: Release): File? = withContext(Dispatchers.IO) {
-    // Return null if update feature is disabled
-    if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
-      return@withContext null
-    }
+  suspend fun getApkFile(release: Release): File? =
+    withContext(Dispatchers.IO) {
+      // Return null if update feature is disabled
+      if (!BuildConfig.ENABLE_UPDATE_FEATURE) {
+        return@withContext null
+      }
 
-    val asset = selectUpdateAsset(release) ?: return@withContext null
-    val file = localApkFile(asset).takeIf { it.isFile } ?: return@withContext null
-    try {
-      verifyDownload(file, asset, resumed = false)
-      file
-    } catch (_: IOException) {
-      null
+      val asset = selectUpdateAsset(release) ?: return@withContext null
+      val file = localApkFile(asset).takeIf { it.isFile } ?: return@withContext null
+      try {
+        verifyDownload(file, asset, resumed = false)
+        file
+      } catch (_: IOException) {
+        null
+      }
     }
-  }
 
   fun clearCache() {
     // No-op if update feature is disabled

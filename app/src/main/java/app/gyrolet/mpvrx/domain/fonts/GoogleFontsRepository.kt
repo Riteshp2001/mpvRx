@@ -10,9 +10,6 @@ import android.util.AtomicFile
 import android.util.Base64
 import app.gyrolet.mpvrx.network.awaitResponse
 import com.yubyf.truetypeparser.TTFFile
-import java.io.File
-import java.io.IOException
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,6 +18,9 @@ import kotlinx.serialization.json.Json
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 @Serializable
 data class GoogleFontFamily(
@@ -63,7 +63,8 @@ class GoogleFontsRepository(
 
       try {
         val request =
-          Request.Builder()
+          Request
+            .Builder()
             .url(CATALOG_URL)
             .header("User-Agent", USER_AGENT)
             .get()
@@ -87,7 +88,13 @@ class GoogleFontsRepository(
     withContext(Dispatchers.IO) {
       try {
         val fontUrl = resolveTtfUrl(family)
-        val request = Request.Builder().url(fontUrl).header("User-Agent", LEGACY_ANDROID_USER_AGENT).get().build()
+        val request =
+          Request
+            .Builder()
+            .url(fontUrl)
+            .header("User-Agent", LEGACY_ANDROID_USER_AGENT)
+            .get()
+            .build()
         val fontBytes =
           httpClient.newCall(request).awaitResponse().use { response ->
             if (!response.isSuccessful) throw IOException("Font download returned HTTP ${response.code}")
@@ -140,8 +147,7 @@ class GoogleFontsRepository(
           val appFamily = appFamilyFromFileName(file.name) ?: return@mapNotNull null
           val family = readFamilyName(file) ?: appFamily
           InstalledGoogleFont(family = family, appFamily = appFamily, file = file)
-        }
-        .distinctBy { it.appFamily }
+        }.distinctBy { it.appFamily }
         .sortedBy { it.family }
     }
 
@@ -176,7 +182,13 @@ class GoogleFontsRepository(
         .newBuilder()
         .addQueryParameter("family", "$family:400")
         .build()
-    val request = Request.Builder().url(cssUrl).header("User-Agent", LEGACY_ANDROID_USER_AGENT).get().build()
+    val request =
+      Request
+        .Builder()
+        .url(cssUrl)
+        .header("User-Agent", LEGACY_ANDROID_USER_AGENT)
+        .get()
+        .build()
     val css =
       httpClient.newCall(request).awaitResponse().use { response ->
         if (!response.isSuccessful) throw IOException("Font stylesheet returned HTTP ${response.code}")
@@ -206,13 +218,22 @@ class GoogleFontsRepository(
 
   private fun readFamilyName(file: File): String? =
     runCatching {
-      file.inputStream().use { input -> TTFFile.open(input).families.values.firstOrNull() }
+      file.inputStream().use { input ->
+        TTFFile
+          .open(input)
+          .families.values
+          .firstOrNull()
+      }
     }.getOrNull()?.takeIf(String::isNotBlank)
 
   private fun fontFileForFamily(family: String): File = File(mpvFontsDirectory, fileNameForFamily(family))
 
   private fun fileNameForFamily(family: String): String {
-    val encoded = Base64.encodeToString(family.toByteArray(Charsets.UTF_8), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)
+    val encoded =
+      Base64.encodeToString(
+        family.toByteArray(Charsets.UTF_8),
+        Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING,
+      )
     return "$MPV_GOOGLE_FONT_PREFIX$encoded.ttf"
   }
 

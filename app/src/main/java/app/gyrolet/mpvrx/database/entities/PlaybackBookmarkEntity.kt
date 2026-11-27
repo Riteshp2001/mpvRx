@@ -7,7 +7,14 @@ import androidx.room.PrimaryKey
 
 @Entity(
   tableName = "playback_bookmarks",
-  foreignKeys = [ForeignKey(entity = AudiobookTrackEntity::class, parentColumns = ["id"], childColumns = ["bookTrackId"], onDelete = ForeignKey.CASCADE)],
+  foreignKeys = [
+    ForeignKey(
+      entity = AudiobookTrackEntity::class,
+      parentColumns = ["id"],
+      childColumns = ["bookTrackId"],
+      onDelete = ForeignKey.CASCADE,
+    ),
+  ],
   indices = [Index(value = ["mediaId"]), Index(value = ["bookTrackId"])],
 )
 data class PlaybackBookmarkEntity(

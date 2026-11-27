@@ -17,17 +17,22 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -53,28 +58,27 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -82,15 +86,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -112,18 +107,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.domain.framecapture.FrameCapture
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
@@ -131,9 +125,10 @@ import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.ProfileSection
-import app.gyrolet.mpvrx.preferences.visibleProfileItems
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.preferences.visibleProfileItems
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.cards.PlaylistCard
@@ -141,8 +136,8 @@ import app.gyrolet.mpvrx.ui.browser.cards.WatchedThumbnailFilter
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.rememberSwipePlaybackInfo
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
-import app.gyrolet.mpvrx.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.gyrolet.mpvrx.ui.browser.medialibrary.MediaLibraryViewModel
+import app.gyrolet.mpvrx.ui.browser.networkstreaming.NetworkStreamingScreen
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistDetailScreen
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistScreen
 import app.gyrolet.mpvrx.ui.browser.playlist.PlaylistViewModel
@@ -160,12 +155,12 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.preferences.PreferencesScreen
 import app.gyrolet.mpvrx.ui.preferences.ProfileWatchStatistics
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
-import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
-import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.onWallpaper
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
@@ -179,6 +174,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import java.io.File
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 private const val SHELF_LIMIT = 15
 private const val AVATAR_FILE_PREFIX = "profile_avatar_"
@@ -205,9 +204,10 @@ object ProfileScreen : Screen {
     val profileImagePath by appearancePreferences.profileImagePath.collectAsState()
     val sectionOrder by appearancePreferences.profileSectionOrder.collectAsState()
     val hiddenSections by appearancePreferences.profileHiddenSections.collectAsState()
-    val visibleSections = remember(sectionOrder, hiddenSections) {
-      visibleProfileItems(ProfileSection.entries, sectionOrder, hiddenSections)
-    }
+    val visibleSections =
+      remember(sectionOrder, hiddenSections) {
+        visibleProfileItems(ProfileSection.entries, sectionOrder, hiddenSections)
+      }
     val showRecentThumbnails by browserPreferences.recentView.showThumbnails.collectAsState()
     // The shelves mark watched items like the screens they open: Recents follows its own view setting.
     val grayscaleRecentWatched by browserPreferences.recentView.grayscaleWatchedThumbnails.collectAsState()
@@ -246,17 +246,18 @@ object ProfileScreen : Screen {
       }
     val recentlyAdded =
       if (recentlyAddedViewModel != null) {
-        val latestVideos = remember(recentlyAddedViewModel) {
-          recentlyAddedViewModel.videos
-            .map { videos ->
-              videos.asSequence()
-                .filterNot { it.isAudio }
-                .sortedWith(compareByDescending<Video> { it.dateAdded }.thenBy { it.path })
-                .take(SHELF_LIMIT)
-                .toList()
-            }
-            .flowOn(Dispatchers.Default)
-        }
+        val latestVideos =
+          remember(recentlyAddedViewModel) {
+            recentlyAddedViewModel.videos
+              .map { videos ->
+                videos
+                  .asSequence()
+                  .filterNot { it.isAudio }
+                  .sortedWith(compareByDescending<Video> { it.dateAdded }.thenBy { it.path })
+                  .take(SHELF_LIMIT)
+                  .toList()
+              }.flowOn(Dispatchers.Default)
+          }
         latestVideos.collectAsStateWithLifecycle(initialValue = emptyList()).value
       } else {
         emptyList()
@@ -278,11 +279,13 @@ object ProfileScreen : Screen {
     val recentShelf = remember(recentItems) { recentItems.take(SHELF_LIMIT) }
     val recentVideos =
       remember(recentShelf) { recentShelf.filterIsInstance<RecentlyPlayedItem.VideoItem>().map { it.video } }
-    val shelfVideos = remember(recentVideos, recentlyAdded) {
-      (recentVideos + recentlyAdded).distinctBy { it.path }
-    }
+    val shelfVideos =
+      remember(recentVideos, recentlyAdded) {
+        (recentVideos + recentlyAdded).distinctBy { it.path }
+      }
     val playbackInfo = rememberSwipePlaybackInfo(shelfVideos)
-    val snapshots = remember(snapshotLibrary.allCaptures) { snapshotLibrary.allCaptures.sortedByDescending { it.capturedAt } }
+    val snapshots =
+      remember(snapshotLibrary.allCaptures) { snapshotLibrary.allCaptures.sortedByDescending { it.capturedAt } }
 
     var activeVideoItem by remember { mutableStateOf<RecentlyPlayedItem.VideoItem?>(null) }
     var playlistToDelete by remember { mutableStateOf<app.gyrolet.mpvrx.database.entities.PlaylistEntity?>(null) }
@@ -297,8 +300,11 @@ object ProfileScreen : Screen {
     }
     val heroCollapseProgress by remember {
       derivedStateOf {
-        if (listState.firstVisibleItemIndex > 0) 1f
-        else (listState.firstVisibleItemScrollOffset / 180f).coerceIn(0f, 1f)
+        if (listState.firstVisibleItemIndex > 0) {
+          1f
+        } else {
+          (listState.firstVisibleItemScrollOffset / 180f).coerceIn(0f, 1f)
+        }
       }
     }
     val reduceMotion = AppMotion.shouldReduceMotion()
@@ -334,11 +340,16 @@ object ProfileScreen : Screen {
                 if (reduceMotion) {
                   fadeIn(headerAlphaSpec).togetherWith(fadeOut(headerAlphaSpec))
                 } else if (targetState) {
-                  (fadeIn(headerAlphaSpec) + slideInVertically(headerOffsetSpec) { it / 2 } + scaleIn(headerScaleSpec, initialScale = 0.86f))
-                    .togetherWith(fadeOut(headerAlphaSpec) + slideOutVertically(headerOffsetSpec) { -it / 2 })
+                  (
+                    fadeIn(headerAlphaSpec) + slideInVertically(headerOffsetSpec) { it / 2 } +
+                      scaleIn(headerScaleSpec, initialScale = 0.86f)
+                  ).togetherWith(fadeOut(headerAlphaSpec) + slideOutVertically(headerOffsetSpec) { -it / 2 })
                 } else {
                   (fadeIn(headerAlphaSpec) + slideInVertically(headerOffsetSpec) { -it / 2 })
-                    .togetherWith(fadeOut(headerAlphaSpec) + slideOutVertically(headerOffsetSpec) { it / 2 } + scaleOut(headerScaleSpec, targetScale = 0.86f))
+                    .togetherWith(
+                      fadeOut(headerAlphaSpec) + slideOutVertically(headerOffsetSpec) { it / 2 } +
+                        scaleOut(headerScaleSpec, targetScale = 0.86f),
+                    )
                 }
               },
               label = "profileHeaderTransition",
@@ -352,8 +363,7 @@ object ProfileScreen : Screen {
                       .clip(CircleShape)
                       .clickable {
                         scope.launch { listState.animateScrollToItem(0) }
-                      }
-                      .padding(vertical = 4.dp, horizontal = 4.dp),
+                      }.padding(vertical = 4.dp, horizontal = 4.dp),
                 ) {
                   ProfileAvatar(
                     size = 36.dp,
@@ -778,7 +788,13 @@ private fun ProfileOverviewCard(
   val horizontalPadding = if (isTablet) 24.dp else 16.dp
 
   Column(
-    modifier = Modifier.fillMaxWidth().padding(start = horizontalPadding, end = horizontalPadding, top = 2.dp, bottom = 0.dp),
+    modifier =
+      Modifier.fillMaxWidth().padding(
+        start = horizontalPadding,
+        end = horizontalPadding,
+        top = 2.dp,
+        bottom = 0.dp,
+      ),
     verticalArrangement = Arrangement.spacedBy(10.dp),
   ) {
     Column(
@@ -804,11 +820,12 @@ private fun ProfileOverviewCard(
         // A small visual badge at the lower-right edge, with an independent 48dp
         // touch target so the edit action remains easy to reach on small devices.
         Box(
-          modifier = Modifier
-            .size(48.dp)
-            .offset(x = 6.dp, y = 6.dp)
-            .tvFocusHighlight(CircleShape)
-            .clickable(onClick = onEditProfile),
+          modifier =
+            Modifier
+              .size(48.dp)
+              .offset(x = 6.dp, y = 6.dp)
+              .tvFocusHighlight(CircleShape)
+              .clickable(onClick = onEditProfile),
           contentAlignment = Alignment.Center,
         ) {
           Surface(
@@ -857,30 +874,44 @@ private fun ProfileOverviewCard(
 
     // Intentional Material 3 Expressive connected bento group; no large tinted backdrop.
     // The logical corner radii adapt automatically to 1, 2 or 4 columns and RTL direction.
-    val shortcuts = listOf(
-      ProfileShortcutDestination(
-        Icons.RoundedFilled.History, stringResource(R.string.ui_recents), recentCount,
-        MaterialTheme.colorScheme.primary, onRecents,
-      ),
-      ProfileShortcutDestination(
-        Icons.RoundedFilled.Subscriptions, stringResource(R.string.ui_playlists), playlistCount,
-        MaterialTheme.colorScheme.secondary, onPlaylists,
-      ),
-      ProfileShortcutDestination(
-        Icons.RoundedFilled.Image, stringResource(R.string.ui_snapshots), snapshotCount,
-        MaterialTheme.colorScheme.tertiary, onSnapshots,
-      ),
-      ProfileShortcutDestination(
-        Icons.RoundedFilled.BringYourOwnIp, stringResource(R.string.ui_network), null,
-        MaterialTheme.colorScheme.primary, onNetwork,
-      ),
-    )
+    val shortcuts =
+      listOf(
+        ProfileShortcutDestination(
+          Icons.RoundedFilled.History,
+          stringResource(R.string.ui_recents),
+          recentCount,
+          MaterialTheme.colorScheme.primary,
+          onRecents,
+        ),
+        ProfileShortcutDestination(
+          Icons.RoundedFilled.Subscriptions,
+          stringResource(R.string.ui_playlists),
+          playlistCount,
+          MaterialTheme.colorScheme.secondary,
+          onPlaylists,
+        ),
+        ProfileShortcutDestination(
+          Icons.RoundedFilled.Image,
+          stringResource(R.string.ui_snapshots),
+          snapshotCount,
+          MaterialTheme.colorScheme.tertiary,
+          onSnapshots,
+        ),
+        ProfileShortcutDestination(
+          Icons.RoundedFilled.BringYourOwnIp,
+          stringResource(R.string.ui_network),
+          null,
+          MaterialTheme.colorScheme.primary,
+          onNetwork,
+        ),
+      )
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-      val columns = when {
-        maxWidth < 300.dp -> 1
-        maxWidth >= 680.dp -> 4
-        else -> 2
-      }
+      val columns =
+        when {
+          maxWidth < 300.dp -> 1
+          maxWidth >= 680.dp -> 4
+          else -> 2
+        }
       Column(verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing)) {
         shortcuts.chunked(columns).forEachIndexed { rowIndex, rowShortcuts ->
           Row(
@@ -889,12 +920,13 @@ private fun ProfileOverviewCard(
           ) {
             rowShortcuts.forEachIndexed { columnIndex, shortcut ->
               val index = rowIndex * columns + columnIndex
-              val shape = rememberConnectedShape(
-                index = index,
-                itemCount = shortcuts.size,
-                layout = ConnectedLayout.Grid,
-                columns = columns,
-              )
+              val shape =
+                rememberConnectedShape(
+                  index = index,
+                  itemCount = shortcuts.size,
+                  layout = ConnectedLayout.Grid,
+                  columns = columns,
+                )
               ProfileShortcutTile(
                 icon = shortcut.icon,
                 label = shortcut.label,
@@ -976,7 +1008,14 @@ private fun ProfileShortcutTile(
         }
         Text(
           text = label,
-          style = if (count == null) MaterialTheme.typography.titleSmallEmphasized else MaterialTheme.typography.labelMedium,
+          style =
+            if (count ==
+              null
+            ) {
+              MaterialTheme.typography.titleSmallEmphasized
+            } else {
+              MaterialTheme.typography.labelMedium
+            },
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
@@ -1002,7 +1041,13 @@ private fun SectionHeader(
   val configuration = LocalConfiguration.current
   val isTablet = configuration.smallestScreenWidthDp >= 600
   Row(
-    modifier = Modifier.fillMaxWidth().padding(start = if (isTablet) 24.dp else 16.dp, end = if (isTablet) 16.dp else 8.dp, top = 12.dp, bottom = 2.dp),
+    modifier =
+      Modifier.fillMaxWidth().padding(
+        start = if (isTablet) 24.dp else 16.dp,
+        end = if (isTablet) 16.dp else 8.dp,
+        top = 12.dp,
+        bottom = 2.dp,
+      ),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.SpaceBetween,
   ) {
@@ -1075,14 +1120,24 @@ private fun ShelfEmptyCard(
         modifier = Modifier.size(40.dp),
       ) {
         Box(contentAlignment = Alignment.Center) {
-          Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+          Icon(
+            icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp),
+          )
         }
       }
       Column(
         verticalArrangement = Arrangement.spacedBy(2.dp),
         modifier = Modifier.weight(1f),
       ) {
-        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+        Text(
+          title,
+          style = MaterialTheme.typography.titleSmall,
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onSurface,
+        )
         Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
     }
@@ -1252,9 +1307,19 @@ private fun SnapshotShelfCard(
 ) {
   ShelfCard(title = capture.videoTitle, subtitle = null, onClick = onClick, isAudio = false) {
     if (thumbnail != null) {
-      Image(thumbnail.asImageBitmap(), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+      Image(
+        thumbnail.asImageBitmap(),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.fillMaxSize(),
+      )
     } else {
-      Icon(Icons.RoundedFilled.Image, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(36.dp))
+      Icon(
+        Icons.RoundedFilled.Image,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.secondary,
+        modifier = Modifier.size(36.dp),
+      )
     }
     FrameBadge(capture.formattedPosition, Modifier.align(Alignment.BottomEnd))
   }
@@ -1291,22 +1356,30 @@ private fun RecentVideoActionsSheet(
   ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    title = video.displayName,
+    leadingIcon = Icons.RoundedFilled.History,
   ) {
     Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 8.dp)) {
-      Text(
-        text = video.displayName,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+      SheetAction(
+        Icons.RoundedFilled.PlayArrow,
+        stringResource(R.string.ui_play),
+        MaterialTheme.colorScheme.onSurface,
+        onPlay,
       )
-      HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-      SheetAction(Icons.RoundedFilled.PlayArrow, stringResource(R.string.ui_play), MaterialTheme.colorScheme.onSurface, onPlay)
       if (!video.path.contains("://")) {
-        SheetAction(Icons.RoundedFilled.Share, stringResource(R.string.generic_share), MaterialTheme.colorScheme.onSurface, onShare)
+        SheetAction(
+          Icons.RoundedFilled.Share,
+          stringResource(R.string.generic_share),
+          MaterialTheme.colorScheme.onSurface,
+          onShare,
+        )
       }
-      SheetAction(Icons.RoundedFilled.Delete, stringResource(R.string.profile_remove_from_history), MaterialTheme.colorScheme.error, onRemove)
+      SheetAction(
+        Icons.RoundedFilled.Delete,
+        stringResource(R.string.profile_remove_from_history),
+        MaterialTheme.colorScheme.error,
+        onRemove,
+      )
     }
   }
 }
@@ -1395,7 +1468,12 @@ private fun ProfileEditDialog(
         ) {
           Box(contentAlignment = Alignment.Center) {
             if (preview != null) {
-              Image(preview, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+              Image(
+                preview,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+              )
             } else {
               Icon(
                 Icons.RoundedFilled.Person,
@@ -1419,9 +1497,10 @@ private fun ProfileEditDialog(
           if (showsPhoto) {
             OutlinedButton(
               onClick = {
-                val toCrop = pendingPhoto ?: currentPath.takeIf { it.isNotBlank() }?.let {
-                  BitmapFactory.decodeFile(it)
-                }
+                val toCrop =
+                  pendingPhoto ?: currentPath.takeIf { it.isNotBlank() }?.let {
+                    BitmapFactory.decodeFile(it)
+                  }
                 if (toCrop != null) {
                   rawCropBitmap = toCrop
                 }
@@ -1434,13 +1513,15 @@ private fun ProfileEditDialog(
                 pendingPhoto = null
                 removePhoto = true
               },
-              colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.error,
-              ),
-              border = BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.error.copy(alpha = 0.5f),
-              ),
+              colors =
+                ButtonDefaults.outlinedButtonColors(
+                  contentColor = MaterialTheme.colorScheme.error,
+                ),
+              border =
+                BorderStroke(
+                  1.dp,
+                  MaterialTheme.colorScheme.error.copy(alpha = 0.5f),
+                ),
             ) {
               Text(stringResource(R.string.profile_remove_photo), maxLines = 1)
             }
@@ -1483,35 +1564,40 @@ private fun ProfileAvatarCropDialog(
   var userScale by remember { mutableStateOf(1f) }
   var userOffset by remember { mutableStateOf(Offset.Zero) }
 
-  val rotatedBitmap = remember(sourceBitmap, rotation) {
-    if (rotation % 360 != 0) {
-      val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
-      Bitmap.createBitmap(sourceBitmap, 0, 0, sourceBitmap.width, sourceBitmap.height, matrix, true)
-    } else {
-      sourceBitmap
+  val rotatedBitmap =
+    remember(sourceBitmap, rotation) {
+      if (rotation % 360 != 0) {
+        val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
+        Bitmap.createBitmap(sourceBitmap, 0, 0, sourceBitmap.width, sourceBitmap.height, matrix, true)
+      } else {
+        sourceBitmap
+      }
     }
-  }
 
   val rotatedImageBitmap = remember(rotatedBitmap) { rotatedBitmap.asImageBitmap() }
 
-  val baseScale = remember(rotatedImageBitmap, cropBoxPx) {
-    maxOf(cropBoxPx / rotatedImageBitmap.width, cropBoxPx / rotatedImageBitmap.height)
-  }
+  val baseScale =
+    remember(rotatedImageBitmap, cropBoxPx) {
+      maxOf(cropBoxPx / rotatedImageBitmap.width, cropBoxPx / rotatedImageBitmap.height)
+    }
 
   // Calculate clamp boundaries so the image always completely covers the crop box
-  val maxPanX = remember(userScale, baseScale, rotatedImageBitmap.width, cropBoxPx) {
-    ((rotatedImageBitmap.width * baseScale * userScale - cropBoxPx) / 2f).coerceAtLeast(0f)
-  }
-  val maxPanY = remember(userScale, baseScale, rotatedImageBitmap.height, cropBoxPx) {
-    ((rotatedImageBitmap.height * baseScale * userScale - cropBoxPx) / 2f).coerceAtLeast(0f)
-  }
+  val maxPanX =
+    remember(userScale, baseScale, rotatedImageBitmap.width, cropBoxPx) {
+      ((rotatedImageBitmap.width * baseScale * userScale - cropBoxPx) / 2f).coerceAtLeast(0f)
+    }
+  val maxPanY =
+    remember(userScale, baseScale, rotatedImageBitmap.height, cropBoxPx) {
+      ((rotatedImageBitmap.height * baseScale * userScale - cropBoxPx) / 2f).coerceAtLeast(0f)
+    }
 
   // Keep offset clamped when zoom changes
   LaunchedEffect(maxPanX, maxPanY) {
-    userOffset = Offset(
-      userOffset.x.coerceIn(-maxPanX, maxPanX),
-      userOffset.y.coerceIn(-maxPanY, maxPanY),
-    )
+    userOffset =
+      Offset(
+        userOffset.x.coerceIn(-maxPanX, maxPanX),
+        userOffset.y.coerceIn(-maxPanY, maxPanY),
+      )
   }
 
   Dialog(
@@ -1556,12 +1642,21 @@ private fun ProfileAvatarCropDialog(
               .pointerInput(rotatedImageBitmap, cropBoxPx) {
                 detectTransformGestures { _, pan, zoom, _ ->
                   userScale = (userScale * zoom).coerceIn(1f, 5f)
-                  val currentMaxPanX = ((rotatedImageBitmap.width * baseScale * userScale - cropBoxPx) / 2f).coerceAtLeast(0f)
-                  val currentMaxPanY = ((rotatedImageBitmap.height * baseScale * userScale - cropBoxPx) / 2f).coerceAtLeast(0f)
-                  userOffset = Offset(
-                    (userOffset.x + pan.x).coerceIn(-currentMaxPanX, currentMaxPanX),
-                    (userOffset.y + pan.y).coerceIn(-currentMaxPanY, currentMaxPanY),
-                  )
+                  val currentMaxPanX =
+                    ((rotatedImageBitmap.width * baseScale * userScale - cropBoxPx) / 2f)
+                      .coerceAtLeast(
+                        0f,
+                      )
+                  val currentMaxPanY =
+                    ((rotatedImageBitmap.height * baseScale * userScale - cropBoxPx) / 2f)
+                      .coerceAtLeast(
+                        0f,
+                      )
+                  userOffset =
+                    Offset(
+                      (userOffset.x + pan.x).coerceIn(-currentMaxPanX, currentMaxPanX),
+                      (userOffset.y + pan.y).coerceIn(-currentMaxPanY, currentMaxPanY),
+                    )
                 }
               },
           contentAlignment = Alignment.Center,
@@ -1575,8 +1670,7 @@ private fun ProfileAvatarCropDialog(
                 .size(
                   width = with(density) { (rotatedImageBitmap.width * baseScale).toDp() },
                   height = with(density) { (rotatedImageBitmap.height * baseScale).toDp() },
-                )
-                .graphicsLayer {
+                ).graphicsLayer {
                   scaleX = userScale
                   scaleY = userScale
                   translationX = userOffset.x
@@ -1590,11 +1684,12 @@ private fun ProfileAvatarCropDialog(
             val height = size.height
             val radius = minOf(width, height) / 2f
 
-            val path = Path().apply {
-              fillType = PathFillType.EvenOdd
-              addRect(Rect(0f, 0f, width, height))
-              addOval(Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius))
-            }
+            val path =
+              Path().apply {
+                fillType = PathFillType.EvenOdd
+                addRect(Rect(0f, 0f, width, height))
+                addOval(Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius))
+              }
             drawPath(path, color = Color.Black.copy(alpha = 0.60f))
 
             drawCircle(
@@ -1663,13 +1758,14 @@ private fun ProfileAvatarCropDialog(
           }
           Button(
             onClick = {
-              val cropped = performCrop(
-                bitmap = sourceBitmap,
-                rotation = rotation,
-                userScale = userScale,
-                userOffset = userOffset,
-                viewportSizePx = cropBoxPx,
-              )
+              val cropped =
+                performCrop(
+                  bitmap = sourceBitmap,
+                  rotation = rotation,
+                  userScale = userScale,
+                  userOffset = userOffset,
+                  viewportSizePx = cropBoxPx,
+                )
               onCropped(cropped)
             },
           ) {
@@ -1689,12 +1785,13 @@ private fun performCrop(
   viewportSizePx: Float,
   targetSizePx: Int = AVATAR_SIZE_PX,
 ): Bitmap {
-  val rotated = if (rotation % 360 != 0) {
-    val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
-    Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-  } else {
-    bitmap
-  }
+  val rotated =
+    if (rotation % 360 != 0) {
+      val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
+      Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    } else {
+      bitmap
+    }
 
   val bw = rotated.width.toFloat()
   val bh = rotated.height.toFloat()
@@ -1712,10 +1809,11 @@ private fun performCrop(
   val srcH = cropSizeInImage.toInt().coerceAtMost(rotated.height - srcY)
   val cropSide = minOf(srcW, srcH).coerceAtLeast(1)
 
-  val scaleMatrix = Matrix().apply {
-    val scale = targetSizePx.toFloat() / cropSide
-    postScale(scale, scale)
-  }
+  val scaleMatrix =
+    Matrix().apply {
+      val scale = targetSizePx.toFloat() / cropSide
+      postScale(scale, scale)
+    }
 
   return Bitmap.createBitmap(rotated, srcX, srcY, cropSide, cropSide, scaleMatrix, true)
 }

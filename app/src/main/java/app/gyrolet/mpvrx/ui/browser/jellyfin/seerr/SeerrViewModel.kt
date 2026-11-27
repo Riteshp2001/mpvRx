@@ -80,13 +80,14 @@ class SeerrViewModel(
   private val seerrRepository: SeerrRepository by inject()
   private val seerrPreferences: SeerrPreferences by inject()
 
-  private val _uiState = MutableStateFlow(
-    SeerrUiState(
-      isConnected = seerrPreferences.isLoggedIn.get(),
-      serverUrl = seerrPreferences.serverUrl.get(),
-      apiKey = seerrPreferences.apiKey.get(),
-    ),
-  )
+  private val _uiState =
+    MutableStateFlow(
+      SeerrUiState(
+        isConnected = seerrPreferences.isLoggedIn.get(),
+        serverUrl = seerrPreferences.serverUrl.get(),
+        apiKey = seerrPreferences.apiKey.get(),
+      ),
+    )
   val uiState: StateFlow<SeerrUiState> = _uiState.asStateFlow()
 
   private var searchJob: Job? = null
@@ -248,43 +249,48 @@ class SeerrViewModel(
   fun loadDashboard() {
     if (!seerrPreferences.isLoggedIn.get() && !_uiState.value.isConnected) return
     dashboardJob?.cancel()
-    dashboardJob = viewModelScope.launch {
-      _uiState.update { it.copy(isLoadingContent = true) }
+    dashboardJob =
+      viewModelScope.launch {
+        _uiState.update { it.copy(isLoadingContent = true) }
 
-      val recentDeferred = async { seerrRepository.getRecentlyAdded(20) }
-      val reqDeferred = async { seerrRepository.getRequests(take = 50) }
-      val trendingDeferred = async { seerrRepository.getTrending(1) }
-      val popMoviesDeferred = async { seerrRepository.getDiscoverMovies(1, "popularity.desc") }
-      val popTvDeferred = async { seerrRepository.getDiscoverTv(1, "popularity.desc") }
-      val upMoviesDeferred = async { seerrRepository.getUpcomingMovies(1) }
-      val upTvDeferred = async { seerrRepository.getUpcomingTv(1) }
+        val recentDeferred = async { seerrRepository.getRecentlyAdded(20) }
+        val reqDeferred = async { seerrRepository.getRequests(take = 50) }
+        val trendingDeferred = async { seerrRepository.getTrending(1) }
+        val popMoviesDeferred = async { seerrRepository.getDiscoverMovies(1, "popularity.desc") }
+        val popTvDeferred = async { seerrRepository.getDiscoverTv(1, "popularity.desc") }
+        val upMoviesDeferred = async { seerrRepository.getUpcomingMovies(1) }
+        val upTvDeferred = async { seerrRepository.getUpcomingTv(1) }
 
-      val recentRes = recentDeferred.await()
-      val requestsRes = reqDeferred.await()
-      val trendingRes = trendingDeferred.await()
-      val popMoviesRes = popMoviesDeferred.await()
-      val popTvRes = popTvDeferred.await()
-      val upMoviesRes = upMoviesDeferred.await()
-      val upTvRes = upTvDeferred.await()
+        val recentRes = recentDeferred.await()
+        val requestsRes = reqDeferred.await()
+        val trendingRes = trendingDeferred.await()
+        val popMoviesRes = popMoviesDeferred.await()
+        val popTvRes = popTvDeferred.await()
+        val upMoviesRes = upMoviesDeferred.await()
+        val upTvRes = upTvDeferred.await()
 
-      val allRequests = requestsRes.getOrDefault(emptyList())
-      val activeReqs = allRequests.filter { it.status != RequestStatus.COMPLETED.value && it.status != RequestStatus.DECLINED.value }
-      val availableReqs = allRequests.filter { it.status == RequestStatus.COMPLETED.value }
+        val allRequests = requestsRes.getOrDefault(emptyList())
+        val activeReqs =
+          allRequests.filter {
+            it.status != RequestStatus.COMPLETED.value &&
+              it.status != RequestStatus.DECLINED.value
+          }
+        val availableReqs = allRequests.filter { it.status == RequestStatus.COMPLETED.value }
 
-      _uiState.update {
-        it.copy(
-          isLoadingContent = false,
-          recentlyAdded = recentRes.getOrDefault(emptyList()),
-          activeRequests = activeReqs,
-          availableRequests = availableReqs,
-          trendingItems = trendingRes.getOrNull()?.results ?: emptyList(),
-          popularMovies = popMoviesRes.getOrNull()?.results ?: emptyList(),
-          popularTv = popTvRes.getOrNull()?.results ?: emptyList(),
-          upcomingMovies = upMoviesRes.getOrNull()?.results ?: emptyList(),
-          upcomingTv = upTvRes.getOrNull()?.results ?: emptyList(),
-        )
+        _uiState.update {
+          it.copy(
+            isLoadingContent = false,
+            recentlyAdded = recentRes.getOrDefault(emptyList()),
+            activeRequests = activeReqs,
+            availableRequests = availableReqs,
+            trendingItems = trendingRes.getOrNull()?.results ?: emptyList(),
+            popularMovies = popMoviesRes.getOrNull()?.results ?: emptyList(),
+            popularTv = popTvRes.getOrNull()?.results ?: emptyList(),
+            upcomingMovies = upMoviesRes.getOrNull()?.results ?: emptyList(),
+            upcomingTv = upTvRes.getOrNull()?.results ?: emptyList(),
+          )
+        }
       }
-    }
   }
 
   fun onSearchQueryChanged(query: String) {
@@ -294,25 +300,27 @@ class SeerrViewModel(
       _uiState.update { it.copy(searchResults = emptyList(), isSearching = false) }
       return
     }
-    searchJob = viewModelScope.launch {
-      delay(350)
-      performSearch(query)
-    }
+    searchJob =
+      viewModelScope.launch {
+        delay(350)
+        performSearch(query)
+      }
   }
 
   fun performSearch(query: String) {
     if (query.isBlank()) return
     searchJob?.cancel()
-    searchJob = viewModelScope.launch {
-      _uiState.update { it.copy(isSearching = true) }
-      val res = seerrRepository.searchMedia(query.trim())
-      _uiState.update {
-        it.copy(
-          isSearching = false,
-          searchResults = res.getOrNull()?.results ?: emptyList(),
-        )
+    searchJob =
+      viewModelScope.launch {
+        _uiState.update { it.copy(isSearching = true) }
+        val res = seerrRepository.searchMedia(query.trim())
+        _uiState.update {
+          it.copy(
+            isSearching = false,
+            searchResults = res.getOrNull()?.results ?: emptyList(),
+          )
+        }
       }
-    }
   }
 
   fun clearSearch() {
@@ -335,19 +343,21 @@ class SeerrViewModel(
       loadServerConfigs()
     }
 
-    detailJob = viewModelScope.launch {
-      val res = if (item.getMediaType() == MediaType.TV) {
-        seerrRepository.getTvDetails(item.id)
-      } else {
-        seerrRepository.getMovieDetails(item.id)
+    detailJob =
+      viewModelScope.launch {
+        val res =
+          if (item.getMediaType() == MediaType.TV) {
+            seerrRepository.getTvDetails(item.id)
+          } else {
+            seerrRepository.getMovieDetails(item.id)
+          }
+        _uiState.update {
+          it.copy(
+            selectedMediaDetails = res.getOrNull(),
+            isDetailLoading = false,
+          )
+        }
       }
-      _uiState.update {
-        it.copy(
-          selectedMediaDetails = res.getOrNull(),
-          isDetailLoading = false,
-        )
-      }
-    }
   }
 
   fun loadServerConfigs() {
@@ -368,15 +378,16 @@ class SeerrViewModel(
   fun openDetailFromRequest(request: JellyseerrRequest) {
     val tmdbId = request.media.tmdbId ?: return
     val mediaType = request.getMediaType()
-    val searchItem = SearchResultItem(
-      id = tmdbId,
-      mediaType = mediaType.value,
-      title = request.media.title,
-      name = request.media.name,
-      posterPath = request.media.posterPath,
-      backdropPath = request.media.backdropPath,
-      mediaInfo = request.media,
-    )
+    val searchItem =
+      SearchResultItem(
+        id = tmdbId,
+        mediaType = mediaType.value,
+        title = request.media.title,
+        name = request.media.name,
+        posterPath = request.media.posterPath,
+        backdropPath = request.media.backdropPath,
+        mediaInfo = request.media,
+      )
     openDetail(searchItem)
   }
 
@@ -404,34 +415,42 @@ class SeerrViewModel(
 
     viewModelScope.launch {
       _uiState.update { it.copy(isRequesting = true) }
-      val res = seerrRepository.createRequest(
-        mediaId = mediaId,
-        mediaType = mediaType,
-        seasons = seasons,
-        is4k = is4k,
-        serverId = serverId,
-        profileId = profileId,
-        rootFolder = rootFolder,
-      )
+      val res =
+        seerrRepository.createRequest(
+          mediaId = mediaId,
+          mediaType = mediaType,
+          seasons = seasons,
+          is4k = is4k,
+          serverId = serverId,
+          profileId = profileId,
+          rootFolder = rootFolder,
+        )
       res.fold(
         onSuccess = { req ->
-          val resolvedMediaStatus = when {
-            req.media.status != null && req.media.status != MediaStatus.UNKNOWN.value -> req.media.status
-            req.status == RequestStatus.PENDING.value -> MediaStatus.PENDING.value
-            else -> MediaStatus.PROCESSING.value
-          }
+          val resolvedMediaStatus =
+            when {
+              req.media.status != null && req.media.status != MediaStatus.UNKNOWN.value -> req.media.status
+              req.status == RequestStatus.PENDING.value -> MediaStatus.PENDING.value
+              else -> MediaStatus.PROCESSING.value
+            }
 
-          val updatedMediaInfo = req.media.copy(
-            status = resolvedMediaStatus,
-            requests = listOf(req) + (req.media.requests ?: emptyList()),
-            seasons = req.media.seasons?.map { s ->
-              if (seasons?.contains(s.seasonNumber) == true) {
-                s.copy(status = MediaStatus.PROCESSING.value)
-              } else {
-                s
-              }
-            } ?: seasons?.map { app.gyrolet.mpvrx.domain.seerr.MediaInfoSeason(seasonNumber = it, status = MediaStatus.PROCESSING.value) },
-          )
+          val updatedMediaInfo =
+            req.media.copy(
+              status = resolvedMediaStatus,
+              requests = listOf(req) + (req.media.requests ?: emptyList()),
+              seasons =
+                req.media.seasons?.map { s ->
+                  if (seasons?.contains(s.seasonNumber) == true) {
+                    s.copy(status = MediaStatus.PROCESSING.value)
+                  } else {
+                    s
+                  }
+                }
+                  ?: seasons?.map {
+                    app.gyrolet.mpvrx.domain.seerr
+                      .MediaInfoSeason(seasonNumber = it, status = MediaStatus.PROCESSING.value)
+                  },
+            )
 
           _uiState.update { state ->
             val curDetails = state.selectedMediaDetails
@@ -463,13 +482,17 @@ class SeerrViewModel(
     }
   }
 
-  private fun refreshDetailSilently(mediaId: Int, mediaType: MediaType) {
+  private fun refreshDetailSilently(
+    mediaId: Int,
+    mediaType: MediaType,
+  ) {
     viewModelScope.launch {
-      val res = if (mediaType == MediaType.TV) {
-        seerrRepository.getTvDetails(mediaId, forceRefresh = true)
-      } else {
-        seerrRepository.getMovieDetails(mediaId, forceRefresh = true)
-      }
+      val res =
+        if (mediaType == MediaType.TV) {
+          seerrRepository.getTvDetails(mediaId, forceRefresh = true)
+        } else {
+          seerrRepository.getMovieDetails(mediaId, forceRefresh = true)
+        }
       res.onSuccess { freshDetails ->
         _uiState.update { state ->
           if (state.selectedSearchItem?.id == mediaId) {
@@ -528,9 +551,23 @@ class SeerrViewModel(
         onSuccess = {
           _uiState.update { state ->
             val curDetails = state.selectedMediaDetails
-            val newDetails = if (tmdbId != null && curDetails?.id == tmdbId) curDetails.copy(mediaInfo = null) else curDetails
+            val newDetails =
+              if (tmdbId != null &&
+                curDetails?.id == tmdbId
+              ) {
+                curDetails.copy(mediaInfo = null)
+              } else {
+                curDetails
+              }
             val curSearchItem = state.selectedSearchItem
-            val newSearchItem = if (tmdbId != null && curSearchItem?.id == tmdbId) curSearchItem.copy(mediaInfo = null) else curSearchItem
+            val newSearchItem =
+              if (tmdbId != null &&
+                curSearchItem?.id == tmdbId
+              ) {
+                curSearchItem.copy(mediaInfo = null)
+              } else {
+                curSearchItem
+              }
 
             state.copy(
               activeRequests = state.activeRequests.filter { it.id != requestId },
@@ -565,9 +602,23 @@ class SeerrViewModel(
         onSuccess = {
           _uiState.update { state ->
             val curDetails = state.selectedMediaDetails
-            val newDetails = if (tmdbId != null && curDetails?.id == tmdbId) curDetails.copy(mediaInfo = null) else curDetails
+            val newDetails =
+              if (tmdbId != null &&
+                curDetails?.id == tmdbId
+              ) {
+                curDetails.copy(mediaInfo = null)
+              } else {
+                curDetails
+              }
             val curSearchItem = state.selectedSearchItem
-            val newSearchItem = if (tmdbId != null && curSearchItem?.id == tmdbId) curSearchItem.copy(mediaInfo = null) else curSearchItem
+            val newSearchItem =
+              if (tmdbId != null &&
+                curSearchItem?.id == tmdbId
+              ) {
+                curSearchItem.copy(mediaInfo = null)
+              } else {
+                curSearchItem
+              }
 
             state.copy(
               activeRequests = state.activeRequests.filter { it.media.id != mediaId },
@@ -599,8 +650,7 @@ class SeerrViewModel(
     fun factory(application: Application): ViewModelProvider.Factory =
       object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T =
-          SeerrViewModel(application) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = SeerrViewModel(application) as T
       }
   }
 }

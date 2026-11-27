@@ -31,21 +31,34 @@ internal object SkipMarkerResolver {
   private val LATIN_DIACRITICS = Regex("""(?<=[A-Za-z])\p{M}+""")
   private val CAMEL_CASE_SEPARATOR = Regex("""(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])""")
   private val OPENING_CREDITS_TITLE = Regex("""(?:^|\s)opening\s+credits?(?:\s|$)""")
-  private val POST_CREDITS_SCENE = Regex("""(?:^|\s)(?:(?:post|after|mid)\s+credits?|bonus\s+scene|easter\s+egg|stinger)(?:\s|$)""")
-  private val POST_CREDITS_LABELS = listOf(
-    "エンドロール後", "クレジット後", "片尾彩蛋", "片尾字幕后", "片尾字幕後",
-    "после титров", "після титрів", "مشهد بعد النهاية", "مشهد ما بعد النهاية",
-    "postcréditos", "scène post-générique", "nach dem abspann",
-    "क्रेडिट के बाद",
-  )
+  private val POST_CREDITS_SCENE =
+    Regex("""(?:^|\s)(?:(?:post|after|mid)\s+credits?|bonus\s+scene|easter\s+egg|stinger)(?:\s|$)""")
+  private val POST_CREDITS_LABELS =
+    listOf(
+      "エンドロール後",
+      "クレジット後",
+      "片尾彩蛋",
+      "片尾字幕后",
+      "片尾字幕後",
+      "после титров",
+      "після титрів",
+      "مشهد بعد النهاية",
+      "مشهد ما بعد النهاية",
+      "postcréditos",
+      "scène post-générique",
+      "nach dem abspann",
+      "क्रेडिट के बाद",
+    )
 
   private fun normalizeMarkerText(value: String): String =
-    Normalizer.normalize(
-      Normalizer.normalize(value, Normalizer.Form.NFKD)
-        .replace(LATIN_DIACRITICS, "")
-        .replace(CAMEL_CASE_SEPARATOR, " "),
-      Normalizer.Form.NFKC,
-    ).lowercase(Locale.ROOT)
+    Normalizer
+      .normalize(
+        Normalizer
+          .normalize(value, Normalizer.Form.NFKD)
+          .replace(LATIN_DIACRITICS, "")
+          .replace(CAMEL_CASE_SEPARATOR, " "),
+        Normalizer.Form.NFKC,
+      ).lowercase(Locale.ROOT)
 
   fun parseCustomKeywords(value: String): List<String> =
     value
@@ -66,7 +79,14 @@ internal object SkipMarkerResolver {
     val normalizedLatin = lowered.replace(Regex("""[^a-z0-9]+"""), " ").trim()
     if (POST_CREDITS_SCENE.containsMatchIn(normalizedLatin)) return null
     val compactRaw = lowered.replace(MARKER_SEPARATORS, "")
-    if (POST_CREDITS_LABELS.any { compactRaw.contains(normalizeMarkerText(it).replace(MARKER_SEPARATORS, "")) }) return null
+    if (POST_CREDITS_LABELS.any {
+        compactRaw.contains(
+          normalizeMarkerText(it).replace(MARKER_SEPARATORS, ""),
+        )
+      }
+    ) {
+      return null
+    }
 
     fun hasKeyword(keywords: List<String>): Boolean =
       keywords.any { rawKeyword ->

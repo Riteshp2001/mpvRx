@@ -9,10 +9,9 @@
 
 package app.gyrolet.mpvrx.ui.browser.dialogs
 
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -24,8 +23,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.draw.alpha
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,9 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,6 +41,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
@@ -64,6 +60,10 @@ import app.gyrolet.mpvrx.ui.player.controls.components.sheets.playerSheetSelecti
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 @Composable
 fun AddToPlaylistDialog(
@@ -85,24 +85,32 @@ fun AddToPlaylistDialog(
   var query by rememberSaveable(isOpen) { mutableStateOf("") }
   var submittingId by rememberSaveable(isOpen) { mutableStateOf<String?>(null) }
   val context = LocalContext.current
-  val resolvedCandidates = remember(candidates, videos) {
-    if (candidates.isNotEmpty()) candidates else videos.toPlaylistCandidates()
-  }
-  val isAudio = remember(resolvedCandidates) { resolvedCandidates.firstOrNull()?.isAudio == true }
-  val compatibleCandidates = remember(resolvedCandidates, isAudio) {
-    resolvedCandidates.filter { it.isAudio == isAudio }
-  }
-  val filteredOptions = remember(playlistOptions, query) {
-    val normalized = query.trim()
-    if (normalized.isEmpty()) playlistOptions else playlistOptions.filter { option ->
-      option.name.contains(normalized, ignoreCase = true)
+  val resolvedCandidates =
+    remember(candidates, videos) {
+      if (candidates.isNotEmpty()) candidates else videos.toPlaylistCandidates()
     }
-  }
-  val candidateCountText = pluralStringResource(
-    if (isAudio) R.plurals.playlist_picker_song_count else R.plurals.playlist_picker_video_count,
-    compatibleCandidates.size,
-    compatibleCandidates.size,
-  )
+  val isAudio = remember(resolvedCandidates) { resolvedCandidates.firstOrNull()?.isAudio == true }
+  val compatibleCandidates =
+    remember(resolvedCandidates, isAudio) {
+      resolvedCandidates.filter { it.isAudio == isAudio }
+    }
+  val filteredOptions =
+    remember(playlistOptions, query) {
+      val normalized = query.trim()
+      if (normalized.isEmpty()) {
+        playlistOptions
+      } else {
+        playlistOptions.filter { option ->
+          option.name.contains(normalized, ignoreCase = true)
+        }
+      }
+    }
+  val candidateCountText =
+    pluralStringResource(
+      if (isAudio) R.plurals.playlist_picker_song_count else R.plurals.playlist_picker_video_count,
+      compatibleCandidates.size,
+      compatibleCandidates.size,
+    )
 
   androidx.compose.runtime.LaunchedEffect(isOpen, isAudio, isJellyfin) {
     if (isOpen) {
@@ -145,19 +153,24 @@ fun AddToPlaylistDialog(
 
   AppPickerSheet(
     onDismissRequest = onDismiss,
-    title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_add_to_playlist),
+    title =
+      androidx.compose.ui.res
+        .stringResource(app.gyrolet.mpvrx.R.string.ui_add_to_playlist),
     subtitle = candidateCountText,
-    warning = if (compatibleCandidates.isEmpty()) {
-      androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.playlist_no_compatible_items)
-    } else {
-      null
-    },
+    warning =
+      if (compatibleCandidates.isEmpty()) {
+        androidx.compose.ui.res
+          .stringResource(app.gyrolet.mpvrx.R.string.playlist_no_compatible_items)
+      } else {
+        null
+      },
     scrollContent = false,
     usePlayerSheet = usePlayerSheet,
     actions = {
       TextButton(onClick = onDismiss, enabled = submittingId == null) {
         Text(
-          androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
           fontWeight = FontWeight.Medium,
         )
       }
@@ -191,7 +204,9 @@ fun AddToPlaylistDialog(
       PlayerSheetSearchField(
         query = query,
         onQueryChange = { query = it },
-        placeholder = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.playlist_search_hint),
+        placeholder =
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.playlist_search_hint),
       )
 
       when {
@@ -250,10 +265,15 @@ fun AddToPlaylistDialog(
             }
           }
         }
-        query.isNotBlank() -> EmptyPlaylistsMessage(
-          title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.playlist_search_empty),
-          subtitle = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.playlist_search_empty_hint),
-        )
+        query.isNotBlank() ->
+          EmptyPlaylistsMessage(
+            title =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.playlist_search_empty),
+            subtitle =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.playlist_search_empty_hint),
+          )
         else -> EmptyPlaylistsMessage()
       }
     }
@@ -326,9 +346,12 @@ private fun PlaylistItemCard(
 
 @Composable
 private fun EmptyPlaylistsMessage(
-  title: String = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_no_playlists_yet),
+  title: String =
+    androidx.compose.ui.res
+      .stringResource(app.gyrolet.mpvrx.R.string.ui_no_playlists_yet),
   subtitle: String =
-    androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_create_your_first_playlist_above),
+    androidx.compose.ui.res
+      .stringResource(app.gyrolet.mpvrx.R.string.ui_create_your_first_playlist_above),
 ) {
   Card(
     modifier = Modifier.fillMaxWidth(),

@@ -9,8 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,15 +17,14 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
-import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -49,6 +47,7 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
@@ -58,6 +57,7 @@ import app.gyrolet.mpvrx.ui.theme.connectedShape
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.rememberAdjustmentHaptics
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 
 @Composable
 fun VideoZoomSheet(
@@ -154,7 +154,7 @@ private fun ZoomVideoSheet(
         .fillMaxWidth()
         .verticalScroll(rememberScrollState())
         .padding(vertical = 4.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     Text(
       text = zoomValueText,
@@ -201,12 +201,13 @@ private fun ZoomVideoSheet(
         onValueChangeFinished = onZoomChangeFinished,
         valueRange = -1f..3f,
         enabled = zoomControlEnabled,
-        modifier = Modifier.weight(1f)
-          .semantics {
-            contentDescription = zoomLabel
-            stateDescription = zoomValueText
-          }
-          .tvFocusHighlight(MaterialTheme.shapes.small, enabled = zoomControlEnabled),
+        modifier =
+          Modifier
+            .weight(1f)
+            .semantics {
+              contentDescription = zoomLabel
+              stateDescription = zoomValueText
+            }.tvFocusHighlight(MaterialTheme.shapes.small, enabled = zoomControlEnabled),
       )
 
       FilledTonalIconButton(
@@ -272,19 +273,29 @@ private fun ZoomOptionSwitch(
   val shape = connectedShape(groupIndex, 2, ConnectedLayout.Vertical)
   val contentAlpha = if (enabled) 1f else 0.38f
   Row(
-    modifier = Modifier.fillMaxWidth()
-      .heightIn(min = 48.dp)
-      .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.01f)
-      .animatedPlayerSheetBackground(checked, shape)
-      .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
-      .padding(horizontal = 12.dp, vertical = 8.dp),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .heightIn(min = 48.dp)
+        .tvFocusHighlight(shape, enabled = enabled, focusedScale = 1.01f)
+        .animatedPlayerSheetBackground(checked, shape)
+        .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
+        .padding(horizontal = 12.dp, vertical = 8.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Column(Modifier.weight(1f)) {
-      Text(title, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha))
+      Text(
+        title,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha),
+      )
       if (summary != null) {
-        Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha))
+        Text(
+          summary,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha),
+        )
       }
     }
     IconSwitch(checked = checked, onCheckedChange = null, enabled = enabled)

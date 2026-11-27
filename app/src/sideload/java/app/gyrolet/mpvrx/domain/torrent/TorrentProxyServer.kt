@@ -62,7 +62,11 @@ class TorrentProxyServer(
 
   override fun serve(session: IHTTPSession): Response {
     onActivity()
-    if (session.uri != route) return textResponse(Response.Status.NOT_FOUND, "Stream not found", session.method == Method.HEAD)
+    if (session.uri !=
+      route
+    ) {
+      return textResponse(Response.Status.NOT_FOUND, "Stream not found", session.method == Method.HEAD)
+    }
     if (session.method != Method.GET && session.method != Method.HEAD) {
       return textResponse(Response.Status.METHOD_NOT_ALLOWED, "Method not allowed", false).apply {
         addHeader("Allow", "GET, HEAD")

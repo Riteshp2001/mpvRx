@@ -13,10 +13,9 @@ package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.runtime.remember
-import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,19 +24,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +54,7 @@ import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 
@@ -96,7 +96,11 @@ fun LyricsProviderSheet(
             state.onlineProvider?.takeIf { status == ProviderStatus.CURRENT }?.let { provider ->
               val timing = state.providerTimings[provider]
               if (timing != null) {
-                stringResource(R.string.lyrics_provider_auto_best_timing, provider.label, stringResource(timing.labelRes()))
+                stringResource(
+                  R.string.lyrics_provider_auto_best_timing,
+                  provider.label,
+                  stringResource(timing.labelRes()),
+                )
               } else {
                 stringResource(R.string.lyrics_provider_auto_best, provider.label)
               }
@@ -139,7 +143,8 @@ private fun autoStatus(state: PlayerViewModel.LyricsUiState): ProviderStatus =
   when {
     state.isLoading && state.preferredProvider == null -> ProviderStatus.FETCHING
     state.preferredProvider == null && state.onlineProvider != null -> ProviderStatus.CURRENT
-    state.preferredProvider == null && state.onlineLyrics == null &&
+    state.preferredProvider == null &&
+      state.onlineLyrics == null &&
       (state.missingProviders.isNotEmpty() || state.failedProviders.isNotEmpty()) ->
       if (state.missingProviders.isEmpty()) ProviderStatus.FAILED else ProviderStatus.MISSING
     else -> ProviderStatus.UNFETCHED
@@ -225,12 +230,21 @@ private fun ProviderRow(
   val tappable = enabled && !current && status != ProviderStatus.MISSING
   val interactionSource = remember { MutableInteractionSource() }
   val pressed by interactionSource.collectIsPressedAsState()
-  val container = animatedPlayerSheetSelectionColor(
-    current, label = "lyricsProviderRow", pressed = pressed, enabled = tappable,
-  )
-  val shape = rememberConnectedShape(
-    groupIndex, groupSize, ConnectedLayout.Vertical, pressed = pressed && tappable, selected = current,
-  )
+  val container =
+    animatedPlayerSheetSelectionColor(
+      current,
+      label = "lyricsProviderRow",
+      pressed = pressed,
+      enabled = tappable,
+    )
+  val shape =
+    rememberConnectedShape(
+      groupIndex,
+      groupSize,
+      ConnectedLayout.Vertical,
+      pressed = pressed && tappable,
+      selected = current,
+    )
   val dim = status == ProviderStatus.MISSING
 
   Surface(
@@ -241,9 +255,15 @@ private fun ProviderRow(
         .appPressFeedback(interactionSource, enabled = tappable, pressedScale = 0.985f)
         .clip(shape)
         .selectable(
-          selected = current, enabled = tappable, role = Role.RadioButton,
-          interactionSource = interactionSource, indication = androidx.compose.material3.ripple(),
-          onClick = { onClick(); haptics.selection(true) },
+          selected = current,
+          enabled = tappable,
+          role = Role.RadioButton,
+          interactionSource = interactionSource,
+          indication = androidx.compose.material3.ripple(),
+          onClick = {
+            onClick()
+            haptics.selection(true)
+          },
         ),
     shape = shape,
     color = container,
@@ -316,7 +336,23 @@ private fun StatusBadge(
       Icon(
         imageVector = icon,
         contentDescription = null,
-        tint = if (status == ProviderStatus.FAILED) colors.error else contentColor.copy(alpha = if (status == ProviderStatus.MISSING) 0.5f else 1f),
+        tint =
+          if (status ==
+            ProviderStatus.FAILED
+          ) {
+            colors.error
+          } else {
+            contentColor.copy(
+              alpha =
+                if (status ==
+                  ProviderStatus.MISSING
+                ) {
+                  0.5f
+                } else {
+                  1f
+                },
+            )
+          },
         modifier = Modifier.size(20.dp),
       )
     }

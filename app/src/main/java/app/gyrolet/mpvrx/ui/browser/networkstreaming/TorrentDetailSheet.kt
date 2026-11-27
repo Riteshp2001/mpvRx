@@ -40,7 +40,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,12 +63,13 @@ import app.gyrolet.mpvrx.database.entities.NetworkStreamEntryEntity
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
-import app.gyrolet.mpvrx.ui.torrent.TorrentDownloadButton
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.torrent.TorrentDownloadButton
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
 import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.utils.media.MediaUtils
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 /**
  * Cinematic Media Details Modal Bottom Sheet (Material 3 Expressive).
@@ -545,14 +545,26 @@ fun TorrentDetailSheet(
                   Icon(
                     imageVector = Icons.RoundedFilled.Search,
                     contentDescription = "Search files",
-                    tint = if (isSearchOpen || searchQuery.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint =
+                      if (isSearchOpen ||
+                        searchQuery.isNotBlank()
+                      ) {
+                        MaterialTheme.colorScheme.primary
+                      } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                      },
                   )
                 }
                 IconButton(onClick = { sortDescending = !sortDescending }) {
                   Icon(
                     imageVector = Icons.RoundedFilled.SwapVert,
                     contentDescription = "Sort",
-                    tint = if (sortDescending) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint =
+                      if (sortDescending) {
+                        MaterialTheme.colorScheme.primary
+                      } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                      },
                   )
                 }
               }
@@ -624,7 +636,12 @@ fun TorrentDetailSheet(
             shape = RoundedCornerShape(14.dp),
             colors =
               CardDefaults.cardColors(
-                containerColor = if (isViewed) MaterialTheme.colorScheme.surfaceContainerLow else MaterialTheme.colorScheme.surfaceContainerHigh,
+                containerColor =
+                  if (isViewed) {
+                    MaterialTheme.colorScheme.surfaceContainerLow
+                  } else {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                  },
               ),
           ) {
             Row(
@@ -635,7 +652,12 @@ fun TorrentDetailSheet(
               // Episode Index / Play Box
               Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = if (isViewed) MaterialTheme.colorScheme.surfaceContainerHighest else MaterialTheme.colorScheme.primaryContainer,
+                color =
+                  if (isViewed) {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                  } else {
+                    MaterialTheme.colorScheme.primaryContainer
+                  },
                 modifier = Modifier.size(44.dp),
               ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -664,7 +686,12 @@ fun TorrentDetailSheet(
                   text = displayLabel,
                   style = MaterialTheme.typography.bodyMedium,
                   fontWeight = if (isViewed) FontWeight.Normal else FontWeight.SemiBold,
-                  color = if (isViewed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                  color =
+                    if (isViewed) {
+                      MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                      MaterialTheme.colorScheme.onSurface
+                    },
                   maxLines = 2,
                   overflow = TextOverflow.Ellipsis,
                 )

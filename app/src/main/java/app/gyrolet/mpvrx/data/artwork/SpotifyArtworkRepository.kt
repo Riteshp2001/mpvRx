@@ -9,9 +9,6 @@ package app.gyrolet.mpvrx.data.artwork
 
 import app.gyrolet.mpvrx.network.awaitResponse
 import app.gyrolet.mpvrx.utils.logging.Log
-import java.io.ByteArrayOutputStream
-import java.io.IOException
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -32,6 +29,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 /**
  * Spotify's own Canvas: the portrait loop Spotify shows behind a track. There is no public API,
@@ -44,47 +44,65 @@ internal class SpotifyArtworkRepository(
   client: OkHttpClient,
   private val token: SpotifyToken,
 ) : MotionArtworkProvider {
-  private val http = client.newBuilder()
-    .cookieJar(CookieJar.NO_COOKIES)
-    .callTimeout(20, TimeUnit.SECONDS)
-    .readTimeout(15, TimeUnit.SECONDS)
-    .build()
-  private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+  private val http =
+    client
+      .newBuilder()
+      .cookieJar(CookieJar.NO_COOKIES)
+      .callTimeout(20, TimeUnit.SECONDS)
+      .readTimeout(15, TimeUnit.SECONDS)
+      .build()
+  private val json =
+    Json {
+      ignoreUnknownKeys = true
+      isLenient = true
+    }
   private val mutex = Mutex()
-  private data class Cached(val artwork: RemoteMotionArtwork?, val expiresAt: Long)
-  private val cache = object : LinkedHashMap<MotionArtworkQuery, Cached>(16, 0.75f, true) {
-    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<MotionArtworkQuery, Cached>?): Boolean = size > 64
-  }
-  private val queryHashes = SpotifyCanvasQuery.QueryHashes(
-    fetch = { url -> runCatching { get(url, mapOf("User-Agent" to SpotifyToken.WEB_USER_AGENT)) }.getOrNull() },
+
+  private data class Cached(
+    val artwork: RemoteMotionArtwork?,
+    val expiresAt: Long,
   )
 
-  override suspend fun find(query: MotionArtworkQuery): RemoteMotionArtwork? = withContext(Dispatchers.IO) {
-    if (!token.hasCookie) return@withContext null
-    mutex.withLock {
-      val now = System.currentTimeMillis()
-      cache[query]?.takeIf { it.expiresAt > now }?.let { return@withLock it.artwork }
-      val result = try {
-        withTimeoutOrNull(45_000L) { lookUp(query) }
-      } catch (e: CancellationException) {
-        throw e
-      } catch (e: IOException) {
-        Log.w(TAG, "Spotify Canvas lookup failed; retaining the existing cover: ${e.message}")
-        null
-      }
-      val artwork = result?.artwork
-      val lifetime = when {
-        result == null -> MINUTE
-        artwork == null -> 30 * MINUTE
-        else -> 6 * HOUR
-      }
-      cache[query] = Cached(artwork, System.currentTimeMillis() + lifetime)
-      artwork
+  private val cache =
+    object : LinkedHashMap<MotionArtworkQuery, Cached>(16, 0.75f, true) {
+      override fun removeEldestEntry(eldest: MutableMap.MutableEntry<MotionArtworkQuery, Cached>?): Boolean = size > 64
     }
-  }
+  private val queryHashes =
+    SpotifyCanvasQuery.QueryHashes(
+      fetch = { url -> runCatching { get(url, mapOf("User-Agent" to SpotifyToken.WEB_USER_AGENT)) }.getOrNull() },
+    )
+
+  override suspend fun find(query: MotionArtworkQuery): RemoteMotionArtwork? =
+    withContext(Dispatchers.IO) {
+      if (!token.hasCookie) return@withContext null
+      mutex.withLock {
+        val now = System.currentTimeMillis()
+        cache[query]?.takeIf { it.expiresAt > now }?.let { return@withLock it.artwork }
+        val result =
+          try {
+            withTimeoutOrNull(45_000L) { lookUp(query) }
+          } catch (e: CancellationException) {
+            throw e
+          } catch (e: IOException) {
+            Log.w(TAG, "Spotify Canvas lookup failed; retaining the existing cover: ${e.message}")
+            null
+          }
+        val artwork = result?.artwork
+        val lifetime =
+          when {
+            result == null -> MINUTE
+            artwork == null -> 30 * MINUTE
+            else -> 6 * HOUR
+          }
+        cache[query] = Cached(artwork, System.currentTimeMillis() + lifetime)
+        artwork
+      }
+    }
 
   /** A settled answer; null from [lookUp] means "try again soon" (no token yet, transport failure). */
-  private data class Lookup(val artwork: RemoteMotionArtwork?)
+  private data class Lookup(
+    val artwork: RemoteMotionArtwork?,
+  )
 
   private suspend fun lookUp(query: MotionArtworkQuery): Lookup? {
     val bearer = token.accessToken() ?: return null
@@ -98,61 +116,88 @@ internal class SpotifyArtworkRepository(
     listOfNotNull(MotionArtworkMatching.cleanTitle(query.title), query.artist, query.album?.takeIf { it.isNotBlank() })
       .joinToString(" ")
 
-  private suspend fun searchViaPathfinder(query: MotionArtworkQuery, bearer: String): String? {
+  private suspend fun searchViaPathfinder(
+    query: MotionArtworkQuery,
+    bearer: String,
+  ): String? {
     val clientToken = token.clientToken() ?: return null
-    val variables = buildJsonObject {
-      put("searchTerm", searchTerm(query))
-      put("offset", 0)
-      put("limit", 10)
-      put("numberOfTopResults", 5)
-      put("includeAudiobooks", false)
-      put("includePreReleases", false)
-    }.toString()
-    val extensions = buildJsonObject {
-      putJsonObject("persistedQuery") {
-        put("version", 1)
-        put("sha256Hash", PATHFINDER_SEARCH_HASH)
-      }
-    }.toString()
-    val url = PATHFINDER_URL.toHttpUrl().newBuilder()
-      .addQueryParameter("operationName", "searchTracks")
-      .addQueryParameter("variables", variables)
-      .addQueryParameter("extensions", extensions)
-      .build().toString()
-    val body = getOrNull(
-      url,
-      mapOf(
-        "Authorization" to "Bearer $bearer",
-        "Client-Token" to clientToken,
-        "App-platform" to "WebPlayer",
-        "Accept" to "application/json",
-        "User-Agent" to SpotifyToken.WEB_USER_AGENT,
-      ),
-    ) ?: return null
+    val variables =
+      buildJsonObject {
+        put("searchTerm", searchTerm(query))
+        put("offset", 0)
+        put("limit", 10)
+        put("numberOfTopResults", 5)
+        put("includeAudiobooks", false)
+        put("includePreReleases", false)
+      }.toString()
+    val extensions =
+      buildJsonObject {
+        putJsonObject("persistedQuery") {
+          put("version", 1)
+          put("sha256Hash", PATHFINDER_SEARCH_HASH)
+        }
+      }.toString()
+    val url =
+      PATHFINDER_URL
+        .toHttpUrl()
+        .newBuilder()
+        .addQueryParameter("operationName", "searchTracks")
+        .addQueryParameter("variables", variables)
+        .addQueryParameter("extensions", extensions)
+        .build()
+        .toString()
+    val body =
+      getOrNull(
+        url,
+        mapOf(
+          "Authorization" to "Bearer $bearer",
+          "Client-Token" to clientToken,
+          "App-platform" to "WebPlayer",
+          "Accept" to "application/json",
+          "User-Agent" to SpotifyToken.WEB_USER_AGENT,
+        ),
+      ) ?: return null
     val root = runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull() ?: return null
-    val items = root.obj("data")?.obj("searchV2")?.obj("tracksV2")?.get("items") as? JsonArray ?: return null
+    val items =
+      root
+        .obj("data")
+        ?.obj("searchV2")
+        ?.obj("tracksV2")
+        ?.get("items") as? JsonArray ?: return null
     for (element in items) {
       val data = (element as? JsonObject)?.obj("item")?.obj("data") ?: continue
       val uri = data.text("uri") ?: data.text("id")?.let { "spotify:track:$it" } ?: continue
       // The response shape is undocumented: check the title and artists when present.
       val name = data.text("name")
       if (name != null && !MotionArtworkMatching.titleMatches(query, name)) continue
-      val artists = (data.obj("artists")?.get("items") as? JsonArray).orEmpty()
-        .mapNotNull { (it as? JsonObject)?.obj("profile")?.text("name") }
-      if (name != null && artists.isNotEmpty() &&
+      val artists =
+        (data.obj("artists")?.get("items") as? JsonArray)
+          .orEmpty()
+          .mapNotNull { (it as? JsonObject)?.obj("profile")?.text("name") }
+      if (name != null &&
+        artists.isNotEmpty() &&
         !MotionArtworkMatching.artistsMatch(query, artists.joinToString(", "), name)
-      ) continue
+      ) {
+        continue
+      }
       return uri
     }
     return null
   }
 
-  private suspend fun searchViaRest(query: MotionArtworkQuery, bearer: String): String? {
-    val url = SEARCH_URL.toHttpUrl().newBuilder()
-      .addQueryParameter("q", searchTerm(query))
-      .addQueryParameter("type", "track")
-      .addQueryParameter("limit", "10")
-      .build().toString()
+  private suspend fun searchViaRest(
+    query: MotionArtworkQuery,
+    bearer: String,
+  ): String? {
+    val url =
+      SEARCH_URL
+        .toHttpUrl()
+        .newBuilder()
+        .addQueryParameter("q", searchTerm(query))
+        .addQueryParameter("type", "track")
+        .addQueryParameter("limit", "10")
+        .build()
+        .toString()
     val body = getOrNull(url, authHeaders(bearer)) ?: return null
     val root = runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull() ?: return null
     val items = root.obj("tracks")?.get("items") as? JsonArray ?: return null
@@ -167,30 +212,40 @@ internal class SpotifyArtworkRepository(
   }
 
   /** Pathfinder first; canvaz-cache when it fails or answers without a playable video. */
-  private suspend fun canvasUrl(trackUri: String, bearer: String): String? =
+  private suspend fun canvasUrl(
+    trackUri: String,
+    bearer: String,
+  ): String? =
     when (val answer = canvasViaPathfinder(trackUri, bearer)) {
       is SpotifyCanvasQuery.Answer.Found -> answer.url
       is SpotifyCanvasQuery.Answer.NoCanvas, is SpotifyCanvasQuery.Answer.Failed -> canvasViaCanvaz(trackUri, bearer)
     }
 
-  private suspend fun canvasViaPathfinder(trackUri: String, bearer: String, isRetry: Boolean = false): SpotifyCanvasQuery.Answer {
+  private suspend fun canvasViaPathfinder(
+    trackUri: String,
+    bearer: String,
+    isRetry: Boolean = false,
+  ): SpotifyCanvasQuery.Answer {
     val hash = queryHashes.canvasHash(forceRefresh = isRetry)
-    val request = Request.Builder()
-      .url(SpotifyCanvasQuery.ENDPOINT)
-      .post(SpotifyCanvasQuery.requestBody(trackUri, hash).toByteArray(Charsets.UTF_8).toRequestBody(JSON_TYPE))
-      .apply { authHeaders(bearer).forEach { (name, value) -> header(name, value) } }
-      .header("App-platform", "WebPlayer")
-      .header("Accept", "application/json")
-      .header("Accept-Language", "en")
-      .build()
-    val body = try {
-      http.newCall(request).awaitResponse().use { response ->
-        if (response.code == 401) token.invalidate()
-        if (response.isSuccessful) response.body.string() else null
-      }
-    } catch (e: IOException) {
-      return SpotifyCanvasQuery.Answer.Failed("request failed: ${e.message}")
-    } ?: return SpotifyCanvasQuery.Answer.Failed("http error")
+    val request =
+      Request
+        .Builder()
+        .url(SpotifyCanvasQuery.ENDPOINT)
+        .post(SpotifyCanvasQuery.requestBody(trackUri, hash).toByteArray(Charsets.UTF_8).toRequestBody(JSON_TYPE))
+        .apply { authHeaders(bearer).forEach { (name, value) -> header(name, value) } }
+        .header("App-platform", "WebPlayer")
+        .header("Accept", "application/json")
+        .header("Accept-Language", "en")
+        .build()
+    val body =
+      try {
+        http.newCall(request).awaitResponse().use { response ->
+          if (response.code == 401) token.invalidate()
+          if (response.isSuccessful) response.body.string() else null
+        }
+      } catch (e: IOException) {
+        return SpotifyCanvasQuery.Answer.Failed("request failed: ${e.message}")
+      } ?: return SpotifyCanvasQuery.Answer.Failed("http error")
     val answer = SpotifyCanvasQuery.parse(body)
     // A rebuilt web player retires the old hash: look it up again once.
     if (answer is SpotifyCanvasQuery.Answer.Failed && answer.staleHash && !isRetry) {
@@ -199,23 +254,29 @@ internal class SpotifyArtworkRepository(
     return answer
   }
 
-  private suspend fun canvasViaCanvaz(trackUri: String, bearer: String): String? {
-    val request = Request.Builder()
-      .url(CANVAS_URL)
-      .post(Protobuf.canvasRequest(trackUri).toRequestBody(PROTOBUF_TYPE))
-      .apply { authHeaders(bearer).forEach { (name, value) -> header(name, value) } }
-      .header("Accept", "application/protobuf")
-      .header("Accept-Language", "en")
-      // spclient serves this path to Spotify's own apps; the web player's UA is refused.
-      .header("User-Agent", SPOTIFY_APP_USER_AGENT)
-      .build()
-    val bytes = try {
-      http.newCall(request).awaitResponse().use { response ->
-        if (response.isSuccessful) response.body.bytes() else null
-      }
-    } catch (e: IOException) {
-      null
-    } ?: return null
+  private suspend fun canvasViaCanvaz(
+    trackUri: String,
+    bearer: String,
+  ): String? {
+    val request =
+      Request
+        .Builder()
+        .url(CANVAS_URL)
+        .post(Protobuf.canvasRequest(trackUri).toRequestBody(PROTOBUF_TYPE))
+        .apply { authHeaders(bearer).forEach { (name, value) -> header(name, value) } }
+        .header("Accept", "application/protobuf")
+        .header("Accept-Language", "en")
+        // spclient serves this path to Spotify's own apps; the web player's UA is refused.
+        .header("User-Agent", SPOTIFY_APP_USER_AGENT)
+        .build()
+    val bytes =
+      try {
+        http.newCall(request).awaitResponse().use { response ->
+          if (response.isSuccessful) response.body.bytes() else null
+        }
+      } catch (e: IOException) {
+        null
+      } ?: return null
     val hits = Protobuf.canvasResponse(bytes)
     hits.firstOrNull { it.second == trackUri }?.first?.let { return it }
     hits.firstOrNull()?.first?.let { return it }
@@ -223,13 +284,17 @@ internal class SpotifyArtworkRepository(
     return CANVAS_URL_REGEX.find(String(bytes, Charsets.ISO_8859_1))?.value
   }
 
-  private suspend fun authHeaders(bearer: String): Map<String, String> = buildMap {
-    put("Authorization", "Bearer $bearer")
-    put("User-Agent", SpotifyToken.WEB_USER_AGENT)
-    token.clientToken()?.let { put("Client-Token", it) }
-  }
+  private suspend fun authHeaders(bearer: String): Map<String, String> =
+    buildMap {
+      put("Authorization", "Bearer $bearer")
+      put("User-Agent", SpotifyToken.WEB_USER_AGENT)
+      token.clientToken()?.let { put("Client-Token", it) }
+    }
 
-  private suspend fun getOrNull(url: String, headers: Map<String, String>): String? =
+  private suspend fun getOrNull(
+    url: String,
+    headers: Map<String, String>,
+  ): String? =
     try {
       get(url, headers)
     } catch (e: IOException) {
@@ -237,8 +302,16 @@ internal class SpotifyArtworkRepository(
       null
     }
 
-  private suspend fun get(url: String, headers: Map<String, String>): String? {
-    val request = Request.Builder().url(url).apply { headers.forEach { (name, value) -> header(name, value) } }.build()
+  private suspend fun get(
+    url: String,
+    headers: Map<String, String>,
+  ): String? {
+    val request =
+      Request
+        .Builder()
+        .url(url)
+        .apply { headers.forEach { (name, value) -> header(name, value) } }
+        .build()
     return http.newCall(request).awaitResponse().use { response ->
       if (response.code == 401) token.invalidate()
       if (!response.isSuccessful) return@use null
@@ -257,18 +330,26 @@ internal class SpotifyArtworkRepository(
    */
   private object Protobuf {
     fun canvasRequest(trackUri: String): ByteArray {
-      val track = ByteArrayOutputStream().apply { writeBytesField(1, trackUri.toByteArray(Charsets.UTF_8)) }.toByteArray()
+      val track =
+        ByteArrayOutputStream()
+          .apply {
+            writeBytesField(
+              1,
+              trackUri.toByteArray(Charsets.UTF_8),
+            )
+          }.toByteArray()
       return ByteArrayOutputStream().apply { writeBytesField(1, track) }.toByteArray()
     }
 
     /** (canvas url, track uri) pairs. */
-    fun canvasResponse(bytes: ByteArray): List<Pair<String, String?>> = runCatching {
-      buildList {
-        Reader(bytes).forEachField { field, value ->
-          if (field == 1 && value is ByteArray) canvas(value)?.let { add(it) }
+    fun canvasResponse(bytes: ByteArray): List<Pair<String, String?>> =
+      runCatching {
+        buildList {
+          Reader(bytes).forEachField { field, value ->
+            if (field == 1 && value is ByteArray) canvas(value)?.let { add(it) }
+          }
         }
-      }
-    }.getOrDefault(emptyList())
+      }.getOrDefault(emptyList())
 
     private fun canvas(bytes: ByteArray): Pair<String, String?>? {
       var url: String? = null
@@ -283,7 +364,10 @@ internal class SpotifyArtworkRepository(
       return url?.let { it to trackUri }
     }
 
-    private fun ByteArrayOutputStream.writeBytesField(field: Int, value: ByteArray) {
+    private fun ByteArrayOutputStream.writeBytesField(
+      field: Int,
+      value: ByteArray,
+    ) {
       writeVarint((field shl 3 or 2).toLong())
       writeVarint(value.size.toLong())
       write(value)
@@ -298,7 +382,9 @@ internal class SpotifyArtworkRepository(
       write(remaining.toInt())
     }
 
-    private class Reader(private val bytes: ByteArray) {
+    private class Reader(
+      private val bytes: ByteArray,
+    ) {
       private var position = 0
 
       /** Varint fields arrive as Long, length-delimited ones as ByteArray; others are skipped. */
@@ -358,6 +444,7 @@ internal class SpotifyArtworkRepository(
     private val CANVAS_URL_REGEX = Regex("""https://[^"'\s\x00-\x1F]+\.cnvs\.mp4""")
 
     private fun JsonObject.obj(key: String): JsonObject? = get(key) as? JsonObject
+
     private fun JsonObject.text(key: String): String? = (get(key) as? JsonPrimitive)?.contentOrNull
   }
 }

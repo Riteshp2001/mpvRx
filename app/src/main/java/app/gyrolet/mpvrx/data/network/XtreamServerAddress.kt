@@ -24,16 +24,23 @@ class XtreamServerAddress private constructor(
       val input = raw.trim()
       require(input.isNotEmpty() && input.none { it.isISOControl() }) { "Invalid Xtream server URL" }
       // Xtream providers commonly supply host:port. An explicit HTTPS URL is always preserved.
-      val parsed = (if ("://" in input) input else "http://$input").toHttpUrlOrNull()
-        ?: throw IllegalArgumentException("Invalid Xtream server URL")
+      val parsed =
+        (if ("://" in input) input else "http://$input").toHttpUrlOrNull()
+          ?: throw IllegalArgumentException("Invalid Xtream server URL")
       require(parsed.username.isEmpty() && parsed.password.isEmpty()) { "Enter credentials in their own fields" }
       val segments = parsed.encodedPathSegments.dropLastWhile { it.isEmpty() }
       val isEndpoint = segments.lastOrNull()?.lowercase() in setOf("get.php", "player_api.php", "xmltv.php")
       require(parsed.query == null || isEndpoint) { "Use a server address or an Xtream provider link" }
       val baseSegments = if (isEndpoint) segments.dropLast(1) else segments
-      val base = parsed.newBuilder()
-        .encodedPath("/" + baseSegments.joinToString("/"))
-        .query(null).fragment(null).build().toString().trimEnd('/')
+      val base =
+        parsed
+          .newBuilder()
+          .encodedPath("/" + baseSegments.joinToString("/"))
+          .query(null)
+          .fragment(null)
+          .build()
+          .toString()
+          .trimEnd('/')
       return XtreamServerAddress(base, parsed.queryParameter("username"), parsed.queryParameter("password"))
     }
   }

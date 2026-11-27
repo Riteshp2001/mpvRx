@@ -24,8 +24,8 @@ import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -119,8 +119,9 @@ internal object YtdlpMediaMerger {
         .filter { it.isFile && it.length() > 0L }
         .mapNotNull(::inspect)
         .toList()
-    val video = inspected.firstOrNull { it.hasVideo && !it.hasAudio } ?: inspected.firstOrNull { it.hasVideo }
-      ?: throw IllegalStateException("Downloaded video stream was not found")
+    val video =
+      inspected.firstOrNull { it.hasVideo && !it.hasAudio } ?: inspected.firstOrNull { it.hasVideo }
+        ?: throw IllegalStateException("Downloaded video stream was not found")
     val audio =
       inspected.firstOrNull { it.file != video.file && it.hasAudio && !it.hasVideo }
         ?: inspected.firstOrNull { it.file != video.file && it.hasAudio }
@@ -137,8 +138,12 @@ internal object YtdlpMediaMerger {
         var hasAudio = false
         repeat(extractor.trackCount) { index ->
           when {
-            extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)?.startsWith("video/") == true -> hasVideo = true
-            extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true -> hasAudio = true
+            extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)?.startsWith("video/") == true ->
+              hasVideo =
+                true
+            extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true ->
+              hasAudio =
+                true
           }
         }
         InspectedFile(file, hasVideo, hasAudio).takeIf { it.hasVideo || it.hasAudio }

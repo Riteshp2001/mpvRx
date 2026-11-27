@@ -124,8 +124,15 @@ class TorrentSelectionActivity : AppCompatActivity() {
 
   private fun extractTorrentSource(intent: Intent?): String? {
     intent ?: return null
-    intent.getStringExtra(MediaUtils.EXTRA_TORRENT_SOURCE)?.trim()?.takeIf(String::isNotBlank)?.let { return it }
-    intent.dataString?.trim()?.takeIf(String::isNotBlank)?.let { return it }
+    intent
+      .getStringExtra(MediaUtils.EXTRA_TORRENT_SOURCE)
+      ?.trim()
+      ?.takeIf(String::isNotBlank)
+      ?.let { return it }
+    intent.dataString
+      ?.trim()
+      ?.takeIf(String::isNotBlank)
+      ?.let { return it }
     if (intent.action == Intent.ACTION_SEND) {
       val stream =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -135,7 +142,11 @@ class TorrentSelectionActivity : AppCompatActivity() {
           intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
         }
       stream?.toString()?.takeIf(String::isNotBlank)?.let { return it }
-      intent.getStringExtra(Intent.EXTRA_TEXT)?.trim()?.takeIf(String::isNotBlank)?.let { return it }
+      intent
+        .getStringExtra(Intent.EXTRA_TEXT)
+        ?.trim()
+        ?.takeIf(String::isNotBlank)
+        ?.let { return it }
     }
     return null
   }

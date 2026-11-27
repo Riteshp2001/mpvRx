@@ -27,4 +27,3 @@ internal class ToggleDebouncer(
     lastAcceptedAtMs = 0L
   }
 }
-

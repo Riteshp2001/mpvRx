@@ -13,8 +13,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import app.gyrolet.mpvrx.ui.icons.LocalIconShadow
-import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalBorderlessPlayerControls
+import app.gyrolet.mpvrx.ui.player.controls.components.LocalForceDarkPlayerButtonsBackground
 import app.gyrolet.mpvrx.ui.theme.LocalDarkAppColorScheme
 
 internal object PlayerButtonAlpha {
@@ -46,8 +46,10 @@ internal object PlayerButtonAlpha {
     }
   }
 
-  fun glassTint(designed: Float, level: Float): Float =
-    background(designed, maxOf(level, DEFAULT_BACKGROUND_LEVEL))
+  fun glassTint(
+    designed: Float,
+    level: Float,
+  ): Float = background(designed, maxOf(level, DEFAULT_BACKGROUND_LEVEL))
 
   fun glassLayer(level: Float): Float = (level / DEFAULT_BACKGROUND_LEVEL).coerceIn(0f, 1f)
 }
@@ -60,9 +62,7 @@ internal object PlayerButtonAlpha {
  * whole hierarchy just to style its buttons caused unrelated UI to switch palette.
  */
 @Composable
-internal fun PlayerButtonTheme(
-  content: @Composable () -> Unit,
-) {
+internal fun PlayerButtonTheme(content: @Composable () -> Unit) {
   CompositionLocalProvider(
     LocalBorderlessPlayerControls provides false,
     LocalIconShadow provides false,

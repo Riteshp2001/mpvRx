@@ -40,6 +40,7 @@ class SyncplayManager(
 ) {
   private val client = SyncplayClient()
   private val credentialsStore = SyncplayCredentialsStore(context.applicationContext)
+
   // Session changes and UI actions share one dispatcher. Socket operations switch to IO in the client.
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -57,6 +58,7 @@ class SyncplayManager(
   private var listenJob: Job? = null
   private var messageCollectorJob: Job? = null
   private var backgroundDisconnectJob: Job? = null
+
   @Volatile private var sessionGeneration = 0L
   private var loggedIn = false
   private var lastLocalPlaybackState = SyncplayPlaybackState(position = 0.0, paused = true)
@@ -99,47 +101,52 @@ class SyncplayManager(
     stopSession()
     val connectionGeneration = sessionGeneration
     _state.value = SyncplayState(isConnecting = true, room = room, username = username)
-    connectJob = scope.launch {
-      val result = client.connect(host, port)
-      if (sessionGeneration != connectionGeneration) return@launch
-      if (result.isFailure) {
-        failConnection(SyncplayConnectionFailure.from(result.exceptionOrNull()!!))
-        return@launch
-      }
-
-      messageCollectorJob =
-        scope.launch(start = CoroutineStart.UNDISPATCHED) {
-          client.messages.collect { if (sessionGeneration == connectionGeneration) handleMessage(it) }
+    connectJob =
+      scope.launch {
+        val result = client.connect(host, port)
+        if (sessionGeneration != connectionGeneration) return@launch
+        if (result.isFailure) {
+          failConnection(SyncplayConnectionFailure.from(result.exceptionOrNull()!!))
+          return@launch
         }
-      listenJob =
-        scope.launch {
-          val listening = client.listen()
-          if (sessionGeneration == connectionGeneration) {
-            failConnection(listening.exceptionOrNull()?.let(SyncplayConnectionFailure::from) ?: SyncplayConnectionFailure.CLOSED)
+
+        messageCollectorJob =
+          scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            client.messages.collect { if (sessionGeneration == connectionGeneration) handleMessage(it) }
           }
-        }
-      handshakeJob = scope.launch {
-        delay(10_000)
-        if (sessionGeneration == connectionGeneration && !loggedIn) {
-          failConnection(SyncplayConnectionFailure.HANDSHAKE_TIMEOUT)
-        }
-      }
+        listenJob =
+          scope.launch {
+            val listening = client.listen()
+            if (sessionGeneration == connectionGeneration) {
+              failConnection(
+                listening.exceptionOrNull()?.let(SyncplayConnectionFailure::from) ?: SyncplayConnectionFailure.CLOSED,
+              )
+            }
+          }
+        handshakeJob =
+          scope.launch {
+            delay(10_000)
+            if (sessionGeneration == connectionGeneration && !loggedIn) {
+              failConnection(SyncplayConnectionFailure.HANDSHAKE_TIMEOUT)
+            }
+          }
 
-      val sent = client.sendMessage(
-        SyncplayMessage(
-          hello =
-            HelloMessage(
-              username = username,
-              room = Room(room),
-              version = SYNCPLAY_LEGACY_VERSION,
-              realversion = SYNCPLAY_PROTOCOL_VERSION,
-              password = password.md5OrNull(),
-              features = buildJsonObject {},
+        val sent =
+          client.sendMessage(
+            SyncplayMessage(
+              hello =
+                HelloMessage(
+                  username = username,
+                  room = Room(room),
+                  version = SYNCPLAY_LEGACY_VERSION,
+                  realversion = SYNCPLAY_PROTOCOL_VERSION,
+                  password = password.md5OrNull(),
+                  features = buildJsonObject {},
+                ),
             ),
-        ),
-      )
-      if (!sent && sessionGeneration == connectionGeneration) failConnection(SyncplayConnectionFailure.NETWORK)
-    }
+          )
+        if (!sent && sessionGeneration == connectionGeneration) failConnection(SyncplayConnectionFailure.NETWORK)
+      }
   }
 
   fun updatePlayerState(
@@ -228,7 +235,8 @@ class SyncplayManager(
     }
 
     message.hello?.let { hello ->
-      if (hello.username.isNullOrBlank() || hello.room?.name.isNullOrBlank() ||
+      if (hello.username.isNullOrBlank() ||
+        hello.room?.name.isNullOrBlank() ||
         (hello.realversion.isNullOrBlank() && hello.version.isNullOrBlank())
       ) {
         failConnection(SyncplayConnectionFailure.PROTOCOL)
@@ -307,10 +315,14 @@ class SyncplayManager(
 
   private fun failConnection(failure: SyncplayConnectionFailure) {
     stopSession()
-    _state.value = _state.value.copy(
-      isConnected = false, isConnecting = false, users = emptyList(),
-      connectionFailed = true, connectionFailure = failure,
-    )
+    _state.value =
+      _state.value.copy(
+        isConnected = false,
+        isConnecting = false,
+        users = emptyList(),
+        connectionFailed = true,
+        connectionFailure = failure,
+      )
   }
 
   private fun stopSession() {

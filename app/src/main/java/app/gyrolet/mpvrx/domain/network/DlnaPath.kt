@@ -15,7 +15,12 @@ import java.util.Base64
 object DlnaPath {
   private const val ROOT_ID = "0"
 
-  fun child(parent: NetworkPath, id: String, kind: Char, duplicate: Int = 0): NetworkPath {
+  fun child(
+    parent: NetworkPath,
+    id: String,
+    kind: Char,
+    duplicate: Int = 0,
+  ): NetworkPath {
     require(kind in "doavi" && id.isNotEmpty()) { "Invalid DLNA object" }
     val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(id.toByteArray(Charsets.UTF_8))
     return parent.child("$kind-$encoded" + if (duplicate > 0) "~$duplicate" else "")
@@ -30,5 +35,6 @@ object DlnaPath {
   }
 
   fun isOrderedContainer(path: NetworkPath): Boolean = path.segments.lastOrNull()?.startsWith("o-") == true
+
   fun isAudio(path: NetworkPath): Boolean = path.segments.lastOrNull()?.startsWith("a-") == true
 }

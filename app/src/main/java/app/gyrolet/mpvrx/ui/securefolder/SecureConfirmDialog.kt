@@ -25,8 +25,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.preference.Preference
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
@@ -65,17 +65,18 @@ fun SecureConfirmDialog(
       onConfirm()
     },
     onCancel = onDismiss,
-    confirmContent = deletePaths?.let { paths ->
-      {
-        app.gyrolet.mpvrx.presentation.components.DeleteSizeButton(
-          paths = paths,
-          onClick = {
-            if (dontAskChecked) dontAskAgain.set(true)
-            onConfirm()
-          },
-        )
-      }
-    },
+    confirmContent =
+      deletePaths?.let { paths ->
+        {
+          app.gyrolet.mpvrx.presentation.components.DeleteSizeButton(
+            paths = paths,
+            onClick = {
+              if (dontAskChecked) dontAskAgain.set(true)
+              onConfirm()
+            },
+          )
+        }
+      },
     customContent = {
       Row(
         modifier = Modifier.fillMaxWidth(),

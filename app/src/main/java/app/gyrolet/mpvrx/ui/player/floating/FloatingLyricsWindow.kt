@@ -69,14 +69,17 @@ internal class FloatingLyricsWindow(
   private val onSeek: (Long) -> Unit,
   private val onUnavailable: (RuntimeException) -> Unit,
 ) : FloatingPillHost {
-  private val display = checkNotNull(
-    context.getSystemService(DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY),
-  ) { "No display is available for floating lyrics" }
+  private val display =
+    checkNotNull(
+      context.getSystemService(DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY),
+    ) { "No display is available for floating lyrics" }
   private val displayContext = context.createDisplayContext(display)
   private val windowContext =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
       displayContext.createWindowContext(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null)
-    } else displayContext
+    } else {
+      displayContext
+    }
   private val windows = checkNotNull(windowContext.getSystemService(WindowManager::class.java))
   private val owner = OverlayOwner()
   private val state = FloatingPillState()
@@ -85,10 +88,16 @@ internal class FloatingLyricsWindow(
   private var screenHeight = 0
   private var bottomInset = 0
   private val density: Float get() = windowContext.resources.displayMetrics.density
+
   private fun Dp.pixels(): Int = (value * density).roundToInt()
+
   private val margin get() = FloatingPillMetrics.Margin.pixels()
   private val cover get() = FloatingPillMetrics.Cover.pixels()
-  private val root = DragFrame(windowContext).apply { clipChildren = false; clipToPadding = false }
+  private val root =
+    DragFrame(windowContext).apply {
+      clipChildren = false
+      clipToPadding = false
+    }
   private val compose = ComposeView(windowContext)
   private val targets = FloatingLyricsDropTargets(windowContext) { reducedMotion() }
   private var removed = false
@@ -98,6 +107,7 @@ internal class FloatingLyricsWindow(
   private var landing = false
   private var dropping = false
   private var coverPosition = Offset.Zero
+
   /** Fixed for given metrics: the open pill fits on either side of the cover's centre. */
   private var frameWidth = 0
   private var frameHeight = 0
@@ -106,45 +116,56 @@ internal class FloatingLyricsWindow(
   private var sentSize = false
   private var sentPosition = false
   private val flushFrame = Runnable { place() }
-  private val relayoutDone = ViewTreeObserver.OnPreDrawListener {
-    // The last WindowManager change is laid out now, so one that had to wait can follow.
-    if (sentSize || sentPosition) {
-      sentSize = false
-      sentPosition = false
-      root.removeCallbacks(flushFrame)
-      root.postOnAnimation(flushFrame)
+  private val relayoutDone =
+    ViewTreeObserver.OnPreDrawListener {
+      // The last WindowManager change is laid out now, so one that had to wait can follow.
+      if (sentSize || sentPosition) {
+        sentSize = false
+        sentPosition = false
+        root.removeCallbacks(flushFrame)
+        root.postOnAnimation(flushFrame)
+      }
+      true
     }
-    true
-  }
   private val flight = FloatingPillFlight(::moveCover)
-  private val params = WindowManager.LayoutParams(
-    1, 1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-      WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-      WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-    PixelFormat.TRANSLUCENT,
-  ).apply {
-    gravity = Gravity.TOP or Gravity.LEFT
-    title = windowContext.getString(R.string.pref_floating_lyrics_title)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) setFitInsetsTypes(0)
-  }
-  private val targetParams = WindowManager.LayoutParams(
-    1, 1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-      WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-      WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-    PixelFormat.TRANSLUCENT,
-  ).apply {
-    gravity = Gravity.TOP or Gravity.LEFT
-    title = windowContext.getString(R.string.pref_floating_lyrics_title)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) setFitInsetsTypes(0)
-  }
-  private val configuration = object : ComponentCallbacks {
-    override fun onConfigurationChanged(newConfig: Configuration) {
-      if (!removed) refreshSafely()
+  private val params =
+    WindowManager
+      .LayoutParams(
+        1,
+        1,
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+          WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+          WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+        PixelFormat.TRANSLUCENT,
+      ).apply {
+        gravity = Gravity.TOP or Gravity.LEFT
+        title = windowContext.getString(R.string.pref_floating_lyrics_title)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) setFitInsetsTypes(0)
+      }
+  private val targetParams =
+    WindowManager
+      .LayoutParams(
+        1,
+        1,
+        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+          WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+          WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+        PixelFormat.TRANSLUCENT,
+      ).apply {
+        gravity = Gravity.TOP or Gravity.LEFT
+        title = windowContext.getString(R.string.pref_floating_lyrics_title)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) setFitInsetsTypes(0)
+      }
+  private val configuration =
+    object : ComponentCallbacks {
+      override fun onConfigurationChanged(newConfig: Configuration) {
+        if (!removed) refreshSafely()
+      }
+
+      override fun onLowMemory() = Unit
     }
-    override fun onLowMemory() = Unit
-  }
 
   init {
     state.dockEnd = preferences.floatingLyricsDockEnd.get()
@@ -170,7 +191,8 @@ internal class FloatingLyricsWindow(
     }
     root.addView(
       compose,
-      FrameLayout.LayoutParams(pillWidth, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP or Gravity.LEFT)
+      FrameLayout
+        .LayoutParams(pillWidth, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.TOP or Gravity.LEFT)
         .apply { leftMargin = pillLeft() },
     )
     return try {
@@ -184,15 +206,20 @@ internal class FloatingLyricsWindow(
       callbacksRegistered = true
       true
     } catch (error: WindowManager.BadTokenException) {
-      failWindow(error); false
+      failWindow(error)
+      false
     } catch (error: WindowManager.InvalidDisplayException) {
-      failWindow(error); false
+      failWindow(error)
+      false
     } catch (error: SecurityException) {
-      failWindow(error); false
+      failWindow(error)
+      false
     } catch (error: IllegalStateException) {
-      failWindow(error); false
+      failWindow(error)
+      false
     } catch (error: IllegalArgumentException) {
-      failWindow(error); false
+      failWindow(error)
+      false
     }
   }
 
@@ -225,9 +252,11 @@ internal class FloatingLyricsWindow(
     try {
       windows.removeViewImmediate(view)
     } catch (error: IllegalArgumentException) {
-      app.gyrolet.mpvrx.utils.logging.Log.w(TAG, "Floating lyrics window was already removed", error)
+      app.gyrolet.mpvrx.utils.logging.Log
+        .w(TAG, "Floating lyrics window was already removed", error)
     } catch (error: SecurityException) {
-      app.gyrolet.mpvrx.utils.logging.Log.w(TAG, "Could not remove floating lyrics window", error)
+      app.gyrolet.mpvrx.utils.logging.Log
+        .w(TAG, "Could not remove floating lyrics window", error)
     }
   }
 
@@ -237,8 +266,7 @@ internal class FloatingLyricsWindow(
     onUnavailable(error)
   }
 
-  private fun reducedMotion(): Boolean =
-    playerPreferences.reduceMotion.get() || !ValueAnimator.areAnimatorsEnabled()
+  private fun reducedMotion(): Boolean = playerPreferences.reduceMotion.get() || !ValueAnimator.areAnimatorsEnabled()
 
   private fun refreshSafely() {
     if (removed) return
@@ -264,9 +292,10 @@ internal class FloatingLyricsWindow(
     val right: Int
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
       val metrics = windows.maximumWindowMetrics
-      val insets = metrics.windowInsets.getInsetsIgnoringVisibility(
-        WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout(),
-      )
+      val insets =
+        metrics.windowInsets.getInsetsIgnoringVisibility(
+          WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout(),
+        )
       screenWidth = metrics.bounds.width()
       screenHeight = metrics.bounds.height()
       left = insets.left
@@ -283,20 +312,28 @@ internal class FloatingLyricsWindow(
       right = 0
       bottomInset = 48.dp.pixels()
     }
-    safeBounds.set(left + 8.dp.pixels(), top + 6.dp.pixels(), screenWidth - right - 8.dp.pixels(), screenHeight - bottomInset - 6.dp.pixels())
+    safeBounds.set(
+      left + 8.dp.pixels(),
+      top + 6.dp.pixels(),
+      screenWidth - right - 8.dp.pixels(),
+      screenHeight - bottomInset - 6.dp.pixels(),
+    )
     val displayWidth = (screenWidth - left - right) / density
     val displayHeight = safeBounds.height() / density
     check(displayWidth >= 212f && displayHeight >= 106f) { "Display is too small for floating lyrics" }
     val pitch = maxOf(21f, windowContext.resources.configuration.fontScale * 19f + 2f)
-    check(displayHeight >= maxOf(62f, pitch + 18f) + 40f) { "Display cannot fit floating lyrics at the current font scale" }
+    check(
+      displayHeight >= maxOf(62f, pitch + 18f) + 40f,
+    ) { "Display cannot fit floating lyrics at the current font scale" }
     val base = maxOf(58f, pitch * 2f + 16f)
     val maxSlots = ((displayHeight - 40f - 2f - 16f) / pitch).toInt().coerceIn(1, 3)
-    val metrics = FloatingPillMetrics(
-      bubbleWidth = (displayWidth - 172f).coerceIn(40f, 226f).dp,
-      rowPitch = pitch.dp,
-      baseHeight = base.dp,
-      maxSlots = maxSlots,
-    )
+    val metrics =
+      FloatingPillMetrics(
+        bubbleWidth = (displayWidth - 172f).coerceIn(40f, 226f).dp,
+        rowPitch = pitch.dp,
+        baseHeight = base.dp,
+        maxSlots = maxSlots,
+      )
     val screenChanged = previousWidth != screenWidth || previousHeight != screenHeight
     val metricsChanged = metrics != state.metrics
     // Theme changes and this overlay's own relayouts also deliver configuration callbacks.
@@ -317,10 +354,13 @@ internal class FloatingLyricsWindow(
     // A bounds-only update must not shrink a frame while the controls are still closing.
     frameHeight = if (resetGeometry) height else maxOf(frameHeight, height)
     if (resetGeometry) {
-      val y = if (preferences.floatingLyricsY.isSet()) {
-        safeBounds.top + (safeBounds.height() - (frameHeight - margin * 2)).coerceAtLeast(0) *
-          (preferences.floatingLyricsY.get().coerceIn(0, 1_000) / 1_000f)
-      } else screenHeight / 6f + margin
+      val y =
+        if (preferences.floatingLyricsY.isSet()) {
+          safeBounds.top + (safeBounds.height() - (frameHeight - margin * 2)).coerceAtLeast(0) *
+            (preferences.floatingLyricsY.get().coerceIn(0, 1_000) / 1_000f)
+        } else {
+          screenHeight / 6f + margin
+        }
       coverPosition = Offset(restX(state.dockEnd), y)
     }
     if (!root.dragging && !flight.running) coverPosition = coverPosition.copy(y = clampY(coverPosition.y, frameHeight))
@@ -328,20 +368,27 @@ internal class FloatingLyricsWindow(
     place()
   }
 
-  private fun currentShape(): FloatingPillShape = when {
-    state.tucked -> FloatingPillShape.COVER
-    state.expanded -> FloatingPillShape.OPEN
-    else -> FloatingPillShape.PILL
-  }
+  private fun currentShape(): FloatingPillShape =
+    when {
+      state.tucked -> FloatingPillShape.COVER
+      state.expanded -> FloatingPillShape.OPEN
+      else -> FloatingPillShape.PILL
+    }
 
-  override fun reserveFrame(shape: FloatingPillShape, slots: Int) {
+  override fun reserveFrame(
+    shape: FloatingPillShape,
+    slots: Int,
+  ) {
     if (removed) return
     this.slots = slots.coerceIn(1, state.metrics.maxSlots)
     resize(maxOf(frameHeight, state.metrics.height(shape, this.slots).pixels()))
     if (!root.dragging && !flight.running && !dropping) makeRoom()
   }
 
-  override fun fitFrame(shape: FloatingPillShape, slots: Int) {
+  override fun fitFrame(
+    shape: FloatingPillShape,
+    slots: Int,
+  ) {
     if (removed || shape != currentShape()) return
     this.slots = slots.coerceIn(1, state.metrics.maxSlots)
     resize(state.metrics.height(shape, this.slots).pixels())
@@ -384,7 +431,12 @@ internal class FloatingLyricsWindow(
    * and its position (WindowState.handleWindowMovedIfNeeded), which the content cannot offset.
    * Only one kind of change goes into a relayout; the other follows once that one is laid out.
    */
-  private fun updateWindow(width: Int, height: Int, x: Int, y: Int) {
+  private fun updateWindow(
+    width: Int,
+    height: Int,
+    x: Int,
+    y: Int,
+  ) {
     if (removed) return
     if (!added) {
       params.width = width
@@ -455,18 +507,25 @@ internal class FloatingLyricsWindow(
   private fun settle(velocity: Velocity) {
     if (removed) return
     state.dockEnd = coverPosition.x + cover / 2 + velocity.x * 0.14f > screenWidth / 2f
-    val target = Offset(
-      restX(state.dockEnd),
-      clampY(coverPosition.y + velocity.y * 0.14f, state.metrics.height(FloatingPillShape.PILL, slots).pixels()),
-    )
+    val target =
+      Offset(
+        restX(state.dockEnd),
+        clampY(coverPosition.y + velocity.y * 0.14f, state.metrics.height(FloatingPillShape.PILL, slots).pixels()),
+      )
     landing = true
     // Switching sides only mirrors the pill inside the frame; the window stays where it is.
     place()
     fly(
-      target, 420f, 0.74f, velocity,
+      target,
+      420f,
+      0.74f,
+      velocity,
       wall = target.x + if (state.dockEnd) 5.dp.pixels() else -5.dp.pixels(),
       onHit = ::popOut,
-      onLanded = { popOut(); savePosition() },
+      onLanded = {
+        popOut()
+        savePosition()
+      },
     )
   }
 
@@ -492,7 +551,9 @@ internal class FloatingLyricsWindow(
       moveCover(target)
       onHit?.invoke()
       onLanded?.invoke()
-    } else flight.fly(coverPosition, target, stiffness, damping, velocity, wall, onHit, onLanded)
+    } else {
+      flight.fly(coverPosition, target, stiffness, damping, velocity, wall, onHit, onLanded)
+    }
   }
 
   private fun vanish(drop: FloatingPillDrop) {
@@ -506,14 +567,23 @@ internal class FloatingLyricsWindow(
     targets.center(drop)?.let { fly(it - Offset(cover / 2f, cover / 2f), 1_100f, 1f) }
     compose.pivotX = if (state.dockEnd) pillWidth - margin - cover / 2f else margin + cover / 2f
     compose.pivotY = margin + cover / 2f
-    compose.animate().scaleX(0.2f).scaleY(0.2f).alpha(0f).setDuration(220)
+    compose
+      .animate()
+      .scaleX(0.2f)
+      .scaleY(0.2f)
+      .alpha(0f)
+      .setDuration(220)
       .setInterpolator(AccelerateInterpolator())
-      .withEndAction { if (!removed) dismiss(drop == FloatingPillDrop.NEVER) }.start()
+      .withEndAction { if (!removed) dismiss(drop == FloatingPillDrop.NEVER) }
+      .start()
   }
 
   private fun restX(end: Boolean): Float = if (end) (safeBounds.right - cover).toFloat() else safeBounds.left.toFloat()
 
-  private fun clampY(y: Float, height: Int): Float =
+  private fun clampY(
+    y: Float,
+    height: Int,
+  ): Float =
     y.coerceIn(safeBounds.top.toFloat(), maxOf(safeBounds.top, safeBounds.bottom - height + margin * 2).toFloat())
 
   private fun savePosition() {
@@ -521,7 +591,9 @@ internal class FloatingLyricsWindow(
     preferences.floatingLyricsDockEnd.set(state.dockEnd)
     val height = state.metrics.height(FloatingPillShape.PILL, slots).pixels() - margin * 2
     val room = (safeBounds.height() - height).coerceAtLeast(1)
-    preferences.floatingLyricsY.set(((coverPosition.y - safeBounds.top) * 1_000f / room).roundToInt().coerceIn(0, 1_000))
+    preferences.floatingLyricsY.set(
+      ((coverPosition.y - safeBounds.top) * 1_000f / room).roundToInt().coerceIn(0, 1_000),
+    )
   }
 
   override fun touch() {
@@ -539,29 +611,47 @@ internal class FloatingLyricsWindow(
   }
 
   override fun openPlayer() {
-    if (!removed) { collapse(); onOpenPlayer() }
+    if (!removed) {
+      collapse()
+      onOpenPlayer()
+    }
   }
 
   private fun canControl(generation: Long): Boolean {
     val session = PlaybackSession.state.value
-    return !removed && !dropping && state.model.canControl && state.model.generation == generation &&
+    return !removed &&
+      !dropping &&
+      state.model.canControl &&
+      state.model.generation == generation &&
       PlaybackSession.isCurrentGeneration(generation) &&
       (session.phase == PlaybackPhase.READY || session.phase == PlaybackPhase.BACKGROUND)
   }
 
   override fun togglePlay(generation: Long) {
-    if (canControl(generation)) { touch(); onTogglePlay() }
+    if (canControl(generation)) {
+      touch()
+      onTogglePlay()
+    }
   }
 
   override fun previous(generation: Long) {
-    if (canControl(generation) && state.model.canPrevious) { touch(); onPrevious() }
+    if (canControl(generation) && state.model.canPrevious) {
+      touch()
+      onPrevious()
+    }
   }
 
   override fun next(generation: Long) {
-    if (canControl(generation) && state.model.canNext) { touch(); onNext() }
+    if (canControl(generation) && state.model.canNext) {
+      touch()
+      onNext()
+    }
   }
 
-  override fun seekTo(position: Long, generation: Long) {
+  override fun seekTo(
+    position: Long,
+    generation: Long,
+  ) {
     if (canControl(generation) && state.model.canSeek) {
       touch()
       state.model = state.model.copy(seekTick = state.model.seekTick + 1L)
@@ -585,7 +675,9 @@ internal class FloatingLyricsWindow(
     }
   }
 
-  private inner class DragFrame(context: Context) : FrameLayout(context) {
+  private inner class DragFrame(
+    context: Context,
+  ) : FrameLayout(context) {
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
     private var tracker: VelocityTracker? = null
     private var fingerStart = Offset.Zero
@@ -598,7 +690,10 @@ internal class FloatingLyricsWindow(
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
       if (removed || dropping) return false
-      if (event.actionMasked == MotionEvent.ACTION_OUTSIDE) { collapse(); return false }
+      if (event.actionMasked == MotionEvent.ACTION_OUTSIDE) {
+        collapse()
+        return false
+      }
       if (event.actionMasked == MotionEvent.ACTION_DOWN) {
         val x = event.x - compose.left - compose.translationX
         val y = event.y - compose.top - compose.translationY
@@ -611,7 +706,8 @@ internal class FloatingLyricsWindow(
         }
         fingerStart = Offset(event.rawX, event.rawY)
         cancelled = false
-        seeking = state.expanded && state.model.canSeek &&
+        seeking = state.expanded &&
+          state.model.canSeek &&
           abs(y - state.metrics.barY(slots.toFloat()).pixels()) <= FloatingPillMetrics.SeekReach.pixels()
         tracker?.recycle()
         tracker = VelocityTracker.obtain()
@@ -628,7 +724,9 @@ internal class FloatingLyricsWindow(
       motion.setLocation(event.rawX, event.rawY)
       tracker?.addMovement(motion)
       motion.recycle()
-      if (!dragging && !seeking && event.actionMasked == MotionEvent.ACTION_MOVE &&
+      if (!dragging &&
+        !seeking &&
+        event.actionMasked == MotionEvent.ACTION_MOVE &&
         hypot(event.rawX - fingerStart.x, event.rawY - fingerStart.y) > slop
       ) {
         dragging = true
@@ -664,7 +762,10 @@ internal class FloatingLyricsWindow(
           targets.restSpot(over, cover)?.let { fly(it, 900f, 0.72f) }
         }
         over != null -> Unit
-        magnet != null -> { magnet = null; fly(free, 1_400f, 1f) }
+        magnet != null -> {
+          magnet = null
+          fly(free, 1_400f, 1f)
+        }
         flight.running -> flight.retarget(free)
         else -> moveCover(free)
       }
@@ -672,17 +773,26 @@ internal class FloatingLyricsWindow(
 
     private fun drop(released: Boolean) {
       dragging = false
-      val velocity = if (released) tracker?.let {
-        it.computeCurrentVelocity(1_000, 1_800f * density)
-        Velocity(it.xVelocity, it.yVelocity)
-      } ?: Velocity.Zero else Velocity.Zero
+      val velocity =
+        if (released) {
+          tracker?.let {
+            it.computeCurrentVelocity(1_000, 1_800f * density)
+            Velocity(it.xVelocity, it.yVelocity)
+          } ?: Velocity.Zero
+        } else {
+          Velocity.Zero
+        }
       tracker?.recycle()
       tracker = null
       val drop = magnet.takeIf { released }
       magnet = null
       flight.stop()
-      if (drop != null) vanish(drop)
-      else { targets.hide(); settle(velocity) }
+      if (drop != null) {
+        vanish(drop)
+      } else {
+        targets.hide()
+        settle(velocity)
+      }
     }
 
     fun release() {
@@ -699,7 +809,9 @@ internal class FloatingLyricsWindow(
   }
 }
 
-private class FloatingPillFlight(private val onMove: (Offset) -> Unit) : Choreographer.FrameCallback {
+private class FloatingPillFlight(
+  private val onMove: (Offset) -> Unit,
+) : Choreographer.FrameCallback {
   private val frames = Choreographer.getInstance()
   private var position = Offset.Zero
   private var goal = Offset.Zero
@@ -715,8 +827,14 @@ private class FloatingPillFlight(private val onMove: (Offset) -> Unit) : Choreog
     private set
 
   fun fly(
-    from: Offset, to: Offset, stiffness: Float, dampingRatio: Float, velocity: Velocity,
-    wall: Float, onHit: (() -> Unit)?, onLanded: (() -> Unit)?,
+    from: Offset,
+    to: Offset,
+    stiffness: Float,
+    dampingRatio: Float,
+    velocity: Velocity,
+    wall: Float,
+    onHit: (() -> Unit)?,
+    onLanded: (() -> Unit)?,
   ) {
     goal = to
     this.stiffness = stiffness
@@ -734,7 +852,9 @@ private class FloatingPillFlight(private val onMove: (Offset) -> Unit) : Choreog
     this.wall = if ((position.x - to.x) * wallSide < 0) wall else Float.NaN
   }
 
-  fun retarget(goal: Offset) { this.goal = goal }
+  fun retarget(goal: Offset) {
+    this.goal = goal
+  }
 
   fun stop() {
     running = false
@@ -745,8 +865,12 @@ private class FloatingPillFlight(private val onMove: (Offset) -> Unit) : Choreog
 
   override fun doFrame(frameTimeNanos: Long) {
     if (!running) return
-    var remaining = if (lastFrame == 0L) 1f / 120 else
-      ((frameTimeNanos - lastFrame) / 1_000_000_000f).coerceIn(0f, 1f / 30)
+    var remaining =
+      if (lastFrame == 0L) {
+        1f / 120
+      } else {
+        ((frameTimeNanos - lastFrame) / 1_000_000_000f).coerceIn(0f, 1f / 30)
+      }
     lastFrame = frameTimeNanos
     while (remaining > 0) {
       val dt = min(remaining, 1f / 240)
@@ -759,8 +883,11 @@ private class FloatingPillFlight(private val onMove: (Offset) -> Unit) : Choreog
       remaining -= dt
     }
     if (wallSide != 0f && (position.x - goal.x) * wallSide >= 0) hit()
-    val landed = abs(position.x - goal.x) < 0.5f && abs(position.y - goal.y) < 0.5f &&
-      abs(velocity.x) < 24f && abs(velocity.y) < 24f
+    val landed =
+      abs(position.x - goal.x) < 0.5f &&
+        abs(position.y - goal.y) < 0.5f &&
+        abs(velocity.x) < 24f &&
+        abs(velocity.y) < 24f
     if (!landed) {
       onMove(position)
       if (running) frames.postFrameCallback(this)
@@ -786,11 +913,18 @@ private class OverlayOwner : SavedStateRegistryOwner {
   private val savedState = SavedStateRegistryController.create(this)
   override val lifecycle: Lifecycle get() = registry
   override val savedStateRegistry: SavedStateRegistry get() = savedState.savedStateRegistry
+
   init {
     savedState.performAttach()
     savedState.performRestore(null)
     registry.currentState = Lifecycle.State.CREATED
   }
-  fun resume() { registry.currentState = Lifecycle.State.RESUMED }
-  fun destroy() { registry.currentState = Lifecycle.State.DESTROYED }
+
+  fun resume() {
+    registry.currentState = Lifecycle.State.RESUMED
+  }
+
+  fun destroy() {
+    registry.currentState = Lifecycle.State.DESTROYED
+  }
 }

@@ -19,8 +19,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.findViewTreeLifecycleOwner
 import app.gyrolet.mpvrx.preferences.GesturePreferences
-import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import com.wonddak.VibrationPreset
 import com.wonddak.VibratorManager
 import com.wonddak.vibrate
@@ -60,18 +60,30 @@ private object AppVibration {
   private const val SYSTEM_HAPTIC_FEEDBACK_INTENSITY = "haptic_feedback_intensity"
   private var lastTickAt = Long.MIN_VALUE
 
-  fun perform(view: View, preferences: GesturePreferences, type: HapticFeedbackType): Boolean =
+  fun perform(
+    view: View,
+    preferences: GesturePreferences,
+    type: HapticFeedbackType,
+  ): Boolean =
     runCatching {
-      if (DeviceFormFactor.isTelevision(view.context) || !preferences.hapticFeedbackEnabled.get() || !view.isHapticFeedbackEnabled) {
+      if (DeviceFormFactor.isTelevision(view.context) ||
+        !preferences.hapticFeedbackEnabled.get() ||
+        !view.isHapticFeedbackEnabled
+      ) {
         cancel()
         return@runCatching false
       }
       if (!view.isAttachedToWindow || !view.isShown) return@runCatching false
       val resumed =
-        view.findViewTreeLifecycleOwner()?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.RESUMED)
+        view
+          .findViewTreeLifecycleOwner()
+          ?.lifecycle
+          ?.currentState
+          ?.isAtLeast(Lifecycle.State.RESUMED)
           ?: view.hasWindowFocus()
       if (!resumed) return@runCatching false
       val resolver = view.context.contentResolver
+
       // Custom vibrations bypass USAGE_TOUCH, so the user's system haptics toggle is read directly.
       @Suppress("DEPRECATION")
       val systemEnabled = Settings.System.getInt(resolver, Settings.System.HAPTIC_FEEDBACK_ENABLED, 1) != 0
@@ -119,7 +131,9 @@ private object AppVibration {
 }
 
 @Stable
-internal class AppHaptics(private val feedback: HapticFeedback) {
+internal class AppHaptics(
+  private val feedback: HapticFeedback,
+) {
   fun selection(selected: Boolean) {
     feedback.performHapticFeedback(if (selected) HapticFeedbackType.ToggleOn else HapticFeedbackType.ToggleOff)
   }
@@ -164,13 +178,17 @@ internal class AdjustmentHaptics(
 ) {
   private var latchedMarker: Float? = null
 
-  fun move(previous: Float, value: Float) {
+  fun move(
+    previous: Float,
+    value: Float,
+  ) {
     if (!previous.isFinite() || !value.isFinite() || previous == value) return
     if (latchedMarker?.let { abs(value - it) > hysteresis } == true) latchedMarker = null
     val crossed =
-      markers.filter { marker ->
-        (previous < marker && value >= marker) || (previous > marker && value <= marker)
-      }.minByOrNull { abs(value - it) }
+      markers
+        .filter { marker ->
+          (previous < marker && value >= marker) || (previous > marker && value <= marker)
+        }.minByOrNull { abs(value - it) }
     if (crossed != null && crossed != latchedMarker) {
       latchedMarker = crossed
       haptics.tick()

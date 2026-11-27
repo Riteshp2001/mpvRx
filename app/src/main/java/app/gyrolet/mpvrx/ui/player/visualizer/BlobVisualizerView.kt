@@ -16,7 +16,8 @@ internal class BlobVisualizerView(
   features: AudioFeatures,
   palette: VisualizerPalette,
   reducedMotion: Boolean = false,
-) : InteractiveVisualizerView(context, enablePinch = true), PaletteConsumer {
+) : InteractiveVisualizerView(context, enablePinch = true),
+  PaletteConsumer {
   private val blobRenderer =
     BlobRenderer(context.applicationContext, features, palette, reducedMotion, interaction)
 
@@ -24,7 +25,10 @@ internal class BlobVisualizerView(
     setRenderer(blobRenderer)
   }
 
-  override fun onPointerDrag(normalizedDx: Float, normalizedDy: Float) {
+  override fun onPointerDrag(
+    normalizedDx: Float,
+    normalizedDy: Float,
+  ) {
     blobRenderer.addTouchRotation(normalizedDx, normalizedDy)
   }
 

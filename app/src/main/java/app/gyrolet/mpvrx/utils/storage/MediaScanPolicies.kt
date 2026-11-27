@@ -81,7 +81,10 @@ internal fun mediaPathKey(path: String?): String? {
 }
 
 /** A volume root, its aliases, and paths outside mounted volumes lead back to storage selection. */
-internal fun storagePickerParentPath(path: String?, storageRoots: Collection<String>): String? {
+internal fun storagePickerParentPath(
+  path: String?,
+  storageRoots: Collection<String>,
+): String? {
   val pathKey = mediaPathKey(path) ?: return null
   val rootKeys = storageRoots.mapNotNull(::mediaPathKey)
   if (rootKeys.none { root -> pathKey != root && isMediaPathInFolder(pathKey, root) }) return null
@@ -90,7 +93,10 @@ internal fun storagePickerParentPath(path: String?, storageRoots: Collection<Str
   return parent.takeIf { rootKeys.any { root -> isMediaPathInFolder(parentKey, root) } }
 }
 
-internal fun isMediaPathInFolder(path: String, folderPath: String): Boolean {
+internal fun isMediaPathInFolder(
+  path: String,
+  folderPath: String,
+): Boolean {
   if (!path.startsWith("content://") || !folderPath.startsWith("content://")) {
     return path.equals(folderPath, ignoreCase = true) ||
       path.startsWith(if (folderPath.endsWith("/")) folderPath else "$folderPath/", ignoreCase = true)
@@ -100,15 +106,23 @@ internal fun isMediaPathInFolder(path: String, folderPath: String): Boolean {
   if (item.authority != folder.authority) return false
   if (item == folder) return true
   if (!DocumentsContract.isTreeUri(item) || !DocumentsContract.isTreeUri(folder)) return false
-  if (app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner.isIndexedDescendant(path, folderPath)) return true
+  if (app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
+      .isIndexedDescendant(path, folderPath)
+  ) {
+    return true
+  }
   val folderSegments = folder.pathSegments
   val itemSegments = item.pathSegments
   if (folderSegments.size == 2) {
     return DocumentsContract.getTreeDocumentId(item) == DocumentsContract.getTreeDocumentId(folder)
   }
-  if (folderSegments.size != 4 || folderSegments[2] != "document" ||
-    itemSegments.size != 4 || itemSegments[2] != "document"
-  ) return false
+  if (folderSegments.size != 4 ||
+    folderSegments[2] != "document" ||
+    itemSegments.size != 4 ||
+    itemSegments[2] != "document"
+  ) {
+    return false
+  }
   val folderId = DocumentsContract.getDocumentId(folder)
   val itemId = DocumentsContract.getDocumentId(item)
   if (itemId == folderId) return true
@@ -154,8 +168,7 @@ private val INTERNAL_STORAGE_PATH_KEYS =
     "/storage/emulated/legacy",
   )
 
-internal fun isInternalStoragePath(path: String?): Boolean =
-  storagePathKey(path) in INTERNAL_STORAGE_PATH_KEYS
+internal fun isInternalStoragePath(path: String?): Boolean = storagePathKey(path) in INTERNAL_STORAGE_PATH_KEYS
 
 internal fun leafStorageName(path: String?): String {
   val normalized = normalizeStoragePath(path) ?: return ""

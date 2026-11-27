@@ -17,8 +17,10 @@ class AdvancedPreferences(
 ) {
   companion object {
     const val AUTO_BACKUP_ENABLED_KEY = "auto_backup_enabled"
+
     // Kept only to ignore backups created by the short-lived separate-folder implementation.
     const val AUTO_BACKUP_FOLDER_URI_KEY = "auto_backup_folder_uri"
+
     /**
      * Stable key for "no user scripts at all". Exposed so callers on the open path can compare
      * against it and skip the preference reads plus the libmpv lock entirely instead of building

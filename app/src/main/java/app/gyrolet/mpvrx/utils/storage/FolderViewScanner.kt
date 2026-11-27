@@ -114,8 +114,10 @@ object FolderViewScanner {
 
       // Return cached data if still valid
       folderCache?.let { cached ->
-        if (!forceFileSystemCheck && cached.revision == revision &&
-          now - cached.createdAt < CACHE_TTL_MS && cached.optionsKey == options.cacheKey
+        if (!forceFileSystemCheck &&
+          cached.revision == revision &&
+          now - cached.createdAt < CACHE_TTL_MS &&
+          cached.optionsKey == options.cacheKey
         ) {
           return@withContext cached.folders
         }
@@ -141,15 +143,16 @@ object FolderViewScanner {
         if (indexedVideoPaths?.contains(videoKey) == true) continue
         val key = storagePathKey(video.bucketId) ?: continue
         val existing = allFolders[key]
-        allFolders[key] = FolderData(
-          path = existing?.path ?: video.bucketId,
-          name = existing?.name ?: video.bucketDisplayName,
-          videoCount = (existing?.videoCount ?: 0) + 1,
-          totalSize = (existing?.totalSize ?: 0L) + video.size,
-          totalDuration = existing?.totalDuration ?: 0L,
-          lastModified = maxOf(existing?.lastModified ?: 0L, video.dateModified),
-          hasSubfolders = existing?.hasSubfolders ?: false,
-        )
+        allFolders[key] =
+          FolderData(
+            path = existing?.path ?: video.bucketId,
+            name = existing?.name ?: video.bucketDisplayName,
+            videoCount = (existing?.videoCount ?: 0) + 1,
+            totalSize = (existing?.totalSize ?: 0L) + video.size,
+            totalDuration = existing?.totalDuration ?: 0L,
+            lastModified = maxOf(existing?.lastModified ?: 0L, video.dateModified),
+            hasSubfolders = existing?.hasSubfolders ?: false,
+          )
       }
       // MediaStore already covers indexed primary/removable media. Recursively walking every
       // filesystem root on each normal refresh defeats the cache and can block for minutes.
@@ -335,7 +338,10 @@ object FolderViewScanner {
             cached[pathKey] = snapshot.entity
             indexUpdates[pathKey] = snapshot.entity
 
-            val currentChildKeys = snapshot.subdirectories.mapTo(hashSetOf()) { child -> scanEntryKey(child.absolutePath) }
+            val currentChildKeys =
+              snapshot.subdirectories.mapTo(
+                hashSetOf(),
+              ) { child -> scanEntryKey(child.absolutePath) }
             childrenByParent[pathKey]
               .orEmpty()
               .filterNot(currentChildKeys::contains)
@@ -650,9 +656,13 @@ object FolderViewScanner {
   private fun scanEntryKey(path: String): String =
     storagePathKey(path) ?: path.replace('\\', '/').trimEnd('/').lowercase(Locale.ROOT)
 
-  private fun shouldVisitDuringNoMediaScan(directory: File, options: MediaScanOptions): Boolean {
+  private fun shouldVisitDuringNoMediaScan(
+    directory: File,
+    options: MediaScanOptions,
+  ): Boolean {
     val name = directory.name.lowercase(Locale.ROOT)
-    return name !in NO_MEDIA_SCAN_SKIP_FOLDERS && directory.canRead() &&
+    return name !in NO_MEDIA_SCAN_SKIP_FOLDERS &&
+      directory.canRead() &&
       !options.pathFilter.shouldExcludeDirectory(directory)
   }
 
@@ -664,12 +674,14 @@ object FolderViewScanner {
     // A disabled marker wins even when the same directory is dot-prefixed.
     if (options.pathFilter.shouldExcludeDirectory(directory)) return false
     return (options.includeDotFolders && directory.name.startsWith(".")) ||
-      (options.activeHiddenMarkerNames.isNotEmpty() &&
-        if (files == null) {
-          options.activeHiddenMarkerNames.any { File(directory, it).isFile }
-        } else {
-          files.any { file -> file.isFile && file.name in options.activeHiddenMarkerNames }
-        })
+      (
+        options.activeHiddenMarkerNames.isNotEmpty() &&
+          if (files == null) {
+            options.activeHiddenMarkerNames.any { File(directory, it).isFile }
+          } else {
+            files.any { file -> file.isFile && file.name in options.activeHiddenMarkerNames }
+          }
+      )
   }
 
   // Names and the directory's own mtime change when a child is added, removed or renamed. Media files
@@ -1130,7 +1142,15 @@ object FolderViewScanner {
 
       // Recurse into subdirectories
       for (subdir in subdirectories) {
-        scanDirectoryRecursive(subdir, folders, maxDepth, currentDepth + 1, options, noMediaPathFilter, visitedDirectories)
+        scanDirectoryRecursive(
+          subdir,
+          folders,
+          maxDepth,
+          currentDepth + 1,
+          options,
+          noMediaPathFilter,
+          visitedDirectories,
+        )
       }
     } catch (cancellation: CancellationException) {
       throw cancellation

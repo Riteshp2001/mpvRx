@@ -6,10 +6,10 @@ package app.gyrolet.mpvrx.domain.download
 
 import android.content.Context
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
-import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.io.File
 
 /** Empty adapter for shared download screens; no extractor service or process is compiled here. */
 @Suppress("UNUSED_PARAMETER")
@@ -53,7 +53,10 @@ class YtdlpDownloadEngine(
 
   fun retry(id: Int) = Unit
 
-  fun remove(id: Int, deleteFiles: Boolean = false) = Unit
+  fun remove(
+    id: Int,
+    deleteFiles: Boolean = false,
+  ) = Unit
 
   suspend fun drainQueue(onJobUpdate: (Job) -> Unit) = Unit
 }

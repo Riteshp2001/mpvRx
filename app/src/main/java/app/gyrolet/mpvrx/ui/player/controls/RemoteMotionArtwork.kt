@@ -49,9 +49,9 @@ import app.gyrolet.mpvrx.data.artwork.MotionArtworkSource
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.utils.logging.Log
-import java.io.File
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
+import java.io.File
 
 private const val FADE_IN_MS = 320L
 
@@ -72,13 +72,14 @@ internal fun RemoteMotionArtwork(
   val tidal by preferences.animatedArtworkTidal.collectAsState()
   val spotify by preferences.animatedArtworkSpotify.collectAsState()
   val spotifyCookie by preferences.spotifySpDcCookie.collectAsState()
-  val sources = remember(appleMusic, tidal, spotify, spotifyCookie) {
-    MotionArtworkResolver.sources(
-      appleMusic = appleMusic,
-      tidal = tidal,
-      spotify = spotify && spotifyCookie.isNotBlank() && !BuildConfig.IS_PLAY_STORE_BUILD,
-    )
-  }
+  val sources =
+    remember(appleMusic, tidal, spotify, spotifyCookie) {
+      MotionArtworkResolver.sources(
+        appleMusic = appleMusic,
+        tidal = tidal,
+        spotify = spotify && spotifyCookie.isNotBlank() && !BuildConfig.IS_PLAY_STORE_BUILD,
+      )
+    }
   val lifecycleOwner = LocalLifecycleOwner.current
   // Keyed on the song rather than the whole query: the album tag lands a beat after the title,
   // and treating that as a new song threw a playing clip away and restarted it.
@@ -207,10 +208,15 @@ internal fun LocalFolderMotionArtworkVideo(
 @OptIn(UnstableApi::class)
 private object MotionArtworkCache {
   private const val MAX_BYTES = 150L * 1024 * 1024
+
   @Volatile private var cache: SimpleCache? = null
 
-  fun factory(context: Context, upstream: DataSource.Factory): DataSource.Factory =
-    CacheDataSource.Factory()
+  fun factory(
+    context: Context,
+    upstream: DataSource.Factory,
+  ): DataSource.Factory =
+    CacheDataSource
+      .Factory()
       .setCache(cache(context.applicationContext))
       .setUpstreamDataSourceFactory(upstream)
       // A failed cache write falls back to plain streaming rather than a playback error.
@@ -256,86 +262,109 @@ private class MotionArtworkTextureView(
 
   private fun preparePlayer() {
     try {
-      val http = DefaultHttpDataSource.Factory()
-        .setUserAgent("Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36")
-        .setConnectTimeoutMs(10_000)
-        .setReadTimeoutMs(10_000)
+      val http =
+        DefaultHttpDataSource
+          .Factory()
+          .setUserAgent("Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36")
+          .setConnectTimeoutMs(10_000)
+          .setReadTimeoutMs(10_000)
       // Apple's CDN expects requests from its web player; other CDNs get no borrowed origin.
       if (source == MotionArtworkSource.APPLE_MUSIC) {
-        http.setDefaultRequestProperties(mapOf("Referer" to "https://music.apple.com/", "Origin" to "https://music.apple.com"))
+        http.setDefaultRequestProperties(
+          mapOf(
+            "Referer" to "https://music.apple.com/",
+            "Origin" to "https://music.apple.com",
+          ),
+        )
       }
       // Online clips loop from the disk cache; local folder covers are read directly.
       val upstream = if (source != null) MotionArtworkCache.factory(context, http) else http
-      val current = ExoPlayer.Builder(context.applicationContext)
-        .setMediaSourceFactory(DefaultMediaSourceFactory(DefaultDataSource.Factory(context.applicationContext, upstream)))
-        .setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(2_000, 8_000, 500, 1_000).build())
-        .setAudioAttributes(AudioAttributes.DEFAULT, false)
-        .setHandleAudioBecomingNoisy(false)
-        .build()
+      val current =
+        ExoPlayer
+          .Builder(context.applicationContext)
+          .setMediaSourceFactory(
+            DefaultMediaSourceFactory(DefaultDataSource.Factory(context.applicationContext, upstream)),
+          ).setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(2_000, 8_000, 500, 1_000).build())
+          .setAudioAttributes(AudioAttributes.DEFAULT, false)
+          .setHandleAudioBecomingNoisy(false)
+          .build()
       player = current
       current.volume = 0f
       current.repeatMode = Player.REPEAT_MODE_ONE
       // No resolution or bitrate ceiling: the cover is shown full width, and HLS picks the
       // sharpest variant the connection sustains, as BitChord's canvas player does.
-      current.trackSelectionParameters = current.trackSelectionParameters.buildUpon()
-        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
-        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
-        .build()
-      current.addListener(object : Player.Listener {
-        override fun onVideoSizeChanged(videoSize: VideoSize) {
-          if (videoSize.width > 0 && videoSize.height > 0 && player === current) {
-            videoAspect = videoSize.width * videoSize.pixelWidthHeightRatio / videoSize.height
-            updateCrop()
+      current.trackSelectionParameters =
+        current.trackSelectionParameters
+          .buildUpon()
+          .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
+          .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+          .build()
+      current.addListener(
+        object : Player.Listener {
+          override fun onVideoSizeChanged(videoSize: VideoSize) {
+            if (videoSize.width > 0 && videoSize.height > 0 && player === current) {
+              videoAspect = videoSize.width * videoSize.pixelWidthHeightRatio / videoSize.height
+              updateCrop()
+            }
           }
-        }
 
-        override fun onPlayerError(error: PlaybackException) {
-          if (player === current) fail("Artwork decoder error (${error.errorCodeName})")
-        }
-      })
+          override fun onPlayerError(error: PlaybackException) {
+            if (player === current) fail("Artwork decoder error (${error.errorCodeName})")
+          }
+        },
+      )
       current.setVideoTextureView(this)
       // ExoPlayer owns the surface listener. Forward every callback so its renderer stays
       // attached, and reveal only after the *current* texture has received a real buffer.
       val delegate = surfaceTextureListener
-      surfaceTextureListener = object : SurfaceTextureListener {
-        private var replacing = false
+      surfaceTextureListener =
+        object : SurfaceTextureListener {
+          private var replacing = false
 
-        override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) {
-          delegate?.onSurfaceTextureAvailable(texture, width, height)
-          updateCrop()
-          if (replacing && player === current) {
-            replacing = false
-            // Repaint even if the song is paused when the surface returns.
-            current.seekTo(current.currentPosition)
+          override fun onSurfaceTextureAvailable(
+            texture: SurfaceTexture,
+            width: Int,
+            height: Int,
+          ) {
+            delegate?.onSurfaceTextureAvailable(texture, width, height)
+            updateCrop()
+            if (replacing && player === current) {
+              replacing = false
+              // Repaint even if the song is paused when the surface returns.
+              current.seekTo(current.currentPosition)
+            }
+          }
+
+          override fun onSurfaceTextureSizeChanged(
+            texture: SurfaceTexture,
+            width: Int,
+            height: Int,
+          ) {
+            delegate?.onSurfaceTextureSizeChanged(texture, width, height)
+            updateCrop()
+          }
+
+          override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
+            replacing = true
+            animate().cancel()
+            alpha = 0f
+            if (frameReady && !released) {
+              frameReady = false
+              onFrameReady(false)
+            }
+            return delegate?.onSurfaceTextureDestroyed(texture) ?: true
+          }
+
+          override fun onSurfaceTextureUpdated(texture: SurfaceTexture) {
+            delegate?.onSurfaceTextureUpdated(texture)
+            if (!frameReady && !released && !failed) {
+              frameReady = true
+              // Fade in over the still cover rather than cutting to the clip.
+              animate().alpha(1f).setDuration(FADE_IN_MS).start()
+              onFrameReady(true)
+            }
           }
         }
-
-        override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int) {
-          delegate?.onSurfaceTextureSizeChanged(texture, width, height)
-          updateCrop()
-        }
-
-        override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
-          replacing = true
-          animate().cancel()
-          alpha = 0f
-          if (frameReady && !released) {
-            frameReady = false
-            onFrameReady(false)
-          }
-          return delegate?.onSurfaceTextureDestroyed(texture) ?: true
-        }
-
-        override fun onSurfaceTextureUpdated(texture: SurfaceTexture) {
-          delegate?.onSurfaceTextureUpdated(texture)
-          if (!frameReady && !released && !failed) {
-            frameReady = true
-            // Fade in over the still cover rather than cutting to the clip.
-            animate().alpha(1f).setDuration(FADE_IN_MS).start()
-            onFrameReady(true)
-          }
-        }
-      }
       val item = MediaItem.Builder().setUri(rendition.url)
       // Progressive files are sniffed, since not every CDN URL ends in a container extension.
       if (rendition.hls) item.setMimeType(MimeTypes.APPLICATION_M3U8)
@@ -358,7 +387,10 @@ private class MotionArtworkTextureView(
     setTransform(Matrix().apply { setScale(scaleX, scaleY, width / 2f, height / 2f) })
   }
 
-  private fun fail(message: String, cause: Exception? = null) {
+  private fun fail(
+    message: String,
+    cause: Exception? = null,
+  ) {
     if (failed || released) return
     failed = true
     Log.w("MotionArtworkVideo", "$message; trying another rendition or retaining the cover", cause)

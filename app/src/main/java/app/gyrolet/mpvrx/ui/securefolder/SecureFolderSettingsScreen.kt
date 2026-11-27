@@ -9,10 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.securefolder
 
-import app.gyrolet.mpvrx.ui.preferences.DevicePreference
-import app.gyrolet.mpvrx.ui.tv.tvContentFocus
-
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,21 +38,24 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.ui.preferences.ScrollableSettingsScreen
-import app.gyrolet.mpvrx.ui.preferences.settingsContentPadding
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
-import app.gyrolet.mpvrx.ui.preferences.settingsSearchTarget
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.preferences.DevicePreference
 import app.gyrolet.mpvrx.ui.preferences.PreferenceCard
 import app.gyrolet.mpvrx.ui.preferences.PreferenceDivider
 import app.gyrolet.mpvrx.ui.preferences.PreferenceSectionHeader
+import app.gyrolet.mpvrx.ui.preferences.ScrollableSettingsScreen
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.settingsContentPadding
+import app.gyrolet.mpvrx.ui.preferences.settingsSearchTarget
+import app.gyrolet.mpvrx.ui.tv.tvContentFocus
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 /**
  * Settings for the Secure Folder: biometric unlock, PIN / security-question management, hiding
@@ -187,7 +186,11 @@ data object SecureFolderSettingsScreen : ScrollableSettingsScreen {
             icon = if (isEntryPointHidden) Icons.RoundedFilled.Visibility else Icons.RoundedFilled.VisibilityOff,
             title =
               stringResource(
-                if (isEntryPointHidden) R.string.secure_folder_unhide_settings else R.string.secure_folder_hide_settings,
+                if (isEntryPointHidden) {
+                  R.string.secure_folder_unhide_settings
+                } else {
+                  R.string.secure_folder_hide_settings
+                },
               ),
             summary =
               stringResource(

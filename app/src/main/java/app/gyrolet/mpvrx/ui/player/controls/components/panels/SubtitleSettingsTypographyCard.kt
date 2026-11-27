@@ -9,8 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -50,18 +48,19 @@ import app.gyrolet.mpvrx.preferences.LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY
 import app.gyrolet.mpvrx.preferences.SubtitleJustification
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.preference.deleteAndGet
-import app.gyrolet.mpvrx.presentation.components.ExpandableCard
 import app.gyrolet.mpvrx.presentation.components.AppComboBox
+import app.gyrolet.mpvrx.presentation.components.ExpandableCard
 import app.gyrolet.mpvrx.presentation.components.ExposedTextDropDownMenu
 import app.gyrolet.mpvrx.presentation.components.SliderItem
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.player.defaultSubtitleFontDisplayName
-import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import app.gyrolet.mpvrx.utils.media.SubtitleFontChoice
 import app.gyrolet.mpvrx.utils.media.loadCustomFontEntries
@@ -110,13 +109,18 @@ fun SubtitleSettingsTypographyCard(
   LaunchedEffect(Unit) {
     fontChoices =
       withContext(Dispatchers.IO) {
-        val downloaded = googleFontsRepository
-          .installedFonts(appearancePreferences.googleFontFamily.get())
-          .map { it.family }
-        val custom = loadCustomFontEntries(context)
-          .filterNot { googleFontsRepository.isManagedMpvFont(it.file) }
+        val downloaded =
+          googleFontsRepository
+            .installedFonts(appearancePreferences.googleFontFamily.get())
+            .map { it.family }
+        val custom =
+          loadCustomFontEntries(context)
+            .filterNot { googleFontsRepository.isManagedMpvFont(it.file) }
         subtitleFontChoices(downloaded, custom)
-          .filter { it.familyName != DEFAULT_SUBTITLE_FONT_FAMILY && it.familyName != LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY }
+          .filter {
+            it.familyName != DEFAULT_SUBTITLE_FONT_FAMILY &&
+              it.familyName != LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY
+          }
       }
     fonts = listOf("Default") + fontChoices.map { it.label }
     fontsLoadingIndicator = null
@@ -167,107 +171,116 @@ fun SubtitleSettingsTypographyCard(
       PanelConnectedTile(index = 0, itemCount = tileCount) {
         Row(
           Modifier
-          .fillMaxWidth()
-          .horizontalScroll(rememberScrollState())
-          .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        IconToggleButton(
-          checked = isBold == true,
-          enabled = !ownsAny(boldOptions),
-          onCheckedChange = {
-            preferences.bold.set(it)
-            PlaybackSession.setPropertyBoolean("sub-bold", it)
-          },
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(start = MaterialTheme.spacing.extraSmall, end = MaterialTheme.spacing.medium),
+          verticalAlignment = Alignment.CenterVertically,
         ) {
-          Icon(
-            Icons.RoundedFilled.FormatBold,
-            null,
-            modifier = Modifier.size(32.dp),
-          )
-        }
-        IconToggleButton(
-          checked = isItalic == true,
-          enabled = !ownsAny(italicOptions),
-          onCheckedChange = {
-            preferences.italic.set(it)
-            PlaybackSession.setPropertyBoolean("sub-italic", it)
-          },
-        ) {
-          Icon(
-            Icons.RoundedFilled.FormatItalic,
-            null,
-            modifier = Modifier.size(32.dp),
-          )
-        }
-        SubtitleJustification.entries.minus(SubtitleJustification.Auto).forEach { justification ->
           IconToggleButton(
-            checked = justify == justification,
-            enabled = !ownsAny(justifyOptions),
+            checked = isBold == true,
+            enabled = !ownsAny(boldOptions),
             onCheckedChange = {
-              PlaybackSession.setPropertyBoolean("sub-ass-justify", it)
-              if (it) {
-                preferences.justification.set(justification)
-                PlaybackSession.setPropertyString("sub-justify", justification.value)
-              } else {
-                preferences.justification.set(SubtitleJustification.Auto)
-                PlaybackSession.setPropertyString("sub-justify", SubtitleJustification.Auto.value)
-              }
+              preferences.bold.set(it)
+              PlaybackSession.setPropertyBoolean("sub-bold", it)
             },
           ) {
-            Icon(justification.icon, null)
+            Icon(
+              Icons.RoundedFilled.FormatBold,
+              null,
+              modifier = Modifier.size(32.dp),
+            )
           }
-        }
-        Spacer(Modifier.weight(1f))
-        TextButton(
-          enabled = !ownsAny(typographyOptions),
-          onClick = { resetTypography(preferences, effectiveDefaultFont) },
-        ) {
-          Row(
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
-            verticalAlignment = Alignment.CenterVertically,
+          IconToggleButton(
+            checked = isItalic == true,
+            enabled = !ownsAny(italicOptions),
+            onCheckedChange = {
+              preferences.italic.set(it)
+              PlaybackSession.setPropertyBoolean("sub-italic", it)
+            },
           ) {
-            Icon(Icons.RoundedFilled.FormatClear, null)
-            Text(stringResource(R.string.generic_reset))
+            Icon(
+              Icons.RoundedFilled.FormatItalic,
+              null,
+              modifier = Modifier.size(32.dp),
+            )
+          }
+          SubtitleJustification.entries.minus(SubtitleJustification.Auto).forEach { justification ->
+            IconToggleButton(
+              checked = justify == justification,
+              enabled = !ownsAny(justifyOptions),
+              onCheckedChange = {
+                PlaybackSession.setPropertyBoolean("sub-ass-justify", it)
+                if (it) {
+                  preferences.justification.set(justification)
+                  PlaybackSession.setPropertyString("sub-justify", justification.value)
+                } else {
+                  preferences.justification.set(SubtitleJustification.Auto)
+                  PlaybackSession.setPropertyString("sub-justify", SubtitleJustification.Auto.value)
+                }
+              },
+            ) {
+              Icon(justification.icon, null)
+            }
+          }
+          Spacer(Modifier.weight(1f))
+          TextButton(
+            enabled = !ownsAny(typographyOptions),
+            onClick = { resetTypography(preferences, effectiveDefaultFont) },
+          ) {
+            Row(
+              horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.extraSmall),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Icon(Icons.RoundedFilled.FormatClear, null)
+              Text(stringResource(R.string.generic_reset))
+            }
           }
         }
-      }
       }
       PanelConnectedTile(index = 1, itemCount = tileCount) {
         Row(
-        modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        Icon(
-          Icons.RoundedFilled.BrandFamily,
-          null,
-          modifier = Modifier.size(32.dp),
-        )
-        ExposedTextDropDownMenu(
-          selectedValue = run {
-            val family = font?.takeUnless {
-              it == effectiveDefaultFont || it == LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY
-            }.orEmpty()
-            preferredFontLabel.takeIf { selected ->
-              fontChoices.any { it.label == selected && it.familyName == family }
-            } ?: fontChoices.firstOrNull { it.familyName == family }?.label
-              ?: family.ifEmpty { defaultSubtitleFontDisplayName(effectiveDefaultFont) }
-          },
-          options = fonts.toImmutableList(),
-          label = stringResource(R.string.player_sheets_sub_typography_font),
-          onValueChangedEvent = { selected ->
-            preferredFontLabel = selected
-            val storedFont =
-              if (selected == "Default") "" else fontChoices.firstOrNull { it.label == selected }?.familyName ?: selected
-            val actualFont = storedFont.ifBlank { effectiveDefaultFont }
-            preferences.font.set(storedFont)
-            PlaybackSession.setPropertyString("sub-font", actualFont)
-          },
-          leadingIcon = fontsLoadingIndicator,
-          enabled = !ownsAny(fontOptions),
-        )
-      }
+          modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Icon(
+            Icons.RoundedFilled.BrandFamily,
+            null,
+            modifier = Modifier.size(32.dp),
+          )
+          ExposedTextDropDownMenu(
+            selectedValue =
+              run {
+                val family =
+                  font
+                    ?.takeUnless {
+                      it == effectiveDefaultFont || it == LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY
+                    }.orEmpty()
+                preferredFontLabel.takeIf { selected ->
+                  fontChoices.any { it.label == selected && it.familyName == family }
+                } ?: fontChoices.firstOrNull { it.familyName == family }?.label
+                  ?: family.ifEmpty { defaultSubtitleFontDisplayName(effectiveDefaultFont) }
+              },
+            options = fonts.toImmutableList(),
+            label = stringResource(R.string.player_sheets_sub_typography_font),
+            onValueChangedEvent = { selected ->
+              preferredFontLabel = selected
+              val storedFont =
+                if (selected ==
+                  "Default"
+                ) {
+                  ""
+                } else {
+                  fontChoices.firstOrNull { it.label == selected }?.familyName ?: selected
+                }
+              val actualFont = storedFont.ifBlank { effectiveDefaultFont }
+              preferences.font.set(storedFont)
+              PlaybackSession.setPropertyString("sub-font", actualFont)
+            },
+            leadingIcon = fontsLoadingIndicator,
+            enabled = !ownsAny(fontOptions),
+          )
+        }
       }
       PanelConnectedTile(index = 2, itemCount = tileCount) {
         SliderItem(
@@ -287,7 +300,11 @@ fun SubtitleSettingsTypographyCard(
       }
       PanelConnectedTile(index = 3, itemCount = tileCount) {
         Row(
-          modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+          modifier =
+            Modifier.padding(
+              horizontal = MaterialTheme.spacing.medium,
+              vertical = MaterialTheme.spacing.small,
+            ),
           horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
           verticalAlignment = Alignment.CenterVertically,
         ) {

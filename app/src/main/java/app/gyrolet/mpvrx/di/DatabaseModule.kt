@@ -23,9 +23,9 @@ import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.database.repository.RecentlyPlayedRepositoryImpl
 import app.gyrolet.mpvrx.domain.framecapture.FrameCaptureRepository
 import app.gyrolet.mpvrx.domain.framecapture.FrameCaptureRepositoryImpl
+import app.gyrolet.mpvrx.domain.network.NetworkImageRepository
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.domain.recentlyplayed.repository.RecentlyPlayedRepository
-import app.gyrolet.mpvrx.domain.network.NetworkImageRepository
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.repository.WatchStatsRepository
 import kotlinx.serialization.json.Json
@@ -57,10 +57,12 @@ val MIGRATION_1_2 =
   object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
       try {
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_1_2", "Starting migration from v1.0.0 to v1.1.0")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_1_2", "Starting migration from v1.0.0 to v1.1.0")
 
         // ===== 1. Update PlaybackStateEntity: Remove secondarySid/secondarySubDelay, add videoZoom =====
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_1_2", "Updating PlaybackStateEntity schema")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_1_2", "Updating PlaybackStateEntity schema")
 
         // Create new PlaybackStateEntity table with correct schema
         db.execSQL(
@@ -98,11 +100,13 @@ val MIGRATION_1_2 =
         db.execSQL("ALTER TABLE `PlaybackStateEntity_new` RENAME TO `PlaybackStateEntity`")
 
         // ===== 2. Drop ExternalSubtitleEntity table =====
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_1_2", "Removing ExternalSubtitleEntity table")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_1_2", "Removing ExternalSubtitleEntity table")
         db.execSQL("DROP TABLE IF EXISTS `ExternalSubtitleEntity`")
 
         // ===== 3. Create video_metadata_cache table =====
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_1_2", "Creating video_metadata_cache table")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_1_2", "Creating video_metadata_cache table")
         db.execSQL(
           """
           CREATE TABLE IF NOT EXISTS `video_metadata_cache` (
@@ -120,7 +124,8 @@ val MIGRATION_1_2 =
         )
 
         // ===== 4. Create network_connections table =====
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_1_2", "Creating network_connections table")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_1_2", "Creating network_connections table")
         db.execSQL(
           """
           CREATE TABLE IF NOT EXISTS `network_connections` (
@@ -140,7 +145,8 @@ val MIGRATION_1_2 =
         )
 
         // ===== 5. Create PlaylistEntity table =====
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_1_2", "Creating PlaylistEntity table")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_1_2", "Creating PlaylistEntity table")
         db.execSQL(
           """
           CREATE TABLE IF NOT EXISTS `PlaylistEntity` (
@@ -153,7 +159,8 @@ val MIGRATION_1_2 =
         )
 
         // ===== 6. Create PlaylistItemEntity table with foreign key =====
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_1_2", "Creating PlaylistItemEntity table")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_1_2", "Creating PlaylistItemEntity table")
         db.execSQL(
           """
           CREATE TABLE IF NOT EXISTS `PlaylistItemEntity` (
@@ -177,7 +184,8 @@ val MIGRATION_1_2 =
         )
 
         // ===== 7. Add new columns to RecentlyPlayedEntity =====
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_1_2", "Adding columns to RecentlyPlayedEntity")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_1_2", "Adding columns to RecentlyPlayedEntity")
         db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `videoTitle` TEXT")
         db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `duration` INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `fileSize` INTEGER NOT NULL DEFAULT 0")
@@ -185,9 +193,11 @@ val MIGRATION_1_2 =
         db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `height` INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE `RecentlyPlayedEntity` ADD COLUMN `playlistId` INTEGER")
 
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_1_2", "Migration completed successfully")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_1_2", "Migration completed successfully")
       } catch (e: Exception) {
-        app.gyrolet.mpvrx.utils.logging.Log.e("Migration_1_2", "Migration failed", e)
+        app.gyrolet.mpvrx.utils.logging.Log
+          .e("Migration_1_2", "Migration failed", e)
         throw e
       }
     }
@@ -203,7 +213,8 @@ val MIGRATION_2_3 =
   object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
       try {
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_2_3", "Starting migration from version 2 to version 3")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_2_3", "Starting migration from version 2 to version 3")
 
         // Add externalSubtitles column to PlaybackStateEntity
         db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `externalSubtitles` TEXT NOT NULL DEFAULT ''")
@@ -211,9 +222,11 @@ val MIGRATION_2_3 =
         // Add subtitleCodec column to video_metadata_cache
         db.execSQL("ALTER TABLE video_metadata_cache ADD COLUMN subtitleCodec TEXT NOT NULL DEFAULT ''")
 
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_2_3", "Migration completed successfully")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_2_3", "Migration completed successfully")
       } catch (e: Exception) {
-        app.gyrolet.mpvrx.utils.logging.Log.e("Migration_2_3", "Migration failed", e)
+        app.gyrolet.mpvrx.utils.logging.Log
+          .e("Migration_2_3", "Migration failed", e)
         throw e
       }
     }
@@ -229,7 +242,8 @@ val MIGRATION_3_4 =
   object : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {
       try {
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_3_4", "Starting migration from version 3 to version 4")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_3_4", "Starting migration from version 3 to version 4")
 
         // Add M3U-related columns to PlaylistEntity
         db.execSQL(
@@ -239,9 +253,11 @@ val MIGRATION_3_4 =
           "ALTER TABLE `PlaylistEntity` ADD COLUMN `isM3uPlaylist` INTEGER NOT NULL DEFAULT 0",
         )
 
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_3_4", "Migration completed successfully")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_3_4", "Migration completed successfully")
       } catch (e: Exception) {
-        app.gyrolet.mpvrx.utils.logging.Log.e("Migration_3_4", "Migration failed", e)
+        app.gyrolet.mpvrx.utils.logging.Log
+          .e("Migration_3_4", "Migration failed", e)
         throw e
       }
     }
@@ -258,16 +274,19 @@ val MIGRATION_4_5 =
   object : Migration(4, 5) {
     override fun migrate(db: SupportSQLiteDatabase) {
       try {
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_4_5", "Starting migration from version 4 to version 5")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_4_5", "Starting migration from version 4 to version 5")
 
         // Add secondarySid column to PlaybackStateEntity (-1 means disabled)
         db.execSQL(
           "ALTER TABLE `PlaybackStateEntity` ADD COLUMN `secondarySid` INTEGER NOT NULL DEFAULT -1",
         )
 
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_4_5", "Migration completed successfully")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_4_5", "Migration completed successfully")
       } catch (e: Exception) {
-        app.gyrolet.mpvrx.utils.logging.Log.e("Migration_4_5", "Migration failed", e)
+        app.gyrolet.mpvrx.utils.logging.Log
+          .e("Migration_4_5", "Migration failed", e)
         throw e
       }
     }
@@ -277,7 +296,8 @@ val MIGRATION_5_6 =
   object : Migration(5, 6) {
     override fun migrate(db: SupportSQLiteDatabase) {
       try {
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_5_6", "Starting migration from version 5 to 6")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_5_6", "Starting migration from version 5 to 6")
 
         // Get existing columns to check what needs to be added
         val cursor = db.query("PRAGMA table_info(video_metadata_cache)")
@@ -292,12 +312,18 @@ val MIGRATION_5_6 =
         if (!existingColumns.contains("subtitleCodec")) {
           try {
             db.execSQL("ALTER TABLE `video_metadata_cache` ADD COLUMN `subtitleCodec` TEXT NOT NULL DEFAULT ''")
-            app.gyrolet.mpvrx.utils.logging.Log.d("Migration_5_6", "Added subtitleCodec column")
+            app.gyrolet.mpvrx.utils.logging.Log
+              .d("Migration_5_6", "Added subtitleCodec column")
           } catch (e: Exception) {
-            app.gyrolet.mpvrx.utils.logging.Log.w("Migration_5_6", "Error adding subtitleCodec column, may already exist", e)
+            app.gyrolet.mpvrx.utils.logging.Log.w(
+              "Migration_5_6",
+              "Error adding subtitleCodec column, may already exist",
+              e,
+            )
           }
         } else {
-          app.gyrolet.mpvrx.utils.logging.Log.d("Migration_5_6", "subtitleCodec column already exists, skipping")
+          app.gyrolet.mpvrx.utils.logging.Log
+            .d("Migration_5_6", "subtitleCodec column already exists, skipping")
         }
 
         // Add hasEmbeddedSubtitles if it doesn't exist
@@ -306,17 +332,25 @@ val MIGRATION_5_6 =
             db.execSQL(
               "ALTER TABLE `video_metadata_cache` ADD COLUMN `hasEmbeddedSubtitles` INTEGER NOT NULL DEFAULT 0",
             )
-            app.gyrolet.mpvrx.utils.logging.Log.d("Migration_5_6", "Added hasEmbeddedSubtitles column")
+            app.gyrolet.mpvrx.utils.logging.Log
+              .d("Migration_5_6", "Added hasEmbeddedSubtitles column")
           } catch (e: Exception) {
-            app.gyrolet.mpvrx.utils.logging.Log.w("Migration_5_6", "Error adding hasEmbeddedSubtitles column, may already exist", e)
+            app.gyrolet.mpvrx.utils.logging.Log.w(
+              "Migration_5_6",
+              "Error adding hasEmbeddedSubtitles column, may already exist",
+              e,
+            )
           }
         } else {
-          app.gyrolet.mpvrx.utils.logging.Log.d("Migration_5_6", "hasEmbeddedSubtitles column already exists, skipping")
+          app.gyrolet.mpvrx.utils.logging.Log
+            .d("Migration_5_6", "hasEmbeddedSubtitles column already exists, skipping")
         }
 
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_5_6", "Migration completed successfully")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_5_6", "Migration completed successfully")
       } catch (e: Exception) {
-        app.gyrolet.mpvrx.utils.logging.Log.e("Migration_5_6", "Migration failed", e)
+        app.gyrolet.mpvrx.utils.logging.Log
+          .e("Migration_5_6", "Migration failed", e)
         throw e
       }
     }
@@ -332,14 +366,17 @@ val MIGRATION_6_7 =
   object : Migration(6, 7) {
     override fun migrate(db: SupportSQLiteDatabase) {
       try {
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_6_7", "Starting migration from version 6 to 7")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_6_7", "Starting migration from version 6 to 7")
 
         // Add useHttps column to network_connections table
         db.execSQL("ALTER TABLE `network_connections` ADD COLUMN `useHttps` INTEGER NOT NULL DEFAULT 0")
 
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_6_7", "Migration completed successfully")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_6_7", "Migration completed successfully")
       } catch (e: Exception) {
-        app.gyrolet.mpvrx.utils.logging.Log.e("Migration_6_7", "Migration failed", e)
+        app.gyrolet.mpvrx.utils.logging.Log
+          .e("Migration_6_7", "Migration failed", e)
         throw e
       }
     }
@@ -355,14 +392,17 @@ val MIGRATION_7_8 =
   object : Migration(7, 8) {
     override fun migrate(db: SupportSQLiteDatabase) {
       try {
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_7_8", "Starting migration from version 7 to 8")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_7_8", "Starting migration from version 7 to 8")
 
         // Add hasBeenWatched column to PlaybackStateEntity
         db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `hasBeenWatched` INTEGER NOT NULL DEFAULT 0")
 
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_7_8", "Migration completed successfully")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_7_8", "Migration completed successfully")
       } catch (e: Exception) {
-        app.gyrolet.mpvrx.utils.logging.Log.e("Migration_7_8", "Migration failed", e)
+        app.gyrolet.mpvrx.utils.logging.Log
+          .e("Migration_7_8", "Migration failed", e)
         throw e
       }
     }
@@ -383,7 +423,8 @@ val MIGRATION_8_9 =
   object : Migration(8, 9) {
     override fun migrate(db: SupportSQLiteDatabase) {
       try {
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_8_9", "Starting migration from version 8 to 9 (schema repair)")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_8_9", "Starting migration from version 8 to 9 (schema repair)")
 
         // Check current schema to see if we need to repair
         val cursor = db.query("PRAGMA table_info(PlaybackStateEntity)")
@@ -394,7 +435,8 @@ val MIGRATION_8_9 =
         }
         cursor.close()
 
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_8_9", "Existing columns: $existingColumns")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_8_9", "Existing columns: $existingColumns")
 
         // Check if we have the wrong schema (secondarySubDelay instead of externalSubtitles)
         val hasSecondarySubDelay = existingColumns.contains("secondarySubDelay")
@@ -402,7 +444,8 @@ val MIGRATION_8_9 =
         val hasHasBeenWatched = existingColumns.contains("hasBeenWatched")
 
         if (hasSecondarySubDelay || !hasExternalSubtitles || !hasHasBeenWatched) {
-          app.gyrolet.mpvrx.utils.logging.Log.d("Migration_8_9", "Schema mismatch detected, recreating table")
+          app.gyrolet.mpvrx.utils.logging.Log
+            .d("Migration_8_9", "Schema mismatch detected, recreating table")
 
           // Create new table with correct schema
           db.execSQL(
@@ -471,13 +514,16 @@ val MIGRATION_8_9 =
           db.execSQL("DROP TABLE `PlaybackStateEntity`")
           db.execSQL("ALTER TABLE `PlaybackStateEntity_new` RENAME TO `PlaybackStateEntity`")
 
-          app.gyrolet.mpvrx.utils.logging.Log.d("Migration_8_9", "Table recreated successfully")
+          app.gyrolet.mpvrx.utils.logging.Log
+            .d("Migration_8_9", "Table recreated successfully")
         } else {
-          app.gyrolet.mpvrx.utils.logging.Log.d("Migration_8_9", "Schema is correct, no repair needed")
+          app.gyrolet.mpvrx.utils.logging.Log
+            .d("Migration_8_9", "Schema is correct, no repair needed")
         }
 
         // Add M3U-specific metadata columns to PlaylistItemEntity
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_8_9", "Adding M3U metadata columns to PlaylistItemEntity")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_8_9", "Adding M3U metadata columns to PlaylistItemEntity")
 
         val itemCursor = db.query("PRAGMA table_info(PlaylistItemEntity)")
         val itemColumns = mutableSetOf<String>()
@@ -525,9 +571,11 @@ val MIGRATION_8_9 =
           db.execSQL("ALTER TABLE `PlaylistEntity` ADD COLUMN `userAgent` TEXT DEFAULT NULL")
         }
 
-        app.gyrolet.mpvrx.utils.logging.Log.d("Migration_8_9", "Migration completed successfully")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("Migration_8_9", "Migration completed successfully")
       } catch (e: Exception) {
-        app.gyrolet.mpvrx.utils.logging.Log.e("Migration_8_9", "Migration failed", e)
+        app.gyrolet.mpvrx.utils.logging.Log
+          .e("Migration_8_9", "Migration failed", e)
         throw e
       }
     }
@@ -727,8 +775,12 @@ val MIGRATION_16_17 =
         )
         """.trimIndent(),
       )
-      db.execSQL("CREATE INDEX IF NOT EXISTS `index_download_items_systemDownloadId` ON `download_items` (`systemDownloadId`)")
-      db.execSQL("CREATE INDEX IF NOT EXISTS `index_download_items_jellyfinItemId` ON `download_items` (`jellyfinItemId`)")
+      db.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_download_items_systemDownloadId` ON `download_items` (`systemDownloadId`)",
+      )
+      db.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_download_items_jellyfinItemId` ON `download_items` (`jellyfinItemId`)",
+      )
     }
   }
 
@@ -775,10 +827,12 @@ val MIGRATION_19_20 =
       )
       try {
         db.execSQL("ALTER TABLE `navidrome_servers` ADD COLUMN `token` TEXT NOT NULL DEFAULT ''")
-      } catch (_: Exception) {}
+      } catch (_: Exception) {
+      }
       try {
         db.execSQL("ALTER TABLE `navidrome_servers` ADD COLUMN `authMode` TEXT NOT NULL DEFAULT 'CREDENTIALS'")
-      } catch (_: Exception) {}
+      } catch (_: Exception) {
+      }
     }
   }
 
@@ -799,10 +853,12 @@ val MIGRATION_20_21 =
       )
       try {
         db.execSQL("ALTER TABLE `navidrome_servers` ADD COLUMN `token` TEXT NOT NULL DEFAULT ''")
-      } catch (_: Exception) {}
+      } catch (_: Exception) {
+      }
       try {
         db.execSQL("ALTER TABLE `navidrome_servers` ADD COLUMN `authMode` TEXT NOT NULL DEFAULT 'CREDENTIALS'")
-      } catch (_: Exception) {}
+      } catch (_: Exception) {
+      }
     }
   }
 
@@ -823,10 +879,12 @@ val MIGRATION_19_21 =
       )
       try {
         db.execSQL("ALTER TABLE `navidrome_servers` ADD COLUMN `token` TEXT NOT NULL DEFAULT ''")
-      } catch (_: Exception) {}
+      } catch (_: Exception) {
+      }
       try {
         db.execSQL("ALTER TABLE `navidrome_servers` ADD COLUMN `authMode` TEXT NOT NULL DEFAULT 'CREDENTIALS'")
-      } catch (_: Exception) {}
+      } catch (_: Exception) {
+      }
     }
   }
 
@@ -840,7 +898,8 @@ val MIGRATION_21_22 =
 val MIGRATION_22_23 =
   object : Migration(22, 23) {
     override fun migrate(db: SupportSQLiteDatabase) {
-      db.execSQL("""CREATE TABLE IF NOT EXISTS `audiobooks` (
+      db.execSQL(
+        """CREATE TABLE IF NOT EXISTS `audiobooks` (
         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `sourceKey` TEXT NOT NULL,
         `title` TEXT NOT NULL, `subtitle` TEXT NOT NULL, `author` TEXT NOT NULL,
         `narrator` TEXT NOT NULL, `series` TEXT NOT NULL, `seriesPart` TEXT NOT NULL,
@@ -849,24 +908,33 @@ val MIGRATION_22_23 =
         `asin` TEXT NOT NULL, `abridged` INTEGER, `coverUri` TEXT, `addedAt` INTEGER NOT NULL,
         `lastPlayedAt` INTEGER NOT NULL, `currentTrackId` INTEGER, `positionMs` INTEGER NOT NULL,
         `progressMs` INTEGER NOT NULL, `finished` INTEGER NOT NULL, `playbackSpeed` REAL NOT NULL,
-        `rewindSeconds` INTEGER NOT NULL)""")
+        `rewindSeconds` INTEGER NOT NULL)""",
+      )
       db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_audiobooks_sourceKey` ON `audiobooks` (`sourceKey`)")
-      db.execSQL("""CREATE TABLE IF NOT EXISTS `audiobook_tracks` (
+      db.execSQL(
+        """CREATE TABLE IF NOT EXISTS `audiobook_tracks` (
         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `bookId` INTEGER NOT NULL,
         `uri` TEXT NOT NULL, `fileName` TEXT NOT NULL, `title` TEXT NOT NULL,
         `position` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `size` INTEGER NOT NULL,
-        FOREIGN KEY(`bookId`) REFERENCES `audiobooks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""")
+        FOREIGN KEY(`bookId`) REFERENCES `audiobooks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+      )
       db.execSQL("CREATE INDEX IF NOT EXISTS `index_audiobook_tracks_bookId` ON `audiobook_tracks` (`bookId`)")
-      db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_audiobook_tracks_bookId_uri` ON `audiobook_tracks` (`bookId`, `uri`)")
-      db.execSQL("""CREATE TABLE IF NOT EXISTS `audiobook_chapters` (
+      db.execSQL(
+        "CREATE UNIQUE INDEX IF NOT EXISTS `index_audiobook_tracks_bookId_uri` ON `audiobook_tracks` (`bookId`, `uri`)",
+      )
+      db.execSQL(
+        """CREATE TABLE IF NOT EXISTS `audiobook_chapters` (
         `trackId` INTEGER NOT NULL, `startMs` INTEGER NOT NULL, `endMs` INTEGER NOT NULL, `title` TEXT NOT NULL,
         PRIMARY KEY(`trackId`, `startMs`),
-        FOREIGN KEY(`trackId`) REFERENCES `audiobook_tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""")
-      db.execSQL("""CREATE TABLE IF NOT EXISTS `audiobook_bookmarks` (
+        FOREIGN KEY(`trackId`) REFERENCES `audiobook_tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+      )
+      db.execSQL(
+        """CREATE TABLE IF NOT EXISTS `audiobook_bookmarks` (
         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `bookId` INTEGER NOT NULL,
         `trackId` INTEGER NOT NULL, `positionMs` INTEGER NOT NULL, `title` TEXT NOT NULL, `createdAt` INTEGER NOT NULL,
         FOREIGN KEY(`bookId`) REFERENCES `audiobooks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
-        FOREIGN KEY(`trackId`) REFERENCES `audiobook_tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""")
+        FOREIGN KEY(`trackId`) REFERENCES `audiobook_tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+      )
       db.execSQL("CREATE INDEX IF NOT EXISTS `index_audiobook_bookmarks_bookId` ON `audiobook_bookmarks` (`bookId`)")
       db.execSQL("CREATE INDEX IF NOT EXISTS `index_audiobook_bookmarks_trackId` ON `audiobook_bookmarks` (`trackId`)")
     }
@@ -875,15 +943,21 @@ val MIGRATION_22_23 =
 val MIGRATION_23_24 =
   object : Migration(23, 24) {
     override fun migrate(db: SupportSQLiteDatabase) {
-      db.execSQL("""CREATE TABLE IF NOT EXISTS `playback_bookmarks` (
+      db.execSQL(
+        """CREATE TABLE IF NOT EXISTS `playback_bookmarks` (
         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `mediaId` TEXT NOT NULL,
         `positionMs` INTEGER NOT NULL, `title` TEXT NOT NULL, `createdAt` INTEGER NOT NULL,
         `bookTrackId` INTEGER,
-        FOREIGN KEY(`bookTrackId`) REFERENCES `audiobook_tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""")
+        FOREIGN KEY(`bookTrackId`) REFERENCES `audiobook_tracks`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)""",
+      )
       db.execSQL("CREATE INDEX IF NOT EXISTS `index_playback_bookmarks_mediaId` ON `playback_bookmarks` (`mediaId`)")
-      db.execSQL("CREATE INDEX IF NOT EXISTS `index_playback_bookmarks_bookTrackId` ON `playback_bookmarks` (`bookTrackId`)")
-      db.execSQL("""INSERT INTO `playback_bookmarks` (`id`, `mediaId`, `positionMs`, `title`, `createdAt`, `bookTrackId`)
-        SELECT `id`, 'audiobook:' || `bookId`, `positionMs`, `title`, `createdAt`, `trackId` FROM `audiobook_bookmarks`""")
+      db.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_playback_bookmarks_bookTrackId` ON `playback_bookmarks` (`bookTrackId`)",
+      )
+      db.execSQL(
+        """INSERT INTO `playback_bookmarks` (`id`, `mediaId`, `positionMs`, `title`, `createdAt`, `bookTrackId`)
+        SELECT `id`, 'audiobook:' || `bookId`, `positionMs`, `title`, `createdAt`, `trackId` FROM `audiobook_bookmarks`""",
+      )
       db.execSQL("DROP TABLE `audiobook_bookmarks`")
     }
   }
@@ -1014,15 +1088,20 @@ val MIGRATION_33_34 =
   object : Migration(33, 34) {
     override fun migrate(db: SupportSQLiteDatabase) {
       db.execSQL("ALTER TABLE `PlaybackStateEntity` ADD COLUMN `manualAudioId` INTEGER NOT NULL DEFAULT -1")
-      db.execSQL("UPDATE `PlaybackStateEntity` SET `manualAudioId` = `aid` WHERE `hasManualAudioSelection` != 0 AND `aid` >= 0")
-      db.execSQL("UPDATE `PlaybackStateEntity` SET `hasManualAudioSelection` = 0 WHERE `hasManualAudioSelection` != 0 AND `aid` < 0")
+      db.execSQL(
+        "UPDATE `PlaybackStateEntity` SET `manualAudioId` = `aid` WHERE `hasManualAudioSelection` != 0 AND `aid` >= 0",
+      )
+      db.execSQL(
+        "UPDATE `PlaybackStateEntity` SET `hasManualAudioSelection` = 0 WHERE `hasManualAudioSelection` != 0 AND `aid` < 0",
+      )
     }
   }
 
 val MIGRATION_24_25 =
   object : Migration(24, 25) {
     override fun migrate(db: SupportSQLiteDatabase) {
-      db.execSQL("""CREATE TABLE IF NOT EXISTS `audiobookshelf_servers` (
+      db.execSQL(
+        """CREATE TABLE IF NOT EXISTS `audiobookshelf_servers` (
         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
         `name` TEXT NOT NULL,
         `serverUrl` TEXT NOT NULL,
@@ -1031,7 +1110,8 @@ val MIGRATION_24_25 =
         `userId` TEXT NOT NULL,
         `activeLibraryId` TEXT,
         `lastConnected` INTEGER NOT NULL
-      )""")
+      )""",
+      )
     }
   }
 

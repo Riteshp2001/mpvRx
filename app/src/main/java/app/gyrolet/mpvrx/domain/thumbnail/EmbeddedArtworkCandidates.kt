@@ -25,11 +25,12 @@ object EmbeddedArtworkCandidates {
   fun audioFolderMotionPath(path: String?): String? {
     if (path.isNullOrBlank() || path.isRemoteOrOpaqueUri()) return null
     val parsed = Uri.parse(path)
-    val localPath = when (parsed.scheme?.lowercase()) {
-      null, "" -> path
-      "file" -> parsed.path
-      else -> null
-    } ?: return null
+    val localPath =
+      when (parsed.scheme?.lowercase()) {
+        null, "" -> path
+        "file" -> parsed.path
+        else -> null
+      } ?: return null
     val folder = File(localPath).parentFile ?: return null
     return File(folder, "cover.mp4").takeIf { it.isFile && it.canRead() }?.let { Uri.fromFile(it).toString() }
   }
@@ -78,7 +79,9 @@ internal object EmbeddedArtworkResolver {
     artworkUri: String?,
   ): Bitmap? {
     if (artworkUri.isNullOrBlank()) return null
-    app.gyrolet.mpvrx.presentation.components.RemoteImageLoader.getFromMemory(artworkUri)?.let { return it }
+    app.gyrolet.mpvrx.presentation.components.RemoteImageLoader
+      .getFromMemory(artworkUri)
+      ?.let { return it }
     val uri = Uri.parse(artworkUri)
     return runCatching {
       val decoded =
@@ -89,15 +92,16 @@ internal object EmbeddedArtworkResolver {
             context.contentResolver.openInputStream(uri)?.use { input -> BitmapFactory.decodeStream(input) }
           "http", "https" -> {
             val token = uri.getQueryParameter("token")
-            val connection = (java.net.URL(artworkUri).openConnection() as java.net.HttpURLConnection).apply {
-              connectTimeout = 8000
-              readTimeout = 8000
-              instanceFollowRedirects = true
-              setRequestProperty("User-Agent", "Mozilla/5.0 (Android) mpvRx")
-              if (!token.isNullOrBlank()) {
-                setRequestProperty("Authorization", "Bearer $token")
+            val connection =
+              (java.net.URL(artworkUri).openConnection() as java.net.HttpURLConnection).apply {
+                connectTimeout = 8000
+                readTimeout = 8000
+                instanceFollowRedirects = true
+                setRequestProperty("User-Agent", "Mozilla/5.0 (Android) mpvRx")
+                if (!token.isNullOrBlank()) {
+                  setRequestProperty("Authorization", "Bearer $token")
+                }
               }
-            }
             connection.inputStream.use { input ->
               BitmapFactory.decodeStream(input)
             }
@@ -105,7 +109,8 @@ internal object EmbeddedArtworkResolver {
           else -> null
         }
       decoded?.also {
-        app.gyrolet.mpvrx.presentation.components.RemoteImageLoader.putInMemory(artworkUri, it)
+        app.gyrolet.mpvrx.presentation.components.RemoteImageLoader
+          .putInMemory(artworkUri, it)
       }
     }.getOrNull()
   }
@@ -127,16 +132,21 @@ internal object EmbeddedArtworkResolver {
     maxSize: Int = MAX_THUMBNAIL_SIZE,
   ): Bitmap? =
     MatroskaEmbeddedArtworkExtractor.decode(videoPath, maxSize)
-      ?: (if (context != null) {
-        videoUri?.takeIf { it.scheme == "content" }?.let { uri ->
-          MatroskaEmbeddedArtworkExtractor.decode(context, uri, displayName ?: videoPath, maxSize)
+      ?: (
+        if (context != null) {
+          videoUri?.takeIf { it.scheme == "content" }?.let { uri ->
+            MatroskaEmbeddedArtworkExtractor.decode(context, uri, displayName ?: videoPath, maxSize)
+          }
+        } else {
+          null
         }
-      } else {
-        null
-      })
+      )
       ?: decodeSidecar(videoPath, maxSize)
 
-  fun decodeSidecar(videoPath: String?, maxSize: Int = MAX_THUMBNAIL_SIZE): Bitmap? =
+  fun decodeSidecar(
+    videoPath: String?,
+    maxSize: Int = MAX_THUMBNAIL_SIZE,
+  ): Bitmap? =
     videoPath
       ?.let(EmbeddedArtworkCandidates::forVideoPath)
       ?.asSequence()
@@ -144,19 +154,26 @@ internal object EmbeddedArtworkResolver {
       ?.firstNotNullOfOrNull { decodeArtworkFile(it, maxSize) }
 
   /** Audio-folder cover.jpg is preferred after embedded artwork. */
-  fun decodeAudioSidecar(audioPath: String?, maxSize: Int = MAX_THUMBNAIL_SIZE): Bitmap? {
+  fun decodeAudioSidecar(
+    audioPath: String?,
+    maxSize: Int = MAX_THUMBNAIL_SIZE,
+  ): Bitmap? {
     if (audioPath.isNullOrBlank()) return null
     val parsed = Uri.parse(audioPath)
-    val localPath = when (parsed.scheme?.lowercase()) {
-      null, "" -> audioPath
-      "file" -> parsed.path
-      else -> null
-    } ?: return decodeSidecar(audioPath, maxSize)
+    val localPath =
+      when (parsed.scheme?.lowercase()) {
+        null, "" -> audioPath
+        "file" -> parsed.path
+        else -> null
+      } ?: return decodeSidecar(audioPath, maxSize)
     val cover = File(localPath).parentFile?.let { File(it, "cover.jpg") }
     return decodeArtworkFile(cover, maxSize) ?: decodeSidecar(audioPath, maxSize)
   }
 
-  private fun decodeArtworkFile(file: File?, maxSize: Int): Bitmap? =
+  private fun decodeArtworkFile(
+    file: File?,
+    maxSize: Int,
+  ): Bitmap? =
     file?.takeIf { it.isFile && it.canRead() }?.let {
       runCatching {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -184,7 +201,9 @@ internal object EmbeddedArtworkResolver {
           val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
           BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
           BitmapFactory.decodeByteArray(
-            bytes, 0, bytes.size,
+            bytes,
+            0,
+            bytes.size,
             BitmapFactory.Options().apply {
               inSampleSize = calculateThumbnailSampleSize(bounds.outWidth, bounds.outHeight, maxSize)
               // Album art is photographic and often contains smooth gradients; preserve full color.
@@ -192,8 +211,7 @@ internal object EmbeddedArtworkResolver {
             },
           )
         }.getOrNull()
-      }
-      ?.let { return it }
+      }?.let { return it }
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
       runCatching { retriever.getPrimaryImage() }
