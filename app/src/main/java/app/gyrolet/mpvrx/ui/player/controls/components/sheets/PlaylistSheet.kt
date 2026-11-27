@@ -348,7 +348,7 @@ fun PlaylistSheet(
     leadingIcon = Icons.RoundedFilled.QueueMusic,
     actions = {
       onOpenSleepTimer?.let {
-        PlayerSheetAction(Icons.RoundedFilled.Timer, stringResource(R.string.timer_title), it)
+        PlayerSheetAction(Icons.RoundedFilled.MoonStars, stringResource(R.string.timer_title), it)
       }
       PlayerSheetAction(Icons.RoundedFilled.PlaylistAdd, stringResource(R.string.save_queue_as_playlist), { showAddToPlaylistDialog = true })
       if (!isPortrait) {
