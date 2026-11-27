@@ -286,8 +286,8 @@ class MPVView(
 
   private data class StartupShaderSelection(
     val backend: RenderBackendSelection,
+    val requestedHdrMode: HdrScreenMode,
     val hdrMode: HdrScreenMode,
-    val hdrPipelineReady: Boolean,
   )
 
   private var pendingStartupShaders: StartupShaderSelection? = null
@@ -489,22 +489,11 @@ class MPVView(
     PlaybackSession.setOptionString("gpu-api", backend.gpuApi)
     PlaybackSession.setOptionString("gpu-context", backend.gpuContext)
 
-    val isNativeHdrOutputAvailable = useVulkan && backend.vo == "gpu-next"
-    val hdrScreenMode =
-      if (!inputs.hdrScreenOutputEnabled || mediaCodecEmbed) {
-        HdrScreenMode.OFF
-      } else {
-        if (inputs.hdrScreenModePreference.needsNativeHdrOutput && !isNativeHdrOutputAvailable) {
-          HdrScreenMode.fallbackMode
-        } else {
-          inputs.hdrScreenModePreference
-        }
-      }
-    val hdrPipelineReady = !hdrScreenMode.needsNativeHdrOutput || isNativeHdrOutputAvailable
+    val requestedHdrMode = if (inputs.hdrScreenOutputEnabled) inputs.hdrScreenModePreference else HdrScreenMode.OFF
+    val hdrScreenMode = requestedHdrMode.resolveForRenderer(backend.vo, backend.gpuApi)
     if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) {
       applyHdrScreenOutputOptions(
         mode = hdrScreenMode,
-        pipelineReady = hdrPipelineReady,
         displayPeakNits = hdrToysDisplayPeakNits(context),
         boostSdrToHdr = inputs.boostSdrToHdr,
       )
@@ -592,7 +581,7 @@ class MPVView(
     // These are native property/command operations (shader list changes), not mpv options.
     // Running them before MPVLib.init() fails with "mpv_command: core not initialized".
     // Save the selection and apply it in postInitOptions(), before the first loadfile.
-    pendingStartupShaders = StartupShaderSelection(backend, hdrScreenMode, hdrPipelineReady)
+    pendingStartupShaders = StartupShaderSelection(backend, requestedHdrMode, hdrScreenMode)
 
     setupSubtitlesOptions()
     setupAudioOptions()
@@ -644,14 +633,26 @@ class MPVView(
 
     // libmpv is initialized here, but no file has been loaded yet. Unlike initOptions(),
     // it is safe to run change-list and shader property commands here.
-    // MediaCodec embed bypasses mpv's renderer, so it gets no shaders.
-    pendingStartupShaders?.takeIf { it.backend.vo != MediaCodecEmbed.VO }?.let { selection ->
-      if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.ANIME4K)) {
+    pendingStartupShaders?.let { selection ->
+      if (selection.backend.vo != MediaCodecEmbed.VO &&
+        !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.ANIME4K)
+      ) {
         applyAnime4KShaders(selection.backend.vo, selection.backend.gpuApi)
       }
       // HDR Toys must be appended after Anime4K.
       if (!MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) {
-        applyHdrToysMode(selection.hdrMode, selection.hdrPipelineReady)
+        // mpv.conf has now been read. A real VO override takes precedence over the predicted one.
+        val output = PlaybackSession.getPropertyString("vo")?.takeUnless { it.isBlank() || it == "null" }
+        val gpuApi = PlaybackSession.getPropertyString("gpu-api") ?: selection.backend.gpuApi
+        val hdrMode = selection.requestedHdrMode.resolveForRenderer(output ?: selection.backend.vo, gpuApi)
+        if (hdrMode != selection.hdrMode) {
+          applyHdrScreenOutputProperties(
+            mode = hdrMode,
+            displayPeakNits = hdrToysDisplayPeakNits(context),
+            boostSdrToHdr = awaitInitInputs().boostSdrToHdr,
+          )
+        }
+        applyHdrToysMode(hdrMode)
       }
     }
     pendingStartupShaders = null
@@ -1126,24 +1127,21 @@ class MPVView(
    * the chosen profile's shader chain to mpv's glsl-shaders list.
    * Safe to call on every init — clears previous hdr-toys shaders before re-applying.
    */
-  fun applyHdrToysMode(
-    mode: HdrScreenMode,
-    pipelineReady: Boolean,
-  ) {
-    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) return
+  private fun applyHdrToysMode(mode: HdrScreenMode) {
     val profile = mode.hdrToysProfile
-    if (!pipelineReady || profile == null) {
+    if (profile == null) {
       // A newly initialized core has no app HDR shaders to remove. Avoid a burst of
       // redundant change-list commands (and native work) on every normal video open.
-      if (PlaybackSession.getPropertyString("glsl-shaders")?.contains("hdr-toys", ignoreCase = true) == true) {
-        hdrToysManager.clear()
-      }
+      if (hasHdrToysShaders()) hdrToysManager.clear()
       return
     }
     if (!hdrToysManager.apply(profile)) {
       Log.w(TAG, "Skipping HDR Toys mode — bundled shaders unavailable: ${mode.name}")
     }
   }
+
+  private fun hasHdrToysShaders(): Boolean =
+    PlaybackSession.getPropertyString("glsl-shaders")?.contains("hdr-toys", ignoreCase = true) == true
 
   private fun applyAnime4KShaders(
     activeVo: String,
@@ -1250,26 +1248,38 @@ class MPVView(
             forceOpenGlFallback = false,
           ),
       )
-    val current =
-      RenderBackendSelection(
-        vo = PlaybackSession.videoOutput,
-        gpuApi = PlaybackSession.getPropertyString("gpu-api").orEmpty(),
-        gpuContext = PlaybackSession.getPropertyString("gpu-context").orEmpty(),
-        reason = "running",
-      )
-    if (target.configurationKey == current.configurationKey) return null
-    // android-set-gpu-output moves only between GPU renderers; MediaCodec embed needs a new core.
-    if (target.vo == MediaCodecEmbed.VO || current.vo == MediaCodecEmbed.VO) return false
-    val switched =
-      PlaybackSession.switchGpuOutput(
-        gpuNext = target.vo == "gpu-next",
-        vulkan = target.gpuApi == "vulkan",
-        fromBackendKey = current.configurationKey,
-        toBackendKey = target.configurationKey,
-      )
-    // Cached init inputs hold the previous renderer selection.
-    if (switched) preparedInitInputs = null
-    return switched
+    return PlaybackSession.withVideoOutput<Boolean?>(false) { videoOutput ->
+      val current =
+        RenderBackendSelection(
+          vo = videoOutput,
+          gpuApi = PlaybackSession.getPropertyString("gpu-api").orEmpty(),
+          gpuContext = PlaybackSession.getPropertyString("gpu-context").orEmpty(),
+          reason = "running",
+        )
+      if (target.configurationKey == current.configurationKey) return@withVideoOutput null
+      // android-set-gpu-output moves only between GPU renderers; MediaCodec embed needs a new core.
+      if (target.vo == MediaCodecEmbed.VO || current.vo == MediaCodecEmbed.VO) return@withVideoOutput false
+      val clearHdrBeforeSwitch =
+        current.vo == "gpu-next" &&
+          target.vo == "gpu" &&
+          !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT) &&
+          hasHdrToysShaders()
+      if (clearHdrBeforeSwitch) hdrToysManager.clear()
+      val switched =
+        PlaybackSession.switchGpuOutput(
+          gpuNext = target.vo == "gpu-next",
+          vulkan = target.gpuApi == "vulkan",
+          fromBackendKey = current.configurationKey,
+          toBackendKey = target.configurationKey,
+        )
+      // Cached init inputs hold the previous renderer selection.
+      if (switched) {
+        preparedInitInputs = null
+      } else if (clearHdrBeforeSwitch && decoderPreferences.hdrScreenOutput.get()) {
+        applyHdrToysMode(decoderPreferences.hdrScreenMode.get().resolveForRenderer(current.vo, current.gpuApi))
+      }
+      switched
+    }
   }
 
   /**

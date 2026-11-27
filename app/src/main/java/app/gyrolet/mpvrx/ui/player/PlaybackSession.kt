@@ -1140,6 +1140,12 @@ object PlaybackSession : MPVLib.EventObserver {
   val videoOutput: String
     get() = desiredVideoOutput
 
+  /** Keeps a renderer change from interleaving with its shader updates. */
+  internal fun <T> withVideoOutput(
+    default: T,
+    block: (String) -> T,
+  ): T = withReadyCore(default) { block(desiredVideoOutput) }
+
   /**
    * FongMi build: rebuilds only the playing video's output on another GPU renderer, keeping the
    * file, position and audio (`android-set-gpu-output`). mpv rolls back to the previous output on
