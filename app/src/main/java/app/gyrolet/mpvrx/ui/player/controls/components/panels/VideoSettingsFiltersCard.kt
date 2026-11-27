@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -51,7 +52,14 @@ fun VideoSettingsFiltersCard(
 ) {
   val decoderPreferences = koinInject<DecoderPreferences>()
   val configOwnedOptions = currentMpvConfigOverrideOptions()
-  val hasOwnedFilter = VideoFilters.entries.any { it.mpvProperty in configOwnedOptions }
+  // The Kodi engine maps only these mpv properties.
+  val filters =
+    if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+      VideoFilters.entries
+    } else {
+      listOf(VideoFilters.BRIGHTNESS, VideoFilters.CONTRAST, VideoFilters.GAMMA)
+    }
+  val hasOwnedFilter = filters.any { it.mpvProperty in configOwnedOptions }
   var isExpanded by remember { mutableStateOf(true) }
 
   ExpandableCard(
@@ -74,7 +82,7 @@ fun VideoSettingsFiltersCard(
         TextButton(
           enabled = !hasOwnedFilter,
           onClick = {
-            VideoFilters.entries.forEach {
+            filters.forEach {
               PlaybackSession.setPropertyInt(it.mpvProperty, it.preference(decoderPreferences).deleteAndGet())
             }
           },
@@ -82,9 +90,9 @@ fun VideoSettingsFiltersCard(
           Text(text = stringResource(id = R.string.generic_reset))
         }
 
-        VideoFilters.entries.forEachIndexed { index, filter ->
+        filters.forEachIndexed { index, filter ->
           val value by filter.preference(decoderPreferences).collectAsState()
-          PanelConnectedTile(index = index, itemCount = VideoFilters.entries.size) {
+          PanelConnectedTile(index = index, itemCount = filters.size) {
             SliderItem(
               label = stringResource(filter.titleRes),
               value = value,
@@ -100,7 +108,7 @@ fun VideoSettingsFiltersCard(
           }
         }
 
-        if (!decoderPreferences.gpuNext.get()) {
+        if (BuildConfig.PLAYER_ENGINE_IS_MPV && !decoderPreferences.gpuNext.get()) {
           FooterPreference(
             summary = {
               Text(text = stringResource(id = R.string.player_sheets_filters_warning))

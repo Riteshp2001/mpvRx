@@ -2918,8 +2918,56 @@ object SearchablePreferences {
 
   // Play builds omit AI, P2P and lyrics translation, so their settings must not surface.
   private fun SearchablePreference.isAvailable(): Boolean =
-    !app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD ||
-      (screen != AiIntegrationScreen && titleRes?.let(playStoreHiddenTitles::contains) != true)
+    (
+      !app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD ||
+        (screen != AiIntegrationScreen && titleRes?.let(playStoreHiddenTitles::contains) != true)
+    ) &&
+      isSupportedByPlayerEngine()
+
+  private val mpvOnlyTitles =
+    setOf(
+      R.string.pref_decoder_profile_title,
+      R.string.pref_decoder_mediacodec_embed_title,
+      R.string.pref_decoder_gpu_next_title,
+      R.string.pref_decoder_gpu_next_enable_title,
+      R.string.pref_decoder_vulkan_experimental_title,
+      R.string.pref_decoder_debanding_title,
+      R.string.pref_decoder_yuv420p_title,
+      R.string.pref_anime4k_title,
+      R.string.pref_anime4k_in_4k_title,
+      R.string.pref_anime4k_quality_title,
+      R.string.pref_anime4k_darken_title,
+      R.string.pref_anime4k_thin_title,
+      R.string.pref_anime4k_deblur_title,
+      R.string.player_sheets_sub_scale_by_window,
+      R.string.pref_subtitles_secondary_pinch_zoom,
+      R.string.pref_subtitles_fonts_dir,
+      R.string.pref_subtitles_font_title,
+      R.string.reload_fonts,
+      R.string.clear_font_directory,
+      R.string.pref_audio_volume_normalization_title,
+      R.string.pref_audio_spatial_title,
+      R.string.pref_audio_drc_title,
+      R.string.pref_audio_channels,
+      R.string.pref_advanced_mpv_conf,
+      R.string.pref_advanced_input_conf,
+      R.string.pref_mpv_conf_overrides_title,
+      R.string.pref_enable_lua_scripts_title,
+      R.string.pref_manage_lua_scripts_title,
+      R.string.ui_image_format,
+      R.string.ui_include_subtitles_in_screenshots,
+      R.string.ui_filename_template,
+      R.string.ui_template,
+      R.string.ui_jpeg_webp_quality,
+      R.string.ui_png_compression,
+      R.string.ui_webp_lossless,
+    )
+
+  // Renderer, shader, filter, script, mpv.conf and screenshot settings, and the Lua/JS custom
+  // buttons, only configure libmpv.
+  private fun SearchablePreference.isSupportedByPlayerEngine(): Boolean =
+    app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV ||
+      (screen != CustomButtonScreen && titleRes?.let(mpvOnlyTitles::contains) != true)
 
   internal fun forScreens(screens: Set<Screen>): List<SearchablePreference> =
     (staticPreferences + screenFallbackPreferences)

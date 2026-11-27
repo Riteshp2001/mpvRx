@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.presentation.components.OutlinedNumericChooser
@@ -59,7 +60,7 @@ fun SubtitleDelayPanel(
   val configOwnedOptions = currentMpvConfigOverrideOptions()
   val delayEnabled = SUB_DELAY_PROPERTY !in configOwnedOptions
   val secondaryDelayEnabled = SECONDARY_SUB_DELAY_PROPERTY !in configOwnedOptions
-  val speedEnabled = "sub-speed" !in configOwnedOptions
+  val speedEnabled = BuildConfig.PLAYER_ENGINE_IS_MPV && "sub-speed" !in configOwnedOptions
 
   /**
    * mpv keeps `sub-delay` and `secondary-sub-delay` as two independent properties, but
@@ -131,18 +132,20 @@ private fun SubtitleDelayCardContent(
     delayControlEnabled = delayEnabled,
     actionsEnabled = delayEnabled || speedEnabled,
     extraSettings = {
-      OutlinedNumericChooser(
-        label = { Text(stringResource(R.string.player_sheets_sub_delay_card_speed)) },
-        value = speed,
-        onChange = onSpeedChange,
-        max = 10f,
-        step = 0.01f,
-        min = 0.1f,
-        increaseIcon = Icons.RoundedFilled.Add,
-        decreaseIcon = Icons.RoundedFilled.Remove,
-        valueFormatter = { "%.2f".format(it) },
-        enabled = speedEnabled,
-      )
+      if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+        OutlinedNumericChooser(
+          label = { Text(stringResource(R.string.player_sheets_sub_delay_card_speed)) },
+          value = speed,
+          onChange = onSpeedChange,
+          max = 10f,
+          step = 0.01f,
+          min = 0.1f,
+          increaseIcon = Icons.RoundedFilled.Add,
+          decreaseIcon = Icons.RoundedFilled.Remove,
+          valueFormatter = { "%.2f".format(it) },
+          enabled = speedEnabled,
+        )
+      }
     },
   )
 }

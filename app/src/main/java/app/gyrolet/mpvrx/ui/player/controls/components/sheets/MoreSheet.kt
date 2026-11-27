@@ -39,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
@@ -107,14 +108,16 @@ fun MoreSheet(
         onEnterFiltersPanel,
         enabled = filtersEnabled,
       )
-      MoreHeaderAction(
-        Icons.RoundedFilled.Code,
-        if (selectedLuaScripts.isEmpty()) "Scripts" else "Scripts (${selectedLuaScripts.size})",
-        showActionLabels,
-        onEnterLuaScriptsPanel,
-        enabled = mpvConfStorageLocation.isNotBlank(),
-        highlighted = enableLuaScripts && selectedLuaScripts.isNotEmpty(),
-      )
+      if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+        MoreHeaderAction(
+          Icons.RoundedFilled.Code,
+          if (selectedLuaScripts.isEmpty()) "Scripts" else "Scripts (${selectedLuaScripts.size})",
+          showActionLabels,
+          onEnterLuaScriptsPanel,
+          enabled = mpvConfStorageLocation.isNotBlank(),
+          highlighted = enableLuaScripts && selectedLuaScripts.isNotEmpty(),
+        )
+      }
       if (onEnterSettingsPanel != null) {
         MoreHeaderAction(
           Icons.RoundedFilled.Settings,
@@ -133,43 +136,45 @@ fun MoreSheet(
           .padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      Text(
-        text = stringResource(R.string.player_sheets_stats_page_title),
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.primary,
-      )
-      LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-      ) {
-        items(9, key = { it }) { page ->
-          FilterChip(
-            label = {
-              Text(
-                when (page) {
-                  0 -> stringResource(R.string.player_sheets_tracks_off)
-                  8 -> stringResource(R.string.player_sheets_stats_page_console)
-                  else -> stringResource(R.string.player_sheets_stats_page_chip, page)
-                },
-              )
-            },
-            selected = statisticsPage == page,
-            onClick = {
-              // One coordinator owns the chips, the preference and mpv's stats.lua state; it
-              // closes the console itself and keeps the overlay from being blind-toggled.
-              PlaybackSession.setStatisticsPage(page)
-            },
-            colors =
-              FilterChipDefaults.filterChipColors(
-                containerColor = playerSheetSelectionColor(false),
-                selectedContainerColor = playerSheetSelectionColor(true),
-                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-              ),
-          )
+      if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+        Text(
+          text = stringResource(R.string.player_sheets_stats_page_title),
+          style = MaterialTheme.typography.titleMedium,
+          color = MaterialTheme.colorScheme.primary,
+        )
+        LazyRow(
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+        ) {
+          items(9, key = { it }) { page ->
+            FilterChip(
+              label = {
+                Text(
+                  when (page) {
+                    0 -> stringResource(R.string.player_sheets_tracks_off)
+                    8 -> stringResource(R.string.player_sheets_stats_page_console)
+                    else -> stringResource(R.string.player_sheets_stats_page_chip, page)
+                  },
+                )
+              },
+              selected = statisticsPage == page,
+              onClick = {
+                // One coordinator owns the chips, the preference and mpv's stats.lua state; it
+                // closes the console itself and keeps the overlay from being blind-toggled.
+                PlaybackSession.setStatisticsPage(page)
+              },
+              colors =
+                FilterChipDefaults.filterChipColors(
+                  containerColor = playerSheetSelectionColor(false),
+                  selectedContainerColor = playerSheetSelectionColor(true),
+                  selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+            )
+          }
         }
       }
 
       // Standard Anime4K needs legacy gpu or gpu-next with Vulkan.
-      if (anime4KUiState.isAvailable) {
+      if (BuildConfig.PLAYER_ENGINE_IS_MPV && anime4KUiState.isAvailable) {
         Text(
           text = stringResource(R.string.anime4k_mode_title),
           style = MaterialTheme.typography.titleMedium,

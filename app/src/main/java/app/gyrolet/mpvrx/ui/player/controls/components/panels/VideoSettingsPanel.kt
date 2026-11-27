@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
@@ -40,9 +41,14 @@ fun VideoSettingsPanel(
       Modifier.padding(MaterialTheme.spacing.medium),
       verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
     ) {
-      VideoSettingsFilterPresetsCard(shape = rememberConnectedShape(0, 3, ConnectedLayout.Vertical))
-      VideoSettingsFiltersCard(shape = rememberConnectedShape(1, 3, ConnectedLayout.Vertical))
-      VideoSettingsDebandCard(shape = rememberConnectedShape(2, 3, ConnectedLayout.Vertical))
+      if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+        VideoSettingsFilterPresetsCard(shape = rememberConnectedShape(0, 3, ConnectedLayout.Vertical))
+        VideoSettingsFiltersCard(shape = rememberConnectedShape(1, 3, ConnectedLayout.Vertical))
+        VideoSettingsDebandCard(shape = rememberConnectedShape(2, 3, ConnectedLayout.Vertical))
+      } else {
+        // Presets also set libmpv-only filters, and debanding is libmpv-only.
+        VideoSettingsFiltersCard(shape = rememberConnectedShape(0, 1, ConnectedLayout.Vertical))
+      }
     }
   }
 }

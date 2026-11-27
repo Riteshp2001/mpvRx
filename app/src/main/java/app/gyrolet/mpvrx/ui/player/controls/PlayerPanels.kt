@@ -24,11 +24,13 @@ import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.ui.player.Panels
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
@@ -84,6 +86,10 @@ fun PlayerPanels(
       MpvConfigOwnedPanel(onDismissRequest)
       return@AnimatedContent
     }
+    if (!BuildConfig.PLAYER_ENGINE_IS_MPV && currentPanel in mpvOnlyPanels) {
+      LaunchedEffect(currentPanel) { onDismissRequest() }
+      return@AnimatedContent
+    }
     when (currentPanel) {
       Panels.None -> {
         Box(Modifier.fillMaxHeight())
@@ -132,6 +138,9 @@ fun PlayerPanels(
 }
 
 val CARDS_MAX_WIDTH = 420.dp
+
+/** Panels for libmpv's Lua/JS scripts and HDR output, which the Kodi engine does not have. */
+private val mpvOnlyPanels = setOf(Panels.LuaScripts, Panels.HdrScreenOutput)
 val panelCardsColors: @Composable () -> CardColors = {
   // Higher alpha for better readability in panels (less transparent)
   val alpha = 0.85f

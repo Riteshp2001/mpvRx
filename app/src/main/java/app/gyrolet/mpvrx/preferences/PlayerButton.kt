@@ -11,6 +11,7 @@ package app.gyrolet.mpvrx.preferences
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.ui.icons.AppIcon
@@ -59,17 +60,31 @@ enum class PlayerButton(
   NONE(Icons.RoundedFilled.Bookmarks),
 }
 
+/** Buttons for statistics, shaders, video and audio filters and HDR output, which only libmpv has. */
+private val mpvOnlyPlayerButtons =
+  setOf(
+    PlayerButton.TIME_NETWORK,
+    PlayerButton.HDR_MODE,
+    PlayerButton.AMBIENT_MODE,
+    PlayerButton.POST_PROCESSING,
+    PlayerButton.MIRROR,
+    PlayerButton.VERTICAL_FLIP,
+    PlayerButton.EQUALIZER,
+  )
+
 /**
  * A list of all buttons that the user can choose from in the customization menu.
- * Excludes NONE (placeholder) and constant buttons (BACK_ARROW, VIDEO_TITLE), and motion
- * interpolation on builds whose mpvlib variant does not include it.
+ * Excludes NONE (placeholder) and constant buttons (BACK_ARROW, VIDEO_TITLE), motion
+ * interpolation on builds whose mpvlib variant does not include it, and libmpv-only buttons on
+ * builds that play with another engine.
  */
 val allPlayerButtons =
   PlayerButton.values().filter {
     it != PlayerButton.NONE &&
       it != PlayerButton.BACK_ARROW &&
       it != PlayerButton.VIDEO_TITLE &&
-      (it != PlayerButton.MOTION_INTERPOLATION || MotionInterpolation.isBuildSupported)
+      (it != PlayerButton.MOTION_INTERPOLATION || MotionInterpolation.isBuildSupported) &&
+      (it !in mpvOnlyPlayerButtons || BuildConfig.PLAYER_ENGINE_IS_MPV)
   }
 
 /**

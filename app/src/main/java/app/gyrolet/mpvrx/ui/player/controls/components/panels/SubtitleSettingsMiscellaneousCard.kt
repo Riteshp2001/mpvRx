@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
@@ -101,10 +102,13 @@ fun SubtitlesMiscellaneousCard(
         }
         val secondarySid by PlaybackSession.propInt["secondary-sid"].collectAsState()
         val isSecondaryActive =
-          (secondarySid ?: PlaybackSession.getPropertyString("secondary-sid")?.toIntOrNull() ?: 0) > 0
-        // Scale, position and (FongMi) vertical shift per track, after five switches and before reset.
+          BuildConfig.PLAYER_ENGINE_IS_MPV &&
+            (secondarySid ?: PlaybackSession.getPropertyString("secondary-sid")?.toIntOrNull() ?: 0) > 0
+        // Only libmpv has the window scaling, secondary zoom, blending and RTL switches.
+        val switchCount = if (BuildConfig.PLAYER_ENGINE_IS_MPV) 5 else 1
+        // Scale, position and (FongMi) vertical shift per track, after the switches and before reset.
         val tilesPerTrack = if (showShift) 3 else 2
-        val secondaryFirstIndex = 5 + tilesPerTrack
+        val secondaryFirstIndex = switchCount + tilesPerTrack
         val connectedItemCount = secondaryFirstIndex + (if (isSecondaryActive) tilesPerTrack else 0) + 1
         SwitchPreference(
           overrideAssSubs,
@@ -121,78 +125,86 @@ fun SubtitlesMiscellaneousCard(
         var scaleByWindow by remember {
           mutableStateOf(PlaybackSession.getPropertyString("sub-scale-by-window") == "yes")
         }
-        SwitchPreference(
-          scaleByWindow,
-          groupIndex = 1,
-          groupSize = connectedItemCount,
-          enabled = scaleByWindowOptions.none(configOwnedOptions::contains),
-          onValueChange = {
-            scaleByWindow = it
-            preferences.scaleByWindow.set(it)
-            applySubtitleWindowing(isPortrait, scaleByWindow = it)
-          },
-          title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
-          summary = { Text(stringResource(R.string.player_sheets_sub_scale_by_window_summary)) },
-        )
+        if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+          SwitchPreference(
+            scaleByWindow,
+            groupIndex = 1,
+            groupSize = connectedItemCount,
+            enabled = scaleByWindowOptions.none(configOwnedOptions::contains),
+            onValueChange = {
+              scaleByWindow = it
+              preferences.scaleByWindow.set(it)
+              applySubtitleWindowing(isPortrait, scaleByWindow = it)
+            },
+            title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
+            summary = { Text(stringResource(R.string.player_sheets_sub_scale_by_window_summary)) },
+          )
+        }
         var secondaryPinchZoom by remember {
           mutableStateOf(preferences.secondarySubPinchZoom.get())
         }
         LaunchedEffect(preferences.secondarySubPinchZoom.get()) {
           secondaryPinchZoom = preferences.secondarySubPinchZoom.get()
         }
-        SwitchPreference(
-          secondaryPinchZoom,
-          groupIndex = 2,
-          groupSize = connectedItemCount,
-          enabled = scaleOptions.none(configOwnedOptions::contains),
-          onValueChange = {
-            secondaryPinchZoom = it
-            preferences.secondarySubPinchZoom.set(it)
-          },
-          title = { Text(stringResource(R.string.pref_subtitles_secondary_pinch_zoom)) },
-          summary = { Text(stringResource(R.string.pref_subtitles_secondary_pinch_zoom_summary)) },
-        )
+        if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+          SwitchPreference(
+            secondaryPinchZoom,
+            groupIndex = 2,
+            groupSize = connectedItemCount,
+            enabled = scaleOptions.none(configOwnedOptions::contains),
+            onValueChange = {
+              secondaryPinchZoom = it
+              preferences.secondarySubPinchZoom.set(it)
+            },
+            title = { Text(stringResource(R.string.pref_subtitles_secondary_pinch_zoom)) },
+            summary = { Text(stringResource(R.string.pref_subtitles_secondary_pinch_zoom_summary)) },
+          )
+        }
         var blendSubtitlesWithVideo by remember {
           mutableStateOf(preferences.blendSubtitlesWithVideo.get())
         }
-        SwitchPreference(
-          blendSubtitlesWithVideo,
-          groupIndex = 3,
-          groupSize = connectedItemCount,
-          enabled = blendOptions.none(configOwnedOptions::contains),
-          onValueChange = {
-            blendSubtitlesWithVideo = it
-            preferences.blendSubtitlesWithVideo.set(it)
-            val blendMode = subtitleBlendMode()
-            PlaybackSession.setPropertyString("blend-subtitles", blendMode)
-          },
-          title = { Text(stringResource(R.string.player_sheets_sub_blend_with_video)) },
-          summary = { Text(stringResource(R.string.player_sheets_sub_blend_with_video_summary)) },
-        )
+        if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+          SwitchPreference(
+            blendSubtitlesWithVideo,
+            groupIndex = 3,
+            groupSize = connectedItemCount,
+            enabled = blendOptions.none(configOwnedOptions::contains),
+            onValueChange = {
+              blendSubtitlesWithVideo = it
+              preferences.blendSubtitlesWithVideo.set(it)
+              val blendMode = subtitleBlendMode()
+              PlaybackSession.setPropertyString("blend-subtitles", blendMode)
+            },
+            title = { Text(stringResource(R.string.player_sheets_sub_blend_with_video)) },
+            summary = { Text(stringResource(R.string.player_sheets_sub_blend_with_video_summary)) },
+          )
+        }
         var forceRtlSubtitles by remember {
           mutableStateOf(preferences.forceRtlSubtitles.get())
         }
-        SwitchPreference(
-          forceRtlSubtitles,
-          groupIndex = 4,
-          groupSize = connectedItemCount,
-          enabled = bidiOptions.none(configOwnedOptions::contains),
-          onValueChange = {
-            forceRtlSubtitles = it
-            preferences.forceRtlSubtitles.set(it)
-            PlaybackSession.setPropertyString("sub-vsfilter-bidi-compat", if (it) "yes" else "no")
-            PlaybackSession.command("sub-reload")
-          },
-          title = { Text(stringResource(R.string.player_sheets_sub_force_rtl)) },
-          summary = { Text(stringResource(R.string.player_sheets_sub_force_rtl_summary)) },
-        )
+        if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+          SwitchPreference(
+            forceRtlSubtitles,
+            groupIndex = 4,
+            groupSize = connectedItemCount,
+            enabled = bidiOptions.none(configOwnedOptions::contains),
+            onValueChange = {
+              forceRtlSubtitles = it
+              preferences.forceRtlSubtitles.set(it)
+              PlaybackSession.setPropertyString("sub-vsfilter-bidi-compat", if (it) "yes" else "no")
+              PlaybackSession.command("sub-reload")
+            },
+            title = { Text(stringResource(R.string.player_sheets_sub_force_rtl)) },
+            summary = { Text(stringResource(R.string.player_sheets_sub_force_rtl_summary)) },
+          )
+        }
         val subScale by preferences.subScale.collectAsState()
         val subPos by PlaybackSession.propInt["sub-pos"].collectAsState()
         val secondarySubScale by preferences.secondarySubScale.collectAsState()
         val secondarySubPos by PlaybackSession.propInt["secondary-sub-pos"].collectAsState()
         val subShift by preferences.subOffsetY.collectAsState()
         val secondarySubShift by preferences.secondarySubOffsetY.collectAsState()
-        PanelConnectedTile(index = 5, itemCount = connectedItemCount) {
+        PanelConnectedTile(index = switchCount, itemCount = connectedItemCount) {
           SliderItem(
             label =
               stringResource(
@@ -214,7 +226,7 @@ fun SubtitlesMiscellaneousCard(
             },
           )
         }
-        PanelConnectedTile(index = 6, itemCount = connectedItemCount) {
+        PanelConnectedTile(index = switchCount + 1, itemCount = connectedItemCount) {
           SliderItem(
             label =
               stringResource(
@@ -241,7 +253,7 @@ fun SubtitlesMiscellaneousCard(
           )
         }
         if (showShift) {
-          PanelConnectedTile(index = 7, itemCount = connectedItemCount) {
+          PanelConnectedTile(index = switchCount + 2, itemCount = connectedItemCount) {
             SubtitleShiftSlider(
               label =
                 stringResource(

@@ -40,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioPreferences
@@ -150,110 +151,112 @@ fun AudioTracksSheet(
           modifier = if (track.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
         )
       }
-      item {
-        Column(modifier = Modifier.fillMaxWidth()) {
-          PlayerSheetSectionHeader(stringResource(R.string.pref_audio_channels))
-          FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-          ) {
-            AudioChannels.entries.forEach {
-              FilterChip(
-                selected = audioChannels == it,
-                enabled = if (it == AudioChannels.ReverseStereo) reverseStereoEnabled else audioChannelsEnabled,
-                onClick = {
-                  audioPreferences.audioChannels.set(it)
-                  if (it == AudioChannels.ReverseStereo) {
-                    PlaybackSession.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
-                  } else {
-                    PlaybackSession.setPropertyString(it.property, it.value)
-                  }
-                },
-                label = { Text(text = stringResource(id = it.title)) },
-                leadingIcon = null,
-                colors =
-                  androidx.compose.material3.FilterChipDefaults.filterChipColors(
-                    containerColor = playerSheetSelectionColor(false),
-                    selectedContainerColor = playerSheetSelectionColor(true),
-                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                  ),
-              )
+      if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+        item {
+          Column(modifier = Modifier.fillMaxWidth()) {
+            PlayerSheetSectionHeader(stringResource(R.string.pref_audio_channels))
+            FlowRow(
+              modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+              AudioChannels.entries.forEach {
+                FilterChip(
+                  selected = audioChannels == it,
+                  enabled = if (it == AudioChannels.ReverseStereo) reverseStereoEnabled else audioChannelsEnabled,
+                  onClick = {
+                    audioPreferences.audioChannels.set(it)
+                    if (it == AudioChannels.ReverseStereo) {
+                      PlaybackSession.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
+                    } else {
+                      PlaybackSession.setPropertyString(it.property, it.value)
+                    }
+                  },
+                  label = { Text(text = stringResource(id = it.title)) },
+                  leadingIcon = null,
+                  colors =
+                    androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                      containerColor = playerSheetSelectionColor(false),
+                      selectedContainerColor = playerSheetSelectionColor(true),
+                      selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    ),
+                )
+              }
             }
-          }
 
-          val volumeNormalization by audioPreferences.volumeNormalization.collectAsState()
-          val drcEnabled by audioPreferences.drcEnabled.collectAsState()
-          val spatialAudio by audioPreferences.spatialAudio.collectAsState()
+            val volumeNormalization by audioPreferences.volumeNormalization.collectAsState()
+            val drcEnabled by audioPreferences.drcEnabled.collectAsState()
+            val spatialAudio by audioPreferences.spatialAudio.collectAsState()
 
-          PlayerSheetSectionHeader(stringResource(R.string.pref_audio_effects))
-          Row(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-                .heightIn(min = 56.dp)
-                .animatedPlayerSheetBackground(volumeNormalization, MaterialTheme.shapes.medium)
-                .toggleable(
-                  value = volumeNormalization,
-                  enabled = audioEffectsEnabled,
-                  role = Role.Switch,
-                  onValueChange = audioPreferences.volumeNormalization::set,
-                ).padding(horizontal = 20.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Text(
-              stringResource(R.string.pref_audio_volume_normalization_title),
-              modifier = Modifier.weight(1f),
-              style = MaterialTheme.typography.bodyLarge,
-            )
-            IconSwitch(checked = volumeNormalization, onCheckedChange = null, enabled = audioEffectsEnabled)
-          }
-          Row(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-                .heightIn(min = 56.dp)
-                .animatedPlayerSheetBackground(drcEnabled, MaterialTheme.shapes.medium)
-                .toggleable(
-                  value = drcEnabled,
-                  enabled = audioEffectsEnabled,
-                  role = Role.Switch,
-                  onValueChange = audioPreferences.drcEnabled::set,
-                ).padding(horizontal = 20.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Text(
-              stringResource(R.string.pref_audio_drc_title),
-              modifier = Modifier.weight(1f),
-              style = MaterialTheme.typography.bodyLarge,
-            )
-            IconSwitch(checked = drcEnabled, onCheckedChange = null, enabled = audioEffectsEnabled)
-          }
-          Row(
-            modifier =
-              Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-                .heightIn(min = 56.dp)
-                .animatedPlayerSheetBackground(spatialAudio, MaterialTheme.shapes.medium)
-                .toggleable(
-                  value = spatialAudio,
-                  enabled = audioEffectsEnabled,
-                  role = Role.Switch,
-                  onValueChange = audioPreferences.spatialAudio::set,
-                ).padding(horizontal = 20.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            Text(
-              stringResource(R.string.pref_audio_spatial_title),
-              modifier = Modifier.weight(1f),
-              style = MaterialTheme.typography.bodyLarge,
-            )
-            IconSwitch(checked = spatialAudio, onCheckedChange = null, enabled = audioEffectsEnabled)
+            PlayerSheetSectionHeader(stringResource(R.string.pref_audio_effects))
+            Row(
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(horizontal = 8.dp, vertical = 2.dp)
+                  .heightIn(min = 56.dp)
+                  .animatedPlayerSheetBackground(volumeNormalization, MaterialTheme.shapes.medium)
+                  .toggleable(
+                    value = volumeNormalization,
+                    enabled = audioEffectsEnabled,
+                    role = Role.Switch,
+                    onValueChange = audioPreferences.volumeNormalization::set,
+                  ).padding(horizontal = 20.dp, vertical = 8.dp),
+              horizontalArrangement = Arrangement.spacedBy(16.dp),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Text(
+                stringResource(R.string.pref_audio_volume_normalization_title),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge,
+              )
+              IconSwitch(checked = volumeNormalization, onCheckedChange = null, enabled = audioEffectsEnabled)
+            }
+            Row(
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(horizontal = 8.dp, vertical = 2.dp)
+                  .heightIn(min = 56.dp)
+                  .animatedPlayerSheetBackground(drcEnabled, MaterialTheme.shapes.medium)
+                  .toggleable(
+                    value = drcEnabled,
+                    enabled = audioEffectsEnabled,
+                    role = Role.Switch,
+                    onValueChange = audioPreferences.drcEnabled::set,
+                  ).padding(horizontal = 20.dp, vertical = 8.dp),
+              horizontalArrangement = Arrangement.spacedBy(16.dp),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Text(
+                stringResource(R.string.pref_audio_drc_title),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge,
+              )
+              IconSwitch(checked = drcEnabled, onCheckedChange = null, enabled = audioEffectsEnabled)
+            }
+            Row(
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .padding(horizontal = 8.dp, vertical = 2.dp)
+                  .heightIn(min = 56.dp)
+                  .animatedPlayerSheetBackground(spatialAudio, MaterialTheme.shapes.medium)
+                  .toggleable(
+                    value = spatialAudio,
+                    enabled = audioEffectsEnabled,
+                    role = Role.Switch,
+                    onValueChange = audioPreferences.spatialAudio::set,
+                  ).padding(horizontal = 20.dp, vertical = 8.dp),
+              horizontalArrangement = Arrangement.spacedBy(16.dp),
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Text(
+                stringResource(R.string.pref_audio_spatial_title),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge,
+              )
+              IconSwitch(checked = spatialAudio, onCheckedChange = null, enabled = audioEffectsEnabled)
+            }
           }
         }
       }

@@ -401,48 +401,50 @@ object SubtitlesPreferencesScreen : ScrollableSettingsScreen {
                 },
               )
 
-              PreferenceDivider()
+              if (app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV) {
+                PreferenceDivider()
 
-              val scaleByWindow by preferences.scaleByWindow.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.player_sheets_sub_scale_by_window),
-                value = scaleByWindow,
-                enabled =
-                  setOf(
-                    "sub-scale-by-window",
-                    "sub-use-margins",
-                  ).none(configOwnedOptions::contains),
-                onValueChange = { preferences.scaleByWindow.set(it) },
-                title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.player_sheets_sub_scale_by_window_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                val scaleByWindow by preferences.scaleByWindow.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.player_sheets_sub_scale_by_window),
+                  value = scaleByWindow,
+                  enabled =
+                    setOf(
+                      "sub-scale-by-window",
+                      "sub-use-margins",
+                    ).none(configOwnedOptions::contains),
+                  onValueChange = { preferences.scaleByWindow.set(it) },
+                  title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.player_sheets_sub_scale_by_window_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
 
-              PreferenceDivider()
+                PreferenceDivider()
 
-              val secondaryPinchZoom by preferences.secondarySubPinchZoom.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_secondary_pinch_zoom),
-                value = secondaryPinchZoom,
-                enabled = setOf("sub-scale", "secondary-sub-scale").none(configOwnedOptions::contains),
-                onValueChange = { preferences.secondarySubPinchZoom.set(it) },
-                title = { Text(stringResource(R.string.pref_subtitles_secondary_pinch_zoom)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_subtitles_secondary_pinch_zoom_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                val secondaryPinchZoom by preferences.secondarySubPinchZoom.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_subtitles_secondary_pinch_zoom),
+                  value = secondaryPinchZoom,
+                  enabled = setOf("sub-scale", "secondary-sub-scale").none(configOwnedOptions::contains),
+                  onValueChange = { preferences.secondarySubPinchZoom.set(it) },
+                  title = { Text(stringResource(R.string.pref_subtitles_secondary_pinch_zoom)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_subtitles_secondary_pinch_zoom_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+              }
             }
           }
 
           // === FONT SECTION ===
-          if (!playerPanel) {
+          if (!playerPanel && app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV) {
             item {
               PreferenceSectionHeader(
                 position = PreferenceSectionPosition.Middle,

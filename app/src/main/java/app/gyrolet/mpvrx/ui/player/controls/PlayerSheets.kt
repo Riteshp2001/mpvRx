@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.download.AppDownloadManager
 import app.gyrolet.mpvrx.domain.download.DownloadLocations
@@ -138,6 +139,10 @@ fun PlayerSheets(
     }
   if (fullyOwnedOptions?.any(configOwnedOptions::contains) == true) {
     MpvConfigOwnedSheet(onDismissRequest)
+    return
+  }
+  if (!BuildConfig.PLAYER_ENGINE_IS_MPV && sheetShown in mpvOnlySheets) {
+    LaunchedEffect(sheetShown) { onDismissRequest() }
     return
   }
 
@@ -455,7 +460,7 @@ fun PlayerSheets(
           }
         },
         onOpenDelayPanel = { onOpenPanel(Panels.AudioDelay) },
-        onOpenEqualizerSheet = { onShowSheet(Sheets.Equalizer) },
+        onOpenEqualizerSheet = if (BuildConfig.PLAYER_ENGINE_IS_MPV) ({ onShowSheet(Sheets.Equalizer) }) else null,
         delayControlEnabled = "audio-delay" !in configOwnedOptions,
         equalizerControlEnabled = "af" !in configOwnedOptions,
         audioChannelsEnabled = "audio-channels" !in configOwnedOptions,
@@ -511,7 +516,7 @@ fun PlayerSheets(
         onEnterLuaScriptsPanel = { onOpenPanel(Panels.LuaScripts) },
         onEnterSettingsPanel =
           if (!isTelevision && !isAudioOnly) ({ onOpenPanel(Panels.PlayerSettings) }) else null,
-        onEnterEqualizerSheet = { onShowSheet(Sheets.Equalizer) },
+        onEnterEqualizerSheet = if (BuildConfig.PLAYER_ENGINE_IS_MPV) ({ onShowSheet(Sheets.Equalizer) }) else null,
         anime4KUiState = anime4KUiState,
         onAnime4KModeSelected = viewModel::selectAnime4KMode,
         filtersEnabled = MpvConfigOverride.VIDEO_FILTERS.optionNames.any { it !in configOwnedOptions },
@@ -799,6 +804,10 @@ fun PlayerSheets(
     }
   }
 }
+
+/** Sheets for libmpv's equalizer, shaders and frame review, which the Kodi engine does not have. */
+private val mpvOnlySheets =
+  setOf(Sheets.Equalizer, Sheets.AmbientConfig, Sheets.PostProcessingConfig, Sheets.FrameNavigation)
 
 private class TrackFileRequest(
   val mimeTypes: Array<String>,

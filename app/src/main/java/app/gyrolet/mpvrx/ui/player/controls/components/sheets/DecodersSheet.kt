@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.BuildConfig
@@ -33,15 +32,16 @@ fun DecodersSheet(
   onSelect: (Decoder) -> Unit,
   onDismissRequest: () -> Unit,
 ) {
-  val gpuApi by PlaybackSession.propString["gpu-api"].collectAsState()
-  val isVulkanActive = gpuApi == "vulkan"
+  // Renderer limits only exist in libmpv.
+  val isVulkanActive =
+    BuildConfig.PLAYER_ENGINE_IS_MPV && PlaybackSession.propString["gpu-api"].collectAsState().value == "vulkan"
   val directMediaCodecAllowed =
     RendererBackendPolicy.canUseDirectMediaCodec(
       usesVulkan = isVulkanActive,
       buildSupportsMediaCodecVulkan = BuildConfig.MPV_SUPPORTS_MEDIACODEC_VULKAN,
     )
   // MediaCodec embed shows only MediaCodec's own buffers.
-  val mediaCodecEmbed = MediaCodecEmbed.isActive()
+  val mediaCodecEmbed = BuildConfig.PLAYER_ENGINE_IS_MPV && MediaCodecEmbed.isActive()
 
   PlayerSheet(onDismissRequest, title = stringResource(R.string.btn_label_decoder)) {
     val decoders = Decoder.entries.minusElement(Decoder.Auto)

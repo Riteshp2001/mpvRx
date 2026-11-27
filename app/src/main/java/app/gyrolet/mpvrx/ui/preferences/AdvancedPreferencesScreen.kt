@@ -523,176 +523,184 @@ object AdvancedPreferencesScreen : ScrollableSettingsScreen {
             }
           }
 
-          // MPV Configuration Section
-          item {
-            PreferenceSectionHeader(
-              position = PreferenceSectionPosition.Middle,
-              title = stringResource(R.string.pref_section_mpv_config),
-            )
-          }
+          if (app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV) {
+            // MPV Configuration Section
+            item {
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Middle,
+                title = stringResource(R.string.pref_section_mpv_config),
+              )
+            }
 
-          item {
-            PreferenceCard {
-              var mpvConf by remember { mutableStateOf(preferences.mpvConf.get()) }
-              var inputConf by remember { mutableStateOf(preferences.inputConf.get()) }
+            item {
+              PreferenceCard {
+                var mpvConf by remember { mutableStateOf(preferences.mpvConf.get()) }
+                var inputConf by remember { mutableStateOf(preferences.inputConf.get()) }
 
-              // Load config files when storage location changes
-              LaunchedEffect(mpvConfStorageLocation) {
-                if (mpvConfStorageLocation.isBlank()) return@LaunchedEffect
-                withContext(Dispatchers.IO) {
-                  val tree =
-                    runCatching { DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri()) }.getOrNull()
-                      ?: return@withContext
+                // Load config files when storage location changes
+                LaunchedEffect(mpvConfStorageLocation) {
+                  if (mpvConfStorageLocation.isBlank()) return@LaunchedEffect
+                  withContext(Dispatchers.IO) {
+                    val tree =
+                      runCatching { DocumentFile.fromTreeUri(context, mpvConfStorageLocation.toUri()) }.getOrNull()
+                        ?: return@withContext
 
-                  fun readConfig(fileName: String): String? =
-                    runCatching {
-                      tree.findFile(fileName)?.takeIf { it.exists() }?.let { configFile ->
-                        context.contentResolver.openInputStream(configFile.uri)?.bufferedReader()?.use { reader ->
-                          reader.readText()
+                    fun readConfig(fileName: String): String? =
+                      runCatching {
+                        tree.findFile(fileName)?.takeIf { it.exists() }?.let { configFile ->
+                          context.contentResolver.openInputStream(configFile.uri)?.bufferedReader()?.use { reader ->
+                            reader.readText()
+                          }
                         }
-                      }
-                    }.getOrNull()
+                      }.getOrNull()
 
-                  val loadedMpvConf = readConfig("mpv.conf")
-                  val loadedInputConf = readConfig("input.conf")
-                  loadedMpvConf?.let(mpvConfigCache::update)
-                  loadedInputConf?.let { content ->
-                    preferences.inputConf.set(content)
-                    File(context.filesDir, "input.conf").writeText(content)
-                  }
-                  withContext(Dispatchers.Main) {
-                    if (loadedMpvConf != null) mpvConf = loadedMpvConf
-                    if (loadedInputConf != null) inputConf = loadedInputConf
+                    val loadedMpvConf = readConfig("mpv.conf")
+                    val loadedInputConf = readConfig("input.conf")
+                    loadedMpvConf?.let(mpvConfigCache::update)
+                    loadedInputConf?.let { content ->
+                      preferences.inputConf.set(content)
+                      File(context.filesDir, "input.conf").writeText(content)
+                    }
+                    withContext(Dispatchers.Main) {
+                      if (loadedMpvConf != null) mpvConf = loadedMpvConf
+                      if (loadedInputConf != null) inputConf = loadedInputConf
+                    }
                   }
                 }
-              }
 
-              ExpressivePreferenceItem {
-                Preference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_mpv_conf),
-                  title = { Text(stringResource(R.string.pref_advanced_mpv_conf)) },
-                  summary = {
-                    val firstLine = mpvConf.lines().firstOrNull()
-                    if (firstLine != null && firstLine.isNotBlank()) {
-                      Text(firstLine, color = MaterialTheme.colorScheme.outline)
-                    } else {
-                      Text(stringResource(R.string.pref_config_edit_summary), color = MaterialTheme.colorScheme.outline)
-                    }
-                  },
-                  onClick = {
-                    backStack.navigateTo(ConfigEditorScreen(ConfigEditorScreen.ConfigType.MPV_CONF))
-                  },
-                )
-              }
-
-              PreferenceDivider()
-
-              MpvConfigOverridePreference(
-                preferences = preferences,
-                modifier = Modifier.settingsSearchTarget(R.string.pref_mpv_conf_overrides_title),
-              )
-
-              PreferenceDivider()
-
-              ExpressivePreferenceItem {
-                Preference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_input_conf),
-                  title = { Text(stringResource(R.string.pref_advanced_input_conf)) },
-                  summary = {
-                    val firstLine = inputConf.lines().firstOrNull()
-                    if (firstLine != null && firstLine.isNotBlank()) {
-                      Text(firstLine, color = MaterialTheme.colorScheme.outline)
-                    } else {
-                      Text(stringResource(R.string.pref_config_edit_summary), color = MaterialTheme.colorScheme.outline)
-                    }
-                  },
-                  onClick = {
-                    backStack.navigateTo(ConfigEditorScreen(ConfigEditorScreen.ConfigType.INPUT_CONF))
-                  },
-                )
-              }
-            }
-          }
-
-          // Scripts Section
-          item {
-            PreferenceSectionHeader(
-              position = PreferenceSectionPosition.Middle,
-              title = stringResource(R.string.pref_section_scripts),
-            )
-          }
-
-          item {
-            PreferenceCard {
-              val selectedScripts by preferences.selectedLuaScripts.collectAsState()
-              val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
-
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_enable_lua_scripts_title),
-                value = enableLuaScripts,
-                onValueChange = preferences.enableLuaScripts::set,
-                title = { Text(stringResource(R.string.pref_enable_lua_scripts_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_enable_lua_scripts_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
-
-              PreferenceDivider()
-
-              ExpressivePreferenceItem {
-                Preference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_manage_lua_scripts_title),
-                  title = { Text(stringResource(R.string.pref_manage_lua_scripts_title)) },
-                  summary = {
-                    when {
-                      mpvConfStorageLocation.isBlank() || !enableLuaScripts ->
-                        Text(
-                          stringResource(R.string.pref_manage_scripts_summary_disabled),
-                          color = MaterialTheme.colorScheme.outline,
-                        )
-                      selectedScripts.isEmpty() ->
-                        Text(
-                          stringResource(R.string.pref_manage_scripts_summary_none),
-                          color = MaterialTheme.colorScheme.outline,
-                        )
-                      selectedScripts.size == 1 ->
-                        Text(
-                          stringResource(R.string.pref_manage_scripts_summary_singular),
-                          color = MaterialTheme.colorScheme.outline,
-                        )
-                      else ->
-                        Text(
-                          stringResource(R.string.pref_manage_scripts_summary_plural, selectedScripts.size),
-                          color = MaterialTheme.colorScheme.outline,
-                        )
-                    }
-                  },
-                  onClick = {
-                    backStack.navigateTo(LuaScriptsScreen)
-                  },
-                  enabled = mpvConfStorageLocation.isNotBlank() && enableLuaScripts,
-                )
-              }
-
-              PreferenceDivider()
-
-              DevicePreference(R.string.pref_custom_buttons_title) {
                 ExpressivePreferenceItem {
                   Preference(
-                    title = { Text(stringResource(R.string.pref_custom_buttons_title)) },
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_mpv_conf),
+                    title = { Text(stringResource(R.string.pref_advanced_mpv_conf)) },
                     summary = {
-                      Text(
-                        stringResource(R.string.pref_custom_buttons_summary),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
+                      val firstLine = mpvConf.lines().firstOrNull()
+                      if (firstLine != null && firstLine.isNotBlank()) {
+                        Text(firstLine, color = MaterialTheme.colorScheme.outline)
+                      } else {
+                        Text(
+                          stringResource(R.string.pref_config_edit_summary),
+                          color = MaterialTheme.colorScheme.outline,
+                        )
+                      }
                     },
                     onClick = {
-                      backStack.navigateTo(app.gyrolet.mpvrx.ui.preferences.CustomButtonScreen)
+                      backStack.navigateTo(ConfigEditorScreen(ConfigEditorScreen.ConfigType.MPV_CONF))
                     },
                   )
+                }
+
+                PreferenceDivider()
+
+                MpvConfigOverridePreference(
+                  preferences = preferences,
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_mpv_conf_overrides_title),
+                )
+
+                PreferenceDivider()
+
+                ExpressivePreferenceItem {
+                  Preference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_advanced_input_conf),
+                    title = { Text(stringResource(R.string.pref_advanced_input_conf)) },
+                    summary = {
+                      val firstLine = inputConf.lines().firstOrNull()
+                      if (firstLine != null && firstLine.isNotBlank()) {
+                        Text(firstLine, color = MaterialTheme.colorScheme.outline)
+                      } else {
+                        Text(
+                          stringResource(R.string.pref_config_edit_summary),
+                          color = MaterialTheme.colorScheme.outline,
+                        )
+                      }
+                    },
+                    onClick = {
+                      backStack.navigateTo(ConfigEditorScreen(ConfigEditorScreen.ConfigType.INPUT_CONF))
+                    },
+                  )
+                }
+              }
+            }
+
+            // Scripts Section
+            item {
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Middle,
+                title = stringResource(R.string.pref_section_scripts),
+              )
+            }
+
+            item {
+              PreferenceCard {
+                val selectedScripts by preferences.selectedLuaScripts.collectAsState()
+                val enableLuaScripts by preferences.enableLuaScripts.collectAsState()
+
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_enable_lua_scripts_title),
+                  value = enableLuaScripts,
+                  onValueChange = preferences.enableLuaScripts::set,
+                  title = { Text(stringResource(R.string.pref_enable_lua_scripts_title)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_enable_lua_scripts_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+
+                PreferenceDivider()
+
+                ExpressivePreferenceItem {
+                  Preference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_manage_lua_scripts_title),
+                    title = { Text(stringResource(R.string.pref_manage_lua_scripts_title)) },
+                    summary = {
+                      when {
+                        mpvConfStorageLocation.isBlank() || !enableLuaScripts ->
+                          Text(
+                            stringResource(R.string.pref_manage_scripts_summary_disabled),
+                            color = MaterialTheme.colorScheme.outline,
+                          )
+                        selectedScripts.isEmpty() ->
+                          Text(
+                            stringResource(R.string.pref_manage_scripts_summary_none),
+                            color = MaterialTheme.colorScheme.outline,
+                          )
+                        selectedScripts.size == 1 ->
+                          Text(
+                            stringResource(R.string.pref_manage_scripts_summary_singular),
+                            color = MaterialTheme.colorScheme.outline,
+                          )
+                        else ->
+                          Text(
+                            stringResource(R.string.pref_manage_scripts_summary_plural, selectedScripts.size),
+                            color = MaterialTheme.colorScheme.outline,
+                          )
+                      }
+                    },
+                    onClick = {
+                      backStack.navigateTo(LuaScriptsScreen)
+                    },
+                    enabled = mpvConfStorageLocation.isNotBlank() && enableLuaScripts,
+                  )
+                }
+
+                PreferenceDivider()
+
+                DevicePreference(R.string.pref_custom_buttons_title) {
+                  ExpressivePreferenceItem {
+                    Preference(
+                      title = { Text(stringResource(R.string.pref_custom_buttons_title)) },
+                      summary = {
+                        Text(
+                          stringResource(R.string.pref_custom_buttons_summary),
+                          color = MaterialTheme.colorScheme.outline,
+                        )
+                      },
+                      onClick = {
+                        backStack.navigateTo(app.gyrolet.mpvrx.ui.preferences.CustomButtonScreen)
+                      },
+                    )
+                  }
                 }
               }
             }

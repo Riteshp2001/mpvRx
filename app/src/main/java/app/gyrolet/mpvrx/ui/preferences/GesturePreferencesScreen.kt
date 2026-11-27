@@ -428,7 +428,7 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
                   modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_double_tap_left_title),
                   value = leftDoubleTap,
                   onValueChange = { preferences.leftSingleActionGesture.set(it) },
-                  values = SingleActionGesture.entries,
+                  values = singleActionGestures,
                   valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
                   title = {
                     Text(
@@ -463,7 +463,7 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
                       SingleActionGesture.None,
                       SingleActionGesture.PlayPause,
                       SingleActionGesture.Custom,
-                    ),
+                    ).filter(singleActionGestures::contains),
                   valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
                   title = {
                     Text(
@@ -494,7 +494,7 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
                   modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_double_tap_right_title),
                   value = rightDoubleTap,
                   onValueChange = { preferences.rightSingleActionGesture.set(it) },
-                  values = SingleActionGesture.entries,
+                  values = singleActionGestures,
                   valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
                   title = {
                     Text(
@@ -582,40 +582,42 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
                 },
               )
 
-              val doubleTapKeyCodes =
-                listOf(
-                  CustomKeyCodes.DoubleTapLeft,
-                  CustomKeyCodes.DoubleTapCenter,
-                  CustomKeyCodes.DoubleTapRight,
-                ).map { it.keyCode }.toImmutableList()
-              ExpressivePreferenceItem {
-                FooterPreference(
-                  summary = {
-                    var annotatedString =
-                      buildAnnotatedString {
-                        append(stringResource(R.string.pref_gesture_double_tap_custom_info))
+              if (app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV) {
+                val doubleTapKeyCodes =
+                  listOf(
+                    CustomKeyCodes.DoubleTapLeft,
+                    CustomKeyCodes.DoubleTapCenter,
+                    CustomKeyCodes.DoubleTapRight,
+                  ).map { it.keyCode }.toImmutableList()
+                ExpressivePreferenceItem {
+                  FooterPreference(
+                    summary = {
+                      var annotatedString =
+                        buildAnnotatedString {
+                          append(stringResource(R.string.pref_gesture_double_tap_custom_info))
+                        }
+
+                      doubleTapKeyCodes.forEach { keyCode ->
+                        annotatedString =
+                          buildAnnotatedString {
+                            val startIndex = annotatedString.indexOf(keyCode)
+                            val endIndex = startIndex + keyCode.length
+                            append(annotatedString)
+                            addStyle(
+                              style = SpanStyle(fontWeight = FontWeight.Bold),
+                              start = startIndex,
+                              end = endIndex,
+                            )
+                          }
                       }
 
-                    doubleTapKeyCodes.forEach { keyCode ->
-                      annotatedString =
-                        buildAnnotatedString {
-                          val startIndex = annotatedString.indexOf(keyCode)
-                          val endIndex = startIndex + keyCode.length
-                          append(annotatedString)
-                          addStyle(
-                            style = SpanStyle(fontWeight = FontWeight.Bold),
-                            start = startIndex,
-                            end = endIndex,
-                          )
-                        }
-                    }
-
-                    Text(
-                      text = annotatedString,
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
+                      Text(
+                        text = annotatedString,
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
+                }
               }
             }
           }
@@ -635,7 +637,7 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
                   modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_media_previous),
                   value = mediaPreviousGesture,
                   onValueChange = { preferences.mediaPreviousGesture.set(it) },
-                  values = SingleActionGesture.entries,
+                  values = singleActionGestures,
                   valueToText = {
                     AnnotatedString(
                       resources.getString(
@@ -672,7 +674,7 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
                       SingleActionGesture.None,
                       SingleActionGesture.PlayPause,
                       SingleActionGesture.Custom,
-                    ),
+                    ).filter(singleActionGestures::contains),
                   valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
                   title = { Text(text = stringResource(R.string.pref_gesture_media_play)) },
                   summary = {
@@ -691,7 +693,7 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
                   modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_media_next),
                   value = mediaNextGesture,
                   onValueChange = { preferences.mediaNextGesture.set(it) },
-                  values = SingleActionGesture.entries,
+                  values = singleActionGestures,
                   valueToText = {
                     AnnotatedString(
                       resources.getString(
@@ -716,40 +718,42 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
                 )
               }
 
-              val mediaKeyCodes =
-                listOf(
-                  CustomKeyCodes.MediaPrevious,
-                  CustomKeyCodes.MediaPlay,
-                  CustomKeyCodes.MediaNext,
-                ).map { it.keyCode }.toImmutableList()
-              ExpressivePreferenceItem {
-                FooterPreference(
-                  summary = {
-                    var annotatedString =
-                      buildAnnotatedString {
-                        append(stringResource(R.string.pref_gesture_media_custom_info))
+              if (app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV) {
+                val mediaKeyCodes =
+                  listOf(
+                    CustomKeyCodes.MediaPrevious,
+                    CustomKeyCodes.MediaPlay,
+                    CustomKeyCodes.MediaNext,
+                  ).map { it.keyCode }.toImmutableList()
+                ExpressivePreferenceItem {
+                  FooterPreference(
+                    summary = {
+                      var annotatedString =
+                        buildAnnotatedString {
+                          append(stringResource(R.string.pref_gesture_media_custom_info))
+                        }
+
+                      mediaKeyCodes.forEach { keyCode ->
+                        annotatedString =
+                          buildAnnotatedString {
+                            val startIndex = annotatedString.indexOf(keyCode)
+                            val endIndex = startIndex + keyCode.length
+                            append(annotatedString)
+                            addStyle(
+                              style = SpanStyle(fontWeight = FontWeight.Bold),
+                              start = startIndex,
+                              end = endIndex,
+                            )
+                          }
                       }
 
-                    mediaKeyCodes.forEach { keyCode ->
-                      annotatedString =
-                        buildAnnotatedString {
-                          val startIndex = annotatedString.indexOf(keyCode)
-                          val endIndex = startIndex + keyCode.length
-                          append(annotatedString)
-                          addStyle(
-                            style = SpanStyle(fontWeight = FontWeight.Bold),
-                            start = startIndex,
-                            end = endIndex,
-                          )
-                        }
-                    }
-
-                    Text(
-                      text = annotatedString,
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
+                      Text(
+                        text = annotatedString,
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
+                }
               }
             }
           }
@@ -760,6 +764,12 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
     }
   }
 }
+
+/** Custom presses a key for mpv's input.conf, which only libmpv reads. */
+private val singleActionGestures =
+  SingleActionGesture.entries.filter {
+    it != SingleActionGesture.Custom || app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV
+  }
 
 private val holdSpeedBoostValues = listOf(0.5f, 1f, 1.5f, 2f, 2.5f, 3f, 3.5f, 4f)
 

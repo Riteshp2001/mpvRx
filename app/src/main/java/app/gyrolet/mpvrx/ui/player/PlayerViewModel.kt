@@ -3733,6 +3733,8 @@ class PlayerViewModel(
   }
 
   private fun setupCustomButtons() {
+    // Custom buttons are Lua/JS scripts that only libmpv runs.
+    if (!app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV) return
     customButtonsSetupJob?.cancel()
     customButtonsSetupJob =
       viewModelScope.launch(Dispatchers.IO) {
@@ -5806,7 +5808,11 @@ class PlayerViewModel(
       }
       id == secondarySid -> setTrackSelectionId("secondary-sid", null)
       primarySid <= 0 -> setTrackSelectionId("sid", id)
-      secondarySid <= 0 -> setTrackSelectionId("secondary-sid", id)
+      secondarySid <= 0 && app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV ->
+        setTrackSelectionId(
+          "secondary-sid",
+          id,
+        )
       else -> setTrackSelectionId("sid", id)
     }
 

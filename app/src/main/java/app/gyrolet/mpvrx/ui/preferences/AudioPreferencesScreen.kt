@@ -596,53 +596,55 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
                 },
               )
 
-              PreferenceDivider()
-              val volumeNormalization by preferences.volumeNormalization.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_volume_normalization_title),
-                value = volumeNormalization,
-                enabled = "af" !in configOwnedOptions,
-                onValueChange = { preferences.volumeNormalization.set(it) },
-                title = { Text(stringResource(R.string.pref_audio_volume_normalization_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_audio_volume_normalization_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+              if (app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV) {
+                PreferenceDivider()
+                val volumeNormalization by preferences.volumeNormalization.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_audio_volume_normalization_title),
+                  value = volumeNormalization,
+                  enabled = "af" !in configOwnedOptions,
+                  onValueChange = { preferences.volumeNormalization.set(it) },
+                  title = { Text(stringResource(R.string.pref_audio_volume_normalization_title)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_audio_volume_normalization_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
 
-              PreferenceDivider()
-              val spatialAudio by preferences.spatialAudio.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_spatial_title),
-                value = spatialAudio,
-                enabled = "af" !in configOwnedOptions,
-                onValueChange = { preferences.spatialAudio.set(it) },
-                title = { Text(stringResource(R.string.pref_audio_spatial_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_audio_spatial_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                PreferenceDivider()
+                val spatialAudio by preferences.spatialAudio.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_audio_spatial_title),
+                  value = spatialAudio,
+                  enabled = "af" !in configOwnedOptions,
+                  onValueChange = { preferences.spatialAudio.set(it) },
+                  title = { Text(stringResource(R.string.pref_audio_spatial_title)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_audio_spatial_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
 
-              PreferenceDivider()
-              val drcEnabled by preferences.drcEnabled.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_audio_drc_title),
-                value = drcEnabled,
-                enabled = "af" !in configOwnedOptions,
-                onValueChange = { preferences.drcEnabled.set(it) },
-                title = { Text(stringResource(R.string.pref_audio_drc_title)) },
-                summary = {
-                  Text(
-                    stringResource(R.string.pref_audio_drc_summary),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                PreferenceDivider()
+                val drcEnabled by preferences.drcEnabled.collectAsState()
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_audio_drc_title),
+                  value = drcEnabled,
+                  enabled = "af" !in configOwnedOptions,
+                  onValueChange = { preferences.drcEnabled.set(it) },
+                  title = { Text(stringResource(R.string.pref_audio_drc_title)) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_audio_drc_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+              }
 
               PreferenceDivider()
               val ignoreAudioFocus by preferences.ignoreAudioFocus.collectAsState()
@@ -678,24 +680,26 @@ object AudioPreferencesScreen : ScrollableSettingsScreen {
                 },
               )
 
-              PreferenceDivider()
-              val audioChannel by preferences.audioChannels.collectAsState()
-              ExpressivePreferenceItem {
-                ListPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_audio_channels),
-                  value = audioChannel,
-                  onValueChange = { preferences.audioChannels.set(it) },
-                  values = AudioChannels.entries,
-                  enabled = setOf("audio-channels", "af").none(configOwnedOptions::contains),
-                  valueToText = { AnnotatedString(resources.getString(it.title)) },
-                  title = { Text(text = stringResource(id = R.string.pref_audio_channels)) },
-                  summary = {
-                    Text(
-                      text = stringResource(audioChannel.title),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
+              if (app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV) {
+                PreferenceDivider()
+                val audioChannel by preferences.audioChannels.collectAsState()
+                ExpressivePreferenceItem {
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_audio_channels),
+                    value = audioChannel,
+                    onValueChange = { preferences.audioChannels.set(it) },
+                    values = AudioChannels.entries,
+                    enabled = setOf("audio-channels", "af").none(configOwnedOptions::contains),
+                    valueToText = { AnnotatedString(resources.getString(it.title)) },
+                    title = { Text(text = stringResource(id = R.string.pref_audio_channels)) },
+                    summary = {
+                      Text(
+                        text = stringResource(audioChannel.title),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
+                }
               }
 
               PreferenceDivider()

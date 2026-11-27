@@ -66,6 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AudioPreferences
@@ -456,6 +457,10 @@ fun RenderPlayerButton(
         val isSnapshotLoading by viewModel.isSnapshotLoading.collectAsState()
         val context = LocalContext.current
         val frameShape = rememberPlayerControlShape(isExpanded)
+        // Frame review needs libmpv's backward step and screenshots; other engines only step forward.
+        val openFrameNavigation = {
+          if (BuildConfig.PLAYER_ENGINE_IS_MPV) onOpenSheet(Sheets.FrameNavigation) else viewModel.frameStepForward()
+        }
 
         AnimatedContent(
           targetState = isExpanded && !compact,
@@ -475,34 +480,36 @@ fun RenderPlayerButton(
                 horizontalPadding = 4.dp,
                 active = isExpanded,
               ) {
-                LiquidIconButton(
-                  icon = Icons.RoundedFilled.FastRewind,
-                  onClick = {
-                    viewModel.frameStepBackward()
-                    viewModel.resetFrameNavigationTimer()
-                  },
-                  tint = if (borderless) controlColor else buttonContentColor,
-                  size = buttonSize - 4.dp,
-                )
-                if (isSnapshotLoading) {
-                  Box(contentAlignment = Alignment.Center, modifier = Modifier.size(buttonSize - 4.dp)) {
-                    CircularProgressIndicator(
-                      modifier = Modifier.size(16.dp),
-                      strokeWidth = 2.dp,
-                      color = if (borderless) controlColor else MaterialTheme.colorScheme.primary,
-                    )
-                  }
-                } else {
+                if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
                   LiquidIconButton(
-                    icon = Icons.RoundedFilled.Aperture,
+                    icon = Icons.RoundedFilled.FastRewind,
                     onClick = {
-                      viewModel.takeSnapshot(context)
+                      viewModel.frameStepBackward()
                       viewModel.resetFrameNavigationTimer()
                     },
-                    onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
                     tint = if (borderless) controlColor else buttonContentColor,
                     size = buttonSize - 4.dp,
                   )
+                  if (isSnapshotLoading) {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(buttonSize - 4.dp)) {
+                      CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = if (borderless) controlColor else MaterialTheme.colorScheme.primary,
+                      )
+                    }
+                  } else {
+                    LiquidIconButton(
+                      icon = Icons.RoundedFilled.Aperture,
+                      onClick = {
+                        viewModel.takeSnapshot(context)
+                        viewModel.resetFrameNavigationTimer()
+                      },
+                      onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
+                      tint = if (borderless) controlColor else buttonContentColor,
+                      size = buttonSize - 4.dp,
+                    )
+                  }
                 }
                 LiquidIconButton(
                   icon = Icons.RoundedFilled.FastForward,
@@ -534,76 +541,78 @@ fun RenderPlayerButton(
                   verticalAlignment = Alignment.CenterVertically,
                   modifier = Modifier.padding(horizontal = 4.dp),
                 ) {
-                  // Previous frame button
-                  Surface(
-                    shape = CircleShape,
-                    color = Color.Transparent,
-                    modifier =
-                      Modifier
-                        .size(buttonSize - 4.dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = {
-                          viewModel.frameStepBackward()
-                          viewModel.resetFrameNavigationTimer()
-                        }),
-                  ) {
-                    Box(contentAlignment = Alignment.Center) {
-                      AppSymbolIcon(
-                        imageVector = Icons.RoundedFilled.FastRewind,
-                        contentDescription =
-                          androidx.compose.ui.res.stringResource(
-                            app.gyrolet.mpvrx.R.string.ui_previous_frame,
-                          ),
-                        tint = if (borderless) controlColor else buttonContentColor,
-                        modifier = Modifier.size(20.dp),
-                      )
-                    }
-                  }
-
-                  // Camera / Loading button
-                  if (isSnapshotLoading) {
+                  if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+                    // Previous frame button
                     Surface(
                       shape = CircleShape,
-                      color = playerButtonContainerColor(),
-                      border = BorderStroke(1.dp, playerButtonBorderColor()),
-                      modifier = Modifier.size(buttonSize - 4.dp),
-                    ) {
-                      Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                        CircularProgressIndicator(
-                          modifier = Modifier.size(16.dp),
-                          strokeWidth = 2.dp,
-                          color = if (borderless) controlColor else MaterialTheme.colorScheme.primary,
-                        )
-                      }
-                    }
-                  } else {
-                    @OptIn(ExperimentalFoundationApi::class)
-                    Surface(
-                      shape = CircleShape,
-                      color = playerButtonContainerColor(),
-                      border = BorderStroke(1.dp, playerButtonBorderColor()),
+                      color = Color.Transparent,
                       modifier =
                         Modifier
                           .size(buttonSize - 4.dp)
                           .clip(CircleShape)
-                          .combinedClickable(
-                            onClick = {
-                              viewModel.takeSnapshot(context)
-                              viewModel.resetFrameNavigationTimer()
-                            },
-                            onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
-                          ),
+                          .clickable(onClick = {
+                            viewModel.frameStepBackward()
+                            viewModel.resetFrameNavigationTimer()
+                          }),
                     ) {
                       Box(contentAlignment = Alignment.Center) {
                         AppSymbolIcon(
-                          imageVector = Icons.RoundedFilled.Aperture,
+                          imageVector = Icons.RoundedFilled.FastRewind,
                           contentDescription =
                             androidx.compose.ui.res.stringResource(
-                              app.gyrolet.mpvrx.R.string.ui_take_screenshot,
+                              app.gyrolet.mpvrx.R.string.ui_previous_frame,
                             ),
                           tint = if (borderless) controlColor else buttonContentColor,
                           modifier = Modifier.size(20.dp),
                         )
+                      }
+                    }
+
+                    // Camera / Loading button
+                    if (isSnapshotLoading) {
+                      Surface(
+                        shape = CircleShape,
+                        color = playerButtonContainerColor(),
+                        border = BorderStroke(1.dp, playerButtonBorderColor()),
+                        modifier = Modifier.size(buttonSize - 4.dp),
+                      ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                          CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = if (borderless) controlColor else MaterialTheme.colorScheme.primary,
+                          )
+                        }
+                      }
+                    } else {
+                      @OptIn(ExperimentalFoundationApi::class)
+                      Surface(
+                        shape = CircleShape,
+                        color = playerButtonContainerColor(),
+                        border = BorderStroke(1.dp, playerButtonBorderColor()),
+                        modifier =
+                          Modifier
+                            .size(buttonSize - 4.dp)
+                            .clip(CircleShape)
+                            .combinedClickable(
+                              onClick = {
+                                viewModel.takeSnapshot(context)
+                                viewModel.resetFrameNavigationTimer()
+                              },
+                              onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
+                            ),
+                      ) {
+                        Box(contentAlignment = Alignment.Center) {
+                          AppSymbolIcon(
+                            imageVector = Icons.RoundedFilled.Aperture,
+                            contentDescription =
+                              androidx.compose.ui.res.stringResource(
+                                app.gyrolet.mpvrx.R.string.ui_take_screenshot,
+                              ),
+                            tint = if (borderless) controlColor else buttonContentColor,
+                            modifier = Modifier.size(20.dp),
+                          )
+                        }
                       }
                     }
                   }
@@ -643,12 +652,12 @@ fun RenderPlayerButton(
                 icon = Icons.RoundedFilled.CameraAlt,
                 onClick = {
                   if (compact) {
-                    onOpenSheet(Sheets.FrameNavigation)
+                    openFrameNavigation()
                   } else {
                     viewModel.toggleFrameNavigationExpanded()
                   }
                 },
-                onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
+                onLongClick = openFrameNavigation,
                 tint = if (borderless) controlColor else buttonContentColor,
                 size = buttonSize,
                 active = isExpanded,
@@ -658,12 +667,12 @@ fun RenderPlayerButton(
                 icon = Icons.RoundedFilled.CameraAlt,
                 onClick = {
                   if (compact) {
-                    onOpenSheet(Sheets.FrameNavigation)
+                    openFrameNavigation()
                   } else {
                     viewModel.toggleFrameNavigationExpanded()
                   }
                 },
-                onLongClick = { onOpenSheet(Sheets.FrameNavigation) },
+                onLongClick = openFrameNavigation,
                 color = if (borderless) controlColor else buttonContentColor,
                 modifier = Modifier.size(buttonSize),
                 active = isExpanded,

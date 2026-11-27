@@ -948,139 +948,139 @@ object PlayerPreferencesScreen : ScrollableSettingsScreen {
             }
           }
 
-          // ── Screenshots ─────────────────────────────────────────────────
-          item {
-            PreferenceSectionHeader(
-              position = PreferenceSectionPosition.Middle,
-              title = stringResource(R.string.pref_screenshots_section),
-            )
-          }
-          item {
-            PreferenceCard {
-              val screenshotFormat by preferences.screenshotFormat.collectAsState()
-              ExpressivePreferenceItem {
-                ListPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.ui_image_format),
-                  value = screenshotFormat,
-                  onValueChange = preferences.screenshotFormat::set,
-                  values = ScreenshotFormat.entries,
-                  valueToText = { AnnotatedString(it.title) },
-                  title = {
-                    Text(
-                      androidx.compose.ui.res
-                        .stringResource(app.gyrolet.mpvrx.R.string.ui_image_format),
-                    )
-                  },
-                  summary = {
-                    Text(
-                      "${screenshotFormat.title} .${screenshotFormat.extension}",
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
-              }
-
-              PreferenceDivider()
-
-              val includeSubtitles by preferences.includeSubtitlesInSnapshot.collectAsState()
-              SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_include_subtitles_in_screenshots),
-                value = includeSubtitles,
-                onValueChange = preferences.includeSubtitlesInSnapshot::set,
-                title = {
-                  Text(
-                    androidx.compose.ui.res.stringResource(
-                      app.gyrolet.mpvrx.R.string.ui_include_subtitles_in_screenshots,
-                    ),
-                  )
-                },
+          if (app.gyrolet.mpvrx.BuildConfig.PLAYER_ENGINE_IS_MPV) {
+            // ── Screenshots ─────────────────────────────────────────────────
+            item {
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Middle,
+                title = stringResource(R.string.pref_screenshots_section),
               )
+            }
+            item {
+              PreferenceCard {
+                val screenshotFormat by preferences.screenshotFormat.collectAsState()
+                ExpressivePreferenceItem {
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.ui_image_format),
+                    value = screenshotFormat,
+                    onValueChange = preferences.screenshotFormat::set,
+                    values = ScreenshotFormat.entries,
+                    valueToText = { AnnotatedString(it.title) },
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.ui_image_format),
+                      )
+                    },
+                    summary = {
+                      Text(
+                        "${screenshotFormat.title} .${screenshotFormat.extension}",
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
+                }
 
-              PreferenceDivider()
-
-              val screenshotTemplate by preferences.screenshotTemplate.collectAsState()
-              ExpressivePreferenceItem {
-                Preference(
-                  modifier = Modifier.settingsSearchTarget(R.string.ui_filename_template),
-                  title = {
-                    Text(
-                      androidx.compose.ui.res
-                        .stringResource(app.gyrolet.mpvrx.R.string.ui_filename_template),
-                    )
-                  },
-                  summary = { Text(screenshotTemplate, color = MaterialTheme.colorScheme.outline) },
-                  onClick = {
-                    templateDraft = screenshotTemplate
-                    showTemplateDialog = true
-                  },
-                )
-              }
-
-              PreferenceDivider()
-
-              val screenshotQuality by preferences.screenshotQuality.collectAsState()
-              ExpressivePreferenceItem {
-                SliderPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.ui_jpeg_webp_quality),
-                  value = screenshotQuality.toFloat(),
-                  onValueChange = { preferences.screenshotQuality.set(it.roundToInt().coerceIn(1, 100)) },
-                  title = {
-                    Text(
-                      androidx.compose.ui.res
-                        .stringResource(app.gyrolet.mpvrx.R.string.ui_jpeg_webp_quality),
-                    )
-                  },
-                  valueRange = 1f..100f,
-                  summary = { Text("$screenshotQuality", color = MaterialTheme.colorScheme.outline) },
-                  onSliderValueChange = { preferences.screenshotQuality.set(it.roundToInt().coerceIn(1, 100)) },
-                  sliderValue = screenshotQuality.toFloat(),
-                )
-              }
-
-              PreferenceDivider()
-
-              val pngCompression by preferences.screenshotPngCompression.collectAsState()
-              ExpressivePreferenceItem {
-                SliderPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.ui_png_compression),
-                  value = pngCompression.toFloat(),
-                  onValueChange = { preferences.screenshotPngCompression.set(it.roundToInt().coerceIn(0, 9)) },
-                  title = {
-                    Text(
-                      androidx.compose.ui.res
-                        .stringResource(app.gyrolet.mpvrx.R.string.ui_png_compression),
-                    )
-                  },
-                  valueRange = 0f..9f,
-                  summary = { Text("$pngCompression", color = MaterialTheme.colorScheme.outline) },
-                  onSliderValueChange = { preferences.screenshotPngCompression.set(it.roundToInt().coerceIn(0, 9)) },
-                  sliderValue = pngCompression.toFloat(),
-                )
-              }
-
-              if (screenshotFormat == ScreenshotFormat.WEBP) {
                 PreferenceDivider()
 
-                val webpLossless by preferences.screenshotWebpLossless.collectAsState()
+                val includeSubtitles by preferences.includeSubtitlesInSnapshot.collectAsState()
                 SwitchPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.ui_webp_lossless),
-                  value = webpLossless,
-                  onValueChange = preferences.screenshotWebpLossless::set,
+                  modifier = Modifier.settingsSearchTarget(R.string.ui_include_subtitles_in_screenshots),
+                  value = includeSubtitles,
+                  onValueChange = preferences.includeSubtitlesInSnapshot::set,
                   title = {
                     Text(
-                      androidx.compose.ui.res
-                        .stringResource(app.gyrolet.mpvrx.R.string.ui_webp_lossless),
-                    )
-                  },
-                  summary = {
-                    Text(
                       androidx.compose.ui.res.stringResource(
-                        app.gyrolet.mpvrx.R.string.ui_uses_mpv_native_lossless_output_android_fallback_uses_lossless_o,
+                        app.gyrolet.mpvrx.R.string.ui_include_subtitles_in_screenshots,
                       ),
-                      color = MaterialTheme.colorScheme.outline,
                     )
                   },
                 )
+
+                PreferenceDivider()
+
+                val screenshotTemplate by preferences.screenshotTemplate.collectAsState()
+                ExpressivePreferenceItem {
+                  Preference(
+                    modifier = Modifier.settingsSearchTarget(R.string.ui_filename_template),
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.ui_filename_template),
+                      )
+                    },
+                    summary = { Text(screenshotTemplate, color = MaterialTheme.colorScheme.outline) },
+                    onClick = {
+                      templateDraft = screenshotTemplate
+                      showTemplateDialog = true
+                    },
+                  )
+                }
+
+                PreferenceDivider()
+
+                val screenshotQuality by preferences.screenshotQuality.collectAsState()
+                ExpressivePreferenceItem {
+                  SliderPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.ui_jpeg_webp_quality),
+                    value = screenshotQuality.toFloat(),
+                    onValueChange = { preferences.screenshotQuality.set(it.roundToInt().coerceIn(1, 100)) },
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.ui_jpeg_webp_quality),
+                      )
+                    },
+                    valueRange = 1f..100f,
+                    summary = { Text("$screenshotQuality", color = MaterialTheme.colorScheme.outline) },
+                    onSliderValueChange = { preferences.screenshotQuality.set(it.roundToInt().coerceIn(1, 100)) },
+                    sliderValue = screenshotQuality.toFloat(),
+                  )
+                }
+
+                PreferenceDivider()
+
+                val pngCompression by preferences.screenshotPngCompression.collectAsState()
+                ExpressivePreferenceItem {
+                  SliderPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.ui_png_compression),
+                    value = pngCompression.toFloat(),
+                    onValueChange = { preferences.screenshotPngCompression.set(it.roundToInt().coerceIn(0, 9)) },
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.ui_png_compression),
+                      )
+                    },
+                    valueRange = 0f..9f,
+                    summary = { Text("$pngCompression", color = MaterialTheme.colorScheme.outline) },
+                    onSliderValueChange = { preferences.screenshotPngCompression.set(it.roundToInt().coerceIn(0, 9)) },
+                    sliderValue = pngCompression.toFloat(),
+                  )
+                }
+
+                if (screenshotFormat == ScreenshotFormat.WEBP) {
+                  PreferenceDivider()
+
+                  val webpLossless by preferences.screenshotWebpLossless.collectAsState()
+                  SwitchPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.ui_webp_lossless),
+                    value = webpLossless,
+                    onValueChange = preferences.screenshotWebpLossless::set,
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.ui_webp_lossless),
+                      )
+                    },
+                    summary = {
+                      Text(
+                        stringResource(R.string.ui_uses_mpv_native_lossless_output_android_fallback_uses_lossless_o),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
+                }
               }
             }
           }

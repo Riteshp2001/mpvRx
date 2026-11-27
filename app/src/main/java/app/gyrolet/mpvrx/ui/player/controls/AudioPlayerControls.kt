@@ -148,6 +148,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.palette.graphics.Palette
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.data.artwork.MotionArtworkQuery
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
@@ -3117,7 +3118,8 @@ fun AudioPlayerControls(
         val centerCount = if (isAudiobook) 3 else 4
         BoxWithConstraints(Modifier.fillMaxWidth()) {
           val showPlaylistButton = !isTablet
-          val endCount = if (showPlaylistButton) 2 else 1
+          val showEqualizerButton = BuildConfig.PLAYER_ENGINE_IS_MPV
+          val endCount = listOf(showEqualizerButton, showPlaylistButton).count { it }
           val endWidth = minOf(barHeight, maxWidth * 0.15f)
           val outerSpacing = if (maxWidth < 280.dp) 4.dp else 8.dp
           val centerSpacing = if (maxWidth < 320.dp) 2.dp else 4.dp
@@ -3131,27 +3133,29 @@ fun AudioPlayerControls(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(outerSpacing),
           ) {
-            ExpressiveTransportSideButton(
-              onClick = {
-                onOpenSheet(Sheets.Equalizer)
-                actionHaptics.confirm()
-              },
-              size = barHeight,
-              modifier = Modifier.width(endWidth),
-              enabled = !audioFiltersConfigOwned,
-              active = equalizerEnabled && !audioFiltersConfigOwned,
-            ) {
-              Icon(
-                imageVector = Icons.RoundedFilled.Equalizer,
-                contentDescription = stringResource(R.string.btn_label_equalizer),
-                tint =
-                  when {
-                    audioFiltersConfigOwned -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                    equalizerEnabled -> MaterialTheme.colorScheme.onPrimaryContainer
-                    else -> MaterialTheme.colorScheme.onSecondaryContainer
-                  },
-                modifier = Modifier.size(endIconSize),
-              )
+            if (showEqualizerButton) {
+              ExpressiveTransportSideButton(
+                onClick = {
+                  onOpenSheet(Sheets.Equalizer)
+                  actionHaptics.confirm()
+                },
+                size = barHeight,
+                modifier = Modifier.width(endWidth),
+                enabled = !audioFiltersConfigOwned,
+                active = equalizerEnabled && !audioFiltersConfigOwned,
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Equalizer,
+                  contentDescription = stringResource(R.string.btn_label_equalizer),
+                  tint =
+                    when {
+                      audioFiltersConfigOwned -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                      equalizerEnabled -> MaterialTheme.colorScheme.onPrimaryContainer
+                      else -> MaterialTheme.colorScheme.onSecondaryContainer
+                    },
+                  modifier = Modifier.size(endIconSize),
+                )
+              }
             }
             Row(
               modifier = Modifier.weight(1f).height(barHeight),

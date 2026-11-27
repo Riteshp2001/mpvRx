@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.fonts.GoogleFontsRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -166,9 +167,12 @@ fun SubtitleSettingsTypographyCard(
       }
       val backgroundRadius by PlaybackSession.propInt["sub-back-radius"].collectAsState()
       // The radius only shapes the background box, so it shows with that style alone.
-      val showBackgroundRadius = borderStyle == SubtitlesBorderStyle.BackgroundBox
-      val tileCount = if (showBackgroundRadius) 7 else 6
-      PanelConnectedTile(index = 0, itemCount = tileCount) {
+      val showBackgroundRadius =
+        BuildConfig.PLAYER_ENGINE_IS_MPV && borderStyle == SubtitlesBorderStyle.BackgroundBox
+      // Only libmpv has the font family and border style tiles.
+      val tileCount = (if (BuildConfig.PLAYER_ENGINE_IS_MPV) 6 else 4) + (if (showBackgroundRadius) 1 else 0)
+      var tileIndex = 0
+      PanelConnectedTile(index = tileIndex++, itemCount = tileCount) {
         Row(
           Modifier
             .fillMaxWidth()
@@ -204,22 +208,24 @@ fun SubtitleSettingsTypographyCard(
               modifier = Modifier.size(32.dp),
             )
           }
-          SubtitleJustification.entries.minus(SubtitleJustification.Auto).forEach { justification ->
-            IconToggleButton(
-              checked = justify == justification,
-              enabled = !ownsAny(justifyOptions),
-              onCheckedChange = {
-                PlaybackSession.setPropertyBoolean("sub-ass-justify", it)
-                if (it) {
-                  preferences.justification.set(justification)
-                  PlaybackSession.setPropertyString("sub-justify", justification.value)
-                } else {
-                  preferences.justification.set(SubtitleJustification.Auto)
-                  PlaybackSession.setPropertyString("sub-justify", SubtitleJustification.Auto.value)
-                }
-              },
-            ) {
-              Icon(justification.icon, null)
+          if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+            SubtitleJustification.entries.minus(SubtitleJustification.Auto).forEach { justification ->
+              IconToggleButton(
+                checked = justify == justification,
+                enabled = !ownsAny(justifyOptions),
+                onCheckedChange = {
+                  PlaybackSession.setPropertyBoolean("sub-ass-justify", it)
+                  if (it) {
+                    preferences.justification.set(justification)
+                    PlaybackSession.setPropertyString("sub-justify", justification.value)
+                  } else {
+                    preferences.justification.set(SubtitleJustification.Auto)
+                    PlaybackSession.setPropertyString("sub-justify", SubtitleJustification.Auto.value)
+                  }
+                },
+              ) {
+                Icon(justification.icon, null)
+              }
             }
           }
           Spacer(Modifier.weight(1f))
@@ -237,52 +243,54 @@ fun SubtitleSettingsTypographyCard(
           }
         }
       }
-      PanelConnectedTile(index = 1, itemCount = tileCount) {
-        Row(
-          modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
-          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Icon(
-            Icons.RoundedFilled.BrandFamily,
-            null,
-            modifier = Modifier.size(32.dp),
-          )
-          ExposedTextDropDownMenu(
-            selectedValue =
-              run {
-                val family =
-                  font
-                    ?.takeUnless {
-                      it == effectiveDefaultFont || it == LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY
-                    }.orEmpty()
-                preferredFontLabel.takeIf { selected ->
-                  fontChoices.any { it.label == selected && it.familyName == family }
-                } ?: fontChoices.firstOrNull { it.familyName == family }?.label
-                  ?: family.ifEmpty { defaultSubtitleFontDisplayName(effectiveDefaultFont) }
+      if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+        PanelConnectedTile(index = tileIndex++, itemCount = tileCount) {
+          Row(
+            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.medium),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Icon(
+              Icons.RoundedFilled.BrandFamily,
+              null,
+              modifier = Modifier.size(32.dp),
+            )
+            ExposedTextDropDownMenu(
+              selectedValue =
+                run {
+                  val family =
+                    font
+                      ?.takeUnless {
+                        it == effectiveDefaultFont || it == LEGACY_DEFAULT_SUBTITLE_FONT_FAMILY
+                      }.orEmpty()
+                  preferredFontLabel.takeIf { selected ->
+                    fontChoices.any { it.label == selected && it.familyName == family }
+                  } ?: fontChoices.firstOrNull { it.familyName == family }?.label
+                    ?: family.ifEmpty { defaultSubtitleFontDisplayName(effectiveDefaultFont) }
+                },
+              options = fonts.toImmutableList(),
+              label = stringResource(R.string.player_sheets_sub_typography_font),
+              onValueChangedEvent = { selected ->
+                preferredFontLabel = selected
+                val storedFont =
+                  if (selected ==
+                    "Default"
+                  ) {
+                    ""
+                  } else {
+                    fontChoices.firstOrNull { it.label == selected }?.familyName ?: selected
+                  }
+                val actualFont = storedFont.ifBlank { effectiveDefaultFont }
+                preferences.font.set(storedFont)
+                PlaybackSession.setPropertyString("sub-font", actualFont)
               },
-            options = fonts.toImmutableList(),
-            label = stringResource(R.string.player_sheets_sub_typography_font),
-            onValueChangedEvent = { selected ->
-              preferredFontLabel = selected
-              val storedFont =
-                if (selected ==
-                  "Default"
-                ) {
-                  ""
-                } else {
-                  fontChoices.firstOrNull { it.label == selected }?.familyName ?: selected
-                }
-              val actualFont = storedFont.ifBlank { effectiveDefaultFont }
-              preferences.font.set(storedFont)
-              PlaybackSession.setPropertyString("sub-font", actualFont)
-            },
-            leadingIcon = fontsLoadingIndicator,
-            enabled = !ownsAny(fontOptions),
-          )
+              leadingIcon = fontsLoadingIndicator,
+              enabled = !ownsAny(fontOptions),
+            )
+          }
         }
       }
-      PanelConnectedTile(index = 2, itemCount = tileCount) {
+      PanelConnectedTile(index = tileIndex++, itemCount = tileCount) {
         SliderItem(
           label = stringResource(R.string.player_sheets_sub_typography_font_size),
           max = 100,
@@ -298,35 +306,37 @@ fun SubtitleSettingsTypographyCard(
           Icon(Icons.RoundedFilled.FormatSize, null)
         }
       }
-      PanelConnectedTile(index = 3, itemCount = tileCount) {
-        Row(
-          modifier =
-            Modifier.padding(
-              horizontal = MaterialTheme.spacing.medium,
-              vertical = MaterialTheme.spacing.small,
-            ),
-          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          Icon(
-            Icons.RoundedFilled.BorderStyle,
-            null,
-            modifier = Modifier.size(32.dp),
-          )
-          AppComboBox(
-            options = SubtitlesBorderStyle.entries,
-            selected = borderStyle,
-            onSelect = {
-              preferences.borderStyle.set(it)
-              PlaybackSession.setPropertyString("sub-border-style", it.value)
-            },
-            optionLabel = { stringResource(it.titleRes) },
-            label = stringResource(R.string.player_sheets_subtitles_border_style),
-            enabled = !ownsAny(borderStyleOptions),
-          )
+      if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
+        PanelConnectedTile(index = tileIndex++, itemCount = tileCount) {
+          Row(
+            modifier =
+              Modifier.padding(
+                horizontal = MaterialTheme.spacing.medium,
+                vertical = MaterialTheme.spacing.small,
+              ),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Icon(
+              Icons.RoundedFilled.BorderStyle,
+              null,
+              modifier = Modifier.size(32.dp),
+            )
+            AppComboBox(
+              options = SubtitlesBorderStyle.entries,
+              selected = borderStyle,
+              onSelect = {
+                preferences.borderStyle.set(it)
+                PlaybackSession.setPropertyString("sub-border-style", it.value)
+              },
+              optionLabel = { stringResource(it.titleRes) },
+              label = stringResource(R.string.player_sheets_subtitles_border_style),
+              enabled = !ownsAny(borderStyleOptions),
+            )
+          }
         }
       }
-      PanelConnectedTile(index = 4, itemCount = tileCount) {
+      PanelConnectedTile(index = tileIndex++, itemCount = tileCount) {
         SliderItem(
           stringResource(R.string.player_sheets_sub_typography_border_size),
           value = borderSize ?: preferences.borderSize.get(),
@@ -341,7 +351,7 @@ fun SubtitleSettingsTypographyCard(
           icon = { Icon(Icons.RoundedFilled.BorderColor, null) },
         )
       }
-      PanelConnectedTile(index = 5, itemCount = tileCount) {
+      PanelConnectedTile(index = tileIndex++, itemCount = tileCount) {
         SliderItem(
           stringResource(R.string.player_sheets_subtitles_shadow_offset),
           value = localShadowOffset.coerceIn(-20, 20),
@@ -361,7 +371,7 @@ fun SubtitleSettingsTypographyCard(
         )
       }
       if (showBackgroundRadius) {
-        PanelConnectedTile(index = 6, itemCount = tileCount) {
+        PanelConnectedTile(index = tileIndex, itemCount = tileCount) {
           val radius = (backgroundRadius ?: preferences.backgroundRadius.get()).coerceIn(0, 40)
           SliderItem(
             stringResource(R.string.player_sheets_subtitles_background_radius),
