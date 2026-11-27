@@ -209,7 +209,6 @@ internal class BlobRenderer(
         GlUtils.readAssetText(context, "shaders/visualizer/blob/composite_fragment.glsl"),
       )
 
-
     cacheUniformLocations()
     createMesh()
     createQuad()
@@ -240,11 +239,12 @@ internal class BlobRenderer(
   }
 
   override fun onFrame(frameTimeNanos: Long) {
-    val frameSeconds = if (previousFrameNanos == 0L || frameTimeNanos - previousFrameNanos > 250_000_000L) {
-      1f / 60f
-    } else {
-      ((frameTimeNanos - previousFrameNanos) / 1_000_000_000f).coerceIn(0f, 0.05f)
-    }
+    val frameSeconds =
+      if (previousFrameNanos == 0L || frameTimeNanos - previousFrameNanos > 250_000_000L) {
+        1f / 60f
+      } else {
+        ((frameTimeNanos - previousFrameNanos) / 1_000_000_000f).coerceIn(0f, 0.05f)
+      }
     previousFrameNanos = frameTimeNanos
     elapsedSeconds += frameSeconds
     frameTimeEmaMs += (frameSeconds * 1_000f - frameTimeEmaMs) * (1f - 0.975f.pow(frameSeconds * 60f))
@@ -435,7 +435,10 @@ internal class BlobRenderer(
   }
 
   @Suppress("LocalVariableName")
-  private fun updateMatrices(time: Float, deltaSeconds: Float) {
+  private fun updateMatrices(
+    time: Float,
+    deltaSeconds: Float,
+  ) {
     val follow = 1f - 0.935f.pow(deltaSeconds * 60f)
     yaw += (targetYaw - yaw) * follow
     pitch += (targetPitch - pitch) * follow
@@ -443,7 +446,8 @@ internal class BlobRenderer(
     Matrix.setIdentityM(model, 0)
     val pointerMotion = if (reducedMotionEnabled) 0.2f else 1f
     Matrix.translateM(
-      model, 0,
+      model,
+      0,
       interaction.x * 0.35f * pointerMotion,
       interaction.y * 0.25f * pointerMotion,
       0f,
@@ -463,7 +467,10 @@ internal class BlobRenderer(
     Matrix.multiplyMM(mvp, 0, projection, 0, viewModel, 0)
   }
 
-  private fun updateColor(time: Float, deltaSeconds: Float) {
+  private fun updateColor(
+    time: Float,
+    deltaSeconds: Float,
+  ) {
     val drift = if (reducedMotionEnabled) 0f else (kotlin.math.sin(time * 0.24f) + 1f) * 0.08f
     val spectralMix = (audio.centroid * 0.72f + audio.treble * 0.18f + drift).coerceIn(0f, 1f)
     val beatMix = (audio.beat * 0.68f + audio.spectralFlux * 0.32f).coerceIn(0f, 1f)
@@ -508,8 +515,8 @@ internal class BlobRenderer(
       0.38f + audio.energy * 0.28f + audio.beat * 0.22f,
     )
 
-     updateSpectrumTexture(sourceAudio.spectrum, sourceAudio.volumeScale)
-     bindTexture(0, spectrumTexture, uSpectrum)
+    updateSpectrumTexture(sourceAudio.spectrum, sourceAudio.volumeScale)
+    bindTexture(0, spectrumTexture, uSpectrum)
 
     GLES30.glLineWidth(1.4f)
     GLES30.glBindVertexArray(meshVao)

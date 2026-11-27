@@ -18,16 +18,23 @@ import java.net.SocketTimeoutException
 import java.net.URI
 import java.net.UnknownHostException
 
-data class SyncplayEndpoint(val host: String, val port: Int) {
+data class SyncplayEndpoint(
+  val host: String,
+  val port: Int,
+) {
   companion object {
-    fun parse(raw: String, port: Int): SyncplayEndpoint {
+    fun parse(
+      raw: String,
+      port: Int,
+    ): SyncplayEndpoint {
       val input = raw.trim()
       require(input.isNotEmpty() && input.none { it.isWhitespace() || it.isISOControl() })
-      val address = when {
-        "://" in input -> input
-        input.count { it == ':' } > 1 && !input.startsWith('[') -> "syncplay://[$input]"
-        else -> "syncplay://$input"
-      }
+      val address =
+        when {
+          "://" in input -> input
+          input.count { it == ':' } > 1 && !input.startsWith('[') -> "syncplay://[$input]"
+          else -> "syncplay://$input"
+        }
       val uri = URI(address)
       require(uri.scheme.equals("syncplay", true) && uri.rawUserInfo == null)
       require(uri.rawQuery == null && uri.rawFragment == null && uri.path.orEmpty() in setOf("", "/"))
@@ -47,25 +54,35 @@ data class SyncplayEndpoint(val host: String, val port: Int) {
 internal fun resolveSyncplayAddresses(
   host: String,
   resolver: (String) -> List<InetAddress> = { InetAddress.getAllByName(it).toList() },
-): List<InetAddress> = try {
-  resolver(host).ifEmpty { throw UnknownHostException(host) }.distinct()
-} catch (error: UnknownHostException) {
-  if (!host.equals("syncplay.pl", ignoreCase = true)) throw error
-  listOf(InetAddress.getByAddress(byteArrayOf(151.toByte(), 80, 32, 178.toByte())))
-}
+): List<InetAddress> =
+  try {
+    resolver(host).ifEmpty { throw UnknownHostException(host) }.distinct()
+  } catch (error: UnknownHostException) {
+    if (!host.equals("syncplay.pl", ignoreCase = true)) throw error
+    listOf(InetAddress.getByAddress(byteArrayOf(151.toByte(), 80, 32, 178.toByte())))
+  }
 
 enum class SyncplayConnectionFailure {
-  NAME_LOOKUP, REFUSED, TIMEOUT, UNREACHABLE, HANDSHAKE_TIMEOUT, CLOSED, PROTOCOL, NETWORK;
+  NAME_LOOKUP,
+  REFUSED,
+  TIMEOUT,
+  UNREACHABLE,
+  HANDSHAKE_TIMEOUT,
+  CLOSED,
+  PROTOCOL,
+  NETWORK,
+  ;
 
   companion object {
-    fun from(error: Throwable): SyncplayConnectionFailure = when (error) {
-      is UnknownHostException -> NAME_LOOKUP
-      is SocketTimeoutException -> TIMEOUT
-      is NoRouteToHostException -> UNREACHABLE
-      is ConnectException -> REFUSED
-      is EOFException -> CLOSED
-      is ProtocolException -> PROTOCOL
-      else -> NETWORK
-    }
+    fun from(error: Throwable): SyncplayConnectionFailure =
+      when (error) {
+        is UnknownHostException -> NAME_LOOKUP
+        is SocketTimeoutException -> TIMEOUT
+        is NoRouteToHostException -> UNREACHABLE
+        is ConnectException -> REFUSED
+        is EOFException -> CLOSED
+        is ProtocolException -> PROTOCOL
+        else -> NETWORK
+      }
   }
 }

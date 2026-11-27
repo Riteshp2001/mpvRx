@@ -15,10 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import app.gyrolet.mpvrx.presentation.components.AppComboBoxAnchor as ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +45,8 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
+import app.gyrolet.mpvrx.presentation.components.AppComboBoxAnchor as ExposedDropdownMenuBox
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 @Composable
 internal fun NetworkServerField(
@@ -83,23 +83,33 @@ internal fun NetworkServerField(
       }
     }
   }
-  val suggestions = remember(savedServers, scan.servers, addresses, query) {
-    (savedServers + scan.servers + addresses)
-      .distinctBy { listOf(it.host.lowercase(), it.port, it.protocol, it.path, it.useHttps) }
-      .filter {
-        query.isBlank() || it.host.contains(query, true) || it.name.contains(query, true) ||
-          it.protocol?.displayName?.contains(query, true) == true
-      }
-  }
+  val suggestions =
+    remember(savedServers, scan.servers, addresses, query) {
+      (savedServers + scan.servers + addresses)
+        .distinctBy { listOf(it.host.lowercase(), it.port, it.protocol, it.path, it.useHttps) }
+        .filter {
+          query.isBlank() ||
+            it.host.contains(query, true) ||
+            it.name.contains(query, true) ||
+            it.protocol?.displayName?.contains(query, true) == true
+        }
+    }
 
   Column {
     ExposedDropdownMenuBox(
       expanded = expanded,
-      onExpandedChange = { expanded = it; query = "" },
+      onExpandedChange = {
+        expanded = it
+        query = ""
+      },
     ) {
       OutlinedTextField(
         value = value,
-        onValueChange = { onValueChange(it); query = it; expanded = true },
+        onValueChange = {
+          onValueChange(it)
+          query = it
+          expanded = true
+        },
         label = { Text(label) },
         placeholder = { Text("192.168.1.100") },
         singleLine = true,
@@ -119,13 +129,25 @@ internal fun NetworkServerField(
         onDismissRequest = { expanded = false },
       ) {
         AppComboBoxOption(
-          text = stringResource(if (scan.isScanning) R.string.network_server_scanning else R.string.network_server_scan),
+          text =
+            stringResource(
+              if (scan.isScanning) R.string.network_server_scanning else R.string.network_server_scan,
+            ),
           selected = false,
           index = 0,
           itemCount = if (suggestions.isEmpty()) 2 else 1,
           enabled = !scan.isScanning,
-          leadingIcon = { Icon(Icons.RoundedFilled.Refresh, contentDescription = null, modifier = Modifier.size(20.dp)) },
-          onClick = { query = ""; scanRequest++ },
+          leadingIcon = {
+            Icon(
+              Icons.RoundedFilled.Refresh,
+              contentDescription = null,
+              modifier = Modifier.size(20.dp),
+            )
+          },
+          onClick = {
+            query = ""
+            scanRequest++
+          },
         )
         if (suggestions.isEmpty()) {
           AppComboBoxOption(
@@ -138,12 +160,15 @@ internal fun NetworkServerField(
           )
         }
         suggestions.forEachIndexed { index, suggestion ->
-          val sourceLabel = stringResource(when (suggestion.source) {
-            ServerSuggestionSource.SAVED -> R.string.network_server_saved
-            ServerSuggestionSource.DISCOVERED -> R.string.network_server_nearby
-            ServerSuggestionSource.DEVICE -> R.string.network_server_this_device
-            ServerSuggestionSource.LOOPBACK -> R.string.network_server_loopback
-          })
+          val sourceLabel =
+            stringResource(
+              when (suggestion.source) {
+                ServerSuggestionSource.SAVED -> R.string.network_server_saved
+                ServerSuggestionSource.DISCOVERED -> R.string.network_server_nearby
+                ServerSuggestionSource.DEVICE -> R.string.network_server_this_device
+                ServerSuggestionSource.LOOPBACK -> R.string.network_server_loopback
+              },
+            )
           AppComboBoxOption(
             text = suggestion.name.ifBlank { suggestion.authority },
             supportingText = "${suggestion.authority} · $sourceLabel",
@@ -158,23 +183,33 @@ internal fun NetworkServerField(
                 style = MaterialTheme.typography.labelSmall,
               )
             },
-            onClick = { expanded = false; query = ""; onSelected(suggestion) },
+            onClick = {
+              expanded = false
+              query = ""
+              onSelected(suggestion)
+            },
           )
         }
       }
     }
     TextButton(
       enabled = !scan.isScanning,
-      onClick = { query = ""; expanded = true; scanRequest++ },
+      onClick = {
+        query = ""
+        expanded = true
+        scanRequest++
+      },
     ) {
       Text(stringResource(if (scan.isScanning) R.string.network_server_scanning else R.string.network_server_scan))
     }
     Text(
-      stringResource(when {
-        scan.unavailable -> R.string.network_server_scan_unavailable
-        scanRequest > 0 && !scan.isScanning && scan.servers.isEmpty() -> R.string.network_server_none_found
-        else -> R.string.network_server_discovery_hint
-      }),
+      stringResource(
+        when {
+          scan.unavailable -> R.string.network_server_scan_unavailable
+          scanRequest > 0 && !scan.isScanning && scan.servers.isEmpty() -> R.string.network_server_none_found
+          else -> R.string.network_server_discovery_hint
+        },
+      ),
       style = MaterialTheme.typography.bodySmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

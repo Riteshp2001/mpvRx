@@ -12,7 +12,6 @@ package app.gyrolet.mpvrx.data.network
 import java.net.URI
 
 object ServerUrlUtils {
-
   private val IPV4_REGEX = Regex("""^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$""")
 
   /**
@@ -20,7 +19,12 @@ object ServerUrlUtils {
    * loopback, or single-label LAN hostname.
    */
   fun isLocalOrPrivateHost(host: String): Boolean {
-    val cleanHost = host.trim().removePrefix("[").removeSuffix("]").lowercase()
+    val cleanHost =
+      host
+        .trim()
+        .removePrefix("[")
+        .removeSuffix("]")
+        .lowercase()
     if (cleanHost.isBlank()) return false
 
     if (cleanHost == "localhost" || cleanHost == "127.0.0.1" || cleanHost == "::1") {
@@ -85,7 +89,10 @@ object ServerUrlUtils {
    * - Hosted domains / FQDNs prioritize https:// first, then http://.
    * - If defaultPort is provided and port is missing, candidates with defaultPort are generated.
    */
-  fun generateCandidateUrls(rawUrl: String, defaultPort: Int? = null): List<String> {
+  fun generateCandidateUrls(
+    rawUrl: String,
+    defaultPort: Int? = null,
+  ): List<String> {
     val trimmed = rawUrl.trim().removeSuffix("/")
     if (trimmed.isBlank()) return emptyList()
 
@@ -104,8 +111,13 @@ object ServerUrlUtils {
 
     val clean = trimmed.removePrefix("//")
     val fakeUri = runCatching { URI("http://$clean") }.getOrNull()
-    val host = fakeUri?.host?.takeIf { it.isNotBlank() }
-      ?: clean.substringBefore("/").substringBeforeLast(":").removePrefix("[").removeSuffix("]")
+    val host =
+      fakeUri?.host?.takeIf { it.isNotBlank() }
+        ?: clean
+          .substringBefore("/")
+          .substringBeforeLast(":")
+          .removePrefix("[")
+          .removeSuffix("]")
     val port = fakeUri?.port ?: -1
     val hasPort = port != -1
     val path = fakeUri?.rawPath?.takeIf { it.isNotBlank() && it != "/" } ?: ""
@@ -151,9 +163,10 @@ object ServerUrlUtils {
     }
   }
 
-  fun normalizeUrl(rawUrl: String, defaultPort: Int? = null): String {
-    return generateCandidateUrls(rawUrl, defaultPort).firstOrNull() ?: rawUrl.trim()
-  }
+  fun normalizeUrl(
+    rawUrl: String,
+    defaultPort: Int? = null,
+  ): String = generateCandidateUrls(rawUrl, defaultPort).firstOrNull() ?: rawUrl.trim()
 
   /**
    * Returns a dynamic hint for the UI describing how the connection will be attempted.
@@ -171,8 +184,13 @@ object ServerUrlUtils {
     }
     val clean = trimmed.removePrefix("//")
     val fakeUri = runCatching { URI("http://$clean") }.getOrNull()
-    val host = fakeUri?.host?.takeIf { it.isNotBlank() }
-      ?: clean.substringBefore("/").substringBeforeLast(":").removePrefix("[").removeSuffix("]")
+    val host =
+      fakeUri?.host?.takeIf { it.isNotBlank() }
+        ?: clean
+          .substringBefore("/")
+          .substringBeforeLast(":")
+          .removePrefix("[")
+          .removeSuffix("]")
     return if (isLocalOrPrivateHost(host)) {
       "Local address detected: HTTP will be tried first"
     } else {

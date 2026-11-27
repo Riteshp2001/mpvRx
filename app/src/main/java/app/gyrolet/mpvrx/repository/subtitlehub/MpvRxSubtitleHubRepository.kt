@@ -835,7 +835,8 @@ class MpvRxSubtitleHubRepository(
   private fun String.codeEquals(other: String): Boolean = normalizeCode() == other.normalizeCode()
 
   private fun extensionFromName(value: String): String? =
-    app.gyrolet.mpvrx.repository.subtitle.SubtitleArchiveExtractor.extensionFromName(value)
+    app.gyrolet.mpvrx.repository.subtitle.SubtitleArchiveExtractor
+      .extensionFromName(value)
 
   private data class ResolvedDownload(
     val url: String,

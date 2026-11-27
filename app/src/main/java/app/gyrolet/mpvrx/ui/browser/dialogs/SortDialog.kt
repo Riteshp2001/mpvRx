@@ -16,7 +16,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +34,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
@@ -45,7 +45,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ripple
@@ -71,14 +70,15 @@ import app.gyrolet.mpvrx.ui.components.themedSegmentedButtonColors
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import kotlin.math.roundToInt
+import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -137,7 +137,9 @@ fun SortDialog(
         ) {
           if (showSortOptions) {
             DialogSectionTitle(
-              text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_sort_by),
+              text =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_sort_by),
             )
             SortTypeSelector(
               sortType = sortType,
@@ -235,7 +237,10 @@ fun SortDialog(
                 }
               }
             }
-            val showSeparateLayout = !isFirstSelected && layoutModeSelector.checkboxLabel != null && layoutModeSelector.onCheckboxChange != null
+            val showSeparateLayout =
+              !isFirstSelected &&
+                layoutModeSelector.checkboxLabel != null &&
+                layoutModeSelector.onCheckboxChange != null
             val showManualGrid = manualGridToggle != null && !isFirstSelected
             if (showSeparateLayout || showManualGrid) {
               Spacer(modifier = Modifier.height(4.dp))
@@ -246,16 +251,20 @@ fun SortDialog(
               ) {
                 if (layoutModeSelector.checkboxLabel != null && layoutModeSelector.onCheckboxChange != null) {
                   Row(
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(8.dp))
-                      .toggleable(
-                        value = layoutModeSelector.isCheckboxChecked,
-                        enabled = enableLayoutModeOptions,
-                        role = androidx.compose.ui.semantics.Role.Checkbox,
-                        onValueChange = { checked ->
-                          layoutModeSelector.onCheckboxChange.invoke(checked)
-                          haptics.selection(checked)
-                        },
-                      ),
+                    modifier =
+                      Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .toggleable(
+                          value = layoutModeSelector.isCheckboxChecked,
+                          enabled = enableLayoutModeOptions,
+                          role = androidx.compose.ui.semantics.Role.Checkbox,
+                          onValueChange = { checked ->
+                            layoutModeSelector.onCheckboxChange.invoke(checked)
+                            haptics.selection(checked)
+                          },
+                        ),
                     // Without this the label sits flush against the checkbox's own padding and reads
                     // as one glued block.
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -276,16 +285,20 @@ fun SortDialog(
                 if (manualGridToggle != null && showManualGrid) {
                   val isEnabled = enableLayoutModeOptions && manualGridToggle.enabled
                   Row(
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(8.dp))
-                      .toggleable(
-                        value = manualGridToggle.checked,
-                        enabled = isEnabled,
-                        role = androidx.compose.ui.semantics.Role.Checkbox,
-                        onValueChange = { checked ->
-                          manualGridToggle.onCheckedChange(checked)
-                          haptics.selection(checked)
-                        },
-                      ),
+                    modifier =
+                      Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .toggleable(
+                          value = manualGridToggle.checked,
+                          enabled = isEnabled,
+                          role = androidx.compose.ui.semantics.Role.Checkbox,
+                          onValueChange = { checked ->
+                            manualGridToggle.onCheckedChange(checked)
+                            haptics.selection(checked)
+                          },
+                        ),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                   ) {
@@ -309,7 +322,9 @@ fun SortDialog(
           if (mediaTypeToggles.isNotEmpty()) {
             HorizontalDivider(modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
             DialogSectionTitle(
-              text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_media_types),
+              text =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_media_types),
             )
             ToggleChipRow(mediaTypeToggles)
           }
@@ -341,7 +356,12 @@ fun SortDialog(
                   style = MaterialTheme.typography.titleSmall,
                 )
                 Icon(
-                  imageVector = if (isFieldsExpanded) Icons.RoundedFilled.KeyboardArrowUp else Icons.RoundedFilled.KeyboardArrowDown,
+                  imageVector =
+                    if (isFieldsExpanded) {
+                      Icons.RoundedFilled.KeyboardArrowUp
+                    } else {
+                      Icons.RoundedFilled.KeyboardArrowDown
+                    },
                   contentDescription =
                     androidx.compose.ui.res.stringResource(
                       if (isFieldsExpanded) {
@@ -562,27 +582,35 @@ private fun OptionChip(
         haptics.selection(!selected)
       }
     },
-    modifier = modifier
-      .heightIn(min = 48.dp)
-      .tvFocusHighlight(AppShapeScale.medium, focusedScale = 1.03f),
+    modifier =
+      modifier
+        .heightIn(min = 48.dp)
+        .tvFocusHighlight(AppShapeScale.medium, focusedScale = 1.03f),
     enabled = enabled,
     label = { Text(text = label, style = MaterialTheme.typography.labelLarge) },
-    leadingIcon = if (icon != null) {
-      { Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
-    } else null,
-    trailingIcon = if (selected) {
-      { Icon(imageVector = Icons.RoundedFilled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
-    } else null,
+    leadingIcon =
+      if (icon != null) {
+        { Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp)) }
+      } else {
+        null
+      },
+    trailingIcon =
+      if (selected) {
+        { Icon(imageVector = Icons.RoundedFilled.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+      } else {
+        null
+      },
     shape = AppShapeScale.medium,
-    colors = FilterChipDefaults.filterChipColors(
-      containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-      labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-      iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-      selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-      selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-      selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-      selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
-    ),
+    colors =
+      FilterChipDefaults.filterChipColors(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        iconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimaryContainer,
+      ),
     border = null,
   )
 }
@@ -638,7 +666,12 @@ private fun GridColumnsNextSection(
             overflow = TextOverflow.Ellipsis,
           )
           Text(
-            text = if (folderGridColumnSelector.unitSuffix.isEmpty()) "${folderGridColumnSelector.currentValue}" else "${folderGridColumnSelector.currentValue} ${folderGridColumnSelector.unitSuffix}",
+            text =
+              if (folderGridColumnSelector.unitSuffix.isEmpty()) {
+                "${folderGridColumnSelector.currentValue}"
+              } else {
+                "${folderGridColumnSelector.currentValue} ${folderGridColumnSelector.unitSuffix}"
+              },
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary,
@@ -673,7 +706,12 @@ private fun GridColumnsNextSection(
             overflow = TextOverflow.Ellipsis,
           )
           Text(
-            text = if (videoGridColumnSelector.unitSuffix.isEmpty()) "${videoGridColumnSelector.currentValue}" else "${videoGridColumnSelector.currentValue} ${videoGridColumnSelector.unitSuffix}",
+            text =
+              if (videoGridColumnSelector.unitSuffix.isEmpty()) {
+                "${videoGridColumnSelector.currentValue}"
+              } else {
+                "${videoGridColumnSelector.currentValue} ${videoGridColumnSelector.unitSuffix}"
+              },
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary,
@@ -703,7 +741,12 @@ private fun GridColumnsNextSection(
     ) {
       DialogSectionTitle(text = selector.label)
       Text(
-        text = if (selector.unitSuffix.isEmpty()) "${selector.currentValue}" else "${selector.currentValue} ${selector.unitSuffix}",
+        text =
+          if (selector.unitSuffix.isEmpty()) {
+            "${selector.currentValue}"
+          } else {
+            "${selector.currentValue} ${selector.unitSuffix}"
+          },
         style = MaterialTheme.typography.bodySmall,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.primary,
@@ -747,15 +790,16 @@ private fun RoundedCheckbox(
     label = "checkboxBorder",
   )
 
-  val interactionModifier = if (onCheckedChange != null) {
-    Modifier.clickable(
-      enabled = enabled,
-      role = Role.Checkbox,
-      onClick = { onCheckedChange(!checked) },
-    )
-  } else {
-    Modifier
-  }
+  val interactionModifier =
+    if (onCheckedChange != null) {
+      Modifier.clickable(
+        enabled = enabled,
+        role = Role.Checkbox,
+        onClick = { onCheckedChange(!checked) },
+      )
+    } else {
+      Modifier
+    }
 
   Box(
     modifier =
@@ -764,8 +808,7 @@ private fun RoundedCheckbox(
         .size(20.dp)
         .graphicsLayer {
           if (!enabled) alpha = disabledAlpha
-        }
-        .background(animatedBgColor, CircleShape)
+        }.background(animatedBgColor, CircleShape)
         .border(2.dp, animatedBorderColor, CircleShape)
         .then(interactionModifier),
     contentAlignment = Alignment.Center,

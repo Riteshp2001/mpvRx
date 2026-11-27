@@ -12,25 +12,29 @@ package app.gyrolet.mpvrx.preferences
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.getEnum
 
-enum class MusicSourceProvider(val id: String) {
+enum class MusicSourceProvider(
+  val id: String,
+) {
   LOCAL("local"),
   JELLYFIN("jellyfin"),
   NAVIDROME("navidrome"),
-  AUDIOBOOKS("audiobooks");
+  AUDIOBOOKS("audiobooks"),
+  ;
 
   companion object {
-    fun fromId(id: String): MusicSourceProvider =
-      entries.firstOrNull { it.id == id } ?: LOCAL
+    fun fromId(id: String): MusicSourceProvider = entries.firstOrNull { it.id == id } ?: LOCAL
   }
 }
 
-enum class AudiobookSourceProvider(val id: String) {
+enum class AudiobookSourceProvider(
+  val id: String,
+) {
   LOCAL("local"),
-  AUDIOBOOKSHELF("audiobookshelf");
+  AUDIOBOOKSHELF("audiobookshelf"),
+  ;
 
   companion object {
-    fun fromId(id: String): AudiobookSourceProvider =
-      entries.firstOrNull { it.id == id } ?: LOCAL
+    fun fromId(id: String): AudiobookSourceProvider = entries.firstOrNull { it.id == id } ?: LOCAL
   }
 }
 
@@ -43,4 +47,3 @@ class MediaServerPreferences(
   val audiobookSourceProvider =
     preferenceStore.getEnum("media_server_audiobook_source_provider", AudiobookSourceProvider.LOCAL)
 }
-

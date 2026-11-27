@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.player.controls
 
 import androidx.activity.compose.BackHandler
@@ -31,8 +31,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -44,9 +44,9 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -60,6 +60,8 @@ import app.gyrolet.mpvrx.ui.components.InlineSearchBar
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
+import app.gyrolet.mpvrx.ui.liquidglass.playerGlassContainerColor
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.DraggablePanel
 import app.gyrolet.mpvrx.ui.preferences.AudioPreferencesScreen
 import app.gyrolet.mpvrx.ui.preferences.ControlLayoutEditorScreen
@@ -67,8 +69,8 @@ import app.gyrolet.mpvrx.ui.preferences.ControlRegion
 import app.gyrolet.mpvrx.ui.preferences.DecoderPreferencesScreen
 import app.gyrolet.mpvrx.ui.preferences.GesturePreferencesScreen
 import app.gyrolet.mpvrx.ui.preferences.LiquidGlassPreferencesScreen
-import app.gyrolet.mpvrx.ui.preferences.LocalPlayerSettingsPanel
 import app.gyrolet.mpvrx.ui.preferences.LocalPlayerSettingsConfigOptions
+import app.gyrolet.mpvrx.ui.preferences.LocalPlayerSettingsPanel
 import app.gyrolet.mpvrx.ui.preferences.PersistentStatusBarPreferencesScreen
 import app.gyrolet.mpvrx.ui.preferences.PlayerControlsPreferencesScreen
 import app.gyrolet.mpvrx.ui.preferences.PlayerPreferencesScreen
@@ -76,18 +78,16 @@ import app.gyrolet.mpvrx.ui.preferences.SearchablePreference
 import app.gyrolet.mpvrx.ui.preferences.SearchablePreferences
 import app.gyrolet.mpvrx.ui.preferences.SettingsSearchNavigation
 import app.gyrolet.mpvrx.ui.preferences.SubtitlesPreferencesScreen
-import app.gyrolet.mpvrx.ui.preferences.searchTargetKey
-import app.gyrolet.mpvrx.ui.preferences.searchCategoryTitleRes
 import app.gyrolet.mpvrx.ui.preferences.isLivePlayerSetting
-import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
-import app.gyrolet.mpvrx.ui.liquidglass.playerGlassContainerColor
+import app.gyrolet.mpvrx.ui.preferences.searchCategoryTitleRes
+import app.gyrolet.mpvrx.ui.preferences.searchTargetKey
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.ScreenNavDisplay
+import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
-import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
@@ -103,26 +103,34 @@ private data class SettingsCategory(
   val screen: Screen,
 )
 
-private fun playerSettingsCategories() = listOf(
-  SettingsCategory(R.string.pref_player, Icons.RoundedFilled.Settings, PlayerPreferencesScreen),
-  SettingsCategory(R.string.pref_audio, Icons.RoundedFilled.Audiotrack, AudioPreferencesScreen),
-  SettingsCategory(R.string.pref_subtitles, Icons.RoundedFilled.Subtitles, SubtitlesPreferencesScreen),
-  SettingsCategory(R.string.pref_decoder, Icons.RoundedFilled.DeveloperBoard, DecoderPreferencesScreen),
-  SettingsCategory(R.string.pref_appearance_liquid_glass_title, Icons.RoundedFilled.Tune, LiquidGlassPreferencesScreen),
-  SettingsCategory(R.string.pref_gesture, Icons.RoundedFilled.Gesture, GesturePreferencesScreen),
-  SettingsCategory(R.string.pref_layout_title, Icons.RoundedFilled.GridView, PlayerControlsPreferencesScreen),
-)
+private fun playerSettingsCategories() =
+  listOf(
+    SettingsCategory(R.string.pref_player, Icons.RoundedFilled.Settings, PlayerPreferencesScreen),
+    SettingsCategory(R.string.pref_audio, Icons.RoundedFilled.Audiotrack, AudioPreferencesScreen),
+    SettingsCategory(R.string.pref_subtitles, Icons.RoundedFilled.Subtitles, SubtitlesPreferencesScreen),
+    SettingsCategory(R.string.pref_decoder, Icons.RoundedFilled.DeveloperBoard, DecoderPreferencesScreen),
+    SettingsCategory(
+      R.string.pref_appearance_liquid_glass_title,
+      Icons.RoundedFilled.Tune,
+      LiquidGlassPreferencesScreen,
+    ),
+    SettingsCategory(R.string.pref_gesture, Icons.RoundedFilled.Gesture, GesturePreferencesScreen),
+    SettingsCategory(R.string.pref_layout_title, Icons.RoundedFilled.GridView, PlayerControlsPreferencesScreen),
+  )
 
-private fun playerSettingsScreens(categories: List<SettingsCategory>): Set<Screen> = buildSet {
-  categories.forEach { add(it.screen) }
-  add(PersistentStatusBarPreferencesScreen)
-  ControlRegion.entries.forEach { add(ControlLayoutEditorScreen(it)) }
-}
+private fun playerSettingsScreens(categories: List<SettingsCategory>): Set<Screen> =
+  buildSet {
+    categories.forEach { add(it.screen) }
+    add(PersistentStatusBarPreferencesScreen)
+    ControlRegion.entries.forEach { add(ControlLayoutEditorScreen(it)) }
+  }
 
 /** Restore-only keys for older saved drawer navigation; removed by the supported-screen filter. */
 @Serializable
 private enum class PlayerLiveSettings : Screen {
-  Picture, SubtitleStyle;
+  Picture,
+  SubtitleStyle,
+  ;
 
   @Composable
   override fun Content() = Unit
@@ -137,9 +145,10 @@ internal fun PlayerSettingsPanel(
   val backStack = rememberNavBackStack(PlayerSettingsHome) as NavBackStack<Screen>
   val savedContent = rememberSaveableStateHolder()
   val glassActive = liquidGlassActive()
-  val categories = remember(glassActive) {
-    playerSettingsCategories().filter { it.screen != LiquidGlassPreferencesScreen || glassActive }
-  }
+  val categories =
+    remember(glassActive) {
+      playerSettingsCategories().filter { it.screen != LiquidGlassPreferencesScreen || glassActive }
+    }
   LaunchedEffect(categories) {
     val supportedScreens = playerSettingsScreens(categories)
     Snapshot.withMutableSnapshot {
@@ -177,11 +186,13 @@ internal fun PlayerSettingsPanel(
   Box(Modifier.fillMaxSize().imePadding()) {
     // The exit animation keeps this panel composed; only an active panel may swallow player taps.
     if (active) {
-      Box(Modifier.fillMaxSize().clickable(
-        interactionSource = remember { MutableInteractionSource() },
-        indication = null,
-        onClick = close,
-      ))
+      Box(
+        Modifier.fillMaxSize().clickable(
+          interactionSource = remember { MutableInteractionSource() },
+          indication = null,
+          onClick = close,
+        ),
+      )
     }
     savedContent.SaveableStateProvider("player-settings-panel") {
       DraggablePanel(
@@ -191,13 +202,18 @@ internal fun PlayerSettingsPanel(
         maxPanelWidth = 520.dp,
         header = {
           val current = backStack.lastOrNull()
-          val title = when {
-            searchMode || current == PlayerSettingsHome -> resources.getString(R.string.player_settings_title)
-            current == PersistentStatusBarPreferencesScreen -> resources.getString(R.string.pref_persistent_status_title)
-            current is ControlLayoutEditorScreen -> resources.getString(current.region.titleRes)
-            else -> categories.firstOrNull { it.screen == current }?.let { resources.getString(it.title) }
-              ?: resources.getString(R.string.player_settings_title)
-          }
+          val title =
+            when {
+              searchMode || current == PlayerSettingsHome -> resources.getString(R.string.player_settings_title)
+              current == PersistentStatusBarPreferencesScreen ->
+                resources.getString(
+                  R.string.pref_persistent_status_title,
+                )
+              current is ControlLayoutEditorScreen -> resources.getString(current.region.titleRes)
+              else ->
+                categories.firstOrNull { it.screen == current }?.let { resources.getString(it.title) }
+                  ?: resources.getString(R.string.player_settings_title)
+            }
           SettingsPanelHeader(
             title = title,
             canGoBack = searchMode || query.isNotBlank() || backStack.size > 1,
@@ -215,7 +231,8 @@ internal fun PlayerSettingsPanel(
             LocalPlayerSettingsConfigOptions provides currentMpvConfigOverrideOptions(),
           ) {
             Box(
-              Modifier.fillMaxSize()
+              Modifier
+                .fillMaxSize()
                 .padding(horizontal = 4.dp)
                 .padding(bottom = 4.dp)
                 .clipToBounds(),
@@ -232,10 +249,11 @@ internal fun PlayerSettingsPanel(
               ) {
                 ScreenNavDisplay(backStack = backStack, onBack = back) { screen ->
                   when (screen) {
-                    PlayerSettingsHome -> SettingsPanelHome(categories, query, { query = it }, backStack) {
-                      query = ""
-                      keyboard?.hide()
-                    }
+                    PlayerSettingsHome ->
+                      SettingsPanelHome(categories, query, { query = it }, backStack) {
+                        query = ""
+                        keyboard?.hide()
+                      }
                     else -> screen.Content()
                   }
                 }
@@ -297,38 +315,49 @@ private fun SettingsPanelHome(
   val favoritesPreference = remember(store) { store.getStringSet("player_settings_favorites", emptySet()) }
   val favorites by favoritesPreference.collectAsState()
   val screens = remember(categories) { playerSettingsScreens(categories) }
-  val categoryEntries = remember(categories) {
-    categories.map {
-      SearchablePreference(
-        titleRes = it.title,
-        category = "Player",
-        screen = it.screen,
-      )
-    } + SearchablePreference(
-      titleRes = R.string.pref_persistent_status_title,
-      category = "Player",
-      screen = PersistentStatusBarPreferencesScreen,
-      keywords = listOf("hud", "status", "clock", "battery"),
-    )
-  }
-  val entries = remember(screens) {
-    (SearchablePreferences.forScreens(screens).filter {
-      isLivePlayerSetting(it.screen, it.targetRes ?: it.titleRes)
-    } + categoryEntries).distinctBy { it.favoriteKey() }
-  }
-  val results = remember(query, resources, screens, categoryEntries) {
-    val matches = SearchablePreferences.search(query, includeSecureFolder = false, screens = screens) {
-      resources.getString(it)
-    }.map { it.preference }.filter {
-      it.screen in screens && isLivePlayerSetting(it.screen, it.targetRes ?: it.titleRes)
+  val categoryEntries =
+    remember(categories) {
+      categories.map {
+        SearchablePreference(
+          titleRes = it.title,
+          category = "Player",
+          screen = it.screen,
+        )
+      } +
+        SearchablePreference(
+          titleRes = R.string.pref_persistent_status_title,
+          category = "Player",
+          screen = PersistentStatusBarPreferencesScreen,
+          keywords = listOf("hud", "status", "clock", "battery"),
+        )
     }
-    val terms = query.trim().split(Regex("\\s+"))
-    val matchingCategories = categoryEntries.filter { entry ->
-      val text = entry.titleRes?.let { resources.getString(it) }.orEmpty() + " " + entry.keywords.joinToString(" ")
-      query.isNotBlank() && terms.all { text.contains(it, ignoreCase = true) }
+  val entries =
+    remember(screens) {
+      (
+        SearchablePreferences.forScreens(screens).filter {
+          isLivePlayerSetting(it.screen, it.targetRes ?: it.titleRes)
+        } + categoryEntries
+      ).distinctBy { it.favoriteKey() }
     }
-    (matches + matchingCategories).distinctBy { it.favoriteKey() }
-  }
+  val results =
+    remember(query, resources, screens, categoryEntries) {
+      val matches =
+        SearchablePreferences
+          .search(query, includeSecureFolder = false, screens = screens) {
+            resources.getString(it)
+          }.map { it.preference }
+          .filter {
+            it.screen in screens && isLivePlayerSetting(it.screen, it.targetRes ?: it.titleRes)
+          }
+      val terms = query.trim().split(Regex("\\s+"))
+      val matchingCategories =
+        categoryEntries.filter { entry ->
+          val text = entry.titleRes?.let { resources.getString(it) }.orEmpty() + " " + entry.keywords.joinToString(" ")
+          query.isNotBlank() && terms.all { text.contains(it, ignoreCase = true) }
+        }
+      (matches + matchingCategories).distinctBy { it.favoriteKey() }
+    }
+
   fun showScreen(screen: Screen) {
     // Search can revisit a page already in this drawer's history. Reuse that entry instead of
     // accumulating duplicate navigation keys or losing the page's existing state.
@@ -341,6 +370,7 @@ private fun SettingsPanelHome(
       }
     }
   }
+
   fun navigateToSetting(entry: SearchablePreference) {
     SettingsSearchNavigation.open(entry)
     showScreen(entry.screen)
@@ -372,11 +402,17 @@ private fun SettingsPanelHome(
       verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
       if (query.isNotBlank()) {
-        if (results.isEmpty()) item {
-          Text(stringResource(R.string.settings_search_no_results), Modifier.padding(12.dp))
+        if (results.isEmpty()) {
+          item {
+            Text(stringResource(R.string.settings_search_no_results), Modifier.padding(12.dp))
+          }
         }
         itemsIndexed(results, key = { _, item -> item.favoriteKey() }) { index, entry ->
-          SettingsResultRow(entry, index, results.size, entry.favoriteKey() in favorites,
+          SettingsResultRow(
+            entry,
+            index,
+            results.size,
+            entry.favoriteKey() in favorites,
             onOpen = { navigateToSetting(entry) },
             onFavorite = {
               val key = entry.favoriteKey()
@@ -388,8 +424,11 @@ private fun SettingsPanelHome(
         val pinned = entries.filter { it.favoriteKey() in favorites }
         if (pinned.isNotEmpty()) {
           item {
-            Text(stringResource(R.string.player_settings_favorites), Modifier.padding(8.dp),
-              style = MaterialTheme.typography.labelLarge)
+            Text(
+              stringResource(R.string.player_settings_favorites),
+              Modifier.padding(8.dp),
+              style = MaterialTheme.typography.labelLarge,
+            )
           }
           itemsIndexed(pinned, key = { _, item -> item.favoriteKey() }) { index, entry ->
             SettingsResultRow(entry, index, pinned.size, true, { navigateToSetting(entry) }, {
@@ -398,8 +437,11 @@ private fun SettingsPanelHome(
           }
         }
         item {
-          Text(stringResource(R.string.player_settings_categories), Modifier.padding(8.dp),
-            style = MaterialTheme.typography.labelLarge)
+          Text(
+            stringResource(R.string.player_settings_categories),
+            Modifier.padding(8.dp),
+            style = MaterialTheme.typography.labelLarge,
+          )
         }
         itemsIndexed(categories) { index, category ->
           Surface(
@@ -410,17 +452,26 @@ private fun SettingsPanelHome(
             shape = rememberConnectedShape(index, categories.size, ConnectedLayout.Vertical),
             color = playerGlassContainerColor(MaterialTheme.colorScheme.surfaceContainerHigh),
           ) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 8.dp),
-              verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+              Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 8.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
               Icon(category.icon, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
               Text(stringResource(category.title), Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
               Icon(Icons.RoundedFilled.ChevronRight, null, Modifier.size(20.dp))
             }
           }
         }
-        if (pinned.isEmpty()) item {
-          Text(stringResource(R.string.player_settings_pin_hint), Modifier.padding(8.dp),
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (pinned.isEmpty()) {
+          item {
+            Text(
+              stringResource(R.string.player_settings_pin_hint),
+              Modifier.padding(8.dp),
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
         }
       }
     }
@@ -428,10 +479,12 @@ private fun SettingsPanelHome(
 }
 
 private fun SearchablePreference.favoriteKey(): String {
-  val presetTarget = (targetRes ?: titleRes) in setOf(
-    R.string.ui_landscape_seekbar_position,
-    R.string.ui_portrait_seekbar_position,
-  )
+  val presetTarget =
+    (targetRes ?: titleRes) in
+      setOf(
+        R.string.ui_landscape_seekbar_position,
+        R.string.ui_portrait_seekbar_position,
+      )
   // Keep existing pins when these settings move from the parent page into the region editors.
   val owner = if (screen is ControlLayoutEditorScreen && presetTarget) PlayerControlsPreferencesScreen else screen
   return "${owner.javaClass.name}:$searchTargetKey"
@@ -462,12 +515,18 @@ private fun SettingsResultRow(
           entry.titleRes?.let { resources.getString(it) } ?: entry.title.orEmpty(),
           style = MaterialTheme.typography.bodyMedium,
         )
-        Text(stringResource(searchCategoryTitleRes(entry.category)),
-          style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+          stringResource(searchCategoryTitleRes(entry.category)),
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
       }
       IconButton(onClick = onFavorite, modifier = Modifier.semantics { stateDescription = pinLabel }) {
-        Icon(if (favorite) Icons.RoundedFilled.Favorite else Icons.RoundedFilled.FavoriteBorder, pinLabel,
-          tint = if (favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(
+          if (favorite) Icons.RoundedFilled.Favorite else Icons.RoundedFilled.FavoriteBorder,
+          pinLabel,
+          tint = if (favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
       }
     }
   }

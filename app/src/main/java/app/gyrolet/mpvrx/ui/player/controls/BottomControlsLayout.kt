@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.player.controls
 
 import androidx.annotation.StringRes
@@ -16,7 +16,10 @@ internal val PortraitSectionGap = 12.dp
 internal val PortraitActionShadowRoom = 6.dp
 internal val PlaybackShadowRoom = 8.dp
 
-internal fun portraitGlassShadowRoom(slot: BottomSlot?, enabled: Boolean): Dp {
+internal fun portraitGlassShadowRoom(
+  slot: BottomSlot?,
+  enabled: Boolean,
+): Dp {
   if (!enabled) return 0.dp
   return when (slot) {
     BottomSlot.Buttons -> PortraitActionShadowRoom
@@ -72,22 +75,22 @@ internal fun resolveBottomControlsLayout(
   sharedLandscapeRow: Boolean = false,
 ): BottomControlsLayout =
   BottomControlsLayout(
-    bottomToTop = buildList {
-      if (sharedLandscapeRow) {
-        if (seekbarPlacement == SeekbarPlacement.AboveButtons) {
-          add(BottomSlot.Playback)
-          add(BottomSlot.Seekbar)
-        } else {
-          add(BottomSlot.Seekbar)
-          add(BottomSlot.Playback)
+    bottomToTop =
+      buildList {
+        if (sharedLandscapeRow) {
+          if (seekbarPlacement == SeekbarPlacement.AboveButtons) {
+            add(BottomSlot.Playback)
+            add(BottomSlot.Seekbar)
+          } else {
+            add(BottomSlot.Seekbar)
+            add(BottomSlot.Playback)
+          }
+          return@buildList
         }
-        return@buildList
-      }
-      if (hasButtons && seekbarPlacement == SeekbarPlacement.AboveButtons) add(BottomSlot.Buttons)
-      if (playbackControlsPlacement == PlaybackControlsPlacement.BelowSeekbar) add(BottomSlot.Playback)
-      add(BottomSlot.Seekbar)
-      if (playbackControlsPlacement == PlaybackControlsPlacement.AboveSeekbar) add(BottomSlot.Playback)
-      if (hasButtons && seekbarPlacement == SeekbarPlacement.BelowButtons) add(BottomSlot.Buttons)
-    },
+        if (hasButtons && seekbarPlacement == SeekbarPlacement.AboveButtons) add(BottomSlot.Buttons)
+        if (playbackControlsPlacement == PlaybackControlsPlacement.BelowSeekbar) add(BottomSlot.Playback)
+        add(BottomSlot.Seekbar)
+        if (playbackControlsPlacement == PlaybackControlsPlacement.AboveSeekbar) add(BottomSlot.Playback)
+        if (hasButtons && seekbarPlacement == SeekbarPlacement.BelowButtons) add(BottomSlot.Buttons)
+      },
   )
-

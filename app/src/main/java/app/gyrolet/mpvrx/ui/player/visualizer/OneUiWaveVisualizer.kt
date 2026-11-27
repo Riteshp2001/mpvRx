@@ -44,8 +44,7 @@ private fun ribbonTones(palette: VisualizerPalette): RibbonTones =
   )
 
 /** Loud audio can accelerate the ribbon motion by at most thirty percent. */
-internal fun ribbonSpeedMultiplier(loudness: Float): Float =
-  1f + loudness.coerceIn(0f, 1f) * 0.30f
+internal fun ribbonSpeedMultiplier(loudness: Float): Float = 1f + loudness.coerceIn(0f, 1f) * 0.30f
 
 /** Keeps the default lift, then adds explicit system-volume and per-band audio response. */
 internal fun ribbonLiftScale(
@@ -94,6 +93,7 @@ internal fun WaveVisualizerOverlay(
     }
     var previous = 0L
     var beatWasActive = false
+
     fun responsiveLevel(value: Float): Float = sqrt(value.coerceIn(0f, 1f))
 
     while (true) {
@@ -135,7 +135,7 @@ internal fun WaveVisualizerOverlay(
         highLevel += (highTarget - highLevel) * min(1f, dt * (if (highTarget > highLevel) 15f else 6f))
         loudness +=
           (loudnessTarget - loudness) *
-            min(1f, dt * (if (loudnessTarget > loudness) 10f else 3.5f))
+          min(1f, dt * (if (loudnessTarget > loudness) 10f else 3.5f))
         val volumeTarget = features.volumeScale.coerceIn(0f, 1f)
         outputVolume +=
           (volumeTarget - outputVolume) * min(1f, dt * 8f)

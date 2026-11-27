@@ -17,8 +17,8 @@ import android.view.View
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,11 +66,17 @@ internal data class MpvVideoRect(
   val right: Int,
   val bottom: Int,
 ) {
-  fun scaledTo(width: Int, height: Int): Rect {
+  fun scaledTo(
+    width: Int,
+    height: Int,
+  ): Rect {
     val sx = width.toDouble() / viewportWidth
     val sy = height.toDouble() / viewportHeight
-    fun coord(value: Int, scale: Double) =
-      Math.round(value * scale).coerceIn(-MAX_COORD, MAX_COORD).toInt()
+
+    fun coord(
+      value: Int,
+      scale: Double,
+    ) = Math.round(value * scale).coerceIn(-MAX_COORD, MAX_COORD).toInt()
     return Rect(coord(left, sx), coord(top, sy), coord(right, sx), coord(bottom, sy))
   }
 
@@ -80,6 +86,7 @@ internal data class MpvVideoRect(
 
     fun fromOsdDimensions(node: MPVNode?): MpvVideoRect? {
       val dimensions = node?.asMap() ?: return null
+
       fun dimension(name: String) = dimensions[name]?.asInt()?.coerceIn(-MAX_COORD, MAX_COORD)?.toInt()
       val width = dimension("w")?.takeIf { it > 0 } ?: return null
       val height = dimension("h")?.takeIf { it > 0 } ?: return null
@@ -102,7 +109,10 @@ internal data class MpvVideoRect(
 }
 
 /** Keeps one MPV surface owner while choosing a native or Compose-recordable renderer. */
-abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : FrameLayout(context, attributes) {
+abstract class MpvSurfaceHost(
+  context: Context,
+  attributes: AttributeSet,
+) : FrameLayout(context, attributes) {
   internal var renderSurface: Surface? = null
     private set
   internal var videoBackdrop: LayerBackdrop? by mutableStateOf(null)
@@ -138,12 +148,30 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
     if (textureRendering == true) textureFrameReady.value = false
   }
 
-  protected abstract fun onRenderSurfaceAvailable(surface: Surface, width: Int, height: Int)
-  protected abstract fun onRenderSurfaceSizeChanged(width: Int, height: Int)
+  protected abstract fun onRenderSurfaceAvailable(
+    surface: Surface,
+    width: Int,
+    height: Int,
+  )
+
+  protected abstract fun onRenderSurfaceSizeChanged(
+    width: Int,
+    height: Int,
+  )
+
   protected abstract fun onRenderSurfaceDestroyed()
 
-  protected open fun onOsdSurfaceAvailable(surface: Surface, width: Int, height: Int) {}
-  protected open fun onOsdSurfaceSizeChanged(width: Int, height: Int) {}
+  protected open fun onOsdSurfaceAvailable(
+    surface: Surface,
+    width: Int,
+    height: Int,
+  ) {}
+
+  protected open fun onOsdSurfaceSizeChanged(
+    width: Int,
+    height: Int,
+  ) {}
+
   protected open fun onOsdSurfaceDestroyed() {}
 
   /**
@@ -159,7 +187,10 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
   }
 
   // mpv's viewport stays the whole player while the video view itself is moved and resized.
-  private fun reportedSize(surfaceWidth: Int, surfaceHeight: Int): Pair<Int, Int> =
+  private fun reportedSize(
+    surfaceWidth: Int,
+    surfaceHeight: Int,
+  ): Pair<Int, Int> =
     if (videoRect != null && width > 0 && height > 0) width to height else surfaceWidth to surfaceHeight
 
   private fun videoBounds(): Rect? {
@@ -178,7 +209,10 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
     return region
   }
 
-  override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+  override fun onMeasure(
+    widthMeasureSpec: Int,
+    heightMeasureSpec: Int,
+  ) {
     super.onMeasure(widthMeasureSpec, heightMeasureSpec)
     val bounds = videoBounds() ?: return
     videoView?.measure(
@@ -187,13 +221,24 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
     )
   }
 
-  override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+  override fun onLayout(
+    changed: Boolean,
+    left: Int,
+    top: Int,
+    right: Int,
+    bottom: Int,
+  ) {
     super.onLayout(changed, left, top, right, bottom)
     val bounds = videoBounds() ?: return
     videoView?.layout(bounds.left, bounds.top, bounds.right, bounds.bottom)
   }
 
-  override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+  override fun onSizeChanged(
+    w: Int,
+    h: Int,
+    oldw: Int,
+    oldh: Int,
+  ) {
     super.onSizeChanged(w, h, oldw, oldh)
     // A moved video view may keep its size, so report the new player size from here.
     if (videoRect != null && renderSurface != null && w > 0 && h > 0) onRenderSurfaceSizeChanged(w, h)
@@ -224,27 +269,34 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
       isClickable = false
       isFocusable = false
       importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
-      holder.addCallback(object : SurfaceHolder.Callback {
-        override fun surfaceCreated(holder: SurfaceHolder) {
-          if (overlay !== osdOverlayView) return
-          osdSurface = holder.surface
-          osdSurfaceWidth = overlay.width
-          osdSurfaceHeight = overlay.height
-          onOsdSurfaceAvailable(holder.surface, overlay.width, overlay.height)
-        }
+      holder.addCallback(
+        object : SurfaceHolder.Callback {
+          override fun surfaceCreated(holder: SurfaceHolder) {
+            if (overlay !== osdOverlayView) return
+            osdSurface = holder.surface
+            osdSurfaceWidth = overlay.width
+            osdSurfaceHeight = overlay.height
+            onOsdSurfaceAvailable(holder.surface, overlay.width, overlay.height)
+          }
 
-        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-          if (overlay !== osdOverlayView) return
-          osdSurfaceWidth = width
-          osdSurfaceHeight = height
-          onOsdSurfaceSizeChanged(width, height)
-        }
+          override fun surfaceChanged(
+            holder: SurfaceHolder,
+            format: Int,
+            width: Int,
+            height: Int,
+          ) {
+            if (overlay !== osdOverlayView) return
+            osdSurfaceWidth = width
+            osdSurfaceHeight = height
+            onOsdSurfaceSizeChanged(width, height)
+          }
 
-        override fun surfaceDestroyed(holder: SurfaceHolder) {
-          if (overlay !== osdOverlayView) return
-          releaseOsdSurface()
-        }
-      })
+          override fun surfaceDestroyed(holder: SurfaceHolder) {
+            if (overlay !== osdOverlayView) return
+            releaseOsdSurface()
+          }
+        },
+      )
     }
     osdOverlayView = overlay
     addView(overlay, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
@@ -286,7 +338,12 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
     videoView = null
     descendantFocusability = FOCUS_BLOCK_DESCENDANTS
 
-    fun available(surface: Surface, width: Int, height: Int, owned: Boolean) {
+    fun available(
+      surface: Surface,
+      width: Int,
+      height: Int,
+      owned: Boolean,
+    ) {
       if (epoch != rendererEpoch) {
         if (owned) surface.release()
         return
@@ -297,7 +354,10 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
       onRenderSurfaceAvailable(surface, reportedWidth, reportedHeight)
     }
 
-    fun sizeChanged(width: Int, height: Int) {
+    fun sizeChanged(
+      width: Int,
+      height: Int,
+    ) {
       if (epoch != rendererEpoch) return
       val (reportedWidth, reportedHeight) = reportedSize(width, height)
       onRenderSurfaceSizeChanged(reportedWidth, reportedHeight)
@@ -312,70 +372,88 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
       ownsSurface = false
     }
 
-    val child = if (enabled) {
-      ComposeView(context).apply {
-        setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-        consumeWindowInsets = false
-        setContent {
-          val scene = rememberLayerBackdrop()
-          DisposableEffect(scene) {
-            if (epoch == rendererEpoch) videoBackdrop = scene
-            onDispose { if (videoBackdrop === scene) videoBackdrop = null }
-          }
-          Box(Modifier.fillMaxSize().background(Color.Black).layerBackdrop(scene)) {
-            AndroidView(
-              modifier = Modifier.fillMaxSize().graphicsLayer {
-                // Issue #82's stable compositing path: record the actual TextureView GPU layer.
-                // No getBitmap, PixelCopy, timer, or second video decoder is involved.
-                alpha = 0.999f
-              },
-              factory = { viewContext ->
-                TextureView(viewContext).apply {
-                  isOpaque = true
-                  isClickable = false
-                  isFocusable = false
-                  importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
-                  surfaceTextureListener = object : TextureView.SurfaceTextureListener {
-                    override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) {
-                      available(Surface(texture), width, height, owned = true)
-                    }
+    val child =
+      if (enabled) {
+        ComposeView(context).apply {
+          setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+          consumeWindowInsets = false
+          setContent {
+            val scene = rememberLayerBackdrop()
+            DisposableEffect(scene) {
+              if (epoch == rendererEpoch) videoBackdrop = scene
+              onDispose { if (videoBackdrop === scene) videoBackdrop = null }
+            }
+            Box(Modifier.fillMaxSize().background(Color.Black).layerBackdrop(scene)) {
+              AndroidView(
+                modifier =
+                  Modifier.fillMaxSize().graphicsLayer {
+                    // Issue #82's stable compositing path: record the actual TextureView GPU layer.
+                    // No getBitmap, PixelCopy, timer, or second video decoder is involved.
+                    alpha = 0.999f
+                  },
+                factory = { viewContext ->
+                  TextureView(viewContext).apply {
+                    isOpaque = true
+                    isClickable = false
+                    isFocusable = false
+                    importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+                    surfaceTextureListener =
+                      object : TextureView.SurfaceTextureListener {
+                        override fun onSurfaceTextureAvailable(
+                          texture: SurfaceTexture,
+                          width: Int,
+                          height: Int,
+                        ) {
+                          available(Surface(texture), width, height, owned = true)
+                        }
 
-                    override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int) {
-                      sizeChanged(width, height)
-                    }
+                        override fun onSurfaceTextureSizeChanged(
+                          texture: SurfaceTexture,
+                          width: Int,
+                          height: Int,
+                        ) {
+                          sizeChanged(width, height)
+                        }
 
-                    override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
-                      destroyed()
-                      return true // TextureView owns and releases the SurfaceTexture after MPV detaches.
-                    }
+                        override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
+                          destroyed()
+                          return true // TextureView owns and releases the SurfaceTexture after MPV detaches.
+                        }
 
-                    override fun onSurfaceTextureUpdated(texture: SurfaceTexture) {
-                      if (epoch == rendererEpoch && !textureFrameReady.value) {
-                        textureFrameReady.value = true
+                        override fun onSurfaceTextureUpdated(texture: SurfaceTexture) {
+                          if (epoch == rendererEpoch && !textureFrameReady.value) {
+                            textureFrameReady.value = true
+                          }
+                        }
                       }
-                    }
                   }
-                }
-              },
-            )
+                },
+              )
+            }
           }
         }
-      }
-    } else {
-      SurfaceView(context).apply {
-        holder.addCallback(object : SurfaceHolder.Callback {
-          override fun surfaceCreated(holder: SurfaceHolder) {
-            available(holder.surface, this@apply.width, this@apply.height, owned = false)
-          }
+      } else {
+        SurfaceView(context).apply {
+          holder.addCallback(
+            object : SurfaceHolder.Callback {
+              override fun surfaceCreated(holder: SurfaceHolder) {
+                available(holder.surface, this@apply.width, this@apply.height, owned = false)
+              }
 
-          override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-            sizeChanged(width, height)
-          }
+              override fun surfaceChanged(
+                holder: SurfaceHolder,
+                format: Int,
+                width: Int,
+                height: Int,
+              ) {
+                sizeChanged(width, height)
+              }
 
-          override fun surfaceDestroyed(holder: SurfaceHolder) = destroyed()
-        })
+              override fun surfaceDestroyed(holder: SurfaceHolder) = destroyed()
+            },
+          )
+        }
       }
-    }
     addView(child, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     videoView = child
     syncOsdOverlay()

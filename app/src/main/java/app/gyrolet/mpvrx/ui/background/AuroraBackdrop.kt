@@ -12,7 +12,12 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /** Layered, flowing curtains. All movement is continuous, including the glow and star pulses. */
-internal fun DrawScope.drawAurora(t: Float, tilt: Offset, p: BackdropPalette, path: Path) {
+internal fun DrawScope.drawAurora(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+  path: Path,
+) {
   val w = size.width
   val h = size.height
   val shift = Offset(tilt.x * 18.dp.toPx(), tilt.y * 12.dp.toPx())
@@ -36,14 +41,15 @@ internal fun DrawScope.drawAurora(t: Float, tilt: Offset, p: BackdropPalette, pa
     }
     val color = p.accent(ribbon)
     val breath = 0.75f + 0.25f * sin(t * 0.24f + ribbon)
-    val brush = Brush.horizontalGradient(
-      0f to Color.Transparent,
-      0.25f to color.copy(alpha = 0.28f * breath),
-      0.65f to p.accent(ribbon + 1).copy(alpha = 0.24f * breath),
-      1f to Color.Transparent,
-      startX = 0f,
-      endX = w,
-    )
+    val brush =
+      Brush.horizontalGradient(
+        0f to Color.Transparent,
+        0.25f to color.copy(alpha = 0.28f * breath),
+        0.65f to p.accent(ribbon + 1).copy(alpha = 0.24f * breath),
+        1f to Color.Transparent,
+        startX = 0f,
+        endX = w,
+      )
     // Soft translucent curtains with a readable, narrow core; still no blur pass.
     drawPath(path, brush, style = Stroke(width = (32f + ribbon * 7f).dp.toPx(), cap = StrokeCap.Round), alpha = 0.32f)
     drawPath(path, brush, style = Stroke(width = (12f + ribbon * 3f).dp.toPx(), cap = StrokeCap.Round), alpha = 0.62f)

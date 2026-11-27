@@ -11,11 +11,15 @@ package app.gyrolet.mpvrx.ui.player.controls.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -27,9 +31,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
@@ -37,6 +41,7 @@ import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassEffects
 import app.gyrolet.mpvrx.ui.liquidglass.rememberLiquidGlassSettings
 import com.kyant.backdrop.drawBackdrop
@@ -100,12 +105,14 @@ private fun LevelPill(
     label = "level_pill_label",
   )
   // Same gradient as before: primaryContainer at the top of the fill, primary at its base.
-  val fillBrush = remember(colors.primaryContainer, colors.primary) {
-    Brush.verticalGradient(listOf(colors.primaryContainer, colors.primary))
-  }
-  val overflowBrush = remember(colors.errorContainer, colors.error) {
-    Brush.verticalGradient(listOf(colors.errorContainer, colors.error))
-  }
+  val fillBrush =
+    remember(colors.primaryContainer, colors.primary) {
+      Brush.verticalGradient(listOf(colors.primaryContainer, colors.primary))
+    }
+  val overflowBrush =
+    remember(colors.errorContainer, colors.error) {
+      Brush.verticalGradient(listOf(colors.errorContainer, colors.error))
+    }
 
   Box(
     modifier =
@@ -217,9 +224,10 @@ fun VolumeSlider(
   val volumePercent = volumePercentage.coerceIn(0, 100)
   val boostVolume = mpvVolume - 100
   val textStr = getVolumeSliderText(volume, mpvVolume, boostVolume, volumePercent, displayAsPercentage)
-  val volumeText = remember(textStr, displayAsPercentage) {
-    textStr + if (displayAsPercentage && !textStr.contains('%')) "%" else ""
-  }
+  val volumeText =
+    remember(textStr, displayAsPercentage) {
+      textStr + if (displayAsPercentage && !textStr.contains('%')) "%" else ""
+    }
   val level =
     if (displayAsPercentage) {
       volumePercent / 100f
@@ -253,8 +261,8 @@ fun getVolumeSliderText(
   boostVolume: Int,
   percentage: Int,
   displayAsPercentage: Boolean,
-): String {
-  return when {
+): String =
+  when {
     mpvVolume == 100 ->
       if (displayAsPercentage) {
         "$percentage"
@@ -278,4 +286,3 @@ fun getVolumeSliderText(
       }
     }
   }
-}

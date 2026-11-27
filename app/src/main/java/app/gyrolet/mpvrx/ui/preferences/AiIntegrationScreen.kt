@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,7 +26,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -38,8 +36,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,9 +71,13 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
-import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 import me.zhanghai.compose.preference.TextFieldPreference
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as TextField
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
+import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 
 private val allLanguages =
   mapOf(
@@ -196,7 +196,8 @@ object AiIntegrationScreen : ScrollableSettingsScreen {
       requestedBaseUrl: String,
       requestedApiKey: String,
     ): Boolean =
-      revision == configurationRevision && preferences.enabled.get() &&
+      revision == configurationRevision &&
+        preferences.enabled.get() &&
         preferences.provider.get() == requestedProvider &&
         aiService.getApiKey(requestedProvider) == requestedApiKey &&
         (requestedProvider != AiProvider.CUSTOM_OPENAI || preferences.customOpenAiBaseUrl.get() == requestedBaseUrl)
@@ -215,7 +216,9 @@ object AiIntegrationScreen : ScrollableSettingsScreen {
           .onSuccess { fetchedModels ->
             if (requestId != modelLoadRequestId ||
               !isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
-            ) return@onSuccess
+            ) {
+              return@onSuccess
+            }
             models = fetchedModels
             preferences.availableModelsFor(requestedProvider).set(
               json.encodeToString(
@@ -225,7 +228,12 @@ object AiIntegrationScreen : ScrollableSettingsScreen {
             )
             val selectedPreference = preferences.selectedModelFor(requestedProvider)
             if (selectedPreference.get().isBlank() ||
-              (requestedProvider != AiProvider.CUSTOM_OPENAI && fetchedModels.none { it.id == selectedPreference.get() })
+              (
+                requestedProvider != AiProvider.CUSTOM_OPENAI &&
+                  fetchedModels.none {
+                    it.id == selectedPreference.get()
+                  }
+              )
             ) {
               selectedPreference.set(fetchedModels.first().id)
             }
@@ -238,7 +246,9 @@ object AiIntegrationScreen : ScrollableSettingsScreen {
           }
         if (requestId == modelLoadRequestId &&
           isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
-        ) isLoadingModels = false
+        ) {
+          isLoadingModels = false
+        }
       }
     }
 
@@ -283,7 +293,9 @@ object AiIntegrationScreen : ScrollableSettingsScreen {
     Scaffold(
       topBar = {
         SettingsTopAppBar(
-          title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.pref_section_ai_title),
+          title =
+            androidx.compose.ui.res
+              .stringResource(app.gyrolet.mpvrx.R.string.pref_section_ai_title),
           onBack = { backstack.popSafely() },
         )
       },
@@ -301,7 +313,8 @@ object AiIntegrationScreen : ScrollableSettingsScreen {
               .then(settingsHighlight),
         ) {
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.First, 
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.First,
               title = stringResource(R.string.pref_ai_features_section),
               modifier = if (enabled) Modifier.settingsSearchTarget(R.string.pref_section_ai_title) else Modifier,
             )
@@ -330,146 +343,153 @@ object AiIntegrationScreen : ScrollableSettingsScreen {
           }
 
           if (enabled) {
-            item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_ai_provider_section)) }
+            item {
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Middle,
+                title = stringResource(R.string.pref_ai_provider_section),
+              )
+            }
 
             item {
               PreferenceCard {
                 val providers = AiProvider.values().toList()
                 ExpressivePreferenceItem {
-                ListPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_ai_provider_title),
-                  value = provider,
-                  onValueChange = {
-                    preferences.provider.set(it)
-                  },
-                  values = providers,
-                  valueToText = {
-                    androidx.compose.ui.text
-                      .AnnotatedString(it.displayName)
-                  },
-                  title = {
-                    Text(
-                      androidx.compose.ui.res
-                        .stringResource(app.gyrolet.mpvrx.R.string.pref_ai_provider_title),
-                    )
-                  },
-                  summary = {
-                    Text(provider.displayName, color = MaterialTheme.colorScheme.outline)
-                  },
-                )
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_ai_provider_title),
+                    value = provider,
+                    onValueChange = {
+                      preferences.provider.set(it)
+                    },
+                    values = providers,
+                    valueToText = {
+                      androidx.compose.ui.text
+                        .AnnotatedString(it.displayName)
+                    },
+                    title = {
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.pref_ai_provider_title),
+                      )
+                    },
+                    summary = {
+                      Text(provider.displayName, color = MaterialTheme.colorScheme.outline)
+                    },
+                  )
                 }
               }
             }
 
-val apiKeyInfo =
-                  @Suppress("REDUNDANT_ELSE_IN_WHEN")
-                  when (provider) {
-                  AiProvider.OPENCODE ->
-                    ApiKeyInfo(
-                      "OpenCode API Key",
-                      "Get your key from opencode.ai/auth",
-                      "sk-...",
-                      openCodeKey,
-                      preferences.openCodeApiKey::set,
-                    )
-                  AiProvider.GROQ ->
-                    ApiKeyInfo(
-                      "Groq API Key",
-                      "Get your key from console.groq.com",
-                      "gsk_...",
-                      groqKey,
-                      preferences.groqApiKey::set,
-                    )
-                  AiProvider.OPENAI ->
-                    ApiKeyInfo(
-                      "OpenAI API Key",
-                      "Get your key from platform.openai.com/api-keys",
-                      "sk-...",
-                      openaiKey,
-                      preferences.openaiApiKey::set,
-                    )
-                  AiProvider.ANTHROPIC ->
-                    ApiKeyInfo(
-                      "Anthropic API Key",
-                      "Get your key from console.anthropic.com",
-                      "sk-ant-...",
-                      anthropicKey,
-                      preferences.anthropicApiKey::set,
-                    )
-                  AiProvider.OPENROUTER ->
-                    ApiKeyInfo(
-                      "OpenRouter API Key",
-                      "Get your key from openrouter.ai/keys",
-                      "sk-or-...",
-                      openrouterKey,
-                      preferences.openrouterApiKey::set,
-                    )
-                  AiProvider.TOGETHER ->
-                    ApiKeyInfo(
-                      "Together API Key",
-                      "Get your key from api.together.xyz/settings/api-keys",
-                      "...",
-                      togetherKey,
-                      preferences.togetherApiKey::set,
-                    )
-                  AiProvider.CUSTOM_OPENAI ->
-                    ApiKeyInfo(
-                      context.getString(R.string.pref_custom_openai_key_title),
-                      context.getString(R.string.pref_custom_openai_key_summary),
-                      "...",
-                      customOpenAiKey,
-                      preferences.customOpenAiApiKey::set,
-                    )
-                  else -> null
-                }
-
-              if (apiKeyInfo != null) {
-                item {
-                  PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, 
-                    title = stringResource(R.string.pref_api_config_section),
-                    modifier = Modifier.settingsSearchTarget(R.string.search_api_key_config_title),
+            val apiKeyInfo =
+              @Suppress("REDUNDANT_ELSE_IN_WHEN")
+              when (provider) {
+                AiProvider.OPENCODE ->
+                  ApiKeyInfo(
+                    "OpenCode API Key",
+                    "Get your key from opencode.ai/auth",
+                    "sk-...",
+                    openCodeKey,
+                    preferences.openCodeApiKey::set,
                   )
-                }
+                AiProvider.GROQ ->
+                  ApiKeyInfo(
+                    "Groq API Key",
+                    "Get your key from console.groq.com",
+                    "gsk_...",
+                    groqKey,
+                    preferences.groqApiKey::set,
+                  )
+                AiProvider.OPENAI ->
+                  ApiKeyInfo(
+                    "OpenAI API Key",
+                    "Get your key from platform.openai.com/api-keys",
+                    "sk-...",
+                    openaiKey,
+                    preferences.openaiApiKey::set,
+                  )
+                AiProvider.ANTHROPIC ->
+                  ApiKeyInfo(
+                    "Anthropic API Key",
+                    "Get your key from console.anthropic.com",
+                    "sk-ant-...",
+                    anthropicKey,
+                    preferences.anthropicApiKey::set,
+                  )
+                AiProvider.OPENROUTER ->
+                  ApiKeyInfo(
+                    "OpenRouter API Key",
+                    "Get your key from openrouter.ai/keys",
+                    "sk-or-...",
+                    openrouterKey,
+                    preferences.openrouterApiKey::set,
+                  )
+                AiProvider.TOGETHER ->
+                  ApiKeyInfo(
+                    "Together API Key",
+                    "Get your key from api.together.xyz/settings/api-keys",
+                    "...",
+                    togetherKey,
+                    preferences.togetherApiKey::set,
+                  )
+                AiProvider.CUSTOM_OPENAI ->
+                  ApiKeyInfo(
+                    context.getString(R.string.pref_custom_openai_key_title),
+                    context.getString(R.string.pref_custom_openai_key_summary),
+                    "...",
+                    customOpenAiKey,
+                    preferences.customOpenAiApiKey::set,
+                  )
+                else -> null
+              }
 
-                item {
-                  PreferenceCard {
-                    if (isCustomProvider) {
-                      ExpressivePreferenceItem {
-                        TextFieldPreference(
-                          modifier = Modifier.settingsSearchTarget(R.string.pref_custom_openai_base_url_title),
-                          value = customOpenAiBaseUrl,
-                          onValueChange = { value ->
-                            if (preferences.customOpenAiBaseUrl.get() != value) {
-                              preferences.customOpenAiBaseUrl.set(value)
-                              preferences.availableModelsFor(AiProvider.CUSTOM_OPENAI).set("[]")
-                              preferences.selectedModelFor(AiProvider.CUSTOM_OPENAI).set("")
-                              preferences.lastVerified.set(0L)
-                            }
-                          },
-                          textToValue = { it.trim().trimEnd('/') },
-                          title = { Text(stringResource(R.string.pref_custom_openai_base_url_title)) },
-                          summary = { Text(stringResource(R.string.pref_custom_openai_base_url_summary)) },
-                          textField = { value, onValueChange, _ ->
-                            TextField(
-                              value = value,
-                              onValueChange = onValueChange,
-                              modifier = Modifier.fillMaxWidth(),
-                              placeholder = { Text("https://example.com/v1") },
-                              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                              singleLine = true,
-                            )
-                          },
-                        )
-                      }
-                      PreferenceDivider()
-                    }
+            if (apiKeyInfo != null) {
+              item {
+                PreferenceSectionHeader(
+                  position = PreferenceSectionPosition.Middle,
+                  title = stringResource(R.string.pref_api_config_section),
+                  modifier = Modifier.settingsSearchTarget(R.string.search_api_key_config_title),
+                )
+              }
+
+              item {
+                PreferenceCard {
+                  if (isCustomProvider) {
                     ExpressivePreferenceItem {
+                      TextFieldPreference(
+                        modifier = Modifier.settingsSearchTarget(R.string.pref_custom_openai_base_url_title),
+                        value = customOpenAiBaseUrl,
+                        onValueChange = { value ->
+                          if (preferences.customOpenAiBaseUrl.get() != value) {
+                            preferences.customOpenAiBaseUrl.set(value)
+                            preferences.availableModelsFor(AiProvider.CUSTOM_OPENAI).set("[]")
+                            preferences.selectedModelFor(AiProvider.CUSTOM_OPENAI).set("")
+                            preferences.lastVerified.set(0L)
+                          }
+                        },
+                        textToValue = { it.trim().trimEnd('/') },
+                        title = { Text(stringResource(R.string.pref_custom_openai_base_url_title)) },
+                        summary = { Text(stringResource(R.string.pref_custom_openai_base_url_summary)) },
+                        textField = { value, onValueChange, _ ->
+                          TextField(
+                            value = value,
+                            onValueChange = onValueChange,
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("https://example.com/v1") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                            singleLine = true,
+                          )
+                        },
+                      )
+                    }
+                    PreferenceDivider()
+                  }
+                  ExpressivePreferenceItem {
                     TextFieldPreference(
-                      modifier = if (isCustomProvider) {
-                        Modifier.settingsSearchTarget(R.string.pref_custom_openai_key_title)
-                      } else {
-                        Modifier
-                      },
+                      modifier =
+                        if (isCustomProvider) {
+                          Modifier.settingsSearchTarget(R.string.pref_custom_openai_key_title)
+                        } else {
+                          Modifier
+                        },
                       value = apiKeyInfo.apiKey,
                       onValueChange = apiKeyInfo.onChange,
                       textToValue = { it.trim() },
@@ -478,7 +498,12 @@ val apiKeyInfo =
                         if (apiKeyInfo.apiKey.isBlank()) {
                           Text(
                             apiKeyInfo.hint,
-                            color = if (isCustomProvider) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.error,
+                            color =
+                              if (isCustomProvider) {
+                                MaterialTheme.colorScheme.outline
+                              } else {
+                                MaterialTheme.colorScheme.error
+                              },
                           )
                         } else {
                           Text(
@@ -497,411 +522,450 @@ val apiKeyInfo =
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { Text(apiKeyInfo.placeholder) },
                             singleLine = true,
-                            visualTransformation = if (showApiKey) VisualTransformation.None else PasswordVisualTransformation(),
+                            visualTransformation =
+                              if (showApiKey) {
+                                VisualTransformation.None
+                              } else {
+                                PasswordVisualTransformation()
+                              },
                           )
                         }
                       },
                     )
-                    }
+                  }
 
-                    PreferenceDivider()
+                  PreferenceDivider()
 
-                    Row(
-                      modifier =
-                        Modifier
-                          .fillMaxWidth()
-                          .padding(horizontal = 16.dp, vertical = 8.dp),
-                      horizontalArrangement = Arrangement.spacedBy(12.dp),
+                  Row(
+                    modifier =
+                      Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                  ) {
+                    Button(
+                      onClick = { showApiKey = !showApiKey },
+                      modifier = Modifier.weight(1f),
+                      colors =
+                        ButtonDefaults.buttonColors(
+                          containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                          contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ),
+                      shape = MaterialTheme.shapes.extraLarge,
                     ) {
-                      Button(
-                        onClick = { showApiKey = !showApiKey },
-                        modifier = Modifier.weight(1f),
-                        colors =
-                          ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                          ),
-                        shape = MaterialTheme.shapes.extraLarge,
-                      ) {
-                        Text(
-                          if (showApiKey) {
-                            stringResource(
-                              R.string.pref_hide_key,
-                            )
-                          } else {
-                            stringResource(R.string.pref_show_key)
-                          },
-                        )
-                      }
-
-                      Button(
-                        onClick = {
-                          val revision = configurationRevision
-                          val requestId = ++keyVerificationRequestId
-                          val requestedProvider = provider
-                          val requestedBaseUrl = customOpenAiBaseUrl
-                          val requestedApiKey = activeApiKey
-                          scope.launch {
-                            isVerifying = true
-                            verifyResult = null
-                            aiService
-                              .verifyKey(requestedProvider)
-                              .onSuccess {
-                                if (requestId == keyVerificationRequestId &&
-                                  isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
-                                ) {
-                                  verifyResult = it
-                                  preferences.lastVerified.set(System.currentTimeMillis())
-                                }
-                              }.onFailure { e ->
-                                if (requestId == keyVerificationRequestId &&
-                                  isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
-                                ) {
-                                  verifyResult = "Verification failed: ${e.message}"
-                                }
-                              }
-                            if (requestId == keyVerificationRequestId &&
-                              isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
-                            ) {
-                              isVerifying = false
-                            }
-                          }
-                        },
-                        modifier = Modifier.weight(1f),
-                        enabled = !isVerifying && providerConfigured,
-                        colors =
-                          ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                          ),
-                        shape = MaterialTheme.shapes.extraLarge,
-                      ) {
-                        if (isVerifying) {
-                          CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
+                      Text(
+                        if (showApiKey) {
+                          stringResource(
+                            R.string.pref_hide_key,
                           )
                         } else {
-                          Text(
-                            stringResource(if (isCustomProvider) R.string.pref_custom_openai_check_endpoint else R.string.pref_verify_key),
-                          )
-                        }
-                      }
+                          stringResource(R.string.pref_show_key)
+                        },
+                      )
                     }
 
-                    if (verifyResult != null) {
-                      Row(
-                        modifier =
-                          Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                      ) {
-                        val isSuccess = verifyResult!!.contains("successfully") || verifyResult!!.contains("ready")
-                        Icon(
-                          imageVector = if (isSuccess) Icons.RoundedFilled.Check else Icons.RoundedFilled.Warning,
-                          contentDescription = null,
-                          tint = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                    Button(
+                      onClick = {
+                        val revision = configurationRevision
+                        val requestId = ++keyVerificationRequestId
+                        val requestedProvider = provider
+                        val requestedBaseUrl = customOpenAiBaseUrl
+                        val requestedApiKey = activeApiKey
+                        scope.launch {
+                          isVerifying = true
+                          verifyResult = null
+                          aiService
+                            .verifyKey(requestedProvider)
+                            .onSuccess {
+                              if (requestId == keyVerificationRequestId &&
+                                isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
+                              ) {
+                                verifyResult = it
+                                preferences.lastVerified.set(System.currentTimeMillis())
+                              }
+                            }.onFailure { e ->
+                              if (requestId == keyVerificationRequestId &&
+                                isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
+                              ) {
+                                verifyResult = "Verification failed: ${e.message}"
+                              }
+                            }
+                          if (requestId == keyVerificationRequestId &&
+                            isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey)
+                          ) {
+                            isVerifying = false
+                          }
+                        }
+                      },
+                      modifier = Modifier.weight(1f),
+                      enabled = !isVerifying && providerConfigured,
+                      colors =
+                        ButtonDefaults.buttonColors(
+                          containerColor = MaterialTheme.colorScheme.primary,
+                        ),
+                      shape = MaterialTheme.shapes.extraLarge,
+                    ) {
+                      if (isVerifying) {
+                        CircularProgressIndicator(
                           modifier = Modifier.size(18.dp),
+                          strokeWidth = 2.dp,
+                          color = MaterialTheme.colorScheme.onPrimary,
                         )
-                        Spacer(modifier = Modifier.size(8.dp))
+                      } else {
                         Text(
-                          text = verifyResult!!,
-                          style = MaterialTheme.typography.bodySmall,
-                          color = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                          stringResource(
+                            if (isCustomProvider) {
+                              R.string.pref_custom_openai_check_endpoint
+                            } else {
+                              R.string.pref_verify_key
+                            },
+                          ),
                         )
                       }
                     }
                   }
-                }
 
-                item {
-                  PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, 
-                    title = stringResource(R.string.pref_model_section),
-                    modifier = Modifier.settingsSearchTarget(R.string.search_ai_model_selection_title),
-                  )
-                }
-
-                item {
-                  PreferenceCard {
-                    if (isCustomProvider) {
-                      ExpressivePreferenceItem {
-                        TextFieldPreference(
-                          modifier = Modifier.settingsSearchTarget(R.string.pref_custom_openai_model_title),
-                          value = selectedModel,
-                          onValueChange = preferences.selectedModelFor(AiProvider.CUSTOM_OPENAI)::set,
-                          textToValue = { it.trim() },
-                          title = { Text(stringResource(R.string.pref_custom_openai_model_title)) },
-                          summary = {
-                            Text(
-                              if (selectedModel.isNotBlank()) {
-                                selectedModel
-                              } else {
-                                stringResource(R.string.pref_custom_openai_model_summary)
-                              },
-                              color = MaterialTheme.colorScheme.outline,
-                            )
-                          },
-                          textField = { value, onValueChange, _ ->
-                            TextField(
-                              value = value,
-                              onValueChange = onValueChange,
-                              modifier = Modifier.fillMaxWidth(),
-                              singleLine = true,
-                            )
-                          },
-                        )
-                      }
-                      PreferenceDivider()
-                    }
+                  if (verifyResult != null) {
                     Row(
                       modifier =
                         Modifier
                           .fillMaxWidth()
-                          .padding(horizontal = 16.dp, vertical = 8.dp),
+                          .padding(horizontal = 16.dp, vertical = 4.dp),
                       verticalAlignment = Alignment.CenterVertically,
-                      horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                      Text(
-                        text =
-                          androidx.compose.ui.res.stringResource(
-                            app.gyrolet.mpvrx.R.string.pref_available_models_header,
-                          ),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
+                      val isSuccess = verifyResult!!.contains("successfully") || verifyResult!!.contains("ready")
+                      Icon(
+                        imageVector = if (isSuccess) Icons.RoundedFilled.Check else Icons.RoundedFilled.Warning,
+                        contentDescription = null,
+                        tint = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp),
                       )
-                      Button(
-                        onClick = { loadModels() },
-                        enabled = !isLoadingModels && providerConfigured,
-                        colors =
-                          ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                          ),
-                        shape = MaterialTheme.shapes.extraLarge,
-                      ) {
-                        if (isLoadingModels) {
-                          CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                          )
-                        } else {
-                          Icon(
-                            imageVector = Icons.RoundedFilled.Refresh,
-                            contentDescription =
-                              androidx.compose.ui.res.stringResource(
-                                app.gyrolet.mpvrx.R.string.ui_refresh,
-                              ),
-                            modifier = Modifier.size(18.dp),
-                          )
-                        }
-                        Spacer(modifier = Modifier.size(4.dp))
-                        Text(
-                          androidx.compose.ui.res
-                            .stringResource(app.gyrolet.mpvrx.R.string.pref_fetch_models),
-                        )
-                      }
-                    }
-
-                    if (modelLoadError != null) {
+                      Spacer(modifier = Modifier.size(8.dp))
                       Text(
-                        text = modelLoadError!!,
-                        color = MaterialTheme.colorScheme.error,
+                        text = verifyResult!!,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                        color = if (isSuccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                       )
                     }
+                  }
+                }
+              }
 
-                    if (models.isNotEmpty()) {
-                      var showModelDialog by remember { mutableStateOf(false) }
+              item {
+                PreferenceSectionHeader(
+                  position = PreferenceSectionPosition.Middle,
+                  title = stringResource(R.string.pref_model_section),
+                  modifier = Modifier.settingsSearchTarget(R.string.search_ai_model_selection_title),
+                )
+              }
 
-                      val modelDisplayNames = models.associate { it.id to it.displayName }
-
-                      Surface(
-                        onClick = { showModelDialog = true },
-                        shape = if (LocalInsidePreferenceCard.current) MaterialTheme.shapes.small else MaterialTheme.shapes.medium,
-                        color = if (LocalInsidePreferenceCard.current) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                        modifier =
-                          Modifier
-                            .fillMaxWidth()
-                            .then(if (LocalInsidePreferenceCard.current) Modifier else Modifier.padding(horizontal = 16.dp, vertical = 4.dp)),
-                      ) {
-                        Row(
-                          verticalAlignment = Alignment.CenterVertically,
-                          modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                        ) {
-                          Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                              text =
-                                androidx.compose.ui.res.stringResource(
-                                  app.gyrolet.mpvrx.R.string.pref_model_section,
-                                ),
-                              style = MaterialTheme.typography.labelLarge,
-                              fontWeight = FontWeight.Bold,
-                            )
-                            Text(
-                              text =
-                                if (selectedModel.isNotBlank()) {
-                                  modelDisplayNames[selectedModel] ?: selectedModel
-                                } else {
-                                  "Tap to select a model"
-                                },
-                              style = MaterialTheme.typography.bodySmall,
-                              color = MaterialTheme.colorScheme.outline,
-                            )
-                          }
-                          if (selectedModel.isNotBlank()) {
-                            val isFree = models.firstOrNull { it.id == selectedModel }?.isFree == true
-                            if (isFree) {
-                              FreeTag()
-                              Spacer(modifier = Modifier.width(8.dp))
-                            }
-                          }
-                          Icon(
-                            Icons.RoundedFilled.ArrowDropDown,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.outline,
+              item {
+                PreferenceCard {
+                  if (isCustomProvider) {
+                    ExpressivePreferenceItem {
+                      TextFieldPreference(
+                        modifier = Modifier.settingsSearchTarget(R.string.pref_custom_openai_model_title),
+                        value = selectedModel,
+                        onValueChange = preferences.selectedModelFor(AiProvider.CUSTOM_OPENAI)::set,
+                        textToValue = { it.trim() },
+                        title = { Text(stringResource(R.string.pref_custom_openai_model_title)) },
+                        summary = {
+                          Text(
+                            if (selectedModel.isNotBlank()) {
+                              selectedModel
+                            } else {
+                              stringResource(R.string.pref_custom_openai_model_summary)
+                            },
+                            color = MaterialTheme.colorScheme.outline,
                           )
-                        }
-                      }
-
-                      if (showModelDialog) {
-                        ModelSearchDialog(
-                          models = models,
-                          selectedModelId = selectedModel,
-                          onSelect = { preferences.selectedModelFor(provider).set(it) },
-                          onDismiss = { showModelDialog = false },
+                        },
+                        textField = { value, onValueChange, _ ->
+                          TextField(
+                            value = value,
+                            onValueChange = onValueChange,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                          )
+                        },
+                      )
+                    }
+                    PreferenceDivider()
+                  }
+                  Row(
+                    modifier =
+                      Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                  ) {
+                    Text(
+                      text =
+                        androidx.compose.ui.res.stringResource(
+                          app.gyrolet.mpvrx.R.string.pref_available_models_header,
+                        ),
+                      style = MaterialTheme.typography.labelLarge,
+                      fontWeight = FontWeight.Bold,
+                    )
+                    Button(
+                      onClick = { loadModels() },
+                      enabled = !isLoadingModels && providerConfigured,
+                      colors =
+                        ButtonDefaults.buttonColors(
+                          containerColor = MaterialTheme.colorScheme.primary,
+                        ),
+                      shape = MaterialTheme.shapes.extraLarge,
+                    ) {
+                      if (isLoadingModels) {
+                        CircularProgressIndicator(
+                          modifier = Modifier.size(18.dp),
+                          strokeWidth = 2.dp,
+                          color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                      } else {
+                        Icon(
+                          imageVector = Icons.RoundedFilled.Refresh,
+                          contentDescription =
+                            androidx.compose.ui.res.stringResource(
+                              app.gyrolet.mpvrx.R.string.ui_refresh,
+                            ),
+                          modifier = Modifier.size(18.dp),
                         )
                       }
-                    } else {
+                      Spacer(modifier = Modifier.size(4.dp))
                       Text(
-                        text = if (isCustomProvider) {
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.pref_fetch_models),
+                      )
+                    }
+                  }
+
+                  if (modelLoadError != null) {
+                    Text(
+                      text = modelLoadError!!,
+                      color = MaterialTheme.colorScheme.error,
+                      style = MaterialTheme.typography.bodySmall,
+                      modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    )
+                  }
+
+                  if (models.isNotEmpty()) {
+                    var showModelDialog by remember { mutableStateOf(false) }
+
+                    val modelDisplayNames = models.associate { it.id to it.displayName }
+
+                    Surface(
+                      onClick = { showModelDialog = true },
+                      shape =
+                        if (LocalInsidePreferenceCard.current) {
+                          MaterialTheme.shapes.small
+                        } else {
+                          MaterialTheme.shapes.medium
+                        },
+                      color =
+                        if (LocalInsidePreferenceCard.current) {
+                          androidx.compose.ui.graphics.Color.Transparent
+                        } else {
+                          MaterialTheme.colorScheme.surfaceVariant
+                            .copy(
+                              alpha = 0.3f,
+                            )
+                        },
+                      modifier =
+                        Modifier
+                          .fillMaxWidth()
+                          .then(
+                            if (LocalInsidePreferenceCard.current) {
+                              Modifier
+                            } else {
+                              Modifier.padding(
+                                horizontal = 16.dp,
+                                vertical = 4.dp,
+                              )
+                            },
+                          ),
+                    ) {
+                      Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                      ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                          Text(
+                            text =
+                              androidx.compose.ui.res.stringResource(
+                                app.gyrolet.mpvrx.R.string.pref_model_section,
+                              ),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                          )
+                          Text(
+                            text =
+                              if (selectedModel.isNotBlank()) {
+                                modelDisplayNames[selectedModel] ?: selectedModel
+                              } else {
+                                "Tap to select a model"
+                              },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline,
+                          )
+                        }
+                        if (selectedModel.isNotBlank()) {
+                          val isFree = models.firstOrNull { it.id == selectedModel }?.isFree == true
+                          if (isFree) {
+                            FreeTag()
+                            Spacer(modifier = Modifier.width(8.dp))
+                          }
+                        }
+                        Icon(
+                          Icons.RoundedFilled.ArrowDropDown,
+                          contentDescription = null,
+                          tint = MaterialTheme.colorScheme.outline,
+                        )
+                      }
+                    }
+
+                    if (showModelDialog) {
+                      ModelSearchDialog(
+                        models = models,
+                        selectedModelId = selectedModel,
+                        onSelect = { preferences.selectedModelFor(provider).set(it) },
+                        onDismiss = { showModelDialog = false },
+                      )
+                    }
+                  } else {
+                    Text(
+                      text =
+                        if (isCustomProvider) {
                           stringResource(R.string.pref_custom_openai_model_summary)
                         } else {
                           "Tap 'Fetch Models' to load available models from ${provider.displayName}"
                         },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                      style = MaterialTheme.typography.bodySmall,
+                      color = MaterialTheme.colorScheme.outline,
+                      modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                  }
+
+                  PreferenceDivider()
+
+                  Column(
+                    modifier =
+                      Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                  ) {
+                    Text(
+                      text =
+                        androidx.compose.ui.res.stringResource(
+                          app.gyrolet.mpvrx.R.string.pref_verify_model_header,
+                        ),
+                      style = MaterialTheme.typography.labelLarge,
+                      fontWeight = FontWeight.Bold,
+                    )
+
+                    Button(
+                      onClick = {
+                        val revision = configurationRevision
+                        val requestId = ++modelVerificationRequestId
+                        val requestedProvider = provider
+                        val requestedBaseUrl = customOpenAiBaseUrl
+                        val requestedApiKey = activeApiKey
+                        val requestedModel = selectedModel
+                        scope.launch {
+                          isVerifyingModel = true
+                          verifyModelResult = null
+                          aiService
+                            .verifyModel(requestedProvider)
+                            .onSuccess {
+                              if (requestId == modelVerificationRequestId &&
+                                isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey) &&
+                                preferences.selectedModelFor(requestedProvider).get() == requestedModel
+                              ) {
+                                verifyModelResult = it
+                              }
+                            }.onFailure { e ->
+                              if (requestId == modelVerificationRequestId &&
+                                isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey) &&
+                                preferences.selectedModelFor(requestedProvider).get() == requestedModel
+                              ) {
+                                verifyModelResult = "Error: ${e.message}"
+                              }
+                            }
+                          if (requestId == modelVerificationRequestId &&
+                            isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey) &&
+                            preferences.selectedModelFor(requestedProvider).get() == requestedModel
+                          ) {
+                            isVerifyingModel = false
+                          }
+                        }
+                      },
+                      modifier = Modifier.fillMaxWidth(),
+                      enabled = !isVerifyingModel && providerConfigured && selectedModel.isNotBlank(),
+                      colors =
+                        ButtonDefaults.buttonColors(
+                          containerColor = MaterialTheme.colorScheme.tertiary,
+                        ),
+                      shape = MaterialTheme.shapes.extraLarge,
+                    ) {
+                      if (isVerifyingModel) {
+                        CircularProgressIndicator(
+                          modifier = Modifier.size(18.dp),
+                          strokeWidth = 2.dp,
+                          color = MaterialTheme.colorScheme.onTertiary,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                      }
+                      Text(
+                        androidx.compose.ui.res
+                          .stringResource(app.gyrolet.mpvrx.R.string.pref_check_model_access),
                       )
                     }
 
-                    PreferenceDivider()
-
-                    Column(
-                      modifier =
-                        Modifier
-                          .fillMaxWidth()
-                          .padding(horizontal = 16.dp, vertical = 8.dp),
-                      verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                      Text(
-                        text =
-                          androidx.compose.ui.res.stringResource(
-                            app.gyrolet.mpvrx.R.string.pref_verify_model_header,
-                          ),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                      )
-
-                      Button(
-                        onClick = {
-                          val revision = configurationRevision
-                          val requestId = ++modelVerificationRequestId
-                          val requestedProvider = provider
-                          val requestedBaseUrl = customOpenAiBaseUrl
-                          val requestedApiKey = activeApiKey
-                          val requestedModel = selectedModel
-                          scope.launch {
-                            isVerifyingModel = true
-                            verifyModelResult = null
-                            aiService
-                              .verifyModel(requestedProvider)
-                              .onSuccess {
-                                if (requestId == modelVerificationRequestId &&
-                                  isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey) &&
-                                  preferences.selectedModelFor(requestedProvider).get() == requestedModel
-                                ) verifyModelResult = it
-                              }
-                              .onFailure { e ->
-                                if (requestId == modelVerificationRequestId &&
-                                  isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey) &&
-                                  preferences.selectedModelFor(requestedProvider).get() == requestedModel
-                                ) verifyModelResult = "Error: ${e.message}"
-                              }
-                            if (requestId == modelVerificationRequestId &&
-                              isCurrentRequest(revision, requestedProvider, requestedBaseUrl, requestedApiKey) &&
-                              preferences.selectedModelFor(requestedProvider).get() == requestedModel
-                            ) isVerifyingModel = false
-                          }
-                        },
+                    if (verifyModelResult != null) {
+                      val lines = verifyModelResult!!.split("\n")
+                      Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isVerifyingModel && providerConfigured && selectedModel.isNotBlank(),
-                        colors =
-                          ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.tertiary,
-                          ),
-                        shape = MaterialTheme.shapes.extraLarge,
                       ) {
-                        if (isVerifyingModel) {
-                          CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onTertiary,
-                          )
-                          Spacer(Modifier.width(8.dp))
-                        }
-                        Text(
-                          androidx.compose.ui.res
-                            .stringResource(app.gyrolet.mpvrx.R.string.pref_check_model_access),
-                        )
-                      }
-
-                      if (verifyModelResult != null) {
-                        val lines = verifyModelResult!!.split("\n")
-                        Surface(
-                          color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                          shape = MaterialTheme.shapes.medium,
-                          modifier = Modifier.fillMaxWidth(),
+                        Column(
+                          modifier = Modifier.padding(12.dp),
+                          verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                          Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                          ) {
-                            lines.forEach { line ->
-                              val isPositive =
-                                line.startsWith("Available") ||
-                                  line.startsWith("Free") ||
-                                  line.startsWith("API access working")
-                              val isWarning =
-                                line.startsWith("Quota") ||
-                                  line.startsWith("Paid") ||
-                                  line.startsWith("âš ")
-                              Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                              ) {
-                                Icon(
-                                  imageVector =
-                                    when {
-                                      isPositive -> Icons.RoundedFilled.Check
-                                      isWarning -> Icons.RoundedFilled.Warning
-                                      else -> Icons.RoundedFilled.Close
-                                    },
-                                  contentDescription = null,
-                                  modifier = Modifier.size(16.dp),
-                                  tint =
-                                    when {
-                                      isPositive -> MaterialTheme.colorScheme.primary
-                                      isWarning -> MaterialTheme.colorScheme.error
-                                      else -> MaterialTheme.colorScheme.error
-                                    },
-                                )
-                                Text(
-                                  text = line,
-                                  style = MaterialTheme.typography.bodySmall,
-                                )
-                              }
+                          lines.forEach { line ->
+                            val isPositive =
+                              line.startsWith("Available") ||
+                                line.startsWith("Free") ||
+                                line.startsWith("API access working")
+                            val isWarning =
+                              line.startsWith("Quota") ||
+                                line.startsWith("Paid") ||
+                                line.startsWith("âš ")
+                            Row(
+                              verticalAlignment = Alignment.CenterVertically,
+                              horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                              Icon(
+                                imageVector =
+                                  when {
+                                    isPositive -> Icons.RoundedFilled.Check
+                                    isWarning -> Icons.RoundedFilled.Warning
+                                    else -> Icons.RoundedFilled.Close
+                                  },
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint =
+                                  when {
+                                    isPositive -> MaterialTheme.colorScheme.primary
+                                    isWarning -> MaterialTheme.colorScheme.error
+                                    else -> MaterialTheme.colorScheme.error
+                                  },
+                              )
+                              Text(
+                                text = line,
+                                style = MaterialTheme.typography.bodySmall,
+                              )
                             }
                           }
                         }
@@ -910,8 +974,14 @@ val apiKeyInfo =
                   }
                 }
               }
+            }
 
-            item { PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_ai_features_subsection)) }
+            item {
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Middle,
+                title = stringResource(R.string.pref_ai_features_subsection),
+              )
+            }
 
             item {
               PreferenceCard {
@@ -958,40 +1028,41 @@ val apiKeyInfo =
             }
 
             item {
-              PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, 
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Middle,
                 title = stringResource(R.string.pref_stt_section),
                 modifier = Modifier.settingsSearchTarget(R.string.search_stt_title),
               )
             }
 
-              item {
-                PreferenceCard {
-                  val sttProviders = listOf(AiProvider.GROQ, AiProvider.OPENAI, AiProvider.OPENROUTER)
-                  val sttProvider by preferences.sttProvider.collectAsState()
-                  val sttModel by preferences.sttModelFor(sttProvider).collectAsState()
+            item {
+              PreferenceCard {
+                val sttProviders = listOf(AiProvider.GROQ, AiProvider.OPENAI, AiProvider.OPENROUTER)
+                val sttProvider by preferences.sttProvider.collectAsState()
+                val sttModel by preferences.sttModelFor(sttProvider).collectAsState()
 
-                  SwitchPreference(
-                    modifier = Modifier.settingsSearchTarget(R.string.pref_stt_title),
-                    value = realtimeSubsEnabled,
-                    onValueChange = { preferences.realtimeSubsEnabled.set(it) },
-                    title = {
-                      Text(
-                        androidx.compose.ui.res
-                          .stringResource(app.gyrolet.mpvrx.R.string.pref_stt_title),
-                      )
-                    },
-                    summary = {
-                      Text(
-                        androidx.compose.ui.res
-                          .stringResource(app.gyrolet.mpvrx.R.string.pref_stt_summary),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    },
-                  )
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_stt_title),
+                  value = realtimeSubsEnabled,
+                  onValueChange = { preferences.realtimeSubsEnabled.set(it) },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.pref_stt_title),
+                    )
+                  },
+                  summary = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.pref_stt_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
 
-                  PreferenceDivider()
+                PreferenceDivider()
 
-                  ExpressivePreferenceItem {
+                ExpressivePreferenceItem {
                   ListPreference(
                     modifier = Modifier.settingsSearchTarget(R.string.pref_stt_output_format_title),
                     value = subtitleGenerationOutputFormat,
@@ -1014,11 +1085,11 @@ val apiKeyInfo =
                       )
                     },
                   )
-                  }
+                }
 
-                  PreferenceDivider()
+                PreferenceDivider()
 
-                  ExpressivePreferenceItem {
+                ExpressivePreferenceItem {
                   ListPreference(
                     modifier = Modifier.settingsSearchTarget(R.string.pref_stt_provider_title),
                     value = sttProvider,
@@ -1042,27 +1113,27 @@ val apiKeyInfo =
                       )
                     },
                   )
-                  }
+                }
 
-                  PreferenceDivider()
+                PreferenceDivider()
 
-                  SttModelSelector(
-                    sttProvider = sttProvider,
-                    sttModel = sttModel,
-                    apiKey =
-                      when (sttProvider) {
-                        AiProvider.GROQ -> groqKey
-                        AiProvider.OPENAI -> openaiKey
-                        AiProvider.OPENROUTER -> openrouterKey
-                        else -> ""
-                      },
-                    onSelectModel = { preferences.sttModelFor(sttProvider).set(it) },
-                  )
+                SttModelSelector(
+                  sttProvider = sttProvider,
+                  sttModel = sttModel,
+                  apiKey =
+                    when (sttProvider) {
+                      AiProvider.GROQ -> groqKey
+                      AiProvider.OPENAI -> openaiKey
+                      AiProvider.OPENROUTER -> openrouterKey
+                      else -> ""
+                    },
+                  onSelectModel = { preferences.sttModelFor(sttProvider).set(it) },
+                )
 
-                  PreferenceDivider()
+                PreferenceDivider()
 
-                  val sttLanguage by preferences.sttLanguage.collectAsState()
-                  ExpressivePreferenceItem {
+                val sttLanguage by preferences.sttLanguage.collectAsState()
+                ExpressivePreferenceItem {
                   ListPreference(
                     modifier = Modifier.settingsSearchTarget(R.string.pref_audio_language_title),
                     value = sttLanguage,
@@ -1126,55 +1197,57 @@ val apiKeyInfo =
                       )
                     },
                   )
-                  }
                 }
               }
-
-              item {
-                PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, 
-                  title = stringResource(R.string.pref_translation_section),
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_translation_section),
-                )
-              }
-
-              item {
-                PreferenceCard {
-                  SwitchPreference(
-                    modifier = Modifier.settingsSearchTarget(R.string.pref_enable_translation_title),
-                    value = subtitleTranslationEnabled,
-                    onValueChange = { enabled ->
-                      preferences.subtitleTranslationEnabled.set(enabled)
-                      if (enabled && subtitleTranslationFirstTime) {
-                        showSubtitleTranslationWarning = true
-                      }
-                    },
-                    title = {
-                      Text(
-                        androidx.compose.ui.res
-                          .stringResource(app.gyrolet.mpvrx.R.string.pref_enable_translation_title),
-                      )
-                    },
-                    summary = {
-                      Text(
-                        androidx.compose.ui.res.stringResource(
-                          app.gyrolet.mpvrx.R.string.pref_enable_translation_summary,
-                        ),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    },
-                  )
-
-                  PreferenceDivider()
-
-                  AutoTranslateLanguageConfig(
-                    languages = autoTranslateLanguages,
-                    onLanguagesChange = { preferences.autoTranslateLanguages.set(it) },
-                  )
-                }
-              }
+            }
 
             item {
-              PreferenceSectionHeader(position = PreferenceSectionPosition.Last, 
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Middle,
+                title = stringResource(R.string.pref_translation_section),
+                modifier = Modifier.settingsSearchTarget(R.string.pref_translation_section),
+              )
+            }
+
+            item {
+              PreferenceCard {
+                SwitchPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_enable_translation_title),
+                  value = subtitleTranslationEnabled,
+                  onValueChange = { enabled ->
+                    preferences.subtitleTranslationEnabled.set(enabled)
+                    if (enabled && subtitleTranslationFirstTime) {
+                      showSubtitleTranslationWarning = true
+                    }
+                  },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.pref_enable_translation_title),
+                    )
+                  },
+                  summary = {
+                    Text(
+                      androidx.compose.ui.res.stringResource(
+                        app.gyrolet.mpvrx.R.string.pref_enable_translation_summary,
+                      ),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
+
+                PreferenceDivider()
+
+                AutoTranslateLanguageConfig(
+                  languages = autoTranslateLanguages,
+                  onLanguagesChange = { preferences.autoTranslateLanguages.set(it) },
+                )
+              }
+            }
+
+            item {
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Last,
                 title = stringResource(R.string.pref_custom_prompt_section),
                 modifier = Modifier.settingsSearchTarget(R.string.search_custom_ai_prompts_title),
               )
@@ -1447,11 +1520,21 @@ val apiKeyInfo =
         if (!isLoadingStt) refreshModels(openWhenReady = sttModels.isEmpty(), showError = true)
       },
       shape = if (LocalInsidePreferenceCard.current) MaterialTheme.shapes.small else MaterialTheme.shapes.medium,
-      color = if (LocalInsidePreferenceCard.current) androidx.compose.ui.graphics.Color.Transparent else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+      color =
+        if (LocalInsidePreferenceCard.current) {
+          androidx.compose.ui.graphics.Color.Transparent
+        } else {
+          MaterialTheme.colorScheme.surfaceVariant
+            .copy(
+              alpha = 0.3f,
+            )
+        },
       modifier =
         Modifier
           .fillMaxWidth()
-          .then(if (LocalInsidePreferenceCard.current) Modifier else Modifier.padding(horizontal = 16.dp, vertical = 4.dp)),
+          .then(
+            if (LocalInsidePreferenceCard.current) Modifier else Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+          ),
     ) {
       Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -1674,8 +1757,18 @@ val apiKeyInfo =
         shape = RoundedCornerShape(12.dp),
         colors =
           ButtonDefaults.buttonColors(
-            containerColor = if (adding) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = if (adding) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSecondaryContainer,
+            containerColor =
+              if (adding) {
+                MaterialTheme.colorScheme.errorContainer
+              } else {
+                MaterialTheme.colorScheme.secondaryContainer
+              },
+            contentColor =
+              if (adding) {
+                MaterialTheme.colorScheme.onErrorContainer
+              } else {
+                MaterialTheme.colorScheme.onSecondaryContainer
+              },
           ),
       ) {
         Icon(

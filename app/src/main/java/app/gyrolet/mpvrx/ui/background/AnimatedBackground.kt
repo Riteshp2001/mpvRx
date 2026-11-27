@@ -19,8 +19,8 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.theme.AppMotion
-import java.time.LocalDate
 import org.koin.compose.koinInject
+import java.time.LocalDate
 
 /**
  * Draws [type] full-screen and cross-fades when it changes. NONE and RANDOM draw nothing here:
@@ -74,9 +74,10 @@ fun rememberActiveBackground(): ActiveBackground {
   val event = remember(today) { SeasonalEvent.on(today) }
 
   val revision = RandomBackground.revision
-  val resolved = remember(picked, interval, today, revision) {
-    if (picked == BackgroundType.RANDOM) RandomBackground.current(prefs, interval) else picked
-  }
+  val resolved =
+    remember(picked, interval, today, revision) {
+      if (picked == BackgroundType.RANDOM) RandomBackground.current(prefs, interval) else picked
+    }
   val shown = event.backdropFor(picked, seasonal).let { if (it == BackgroundType.RANDOM) resolved else it }
   return ActiveBackground(shown, parallax, overWallpaper, event?.takeIf { seasonal })
 }
@@ -120,7 +121,11 @@ object RandomBackground {
     val last =
       BackgroundType.SHUFFLEABLE.firstOrNull { it.name == prefs.lastRandomBackground.get() }
     val lastDay = prefs.lastRandomBackgroundDay.get()
-    if (interval != RandomInterval.EACH_LAUNCH && last != null && lastDay > 0L && today - lastDay in 0L until interval.days.toLong()) {
+    if (interval != RandomInterval.EACH_LAUNCH &&
+      last != null &&
+      lastDay > 0L &&
+      today - lastDay in 0L until interval.days.toLong()
+    ) {
       processPick = last
       return last
     }

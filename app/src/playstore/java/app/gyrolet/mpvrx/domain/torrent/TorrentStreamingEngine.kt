@@ -12,7 +12,9 @@ import java.io.File
 
 /** Shared playback code can observe an idle engine; this distribution contains no P2P runtime. */
 @Suppress("UNUSED_PARAMETER")
-class TorrentStreamingEngine(context: Context) {
+class TorrentStreamingEngine(
+  context: Context,
+) {
   val state: StateFlow<TorrentStreamingState> =
     MutableStateFlow<TorrentStreamingState>(TorrentStreamingState.Idle).asStateFlow()
 
@@ -33,6 +35,5 @@ class TorrentStreamingEngine(context: Context) {
 
   fun shutdown() = Unit
 
-  private fun unavailable(): Nothing =
-    throw TorrentStreamException("P2P streaming is unavailable in this distribution")
+  private fun unavailable(): Nothing = throw TorrentStreamException("P2P streaming is unavailable in this distribution")
 }

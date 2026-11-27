@@ -14,7 +14,6 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.PixelCopy
 import android.view.Surface
-import app.gyrolet.mpvrx.ui.player.MPVView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -44,6 +43,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.palette.graphics.Palette
 import app.gyrolet.mpvrx.ui.player.HdrScreenMode
+import app.gyrolet.mpvrx.ui.player.MPVView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
@@ -220,6 +220,7 @@ private class VideoAmbientPipeline : AutoCloseable {
   private var seeded = false
   private var supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
   private var consecutiveFailures = 0
+
   @Volatile private var closed = false
 
   suspend fun runCapture(
@@ -240,6 +241,7 @@ private class VideoAmbientPipeline : AutoCloseable {
       val bounds = if (isSurfaceReady()) captureBounds() else null
       if (bounds != null) {
         val surface = surfaceView.renderSurface
+
         fun captureStillCurrent() =
           isSurfaceReady() && surfaceView.renderSurface === surface && captureBounds() == bounds
 
@@ -495,9 +497,9 @@ private fun encodeAmbientPixels(
     val gridIndex = index * 3
     output[index] =
       (0xFF shl 24) or
-        (ambientLinearToSrgb(grid[gridIndex]) shl 16) or
-        (ambientLinearToSrgb(grid[gridIndex + 1]) shl 8) or
-        ambientLinearToSrgb(grid[gridIndex + 2])
+      (ambientLinearToSrgb(grid[gridIndex]) shl 16) or
+      (ambientLinearToSrgb(grid[gridIndex + 1]) shl 8) or
+      ambientLinearToSrgb(grid[gridIndex + 2])
   }
 }
 
@@ -653,7 +655,10 @@ fun VideoAmbientBackground(
   }
 }
 
-private fun Modifier.videoAmbientMask(videoBounds: ComposeRect, edgeBlend: Float): Modifier {
+private fun Modifier.videoAmbientMask(
+  videoBounds: ComposeRect,
+  edgeBlend: Float,
+): Modifier {
   val layer =
     if (edgeBlend > 0f) {
       Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
@@ -668,10 +673,11 @@ private fun Modifier.videoAmbientMask(videoBounds: ComposeRect, edgeBlend: Float
       if (edgeBlend > 0f && !videoBounds.isEmpty && (horizontal || vertical)) {
         val axisLength = if (horizontal) videoBounds.width else videoBounds.height
         val fraction = edgeBlend * minOf(videoBounds.width, videoBounds.height) / axisLength
-        val ramp = List(5) { index ->
-          val progress = index / 4f
-          (progress * fraction) to Color.Black.copy(alpha = progress * progress * (3f - 2f * progress))
-        }
+        val ramp =
+          List(5) { index ->
+            val progress = index / 4f
+            (progress * fraction) to Color.Black.copy(alpha = progress * progress * (3f - 2f * progress))
+          }
         val stops = (ramp + ramp.asReversed().map { (position, color) -> (1f - position) to color }).toTypedArray()
         if (horizontal) {
           Brush.horizontalGradient(*stops, startX = videoBounds.left, endX = videoBounds.right)

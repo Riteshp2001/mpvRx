@@ -140,12 +140,14 @@ object SortUtils {
         when {
           numA != null && numB != null -> {
             // Both numeric
-            val lengthComparison = (numA.exclusiveEndIndex - numA.significantStart)
-              .compareTo(numB.exclusiveEndIndex - numB.significantStart)
+            val lengthComparison =
+              (numA.exclusiveEndIndex - numA.significantStart)
+                .compareTo(numB.exclusiveEndIndex - numB.significantStart)
             if (lengthComparison != 0) return lengthComparison
             var cmp = 0
             for (offset in 0 until numA.exclusiveEndIndex - numA.significantStart) {
-              cmp = a[numA.significantStart + offset].digitToInt().compareTo(b[numB.significantStart + offset].digitToInt())
+              cmp =
+                a[numA.significantStart + offset].digitToInt().compareTo(b[numB.significantStart + offset].digitToInt())
               if (cmp != 0) break
             }
             if (cmp != 0) return cmp

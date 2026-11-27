@@ -23,17 +23,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,13 +60,18 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
-import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
+import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 
 // Enum to identify which region we are editing
 @Serializable
-enum class ControlRegion(@StringRes val titleRes: Int) {
+enum class ControlRegion(
+  @StringRes val titleRes: Int,
+) {
   TOP_RIGHT(R.string.pref_layout_top_right_controls),
   BOTTOM_RIGHT(R.string.pref_layout_bottom_right_controls),
   BOTTOM_LEFT(R.string.pref_layout_bottom_left_controls),
@@ -84,7 +86,9 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
   override fun Content() {
-    val television = app.gyrolet.mpvrx.ui.tv.isTelevision()
+    val television =
+      app.gyrolet.mpvrx.ui.tv
+        .isTelevision()
     val backstack = LocalBackStack.current
     val appearancePrefs = koinInject<AppearancePreferences>()
     val playerPrefs = koinInject<PlayerPreferences>()
@@ -119,7 +123,10 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
       contentWindowInsets = settingsContentWindowInsets(),
       topBar = {
         SettingsTopAppBar(
-          title = stringResource(id = if (television) R.string.pref_section_display_controls else R.string.pref_layout_title),
+          title =
+            stringResource(
+              id = if (television) R.string.pref_section_display_controls else R.string.pref_layout_title,
+            ),
           onBack = { backstack.popSafely() },
         )
       },
@@ -139,7 +146,8 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
           if (!television) {
             // Landscape Controls Section
             item {
-              PreferenceSectionHeader(position = PreferenceSectionPosition.First,
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.First,
                 title = stringResource(R.string.pref_section_landscape_controls),
                 modifier = Modifier.settingsSearchTarget(R.string.pref_layout_title),
               )
@@ -184,7 +192,10 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
 
             // Portrait Controls Section
             item {
-              PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_section_portrait_controls))
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Middle,
+                title = stringResource(R.string.pref_section_portrait_controls),
+              )
             }
 
             item {
@@ -231,7 +242,8 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
           if (!television) {
             // Seekbar Section
             item {
-              PreferenceSectionHeader(position = PreferenceSectionPosition.Middle,
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Middle,
                 title = stringResource(R.string.pref_section_seekbar_style),
                 modifier = Modifier.settingsSearchTarget(R.string.pref_section_seekbar_style),
               )
@@ -267,14 +279,16 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
                         trailingContent = {
                           RadioButton(selected = isSelected, onClick = null)
                         },
-                        colors = androidx.compose.material3.ListItemDefaults.colors(
-                          containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                        ),
-                        modifier = Modifier.selectable(
-                          selected = isSelected,
-                          role = Role.RadioButton,
-                          onClick = { appearancePrefs.seekbarStyle.set(style) },
-                        ),
+                        colors =
+                          androidx.compose.material3.ListItemDefaults.colors(
+                            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                          ),
+                        modifier =
+                          Modifier.selectable(
+                            selected = isSelected,
+                            role = Role.RadioButton,
+                            onClick = { appearancePrefs.seekbarStyle.set(style) },
+                          ),
                       ) {
                         Text(style.name)
                       }
@@ -287,7 +301,10 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
 
           // Appearance Section
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_player_controls_appearance))
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Last,
+              title = stringResource(R.string.pref_section_player_controls_appearance),
+            )
           }
 
           item {
@@ -300,8 +317,11 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
               if (television) storedPlayerTimeToDisappear.coerceAtLeast(4000) else storedPlayerTimeToDisappear
             val clockFormat by playerPrefs.clockFormat.collectAsState()
             val predefinedTimeValues =
-              if (television) listOf(4000, 4500, 5000, 7500, 10000)
-              else listOf(500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000)
+              if (television) {
+                listOf(4000, 4500, 5000, 7500, 10000)
+              } else {
+                listOf(500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000)
+              }
             val isCustomTimeValue = !predefinedTimeValues.contains(playerTimeToDisappear)
 
             var showCustomTimeDialog by remember { mutableStateOf(false) }
@@ -379,56 +399,56 @@ object PlayerControlsPreferencesScreen : ScrollableSettingsScreen {
               }
 
               ExpressivePreferenceItem(standalone = true) {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_player_display_hide_player_control_time),
-                value = if (isCustomTimeValue) -1 else playerTimeToDisappear,
-                onValueChange = { newValue ->
-                  if (newValue == -1) {
-                    customTimeValue = playerTimeToDisappear.toString()
-                    showCustomTimeDialog = true
-                  } else {
-                    playerPrefs.playerTimeToDisappear.set(newValue)
-                  }
-                },
-                values = predefinedTimeValues + listOf(-1),
-                valueToText = { value ->
-                  if (value == -1) {
-                    AnnotatedString(stringResource(R.string.pref_gesture_double_tap_custom))
-                  } else {
-                    AnnotatedString(stringResource(R.string.pref_time_ms_summary, value))
-                  }
-                },
-                title = { Text(text = stringResource(R.string.pref_player_display_hide_player_control_time)) },
-                summary = {
-                  Text(
-                    text =
-                      if (isCustomTimeValue) {
-                        stringResource(R.string.pref_custom_time_summary_format, playerTimeToDisappear)
-                      } else {
-                        stringResource(R.string.pref_time_ms_summary, playerTimeToDisappear)
-                      },
-                  )
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_player_display_hide_player_control_time),
+                  value = if (isCustomTimeValue) -1 else playerTimeToDisappear,
+                  onValueChange = { newValue ->
+                    if (newValue == -1) {
+                      customTimeValue = playerTimeToDisappear.toString()
+                      showCustomTimeDialog = true
+                    } else {
+                      playerPrefs.playerTimeToDisappear.set(newValue)
+                    }
+                  },
+                  values = predefinedTimeValues + listOf(-1),
+                  valueToText = { value ->
+                    if (value == -1) {
+                      AnnotatedString(stringResource(R.string.pref_gesture_double_tap_custom))
+                    } else {
+                      AnnotatedString(stringResource(R.string.pref_time_ms_summary, value))
+                    }
+                  },
+                  title = { Text(text = stringResource(R.string.pref_player_display_hide_player_control_time)) },
+                  summary = {
+                    Text(
+                      text =
+                        if (isCustomTimeValue) {
+                          stringResource(R.string.pref_custom_time_summary_format, playerTimeToDisappear)
+                        } else {
+                          stringResource(R.string.pref_time_ms_summary, playerTimeToDisappear)
+                        },
+                    )
+                  },
+                )
               }
 
               PreferenceDivider()
 
               ExpressivePreferenceItem(standalone = true) {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.ui_time_network_clock),
-                value = clockFormat,
-                onValueChange = { playerPrefs.clockFormat.set(it) },
-                values = PlayerClockFormat.entries,
-                valueToText = { AnnotatedString(it.displayName) },
-                title = {
-                  Text(
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_time_network_clock),
-                  )
-                },
-                summary = { Text(clockFormat.displayName) },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.ui_time_network_clock),
+                  value = clockFormat,
+                  onValueChange = { playerPrefs.clockFormat.set(it) },
+                  values = PlayerClockFormat.entries,
+                  valueToText = { AnnotatedString(it.displayName) },
+                  title = {
+                    Text(
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_time_network_clock),
+                    )
+                  },
+                  summary = { Text(clockFormat.displayName) },
+                )
               }
             }
 

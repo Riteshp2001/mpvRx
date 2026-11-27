@@ -54,7 +54,8 @@ internal class RealtimeAudioChunkExtractor(
         val extractorTrack = resolveTrackIndex(extractor, input)
         val inputFormat = extractor.getTrackFormat(extractorTrack)
         val mime =
-          inputFormat.getString(MediaFormat.KEY_MIME)
+          inputFormat
+            .getString(MediaFormat.KEY_MIME)
             ?.takeIf { it.startsWith("audio/") }
             ?: error("Selected stream is not audio")
 
@@ -87,10 +88,22 @@ internal class RealtimeAudioChunkExtractor(
                 val inputBuffer = codec.getInputBuffer(inputIndex) ?: error("Audio decoder input buffer unavailable")
                 val sampleSize = extractor.readSampleData(inputBuffer, 0)
                 if (sampleSize < 0) {
-                  codec.queueInputBuffer(inputIndex, 0, 0, sampleTimeUs.coerceAtLeast(0L), MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                  codec.queueInputBuffer(
+                    inputIndex,
+                    0,
+                    0,
+                    sampleTimeUs.coerceAtLeast(0L),
+                    MediaCodec.BUFFER_FLAG_END_OF_STREAM,
+                  )
                   inputEnded = true
                 } else {
-                  codec.queueInputBuffer(inputIndex, 0, sampleSize, sampleTimeUs.coerceAtLeast(0L), extractor.sampleFlags)
+                  codec.queueInputBuffer(
+                    inputIndex,
+                    0,
+                    sampleSize,
+                    sampleTimeUs.coerceAtLeast(0L),
+                    extractor.sampleFlags,
+                  )
                   extractor.advance()
                 }
               }
@@ -157,10 +170,11 @@ internal class RealtimeAudioChunkExtractor(
     extractor: MediaExtractor,
     input: RealtimeMediaInput,
   ): Int {
-    input.audioTrackIndex?.takeIf { index ->
-      index in 0 until extractor.trackCount &&
-        extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
-    }?.let { return it }
+    input.audioTrackIndex
+      ?.takeIf { index ->
+        index in 0 until extractor.trackCount &&
+          extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true
+      }?.let { return it }
 
     val audioTracks =
       (0 until extractor.trackCount).filter { index ->
@@ -199,7 +213,10 @@ internal class RealtimeAudioChunkExtractor(
       if (frameTimeUs < startUs) continue
       if (frameTimeUs >= endUs) break
 
-      val targetSample = ((frameTimeUs - startUs) * TARGET_SAMPLE_RATE / 1_000_000L).coerceAtMost(targetSampleCount - 1L)
+      val targetSample =
+        ((frameTimeUs - startUs) * TARGET_SAMPLE_RATE / 1_000_000L).coerceAtMost(
+          targetSampleCount - 1L,
+        )
       if (targetSample <= writtenTargetSample) continue
 
       var mixedSample = 0f

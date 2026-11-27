@@ -9,10 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
-
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -41,9 +37,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 import androidx.compose.material3.Surface
-import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -77,17 +71,20 @@ import app.gyrolet.mpvrx.domain.framecapture.FrameCaptureRepository
 import app.gyrolet.mpvrx.domain.framecapture.SnapshotImageLoader
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.framecapture.SnapshotFolderRow
 import app.gyrolet.mpvrx.ui.framecapture.dialogs.SnapshotFolderNameDialog
 import app.gyrolet.mpvrx.ui.framecapture.dialogs.SnapshotMoveTargetDialog
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.liquidglass.playerGlassSurface
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.screenshot.FrameCaptureUnavailableException
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSaver
 import app.gyrolet.mpvrx.ui.player.screenshot.ScreenshotSettings
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import kotlinx.coroutines.Dispatchers
@@ -101,6 +98,8 @@ import org.koin.compose.koinInject
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
+import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 @Composable
 fun FrameNavigationSheet(
@@ -176,9 +175,15 @@ fun FrameNavigationSheet(
                       videoUri = videoUri,
                       videoPath = videoUri.takeIf { it.startsWith("/") },
                       videoTitle =
-                        PlaybackSession.state.value.currentItem?.title?.takeIf { it.isNotBlank() }
+                        PlaybackSession.state.value.currentItem
+                          ?.title
+                          ?.takeIf { it.isNotBlank() }
                           ?: PlaybackSession.getPropertyString("media-title")?.takeIf { it.isNotBlank() }
-                          ?: PlaybackSession.getPropertyString("filename")?.substringBefore('?')?.takeIf { it.isNotBlank() }
+                          ?: PlaybackSession
+                            .getPropertyString(
+                              "filename",
+                            )?.substringBefore('?')
+                            ?.takeIf { it.isNotBlank() }
                           ?: videoUri.substringBefore('?').substringAfterLast('/'),
                       positionMs = (positionSeconds * 1000.0).toLong().coerceAtLeast(0L),
                       capturedAt = System.currentTimeMillis(),
@@ -391,7 +396,8 @@ fun FrameNavigationSheet(
       folders = snapshotFolders,
       confirmLabel = stringResource(R.string.ui_save),
       preselectedFolderId =
-        playerPreferences.lastSnapshotFolderId.get()
+        playerPreferences.lastSnapshotFolderId
+          .get()
           .takeIf { it != PlayerPreferences.NO_SNAPSHOT_FOLDER }
           // A folder deleted since the last save drops out, so the dialog falls back to the root
           // instead of pointing at a folder that no longer exists.
@@ -840,11 +846,12 @@ private fun FrameInfoDisplay(
             text = String.format(Locale.US, "%+d", frameDelta),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
-            color = if (frameDelta > 0) {
-              if (darkSurface) Color(0xFF81C784) else Color(0xFF1B5E20)
-            } else {
-              if (darkSurface) Color(0xFFEF9A9A) else Color(0xFFB71C1C)
-            },
+            color =
+              if (frameDelta > 0) {
+                if (darkSurface) Color(0xFF81C784) else Color(0xFF1B5E20)
+              } else {
+                if (darkSurface) Color(0xFFEF9A9A) else Color(0xFFB71C1C)
+              },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
           )

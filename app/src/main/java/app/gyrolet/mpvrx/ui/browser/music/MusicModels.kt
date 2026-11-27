@@ -10,12 +10,15 @@ import androidx.compose.runtime.Immutable
 import app.gyrolet.mpvrx.R
 
 @Immutable
-enum class MusicTab(@StringRes val titleRes: Int) {
+enum class MusicTab(
+  @StringRes val titleRes: Int,
+) {
   SONGS(R.string.ui_songs),
   ALBUMS(R.string.ui_albums),
   ARTISTS(R.string.ui_artists),
   PLAYLISTS(R.string.ui_playlists),
-  FOLDERS(R.string.search_category_folders);
+  FOLDERS(R.string.search_category_folders),
+  ;
 
   companion object {
     val defaultTabs = entries.toList()
@@ -49,8 +52,12 @@ internal fun Iterable<MusicSong>.sortedByAlbumTrack(): List<MusicSong> =
   sortedWith(
     compareBy<MusicSong> { it.trackNumber <= 0 }
       .thenBy { song -> if (song.trackNumber >= 1000) song.trackNumber / 1000 else 1 }
-      .thenBy { song -> song.trackNumber.takeIf { it > 0 }?.rem(1000)?.takeIf { it > 0 } ?: Int.MAX_VALUE }
-      .thenBy { it.title.lowercase() }
+      .thenBy { song ->
+        song.trackNumber
+          .takeIf { it > 0 }
+          ?.rem(1000)
+          ?.takeIf { it > 0 } ?: Int.MAX_VALUE
+      }.thenBy { it.title.lowercase() }
       .thenBy { it.id },
   )
 
@@ -70,41 +77,53 @@ data class MusicArtist(
   val id: Long,
   val name: String,
   val songCount: Int,
-  val albumCount: Int = 0
+  val albumCount: Int = 0,
 )
 
 @Immutable
-enum class MusicSortField(val displayName: String) {
+enum class MusicSortField(
+  val displayName: String,
+) {
   TITLE("Title"),
   ARTIST("Artist"),
   ALBUM("Album"),
   DURATION("Duration"),
   DATE_ADDED("Date Added"),
   TRACK_COUNT("Track Count"),
-  YEAR("Year")
+  YEAR("Year"),
 }
 
 internal val MusicTab.availableSortFields: List<MusicSortField>
-  get() = when (this) {
-    MusicTab.SONGS -> listOf(
-      MusicSortField.TITLE, MusicSortField.ARTIST, MusicSortField.ALBUM,
-      MusicSortField.DURATION, MusicSortField.DATE_ADDED, MusicSortField.YEAR,
-    )
-    MusicTab.ALBUMS -> listOf(
-      MusicSortField.TITLE, MusicSortField.ARTIST, MusicSortField.TRACK_COUNT, MusicSortField.YEAR,
-    )
-    MusicTab.ARTISTS -> listOf(MusicSortField.TITLE, MusicSortField.TRACK_COUNT)
-    MusicTab.PLAYLISTS, MusicTab.FOLDERS -> listOf(MusicSortField.TITLE)
-  }
+  get() =
+    when (this) {
+      MusicTab.SONGS ->
+        listOf(
+          MusicSortField.TITLE,
+          MusicSortField.ARTIST,
+          MusicSortField.ALBUM,
+          MusicSortField.DURATION,
+          MusicSortField.DATE_ADDED,
+          MusicSortField.YEAR,
+        )
+      MusicTab.ALBUMS ->
+        listOf(
+          MusicSortField.TITLE,
+          MusicSortField.ARTIST,
+          MusicSortField.TRACK_COUNT,
+          MusicSortField.YEAR,
+        )
+      MusicTab.ARTISTS -> listOf(MusicSortField.TITLE, MusicSortField.TRACK_COUNT)
+      MusicTab.PLAYLISTS, MusicTab.FOLDERS -> listOf(MusicSortField.TITLE)
+    }
 
 @Immutable
 enum class MusicSortOrder {
   ASCENDING,
-  DESCENDING
+  DESCENDING,
 }
 
 @Immutable
 enum class MusicViewMode {
   LIST,
-  GRID
+  GRID,
 }

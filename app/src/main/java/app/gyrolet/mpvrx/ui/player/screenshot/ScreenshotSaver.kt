@@ -9,8 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.player.screenshot
 
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
@@ -21,6 +19,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -95,7 +94,9 @@ object ScreenshotSaver {
             filename = PlaybackSession.getPropertyString("filename"),
             filenameNoExt = PlaybackSession.getPropertyString("filename/no-ext"),
             mediaTitle = PlaybackSession.getPropertyString("media-title"),
-            sessionTitle = PlaybackSession.state.value.currentItem?.title,
+            sessionTitle =
+              PlaybackSession.state.value.currentItem
+                ?.title,
             path = PlaybackSession.getPropertyString("path"),
             positionSeconds = PlaybackSession.getPropertyDouble("time-pos") ?: 0.0,
           )
@@ -130,7 +131,9 @@ object ScreenshotSaver {
             filename = PlaybackSession.getPropertyString("filename"),
             filenameNoExt = PlaybackSession.getPropertyString("filename/no-ext"),
             mediaTitle = PlaybackSession.getPropertyString("media-title"),
-            sessionTitle = PlaybackSession.state.value.currentItem?.title,
+            sessionTitle =
+              PlaybackSession.state.value.currentItem
+                ?.title,
             path = PlaybackSession.getPropertyString("path"),
             positionSeconds = PlaybackSession.getPropertyDouble("time-pos") ?: 0.0,
           )
@@ -205,7 +208,11 @@ object ScreenshotSaver {
 
     val sourcePng = File(context.cacheDir, "mpvrx_snapshot_fallback_source.png")
     sourcePng.delete()
-    PlaybackSession.command("screenshot-to-file", sourcePng.absolutePath, if (includeSubtitles) "subtitles" else "video")
+    PlaybackSession.command(
+      "screenshot-to-file",
+      sourcePng.absolutePath,
+      if (includeSubtitles) "subtitles" else "video",
+    )
     if (awaitScreenshotFile(sourcePng) == null) return null
 
     if (settings.format == ScreenshotFormat.PNG) {
@@ -341,9 +348,10 @@ object ScreenshotTemplate {
           candidate?.trim()?.takeIf { it.isNotBlank() && !FileTypeUtils.isNetworkStreamUri(it) }
         }.firstOrNull()
     val sanitizedStreamSegment =
-      (filename?.substringBefore('?')?.ifBlank { null }
-        ?: path?.substringBefore('?')?.substringAfterLast('/')?.ifBlank { null })
-        ?.let { runCatching { Uri.decode(it) }.getOrDefault(it) }
+      (
+        filename?.substringBefore('?')?.ifBlank { null }
+          ?: path?.substringBefore('?')?.substringAfterLast('/')?.ifBlank { null }
+      )?.let { runCatching { Uri.decode(it) }.getOrDefault(it) }
         ?.takeUnless { segment ->
           segment.equals("stream", ignoreCase = true) ||
             segment.equals("play", ignoreCase = true) ||

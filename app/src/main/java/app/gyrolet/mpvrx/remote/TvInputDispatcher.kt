@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.remote
 
 import android.annotation.SuppressLint
@@ -28,11 +28,15 @@ internal object TvInputDispatcher {
   private const val CTRL_META = KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON
 
   private sealed interface Command {
-    data class Key(val code: Int) : Command
+    data class Key(
+      val code: Int,
+    ) : Command
 
     data object ClearField : Command
 
-    data class Text(val value: String) : Command
+    data class Text(
+      val value: String,
+    ) : Command
   }
 
   private val mainHandler = Handler(Looper.getMainLooper())
@@ -74,7 +78,10 @@ internal object TvInputDispatcher {
   }
 
   /** Runs one command on the main thread; returns null on success or a [RemoteReason]. */
-  fun perform(context: Context, message: RemoteMessage): String? {
+  fun perform(
+    context: Context,
+    message: RemoteMessage,
+  ): String? {
     val command =
       when (message.type) {
         RemoteMessageType.KEY ->
@@ -100,7 +107,10 @@ internal object TvInputDispatcher {
     }
   }
 
-  private fun execute(context: Context, command: Command): String? {
+  private fun execute(
+    context: Context,
+    command: Command,
+  ): String? {
     val root = focusedRoot()
     when (command) {
       is Command.Key -> {
@@ -121,7 +131,11 @@ internal object TvInputDispatcher {
     return null
   }
 
-  private fun pressKey(root: View, keyCode: Int, metaState: Int = 0): Boolean {
+  private fun pressKey(
+    root: View,
+    keyCode: Int,
+    metaState: Int = 0,
+  ): Boolean {
     val now = SystemClock.uptimeMillis()
     val source = if (keyCode in dpadKeys) InputDevice.SOURCE_DPAD else InputDevice.SOURCE_KEYBOARD
     val down =
@@ -131,7 +145,11 @@ internal object TvInputDispatcher {
     return handled
   }
 
-  private fun typeText(context: Context, root: View, text: String) {
+  private fun typeText(
+    context: Context,
+    root: View,
+    text: String,
+  ) {
     // Typed keys keep text off the clipboard; only characters a keyboard cannot produce are pasted.
     val events = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD).getEvents(text.toCharArray())
     if (events != null) {
@@ -147,7 +165,10 @@ internal object TvInputDispatcher {
     pressKey(root, KeyEvent.KEYCODE_V, CTRL_META)
   }
 
-  private fun adjustVolume(context: Context, keyCode: Int) {
+  private fun adjustVolume(
+    context: Context,
+    keyCode: Int,
+  ) {
     context.getSystemService(AudioManager::class.java)?.adjustStreamVolume(
       AudioManager.STREAM_MUSIC,
       if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER,
@@ -157,9 +178,19 @@ internal object TvInputDispatcher {
 
   private fun focusedRoot(): View? {
     val roots =
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) WindowInspector.getGlobalWindowViews() else legacyWindowRoots()
+      if (Build.VERSION.SDK_INT >=
+        Build.VERSION_CODES.Q
+      ) {
+        WindowInspector.getGlobalWindowViews()
+      } else {
+        legacyWindowRoots()
+      }
     return roots.lastOrNull { it.isAttachedToWindow && it.hasWindowFocus() }
-      ?: resumedActivity?.get()?.takeIf { it.hasWindowFocus() }?.window?.decorView
+      ?: resumedActivity
+        ?.get()
+        ?.takeIf { it.hasWindowFocus() }
+        ?.window
+        ?.decorView
   }
 
   // Android 9 and older have no public window list; this is the same field Curtains and Espresso read.

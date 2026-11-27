@@ -129,12 +129,14 @@ class SettingsManager(
   suspend fun autoBackupIfChanged(treeUri: String): Result<AutoBackupStats?> =
     withContext(Dispatchers.IO) {
       try {
-        val configurationRoot = DocumentFile.fromTreeUri(context, Uri.parse(treeUri))
-          ?: error("Backup folder is unavailable")
-        val root = configurationRoot.findChildIgnoreCase("Backup")?.also { existing ->
-          require(existing.isDirectory) { "Backup exists but is not a folder" }
-        } ?: configurationRoot.createDirectory("Backup")
-          ?: error("Unable to create Backup folder")
+        val configurationRoot =
+          DocumentFile.fromTreeUri(context, Uri.parse(treeUri))
+            ?: error("Backup folder is unavailable")
+        val root =
+          configurationRoot.findChildIgnoreCase("Backup")?.also { existing ->
+            require(existing.isDirectory) { "Backup exists but is not a folder" }
+          } ?: configurationRoot.createDirectory("Backup")
+            ?: error("Unable to create Backup folder")
         require(root.canWrite()) { "Backup folder is not writable" }
 
         val snapshot = File.createTempFile("auto_backup_", ".xml", context.cacheDir)
@@ -145,8 +147,9 @@ class SettingsManager(
           val state = context.getSharedPreferences(AUTO_BACKUP_STATE, Context.MODE_PRIVATE)
           if (signature == state.getString(LAST_BACKUP_SIGNATURE, null)) return@withContext Result.success(null)
 
-          val temporary = root.createFile("text/xml", ".mpvrx-settings-${System.currentTimeMillis()}.tmp")
-            ?: error("Unable to create backup")
+          val temporary =
+            root.createFile("text/xml", ".mpvrx-settings-${System.currentTimeMillis()}.tmp")
+              ?: error("Unable to create backup")
           var finalized = false
           try {
             context.contentResolver.openOutputStream(temporary.uri, "wt")?.use { output ->
@@ -157,12 +160,14 @@ class SettingsManager(
             val finalName = getDefaultExportFilename()
             check(temporary.renameTo(finalName)) { "Unable to finalize backup" }
             finalized = true
-            root.listFiles()
+            root
+              .listFiles()
               .filter { file -> file.isFile && file.name?.matches(AUTO_BACKUP_FILE_REGEX) == true }
               .sortedByDescending { file -> file.name.orEmpty() }
               .drop(AUTO_BACKUP_RETENTION)
               .forEach(DocumentFile::delete)
-            state.edit()
+            state
+              .edit()
               .putString(LAST_BACKUP_SIGNATURE, signature)
               .putLong(LAST_BACKUP_TIME, System.currentTimeMillis())
               .apply()
@@ -183,22 +188,24 @@ class SettingsManager(
   suspend fun restoreNewestFromConfiguration(treeUri: String): Result<AutoRestoreStats?> =
     withContext(Dispatchers.IO) {
       try {
-        val root = DocumentFile.fromTreeUri(context, Uri.parse(treeUri))
-          ?: error("Configuration folder is unavailable")
-        val backupFolder = root.listFiles().firstOrNull { file ->
-          file.isDirectory && file.name.equals("Backup", ignoreCase = true)
-        }
-        val candidates = (root.listFiles().asSequence() + backupFolder?.listFiles().orEmpty().asSequence())
-          .filter { file ->
-            file.isFile && file.name?.let { name ->
-              name.startsWith("mpvrx_settings_", ignoreCase = true) && name.endsWith(".xml", ignoreCase = true)
-            } == true
+        val root =
+          DocumentFile.fromTreeUri(context, Uri.parse(treeUri))
+            ?: error("Configuration folder is unavailable")
+        val backupFolder =
+          root.listFiles().firstOrNull { file ->
+            file.isDirectory && file.name.equals("Backup", ignoreCase = true)
           }
-          .sortedWith(
-            compareByDescending<DocumentFile>(::backupSortTime)
-              .thenByDescending { file -> file.name.orEmpty() },
-          )
-          .toList()
+        val candidates =
+          (root.listFiles().asSequence() + backupFolder?.listFiles().orEmpty().asSequence())
+            .filter { file ->
+              file.isFile &&
+                file.name?.let { name ->
+                  name.startsWith("mpvrx_settings_", ignoreCase = true) && name.endsWith(".xml", ignoreCase = true)
+                } == true
+            }.sortedWith(
+              compareByDescending<DocumentFile>(::backupSortTime)
+                .thenByDescending { file -> file.name.orEmpty() },
+            ).toList()
 
         var lastFailure: Throwable? = null
         for (candidate in candidates) {
@@ -224,9 +231,10 @@ class SettingsManager(
     context.getSharedPreferences(AUTO_BACKUP_STATE, Context.MODE_PRIVATE).getLong(LAST_BACKUP_TIME, 0L)
 
   private fun backupSortTime(file: DocumentFile): Long {
-    val fromName = BACKUP_TIMESTAMP_REGEX.find(file.name.orEmpty())?.groupValues?.getOrNull(1)?.let { timestamp ->
-      runCatching { SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ROOT).parse(timestamp)?.time }.getOrNull()
-    } ?: 0L
+    val fromName =
+      BACKUP_TIMESTAMP_REGEX.find(file.name.orEmpty())?.groupValues?.getOrNull(1)?.let { timestamp ->
+        runCatching { SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ROOT).parse(timestamp)?.time }.getOrNull()
+      } ?: 0L
     return fromName.takeIf { it > 0L } ?: file.lastModified()
   }
 
@@ -309,8 +317,12 @@ class SettingsManager(
       var index = 0
       while (index < value.length) {
         val codePoint = Character.codePointAt(value, index)
-        if (codePoint == 0x9 || codePoint == 0xA || codePoint == 0xD ||
-          codePoint in 0x20..0xD7FF || codePoint in 0xE000..0xFFFD || codePoint in 0x10000..0x10FFFF
+        if (codePoint == 0x9 ||
+          codePoint == 0xA ||
+          codePoint == 0xD ||
+          codePoint in 0x20..0xD7FF ||
+          codePoint in 0xE000..0xFFFD ||
+          codePoint in 0x10000..0x10FFFF
         ) {
           appendCodePoint(codePoint)
         }
@@ -334,7 +346,11 @@ class SettingsManager(
           serializer.attribute(null, ATTR_VALUE, value)
         } else {
           serializer.attribute(null, ATTR_ENCODING, ENCODING_BASE64)
-          serializer.attribute(null, ATTR_VALUE, Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP))
+          serializer.attribute(
+            null,
+            ATTR_VALUE,
+            Base64.encodeToString(value.toByteArray(Charsets.UTF_8), Base64.NO_WRAP),
+          )
         }
       }
       is Int -> {
@@ -410,6 +426,7 @@ class SettingsManager(
     val imported = LinkedHashMap<String, Any>()
     val parents = ArrayDeque<String>()
     val networkConnections = mutableListOf<NetworkConnection>()
+
     fun skip(message: String) {
       stats.failed++
       if (stats.errors.size < MAX_REPORTED_ERRORS) stats.errors.add(message)
@@ -426,7 +443,8 @@ class SettingsManager(
               TAG_ROOT -> stats.version = parser.getAttributeValue(null, ATTR_VERSION) ?: "unknown"
               TAG_PREFERENCE -> {
                 val key = parser.getAttributeValue(null, ATTR_KEY)
-                if (parents.size == 3 && parents[1] == TAG_PREFERENCES &&
+                if (parents.size == 3 &&
+                  parents[1] == TAG_PREFERENCES &&
                   key != BrowserPreferences.ONBOARDING_COMPLETED_KEY &&
                   key != AdvancedPreferences.AUTO_BACKUP_ENABLED_KEY &&
                   key != AdvancedPreferences.AUTO_BACKUP_FOLDER_URI_KEY &&
@@ -535,7 +553,8 @@ class SettingsManager(
 
   /** Reads one preference and returns it in the kind the app reads it as; throws when unusable. */
   private suspend fun readPreference(parser: XmlPullParser): Pair<String, Any> {
-    val key = requireNotNull(parser.getAttributeValue(null, ATTR_KEY)?.takeIf(String::isNotBlank)) { "Missing preference key" }
+    val key =
+      requireNotNull(parser.getAttributeValue(null, ATTR_KEY)?.takeIf(String::isNotBlank)) { "Missing preference key" }
     val type = requireNotNull(parser.getAttributeValue(null, ATTR_TYPE)) { "Missing preference type" }
     val valueStr = requireNotNull(parser.getAttributeValue(null, ATTR_VALUE)) { "Missing preference value" }
     val encoding = parser.getAttributeValue(null, ATTR_ENCODING)
@@ -556,11 +575,12 @@ class SettingsManager(
           when (encoding) {
             ENCODING_JSON -> {
               val values = JSONArray(String(Base64.decode(valueStr, Base64.DEFAULT), Charsets.UTF_8))
-              (0 until values.length()).map { index ->
-                val value = values.get(index)
-                require(value is String) { "Invalid string set" }
-                value
-              }.toSet()
+              (0 until values.length())
+                .map { index ->
+                  val value = values.get(index)
+                  require(value is String) { "Invalid string set" }
+                  value
+                }.toSet()
             }
             null -> if (valueStr.isEmpty()) emptySet() else valueStr.split(STRING_SET_SEPARATOR).toSet()
             else -> error("Unsupported string-set encoding: $encoding")
@@ -580,24 +600,35 @@ class SettingsManager(
         is Set<*> -> PreferenceKind.STRING_SET
         else -> null
       }
-    val value = if (expected == null) parsed else coerce(parsed, expected) ?: error("expected ${expected.name.lowercase()}")
+    val value =
+      if (expected ==
+        null
+      ) {
+        parsed
+      } else {
+        coerce(parsed, expected) ?: error("expected ${expected.name.lowercase()}")
+      }
 
-    return key to when (value) {
-      is String -> {
-        if (key == AppearancePreferences.CUSTOM_WALLPAPER_URI_KEY) {
-          if (value.isBlank()) value else saveWallpaperCopy(context, value)
-        } else {
-          require(value.length <= MAX_TEXT_LENGTH) { "Value is too large" }
-          require(preferenceStore.acceptsStoredText(key, value)) { "Unreadable value" }
-          value
+    return key to
+      when (value) {
+        is String -> {
+          if (key == AppearancePreferences.CUSTOM_WALLPAPER_URI_KEY) {
+            if (value.isBlank()) value else saveWallpaperCopy(context, value)
+          } else {
+            require(value.length <= MAX_TEXT_LENGTH) { "Value is too large" }
+            require(preferenceStore.acceptsStoredText(key, value)) { "Unreadable value" }
+            value
+          }
         }
+        is Float -> value.also { require(it.isFinite()) { "Invalid number" } }
+        is Set<*> ->
+          value.also { set ->
+            require(
+              set.size <= MAX_SET_SIZE && set.all { it is String && it.length <= MAX_TEXT_LENGTH },
+            ) { "Invalid list" }
+          }
+        else -> value
       }
-      is Float -> value.also { require(it.isFinite()) { "Invalid number" } }
-      is Set<*> -> value.also { set ->
-        require(set.size <= MAX_SET_SIZE && set.all { it is String && it.length <= MAX_TEXT_LENGTH }) { "Invalid list" }
-      }
-      else -> value
-    }
   }
 
   private fun coerce(
@@ -615,7 +646,13 @@ class SettingsManager(
         when (value) {
           is Int -> value
           is Long -> value.takeIf { it in Int.MIN_VALUE..Int.MAX_VALUE }?.toInt()
-          is Float -> value.takeIf { it.isFinite() && it == kotlin.math.floor(it) && it in Int.MIN_VALUE.toFloat()..Int.MAX_VALUE.toFloat() }?.toInt()
+          is Float ->
+            value
+              .takeIf {
+                it.isFinite() &&
+                  it == kotlin.math.floor(it) &&
+                  it in Int.MIN_VALUE.toFloat()..Int.MAX_VALUE.toFloat()
+              }?.toInt()
           is String -> value.trim().toIntOrNull()
           else -> null
         }
@@ -652,7 +689,12 @@ class SettingsManager(
           parser.getAttributeValue(null, "protocol")?.trim() ?: "SMB",
         ),
       host = requireNotNull(parser.getAttributeValue(null, "host")?.takeIf(String::isNotBlank)) { "Missing host" },
-      port = parser.getAttributeValue(null, "port")?.trim()?.toIntOrNull()?.takeIf { it in 0..65_535 } ?: 445,
+      port =
+        parser
+          .getAttributeValue(null, "port")
+          ?.trim()
+          ?.toIntOrNull()
+          ?.takeIf { it in 0..65_535 } ?: 445,
       username = parser.getAttributeValue(null, "username") ?: "",
       // Never restore credentials from settings XML, including legacy exports that contained
       // plaintext passwords or device-bound encrypted envelopes.

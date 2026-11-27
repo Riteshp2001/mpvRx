@@ -46,11 +46,12 @@ object MpvAutoCompleteProvider {
     val query = if (completingValue) optionValuePrefix else prefix.trimStart('-')
     if (query.isEmpty() && !completingValue) return
 
-    val choices = when {
-      completingValue -> valuesForOption(requireNotNull(optionName))
-      mode == MpvCompletionMode.INPUT_CONF && inputKeyPosition -> inputKeyCompletions
-      else -> completionsFor(mode)
-    }
+    val choices =
+      when {
+        completingValue -> valuesForOption(requireNotNull(optionName))
+        mode == MpvCompletionMode.INPUT_CONF && inputKeyPosition -> inputKeyCompletions
+        else -> completionsFor(mode)
+      }
     val suggestions =
       choices
         .asSequence()
@@ -98,9 +99,10 @@ object MpvAutoCompleteProvider {
   // Parse the enum tokens from the official option signature, not a second manual catalog.
   // For free-form language lists, show clearly labeled *examples*, never a false exhaustive enum.
   private fun valuesForOption(name: String): List<CompletionDef> {
-    val documentation = MpvDocumentationRepository.state.value.entries
-      .firstOrNull { it.kind == HelpEntryKind.OPTION && it.name.equals(name, ignoreCase = true) }
-      ?: return emptyList()
+    val documentation =
+      MpvDocumentationRepository.state.value.entries
+        .firstOrNull { it.kind == HelpEntryKind.OPTION && it.name.equals(name, ignoreCase = true) }
+        ?: return emptyList()
     if (name.equals("slang", true) || name.equals("alang", true) || name.equals("vlang", true)) {
       return listOf(
         "eng" to "English",
@@ -120,26 +122,41 @@ object MpvAutoCompleteProvider {
     }
     val signatureValues = documentation.signature.substringAfter('=', "")
     if (signatureValues.isBlank()) return emptyList()
-    val literals = optionEnum.findAll(signatureValues)
-      .flatMap { it.groupValues[1].split('|').asSequence() }
-      .map { it.trim() }
-      .filter { literalValue.matches(it) }
-      .filterNot { it.lowercase() in setOf(
-        "id", "n", "value", "number", "file", "filename", "name", "time",
-        "path", "languagecode", "integer", "string",
-      ) }
-      .distinct()
-      .take(24)
-      .toList()
+    val literals =
+      optionEnum
+        .findAll(signatureValues)
+        .flatMap { it.groupValues[1].split('|').asSequence() }
+        .map { it.trim() }
+        .filter { literalValue.matches(it) }
+        .filterNot {
+          it.lowercase() in
+            setOf(
+              "id",
+              "n",
+              "value",
+              "number",
+              "file",
+              "filename",
+              "name",
+              "time",
+              "path",
+              "languagecode",
+              "integer",
+              "string",
+            )
+        }.distinct()
+        .take(24)
+        .toList()
     if (literals.size < 2) return emptyList()
     return literals.map { value ->
-      val meaning = when (value.lowercase()) {
-        "yes" -> "Enable"
-        "no" -> "Disable"
-        "auto" -> "Automatic selection"
-        "default" -> "Use mpv default"
-        else -> "Documented value"
-      }
+      val meaning =
+        when (value.lowercase()) {
+          "yes" -> "Enable"
+          "no" -> "Disable"
+          "auto" -> "Automatic selection"
+          "default" -> "Use mpv default"
+          else -> "Documented value"
+        }
       createDef(
         value,
         value,
@@ -199,27 +216,30 @@ object MpvAutoCompleteProvider {
     return synchronized(this) {
       cachedDocCompletions?.takeIf { it.entries === entries } ?: CachedDocCompletions(
         entries = entries,
-        config = entries.filter { it.kind == HelpEntryKind.OPTION }.map { entry ->
-          createDef(
-            entry.name,
-            entry.signature,
-            entry.description.take(200),
-            CompletionItemKind.Property,
-            commitSuffix = if (entry.signature.contains('=')) "=" else "",
-          )
-        },
-        commands = entries.filter { it.kind == HelpEntryKind.COMMAND }.map { entry ->
-          createDef(
-            entry.name,
-            entry.signature,
-            entry.description.take(200),
-            CompletionItemKind.Keyword,
-            commitSuffix = " ",
-          )
-        },
-        js = entries.filter { it.kind == HelpEntryKind.JS_API }.map { entry ->
-          createDef(entry.name, entry.signature, entry.description.take(200))
-        },
+        config =
+          entries.filter { it.kind == HelpEntryKind.OPTION }.map { entry ->
+            createDef(
+              entry.name,
+              entry.signature,
+              entry.description.take(200),
+              CompletionItemKind.Property,
+              commitSuffix = if (entry.signature.contains('=')) "=" else "",
+            )
+          },
+        commands =
+          entries.filter { it.kind == HelpEntryKind.COMMAND }.map { entry ->
+            createDef(
+              entry.name,
+              entry.signature,
+              entry.description.take(200),
+              CompletionItemKind.Keyword,
+              commitSuffix = " ",
+            )
+          },
+        js =
+          entries.filter { it.kind == HelpEntryKind.JS_API }.map { entry ->
+            createDef(entry.name, entry.signature, entry.description.take(200))
+          },
       ).also { cachedDocCompletions = it }
     }
   }

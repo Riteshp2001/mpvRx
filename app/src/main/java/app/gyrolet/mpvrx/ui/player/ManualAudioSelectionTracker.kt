@@ -35,13 +35,19 @@ package app.gyrolet.mpvrx.ui.player
  * selected, which is the track the user's selector asked for.
  */
 internal object ManualAudioSelectionTracker {
-  private data class Mark(val trackId: Int, val generation: Long)
+  private data class Mark(
+    val trackId: Int,
+    val generation: Long,
+  )
 
   private val marks = mutableMapOf<String, Mark>()
   private val reloadPending = mutableSetOf<String>()
 
   @Synchronized
-  fun mark(identifier: String, trackId: Int) {
+  fun mark(
+    identifier: String,
+    trackId: Int,
+  ) {
     if (identifier.isBlank()) return
     marks[identifier] = Mark(trackId, PlaybackSession.state.value.generation)
     reloadPending.remove(identifier)
@@ -55,8 +61,10 @@ internal object ManualAudioSelectionTracker {
    * Marks from earlier loads in this process do not count (see the class doc).
    */
   @Synchronized
-  fun hasMarkForGeneration(identifier: String, generation: Long): Boolean =
-    marks[identifier]?.generation == generation
+  fun hasMarkForGeneration(
+    identifier: String,
+    generation: Long,
+  ): Boolean = marks[identifier]?.generation == generation
 
   @Synchronized
   fun markReloadPending(identifier: String) {
@@ -72,7 +80,10 @@ internal object ManualAudioSelectionTracker {
    * [getTrackSelectionId]). Returns true when a pending pick existed and was resolved.
    */
   @Synchronized
-  fun resolveReloadPending(identifier: String, currentTrackId: Int): Boolean {
+  fun resolveReloadPending(
+    identifier: String,
+    currentTrackId: Int,
+  ): Boolean {
     if (!reloadPending.remove(identifier)) return false
     marks[identifier] = Mark(currentTrackId, PlaybackSession.state.value.generation)
     return true

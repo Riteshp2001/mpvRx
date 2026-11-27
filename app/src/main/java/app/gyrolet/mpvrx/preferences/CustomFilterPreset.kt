@@ -33,9 +33,7 @@ data class CustomFilterPreset(
   val sharpness: Int,
 ) {
   /** Case insensitive match, so "Night Mode" and "night mode" name the same preset. */
-  fun hasName(
-    candidate: String,
-  ): Boolean = name.equals(candidate, ignoreCase = true)
+  fun hasName(candidate: String): Boolean = name.equals(candidate, ignoreCase = true)
 
   companion object {
     /** Kept short enough to stay readable as a chip label next to the built in presets. */
@@ -53,9 +51,7 @@ data class CustomFilterPreset(
      * Trims and shortens a user supplied name.
      * Returns an empty string when nothing usable is left, which callers treat as a cancel.
      */
-    fun normalizeName(
-      raw: String,
-    ): String = raw.trim().take(MAX_NAME_LENGTH).trim()
+    fun normalizeName(raw: String): String = raw.trim().take(MAX_NAME_LENGTH).trim()
 
     /** Serialises a whole preset list, preserving the order it is displayed in. */
     fun encodeAll(presets: List<CustomFilterPreset>): String {
@@ -82,9 +78,7 @@ data class CustomFilterPreset(
      * edited or partially written preference can never stop the panel from rendering. An
      * empty result is a valid outcome and simply means "no custom presets".
      */
-    fun decodeAll(
-      stored: String,
-    ): List<CustomFilterPreset> {
+    fun decodeAll(stored: String): List<CustomFilterPreset> {
       if (stored.isBlank()) return emptyList()
       val array = runCatching { JSONArray(stored) }.getOrNull() ?: return emptyList()
       val decoded = mutableListOf<CustomFilterPreset>()
@@ -94,9 +88,7 @@ data class CustomFilterPreset(
       return decoded.distinctBy { it.name.lowercase() }
     }
 
-    private fun decode(
-      entry: JSONObject?,
-    ): CustomFilterPreset? {
+    private fun decode(entry: JSONObject?): CustomFilterPreset? {
       if (entry == null) return null
       val name = normalizeName(entry.optString(KEY_NAME))
       if (name.isEmpty()) return null

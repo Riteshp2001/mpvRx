@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.dialogs
 
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -21,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -31,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,8 +54,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.components.AppComboBox
-import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.data.network.ServerSuggestion
 import app.gyrolet.mpvrx.domain.network.NetworkAddress
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
@@ -64,8 +61,11 @@ import app.gyrolet.mpvrx.domain.network.NetworkPath
 import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.domain.network.SmbSharePath
 import app.gyrolet.mpvrx.domain.network.normalizedAddress
+import app.gyrolet.mpvrx.presentation.components.AppComboBox
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -98,27 +98,54 @@ internal fun ConnectionEditorSheet(
   val passwordFocusRequester = remember { FocusRequester() }
   val parsedPort = port.toIntOrNull()
   val isPortValid = parsedPort != null && parsedPort in MIN_PORT..MAX_PORT
-  val address = remember(host, protocol, useHttps) {
-    runCatching { NetworkAddress.parse(host, protocol, useHttps) }.getOrNull()
-  }
+  val address =
+    remember(host, protocol, useHttps) {
+      runCatching { NetworkAddress.parse(host, protocol, useHttps) }.getOrNull()
+    }
   val effectiveProtocol = address?.protocol ?: protocol
-  val normalizedPath = remember(path, effectiveProtocol, address?.path) {
-    runCatching { NetworkPath.from((address?.path ?: path).trim().let { if (effectiveProtocol == NetworkProtocol.SMB) it.replace('\\', '/') else it }).value }.getOrNull()
-  }
-  val isPathValid = normalizedPath != null &&
-    (effectiveProtocol != NetworkProtocol.SMB || runCatching { SmbSharePath(normalizedPath) }.isSuccess)
+  val normalizedPath =
+    remember(path, effectiveProtocol, address?.path) {
+      runCatching {
+        NetworkPath
+          .from(
+            (address?.path ?: path).trim().let {
+              if (effectiveProtocol ==
+                NetworkProtocol.SMB
+              ) {
+                it.replace('\\', '/')
+              } else {
+                it
+              }
+            },
+          ).value
+      }.getOrNull()
+    }
+  val isPathValid =
+    normalizedPath != null &&
+      (effectiveProtocol != NetworkProtocol.SMB || runCatching { SmbSharePath(normalizedPath) }.isSuccess)
   val dlna = effectiveProtocol == NetworkProtocol.DLNA
   val anonymous = isAnonymous || dlna
   val canSave = address != null && isPortValid && isPathValid && (anonymous || username.isNotBlank())
-  val resolvedConnection = remember(host, port, protocol, path, useHttps, initialConnection) {
-    runCatching {
-      initialConnection.copy(host = host, port = parsedPort ?: 0, protocol = protocol, path = path, useHttps = useHttps).normalizedAddress()
-    }.getOrNull()
-  }
-  val originalAddress = remember(initialConnection) { runCatching { initialConnection.normalizedAddress() }.getOrNull() }
-  val destinationChanged = resolvedConnection?.host?.lowercase() != originalAddress?.host?.lowercase() ||
-    resolvedConnection?.protocol != originalAddress?.protocol || resolvedConnection?.port != originalAddress?.port ||
-    resolvedConnection?.useHttps != originalAddress?.useHttps
+  val resolvedConnection =
+    remember(host, port, protocol, path, useHttps, initialConnection) {
+      runCatching {
+        initialConnection
+          .copy(
+            host = host,
+            port = parsedPort ?: 0,
+            protocol = protocol,
+            path = path,
+            useHttps = useHttps,
+          ).normalizedAddress()
+      }.getOrNull()
+    }
+  val originalAddress =
+    remember(initialConnection) { runCatching { initialConnection.normalizedAddress() }.getOrNull() }
+  val destinationChanged =
+    resolvedConnection?.host?.lowercase() != originalAddress?.host?.lowercase() ||
+      resolvedConnection?.protocol != originalAddress?.protocol ||
+      resolvedConnection?.port != originalAddress?.port ||
+      resolvedConnection?.useHttps != originalAddress?.useHttps
 
   val dismiss = {
     focusManager.clearFocus()
@@ -191,7 +218,10 @@ internal fun ConnectionEditorSheet(
           host = input
           // Normalize pasted URLs/UNC paths once, leaving normal hostname typing uninterrupted.
           val parsed = runCatching { NetworkAddress.parse(input, protocol, useHttps) }.getOrNull()
-          if (pasted && parsed != null && ("://" in input || input.startsWith("\\\\") || parsed.port != null || parsed.path != null)) {
+          if (pasted &&
+            parsed != null &&
+            ("://" in input || input.startsWith("\\\\") || parsed.port != null || parsed.path != null)
+          ) {
             host = parsed.host
             if (parsed.protocol != protocol || parsed.useHttps != useHttps) {
               port = (if (parsed.useHttps) 443 else parsed.protocol.defaultPort).toString()
@@ -240,20 +270,27 @@ internal fun ConnectionEditorSheet(
       OutlinedTextField(
         value = path,
         onValueChange = { path = it },
-        label = { FieldLabel(when (effectiveProtocol) {
-          NetworkProtocol.SMB -> R.string.network_smb_share_folder
-          NetworkProtocol.DLNA -> R.string.network_dlna_description_path
-          else -> R.string.ui_path
-        }) },
+        label = {
+          FieldLabel(
+            when (effectiveProtocol) {
+              NetworkProtocol.SMB -> R.string.network_smb_share_folder
+              NetworkProtocol.DLNA -> R.string.network_dlna_description_path
+              else -> R.string.ui_path
+            },
+          )
+        },
         modifier = Modifier.fillMaxWidth().focusRequester(pathFocusRequester),
         singleLine = true,
         placeholder = { Text(if (effectiveProtocol == NetworkProtocol.SMB) "/Media/Movies" else "/", maxLines = 1) },
         isError = !isPathValid,
-        supportingText = if (effectiveProtocol == NetworkProtocol.SMB) {
-          { Text(stringResource(R.string.network_smb_share_hint)) }
-        } else if (dlna) {
-          { Text(stringResource(R.string.network_dlna_description_hint)) }
-        } else null,
+        supportingText =
+          if (effectiveProtocol == NetworkProtocol.SMB) {
+            { Text(stringResource(R.string.network_smb_share_hint)) }
+          } else if (dlna) {
+            { Text(stringResource(R.string.network_dlna_description_hint)) }
+          } else {
+            null
+          },
         keyboardOptions = KeyboardOptions(imeAction = if (anonymous) ImeAction.Done else ImeAction.Next),
         keyboardActions =
           KeyboardActions(
@@ -262,11 +299,13 @@ internal fun ConnectionEditorSheet(
           ),
       )
 
-      if (!dlna) ConnectionToggle(
-        checked = isAnonymous,
-        onCheckedChange = { isAnonymous = it },
-        label = stringResource(R.string.ui_anonymous_guest_access),
-      )
+      if (!dlna) {
+        ConnectionToggle(
+          checked = isAnonymous,
+          onCheckedChange = { isAnonymous = it },
+          label = stringResource(R.string.ui_anonymous_guest_access),
+        )
+      }
 
       if (protocol == NetworkProtocol.WEBDAV || protocol == NetworkProtocol.DLNA) {
         ConnectionToggle(
@@ -291,9 +330,12 @@ internal fun ConnectionEditorSheet(
           modifier = Modifier.fillMaxWidth().focusRequester(usernameFocusRequester),
           singleLine = true,
           enabled = !isAnonymous,
-          supportingText = if (protocol == NetworkProtocol.SMB && !isAnonymous) {
-            { Text(stringResource(R.string.network_smb_username_hint)) }
-          } else null,
+          supportingText =
+            if (protocol == NetworkProtocol.SMB && !isAnonymous) {
+              { Text(stringResource(R.string.network_smb_username_hint)) }
+            } else {
+              null
+            },
           keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
           keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
         )
@@ -305,7 +347,15 @@ internal fun ConnectionEditorSheet(
             if (it.isNotEmpty()) clearPassword = false
           },
           label = {
-            FieldLabel(if (isEditing && !destinationChanged) R.string.ui_new_password_keep_existing else R.string.ui_password)
+            FieldLabel(
+              if (isEditing &&
+                !destinationChanged
+              ) {
+                R.string.ui_new_password_keep_existing
+              } else {
+                R.string.ui_password
+              },
+            )
           },
           modifier = Modifier.fillMaxWidth().focusRequester(passwordFocusRequester),
           singleLine = true,

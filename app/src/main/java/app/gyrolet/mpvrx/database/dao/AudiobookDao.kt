@@ -35,7 +35,10 @@ abstract class AudiobookDao {
   abstract suspend fun insertTracks(tracks: List<AudiobookTrackEntity>): List<Long>
 
   @Transaction
-  open suspend fun importBook(book: AudiobookEntity, tracks: List<AudiobookTrackEntity>): Long {
+  open suspend fun importBook(
+    book: AudiobookEntity,
+    tracks: List<AudiobookTrackEntity>,
+  ): Long {
     require(tracks.isNotEmpty())
     findBySource(book.sourceKey)?.let { return it }
     val id = insertBook(book)
@@ -46,9 +49,13 @@ abstract class AudiobookDao {
   }
 
   @Query("UPDATE audiobooks SET currentTrackId = :trackId WHERE id = :id")
-  protected abstract suspend fun setInitialTrack(id: Long, trackId: Long)
+  protected abstract suspend fun setInitialTrack(
+    id: Long,
+    trackId: Long,
+  )
 
-  @Query("""UPDATE audiobooks SET currentTrackId = :trackId,
+  @Query(
+    """UPDATE audiobooks SET currentTrackId = :trackId,
     positionMs = CASE WHEN :reachedEnd THEN (SELECT durationMs FROM audiobook_tracks WHERE id = :trackId) ELSE :positionMs END,
     progressMs = (CASE WHEN :reachedEnd THEN (SELECT durationMs FROM audiobook_tracks WHERE id = :trackId) ELSE :positionMs END)
       + (SELECT COALESCE(SUM(durationMs), 0) FROM audiobook_tracks
@@ -56,30 +63,69 @@ abstract class AudiobookDao {
     lastPlayedAt = :playedAt, finished = CASE WHEN :reachedEnd AND NOT EXISTS
       (SELECT 1 FROM audiobook_tracks WHERE bookId = :bookId AND position >
         (SELECT position FROM audiobook_tracks WHERE id = :trackId)) THEN 1 ELSE 0 END
-    WHERE id = :bookId AND EXISTS (SELECT 1 FROM audiobook_tracks WHERE id = :trackId AND bookId = :bookId)""")
-  abstract suspend fun saveProgress(bookId: Long, trackId: Long, positionMs: Long, playedAt: Long, reachedEnd: Boolean)
+    WHERE id = :bookId AND EXISTS (SELECT 1 FROM audiobook_tracks WHERE id = :trackId AND bookId = :bookId)""",
+  )
+  abstract suspend fun saveProgress(
+    bookId: Long,
+    trackId: Long,
+    positionMs: Long,
+    playedAt: Long,
+    reachedEnd: Boolean,
+  )
 
   @Query("UPDATE audiobooks SET playbackSpeed = :speed WHERE id = :id")
-  abstract suspend fun setSpeed(id: Long, speed: Float)
+  abstract suspend fun setSpeed(
+    id: Long,
+    speed: Float,
+  )
 
   @Query("UPDATE audiobooks SET rewindSeconds = :seconds WHERE id = :id")
-  abstract suspend fun setRewind(id: Long, seconds: Int)
+  abstract suspend fun setRewind(
+    id: Long,
+    seconds: Int,
+  )
 
   @Query("UPDATE audiobooks SET finished = :finished WHERE id = :id")
-  abstract suspend fun setFinished(id: Long, finished: Boolean)
+  abstract suspend fun setFinished(
+    id: Long,
+    finished: Boolean,
+  )
 
-  @Query("""UPDATE audiobooks SET title = :title, author = :author, narrator = :narrator,
-    series = :series, seriesPart = :seriesPart WHERE id = :id""")
-  abstract suspend fun updateDetails(id: Long, title: String, author: String, narrator: String, series: String, seriesPart: String)
+  @Query(
+    """UPDATE audiobooks SET title = :title, author = :author, narrator = :narrator,
+    series = :series, seriesPart = :seriesPart WHERE id = :id""",
+  )
+  abstract suspend fun updateDetails(
+    id: Long,
+    title: String,
+    author: String,
+    narrator: String,
+    series: String,
+    seriesPart: String,
+  )
 
-  @Query("""UPDATE audiobooks SET title = :title, author = :author, narrator = :narrator,
-    series = :series, seriesPart = :seriesPart, coverUri = :coverUri WHERE id = :id""")
-  abstract suspend fun updateDetails(id: Long, title: String, author: String, narrator: String, series: String, seriesPart: String, coverUri: String?)
+  @Query(
+    """UPDATE audiobooks SET title = :title, author = :author, narrator = :narrator,
+    series = :series, seriesPart = :seriesPart, coverUri = :coverUri WHERE id = :id""",
+  )
+  abstract suspend fun updateDetails(
+    id: Long,
+    title: String,
+    author: String,
+    narrator: String,
+    series: String,
+    seriesPart: String,
+    coverUri: String?,
+  )
 
   @Query("UPDATE audiobooks SET coverUri = :coverUri WHERE id = :id")
-  abstract suspend fun updateCover(id: Long, coverUri: String?)
+  abstract suspend fun updateCover(
+    id: Long,
+    coverUri: String?,
+  )
 
-  @Query("""UPDATE audiobooks SET
+  @Query(
+    """UPDATE audiobooks SET
     author = CASE WHEN author = '' THEN :author ELSE author END,
     narrator = CASE WHEN narrator = '' THEN :narrator ELSE narrator END,
     series = CASE WHEN series = '' THEN :series ELSE series END,
@@ -90,12 +136,28 @@ abstract class AudiobookDao {
     publishedYear = CASE WHEN publishedYear = '' THEN :publishedYear ELSE publishedYear END,
     genre = CASE WHEN genre = '' THEN :genre ELSE genre END,
     isbn = CASE WHEN isbn = '' THEN :isbn ELSE isbn END,
-    asin = CASE WHEN asin = '' THEN :asin ELSE asin END WHERE id = :id""")
-  abstract suspend fun fillMetadata(id: Long, author: String, narrator: String, series: String, seriesPart: String,
-    description: String, language: String, publisher: String, publishedYear: String, genre: String, isbn: String, asin: String)
+    asin = CASE WHEN asin = '' THEN :asin ELSE asin END WHERE id = :id""",
+  )
+  abstract suspend fun fillMetadata(
+    id: Long,
+    author: String,
+    narrator: String,
+    series: String,
+    seriesPart: String,
+    description: String,
+    language: String,
+    publisher: String,
+    publishedYear: String,
+    genre: String,
+    isbn: String,
+    asin: String,
+  )
 
   @Query("UPDATE audiobook_tracks SET durationMs = :durationMs WHERE id = :trackId AND :durationMs > 0")
-  abstract suspend fun updateDuration(trackId: Long, durationMs: Long)
+  abstract suspend fun updateDuration(
+    trackId: Long,
+    durationMs: Long,
+  )
 
   @Query("SELECT * FROM audiobook_chapters WHERE trackId = :trackId ORDER BY startMs")
   abstract suspend fun getChapters(trackId: Long): List<AudiobookChapterEntity>
@@ -103,7 +165,9 @@ abstract class AudiobookDao {
   @Query("DELETE FROM audiobooks WHERE id = :id")
   abstract suspend fun deleteBook(id: Long)
 
-  @Query("SELECT * FROM audiobook_chapters WHERE trackId IN (SELECT id FROM audiobook_tracks WHERE bookId = :bookId) ORDER BY startMs")
+  @Query(
+    "SELECT * FROM audiobook_chapters WHERE trackId IN (SELECT id FROM audiobook_tracks WHERE bookId = :bookId) ORDER BY startMs",
+  )
   abstract fun observeChapters(bookId: Long): Flow<List<AudiobookChapterEntity>>
 
   @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -113,7 +177,10 @@ abstract class AudiobookDao {
   protected abstract suspend fun deleteChapters(trackId: Long)
 
   @Transaction
-  open suspend fun replaceChapters(trackId: Long, chapters: List<AudiobookChapterEntity>) {
+  open suspend fun replaceChapters(
+    trackId: Long,
+    chapters: List<AudiobookChapterEntity>,
+  ) {
     require(chapters.all { it.trackId == trackId && it.startMs >= 0 && it.endMs > it.startMs })
     deleteChapters(trackId)
     if (chapters.isNotEmpty()) insertChapters(chapters.distinctBy { it.startMs })
@@ -124,5 +191,4 @@ abstract class AudiobookDao {
 
   @Query("SELECT * FROM audiobook_tracks")
   abstract suspend fun getAllTracks(): List<AudiobookTrackEntity>
-
 }

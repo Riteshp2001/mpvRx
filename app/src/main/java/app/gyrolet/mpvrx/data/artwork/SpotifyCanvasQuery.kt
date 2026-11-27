@@ -32,41 +32,58 @@ internal object SpotifyCanvasQuery {
   /** The `canvas` query's hash as of January 2026. */
   const val KNOWN_CANVAS_HASH = "575138ab27cd5c1b3e54da54d0a7cc8d85485402de26340c2145f0f6bb5e7a9f"
 
-  private val json = Json { ignoreUnknownKeys = true; isLenient = true }
-
-  fun requestBody(trackUri: String, hash: String): String = buildJsonObject {
-    put("operationName", OPERATION)
-    putJsonObject("variables") { put("trackUri", trackUri) }
-    putJsonObject("extensions") {
-      putJsonObject("persistedQuery") {
-        put("version", 1)
-        put("sha256Hash", hash)
-      }
+  private val json =
+    Json {
+      ignoreUnknownKeys = true
+      isLenient = true
     }
-  }.toString()
+
+  fun requestBody(
+    trackUri: String,
+    hash: String,
+  ): String =
+    buildJsonObject {
+      put("operationName", OPERATION)
+      putJsonObject("variables") { put("trackUri", trackUri) }
+      putJsonObject("extensions") {
+        putJsonObject("persistedQuery") {
+          put("version", 1)
+          put("sha256Hash", hash)
+        }
+      }
+    }.toString()
 
   sealed interface Answer {
-    data class Found(val url: String) : Answer
+    data class Found(
+      val url: String,
+    ) : Answer
 
     /** Spotify answered without a video this can play (no canvas, or a still image). */
-    data class NoCanvas(val detail: String) : Answer
+    data class NoCanvas(
+      val detail: String,
+    ) : Answer
 
     /** The query itself failed; a stale persisted-query hash is worth looking up again once. */
-    data class Failed(val reason: String, val staleHash: Boolean = false) : Answer
+    data class Failed(
+      val reason: String,
+      val staleHash: Boolean = false,
+    ) : Answer
   }
 
   /** Reads `data.trackUnion.canvas.url` out of an answer. */
   fun parse(body: String): Answer {
-    val root = runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull()
-      ?: return Answer.Failed("not JSON")
+    val root =
+      runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull()
+        ?: return Answer.Failed("not JSON")
     val errors = (root["errors"] as? JsonArray)?.mapNotNull { (it as? JsonObject)?.text("message") }.orEmpty()
     val data = root["data"] as? JsonObject
     if (data == null) {
       val reason = errors.joinToString("; ").ifBlank { "no data" }
       return Answer.Failed(reason, staleHash = errors.any { it.contains("PersistedQueryNotFound", ignoreCase = true) })
     }
-    val canvas = (data["trackUnion"] as? JsonObject)?.get("canvas") as? JsonObject
-      ?: return Answer.NoCanvas("canvas null")
+    val canvas =
+      (data["trackUnion"] as? JsonObject)?.get("canvas") as? JsonObject
+        ?: return Answer.NoCanvas("canvas null")
     val detail = "type=${canvas.text("type")} url=${canvas.text("url")}"
     val url = canvas.text("url")?.takeIf { it.startsWith("https://") } ?: return Answer.NoCanvas(detail)
     // Some canvases are still images; only video loops are played.
@@ -80,11 +97,22 @@ internal object SpotifyCanvasQuery {
   private val OPERATION_DECLARATION =
     Regex("""["'](\w+)["']\s*,\s*["']query["']\s*,\s*["']([0-9a-f]{64})["']""")
 
-  fun findQueryHash(script: String, operation: String = OPERATION): String? =
-    OPERATION_DECLARATION.findAll(script).firstOrNull { it.groupValues[1] == operation }?.groupValues?.get(2)
+  fun findQueryHash(
+    script: String,
+    operation: String = OPERATION,
+  ): String? =
+    OPERATION_DECLARATION
+      .findAll(script)
+      .firstOrNull { it.groupValues[1] == operation }
+      ?.groupValues
+      ?.get(2)
 
   fun webPlayerScripts(html: String): List<String> =
-    WEB_PLAYER_SCRIPT.findAll(html).map { it.value }.distinct().toList()
+    WEB_PLAYER_SCRIPT
+      .findAll(html)
+      .map { it.value }
+      .distinct()
+      .toList()
 
   private val WEB_PLAYER_SCRIPT =
     Regex("""https://open\.spotifycdn\.com/cdn/build/web-player/[A-Za-z0-9._~-]+\.js""")
@@ -95,6 +123,7 @@ internal object SpotifyCanvasQuery {
     private val now: () -> Long = System::currentTimeMillis,
   ) {
     @Volatile private var hash: String? = null
+
     @Volatile private var checkedAt = 0L
 
     suspend fun canvasHash(forceRefresh: Boolean = false): String {

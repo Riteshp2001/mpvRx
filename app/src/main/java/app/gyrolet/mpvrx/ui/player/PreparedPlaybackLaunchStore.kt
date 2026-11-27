@@ -20,7 +20,9 @@ internal data class PreparedPlaybackLaunch(
 )
 
 internal sealed interface PreparedPlaybackLaunchResult {
-  data class Accepted(val launch: PreparedPlaybackLaunch) : PreparedPlaybackLaunchResult
+  data class Accepted(
+    val launch: PreparedPlaybackLaunch,
+  ) : PreparedPlaybackLaunchResult
 
   data object Missing : PreparedPlaybackLaunchResult
 

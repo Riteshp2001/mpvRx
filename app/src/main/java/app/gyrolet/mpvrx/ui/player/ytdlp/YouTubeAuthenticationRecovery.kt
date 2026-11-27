@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.player.ytdlp
 
 import android.content.ActivityNotFoundException
@@ -38,11 +38,11 @@ import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import app.gyrolet.mpvrx.utils.logging.Log
-import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
+import java.io.IOException
 
 @Composable
 internal fun YouTubeAuthenticationRecovery(onRetry: (Long) -> Boolean) {
@@ -50,9 +50,12 @@ internal fun YouTubeAuthenticationRecovery(onRetry: (Long) -> Boolean) {
   val session by PlaybackSession.state.collectAsStateWithLifecycle()
   var dismissedGeneration by rememberSaveable { mutableLongStateOf(-1L) }
   var busy by remember(session.generation) { mutableStateOf(false) }
-  if (session.phase != PlaybackPhase.ERROR || !session.youtubeAuthenticationRequired ||
+  if (session.phase != PlaybackPhase.ERROR ||
+    !session.youtubeAuthenticationRequired ||
     dismissedGeneration == session.generation
-  ) return
+  ) {
+    return
+  }
 
   AppAlertDialog(
     onDismissRequest = { if (!busy) dismissedGeneration = session.generation },

@@ -39,7 +39,8 @@ internal object TreeViewCache {
         throw IllegalStateException("Could not commit tree cache")
       }
       // Badge/scan settings can create many distinct keys over time. Bound on-disk snapshots.
-      file.parentFile?.listFiles { child -> child.extension == "tree" }
+      file.parentFile
+        ?.listFiles { child -> child.extension == "tree" }
         ?.sortedByDescending { it.lastModified() }
         ?.drop(8)
         ?.forEach { it.delete() }
@@ -67,8 +68,16 @@ internal object TreeViewCache {
 
   fun clear(context: Context) {
     runCatching {
-      context.noBackupFilesDir.resolve(DIR).takeIf { it.isDirectory }?.listFiles()?.forEach { it.delete() }
-      context.cacheDir.resolve(DIR).takeIf { it.isDirectory }?.listFiles()?.forEach { it.delete() }
+      context.noBackupFilesDir
+        .resolve(DIR)
+        .takeIf { it.isDirectory }
+        ?.listFiles()
+        ?.forEach { it.delete() }
+      context.cacheDir
+        .resolve(DIR)
+        .takeIf { it.isDirectory }
+        ?.listFiles()
+        ?.forEach { it.delete() }
     }.onFailure { error ->
       Log.w(TAG, "Could not clear tree cache", error)
     }

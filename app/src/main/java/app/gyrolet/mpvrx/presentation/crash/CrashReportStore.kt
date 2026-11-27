@@ -112,7 +112,9 @@ internal object CrashReportStore {
     val directory = reportDirectory(context)
     val existing = pendingReport(context)
     val previous =
-      existing?.let { runCatching { AtomicFile(File(directory, EXCEPTION_FILE)).readFully().toString(Charsets.UTF_8) }.getOrNull() }
+      existing?.let {
+        runCatching { AtomicFile(File(directory, EXCEPTION_FILE)).readFully().toString(Charsets.UTF_8) }.getOrNull()
+      }
     val reportId = existing?.reportId ?: UUID.randomUUID().toString()
     writeAtomically(File(directory, EXCEPTION_FILE)) { writer ->
       if (previous != null) {
@@ -204,9 +206,10 @@ internal object CrashReportStore {
   ): File {
     val directory = reportDirectory(context)
     val crashId = intent.getStringExtra("crash_report_id").orEmpty()
-    val metadata = runCatching {
-      AtomicFile(File(directory, "metadata.json")).openRead().bufferedReader().use { JSONObject(it.readText()) }
-    }.getOrNull()
+    val metadata =
+      runCatching {
+        AtomicFile(File(directory, "metadata.json")).openRead().bufferedReader().use { JSONObject(it.readText()) }
+      }.getOrNull()
     val reportId = runCatching { UUID.fromString(crashId) }.getOrNull() ?: UUID.randomUUID()
     val report = File(directory, "mpvrx-crash-$reportId.txt")
     val matchingCapture = crashId.isNotBlank() && metadata?.optString("reportId") == crashId
@@ -245,10 +248,17 @@ internal object CrashReportStore {
     }
     writeMetadata(
       directory,
-      (metadata?.takeIf { matchingCapture } ?: JSONObject()).put("reportId", reportId.toString()).put("completed", true),
+      (metadata?.takeIf { matchingCapture } ?: JSONObject())
+        .put(
+          "reportId",
+          reportId.toString(),
+        ).put("completed", true),
     )
-    directory.listFiles { file -> file.name.startsWith("mpvrx-crash-") && file.extension == "txt" }
-      ?.sortedByDescending(File::lastModified)?.drop(5)?.forEach { it.delete() }
+    directory
+      .listFiles { file -> file.name.startsWith("mpvrx-crash-") && file.extension == "txt" }
+      ?.sortedByDescending(File::lastModified)
+      ?.drop(5)
+      ?.forEach { it.delete() }
     return report
   }
 

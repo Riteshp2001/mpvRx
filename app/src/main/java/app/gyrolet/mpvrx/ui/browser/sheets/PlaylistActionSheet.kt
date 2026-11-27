@@ -31,9 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,6 +50,8 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.media.SharedUrlExtractor
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,39 +73,61 @@ fun PlaylistActionSheet(
   val zipScope = rememberCoroutineScope()
   var zipImportJob by remember { mutableStateOf<Job?>(null) }
   var isImportingZip by remember { mutableStateOf(false) }
-  val zipPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-    if (uri != null && !isImportingZip) {
-      isImportingZip = true
-      zipImportJob = zipScope.launch {
-        try {
-          onCreateZipPlaylist(uri).onSuccess {
-            app.gyrolet.mpvrx.ui.components.AppToast.makeText(context, app.gyrolet.mpvrx.R.string.playlist_zip_import_success, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT).show()
-            onDismiss()
-          }.onFailure {
-            app.gyrolet.mpvrx.ui.components.AppToast.makeText(context, app.gyrolet.mpvrx.R.string.playlist_zip_import_failed, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG).show()
+  val zipPickerLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+      if (uri != null && !isImportingZip) {
+        isImportingZip = true
+        zipImportJob =
+          zipScope.launch {
+            try {
+              onCreateZipPlaylist(uri)
+                .onSuccess {
+                  app.gyrolet.mpvrx.ui.components.AppToast
+                    .makeText(
+                      context,
+                      app.gyrolet.mpvrx.R.string.playlist_zip_import_success,
+                      app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
+                    ).show()
+                  onDismiss()
+                }.onFailure {
+                  app.gyrolet.mpvrx.ui.components.AppToast
+                    .makeText(
+                      context,
+                      app.gyrolet.mpvrx.R.string.playlist_zip_import_failed,
+                      app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG,
+                    ).show()
+                }
+            } finally {
+              isImportingZip = false
+            }
           }
-        } finally {
-          isImportingZip = false
+      }
+    }
+  val folderPickerLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+      if (uri != null) {
+        runCatching {
+          context.contentResolver.takePersistableUriPermission(
+            uri,
+            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+          )
+        }.onSuccess {
+          app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
+            .notifyChanged()
+          onDismiss()
+        }.onFailure { error ->
+          app.gyrolet.mpvrx.ui.components.AppToast
+            .makeText(
+              context,
+              context.getString(
+                app.gyrolet.mpvrx.R.string.playlist_local_access_failed,
+                error.localizedMessage.orEmpty(),
+              ),
+              app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG,
+            ).show()
         }
       }
     }
-  }
-  val folderPickerLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-    if (uri != null) {
-      runCatching {
-        context.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-      }.onSuccess {
-        app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.notifyChanged()
-        onDismiss()
-      }.onFailure { error ->
-        app.gyrolet.mpvrx.ui.components.AppToast.makeText(
-          context,
-          context.getString(app.gyrolet.mpvrx.R.string.playlist_local_access_failed, error.localizedMessage.orEmpty()),
-          app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG,
-        ).show()
-      }
-    }
-  }
 
   if (!isOpen) return
 
@@ -115,7 +137,9 @@ fun PlaylistActionSheet(
       onDismiss()
     },
     modifier = modifier,
-    title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_playlist_options),
+    title =
+      androidx.compose.ui.res
+        .stringResource(app.gyrolet.mpvrx.R.string.ui_playlist_options),
     leadingIcon = Icons.RoundedFilled.PlaylistPlay,
   ) {
     Column(
@@ -127,7 +151,11 @@ fun PlaylistActionSheet(
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       Card(
-        onClick = { zipPickerLauncher.launch(arrayOf("application/zip", "application/x-zip-compressed", "application/x-zip", "application/octet-stream")) },
+        onClick = {
+          zipPickerLauncher.launch(
+            arrayOf("application/zip", "application/x-zip-compressed", "application/x-zip", "application/octet-stream"),
+          )
+        },
         enabled = !isImportingZip,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -137,9 +165,16 @@ fun PlaylistActionSheet(
           horizontalArrangement = Arrangement.spacedBy(16.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          Icon(Icons.RoundedFilled.FolderZip, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+          Icon(
+            Icons.RoundedFilled.FolderZip,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp),
+          )
           Text(
-            text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.playlist_add_zip),
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.playlist_add_zip),
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
           )
@@ -283,9 +318,16 @@ fun PlaylistActionSheet(
           horizontalArrangement = Arrangement.spacedBy(16.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          Icon(Icons.RoundedFilled.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+          Icon(
+            Icons.RoundedFilled.Folder,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(24.dp),
+          )
           Text(
-            text = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.playlist_add_local_folder),
+            text =
+              androidx.compose.ui.res
+                .stringResource(app.gyrolet.mpvrx.R.string.playlist_add_local_folder),
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.weight(1f),
@@ -392,15 +434,23 @@ fun PlaylistActionSheet(
         contract = ActivityResultContracts.OpenDocument(),
       ) { uri: Uri? ->
         uri?.let {
-          val permissionGranted = runCatching {
-            context.contentResolver.takePersistableUriPermission(it, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-          }.onFailure { error ->
-            app.gyrolet.mpvrx.ui.components.AppToast.makeText(
-              context,
-              context.getString(app.gyrolet.mpvrx.R.string.playlist_local_access_failed, error.localizedMessage.orEmpty()),
-              app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG,
-            ).show()
-          }.isSuccess
+          val permissionGranted =
+            runCatching {
+              context.contentResolver.takePersistableUriPermission(
+                it,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION,
+              )
+            }.onFailure { error ->
+              app.gyrolet.mpvrx.ui.components.AppToast
+                .makeText(
+                  context,
+                  context.getString(
+                    app.gyrolet.mpvrx.R.string.playlist_local_access_failed,
+                    error.localizedMessage.orEmpty(),
+                  ),
+                  app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG,
+                ).show()
+            }.isSuccess
           if (!permissionGranted) return@rememberLauncherForActivityResult
           isLoading = true
           coroutineScope.launch {
@@ -507,7 +557,7 @@ fun PlaylistActionSheet(
             // Local file picker button
             OutlinedButton(
               onClick = {
-              filePickerLauncher.launch(arrayOf("*/*"))
+                filePickerLauncher.launch(arrayOf("*/*"))
               },
               enabled = !isLoading,
               modifier = Modifier.fillMaxWidth(),

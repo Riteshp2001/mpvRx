@@ -9,8 +9,8 @@
 
 package app.gyrolet.mpvrx.ui.player
 
-import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
+import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import org.koin.core.context.GlobalContext
 
 private const val MIN_SUBTITLE_POSITION = 0
@@ -23,7 +23,10 @@ private val subtitlesPreferences by lazy {
 fun clampSubtitlePosition(position: Int): Int = position.coerceIn(MIN_SUBTITLE_POSITION, MAX_SUBTITLE_POSITION)
 
 /** Let mpv track the video rectangle as its aspect, crop and surface size change. */
-fun subtitleWindowOptions(scaleByWindow: Boolean, isPortrait: Boolean): List<Pair<String, String>> =
+fun subtitleWindowOptions(
+  scaleByWindow: Boolean,
+  isPortrait: Boolean,
+): List<Pair<String, String>> =
   listOf(
     "sub-scale-by-window" to if (scaleByWindow) "yes" else "no",
     // Keep the fixed-size preference meaningful; mpv does not support both scale flags being no.
@@ -31,7 +34,10 @@ fun subtitleWindowOptions(scaleByWindow: Boolean, isPortrait: Boolean): List<Pai
     "sub-use-margins" to if (!isPortrait && scaleByWindow) "yes" else "no",
   )
 
-fun applySubtitleWindowing(isPortrait: Boolean, scaleByWindow: Boolean = subtitlesPreferences.scaleByWindow.get()) {
+fun applySubtitleWindowing(
+  isPortrait: Boolean,
+  scaleByWindow: Boolean = subtitlesPreferences.scaleByWindow.get(),
+) {
   subtitleWindowOptions(scaleByWindow, isPortrait).forEach { (property, value) ->
     if (PlaybackSession.getPropertyString(property) != value) {
       PlaybackSession.setPropertyString(property, value)
@@ -49,27 +55,31 @@ fun getSubtitleGestureRegion(
   val trackId = getTrackSelectionId(target.selectionProperty)
   if (trackId <= 0 || PlaybackSession.getPropertyBoolean("${target.prefix}-visibility") == false) return null
   val secondary = target == SubtitleGestureTarget.Secondary
-  val position = PlaybackSession.getPropertyFloat("${target.prefix}-pos")
-    ?: (if (secondary) subtitlesPreferences.secondarySubPos.get() else subtitlesPreferences.subPos.get()).toFloat()
-  val scale = PlaybackSession.getPropertyFloat("${target.prefix}-scale")
-    ?: if (secondary) subtitlesPreferences.secondarySubScale.get() else subtitlesPreferences.subScale.get()
+  val position =
+    PlaybackSession.getPropertyFloat("${target.prefix}-pos")
+      ?: (if (secondary) subtitlesPreferences.secondarySubPos.get() else subtitlesPreferences.subPos.get()).toFloat()
+  val scale =
+    PlaybackSession.getPropertyFloat("${target.prefix}-scale")
+      ?: if (secondary) subtitlesPreferences.secondarySubScale.get() else subtitlesPreferences.subScale.get()
   val aspect = PlaybackSession.getPropertyDouble("video-params/aspect")?.toFloat() ?: 0f
   val videoHeight = if (aspect > 0f) minOf(screenHeight, screenWidth / aspect) else screenHeight
   val renderHeight = if (renderInVideoFrame) videoHeight else screenHeight
   val renderTop = if (renderInVideoFrame) (screenHeight - renderHeight) / 2f else 0f
-  val fontReferenceHeight = when {
-    PlaybackSession.getPropertyString("sub-scale-by-window") == "no" -> 720f
-    PlaybackSession.getPropertyString("sub-scale-with-window") == "no" -> videoHeight
-    else -> screenHeight
-  }
+  val fontReferenceHeight =
+    when {
+      PlaybackSession.getPropertyString("sub-scale-by-window") == "no" -> 720f
+      PlaybackSession.getPropertyString("sub-scale-with-window") == "no" -> videoHeight
+      else -> screenHeight
+    }
   return estimateSubtitleGestureRegion(
     target = target,
     trackId = trackId,
     // Center holds need position geometry even between subtitle lines. This placeholder is
     // only used for geometry; it is never rendered or included in subtitle hit testing.
-    text = PlaybackSession.getPropertyString("${target.prefix}-text").orEmpty().let {
-      if (includeWhenTextEmpty && it.isBlank()) "M" else it
-    },
+    text =
+      PlaybackSession.getPropertyString("${target.prefix}-text").orEmpty().let {
+        if (includeWhenTextEmpty && it.isBlank()) "M" else it
+      },
     // Center drags must also recover a subtitle positioned beyond the visible frame.
     position = if (includeWhenTextEmpty) position.coerceIn(0f, 100f) else position,
     scale = scale,
@@ -86,16 +96,17 @@ fun getSubtitleGestureRegion(
     if (!overlaysFollowVideoZoom()) return@let region
     region.zoomedAroundCenter(
       videoZoomMultiplier(PlaybackSession.videoZoom.value),
-      PlaybackSession.videoPanX.value, PlaybackSession.videoPanY.value, screenWidth, screenHeight,
+      PlaybackSession.videoPanX.value,
+      PlaybackSession.videoPanY.value,
+      screenWidth,
+      screenHeight,
     )
   }
 }
 
 fun isSecondarySubtitleActive(): Boolean = getTrackSelectionId("secondary-sid") > 0
 
-fun subtitleAssOverrideValue(
-  forceAssOverride: Boolean,
-): String = if (forceAssOverride) "force" else "scale"
+fun subtitleAssOverrideValue(forceAssOverride: Boolean): String = if (forceAssOverride) "force" else "scale"
 
 fun applySubtitleOverrides(forceAssOverride: Boolean) {
   val primaryOverride = subtitleAssOverrideValue(forceAssOverride)
@@ -123,7 +134,12 @@ fun applySubtitleLayout(
 }
 
 /** True when the SurfaceView itself is zoomed, so subtitles and mpv's OSD move with the video. */
-fun overlaysFollowVideoZoom(): Boolean = GlobalContext.get().get<PlayerPreferences>().overlaysFollowVideoZoom.get()
+fun overlaysFollowVideoZoom(): Boolean =
+  GlobalContext
+    .get()
+    .get<PlayerPreferences>()
+    .overlaysFollowVideoZoom
+    .get()
 
 fun applySubtitleBlendMode() {
   val blendMode = subtitleBlendMode()
@@ -138,13 +154,14 @@ fun applySubtitleScales() {
 }
 
 /** Blending into the video would bake subtitle pixels into mpv's own zoom and pan. */
-fun subtitleBlendMode(
-  ambientActive: Boolean = PlaybackSession.isAmbientShaderActive,
-): String {
-  val transformed = !overlaysFollowVideoZoom() && (
-    PlaybackSession.videoZoom.value != 0f ||
-      PlaybackSession.videoPanX.value != 0f || PlaybackSession.videoPanY.value != 0f
-    )
+fun subtitleBlendMode(ambientActive: Boolean = PlaybackSession.isAmbientShaderActive): String {
+  val transformed =
+    !overlaysFollowVideoZoom() &&
+      (
+        PlaybackSession.videoZoom.value != 0f ||
+          PlaybackSession.videoPanX.value != 0f ||
+          PlaybackSession.videoPanY.value != 0f
+      )
   // An OUTPUT Ambient pass remaps video pixels non-uniformly. Subtitle pixels must never enter
   // that pass (gpu and gpu-next blend at different stages). Restore the preference on teardown.
   return if (!ambientActive && !transformed && subtitlesPreferences.blendSubtitlesWithVideo.get()) "video" else "no"

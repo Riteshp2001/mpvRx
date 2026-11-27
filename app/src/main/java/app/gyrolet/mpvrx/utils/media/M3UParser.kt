@@ -15,16 +15,6 @@ import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import app.gyrolet.mpvrx.network.awaitResponse
 import app.gyrolet.mpvrx.ui.player.resolveLocalPath
-import java.io.BufferedReader
-import java.io.File
-import java.io.FilterInputStream
-import java.io.IOException
-import java.io.InputStream
-import java.io.StringReader
-import java.net.URI
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -35,6 +25,16 @@ import okhttp3.Credentials
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.BufferedReader
+import java.io.File
+import java.io.FilterInputStream
+import java.io.IOException
+import java.io.InputStream
+import java.io.StringReader
+import java.net.URI
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
 
 data class M3UPlaylistItem(
   val url: String,
@@ -121,7 +121,12 @@ object M3UParser {
     val originalUrl = url.toHttpUrlOrNull() ?: return error("Invalid playlist URL")
     val username = originalUrl.username
     val password = originalUrl.password
-    val safeUrl = originalUrl.newBuilder().username("").password("").build()
+    val safeUrl =
+      originalUrl
+        .newBuilder()
+        .username("")
+        .password("")
+        .build()
     val request =
       runCatching {
         val builder = Request.Builder().url(safeUrl)
@@ -143,7 +148,13 @@ object M3UParser {
         if (response.body.contentLength() > limits.maxBytes) return error(byteLimitMessage(limits))
         parseFromStream(
           inputStream = response.body.byteStream(),
-          sourceUrl = response.request.url.newBuilder().username("").password("").build().toString(),
+          sourceUrl =
+            response.request.url
+              .newBuilder()
+              .username("")
+              .password("")
+              .build()
+              .toString(),
           limits = limits,
         )
       }
@@ -177,8 +188,9 @@ object M3UParser {
           }.getOrNull() ?: uri.lastPathSegment
             ?: "Local M3U Playlist"
         val playlistName = cleanPlaylistName(decode(rawFilename), "Local M3U Playlist")
-        val stream = localFile?.inputStream() ?: context.contentResolver.openInputStream(uri)
-          ?: return@withContext error("Failed to open file")
+        val stream =
+          localFile?.inputStream() ?: context.contentResolver.openInputStream(uri)
+            ?: return@withContext error("Failed to open file")
 
         parseFromStream(stream, sourceUrl, playlistName)
       } catch (error: CancellationException) {
@@ -409,7 +421,14 @@ object M3UParser {
           .toHttpUrlOrNull()
           ?.resolve(".")
           ?.resolve(resource)
-      if (resolved != null) return resolved.newBuilder().username("").password("").build().toString() + optionSuffix
+      if (resolved != null) {
+        return resolved
+          .newBuilder()
+          .username("")
+          .password("")
+          .build()
+          .toString() + optionSuffix
+      }
     }
 
     if (File(resource).isAbsolute) return normalizeLocalMediaReference(resource + optionSuffix)
@@ -419,12 +438,22 @@ object M3UParser {
         val documentId = DocumentsContract.getDocumentId(sourceUri)
         val parent = documentId.substringAfter(':').substringBeforeLast('/', "")
         val child = Uri.decode(resource)
-        val relativePath = (if (parent.isBlank()) File(child) else File(parent, child)).normalize().invariantSeparatorsPath
+        val relativePath =
+          (
+            if (parent.isBlank()) {
+              File(
+                child,
+              )
+            } else {
+              File(parent, child)
+            }
+          ).normalize().invariantSeparatorsPath
         if (relativePath == ".." || relativePath.startsWith("../")) return ""
-        return DocumentsContract.buildDocumentUriUsingTree(
-          sourceUri,
-          "${documentId.substringBefore(':')}:$relativePath",
-        ).toString() + optionSuffix
+        return DocumentsContract
+          .buildDocumentUriUsingTree(
+            sourceUri,
+            "${documentId.substringBefore(':')}:$relativePath",
+          ).toString() + optionSuffix
       }
     }
 
@@ -459,13 +488,14 @@ object M3UParser {
     val authority = uri.rawAuthority ?: return uri
     if (uri.rawUserInfo == null) return uri
     val safeAuthority = authority.substringAfterLast('@')
-    val rebuilt = buildString {
-      uri.scheme?.let { append(it).append(':') }
-      append("//").append(safeAuthority)
-      append(uri.rawPath.orEmpty())
-      uri.rawQuery?.let { append('?').append(it) }
-      uri.rawFragment?.let { append('#').append(it) }
-    }
+    val rebuilt =
+      buildString {
+        uri.scheme?.let { append(it).append(':') }
+        append("//").append(safeAuthority)
+        append(uri.rawPath.orEmpty())
+        uri.rawQuery?.let { append('?').append(it) }
+        uri.rawFragment?.let { append('#').append(it) }
+      }
     return URI(rebuilt)
   }
 

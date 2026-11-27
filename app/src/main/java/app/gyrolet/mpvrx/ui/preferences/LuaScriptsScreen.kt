@@ -9,12 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import app.gyrolet.mpvrx.ui.tv.tvContentFocus
-
-import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
-import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
-import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,7 +21,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -39,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.lua.LuaRuntimeStatusCard
@@ -50,7 +44,11 @@ import app.gyrolet.mpvrx.ui.lua.rememberLuaScriptsCatalog
 import app.gyrolet.mpvrx.ui.lua.resolveLuaScriptsDir
 import app.gyrolet.mpvrx.ui.lua.shareLuaScriptFile
 import app.gyrolet.mpvrx.ui.lua.toggleLuaScriptSelection
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.tv.tvContentFocus
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalRootBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
@@ -58,6 +56,7 @@ import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import java.io.File
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 @Serializable
 object LuaScriptsScreen : ScrollableSettingsScreen {

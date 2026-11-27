@@ -58,57 +58,61 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @StringRes
-internal fun VideoSwipeAction.labelRes(isWatched: Boolean? = false): Int = when (this) {
-  VideoSwipeAction.None -> R.string.pref_none
-  VideoSwipeAction.ToggleWatched ->
-    when (isWatched) {
-      true -> R.string.video_action_mark_unwatched
-      false -> R.string.video_action_mark_watched
-      null -> R.string.pref_video_swipe_toggle_watched
-    }
-  VideoSwipeAction.AddToPlaylist -> R.string.ui_add_to_playlist
-  VideoSwipeAction.PlayNext -> R.string.video_swipe_play_next
-  VideoSwipeAction.AddToQueue -> R.string.video_swipe_add_queue
-  VideoSwipeAction.Delete -> R.string.delete
-  VideoSwipeAction.MarkNew -> R.string.video_swipe_mark_new
-  VideoSwipeAction.LastPlayed -> R.string.video_swipe_last_played
-  VideoSwipeAction.Finished -> R.string.video_swipe_finished
-  VideoSwipeAction.ClearHistory -> R.string.video_swipe_clear_history
-}
+internal fun VideoSwipeAction.labelRes(isWatched: Boolean? = false): Int =
+  when (this) {
+    VideoSwipeAction.None -> R.string.pref_none
+    VideoSwipeAction.ToggleWatched ->
+      when (isWatched) {
+        true -> R.string.video_action_mark_unwatched
+        false -> R.string.video_action_mark_watched
+        null -> R.string.pref_video_swipe_toggle_watched
+      }
+    VideoSwipeAction.AddToPlaylist -> R.string.ui_add_to_playlist
+    VideoSwipeAction.PlayNext -> R.string.video_swipe_play_next
+    VideoSwipeAction.AddToQueue -> R.string.video_swipe_add_queue
+    VideoSwipeAction.Delete -> R.string.delete
+    VideoSwipeAction.MarkNew -> R.string.video_swipe_mark_new
+    VideoSwipeAction.LastPlayed -> R.string.video_swipe_last_played
+    VideoSwipeAction.Finished -> R.string.video_swipe_finished
+    VideoSwipeAction.ClearHistory -> R.string.video_swipe_clear_history
+  }
 
-internal fun VideoSwipeAction.icon(isWatched: Boolean? = false): AppIcon = when (this) {
-  VideoSwipeAction.None -> Icons.RoundedFilled.Block
-  VideoSwipeAction.ToggleWatched ->
-    if (isWatched == true) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility
-  VideoSwipeAction.AddToPlaylist -> Icons.RoundedFilled.PlaylistAdd
-  VideoSwipeAction.PlayNext -> Icons.RoundedFilled.SkipNext
-  VideoSwipeAction.AddToQueue -> Icons.RoundedFilled.QueueMusic
-  VideoSwipeAction.Delete -> Icons.RoundedFilled.Delete
-  VideoSwipeAction.MarkNew -> Icons.RoundedFilled.NewReleases
-  VideoSwipeAction.LastPlayed -> Icons.RoundedFilled.History
-  VideoSwipeAction.Finished -> Icons.RoundedFilled.CheckCircle
-  VideoSwipeAction.ClearHistory -> Icons.RoundedFilled.Close
-}
-
-@Composable
-internal fun VideoSwipeAction.containerColor(): Color = when (this) {
-  VideoSwipeAction.Delete -> MaterialTheme.colorScheme.errorContainer
-  VideoSwipeAction.ToggleWatched, VideoSwipeAction.Finished -> MaterialTheme.colorScheme.tertiaryContainer
-  VideoSwipeAction.AddToQueue, VideoSwipeAction.PlayNext, VideoSwipeAction.LastPlayed ->
-    MaterialTheme.colorScheme.secondaryContainer
-  VideoSwipeAction.AddToPlaylist, VideoSwipeAction.MarkNew -> MaterialTheme.colorScheme.primaryContainer
-  VideoSwipeAction.None, VideoSwipeAction.ClearHistory -> MaterialTheme.colorScheme.surfaceContainerHighest
-}
+internal fun VideoSwipeAction.icon(isWatched: Boolean? = false): AppIcon =
+  when (this) {
+    VideoSwipeAction.None -> Icons.RoundedFilled.Block
+    VideoSwipeAction.ToggleWatched ->
+      if (isWatched == true) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility
+    VideoSwipeAction.AddToPlaylist -> Icons.RoundedFilled.PlaylistAdd
+    VideoSwipeAction.PlayNext -> Icons.RoundedFilled.SkipNext
+    VideoSwipeAction.AddToQueue -> Icons.RoundedFilled.QueueMusic
+    VideoSwipeAction.Delete -> Icons.RoundedFilled.Delete
+    VideoSwipeAction.MarkNew -> Icons.RoundedFilled.NewReleases
+    VideoSwipeAction.LastPlayed -> Icons.RoundedFilled.History
+    VideoSwipeAction.Finished -> Icons.RoundedFilled.CheckCircle
+    VideoSwipeAction.ClearHistory -> Icons.RoundedFilled.Close
+  }
 
 @Composable
-internal fun VideoSwipeAction.contentColor(): Color = when (this) {
-  VideoSwipeAction.Delete -> MaterialTheme.colorScheme.onErrorContainer
-  VideoSwipeAction.ToggleWatched, VideoSwipeAction.Finished -> MaterialTheme.colorScheme.onTertiaryContainer
-  VideoSwipeAction.AddToQueue, VideoSwipeAction.PlayNext, VideoSwipeAction.LastPlayed ->
-    MaterialTheme.colorScheme.onSecondaryContainer
-  VideoSwipeAction.AddToPlaylist, VideoSwipeAction.MarkNew -> MaterialTheme.colorScheme.onPrimaryContainer
-  VideoSwipeAction.None, VideoSwipeAction.ClearHistory -> MaterialTheme.colorScheme.onSurfaceVariant
-}
+internal fun VideoSwipeAction.containerColor(): Color =
+  when (this) {
+    VideoSwipeAction.Delete -> MaterialTheme.colorScheme.errorContainer
+    VideoSwipeAction.ToggleWatched, VideoSwipeAction.Finished -> MaterialTheme.colorScheme.tertiaryContainer
+    VideoSwipeAction.AddToQueue, VideoSwipeAction.PlayNext, VideoSwipeAction.LastPlayed ->
+      MaterialTheme.colorScheme.secondaryContainer
+    VideoSwipeAction.AddToPlaylist, VideoSwipeAction.MarkNew -> MaterialTheme.colorScheme.primaryContainer
+    VideoSwipeAction.None, VideoSwipeAction.ClearHistory -> MaterialTheme.colorScheme.surfaceContainerHighest
+  }
+
+@Composable
+internal fun VideoSwipeAction.contentColor(): Color =
+  when (this) {
+    VideoSwipeAction.Delete -> MaterialTheme.colorScheme.onErrorContainer
+    VideoSwipeAction.ToggleWatched, VideoSwipeAction.Finished -> MaterialTheme.colorScheme.onTertiaryContainer
+    VideoSwipeAction.AddToQueue, VideoSwipeAction.PlayNext, VideoSwipeAction.LastPlayed ->
+      MaterialTheme.colorScheme.onSecondaryContainer
+    VideoSwipeAction.AddToPlaylist, VideoSwipeAction.MarkNew -> MaterialTheme.colorScheme.onPrimaryContainer
+    VideoSwipeAction.None, VideoSwipeAction.ClearHistory -> MaterialTheme.colorScheme.onSurfaceVariant
+  }
 
 @Composable
 internal fun VideoSwipeSurface(
@@ -142,8 +146,10 @@ internal fun VideoSwipeSurface(
   var dragging by remember(identity) { mutableStateOf(false) }
   var thresholdReached by remember(identity) { mutableStateOf(false) }
   var thresholdFeedbackSent by remember(identity) { mutableStateOf(false) }
-  val canSwipe = enabled && onAction != null &&
-    (leftAction != VideoSwipeAction.None || rightAction != VideoSwipeAction.None)
+  val canSwipe =
+    enabled &&
+      onAction != null &&
+      (leftAction != VideoSwipeAction.None || rightAction != VideoSwipeAction.None)
   val currentAction by rememberUpdatedState(onAction)
   val currentLeft by rememberUpdatedState(leftAction)
   val currentRight by rememberUpdatedState(rightAction)
@@ -167,107 +173,113 @@ internal fun VideoSwipeSurface(
     }
 
   Box(
-    modifier = modifier
-      .semantics { customActions = accessibilityActions }
-      .pointerInput(
-        identity, canSwipe, isTelevision, leftAction, rightAction,
-        leftSwipeZoneFraction, rightSwipeZoneFraction,
-      ) {
-        if (!canSwipe || isTelevision) return@pointerInput
-        val touchSlop = viewConfiguration.touchSlop
+    modifier =
+      modifier
+        .semantics { customActions = accessibilityActions }
+        .pointerInput(
+          identity,
+          canSwipe,
+          isTelevision,
+          leftAction,
+          rightAction,
+          leftSwipeZoneFraction,
+          rightSwipeZoneFraction,
+        ) {
+          if (!canSwipe || isTelevision) return@pointerInput
+          val touchSlop = viewConfiguration.touchSlop
 
-        awaitEachGesture {
-          val down = awaitFirstDown(requireUnconsumed = false)
-          // Geometry comes from this node's own size, so measuring a row never recomposes it. Read
-          // after the down event: returning before any suspension would spin awaitEachGesture.
-          val rowWidth = size.width
-          if (rowWidth <= 0) return@awaitEachGesture
-          val travel = minOf(rowWidth * SWIPE_TRAVEL_FRACTION, SWIPE_MAX_TRAVEL.toPx())
-          val threshold = minOf(travel * 0.7f, 56.dp.toPx())
-          val leftEdge = rowWidth * rightSwipeZoneFraction
-          val rightEdge = rowWidth * (1f - leftSwipeZoneFraction)
-          val startX = down.position.x
-          val canStartRightSwipe = rightAction != VideoSwipeAction.None && startX < leftEdge
-          val canStartLeftSwipe = leftAction != VideoSwipeAction.None && startX >= rightEdge
-          if (!canStartRightSwipe && !canStartLeftSwipe) {
-            return@awaitEachGesture
-          }
+          awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            // Geometry comes from this node's own size, so measuring a row never recomposes it. Read
+            // after the down event: returning before any suspension would spin awaitEachGesture.
+            val rowWidth = size.width
+            if (rowWidth <= 0) return@awaitEachGesture
+            val travel = minOf(rowWidth * SWIPE_TRAVEL_FRACTION, SWIPE_MAX_TRAVEL.toPx())
+            val threshold = minOf(travel * 0.7f, 56.dp.toPx())
+            val leftEdge = rowWidth * rightSwipeZoneFraction
+            val rightEdge = rowWidth * (1f - leftSwipeZoneFraction)
+            val startX = down.position.x
+            val canStartRightSwipe = rightAction != VideoSwipeAction.None && startX < leftEdge
+            val canStartLeftSwipe = leftAction != VideoSwipeAction.None && startX >= rightEdge
+            if (!canStartRightSwipe && !canStartLeftSwipe) {
+              return@awaitEachGesture
+            }
 
-          val pointerId = down.id
-          var totalDeltaX = 0f
-          var totalDeltaY = 0f
-          var dragStarted = false
-          var committedAction: VideoSwipeAction? = null
+            val pointerId = down.id
+            var totalDeltaX = 0f
+            var totalDeltaY = 0f
+            var dragStarted = false
+            var committedAction: VideoSwipeAction? = null
 
-          try {
-            while (true) {
-              val event = awaitPointerEvent()
-              val change = event.changes.firstOrNull { it.id == pointerId } ?: break
-              if (!change.pressed) {
-                break
-              }
-
-              val currentPos = change.position
-              val prevPos = change.previousPosition
-              val deltaX = currentPos.x - prevPos.x
-              val deltaY = currentPos.y - prevPos.y
-
-              totalDeltaX += deltaX
-              totalDeltaY += deltaY
-
-              if (!dragStarted) {
-                if (change.isConsumed) break
-                if (abs(totalDeltaX) > touchSlop && abs(totalDeltaX) > abs(totalDeltaY)) {
-                  if ((totalDeltaX > 0f && !canStartRightSwipe) || (totalDeltaX < 0f && !canStartLeftSwipe)) {
-                    break
-                  }
-                  dragStarted = true
-                  dragging = true
-                  thresholdReached = false
-                  thresholdFeedbackSent = false
-                  dragOffset = 0f
-                  change.consume()
-                } else if (abs(totalDeltaY) > touchSlop) {
-                  // Vertical scrolling took precedence
+            try {
+              while (true) {
+                val event = awaitPointerEvent()
+                val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                if (!change.pressed) {
                   break
                 }
-              } else {
-                change.consume()
-                val minimum = if (canStartLeftSwipe) -travel else 0f
-                val maximum = if (canStartRightSwipe) travel else 0f
-                dragOffset = (dragOffset + deltaX).coerceIn(minimum, maximum)
 
-                if (!thresholdReached && threshold > 0f && abs(dragOffset) >= threshold) {
-                  thresholdReached = true
-                  if (!thresholdFeedbackSent) {
-                    thresholdFeedbackSent = true
-                    haptics.tick()
+                val currentPos = change.position
+                val prevPos = change.previousPosition
+                val deltaX = currentPos.x - prevPos.x
+                val deltaY = currentPos.y - prevPos.y
+
+                totalDeltaX += deltaX
+                totalDeltaY += deltaY
+
+                if (!dragStarted) {
+                  if (change.isConsumed) break
+                  if (abs(totalDeltaX) > touchSlop && abs(totalDeltaX) > abs(totalDeltaY)) {
+                    if ((totalDeltaX > 0f && !canStartRightSwipe) || (totalDeltaX < 0f && !canStartLeftSwipe)) {
+                      break
+                    }
+                    dragStarted = true
+                    dragging = true
+                    thresholdReached = false
+                    thresholdFeedbackSent = false
+                    dragOffset = 0f
+                    change.consume()
+                  } else if (abs(totalDeltaY) > touchSlop) {
+                    // Vertical scrolling took precedence
+                    break
                   }
-                } else if (abs(dragOffset) < threshold * 0.8f) {
-                  thresholdReached = false
+                } else {
+                  change.consume()
+                  val minimum = if (canStartLeftSwipe) -travel else 0f
+                  val maximum = if (canStartRightSwipe) travel else 0f
+                  dragOffset = (dragOffset + deltaX).coerceIn(minimum, maximum)
+
+                  if (!thresholdReached && threshold > 0f && abs(dragOffset) >= threshold) {
+                    thresholdReached = true
+                    if (!thresholdFeedbackSent) {
+                      thresholdFeedbackSent = true
+                      haptics.tick()
+                    }
+                  } else if (abs(dragOffset) < threshold * 0.8f) {
+                    thresholdReached = false
+                  }
                 }
               }
-            }
 
-            if (dragStarted) {
-              val committedOffset = dragOffset
-              val action = if (committedOffset > 0f) currentRight else currentLeft
-              if (threshold > 0f && abs(committedOffset) >= threshold && action != VideoSwipeAction.None) {
-                committedAction = action
+              if (dragStarted) {
+                val committedOffset = dragOffset
+                val action = if (committedOffset > 0f) currentRight else currentLeft
+                if (threshold > 0f && abs(committedOffset) >= threshold && action != VideoSwipeAction.None) {
+                  committedAction = action
+                }
+              }
+            } finally {
+              // Also runs when a preference change restarts this block mid-swipe.
+              if (dragStarted) {
+                dragging = false
+                dragOffset = 0f
+                thresholdReached = false
+                thresholdFeedbackSent = false
               }
             }
-          } finally {
-            // Also runs when a preference change restarts this block mid-swipe.
-            if (dragStarted) {
-              dragging = false
-              dragOffset = 0f
-              thresholdReached = false
-              thresholdFeedbackSent = false
-            }
+            committedAction?.let { action -> currentAction?.invoke(action) }
           }
-          committedAction?.let { action -> currentAction?.invoke(action) }
-        }
-      },
+        },
   ) {
     // The revealed action is only composed while a swipe shows it; idle rows skip its text layout.
     if (dragging || displayOffset != 0f) {
@@ -283,25 +295,28 @@ internal fun VideoSwipeSurface(
         scope = animationScope,
       )
       Box(
-        modifier = Modifier.matchParentSize().clearAndSetSemantics { }
-          .drawWithContent {
-            val left = if (displayOffset < 0f) size.width + displayOffset else 0f
-            val right = if (displayOffset > 0f) displayOffset else size.width
-            if (abs(displayOffset) > 0f) clipRect(left = left, right = right) { this@drawWithContent.drawContent() }
-          }.background(background, shape),
+        modifier =
+          Modifier
+            .matchParentSize()
+            .clearAndSetSemantics { }
+            .drawWithContent {
+              val left = if (displayOffset < 0f) size.width + displayOffset else 0f
+              val right = if (displayOffset > 0f) displayOffset else size.width
+              if (abs(displayOffset) > 0f) clipRect(left = left, right = right) { this@drawWithContent.drawContent() }
+            }.background(background, shape),
       ) {
         Column(
-          modifier = Modifier
-            .align(if (displayOffset >= 0f) AbsoluteAlignment.CenterLeft else AbsoluteAlignment.CenterRight)
-            .layout { measurable, constraints ->
-              val travelWidth =
-                minOf(constraints.maxWidth * SWIPE_TRAVEL_FRACTION, SWIPE_MAX_TRAVEL.toPx())
-                  .roundToInt()
-                  .coerceIn(constraints.minWidth, constraints.maxWidth)
-              val placeable = measurable.measure(constraints.copy(minWidth = travelWidth, maxWidth = travelWidth))
-              layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
-            }
-            .padding(horizontal = 6.dp, vertical = 4.dp),
+          modifier =
+            Modifier
+              .align(if (displayOffset >= 0f) AbsoluteAlignment.CenterLeft else AbsoluteAlignment.CenterRight)
+              .layout { measurable, constraints ->
+                val travelWidth =
+                  minOf(constraints.maxWidth * SWIPE_TRAVEL_FRACTION, SWIPE_MAX_TRAVEL.toPx())
+                    .roundToInt()
+                    .coerceIn(constraints.minWidth, constraints.maxWidth)
+                val placeable = measurable.measure(constraints.copy(minWidth = travelWidth, maxWidth = travelWidth))
+                layout(placeable.width, placeable.height) { placeable.placeRelative(0, 0) }
+              }.padding(horizontal = 6.dp, vertical = 4.dp),
           horizontalAlignment = Alignment.CenterHorizontally,
           verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -309,10 +324,11 @@ internal fun VideoSwipeSurface(
             imageVector = revealedAction.icon(isWatched),
             contentDescription = null,
             tint = revealedAction.contentColor(),
-            modifier = Modifier.size(24.dp).graphicsLayer {
-              scaleX = iconScale
-              scaleY = iconScale
-            },
+            modifier =
+              Modifier.size(24.dp).graphicsLayer {
+                scaleX = iconScale
+                scaleY = iconScale
+              },
           )
           Text(
             text = stringResource(revealedAction.labelRes(isWatched)),

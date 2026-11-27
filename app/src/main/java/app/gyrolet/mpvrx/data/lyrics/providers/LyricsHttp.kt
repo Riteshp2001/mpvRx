@@ -15,8 +15,8 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.AbstractCoroutineContextElement
@@ -25,6 +25,7 @@ import kotlin.coroutines.CoroutineContext
 /** Shared by a provider's child requests, including its mirror race. */
 internal class LyricsRequestStatus : AbstractCoroutineContextElement(Key) {
   companion object Key : CoroutineContext.Key<LyricsRequestStatus>
+
   val failed = AtomicBoolean(false)
 }
 
@@ -129,8 +130,7 @@ private suspend fun lyricsCall(
 private suspend fun execute(
   client: OkHttpClient,
   request: Request,
-): String? =
-  client.newCall(request).awaitResponse().use { response -> readLyricsResponse(response) }
+): String? = client.newCall(request).awaitResponse().use { response -> readLyricsResponse(response) }
 
 internal suspend fun readLyricsResponse(response: Response): String? {
   val request = response.request
@@ -149,9 +149,13 @@ internal suspend fun readLyricsResponse(response: Response): String? {
       null
     } else {
       val text = body.string().takeIf { it.isNotBlank() }
-      if (text != null && text.trimStart().startsWith("<") &&
-        (text.contains("<title>Site Unavailable</title>", ignoreCase = true) ||
-          text.contains("<title>Just a moment...", ignoreCase = true))) {
+      if (text != null &&
+        text.trimStart().startsWith("<") &&
+        (
+          text.contains("<title>Site Unavailable</title>", ignoreCase = true) ||
+            text.contains("<title>Just a moment...", ignoreCase = true)
+        )
+      ) {
         recordLyricsFailure()
         Log.w("LyricsHttp", "${request.url.host}: access page instead of content")
         null

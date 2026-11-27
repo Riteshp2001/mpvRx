@@ -25,18 +25,24 @@ class MediaStoreLiveMonitor(
 ) {
   private val handler = Handler(Looper.getMainLooper())
   private var publishPending = false
-  private val publish = Runnable {
-    publishPending = false
-    MediaLibraryEvents.notifyChanged()
-  }
+  private val publish =
+    Runnable {
+      publishPending = false
+      MediaLibraryEvents.notifyChanged()
+    }
   private var registered = false
   private var lastGeneration: String? = null
   private var hasStarted = false
   private var sessionId = 0
-  private val observer = object : ContentObserver(handler) {
-    override fun onChange(selfChange: Boolean) = schedule()
-    override fun onChange(selfChange: Boolean, uri: android.net.Uri?) = schedule()
-  }
+  private val observer =
+    object : ContentObserver(handler) {
+      override fun onChange(selfChange: Boolean) = schedule()
+
+      override fun onChange(
+        selfChange: Boolean,
+        uri: android.net.Uri?,
+      ) = schedule()
+    }
 
   private fun schedule() {
     // Bound the delay even while a large extraction keeps writing media rows.

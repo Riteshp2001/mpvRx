@@ -16,8 +16,6 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
-import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -56,7 +54,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
@@ -73,15 +70,11 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
-import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 import androidx.compose.material3.Surface
-import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -111,8 +104,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.domain.media.model.Video
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
@@ -123,6 +117,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.Locale
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
+import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
+import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 
 private enum class CompressorScreenState {
   CONFIG,
@@ -1346,7 +1346,8 @@ private fun CompressorProgressSurface(
           }
           if (state.progressAvailable) {
             Text(
-              text = "Overall ${(state.progress * 100f).toInt()}% - Current ${(state.currentItemProgress * 100f).toInt()}%",
+              text =
+                "Overall ${(state.progress * 100f).toInt()}% - Current ${(state.currentItemProgress * 100f).toInt()}%",
               style = MaterialTheme.typography.labelMedium,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
               modifier =

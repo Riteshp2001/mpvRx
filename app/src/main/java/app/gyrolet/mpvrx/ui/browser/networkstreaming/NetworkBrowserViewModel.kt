@@ -32,17 +32,17 @@ import app.gyrolet.mpvrx.preferences.SortOrder
 import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.player.NetworkPlaybackSource
 import app.gyrolet.mpvrx.ui.player.PlaybackItem
-import app.gyrolet.mpvrx.ui.player.PreparedPlaybackLaunchStore
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
+import app.gyrolet.mpvrx.ui.player.PreparedPlaybackLaunchStore
 import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.M3UParseResult
 import app.gyrolet.mpvrx.utils.media.M3UParser
 import app.gyrolet.mpvrx.utils.media.M3UPlaylistItem
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,11 +51,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.net.URI
+import kotlin.coroutines.coroutineContext
 
 private val NETWORK_M3U_MIME_TYPES =
   setOf(
@@ -104,49 +104,53 @@ class NetworkBrowserViewModel(
   fun loadFiles() {
     pendingListing?.cancel()
     // Assign ownership before Main.immediate can run even a synchronous failure to completion.
-    val request = viewModelScope.launch(start = CoroutineStart.LAZY) {
-      _isLoading.value = true
-      _error.value = null
+    val request =
+      viewModelScope.launch(start = CoroutineStart.LAZY) {
+        _isLoading.value = true
+        _error.value = null
 
-      try {
-        val connection =
-          repository.getConnectionById(connectionId)
-            ?: throw Exception("Connection not found")
-        _connection.value = connection
+        try {
+          val connection =
+            repository.getConnectionById(connectionId)
+              ?: throw Exception("Connection not found")
+          _connection.value = connection
 
-        repository
-          .listFiles(connection, currentPath)
-          .onSuccess { fileList ->
-            coroutineContext.ensureActive()
-            _files.value = if (connection.protocol == NetworkProtocol.DLNA &&
-              DlnaPath.isOrderedContainer(NetworkPath.from(currentPath))) {
-              fileList
-            } else
-              // A stable base order for consumers that do not re-sort. Display order is applied in
-              // NetworkBrowserScreen and the playback queue re-sorts in
-              // currentDirectoryPlayableFiles, so the preference-based sort that used to run here
-              // was always overwritten.
-              fileList.sortedWith(
-                compareBy<NetworkFile> { !it.isDirectory }.thenBy { it.name.lowercase() },
-              )
-          }.onFailure { e ->
-            if (e is CancellationException) throw e
-            coroutineContext.ensureActive()
-            // Do not keep presenting old folder contents after a failed refresh.
-            _files.value = emptyList()
-            _error.value = e.message ?: "Unknown error"
-          }
-      } catch (cancellation: CancellationException) {
-        throw cancellation
-      } catch (e: Exception) {
-        coroutineContext.ensureActive()
-        _files.value = emptyList()
-        _error.value = e.message ?: "Unknown error"
-      } finally {
-        // The cancelled request may finish after its replacement starts.
-        if (pendingListing === coroutineContext[Job]) _isLoading.value = false
+          repository
+            .listFiles(connection, currentPath)
+            .onSuccess { fileList ->
+              coroutineContext.ensureActive()
+              _files.value =
+                if (connection.protocol == NetworkProtocol.DLNA &&
+                  DlnaPath.isOrderedContainer(NetworkPath.from(currentPath))
+                ) {
+                  fileList
+                } else {
+                  // A stable base order for consumers that do not re-sort. Display order is applied in
+                  // NetworkBrowserScreen and the playback queue re-sorts in
+                  // currentDirectoryPlayableFiles, so the preference-based sort that used to run here
+                  // was always overwritten.
+                  fileList.sortedWith(
+                    compareBy<NetworkFile> { !it.isDirectory }.thenBy { it.name.lowercase() },
+                  )
+                }
+            }.onFailure { e ->
+              if (e is CancellationException) throw e
+              coroutineContext.ensureActive()
+              // Do not keep presenting old folder contents after a failed refresh.
+              _files.value = emptyList()
+              _error.value = e.message ?: "Unknown error"
+            }
+        } catch (cancellation: CancellationException) {
+          throw cancellation
+        } catch (e: Exception) {
+          coroutineContext.ensureActive()
+          _files.value = emptyList()
+          _error.value = e.message ?: "Unknown error"
+        } finally {
+          // The cancelled request may finish after its replacement starts.
+          if (pendingListing === coroutineContext[Job]) _isLoading.value = false
+        }
       }
-    }
     pendingListing = request
     request.start()
   }
@@ -236,17 +240,25 @@ class NetworkBrowserViewModel(
           artist = networkFile.artist,
           mimeType = networkFile.mimeType,
           artworkUri = networkFile.artworkUrl,
-          durationSeconds = (networkFile.durationMs / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt().takeIf { it > 0 },
-          networkSource = NetworkPlaybackSource(
-            connection.id, networkFile.path, networkFile.size.coerceAtLeast(-1L),
-          ),
+          durationSeconds =
+            (networkFile.durationMs / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt().takeIf {
+              it >
+                0
+            },
+          networkSource =
+            NetworkPlaybackSource(
+              connection.id,
+              networkFile.path,
+              networkFile.size.coerceAtLeast(-1L),
+            ),
         )
       }
-    val launchToken = PreparedPlaybackLaunchStore.stage(
-      items = queueItems,
-      currentIndex = playlistIndex,
-      isExplicitQueue = true,
-    )
+    val launchToken =
+      PreparedPlaybackLaunchStore.stage(
+        items = queueItems,
+        currentIndex = playlistIndex,
+        isExplicitQueue = true,
+      )
     val uri = Uri.parse(queueItems[playlistIndex].originalUri)
 
     val intent = Intent(Intent.ACTION_VIEW, uri)
@@ -278,10 +290,15 @@ class NetworkBrowserViewModel(
     }
 
     val playable = _files.value.filter { it.isPlayableNetworkMedia(includeAudio) }
-    val files = if (orderedContainer) playable else playable.sortedForNetworkBrowser(
-      sortType = browserPreferences.networkSortType.get(),
-      sortOrder = browserPreferences.networkSortOrder.get(),
-    )
+    val files =
+      if (orderedContainer) {
+        playable
+      } else {
+        playable.sortedForNetworkBrowser(
+          sortType = browserPreferences.networkSortType.get(),
+          sortOrder = browserPreferences.networkSortOrder.get(),
+        )
+      }
 
     return if (files.any { it.path == clickedFile.path }) {
       files
@@ -298,7 +315,8 @@ class NetworkBrowserViewModel(
       }
     }
 
-    val absolutePath = absoluteConnectionPath(resource, connection) ?: return copy(url = M3UParser.sanitizeSourceUrl(url))
+    val absolutePath =
+      absoluteConnectionPath(resource, connection) ?: return copy(url = M3UParser.sanitizeSourceUrl(url))
     return copy(url = NetworkPlaybackUri.create(connection.id, absolutePath.value))
   }
 
@@ -329,11 +347,21 @@ class NetworkBrowserViewModel(
       if (actualPort != connection.port) return@runCatching null
 
       val root = NetworkPath.from(connection.path).segments
-      val fullPath = uri.path.orEmpty().split('/').filter(String::isNotEmpty)
+      val fullPath =
+        uri.path
+          .orEmpty()
+          .split('/')
+          .filter(String::isNotEmpty)
       val matchesRoot =
         root.indices.all { index ->
           val actual = fullPath.getOrNull(index) ?: return@all false
-          if (connection.protocol == NetworkProtocol.SMB) actual.equals(root[index], ignoreCase = true) else actual == root[index]
+          if (connection.protocol ==
+            NetworkProtocol.SMB
+          ) {
+            actual.equals(root[index], ignoreCase = true)
+          } else {
+            actual == root[index]
+          }
         }
       if (!matchesRoot) return@runCatching null
       NetworkPath.from(fullPath.drop(root.size).joinToString("/"))
@@ -408,7 +436,13 @@ internal fun List<NetworkFile>.sortedForNetworkBrowser(
       NetworkSortType.Title ->
         if (sortOrder.isAscending) sortedBy { it.name.lowercase() } else sortedByDescending { it.name.lowercase() }
       NetworkSortType.Date ->
-        if (sortOrder.isAscending) sortedBy(NetworkFile::lastModified) else sortedByDescending(NetworkFile::lastModified)
+        if (sortOrder.isAscending) {
+          sortedBy(
+            NetworkFile::lastModified,
+          )
+        } else {
+          sortedByDescending(NetworkFile::lastModified)
+        }
       NetworkSortType.Size ->
         if (sortOrder.isAscending) sortedBy(NetworkFile::size) else sortedByDescending(NetworkFile::size)
     }

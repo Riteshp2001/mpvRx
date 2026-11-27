@@ -132,7 +132,6 @@ class NetworkStreamEntryRepository(
     )
   }
 
-
   private fun normalStableKey(canonicalSourceUri: String): String = "normal:$canonicalSourceUri"
 
   private fun torrentStableKey(

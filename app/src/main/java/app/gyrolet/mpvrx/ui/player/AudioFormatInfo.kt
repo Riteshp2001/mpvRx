@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.player
 
 import java.util.Locale
@@ -35,18 +35,19 @@ data class AudioFormatInfo(
   val bitrate: Long?,
 ) {
   internal val artworkLogo: AudioFormatLogo?
-    get() = when {
-      codecLabel == "DOLBY ATMOS" -> AudioFormatLogo.DolbyAtmos
-      codecLabel == "DOLBY DIGITAL" -> AudioFormatLogo.DolbyDigital
-      codecLabel.startsWith("DTS") -> AudioFormatLogo.Dts
-      codecLabel == "MPEG-H" -> AudioFormatLogo.Mpegh
-      quality == AudioQuality.Dsd -> AudioFormatLogo.Dsd
-      quality == AudioQuality.HiRes -> AudioFormatLogo.HiRes
-      quality == AudioQuality.Lossless && sampleRate == 44100 && sourceBitDepth == 16 -> AudioFormatLogo.Cd
-      quality == AudioQuality.Lossless -> AudioFormatLogo.Lossless
-      quality == AudioQuality.Lossy -> AudioFormatLogo.Lossy
-      else -> null
-    }
+    get() =
+      when {
+        codecLabel == "DOLBY ATMOS" -> AudioFormatLogo.DolbyAtmos
+        codecLabel == "DOLBY DIGITAL" -> AudioFormatLogo.DolbyDigital
+        codecLabel.startsWith("DTS") -> AudioFormatLogo.Dts
+        codecLabel == "MPEG-H" -> AudioFormatLogo.Mpegh
+        quality == AudioQuality.Dsd -> AudioFormatLogo.Dsd
+        quality == AudioQuality.HiRes -> AudioFormatLogo.HiRes
+        quality == AudioQuality.Lossless && sampleRate == 44100 && sourceBitDepth == 16 -> AudioFormatLogo.Cd
+        quality == AudioQuality.Lossless -> AudioFormatLogo.Lossless
+        quality == AudioQuality.Lossy -> AudioFormatLogo.Lossy
+        else -> null
+      }
 
   fun details(qualityLabel: String): String =
     buildList {
@@ -79,15 +80,41 @@ internal fun resolveAudioFormatInfo(
   val uncompressedPcm = name.startsWith("pcm_") && !name.contains("alaw") && !name.contains("mulaw")
   val lossless =
     name in setOf("flac", "alac", "ape", "tta", "tak", "truehd", "mlp", "wmalossless") ||
-      uncompressedPcm || dtsMasterAudio
+      uncompressedPcm ||
+      dtsMasterAudio
   val lossy =
-    name in setOf(
-      "mp1", "mp2", "mp3", "aac", "aac_latm", "opus", "vorbis", "ac3", "eac3", "e-ac-3", "ac4",
-      "wmav1", "wmav2", "wmapro", "amr_nb", "amr_wb", "speex", "atrac3", "atrac3p",
-      "gsm", "gsm_ms", "ilbc", "pcm_alaw", "pcm_mulaw",
-    ) || (name == "dts" && profileName.isNotBlank() && !dtsMasterAudio)
+    name in
+      setOf(
+        "mp1",
+        "mp2",
+        "mp3",
+        "aac",
+        "aac_latm",
+        "opus",
+        "vorbis",
+        "ac3",
+        "eac3",
+        "e-ac-3",
+        "ac4",
+        "wmav1",
+        "wmav2",
+        "wmapro",
+        "amr_nb",
+        "amr_wb",
+        "speex",
+        "atrac3",
+        "atrac3p",
+        "gsm",
+        "gsm_ms",
+        "ilbc",
+        "pcm_alaw",
+        "pcm_mulaw",
+      ) ||
+      (name == "dts" && profileName.isNotBlank() && !dtsMasterAudio)
   val taggedBitDepth =
-    trackMetadata.orEmpty().asSequence()
+    trackMetadata
+      .orEmpty()
+      .asSequence()
       .filter { (key, _) ->
         key.lowercase(Locale.ROOT) in setOf("bits_per_sample", "bits_per_raw_sample", "bit_depth", "bitdepth")
       }.map { it.value }
@@ -95,34 +122,45 @@ internal fun resolveAudioFormatInfo(
       .mapNotNull { it?.trim()?.toIntOrNull() }
       .firstOrNull { it in 1..64 }
   // pcm_s24le describes the source. audio-params/format=s32/flt describes decoder storage only.
-  val pcmBitDepth = if (uncompressedPcm) PCM_BIT_DEPTH.find(name)?.groupValues?.get(1)?.toIntOrNull() else null
+  val pcmBitDepth =
+    if (uncompressedPcm) {
+      PCM_BIT_DEPTH
+        .find(name)
+        ?.groupValues
+        ?.get(1)
+        ?.toIntOrNull()
+    } else {
+      null
+    }
   val sourceBitDepth = if (lossless) pcmBitDepth ?: taggedBitDepth else null
   val validSampleRate = sampleRate?.takeIf { it > 0 }
-  val quality = when {
-    dsd -> AudioQuality.Dsd
-    lossless && ((validSampleRate ?: 0) > 48000 || (sourceBitDepth ?: 0) > 16) -> AudioQuality.HiRes
-    lossless -> AudioQuality.Lossless
-    lossy -> AudioQuality.Lossy
-    else -> AudioQuality.Unknown
-  }
-  val label = when {
-    atmos -> "DOLBY ATMOS"
-    name == "ac3" -> "DOLBY DIGITAL"
-    name == "eac3" || name == "e-ac-3" -> "DOLBY DIGITAL PLUS"
-    name == "truehd" -> "DOLBY TRUEHD"
-    name == "ac4" -> "DOLBY AC-4"
-    name == "mpegh_3d_audio" || name == "mpegh" -> "MPEG-H"
-    dtsMasterAudio -> "DTS-HD MA"
-    name == "dts" && profileName.contains("dts-hd hra") -> "DTS-HD HRA"
-    name == "dts" -> "DTS"
-    dsd -> "DSD"
-    name.startsWith("pcm_") -> if (uncompressedPcm) "PCM" else "G.711"
-    name == "aac_latm" -> "AAC"
-    name == "wmav1" || name == "wmav2" -> "WMA"
-    name == "wmapro" -> "WMA PRO"
-    name == "wmalossless" -> "WMA LOSSLESS"
-    else -> name.replace('_', ' ').uppercase(Locale.ROOT)
-  }
+  val quality =
+    when {
+      dsd -> AudioQuality.Dsd
+      lossless && ((validSampleRate ?: 0) > 48000 || (sourceBitDepth ?: 0) > 16) -> AudioQuality.HiRes
+      lossless -> AudioQuality.Lossless
+      lossy -> AudioQuality.Lossy
+      else -> AudioQuality.Unknown
+    }
+  val label =
+    when {
+      atmos -> "DOLBY ATMOS"
+      name == "ac3" -> "DOLBY DIGITAL"
+      name == "eac3" || name == "e-ac-3" -> "DOLBY DIGITAL PLUS"
+      name == "truehd" -> "DOLBY TRUEHD"
+      name == "ac4" -> "DOLBY AC-4"
+      name == "mpegh_3d_audio" || name == "mpegh" -> "MPEG-H"
+      dtsMasterAudio -> "DTS-HD MA"
+      name == "dts" && profileName.contains("dts-hd hra") -> "DTS-HD HRA"
+      name == "dts" -> "DTS"
+      dsd -> "DSD"
+      name.startsWith("pcm_") -> if (uncompressedPcm) "PCM" else "G.711"
+      name == "aac_latm" -> "AAC"
+      name == "wmav1" || name == "wmav2" -> "WMA"
+      name == "wmapro" -> "WMA PRO"
+      name == "wmalossless" -> "WMA LOSSLESS"
+      else -> name.replace('_', ' ').uppercase(Locale.ROOT)
+    }
   return AudioFormatInfo(label, quality, validSampleRate, sourceBitDepth, bitrate?.takeIf { it >= 1000 })
 }
 

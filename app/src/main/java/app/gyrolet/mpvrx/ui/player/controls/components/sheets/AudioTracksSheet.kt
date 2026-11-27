@@ -11,9 +11,6 @@ package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import app.gyrolet.mpvrx.ui.theme.appPressFeedback
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -27,11 +24,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Surface
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,19 +43,21 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioChannels
 import app.gyrolet.mpvrx.preferences.AudioPreferences
-import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSectionHeader
 import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.TrackNode
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import kotlinx.collections.immutable.ImmutableList
@@ -94,140 +93,171 @@ fun AudioTracksSheet(
     onDismissRequest = onDismissRequest,
     title = stringResource(R.string.ui_audio_tab),
   ) {
-      LazyColumn(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(bottom = 8.dp),
-      ) {
-        item(key = "add_audio_track") {
-          AddTrackRow(
-            title = stringResource(R.string.player_sheets_add_ext_audio),
-            onClick = onAddAudioTrack,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-            actions = {
-              if (onOpenEqualizerSheet != null) {
-                PlayerSheetAction(
-                  icon = Icons.RoundedFilled.Equalizer,
-                  label = stringResource(R.string.btn_label_equalizer),
-                  onClick = onOpenEqualizerSheet,
-                  enabled = equalizerControlEnabled,
-                )
-              }
+    LazyColumn(
+      modifier = modifier.fillMaxWidth(),
+      contentPadding = PaddingValues(bottom = 8.dp),
+    ) {
+      item(key = "add_audio_track") {
+        AddTrackRow(
+          title = stringResource(R.string.player_sheets_add_ext_audio),
+          onClick = onAddAudioTrack,
+          modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+          actions = {
+            if (onOpenEqualizerSheet != null) {
               PlayerSheetAction(
-                icon = Icons.RoundedFilled.AvTimer,
-                label = stringResource(R.string.player_sheets_audio_delay_card_title),
-                onClick = onOpenDelayPanel,
-                enabled = delayControlEnabled,
+                icon = Icons.RoundedFilled.Equalizer,
+                label = stringResource(R.string.btn_label_equalizer),
+                onClick = onOpenEqualizerSheet,
+                enabled = equalizerControlEnabled,
               )
-            },
-          )
-        }
-        if (embeddedTracks.isNotEmpty()) {
-          item(key = "embedded_audio_tracks_header") {
-            PlayerSheetSectionHeader(stringResource(R.string.player_sheets_embedded_audio_tracks))
-          }
-        }
-        itemsIndexed(embeddedTracks, key = { _, track -> track.id }) { index, track ->
-          AudioTrackCard(
-            track = track,
-            isSelected = track.isSelected,
-            onClick = { onSelect(track) },
-            groupIndex = index,
-            groupSize = embeddedTracks.size,
-            modifier = if (track.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
-          )
-        }
-        if (externalTracks.isNotEmpty()) {
-          item(key = "external_audio_tracks_header") {
-            PlayerSheetSectionHeader(stringResource(R.string.player_sheets_external_audio_tracks))
-          }
-        }
-        itemsIndexed(externalTracks, key = { _, track -> track.id }) { index, track ->
-          AudioTrackCard(
-            track = track,
-            isSelected = track.isSelected,
-            onClick = { onSelect(track) },
-            groupIndex = index,
-            groupSize = externalTracks.size,
-            modifier = if (track.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
-          )
-        }
-        item {
-          Column(modifier = Modifier.fillMaxWidth()) {
-            PlayerSheetSectionHeader(stringResource(R.string.pref_audio_channels))
-            FlowRow(
-              modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-              horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-              AudioChannels.entries.forEach {
-                FilterChip(
-                  selected = audioChannels == it,
-                  enabled = if (it == AudioChannels.ReverseStereo) reverseStereoEnabled else audioChannelsEnabled,
-                  onClick = {
-                    audioPreferences.audioChannels.set(it)
-                    if (it == AudioChannels.ReverseStereo) {
-                      PlaybackSession.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
-                    } else {
-                      PlaybackSession.setPropertyString(it.property, it.value)
-                    }
-                  },
-                  label = { Text(text = stringResource(id = it.title)) },
-                  leadingIcon = null,
-                  colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-                  containerColor = playerSheetSelectionColor(false),
-                  selectedContainerColor = playerSheetSelectionColor(true),
-                  selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                ),
-                )
-              }
             }
+            PlayerSheetAction(
+              icon = Icons.RoundedFilled.AvTimer,
+              label = stringResource(R.string.player_sheets_audio_delay_card_title),
+              onClick = onOpenDelayPanel,
+              enabled = delayControlEnabled,
+            )
+          },
+        )
+      }
+      if (embeddedTracks.isNotEmpty()) {
+        item(key = "embedded_audio_tracks_header") {
+          PlayerSheetSectionHeader(stringResource(R.string.player_sheets_embedded_audio_tracks))
+        }
+      }
+      itemsIndexed(embeddedTracks, key = { _, track -> track.id }) { index, track ->
+        AudioTrackCard(
+          track = track,
+          isSelected = track.isSelected,
+          onClick = { onSelect(track) },
+          groupIndex = index,
+          groupSize = embeddedTracks.size,
+          modifier = if (track.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
+        )
+      }
+      if (externalTracks.isNotEmpty()) {
+        item(key = "external_audio_tracks_header") {
+          PlayerSheetSectionHeader(stringResource(R.string.player_sheets_external_audio_tracks))
+        }
+      }
+      itemsIndexed(externalTracks, key = { _, track -> track.id }) { index, track ->
+        AudioTrackCard(
+          track = track,
+          isSelected = track.isSelected,
+          onClick = { onSelect(track) },
+          groupIndex = index,
+          groupSize = externalTracks.size,
+          modifier = if (track.id == initialTrackId) Modifier.tvInitialFocus(initialFocusRequester) else Modifier,
+        )
+      }
+      item {
+        Column(modifier = Modifier.fillMaxWidth()) {
+          PlayerSheetSectionHeader(stringResource(R.string.pref_audio_channels))
+          FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            AudioChannels.entries.forEach {
+              FilterChip(
+                selected = audioChannels == it,
+                enabled = if (it == AudioChannels.ReverseStereo) reverseStereoEnabled else audioChannelsEnabled,
+                onClick = {
+                  audioPreferences.audioChannels.set(it)
+                  if (it == AudioChannels.ReverseStereo) {
+                    PlaybackSession.setPropertyString(AudioChannels.AutoSafe.property, AudioChannels.AutoSafe.value)
+                  } else {
+                    PlaybackSession.setPropertyString(it.property, it.value)
+                  }
+                },
+                label = { Text(text = stringResource(id = it.title)) },
+                leadingIcon = null,
+                colors =
+                  androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    containerColor = playerSheetSelectionColor(false),
+                    selectedContainerColor = playerSheetSelectionColor(true),
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                  ),
+              )
+            }
+          }
 
-            val volumeNormalization by audioPreferences.volumeNormalization.collectAsState()
-            val drcEnabled by audioPreferences.drcEnabled.collectAsState()
-            val spatialAudio by audioPreferences.spatialAudio.collectAsState()
+          val volumeNormalization by audioPreferences.volumeNormalization.collectAsState()
+          val drcEnabled by audioPreferences.drcEnabled.collectAsState()
+          val spatialAudio by audioPreferences.spatialAudio.collectAsState()
 
-            PlayerSheetSectionHeader(stringResource(R.string.pref_audio_effects))
-            Row(
-              modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp).heightIn(min = 56.dp)
+          PlayerSheetSectionHeader(stringResource(R.string.pref_audio_effects))
+          Row(
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+                .heightIn(min = 56.dp)
                 .animatedPlayerSheetBackground(volumeNormalization, MaterialTheme.shapes.medium)
-                .toggleable(value = volumeNormalization, enabled = audioEffectsEnabled, role = Role.Switch,
-                  onValueChange = audioPreferences.volumeNormalization::set)
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-              horizontalArrangement = Arrangement.spacedBy(16.dp),
-              verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Text(stringResource(R.string.pref_audio_volume_normalization_title), modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge)
-              IconSwitch(checked = volumeNormalization, onCheckedChange = null, enabled = audioEffectsEnabled)
-            }
-            Row(
-              modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp).heightIn(min = 56.dp)
+                .toggleable(
+                  value = volumeNormalization,
+                  enabled = audioEffectsEnabled,
+                  role = Role.Switch,
+                  onValueChange = audioPreferences.volumeNormalization::set,
+                ).padding(horizontal = 20.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text(
+              stringResource(R.string.pref_audio_volume_normalization_title),
+              modifier = Modifier.weight(1f),
+              style = MaterialTheme.typography.bodyLarge,
+            )
+            IconSwitch(checked = volumeNormalization, onCheckedChange = null, enabled = audioEffectsEnabled)
+          }
+          Row(
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+                .heightIn(min = 56.dp)
                 .animatedPlayerSheetBackground(drcEnabled, MaterialTheme.shapes.medium)
-                .toggleable(value = drcEnabled, enabled = audioEffectsEnabled, role = Role.Switch,
-                  onValueChange = audioPreferences.drcEnabled::set)
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-              horizontalArrangement = Arrangement.spacedBy(16.dp),
-              verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Text(stringResource(R.string.pref_audio_drc_title), modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge)
-              IconSwitch(checked = drcEnabled, onCheckedChange = null, enabled = audioEffectsEnabled)
-            }
-            Row(
-              modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 2.dp).heightIn(min = 56.dp)
+                .toggleable(
+                  value = drcEnabled,
+                  enabled = audioEffectsEnabled,
+                  role = Role.Switch,
+                  onValueChange = audioPreferences.drcEnabled::set,
+                ).padding(horizontal = 20.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text(
+              stringResource(R.string.pref_audio_drc_title),
+              modifier = Modifier.weight(1f),
+              style = MaterialTheme.typography.bodyLarge,
+            )
+            IconSwitch(checked = drcEnabled, onCheckedChange = null, enabled = audioEffectsEnabled)
+          }
+          Row(
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 2.dp)
+                .heightIn(min = 56.dp)
                 .animatedPlayerSheetBackground(spatialAudio, MaterialTheme.shapes.medium)
-                .toggleable(value = spatialAudio, enabled = audioEffectsEnabled, role = Role.Switch,
-                  onValueChange = audioPreferences.spatialAudio::set)
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-              horizontalArrangement = Arrangement.spacedBy(16.dp),
-              verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Text(stringResource(R.string.pref_audio_spatial_title), modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge)
-              IconSwitch(checked = spatialAudio, onCheckedChange = null, enabled = audioEffectsEnabled)
-            }
+                .toggleable(
+                  value = spatialAudio,
+                  enabled = audioEffectsEnabled,
+                  role = Role.Switch,
+                  onValueChange = audioPreferences.spatialAudio::set,
+                ).padding(horizontal = 20.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Text(
+              stringResource(R.string.pref_audio_spatial_title),
+              modifier = Modifier.weight(1f),
+              style = MaterialTheme.typography.bodyLarge,
+            )
+            IconSwitch(checked = spatialAudio, onCheckedChange = null, enabled = audioEffectsEnabled)
           }
         }
       }
+    }
   }
 }
 
@@ -253,10 +283,12 @@ fun AudioTrackCard(
     } else {
       MaterialTheme.shapes.medium
     }
-  val containerColor = animatedPlayerSheetSelectionColor(
-    isSelected, frosted = LocalPlayerGlassSurfaceActive.current,
-    label = "audioCardSelection",
-  )
+  val containerColor =
+    animatedPlayerSheetSelectionColor(
+      isSelected,
+      frosted = LocalPlayerGlassSurfaceActive.current,
+      label = "audioCardSelection",
+    )
   val badges = audioTrackBadges(track)
   Surface(
     modifier =
@@ -326,10 +358,14 @@ fun AudioTrackRow(
       MaterialTheme.shapes.medium
     }
   val isFrosted = LocalPlayerGlassSurfaceActive.current
-  val containerColor = animatedPlayerSheetSelectionColor(
-    isSelected, frosted = isFrosted, label = "audioTrackRowSelection",
-    pressed = pressed, enabled = enabled,
-  )
+  val containerColor =
+    animatedPlayerSheetSelectionColor(
+      isSelected,
+      frosted = isFrosted,
+      label = "audioTrackRowSelection",
+      pressed = pressed,
+      enabled = enabled,
+    )
   Surface(
     modifier =
       modifier
@@ -339,8 +375,11 @@ fun AudioTrackRow(
         .appPressFeedback(interactionSource, enabled = enabled, pressedScale = 0.985f, reduceMotion = reducedMotion)
         .clip(shape)
         .selectable(
-          selected = isSelected, enabled = enabled, role = Role.RadioButton,
-          interactionSource = interactionSource, indication = androidx.compose.material3.ripple(),
+          selected = isSelected,
+          enabled = enabled,
+          role = Role.RadioButton,
+          interactionSource = interactionSource,
+          indication = androidx.compose.material3.ripple(),
           onClick = {
             onClick()
             if (!isSelected) haptics.selection(true)
@@ -359,13 +398,23 @@ fun AudioTrackRow(
         Text(
           text = title,
           style = if (isSelected) MaterialTheme.typography.bodyLargeEmphasized else MaterialTheme.typography.bodyLarge,
-          color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+          color =
+            if (isSelected) {
+              MaterialTheme.colorScheme.onSecondaryContainer
+            } else {
+              MaterialTheme.colorScheme.onSurface
+            },
         )
         details?.let { value ->
           Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,
-            color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+            color =
+              if (isSelected) {
+                MaterialTheme.colorScheme.onSecondaryContainer
+              } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+              },
           )
         }
       }

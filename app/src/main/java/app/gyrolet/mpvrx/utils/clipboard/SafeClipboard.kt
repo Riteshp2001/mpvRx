@@ -16,8 +16,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.TransactionTooLargeException
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import java.nio.charset.StandardCharsets
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 object SafeClipboard {
   const val MAX_CLIPBOARD_BYTES: Int = 512 * 1024

@@ -30,4 +30,6 @@ fun resolveSubtitleFontFamily(subtitlesPreferences: SubtitlesPreferences): Strin
 /**
  * Display text for the "Default" subtitle font row.
  */
-fun defaultSubtitleFontDisplayName(@Suppress("UNUSED_PARAMETER") effectiveFamily: String): String = "Default"
+fun defaultSubtitleFontDisplayName(
+  @Suppress("UNUSED_PARAMETER") effectiveFamily: String,
+): String = "Default"

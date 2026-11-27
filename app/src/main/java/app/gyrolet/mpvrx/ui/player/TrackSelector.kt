@@ -15,12 +15,12 @@ import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.utils.logging.Log
-import app.gyrolet.mpvrx.utils.media.normalizePlaybackLanguageTag as languageTag
-import java.util.Locale
-import java.util.MissingResourceException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.util.Locale
+import java.util.MissingResourceException
+import app.gyrolet.mpvrx.utils.media.normalizePlaybackLanguageTag as languageTag
 
 /**
  * Decides audio and subtitle tracks after a file loads, in a fixed order:
@@ -95,44 +95,44 @@ class TrackSelector(
   suspend fun applySavedAudioSelection(
     state: PlaybackStateEntity,
     expectedGeneration: Long = PlaybackSession.state.value.generation,
-  ): Boolean = withContext(Dispatchers.IO) {
-    if (!state.hasManualAudioSelection) return@withContext false
-    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)) {
-      return@withContext false
+  ): Boolean =
+    withContext(Dispatchers.IO) {
+      if (!state.hasManualAudioSelection) return@withContext false
+      if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)) {
+        return@withContext false
+      }
+      val manualId = state.manualAudioId
+      if (manualId < 0) return@withContext false
+      if (manualId == 0) {
+        selectTrack("aid", 0, expectedGeneration, "Saved manual audio-off")
+        return@withContext true
+      }
+      val tracks = awaitTracks(expectedGeneration) ?: return@withContext false
+      // mpv track ids are per type: the video, audio and subtitle lists each number from 1.
+      // The search must stay inside the audio tracks — searching the whole list finds the
+      // video track first whenever the saved id is 1 and rejects a usable audio track.
+      val target = tracks.firstOrNull { it.type == "audio" && it.id == manualId }
+      if (target == null) {
+        Log.d(TAG, "Saved manual audio track $manualId not usable for this load; keeping the record")
+        return@withContext false
+      }
+      selectTrack("aid", manualId, expectedGeneration, "Saved manual audio")
+      true
     }
-    val manualId = state.manualAudioId
-    if (manualId < 0) return@withContext false
-    if (manualId == 0) {
-      selectTrack("aid", 0, expectedGeneration, "Saved manual audio-off")
-      return@withContext true
-    }
-    val tracks = awaitTracks(expectedGeneration) ?: return@withContext false
-    // mpv track ids are per type: the video, audio and subtitle lists each number from 1.
-    // The search must stay inside the audio tracks — searching the whole list finds the
-    // video track first whenever the saved id is 1 and rejects a usable audio track.
-    val target = tracks.firstOrNull { it.type == "audio" && it.id == manualId }
-    if (target == null) {
-      Log.d(TAG, "Saved manual audio track $manualId not usable for this load; keeping the record")
-      return@withContext false
-    }
-    selectTrack("aid", manualId, expectedGeneration, "Saved manual audio")
-    true
-  }
 
   /**
    * The automatic audio correction on its own, for loads that have no Activity restore
    * path (detached playback driven by MediaPlaybackService). Same rules as the audio step
    * of [onFileLoaded]; subtitle selection is not part of it.
    */
-  suspend fun applyAutomaticAudioSelection(
-    expectedGeneration: Long = PlaybackSession.state.value.generation,
-  ) = withContext(Dispatchers.IO) {
-    if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)) {
-      return@withContext
+  suspend fun applyAutomaticAudioSelection(expectedGeneration: Long = PlaybackSession.state.value.generation) =
+    withContext(Dispatchers.IO) {
+      if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AUDIO_TRACK_SELECTION)) {
+        return@withContext
+      }
+      val tracks = awaitTracks(expectedGeneration) ?: return@withContext
+      ensureAudioTrackSelected(tracks, expectedGeneration)
     }
-    val tracks = awaitTracks(expectedGeneration) ?: return@withContext
-    ensureAudioTrackSelected(tracks, expectedGeneration)
-  }
 
   /** Waits for the loaded file's track list and reads it once, as [onFileLoaded] always has. */
   private suspend fun awaitTracks(generation: Long): List<Track>? {
@@ -172,7 +172,10 @@ class TrackSelector(
       }
     }
 
-  private fun ensureAudioTrackSelected(tracks: List<Track>, generation: Long) {
+  private fun ensureAudioTrackSelected(
+    tracks: List<Track>,
+    generation: Long,
+  ) {
     val audioTracks = tracks.filter { it.type == "audio" }
     if (audioTracks.isEmpty()) return
     val currentTrack = audioTracks.firstOrNull { it.id == getTrackSelectionId("aid") }
@@ -182,7 +185,8 @@ class TrackSelector(
     // Keep mpv's own pick when it is already a clean track in any preferred language.
     // This step only corrects automatic results; a restored manual selection never
     // reaches this function (see onFileLoaded's audioAlreadyDecided).
-    if (currentTrack != null && isCleanAudio(currentTrack) &&
+    if (currentTrack != null &&
+      isCleanAudio(currentTrack) &&
       preferences.any { preference -> matchRank(currentTrack, preference) != null }
     ) {
       return
@@ -192,7 +196,8 @@ class TrackSelector(
     // default track wins.
     for (preference in preferences) {
       val match =
-        cleanTracks.mapNotNull { track -> matchRank(track, preference)?.let { track to it } }
+        cleanTracks
+          .mapNotNull { track -> matchRank(track, preference)?.let { track to it } }
           .minWithOrNull(
             compareBy<Pair<Track, Int>> { it.second }
               .thenBy { if (it.first.isDefault) 0 else 1 },
@@ -210,8 +215,7 @@ class TrackSelector(
     selectTrack("aid", fallback.id, generation, "Clean audio fallback")
   }
 
-  private fun isCleanAudio(track: Track): Boolean =
-    ignoredAudioTitles.none { track.title.contains(it) }
+  private fun isCleanAudio(track: Track): Boolean = ignoredAudioTitles.none { track.title.contains(it) }
 
   private fun ensureSubtitleTrackSelected(
     tracks: List<Track>,
@@ -232,9 +236,10 @@ class TrackSelector(
     val subTracks = tracks.filter { it.type == "sub" }
     val configuredPreferences = preferences(subtitlesPreferences.preferredLanguages.get())
     if (hasState && configuredPreferences.isEmpty() && subTracks.any { it.id == current }) return
-    val preferred = configuredPreferences.ifEmpty {
-      preferences(PlaybackSession.getPropertyString("slang").orEmpty()).ifEmpty { listOf("en") }
-    }
+    val preferred =
+      configuredPreferences.ifEmpty {
+        preferences(PlaybackSession.getPropertyString("slang").orEmpty()).ifEmpty { listOf("en") }
+      }
     val anime = detectAnimeContext(tracks, generation)
     val externalTracks = subTracks.filter { it.external }
     val externalFallback =
@@ -254,16 +259,17 @@ class TrackSelector(
 
     // Resolve each preference across both embedded and external tracks before trying the next.
     for (preference in preferred) {
-      val match = subTracks.mapNotNull { track -> matchRank(track, preference)?.let { track to it } }
-        .minWithOrNull(
-          compareBy<Pair<Track, Int>> { if (isCleanSubtitle(it.first)) 0 else 1 }
-            .thenBy { it.second }
-            .thenBy { if (it.first.external) 0 else 1 }
-            .thenBy {
-              if (anime && dialogueTitleKeywords.any { keyword -> it.first.title.contains(keyword) }) 0 else 1
-            }
-            .thenBy { if (it.first.isDefault) 0 else 1 },
-        )?.first
+      val match =
+        subTracks
+          .mapNotNull { track -> matchRank(track, preference)?.let { track to it } }
+          .minWithOrNull(
+            compareBy<Pair<Track, Int>> { if (isCleanSubtitle(it.first)) 0 else 1 }
+              .thenBy { it.second }
+              .thenBy { if (it.first.external) 0 else 1 }
+              .thenBy {
+                if (anime && dialogueTitleKeywords.any { keyword -> it.first.title.contains(keyword) }) 0 else 1
+              }.thenBy { if (it.first.isDefault) 0 else 1 },
+          )?.first
       if (match != null) {
         selectTrack("sid", match.id, generation, "Preferred subtitle: $preference")
         return
@@ -275,19 +281,26 @@ class TrackSelector(
       selectTrack("sid", it.id, generation, "Subtitle default fallback")
       return
     }
-    subTracks.firstOrNull { track ->
-      languageTag(track.lang) == null && isCleanSubtitle(track) &&
-        dialogueTitleKeywords.any { track.title.contains(it) }
-    }?.let {
-      selectTrack("sid", it.id, generation, "Untitled-language dialogue fallback")
-      return
-    }
+    subTracks
+      .firstOrNull { track ->
+        languageTag(track.lang) == null &&
+          isCleanSubtitle(track) &&
+          dialogueTitleKeywords.any { track.title.contains(it) }
+      }?.let {
+        selectTrack("sid", it.id, generation, "Untitled-language dialogue fallback")
+        return
+      }
     subTracks.filter(::isCleanSubtitle).singleOrNull()?.let {
       selectTrack("sid", it.id, generation, "Single clean subtitle fallback")
     }
   }
 
-  private fun selectTrack(property: String, id: Int, generation: Long, reason: String) {
+  private fun selectTrack(
+    property: String,
+    id: Int,
+    generation: Long,
+    reason: String,
+  ) {
     if (!PlaybackSession.isCurrentGeneration(generation) || getTrackSelectionId(property) == id) return
     val value = if (id > 0) id.toString() else "no"
     if (PlaybackSession.commandForGeneration(generation, "set", property, value)) {
@@ -298,10 +311,14 @@ class TrackSelector(
   private fun isCleanSubtitle(track: Track): Boolean =
     !track.forced && !track.hearing && ignoredSubtitleTitles.none { track.title.contains(it) }
 
-  private fun detectAnimeContext(tracks: List<Track>, generation: Long): Boolean {
-    val metadata = PlaybackSession.readLoadedMedia(generation) { reader ->
-      listOf("path", "media-title", "filename").map { reader.string(it).orEmpty().lowercase(Locale.ROOT) }
-    } ?: return false
+  private fun detectAnimeContext(
+    tracks: List<Track>,
+    generation: Long,
+  ): Boolean {
+    val metadata =
+      PlaybackSession.readLoadedMedia(generation) { reader ->
+        listOf("path", "media-title", "filename").map { reader.string(it).orEmpty().lowercase(Locale.ROOT) }
+      } ?: return false
     val (path, title, filename) = metadata
     val description = "$path $title"
     if (listOf("live action", "live-action", "liveaction", "drama", "real person").any { description.contains(it) }) {
@@ -313,7 +330,10 @@ class TrackSelector(
       tracks.any { it.type == "audio" && languageTag(it.lang)?.substringBefore('-') == "ja" }
   }
 
-  private fun matchRank(track: Track, preference: String): Int? {
+  private fun matchRank(
+    track: Track,
+    preference: String,
+  ): Int? {
     if (preference == "*") return 2
     val preferredTag = languageTag(preference)
     if (preferredTag == null) {
@@ -330,33 +350,58 @@ class TrackSelector(
       }
     }
     val locale = Locale.forLanguageTag(preferredTag)
-    val titleKeywords = buildList {
-      add(preference)
-      add(preferredTag)
-      add(preferredTag.substringBefore('-'))
-      add(locale.getDisplayLanguage(Locale.ENGLISH).lowercase(Locale.ROOT))
-      add(locale.getDisplayLanguage(locale).lowercase(Locale.ROOT))
-      try {
-        add(locale.isO3Language)
-      } catch (_: MissingResourceException) {
-        // Unknown locale names remain eligible for literal title matching above.
+    val titleKeywords =
+      buildList {
+        add(preference)
+        add(preferredTag)
+        add(preferredTag.substringBefore('-'))
+        add(locale.getDisplayLanguage(Locale.ENGLISH).lowercase(Locale.ROOT))
+        add(locale.getDisplayLanguage(locale).lowercase(Locale.ROOT))
+        try {
+          add(locale.isO3Language)
+        } catch (_: MissingResourceException) {
+          // Unknown locale names remain eligible for literal title matching above.
+        }
       }
-    }
     return 2.takeIf { SubtitleTitleMatcher.findBestMatchIndex(listOf(track.title), titleKeywords) != null }
   }
 
   private fun preferences(value: String): List<String> =
-    value.split(',').map { it.trim().lowercase(Locale.ROOT) }.filter(String::isNotEmpty).distinct()
+    value
+      .split(',')
+      .map { it.trim().lowercase(Locale.ROOT) }
+      .filter(String::isNotEmpty)
+      .distinct()
 
   private companion object {
     const val TAG = "TrackSelector"
+
     // Substring matches on the lowercased title; the plural forms are listed explicitly so
     // "comments", "descriptions" and "extras" tracks are excluded as well.
     val ignoredAudioTitles =
-      listOf("commentary", "commentaries", "comment", "comments", "description", "descriptions", "adh", "extra", "extras")
+      listOf(
+        "commentary",
+        "commentaries",
+        "comment",
+        "comments",
+        "description",
+        "descriptions",
+        "adh",
+        "extra",
+        "extras",
+      )
     val ignoredSubtitleTitles = listOf("signs", "songs", "lyrics", "forced", "sdh", "colored", "karaoke")
-    val dialogueTitleKeywords = listOf(
-      "subtitle", "dialogue", "dialog", "translation", "english", "main", "script", "full", "caption",
-    )
+    val dialogueTitleKeywords =
+      listOf(
+        "subtitle",
+        "dialogue",
+        "dialog",
+        "translation",
+        "english",
+        "main",
+        "script",
+        "full",
+        "caption",
+      )
   }
 }

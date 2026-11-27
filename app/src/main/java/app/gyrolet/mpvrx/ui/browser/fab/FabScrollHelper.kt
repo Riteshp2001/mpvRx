@@ -73,6 +73,7 @@ object FabScrollHelper {
       )
     }
   }
+
   /**
    * Sets up scroll tracking for both list and grid views to control FAB visibility.
    * On TV the FAB never hides: lists scroll with every D-pad step, and a FAB scaled out of view

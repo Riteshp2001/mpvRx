@@ -36,27 +36,45 @@ internal fun NavigationGlassSurface(
 ) {
   if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
     Box(
-      modifier.clip(shape)
+      modifier
+        .clip(shape)
         .background(surfaceColor.copy(alpha = 1f))
         .navigationGlassRim(glowStrength, shape, connectionProgress),
     )
     return
   }
 
-  val blurStyle = remember(surfaceColor) {
-    HazeBlurStyle {
-      blurRadius(24.dp)
-      backgroundColor(surfaceColor)
-      colorEffects(listOf(HazeColorEffect.tint(Color.Transparent)))
-      noiseFactor(0f)
+  val blurStyle =
+    remember(surfaceColor) {
+      HazeBlurStyle {
+        blurRadius(24.dp)
+        backgroundColor(surfaceColor)
+        colorEffects(listOf(HazeColorEffect.tint(Color.Transparent)))
+        noiseFactor(0f)
+      }
     }
-  }
-  val backing = if (backdrop != null) Modifier.hazeBlur(input = HazeInput.Sources(backdrop), style = blurStyle) else Modifier
-  if (shape == CircleShape && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && backdrop != null && glowStrength > 0f) {
+  val backing =
+    if (backdrop !=
+      null
+    ) {
+      Modifier.hazeBlur(input = HazeInput.Sources(backdrop), style = blurStyle)
+    } else {
+      Modifier
+    }
+  if (shape == CircleShape &&
+    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+    backdrop != null &&
+    glowStrength > 0f
+  ) {
     RefractedNavigationGlass(surfaceColor, glowStrength, modifier, backing)
   } else {
-    Box(modifier.clip(shape).then(backing).background(surfaceColor.copy(alpha = if (backdrop != null) 0.55f else 0.82f))
-      .navigationGlassRim(glowStrength, shape, connectionProgress))
+    Box(
+      modifier
+        .clip(shape)
+        .then(backing)
+        .background(surfaceColor.copy(alpha = if (backdrop != null) 0.55f else 0.82f))
+        .navigationGlassRim(glowStrength, shape, connectionProgress),
+    )
   }
 }
 
@@ -68,28 +86,33 @@ internal fun Modifier.navigationGlassRim(
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
 @Composable
-private fun RefractedNavigationGlass(surfaceColor: Color, glowStrength: Float, modifier: Modifier, backing: Modifier) {
-  val shader = remember { RuntimeShader(NavigationGlassShader) }
-  Box(modifier
-    .layout { measurable, constraints ->
-      val outset = 24.dp.roundToPx()
-      val placeable = measurable.measure(constraints.offset(outset * 2, outset * 2))
-      layout(placeable.width - outset * 2, placeable.height - outset * 2) {
-        placeable.place(-outset, -outset)
-      }
-    }
-    .graphicsLayer {
-      shader.setFloatUniform("resolution", size.width, size.height)
-      shader.setFloatUniform("density", density)
-      shader.setFloatUniform("outset", 24.dp.roundToPx().toFloat())
-      shader.setFloatUniform("glowStrength", glowStrength)
-      shader.setFloatUniform("surfaceTint", surfaceColor.red, surfaceColor.green, surfaceColor.blue)
-      renderEffect = RenderEffect.createRuntimeShaderEffect(shader, "backdrop").asComposeRenderEffect()
-    }
-    .then(backing))
+private fun RefractedNavigationGlass(
+  surfaceColor: Color,
+  glowStrength: Float,
+  modifier: Modifier,
+  backing: Modifier,
+) {
+  val shader = remember { RuntimeShader(NAVIGATION_GLASS_SHADER) }
+  Box(
+    modifier
+      .layout { measurable, constraints ->
+        val outset = 24.dp.roundToPx()
+        val placeable = measurable.measure(constraints.offset(outset * 2, outset * 2))
+        layout(placeable.width - outset * 2, placeable.height - outset * 2) {
+          placeable.place(-outset, -outset)
+        }
+      }.graphicsLayer {
+        shader.setFloatUniform("resolution", size.width, size.height)
+        shader.setFloatUniform("density", density)
+        shader.setFloatUniform("outset", 24.dp.roundToPx().toFloat())
+        shader.setFloatUniform("glowStrength", glowStrength)
+        shader.setFloatUniform("surfaceTint", surfaceColor.red, surfaceColor.green, surfaceColor.blue)
+        renderEffect = RenderEffect.createRuntimeShaderEffect(shader, "backdrop").asComposeRenderEffect()
+      }.then(backing),
+  )
 }
 
-private const val NavigationGlassShader = """
+private const val NAVIGATION_GLASS_SHADER = """
 uniform shader backdrop;
 uniform float2 resolution;
 uniform float density;

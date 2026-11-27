@@ -33,21 +33,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import app.gyrolet.mpvrx.utils.logging.Log
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Surface
-import androidx.compose.material3.VerticalDivider
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -55,14 +46,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import kotlinx.coroutines.delay
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
+import app.gyrolet.mpvrx.utils.logging.Log
 import io.github.rosemoe.sora.event.ContentChangeEvent
 import io.github.rosemoe.sora.event.EditorReleaseEvent
 import io.github.rosemoe.sora.lang.EmptyLanguage
@@ -83,7 +81,9 @@ import io.github.rosemoe.sora.widget.EditorSearcher
 import io.github.rosemoe.sora.widget.component.EditorAutoCompletion
 import io.github.rosemoe.sora.widget.schemes.EditorColorScheme
 import io.github.rosemoe.sora.widget.subscribeAlways
+import kotlinx.coroutines.delay
 import org.eclipse.tm4e.core.registry.IThemeSource
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 @Composable
 fun MpvScriptEditor(
@@ -504,9 +504,10 @@ private class AboveCaretAutoCompletion(
   private val visibleWindow = Rect()
   private val screenLocation = IntArray(2)
   private var showRequested = false
-  private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener {
-    if (isShowing || showRequested) updateCompletionWindowPosition(false)
-  }
+  private val layoutListener =
+    ViewTreeObserver.OnGlobalLayoutListener {
+      if (isShowing || showRequested) updateCompletionWindowPosition(false)
+    }
 
   init {
     codeEditor.viewTreeObserver.addOnGlobalLayoutListener(layoutListener)
@@ -516,13 +517,26 @@ private class AboveCaretAutoCompletion(
   }
 
   override fun updateCompletionWindowPosition(scrollEditor: Boolean) {
-    val fullWidth = completionWndPositionMode == WINDOW_POS_MODE_FULL_WIDTH_ALWAYS ||
-      completionWndPositionMode == WINDOW_POS_MODE_AUTO && codeEditor.width < 500 * codeEditor.dpUnit
-    val desiredWidth = if (fullWidth) codeEditor.width * 7 / 8 else minOf((300 * codeEditor.dpUnit).toInt(), codeEditor.width / 2)
+    val fullWidth =
+      completionWndPositionMode == WINDOW_POS_MODE_FULL_WIDTH_ALWAYS ||
+        completionWndPositionMode == WINDOW_POS_MODE_AUTO &&
+        codeEditor.width < 500 * codeEditor.dpUnit
+    val desiredWidth =
+      if (fullWidth) {
+        codeEditor.width * 7 / 8
+      } else {
+        minOf(
+          (300 * codeEditor.dpUnit).toInt(),
+          codeEditor.width / 2,
+        )
+      }
     setSize(desiredWidth, height)
   }
 
-  override fun setSize(width: Int, height: Int) {
+  override fun setSize(
+    width: Int,
+    height: Int,
+  ) {
     if (!codeEditor.getLocalVisibleRect(visibleEditor)) {
       setMaxHeight(0)
       super.setSize(0, 0)
@@ -534,7 +548,11 @@ private class AboveCaretAutoCompletion(
     val top = maxOf(visibleEditor.top, visibleWindow.top - screenLocation[1])
     val bottom = minOf(visibleEditor.bottom, visibleWindow.bottom - screenLocation[1])
     val cursor = codeEditor.cursor
-    val caretBottom = (codeEditor.layout.getCharLayoutOffset(cursor.rightLine, cursor.rightColumn)[0] - codeEditor.offsetY).toInt()
+    val caretBottom =
+      (
+        codeEditor.layout.getCharLayoutOffset(cursor.rightLine, cursor.rightColumn)[0] -
+          codeEditor.offsetY
+      ).toInt()
     val caretTop = caretBottom - codeEditor.rowHeight
     val gap = (8 * codeEditor.dpUnit).toInt()
     val above = (caretTop - gap - top).coerceAtLeast(0)
@@ -551,8 +569,10 @@ private class AboveCaretAutoCompletion(
     setMaxHeight(available)
     val popupWidth = width.coerceIn(0, visibleEditor.width())
     val popupHeight = height.coerceIn(0, available)
-    val fullWidth = completionWndPositionMode == WINDOW_POS_MODE_FULL_WIDTH_ALWAYS ||
-      completionWndPositionMode == WINDOW_POS_MODE_AUTO && codeEditor.width < 500 * codeEditor.dpUnit
+    val fullWidth =
+      completionWndPositionMode == WINDOW_POS_MODE_FULL_WIDTH_ALWAYS ||
+        completionWndPositionMode == WINDOW_POS_MODE_AUTO &&
+        codeEditor.width < 500 * codeEditor.dpUnit
     val desiredLeft = if (fullWidth) (codeEditor.width - popupWidth) / 2 else codeEditor.updateCursorAnchor().toInt()
     val left = desiredLeft.coerceIn(visibleEditor.left, visibleEditor.right - popupWidth)
     val popupTop = if (placeAbove) caretTop - gap - popupHeight else caretBottom + gap
@@ -671,9 +691,16 @@ private class MpvLanguageWrapper(
       ) {
         Regex("""^\s*(?:--)?([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*([^\s#]*)$""")
           .matchEntire(beforeCaret)
-      } else null
+      } else {
+        null
+      }
     val optionName = assignment?.groupValues?.get(1)
-    val optionValuePrefix = assignment?.groupValues?.get(2)?.substringAfterLast(',').orEmpty()
+    val optionValuePrefix =
+      assignment
+        ?.groupValues
+        ?.get(2)
+        ?.substringAfterLast(',')
+        .orEmpty()
     val inputKeyPosition =
       if (completionMode == MpvCompletionMode.INPUT_CONF) {
         val beforeCaret = beforeCaret.trimStart()

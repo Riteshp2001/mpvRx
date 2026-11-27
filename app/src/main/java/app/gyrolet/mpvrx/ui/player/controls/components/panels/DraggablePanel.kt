@@ -11,7 +11,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
-import app.gyrolet.mpvrx.ui.liquidglass.playerGlassSurfaceEnabled
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -38,8 +37,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,13 +53,14 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.components.PlayerSheetDragHandle
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
+import app.gyrolet.mpvrx.presentation.components.PlayerSheetDragHandle
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetHeader
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
-import app.gyrolet.mpvrx.ui.liquidglass.playerGlassSurface
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
+import app.gyrolet.mpvrx.ui.liquidglass.playerGlassSurface
+import app.gyrolet.mpvrx.ui.liquidglass.playerGlassSurfaceEnabled
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
 import app.gyrolet.mpvrx.ui.tv.isTelevision
 import kotlin.math.roundToInt
@@ -102,23 +102,27 @@ fun DraggablePanel(
     val isPortrait = constraints.maxHeight > constraints.maxWidth
     val freeSpace = (constraints.maxWidth - panelWidth).coerceAtLeast(0)
     val initialLeft =
-      panelAlignment.align(
-        size = IntSize(panelWidth, 0),
-        space = IntSize(constraints.maxWidth, 0),
-        layoutDirection = layoutDirection,
-      ).x
+      panelAlignment
+        .align(
+          size = IntSize(panelWidth, 0),
+          space = IntSize(constraints.maxWidth, 0),
+          layoutDirection = layoutDirection,
+        ).x
     val minOffset = -initialLeft.toFloat()
     val maxOffset = (freeSpace - initialLeft).toFloat()
     val canDrag = !television && freeSpace > 0
     val panelHeight = if (isPortrait) maxHeight * portraitHeightFraction.coerceIn(0.4f, 1f) else maxHeight
-    val dragModifier = if (canDrag) {
-      Modifier.pointerInput(minOffset, maxOffset) {
-        detectHorizontalDragGestures { change, delta ->
-          change.consume()
-          offsetX = (offsetX.coerceIn(minOffset, maxOffset) + delta).coerceIn(minOffset, maxOffset)
+    val dragModifier =
+      if (canDrag) {
+        Modifier.pointerInput(minOffset, maxOffset) {
+          detectHorizontalDragGestures { change, delta ->
+            change.consume()
+            offsetX = (offsetX.coerceIn(minOffset, maxOffset) + delta).coerceIn(minOffset, maxOffset)
+          }
         }
+      } else {
+        Modifier
       }
-    } else Modifier
 
     val colors = panelCardsColors()
     val backdrop = LocalKyantPlayerBackdrop.current
@@ -134,11 +138,9 @@ fun DraggablePanel(
               offsetX.coerceIn(minOffset, maxOffset).roundToInt(),
               0,
             )
-          }
-          .onSizeChanged {
+          }.onSizeChanged {
             panelWidth = it.width
-          }
-          .widthIn(max = maxPanelWidth)
+          }.widthIn(max = maxPanelWidth)
           .height(panelHeight)
           // A hit-test boundary, not a gesture consumer: child lists and sliders own their events.
           .pointerInput(Unit) {}

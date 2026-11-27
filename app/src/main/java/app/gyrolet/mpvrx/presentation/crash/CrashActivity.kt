@@ -15,7 +15,6 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.addCallback
 import androidx.activity.compose.setContent
@@ -39,7 +38,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -51,7 +49,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -88,6 +85,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 class CrashActivity : AppCompatActivity() {
   private var reportFile by mutableStateOf<File?>(null)
@@ -143,8 +143,7 @@ class CrashActivity : AppCompatActivity() {
     }
   }
 
-  private fun deleteDatabase(): Boolean =
-    runCatching { deleteDatabase("mpvrx.db") }.getOrDefault(false)
+  private fun deleteDatabase(): Boolean = runCatching { deleteDatabase("mpvrx.db") }.getOrDefault(false)
 
   private fun copyReport() {
     val report = reportFile ?: return
@@ -196,9 +195,10 @@ class CrashActivity : AppCompatActivity() {
         return
       }
 
-      val file = withContext(Dispatchers.IO) {
-        File(activity.cacheDir, "mpvrx_logs.txt").apply { writeText(concatLogs(deviceInfo, exceptionString, appLog)) }
-      }
+      val file =
+        withContext(Dispatchers.IO) {
+          File(activity.cacheDir, "mpvrx_logs.txt").apply { writeText(concatLogs(deviceInfo, exceptionString, appLog)) }
+        }
       withContext(Dispatchers.Main) { shareReportFile(activity, file) }
     }
 
@@ -208,12 +208,13 @@ class CrashActivity : AppCompatActivity() {
       authority: String = "${activity.packageName}.provider",
     ) {
       val uri = FileProvider.getUriForFile(activity, authority, file)
-      val sendIntent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        clipData = ClipData.newRawUri("mpvRx crash report", uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-      }
+      val sendIntent =
+        Intent(Intent.ACTION_SEND).apply {
+          type = "text/plain"
+          putExtra(Intent.EXTRA_STREAM, uri)
+          clipData = ClipData.newRawUri("mpvRx crash report", uri)
+          addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
       activity.startActivity(Intent.createChooser(sendIntent, activity.getString(R.string.crash_screen_share)))
     }
 
@@ -280,8 +281,11 @@ class CrashActivity : AppCompatActivity() {
       Box(Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.TopCenter) {
         Column(
           modifier =
-            Modifier.widthIn(max = 640.dp).fillMaxSize()
-              .verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
+            Modifier
+              .widthIn(max = 640.dp)
+              .fillMaxSize()
+              .verticalScroll(rememberScrollState())
+              .padding(horizontal = 24.dp, vertical = 16.dp),
           verticalArrangement = Arrangement.spacedBy(16.dp),
           horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -348,7 +352,12 @@ class CrashActivity : AppCompatActivity() {
             SelectionContainer {
               Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                  intent.getStringExtra("crash_exception_class").orEmpty().substringAfterLast('.').ifBlank { "Exception" },
+                  intent
+                    .getStringExtra(
+                      "crash_exception_class",
+                    ).orEmpty()
+                    .substringAfterLast('.')
+                    .ifBlank { "Exception" },
                   style = MaterialTheme.typography.titleMediumEmphasized,
                 )
                 Text(
@@ -398,7 +407,11 @@ class CrashActivity : AppCompatActivity() {
                 Text(stringResource(R.string.crash_screen_share))
               }
               Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                TextButton(onClick = { showDetails = true }, enabled = reportFile != null, modifier = Modifier.weight(1f)) {
+                TextButton(
+                  onClick = { showDetails = true },
+                  enabled = reportFile != null,
+                  modifier = Modifier.weight(1f),
+                ) {
                   Text(stringResource(R.string.crash_screen_details))
                 }
                 TextButton(onClick = ::copyReport, enabled = reportFile != null, modifier = Modifier.weight(1f)) {
@@ -412,7 +425,12 @@ class CrashActivity : AppCompatActivity() {
             Surface(
               modifier = Modifier.fillMaxWidth(),
               shape = MaterialTheme.shapes.extraLarge,
-              color = if (databaseDeleted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
+              color =
+                if (databaseDeleted) {
+                  MaterialTheme.colorScheme.primaryContainer
+                } else {
+                  MaterialTheme.colorScheme.errorContainer
+                },
             ) {
               Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
@@ -421,7 +439,12 @@ class CrashActivity : AppCompatActivity() {
                     resetFailed -> stringResource(R.string.crash_screen_reset_failed)
                     else -> stringResource(R.string.crash_screen_database_hint)
                   },
-                  color = if (databaseDeleted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                  color =
+                    if (databaseDeleted) {
+                      MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                      MaterialTheme.colorScheme.onErrorContainer
+                    },
                 )
                 if (isDatabaseRelated && !databaseDeleted) {
                   TextButton(onClick = { confirmReset = true }, enabled = !resetting) {

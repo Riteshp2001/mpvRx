@@ -25,8 +25,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -51,8 +49,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.entities.PlaylistEntity
@@ -71,14 +69,16 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvContextMenu
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
-import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
-import java.io.File
+import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
+import java.io.File
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 
 /**
  * Card for displaying a playlist item.
@@ -247,8 +247,12 @@ fun PlaylistCard(
     }
   val playlistLabel = stringResource(R.string.ui_playlist)
   val metadata = "$sourceSummary · $playlistLabel"
-  val thumbnailBitmap = remember(resolvedThumbnail, showThumbnails) { resolvedThumbnail?.takeIf { showThumbnails }?.asImageBitmap() }
-  val secondThumbnailBitmap = remember(resolvedSecondThumbnail, showThumbnails) { resolvedSecondThumbnail?.takeIf { showThumbnails }?.asImageBitmap() }
+  val thumbnailBitmap =
+    remember(resolvedThumbnail, showThumbnails) { resolvedThumbnail?.takeIf { showThumbnails }?.asImageBitmap() }
+  val secondThumbnailBitmap =
+    remember(resolvedSecondThumbnail, showThumbnails) {
+      resolvedSecondThumbnail?.takeIf { showThumbnails }?.asImageBitmap()
+    }
   val placeholderIcon =
     when {
       isFavorites && playlist.isAudio -> Icons.RoundedFilled.Favorite
@@ -381,7 +385,9 @@ private suspend fun resolvePlaylistItemArtwork(
     try {
       // A ZIP entry URI separates the archive and the entry with '|', so it stays whole.
       val path =
-        if (app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia.isPlaybackUri(item.filePath)) {
+        if (app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
+            .isPlaybackUri(item.filePath)
+        ) {
           item.filePath
         } else {
           item.filePath.substringBefore('|')
@@ -390,8 +396,15 @@ private suspend fun resolvePlaylistItemArtwork(
         Uri.parse(path).let {
           if (it.scheme.isNullOrBlank()) Uri.fromFile(File(path)) else it
         }
-      if (app.gyrolet.mpvrx.domain.thumbnail.isLocalArtworkSource(path)) {
-        return@withContext thumbnailRepository.getArtwork(path, isAudio = isAudio, widthPx = thumbnailWidthPx, heightPx = thumbnailHeightPx)
+      if (app.gyrolet.mpvrx.domain.thumbnail
+          .isLocalArtworkSource(path)
+      ) {
+        return@withContext thumbnailRepository.getArtwork(
+          path,
+          isAudio = isAudio,
+          widthPx = thumbnailWidthPx,
+          heightPx = thumbnailHeightPx,
+        )
       }
       val suppliedArtwork = EmbeddedArtworkResolver.decodeArtworkUri(context, item.tvgLogo)
       val media =
@@ -480,8 +493,7 @@ private fun YouTubePlaylistGridCard(
         .mediaCardClickable(
           onClick = onClick,
           onLongClick = onLongClick,
-        )
-        .padding(horizontal = 2.dp, vertical = 2.dp),
+        ).padding(horizontal = 2.dp, vertical = 2.dp),
   ) {
     // YouTube's playlist tiles read as a small stack instead of a single flat thumbnail.
     Box(

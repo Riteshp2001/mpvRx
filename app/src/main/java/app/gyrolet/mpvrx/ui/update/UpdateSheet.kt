@@ -11,8 +11,8 @@ package app.gyrolet.mpvrx.ui.update
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,8 +38,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.domain.update.Release
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.tv.tvScrollWhenFocusCannotMove
 import com.mikepenz.markdown.m3.Markdown
@@ -71,13 +71,14 @@ fun UpdateSheet(
   ResponsiveBottomSheet(
     onDismissRequest = onDismiss,
     dismissEnabled = !busy,
-    title = stringResource(
-      when {
-        state.readyToInstall -> R.string.update_ready_to_install
-        latestVersion.isNullOrBlank() -> R.string.pref_section_updates
-        else -> R.string.update_available
-      },
-    ),
+    title =
+      stringResource(
+        when {
+          state.readyToInstall -> R.string.update_ready_to_install
+          latestVersion.isNullOrBlank() -> R.string.pref_section_updates
+          else -> R.string.update_available
+        },
+      ),
     subtitle = latestVersion?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.update_version_format, it) },
     leadingIcon = if (state.readyToInstall) Icons.RoundedFilled.SystemUpdate else Icons.RoundedFilled.NewReleases,
   ) {
@@ -181,14 +182,16 @@ fun UpdateSheet(
               onClick = if (state.readyToInstall) onInstall else onDownload,
               enabled = !state.selecting && !state.checking,
             ) {
-              Text(stringResource(
-                when {
-                  state.awaitingApproval -> R.string.update_confirm_install
-                  state.readyToInstall -> R.string.ui_install
-                  state.downloadError -> R.string.ui_retry
-                  else -> R.string.update_download_and_install
-                },
-              ))
+              Text(
+                stringResource(
+                  when {
+                    state.awaitingApproval -> R.string.update_confirm_install
+                    state.readyToInstall -> R.string.ui_install
+                    state.downloadError -> R.string.ui_retry
+                    else -> R.string.update_download_and_install
+                  },
+                ),
+              )
             }
           }
         }
@@ -322,7 +325,12 @@ private fun formatFileSize(
   size: Long,
   unknownLabel: String,
 ): String =
-  if (size <= 0) unknownLabel else app.gyrolet.mpvrx.utils.storage.VideoScanUtils.formatFileSize(size)
+  if (size <= 0) {
+    unknownLabel
+  } else {
+    app.gyrolet.mpvrx.utils.storage.VideoScanUtils
+      .formatFileSize(size)
+  }
 
 private fun formatDate(dateString: String): String {
   return try {

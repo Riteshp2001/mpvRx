@@ -25,7 +25,9 @@ import app.gyrolet.mpvrx.ui.theme.AppShapeScale
  * The labels are deliberately neither localised nor theme-aware: the badge sits on a photo rather
  * than on app chrome, so it has to stay legible whatever the artwork or active theme underneath.
  */
-enum class NetworkMediaType(val label: String) {
+enum class NetworkMediaType(
+  val label: String,
+) {
   VIDEO("Video"),
   AUDIO("Audio"),
   IMAGE("Img"),

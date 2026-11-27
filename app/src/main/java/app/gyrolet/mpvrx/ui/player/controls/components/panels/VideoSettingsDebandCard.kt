@@ -9,8 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -46,10 +44,11 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.DebandSettings
 import app.gyrolet.mpvrx.ui.player.Debanding
 import app.gyrolet.mpvrx.ui.player.HwPlusGuard
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
-import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import me.zhanghai.compose.preference.ProvidePreferenceLocals
 import org.koin.compose.koinInject

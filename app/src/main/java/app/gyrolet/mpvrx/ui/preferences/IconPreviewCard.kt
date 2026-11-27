@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.preferences
 
 import androidx.compose.foundation.background
@@ -25,11 +25,12 @@ import app.gyrolet.mpvrx.ui.theme.connectedShape
 internal fun IconPreviewCard(content: @Composable ColumnScope.() -> Unit) {
   val colors = MaterialTheme.colorScheme
   Column(
-    modifier = Modifier
-      .fillMaxWidth()
-      .clip(connectedShape(0, 1, ConnectedLayout.Vertical))
-      .background(Brush.linearGradient(listOf(colors.primaryContainer, colors.tertiaryContainer)))
-      .padding(horizontal = 24.dp, vertical = 28.dp),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .clip(connectedShape(0, 1, ConnectedLayout.Vertical))
+        .background(Brush.linearGradient(listOf(colors.primaryContainer, colors.tertiaryContainer)))
+        .padding(horizontal = 24.dp, vertical = 28.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
@@ -37,9 +38,10 @@ internal fun IconPreviewCard(content: @Composable ColumnScope.() -> Unit) {
       stringResource(R.string.app_icon_preview),
       style = MaterialTheme.typography.labelLarge,
       color = colors.onSurfaceVariant,
-      modifier = Modifier
-        .background(colors.surface.copy(alpha = 0.92f), RoundedCornerShape(20.dp))
-        .padding(horizontal = 12.dp, vertical = 6.dp),
+      modifier =
+        Modifier
+          .background(colors.surface.copy(alpha = 0.92f), RoundedCornerShape(20.dp))
+          .padding(horizontal = 12.dp, vertical = 6.dp),
     )
     content()
   }

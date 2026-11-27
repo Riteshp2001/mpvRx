@@ -54,4 +54,3 @@ internal data class HttpByteRange(
     }
   }
 }
-

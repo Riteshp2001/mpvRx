@@ -190,7 +190,9 @@ class OnlineSubtitleFileStore(
   private fun String.normalizedFilePart(): String = lowercase(Locale.ROOT).replace(Regex("""[^\p{L}\p{N}]+"""), "")
 
   private fun mimeForSubtitle(extension: String): String =
-    android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+    android.webkit.MimeTypeMap
+      .getSingleton()
+      .getMimeTypeFromExtension(extension)
       ?: "application/octet-stream"
 
   private companion object {

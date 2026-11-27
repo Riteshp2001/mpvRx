@@ -54,20 +54,22 @@ fun ImageViewerOverlay(
     exit = fadeOut(),
     modifier = modifier,
   ) {
-    val topScrimBrush = remember {
-      Brush.verticalGradient(
-        colors = listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent),
-      )
-    }
+    val topScrimBrush =
+      remember {
+        Brush.verticalGradient(
+          colors = listOf(Color.Black.copy(alpha = 0.6f), Color.Transparent),
+        )
+      }
     Box(modifier = Modifier.fillMaxSize()) {
       // Top gradient scrim with back button, title, rotate button
       Column(
-        modifier = Modifier
-          .fillMaxWidth()
-          .background(topScrimBrush)
-          .statusBarsPadding()
-          .tvOverscanPadding(bottom = false)
-          .padding(horizontal = 8.dp, vertical = 8.dp),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .background(topScrimBrush)
+            .statusBarsPadding()
+            .tvOverscanPadding(bottom = false)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
       ) {
         Row(
           modifier = Modifier.fillMaxWidth(),
@@ -108,14 +110,14 @@ fun ImageViewerOverlay(
           text = "${currentIndex + 1} / $totalCount",
           style = MaterialTheme.typography.labelLarge,
           color = Color.White,
-          modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .padding(bottom = 24.dp)
-            .background(
-              Color.Black.copy(alpha = 0.5f),
-              RoundedCornerShape(12.dp),
-            )
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+          modifier =
+            Modifier
+              .align(Alignment.BottomCenter)
+              .padding(bottom = 24.dp)
+              .background(
+                Color.Black.copy(alpha = 0.5f),
+                RoundedCornerShape(12.dp),
+              ).padding(horizontal = 12.dp, vertical = 6.dp),
         )
       }
     }

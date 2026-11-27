@@ -5,12 +5,12 @@
 package app.gyrolet.mpvrx.ui.browser.components
 
 import android.content.Context
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 import app.gyrolet.mpvrx.ui.player.PlaybackItem
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 enum class QueueInsertion {
   PlayNext,

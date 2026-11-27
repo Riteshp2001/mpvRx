@@ -8,12 +8,12 @@ import android.media.MediaScannerConnection
 import android.os.Environment
 import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
-import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Asks the system media scanner to index files a refresh should show, and waits for it.
@@ -95,15 +95,18 @@ object MediaIndexing {
         listOf(Environment.DIRECTORY_DOWNLOADS, Environment.DIRECTORY_MOVIES, Environment.DIRECTORY_DCIM)
           .map { File(primary, it) }
       val directories =
-        roots + roots.flatMap { root ->
-          root.listFiles { file -> file.isDirectory && !file.name.startsWith('.') }.orEmpty().toList()
-        }
+        roots +
+          roots.flatMap { root ->
+            root.listFiles { file -> file.isDirectory && !file.name.startsWith('.') }.orEmpty().toList()
+          }
       directories
         .flatMap { directory ->
-          directory.listFiles { file ->
-            val age = now - file.lastModified()
-            file.isPlayable() && age in SETTLED_MS..RECENT_WINDOW_MS
-          }.orEmpty().toList()
+          directory
+            .listFiles { file ->
+              val age = now - file.lastModified()
+              file.isPlayable() && age in SETTLED_MS..RECENT_WINDOW_MS
+            }.orEmpty()
+            .toList()
         }.sortedByDescending(File::lastModified)
         .take(MAX_FILES)
         .map(File::getAbsolutePath)

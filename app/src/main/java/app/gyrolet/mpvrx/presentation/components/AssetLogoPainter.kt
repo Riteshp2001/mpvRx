@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 package app.gyrolet.mpvrx.presentation.components
 
@@ -34,30 +34,34 @@ internal val GrayscaleLogoFilter = ColorFilter.colorMatrix(ColorMatrix().apply {
 internal val MediaBadgeLogoHeight = 20.dp
 
 @Composable
-internal fun rememberAssetLogoPainter(path: String): Painter? = key(path) {
-  val assets = LocalContext.current.applicationContext.assets
-  val picture by produceState<Picture?>(logoPictures.get(path), assets, path) {
-    if (value == null) {
-      value = withContext(Dispatchers.IO) {
-        try {
-          logoPictures.get(path) ?: assets.open(path).use { input ->
-            renderLogo(SVG.getFromInputStream(input))
-          }.also { logoPictures.put(path, it) }
-        } catch (error: IOException) {
-          Log.w("AssetLogoPainter", "Unable to read $path", error)
-          null
-        } catch (error: SVGParseException) {
-          Log.w("AssetLogoPainter", "Invalid SVG: $path", error)
-          null
-        } catch (error: IllegalArgumentException) {
-          Log.w("AssetLogoPainter", "Invalid logo bounds: $path", error)
-          null
-        }
+internal fun rememberAssetLogoPainter(path: String): Painter? =
+  key(path) {
+    val assets = LocalContext.current.applicationContext.assets
+    val picture by produceState<Picture?>(logoPictures.get(path), assets, path) {
+      if (value == null) {
+        value =
+          withContext(Dispatchers.IO) {
+            try {
+              logoPictures.get(path) ?: assets
+                .open(path)
+                .use { input ->
+                  renderLogo(SVG.getFromInputStream(input))
+                }.also { logoPictures.put(path, it) }
+            } catch (error: IOException) {
+              Log.w("AssetLogoPainter", "Unable to read $path", error)
+              null
+            } catch (error: SVGParseException) {
+              Log.w("AssetLogoPainter", "Invalid SVG: $path", error)
+              null
+            } catch (error: IllegalArgumentException) {
+              Log.w("AssetLogoPainter", "Invalid logo bounds: $path", error)
+              null
+            }
+          }
       }
     }
+    remember(picture) { picture?.let(::LogoPainter) }
   }
-  remember(picture) { picture?.let(::LogoPainter) }
-}
 
 private fun renderLogo(svg: SVG): Picture {
   val bounds = svg.documentViewBox ?: RectF(0f, 0f, svg.documentWidth, svg.documentHeight)
@@ -107,7 +111,9 @@ private fun renderLogo(svg: SVG): Picture {
   }
 }
 
-private class LogoPainter(private val picture: Picture) : Painter() {
+private class LogoPainter(
+  private val picture: Picture,
+) : Painter() {
   override val intrinsicSize = Size(picture.width.toFloat(), picture.height.toFloat())
 
   override fun DrawScope.onDraw() {

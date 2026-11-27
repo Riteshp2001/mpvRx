@@ -7,7 +7,9 @@ package app.gyrolet.mpvrx.ui.editor
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class HelpEntryKind(val label: String) {
+enum class HelpEntryKind(
+  val label: String,
+) {
   OPTION("mpv.conf Option"),
   COMMAND("Input Command"),
   PROPERTY("Property"),

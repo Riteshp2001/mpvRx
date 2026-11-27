@@ -18,13 +18,21 @@ abstract class SmbRpcExceptionCompatibility : AsmClassVisitorFactory<Instrumenta
   override fun isInstrumentable(classData: ClassData): Boolean =
     classData.className.startsWith("com.rapid7.client.dcerpc.")
 
-  override fun createClassVisitor(classContext: ClassContext, nextClassVisitor: ClassVisitor): ClassVisitor =
-    ClassRemapper(nextClassVisitor, object : Remapper(Opcodes.ASM9) {
-      override fun map(internalName: String): String =
-        if (internalName == "java/rmi/UnmarshalException") {
-          "app/gyrolet/mpvrx/data/network/client/SmbRpcDecodeException"
-        } else internalName
-    })
+  override fun createClassVisitor(
+    classContext: ClassContext,
+    nextClassVisitor: ClassVisitor,
+  ): ClassVisitor =
+    ClassRemapper(
+      nextClassVisitor,
+      object : Remapper(Opcodes.ASM9) {
+        override fun map(internalName: String): String =
+          if (internalName == "java/rmi/UnmarshalException") {
+            "app/gyrolet/mpvrx/data/network/client/SmbRpcDecodeException"
+          } else {
+            internalName
+          }
+      },
+    )
 }
 
 val localProperties =
@@ -76,9 +84,10 @@ androidComponents {
 android {
   namespace = "app.gyrolet.mpvrx"
   compileSdk {
-    version = release(37) {
-      minorApiLevel = 2
-    }
+    version =
+      release(37) {
+        minorApiLevel = 2
+      }
   }
   ndkVersion = "27.3.13750724"
 
@@ -328,20 +337,22 @@ androidComponents {
       }
 
       if (isPlayStoreRelease) {
-        output.versionCode.set(providers.provider {
-          check(runCommand("git rev-parse --is-shallow-repository") == "false") {
-            "Play Store release builds require full Git history (fetch-depth: 0)."
-          }
-          val commitCount = getCommitCount().toIntOrNull()
-          check(commitCount != null && commitCount > 0) {
-            "Cannot determine the Play Store version code without a Git commit count."
-          }
-          val playStoreVersionCode = stableVersionCode.toLong() * 10 + commitCount
-          check(playStoreVersionCode <= 2_100_000_000L) {
-            "Play Store version code exceeds Google Play's limit."
-          }
-          playStoreVersionCode.toInt()
-        })
+        output.versionCode.set(
+          providers.provider {
+            check(runCommand("git rev-parse --is-shallow-repository") == "false") {
+              "Play Store release builds require full Git history (fetch-depth: 0)."
+            }
+            val commitCount = getCommitCount().toIntOrNull()
+            check(commitCount != null && commitCount > 0) {
+              "Cannot determine the Play Store version code without a Git commit count."
+            }
+            val playStoreVersionCode = stableVersionCode.toLong() * 10 + commitCount
+            check(playStoreVersionCode <= 2_100_000_000L) {
+              "Play Store version code exceeds Google Play's limit."
+            }
+            playStoreVersionCode.toInt()
+          },
+        )
       } else {
         output.versionCode.set((output.versionCode.orNull ?: stableVersionCode) * 10 + (abiCodes[abi] ?: 0))
       }

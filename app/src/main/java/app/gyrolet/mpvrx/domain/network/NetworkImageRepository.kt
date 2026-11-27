@@ -12,9 +12,9 @@ package app.gyrolet.mpvrx.domain.network
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import app.gyrolet.mpvrx.utils.memory.BitmapMemoryCache
 import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.utils.device.DevicePerformance
+import app.gyrolet.mpvrx.utils.memory.BitmapMemoryCache
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -75,7 +75,6 @@ class NetworkImageRepository(
   private val context: Context,
   private val networkRepository: NetworkRepository,
 ) {
-
   /** Full-size images cached under [context.cacheDir]/network_images/ */
   private val fullImageDir = File(context.cacheDir, "network_images")
 
@@ -126,56 +125,64 @@ class NetworkImageRepository(
     heightPx: Int,
     /** Re-attempt even if these exact bytes already failed to decode; set by a manual retry. */
     force: Boolean = false,
-  ): Bitmap? = withContext(Dispatchers.IO) {
-    val key = cacheKey(connectionId, file)
-    val memKey = "$key|thumb|$widthPx|$heightPx"
+  ): Bitmap? =
+    withContext(Dispatchers.IO) {
+      val key = cacheKey(connectionId, file)
+      val memKey = "$key|thumb|$widthPx|$heightPx"
 
-    memoryCache.get(memKey)?.let { return@withContext it }
-    if (!force && key in undecodableKeys) return@withContext null
+      memoryCache.get(memKey)?.let { return@withContext it }
+      if (!force && key in undecodableKeys) return@withContext null
 
-    val thumbFile = File(thumbnailDir, "$key.thumb")
-    if (thumbFile.exists() && thumbFile.length() > 0) {
+      val thumbFile = File(thumbnailDir, "$key.thumb")
+      if (thumbFile.exists() && thumbFile.length() > 0) {
+        decodeSemaphore
+          .withPermit {
+            memoryCache.get(memKey) ?: scaleToRequest(thumbFile, widthPx, heightPx)?.also {
+              memoryCache.put(memKey, it)
+            }
+          }?.let {
+            return@withContext it
+          }
+      }
+
+      val fullFile = getFullImageFile(connectionId, file) ?: return@withContext null
+
       decodeSemaphore.withPermit {
-        memoryCache.get(memKey) ?: scaleToRequest(thumbFile, widthPx, heightPx)?.also {
-          memoryCache.put(memKey, it)
+        memoryCache.get(memKey)?.let { return@withPermit it }
+        // Generate at a size that serves every caller, then hand this caller its exact size.
+        val stored = decodeScaledBitmap(fullFile, THUMBNAIL_STORE_MIN_EDGE, THUMBNAIL_STORE_MIN_EDGE)
+        if (stored == null) {
+          // A null here is either an unreadable format or a transient allocation failure; only the
+          // former is worth remembering, and the header check tells them apart.
+          if (!isDecodable(fullFile)) undecodableKeys.add(key)
+          // Drop the stored original so the next request re-downloads instead of failing on the same
+          // bytes forever.
+          runCatching { fullFile.delete() }
+          return@withPermit null
         }
-      }?.let {
-        return@withContext it
+        runCatching { thumbFile.writeBitmap(stored) }
+        undecodableKeys.remove(key)
+
+        val requested = stored.scaleTo(widthPx, heightPx)
+        memoryCache.put(memKey, requested)
+        requested
       }
     }
-
-    val fullFile = getFullImageFile(connectionId, file) ?: return@withContext null
-
-    decodeSemaphore.withPermit {
-      memoryCache.get(memKey)?.let { return@withPermit it }
-      // Generate at a size that serves every caller, then hand this caller its exact size.
-      val stored = decodeScaledBitmap(fullFile, THUMBNAIL_STORE_MIN_EDGE, THUMBNAIL_STORE_MIN_EDGE)
-      if (stored == null) {
-        // A null here is either an unreadable format or a transient allocation failure; only the
-        // former is worth remembering, and the header check tells them apart.
-        if (!isDecodable(fullFile)) undecodableKeys.add(key)
-        // Drop the stored original so the next request re-downloads instead of failing on the same
-        // bytes forever.
-        runCatching { fullFile.delete() }
-        return@withPermit null
-      }
-      runCatching { thumbFile.writeBitmap(stored) }
-      undecodableKeys.remove(key)
-
-      val requested = stored.scaleTo(widthPx, heightPx)
-      memoryCache.put(memKey, requested)
-      requested
-    }
-  }
 
   /**
    * Reads the stored (already down-sampled) thumbnail and scales it to exactly [widthPx] x
    * [heightPx] — a cover scale, so the result always fills the box it is drawn into.
    */
-  private fun scaleToRequest(file: File, widthPx: Int, heightPx: Int): Bitmap? =
-    decodeScaledBitmap(file, widthPx, heightPx)?.scaleTo(widthPx, heightPx)
+  private fun scaleToRequest(
+    file: File,
+    widthPx: Int,
+    heightPx: Int,
+  ): Bitmap? = decodeScaledBitmap(file, widthPx, heightPx)?.scaleTo(widthPx, heightPx)
 
-  private fun Bitmap.scaleTo(widthPx: Int, heightPx: Int): Bitmap {
+  private fun Bitmap.scaleTo(
+    widthPx: Int,
+    heightPx: Int,
+  ): Bitmap {
     val scale = maxOf(widthPx.toFloat() / width, heightPx.toFloat() / height)
     val targetWidth = (width * scale).toInt().coerceAtLeast(1)
     val targetHeight = (height * scale).toInt().coerceAtLeast(1)
@@ -195,47 +202,41 @@ class NetworkImageRepository(
     maxPixels: Int = DEFAULT_MAX_PIXELS,
     /** Re-attempt even if these exact bytes already failed to decode; set by a manual retry. */
     force: Boolean = false,
-  ): Bitmap? = withContext(Dispatchers.IO) {
-    val key = cacheKey(connectionId, file)
-    val memKey = "$key|full|$maxPixels"
+  ): Bitmap? =
+    withContext(Dispatchers.IO) {
+      val key = cacheKey(connectionId, file)
+      val memKey = "$key|full|$maxPixels"
 
-    // 1. Check viewer memory cache
-    viewerMemoryCache.get(memKey)?.let {
-      return@withContext it
-    }
-    if (!force && key in undecodableKeys) return@withContext null
-
-    // 2. Check full image disk cache
-    val cached = getFullImageFile(connectionId, file) ?: return@withContext null
-
-    decodeSemaphore.withPermit {
-      viewerMemoryCache.get(memKey)?.let { return@withPermit it }
-      val decoded = decodeScaledBitmap(cached, maxPixels)
-      if (decoded == null) {
-        if (!isDecodable(cached)) undecodableKeys.add(key)
-        // The stored file cannot be decoded — drop it so the next request re-downloads instead of
-        // serving the same broken bytes forever.
-        runCatching { cached.delete() }
-        return@withPermit null
+      // 1. Check viewer memory cache
+      viewerMemoryCache.get(memKey)?.let {
+        return@withContext it
       }
-      viewerMemoryCache.put(memKey, decoded)
-      undecodableKeys.remove(key)
-      decoded
+      if (!force && key in undecodableKeys) return@withContext null
+
+      // 2. Check full image disk cache
+      val cached = getFullImageFile(connectionId, file) ?: return@withContext null
+
+      decodeSemaphore.withPermit {
+        viewerMemoryCache.get(memKey)?.let { return@withPermit it }
+        val decoded = decodeScaledBitmap(cached, maxPixels)
+        if (decoded == null) {
+          if (!isDecodable(cached)) undecodableKeys.add(key)
+          // The stored file cannot be decoded — drop it so the next request re-downloads instead of
+          // serving the same broken bytes forever.
+          runCatching { cached.delete() }
+          return@withPermit null
+        }
+        viewerMemoryCache.put(memKey, decoded)
+        undecodableKeys.remove(key)
+        decoded
+      }
     }
-  }
 
   /** Clear viewer memory cache (call when viewer exits). */
   fun clearViewerMemoryCache() {
     viewerMemoryCache.evictAll()
   }
 
-  /**
-   * Evicts expired entries from both disk caches (time on both, size on the originals only).
-   *
-   * Thumbnails are otherwise left to grow and cleared manually, as the requirements ask. But their
-   * file name is derived from the remote mtime, so editing a file on the server strands its old
-   * thumbnail forever — the age sweep is the only thing that reclaims those.
-   */
   /**
    * Age/size sweep for re-downloadable image caches.
    *
@@ -268,7 +269,11 @@ class NetworkImageRepository(
     }
   }
 
-  private fun deleteFilesOlderThan(dir: File, now: Long, maxAgeMs: Long) {
+  private fun deleteFilesOlderThan(
+    dir: File,
+    now: Long,
+    maxAgeMs: Long,
+  ) {
     dir
       .listFiles()
       ?.filter { it.isFile && now - it.lastModified() > maxAgeMs }
@@ -283,38 +288,39 @@ class NetworkImageRepository(
   private suspend fun getFullImageFile(
     connectionId: Long,
     file: NetworkFile,
-  ): File? = withContext(Dispatchers.IO) {
-    val key = cacheKey(connectionId, file)
-    val cached = File(fullImageDir, key)
+  ): File? =
+    withContext(Dispatchers.IO) {
+      val key = cacheKey(connectionId, file)
+      val cached = File(fullImageDir, key)
 
-    if (cached.exists() && !cached.isExpired()) {
-      return@withContext cached.asCacheHit()
-    }
+      if (cached.exists() && !cached.isExpired()) {
+        return@withContext cached.asCacheHit()
+      }
 
-    ongoingDownloads[key]?.let { return@withContext awaitDownload(key, it) }
+      ongoingDownloads[key]?.let { return@withContext awaitDownload(key, it) }
 
-    // Running in [repositoryScope] rather than the caller's scope: the first caller is often a grid
-    // card that leaves composition mid-download, and a transfer cancelled with it would take its
-    // waiters' `await()` down too — stranding the viewer on a spinner that never resolves.
-    val candidate =
-      repositoryScope.async(start = CoroutineStart.LAZY) {
-        if (cached.exists() && !cached.isExpired()) {
-          cached.asCacheHit()
-        } else {
-          downloadImage(connectionId, file.path, cached)
+      // Running in [repositoryScope] rather than the caller's scope: the first caller is often a grid
+      // card that leaves composition mid-download, and a transfer cancelled with it would take its
+      // waiters' `await()` down too — stranding the viewer on a spinner that never resolves.
+      val candidate =
+        repositoryScope.async(start = CoroutineStart.LAZY) {
+          if (cached.exists() && !cached.isExpired()) {
+            cached.asCacheHit()
+          } else {
+            downloadImage(connectionId, file.path, cached)
+          }
         }
-      }
 
-    val operation =
-      ongoingDownloads.putIfAbsent(key, candidate)?.also {
-        candidate.cancel()
-      } ?: candidate.also { owned ->
-        owned.invokeOnCompletion { ongoingDownloads.remove(key, owned) }
-        owned.start()
-      }
+      val operation =
+        ongoingDownloads.putIfAbsent(key, candidate)?.also {
+          candidate.cancel()
+        } ?: candidate.also { owned ->
+          owned.invokeOnCompletion { ongoingDownloads.remove(key, owned) }
+          owned.start()
+        }
 
-    awaitDownload(key, operation)
-  }
+      awaitDownload(key, operation)
+    }
 
   /**
    * Awaits a shared transfer, dropping it once nobody is left waiting.
@@ -324,7 +330,10 @@ class NetworkImageRepository(
    * is what lets a cancelled navigation stop an in-flight transfer — an accidental tap into a folder
    * stops costing bandwidth as soon as it is backed out of — without breaking the callers still on it.
    */
-  private suspend fun awaitDownload(key: String, operation: Deferred<File?>): File? {
+  private suspend fun awaitDownload(
+    key: String,
+    operation: Deferred<File?>,
+  ): File? {
     downloadWaiters.merge(key, 1, Int::plus)
     try {
       return operation.await()
@@ -364,8 +373,9 @@ class NetworkImageRepository(
       // normal download failure rather than something the UI should have to catch.
       val staging = File.createTempFile("${destination.name}.", ".tmp", destination.parentFile)
       tempFile = staging
-      val connection = networkRepository.getConnectionById(connectionId)
-        ?: return null
+      val connection =
+        networkRepository.getConnectionById(connectionId)
+          ?: return null
       val client = networkRepository.createClient(connection.id).getOrThrow()
 
       // connect() is inside the try so a failed handshake still runs the disconnect below. The
@@ -427,11 +437,16 @@ class NetworkImageRepository(
       false
     }
 
-  private fun decodeScaledBitmap(file: File, reqWidth: Int, reqHeight: Int): Bitmap? =
-    decodeScaledBitmap(file, reqWidth = reqWidth, reqHeight = reqHeight, maxPixels = null)
+  private fun decodeScaledBitmap(
+    file: File,
+    reqWidth: Int,
+    reqHeight: Int,
+  ): Bitmap? = decodeScaledBitmap(file, reqWidth = reqWidth, reqHeight = reqHeight, maxPixels = null)
 
-  private fun decodeScaledBitmap(file: File, maxPixels: Int): Bitmap? =
-    decodeScaledBitmap(file, reqWidth = null, reqHeight = null, maxPixels = maxPixels)
+  private fun decodeScaledBitmap(
+    file: File,
+    maxPixels: Int,
+  ): Bitmap? = decodeScaledBitmap(file, reqWidth = null, reqHeight = null, maxPixels = maxPixels)
 
   /**
    * Decodes [file], down-sampling until the result satisfies the requested bound.
@@ -503,8 +518,11 @@ class NetworkImageRepository(
     return sample.takeIf { pixels > 0 && pixels * BYTES_PER_PIXEL <= Int.MAX_VALUE.toLong() }
   }
 
-  private fun pixelsAt(rawWidth: Int, rawHeight: Int, sample: Int): Long =
-    (rawWidth.toLong() / sample) * (rawHeight.toLong() / sample)
+  private fun pixelsAt(
+    rawWidth: Int,
+    rawHeight: Int,
+    sample: Int,
+  ): Long = (rawWidth.toLong() / sample) * (rawHeight.toLong() / sample)
 
   /**
    * Cache identity for one remote image.
@@ -515,15 +533,17 @@ class NetworkImageRepository(
    * silently show each other's images. [ThumbnailRepository.networkThumbnailIdentity] keeps the full
    * endpoint for the same reason.
    */
-  private fun cacheKey(connectionId: Long, file: NetworkFile): String {
+  private fun cacheKey(
+    connectionId: Long,
+    file: NetworkFile,
+  ): String {
     val raw = "$connectionId|${file.path}|${file.lastModified}"
     val digest = MessageDigest.getInstance("SHA-256").apply { update(raw.toByteArray()) }.digest()
     return digest.joinToString("") { "%02x".format(it) }
   }
 
-  private fun File.isExpired(now: Long = System.currentTimeMillis()): Boolean {
-    return !exists() || (now - lastModified() > THIRTY_DAYS_MS)
-  }
+  private fun File.isExpired(now: Long = System.currentTimeMillis()): Boolean =
+    !exists() || (now - lastModified() > THIRTY_DAYS_MS)
 
   private fun File.writeBitmap(bitmap: Bitmap) {
     FileOutputStream(this).use { out ->

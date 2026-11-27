@@ -46,7 +46,13 @@ internal object CrashMonitor {
   private const val SESSION_MARKER = "visible-session"
 
   private val startedActivities = AtomicInteger(0)
-  private val worker = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "crash-monitor").apply { isDaemon = true } }
+  private val worker =
+    Executors.newSingleThreadExecutor { runnable ->
+      Thread(runnable, "crash-monitor").apply {
+        isDaemon =
+          true
+      }
+    }
   private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
 
   // Freed first when a crash is handled, so an OutOfMemoryError still has room to write its report.
@@ -121,7 +127,13 @@ internal object CrashMonitor {
     val appContext = context.applicationContext
     worker.execute {
       runCatching {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) recordExits(appContext) else recordUnexplainedExit(appContext)
+        if (Build.VERSION.SDK_INT >=
+          Build.VERSION_CODES.R
+        ) {
+          recordExits(appContext)
+        } else {
+          recordUnexplainedExit(appContext)
+        }
       }.onFailure { Log.w(TAG, "Could not read previous exits", it) }
     }
   }
@@ -160,7 +172,12 @@ internal object CrashMonitor {
   )
 
   private fun previousVisibleSession(context: Context): VisibleSession? {
-    val parts = sessionMarker(context).takeIf(File::isFile)?.readText()?.trim()?.split(' ') ?: return null
+    val parts =
+      sessionMarker(context)
+        .takeIf(File::isFile)
+        ?.readText()
+        ?.trim()
+        ?.split(' ') ?: return null
     val processId = parts.getOrNull(0)?.toIntOrNull() ?: return null
     val boot = parts.getOrNull(1)?.toIntOrNull()
     if (processId == Process.myPid() || boot == null || boot != bootCount(context)) return null
@@ -178,7 +195,12 @@ internal object CrashMonitor {
       buildString {
         appendLine("=== Closed unexpectedly while in use ===")
         if (session.visibleSince > 0L) {
-          appendLine("On screen since: ${SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.ROOT).format(Date(session.visibleSince))}")
+          appendLine(
+            "On screen since: ${SimpleDateFormat(
+              "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
+              Locale.ROOT,
+            ).format(Date(session.visibleSince))}",
+          )
         }
         appendLine("Process: ${context.packageName} (pid ${session.processId})")
         appendLine()
@@ -256,7 +278,9 @@ internal object CrashMonitor {
       buildString {
         abnormal.forEach { exit ->
           appendLine("=== ${reasonName(exit.reason)} in a previous session ===")
-          appendLine("Time: ${SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.ROOT).format(Date(exit.timestamp))}")
+          appendLine(
+            "Time: ${SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.ROOT).format(Date(exit.timestamp))}",
+          )
           appendLine("Process: ${exit.processName} (pid ${exit.pid})")
           appendLine("Importance: ${exit.importance}")
           appendLine("Status: ${exit.status}")
@@ -334,6 +358,7 @@ internal object CrashMonitor {
   private fun readableText(bytes: ByteArray): String =
     buildString {
       val run = StringBuilder()
+
       fun flush() {
         if (run.length >= 4) appendLine(run)
         run.setLength(0)

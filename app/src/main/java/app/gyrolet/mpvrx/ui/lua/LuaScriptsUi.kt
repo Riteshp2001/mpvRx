@@ -11,7 +11,6 @@ package app.gyrolet.mpvrx.ui.lua
 
 import android.content.Context
 import android.content.Intent
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,8 +33,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -47,11 +45,13 @@ import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 private val SUPPORTED_SCRIPT_EXTENSIONS = setOf("lua", "js")
 
@@ -192,7 +192,8 @@ fun LuaRuntimeStatusCard(
   val summary =
     when {
       !hasStorageLocation -> "Set an MPV config folder in Advanced settings to browse scripts."
-      enabled && availableScriptsCount == 0 -> "Script runtime is on, but no .lua or .js files were found in your scripts folder."
+      enabled && availableScriptsCount == 0 ->
+        "Script runtime is on, but no .lua or .js files were found in your scripts folder."
       enabled && enabledScriptsCount == 0 -> "Script runtime is on. Tap a script below to arm it for playback."
       enabled -> "$enabledScriptsCount of $availableScriptsCount scripts enabled for playback."
       else -> "Script runtime is off. Enabled scripts stay saved and can be reactivated anytime."
@@ -447,18 +448,22 @@ fun LuaScriptToggleCard(
 
 @Composable
 fun LuaSelectionFootnote(modifier: Modifier = Modifier) {
-  Surface(modifier = modifier.fillMaxWidth(), shape = MaterialTheme.shapes.extraLargeIncreased, color = MaterialTheme.colorScheme.surfaceContainerLow) {
-  Text(
-    text =
-      androidx.compose.ui.res.stringResource(
-        app.gyrolet.mpvrx.R.string.ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn,
-      ),
-    style = MaterialTheme.typography.bodySmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-    modifier =
-      modifier
-        .fillMaxWidth()
-        .padding(16.dp),
-  )
+  Surface(
+    modifier = modifier.fillMaxWidth(),
+    shape = MaterialTheme.shapes.extraLargeIncreased,
+    color = MaterialTheme.colorScheme.surfaceContainerLow,
+  ) {
+    Text(
+      text =
+        androidx.compose.ui.res.stringResource(
+          app.gyrolet.mpvrx.R.string.ui_newly_enabled_scripts_can_load_during_playback_scripts_you_turn,
+        ),
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier =
+        modifier
+          .fillMaxWidth()
+          .padding(16.dp),
+    )
   }
 }

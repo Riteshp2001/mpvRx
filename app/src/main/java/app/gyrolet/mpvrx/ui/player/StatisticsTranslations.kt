@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.player
 
 import android.content.Context
@@ -29,20 +29,26 @@ internal object StatisticsTranslations {
     val keys = context.createConfigurationContext(english).resources.getStringArray(R.array.stats_lua_labels)
     val labels = context.resources.getStringArray(R.array.stats_lua_labels)
     return buildJsonObject {
-      put("labels", buildJsonObject {
-        keys.forEachIndexed { index, key ->
-          if (key != labels[index]) put(key, labels[index])
-        }
-      })
-      put("case_fold", buildJsonObject {
-        labels.asSequence().flatMap { it.asSequence() }.distinct().forEach { char ->
-          if (char.code > 127) {
-            val upper = char.uppercaseChar()
-            val lower = char.lowercaseChar()
-            if (upper != lower) put(upper.toString(), lower.toString())
+      put(
+        "labels",
+        buildJsonObject {
+          keys.forEachIndexed { index, key ->
+            if (key != labels[index]) put(key, labels[index])
           }
-        }
-      })
+        },
+      )
+      put(
+        "case_fold",
+        buildJsonObject {
+          labels.asSequence().flatMap { it.asSequence() }.distinct().forEach { char ->
+            if (char.code > 127) {
+              val upper = char.uppercaseChar()
+              val lower = char.lowercaseChar()
+              if (upper != lower) put(upper.toString(), lower.toString())
+            }
+          }
+        },
+      )
     }.toString()
   }
 }

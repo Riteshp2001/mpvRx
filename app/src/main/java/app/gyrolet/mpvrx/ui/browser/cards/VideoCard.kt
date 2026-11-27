@@ -31,17 +31,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -50,6 +48,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -60,15 +60,16 @@ import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.preferences.ThumbnailGenerator
 import app.gyrolet.mpvrx.preferences.VideoSwipeAction
-import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.presentation.components.RemoteImage
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvContextMenu
-import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -93,7 +94,7 @@ data class VideoCardUiConfig(
   val centerGridTitles: Boolean = false,
   val swipeLeft: VideoSwipeAction = VideoSwipeAction.AddToPlaylist,
   val swipeRight: VideoSwipeAction = VideoSwipeAction.ToggleWatched,
-  val thumbnailGenerator: app.gyrolet.mpvrx.preferences.ThumbnailGenerator = app.gyrolet.mpvrx.preferences.ThumbnailGenerator.Auto,
+  val thumbnailGenerator: ThumbnailGenerator = ThumbnailGenerator.Auto,
 )
 
 /** Hoist this once per screen and pass the result to every card rather than collecting per item. */
@@ -264,26 +265,45 @@ fun VideoCard(
   // MediaStore size does; a cached label string can be stale or missing ("--").
   val resolutionBase =
     VideoScanUtils.formatResolution(video.width, video.height).takeUnless { it == "--" }
-      ?: video.resolution.substringBefore("@").trim().takeUnless { it.isBlank() || it == "--" }
+      ?: video.resolution
+        .substringBefore("@")
+        .trim()
+        .takeUnless { it.isBlank() || it == "--" }
   val hasResolution = !video.isAudio && resolutionBase != null
   // Some sources keep the frame rate in Video.fps without an '@' suffix in resolution.
   // Prefer the numeric metadata, then fall back to older cached resolution strings.
   val fpsOnly =
     video.fps.takeIf { it.isFinite() && it > 0f }?.let { fps ->
-      if (fps % 1f == 0f) fps.toInt().toString()
-      else "%.2f".format(java.util.Locale.US, fps).trimEnd('0').trimEnd('.')
-    } ?: video.resolution.substringAfter("@", "").trim().removeSuffix("FPS").removeSuffix("fps").trim()
+      if (fps % 1f == 0f) {
+        fps.toInt().toString()
+      } else {
+        "%.2f".format(java.util.Locale.US, fps).trimEnd('0').trimEnd('.')
+      }
+    } ?: video.resolution
+      .substringAfter("@", "")
+      .trim()
+      .removeSuffix("FPS")
+      .removeSuffix("fps")
+      .trim()
   val hasFps = !video.isAudio && fpsOnly.isNotBlank()
-  val resolutionText = resolutionBase.orEmpty().let { base ->
-    if (showFramerateInResolution && hasFps) "${base}@$fpsOnly" else base
-  }
+  val resolutionText =
+    resolutionBase.orEmpty().let { base ->
+      if (showFramerateInResolution && hasFps) "$base@$fpsOnly" else base
+    }
   val hasCodecChip = showCodecSupportIndicator && !video.isAudio && video.videoCodec.isNotBlank()
-  val hasSubtitleChips = showSubtitleIndicator && !video.isAudio &&
-    (video.hasEmbeddedSubtitles || video.subtitleCodec.isNotBlank())
-  val subtitleCodecs = video.subtitleCodec.split(" ").filter(String::isNotBlank).ifEmpty { listOf("TEXT") }
+  val hasSubtitleChips =
+    showSubtitleIndicator &&
+      !video.isAudio &&
+      (video.hasEmbeddedSubtitles || video.subtitleCodec.isNotBlank())
+  val subtitleCodecs =
+    video.subtitleCodec
+      .split(" ")
+      .filter(String::isNotBlank)
+      .ifEmpty { listOf("TEXT") }
   val hasDateMetadataChip = showDateChip && video.dateModified > 0
   val hasResolutionMetadataChip = !isGridMode && showResolutionChip && hasResolution
-  val hasFramerateMetadataChip = !isGridMode && showFramerateInResolution && hasFps && !(showResolutionChip && hasResolution)
+  val hasFramerateMetadataChip =
+    !isGridMode && showFramerateInResolution && hasFps && !(showResolutionChip && hasResolution)
   val hasMetadataChips =
     sourceLabel != null ||
       hasCodecChip ||
@@ -298,16 +318,32 @@ fun VideoCard(
     } else if (video.isAudio && video.title.isNotBlank()) {
       video.title
     } else {
-      app.gyrolet.mpvrx.utils.storage.FileTypeUtils.stripExtension(video.displayName)
+      app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+        .stripExtension(video.displayName)
     }
 
   val selectionContainerColor = animatedSelectionColor(isSelected)
   val showSelectionBadge = isSelected || selectionContainerColor.alpha > 0.001f
-  val thumbnailColorFilter = if (isWatched && resolvedUiConfig.grayscaleWatchedThumbnails) WatchedThumbnailFilter else null
+  val thumbnailColorFilter =
+    if (isWatched &&
+      resolvedUiConfig.grayscaleWatchedThumbnails
+    ) {
+      WatchedThumbnailFilter
+    } else {
+      null
+    }
 
   // Hold the last displayed thumbnail for this file across grid/list size changes.
   // Repository memory remains the source of truth for new requests.
-  var retainedThumbnail by remember(video.path, video.dateModified, video.size, thumbnailGenerator, thumbnailCacheRevision) { mutableStateOf<Bitmap?>(null) }
+  var retainedThumbnail by remember(
+    video.path,
+    video.dateModified,
+    video.size,
+    thumbnailGenerator,
+    thumbnailCacheRevision,
+  ) {
+    mutableStateOf<Bitmap?>(null)
+  }
 
   val cardShape = rememberMediaSelectionShape(isSelected, isGridMode, selectionNeighbors)
 
@@ -316,13 +352,20 @@ fun VideoCard(
     leftAction = resolvedUiConfig.swipeLeft,
     rightAction = resolvedUiConfig.swipeRight,
     isWatched = isWatched,
-    enabled = !isGridMode && !isSelected &&
-      (video.path.startsWith('/') ||
-        (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY &&
-          video.uri.scheme == "content" &&
-          android.provider.DocumentsContract.isDocumentUri(
-            androidx.compose.ui.platform.LocalContext.current, video.uri,
-          ))),
+    enabled =
+      !isGridMode &&
+        !isSelected &&
+        (
+          video.path.startsWith('/') ||
+            (
+              app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY &&
+                video.uri.scheme == "content" &&
+                android.provider.DocumentsContract.isDocumentUri(
+                  androidx.compose.ui.platform.LocalContext.current,
+                  video.uri,
+                )
+            )
+        ),
     onAction = onSwipeAction?.let { action -> { swipe -> action(video, isWatched, swipe) } },
     modifier =
       modifier
@@ -330,7 +373,7 @@ fun VideoCard(
         .tvFocusMemory("video:${video.path}")
         .tvFocusHighlight(cardShape, focusedScale = 1.03f)
         .clip(cardShape)
-                .semantics { selected = isSelected }
+        .semantics { selected = isSelected }
         .tvContextMenu(onLongClick)
         .mediaCardClickable(
           onClick = onClick,
@@ -389,9 +432,10 @@ fun VideoCard(
 
           // Seeded during composition: reading the cache asynchronously shows the placeholder icon
           // for a frame first, which flickers every visible card when the list recomposes.
-          val exactMemoryThumbnail = remember(thumbnailRequestKey) {
-            thumbnailRepository.peekThumbnailFromMemory(video, resolvedThumbWidthPx, resolvedThumbHeightPx)
-          }
+          val exactMemoryThumbnail =
+            remember(thumbnailRequestKey) {
+              thumbnailRepository.peekThumbnailFromMemory(video, resolvedThumbWidthPx, resolvedThumbHeightPx)
+            }
           var thumbnail by remember(thumbnailRequestKey) {
             mutableStateOf<Bitmap?>(exactMemoryThumbnail ?: retainedThumbnail)
           }
@@ -439,7 +483,10 @@ fun VideoCard(
             contentAlignment = Alignment.Center,
           ) {
             if (showThumbnails) {
-              if (!video.artworkUrl.isNullOrBlank() && !app.gyrolet.mpvrx.domain.thumbnail.isLocalArtworkSource(video.path)) {
+              if (!video.artworkUrl.isNullOrBlank() &&
+                !app.gyrolet.mpvrx.domain.thumbnail
+                  .isLocalArtworkSource(video.path)
+              ) {
                 RemoteImage(
                   url = video.artworkUrl,
                   contentDescription = stringResource(R.string.ui_thumbnail),
@@ -447,29 +494,31 @@ fun VideoCard(
                   contentScale = ContentScale.Crop,
                   colorFilter = thumbnailColorFilter,
                 )
-              } else thumbnailBitmap?.let {
-                Image(
-                  bitmap = it,
-                  contentDescription =
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
-                  modifier =
-                    Modifier
-                      .matchParentSize()
-                      .then(if (showingSoftPreview) Modifier.blur(2.dp) else Modifier)
-                      .thumbnailReveal(thumbnailReveal),
-                  contentScale = ContentScale.Crop,
-                  colorFilter = thumbnailColorFilter,
-                )
-              } ?: run {
-                Icon(
-                  if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
-                  contentDescription =
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
-                  modifier = Modifier.size(48.dp),
-                  tint = MaterialTheme.colorScheme.secondary,
-                )
+              } else {
+                thumbnailBitmap?.let {
+                  Image(
+                    bitmap = it,
+                    contentDescription =
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
+                    modifier =
+                      Modifier
+                        .matchParentSize()
+                        .then(if (showingSoftPreview) Modifier.blur(2.dp) else Modifier)
+                        .thumbnailReveal(thumbnailReveal),
+                    contentScale = ContentScale.Crop,
+                    colorFilter = thumbnailColorFilter,
+                  )
+                } ?: run {
+                  Icon(
+                    if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
+                    contentDescription =
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.secondary,
+                  )
+                }
               }
             } else {
               Icon(
@@ -522,7 +571,7 @@ fun VideoCard(
                   Modifier
                     .align(Alignment.BottomEnd)
                     .padding(6.dp)
-                      .cardOverlay()
+                    .cardOverlay()
                     .padding(horizontal = 6.dp, vertical = 2.dp),
               ) {
                 Text(
@@ -581,25 +630,25 @@ fun VideoCard(
             horizontalArrangement = if (centerGridTitles) Arrangement.Center else Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically,
           ) {
-          Text(
-            text = displayName,
-            modifier = if (titleAction != null) Modifier.weight(1f) else Modifier,
-            style =
-              MaterialTheme.typography.titleMedium.let { baseStyle ->
-                if (isRecentlyPlayed) baseStyle.copy(fontStyle = FontStyle.Italic) else baseStyle
-              },
-            color =
-              if (isRecentlyPlayed) {
-                MaterialTheme.colorScheme.tertiary
-              } else if (isWatched) {
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-              } else {
-                MaterialTheme.colorScheme.onSurface
-              },
-            maxLines = maxLines,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = if (centerGridTitles) TextAlign.Center else TextAlign.Start,
-          )
+            Text(
+              text = displayName,
+              modifier = if (titleAction != null) Modifier.weight(1f) else Modifier,
+              style =
+                MaterialTheme.typography.titleMedium.let { baseStyle ->
+                  if (isRecentlyPlayed) baseStyle.copy(fontStyle = FontStyle.Italic) else baseStyle
+                },
+              color =
+                if (isRecentlyPlayed) {
+                  MaterialTheme.colorScheme.tertiary
+                } else if (isWatched) {
+                  MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                } else {
+                  MaterialTheme.colorScheme.onSurface
+                },
+              maxLines = maxLines,
+              overflow = TextOverflow.Ellipsis,
+              textAlign = if (centerGridTitles) TextAlign.Center else TextAlign.Start,
+            )
             titleAction?.invoke()
           }
           if (!sourceSubtitle.isNullOrBlank()) {
@@ -715,7 +764,9 @@ fun VideoCard(
           // Respect a caller-supplied size (e.g. the configurable Music cover-art size) instead of
           // always hardcoding 128dp, otherwise controls like the Cover Art Size slider have no effect
           // on this list layout.
-          val thumbWidthPx = thumbnailWidthPx?.takeIf { it > 0 } ?: with(LocalDensity.current) { (if (video.isAudio) 56.dp else 128.dp).roundToPx() }
+          val thumbWidthPx =
+            thumbnailWidthPx?.takeIf { it > 0 }
+              ?: with(LocalDensity.current) { (if (video.isAudio) 56.dp else 128.dp).roundToPx() }
           val thumbWidthDp = with(LocalDensity.current) { thumbWidthPx.toDp() }
           val thumbHeightPx = thumbnailHeightPx?.takeIf { it > 0 } ?: (thumbWidthPx / aspect).roundToInt()
 
@@ -738,9 +789,10 @@ fun VideoCard(
 
           // Seeded during composition: reading the cache asynchronously shows the placeholder icon
           // for a frame first, which flickers every visible card when the list recomposes.
-          val exactMemoryThumbnail = remember(thumbnailRequestKey) {
-            thumbnailRepository.peekThumbnailFromMemory(video, thumbWidthPx, thumbHeightPx)
-          }
+          val exactMemoryThumbnail =
+            remember(thumbnailRequestKey) {
+              thumbnailRepository.peekThumbnailFromMemory(video, thumbWidthPx, thumbHeightPx)
+            }
           var thumbnail by remember(thumbnailRequestKey) {
             mutableStateOf<Bitmap?>(exactMemoryThumbnail ?: retainedThumbnail)
           }
@@ -787,7 +839,10 @@ fun VideoCard(
             contentAlignment = Alignment.Center,
           ) {
             if (showThumbnails) {
-              if (!video.artworkUrl.isNullOrBlank() && !app.gyrolet.mpvrx.domain.thumbnail.isLocalArtworkSource(video.path)) {
+              if (!video.artworkUrl.isNullOrBlank() &&
+                !app.gyrolet.mpvrx.domain.thumbnail
+                  .isLocalArtworkSource(video.path)
+              ) {
                 RemoteImage(
                   url = video.artworkUrl,
                   contentDescription = stringResource(R.string.ui_thumbnail),
@@ -795,29 +850,31 @@ fun VideoCard(
                   contentScale = ContentScale.Crop,
                   colorFilter = thumbnailColorFilter,
                 )
-              } else listThumbnailBitmap?.let {
-                Image(
-                  bitmap = it,
-                  contentDescription =
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
-                  modifier =
-                    Modifier
-                      .matchParentSize()
-                      .then(if (showingSoftPreview) Modifier.blur(2.dp) else Modifier)
-                      .thumbnailReveal(listThumbnailReveal),
-                  contentScale = ContentScale.Crop,
-                  colorFilter = thumbnailColorFilter,
-                )
-              } ?: run {
-                Icon(
-                  if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
-                  contentDescription =
-                    androidx.compose.ui.res
-                      .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
-                  modifier = Modifier.size(48.dp),
-                  tint = MaterialTheme.colorScheme.secondary,
-                )
+              } else {
+                listThumbnailBitmap?.let {
+                  Image(
+                    bitmap = it,
+                    contentDescription =
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
+                    modifier =
+                      Modifier
+                        .matchParentSize()
+                        .then(if (showingSoftPreview) Modifier.blur(2.dp) else Modifier)
+                        .thumbnailReveal(listThumbnailReveal),
+                    contentScale = ContentScale.Crop,
+                    colorFilter = thumbnailColorFilter,
+                  )
+                } ?: run {
+                  Icon(
+                    if (video.isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
+                    contentDescription =
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.secondary,
+                  )
+                }
               }
             } else {
               Icon(
@@ -856,7 +913,7 @@ fun VideoCard(
                   Modifier
                     .align(Alignment.BottomEnd)
                     .padding(6.dp)
-                      .cardOverlay()
+                    .cardOverlay()
                     .padding(horizontal = 6.dp, vertical = 2.dp),
               ) {
                 Text(
@@ -902,28 +959,28 @@ fun VideoCard(
             verticalArrangement = if (sourceLabel != null) Arrangement.spacedBy(6.dp) else Arrangement.Top,
           ) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-              displayName,
-              modifier = Modifier.weight(1f),
-              style =
-                if (useFolderNameStyle) {
-                  MaterialTheme.typography.titleMedium
-                } else {
-                  MaterialTheme.typography.titleSmall
-                }.let { baseStyle ->
-                  if (isRecentlyPlayed) baseStyle.copy(fontStyle = FontStyle.Italic) else baseStyle
-                },
-              color =
-                if (isRecentlyPlayed) {
-                  MaterialTheme.colorScheme.tertiary
-                } else if (isWatched) {
-                  MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                } else {
-                  MaterialTheme.colorScheme.onSurface
-                },
-              maxLines = maxLines,
-              overflow = TextOverflow.Ellipsis,
-            )
+              Text(
+                displayName,
+                modifier = Modifier.weight(1f),
+                style =
+                  if (useFolderNameStyle) {
+                    MaterialTheme.typography.titleMedium
+                  } else {
+                    MaterialTheme.typography.titleSmall
+                  }.let { baseStyle ->
+                    if (isRecentlyPlayed) baseStyle.copy(fontStyle = FontStyle.Italic) else baseStyle
+                  },
+                color =
+                  if (isRecentlyPlayed) {
+                    MaterialTheme.colorScheme.tertiary
+                  } else if (isWatched) {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                  } else {
+                    MaterialTheme.colorScheme.onSurface
+                  },
+                maxLines = maxLines,
+                overflow = TextOverflow.Ellipsis,
+              )
               titleAction?.invoke()
             }
             if (!sourceSubtitle.isNullOrBlank()) {
@@ -1071,8 +1128,7 @@ private fun CodecSupportIndicator(
         .cardOverlay(
           shape = AppShapeScale.small,
           containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-        )
-        .padding(horizontal = if (compact) 6.dp else 8.dp, vertical = if (compact) 3.dp else 4.dp),
+        ).padding(horizontal = if (compact) 6.dp else 8.dp, vertical = if (compact) 3.dp else 4.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Text(

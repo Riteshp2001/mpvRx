@@ -29,21 +29,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.domain.navidrome.NavidromeServer
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.repository.NavidromeRepository
 import app.gyrolet.mpvrx.ui.browser.music.SharedMusicCarouselSection
 import app.gyrolet.mpvrx.ui.browser.music.SharedMusicDetailHeader
 import app.gyrolet.mpvrx.ui.browser.music.SharedMusicTrackListItem
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
@@ -75,23 +75,26 @@ fun NavidromeDetailSheet(
     containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
   ) {
     LazyColumn(
-      modifier = Modifier
-        .fillMaxWidth()
-        .navigationBarsPadding(),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .navigationBarsPadding(),
       contentPadding = PaddingValues(bottom = 32.dp),
       verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
     ) {
       if (album != null) {
         item {
-          val details = buildList {
-            album.year?.let { add(it.toString()) }
-            if (album.songCount > 0) add("${album.songCount} tracks")
-          }.joinToString(" • ")
+          val details =
+            buildList {
+              album.year?.let { add(it.toString()) }
+              if (album.songCount > 0) add("${album.songCount} tracks")
+            }.joinToString(" • ")
 
           Box(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
           ) {
             SharedMusicDetailHeader(
               title = album.title,
@@ -102,11 +105,31 @@ fun NavidromeDetailSheet(
               onShuffle = { viewModel.shufflePlay(context, album.songs) },
               playbackEnabled = album.songs.isNotEmpty(),
               trailingAction = {
-                FilledTonalIconButton(onClick = { viewModel.toggleAlbumFavorite(album) }, modifier = Modifier.size(48.dp)) {
+                FilledTonalIconButton(
+                  onClick = { viewModel.toggleAlbumFavorite(album) },
+                  modifier = Modifier.size(48.dp),
+                ) {
                   Icon(
-                    imageVector = if (album.isFavorite) Icons.RoundedFilled.Favorite else Icons.RoundedFilled.FavoriteBorder,
-                    contentDescription = stringResource(if (album.isFavorite) R.string.generic_remove_from_favorites else R.string.notification_add_to_favorites),
-                    tint = if (album.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    imageVector =
+                      if (album.isFavorite) {
+                        Icons.RoundedFilled.Favorite
+                      } else {
+                        Icons.RoundedFilled.FavoriteBorder
+                      },
+                    contentDescription =
+                      stringResource(
+                        if (album.isFavorite) {
+                          R.string.generic_remove_from_favorites
+                        } else {
+                          R.string.notification_add_to_favorites
+                        },
+                      ),
+                    tint =
+                      if (album.isFavorite) {
+                        MaterialTheme.colorScheme.error
+                      } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                      },
                   )
                 }
               },
@@ -125,14 +148,16 @@ fun NavidromeDetailSheet(
         }
 
         itemsIndexed(album.songs, key = { _, s -> s.id }) { index, song ->
-          val isTrackPlaying = remember(currentSessionItem, song.id) {
-            if (currentSessionItem == null || song.id.isBlank()) false
-            else {
-              val orig = currentSessionItem.originalUri
-              val play = currentSessionItem.playableUri
-              orig.contains(song.id, ignoreCase = true) || play.contains(song.id, ignoreCase = true)
+          val isTrackPlaying =
+            remember(currentSessionItem, song.id) {
+              if (currentSessionItem == null || song.id.isBlank()) {
+                false
+              } else {
+                val orig = currentSessionItem.originalUri
+                val play = currentSessionItem.playableUri
+                orig.contains(song.id, ignoreCase = true) || play.contains(song.id, ignoreCase = true)
+              }
             }
-          }
           SharedMusicTrackListItem(
             title = song.title,
             subtitle = song.artist,
@@ -150,14 +175,23 @@ fun NavidromeDetailSheet(
       } else if (playlist != null) {
         item {
           Box(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
           ) {
-            val playlistDuration = playlist.durationSeconds.takeIf { it > 0 }
-              ?: playlist.songs.sumOf { it.durationSeconds }.takeIf { it > 0 }
+            val playlistDuration =
+              playlist.durationSeconds.takeIf { it > 0 }
+                ?: playlist.songs.sumOf { it.durationSeconds }.takeIf { it > 0 }
             val playlistDurationFormatted = playlistDuration?.let { DateUtils.formatElapsedTime(it.toLong()) }
-            val countText = if (playlist.songCount == 1) "1 track" else "${playlist.songCount.coerceAtLeast(playlist.songs.size)} tracks"
+            val countText =
+              if (playlist.songCount ==
+                1
+              ) {
+                "1 track"
+              } else {
+                "${playlist.songCount.coerceAtLeast(playlist.songs.size)} tracks"
+              }
             val itemCountText = listOfNotNull(countText, playlistDurationFormatted).joinToString(" • ")
 
             SharedMusicDetailHeader(
@@ -165,7 +199,14 @@ fun NavidromeDetailSheet(
               subtitle = null,
               itemCountText = itemCountText,
               artworkUrl = navidromeRepository.getCoverArtUrl(server, playlist.coverArtId, size = 300),
-              fallbackIcon = if (playlist.id == "virtual_favorites_playlist" || playlist.id == "favorites") Icons.RoundedFilled.Favorite else Icons.RoundedFilled.QueueMusic,
+              fallbackIcon =
+                if (playlist.id == "virtual_favorites_playlist" ||
+                  playlist.id == "favorites"
+                ) {
+                  Icons.RoundedFilled.Favorite
+                } else {
+                  Icons.RoundedFilled.QueueMusic
+                },
               onPlayAll = { viewModel.playAll(context, playlist.songs, 0) },
               onShuffle = { viewModel.shufflePlay(context, playlist.songs) },
               playbackEnabled = playlist.songs.isNotEmpty(),
@@ -184,14 +225,16 @@ fun NavidromeDetailSheet(
         }
 
         itemsIndexed(playlist.songs, key = { _, s -> s.id }) { index, song ->
-          val isTrackPlaying = remember(currentSessionItem, song.id) {
-            if (currentSessionItem == null || song.id.isBlank()) false
-            else {
-              val orig = currentSessionItem.originalUri
-              val play = currentSessionItem.playableUri
-              orig.contains(song.id, ignoreCase = true) || play.contains(song.id, ignoreCase = true)
+          val isTrackPlaying =
+            remember(currentSessionItem, song.id) {
+              if (currentSessionItem == null || song.id.isBlank()) {
+                false
+              } else {
+                val orig = currentSessionItem.originalUri
+                val play = currentSessionItem.playableUri
+                orig.contains(song.id, ignoreCase = true) || play.contains(song.id, ignoreCase = true)
+              }
             }
-          }
           SharedMusicTrackListItem(
             title = song.title,
             subtitle = song.artist,
@@ -209,9 +252,10 @@ fun NavidromeDetailSheet(
       } else if (artist != null) {
         item {
           Box(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
           ) {
             SharedMusicDetailHeader(
               title = artist.name,
@@ -220,11 +264,31 @@ fun NavidromeDetailSheet(
               fallbackIcon = Icons.RoundedFilled.Person,
               isCircular = true,
               trailingAction = {
-                FilledTonalIconButton(onClick = { viewModel.toggleArtistFavorite(artist) }, modifier = Modifier.size(48.dp)) {
+                FilledTonalIconButton(
+                  onClick = { viewModel.toggleArtistFavorite(artist) },
+                  modifier = Modifier.size(48.dp),
+                ) {
                   Icon(
-                    imageVector = if (artist.isFavorite) Icons.RoundedFilled.Favorite else Icons.RoundedFilled.FavoriteBorder,
-                    contentDescription = stringResource(if (artist.isFavorite) R.string.generic_remove_from_favorites else R.string.notification_add_to_favorites),
-                    tint = if (artist.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    imageVector =
+                      if (artist.isFavorite) {
+                        Icons.RoundedFilled.Favorite
+                      } else {
+                        Icons.RoundedFilled.FavoriteBorder
+                      },
+                    contentDescription =
+                      stringResource(
+                        if (artist.isFavorite) {
+                          R.string.generic_remove_from_favorites
+                        } else {
+                          R.string.notification_add_to_favorites
+                        },
+                      ),
+                    tint =
+                      if (artist.isFavorite) {
+                        MaterialTheme.colorScheme.error
+                      } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                      },
                   )
                 }
               },

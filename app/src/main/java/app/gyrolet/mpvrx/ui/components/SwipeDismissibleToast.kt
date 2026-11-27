@@ -1,9 +1,9 @@
 package app.gyrolet.mpvrx.ui.components
 
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -52,15 +52,19 @@ internal fun SwipeDismissibleToast(
       .graphicsLayer {
         translationX = offset
         alpha = (1f - abs(offset) / width.coerceAtLeast(1)).coerceIn(0f, 1f)
-      }
-      .semantics { dismiss { dismissToast(); true } }
-      .draggable(
+      }.semantics {
+        dismiss {
+          dismissToast()
+          true
+        }
+      }.draggable(
         state = rememberDraggableState { offset += it },
         orientation = Orientation.Horizontal,
         reverseDirection = false,
         onDragStarted = { interacting(true) },
         onDragStopped = { velocity ->
-          val fling = abs(velocity) >= flingThreshold && abs(offset) >= minimumFlingDistance && velocity.sign == offset.sign
+          val fling =
+            abs(velocity) >= flingThreshold && abs(offset) >= minimumFlingDistance && velocity.sign == offset.sign
           val shouldDismiss = width > 0 && (abs(offset) >= width * 0.3f || fling)
           val target = if (shouldDismiss) offset.sign * width.coerceAtLeast(1) else 0f
           try {
@@ -68,11 +72,12 @@ internal fun SwipeDismissibleToast(
               initialValue = offset,
               targetValue = target,
               initialVelocity = if (reducedMotion) 0f else velocity,
-              animationSpec = when {
-                reducedMotion -> snap()
-                shouldDismiss -> tween(160, easing = FastOutSlowInEasing)
-                else -> AppMotion.Spatial.Standard
-              },
+              animationSpec =
+                when {
+                  reducedMotion -> snap()
+                  shouldDismiss -> tween(160, easing = FastOutSlowInEasing)
+                  else -> AppMotion.Spatial.Standard
+                },
             ) { value, _ -> offset = value }
             if (shouldDismiss) dismissToast()
           } finally {

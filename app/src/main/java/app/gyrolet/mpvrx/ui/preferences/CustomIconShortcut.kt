@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.preferences
 
 import android.content.Context
@@ -24,10 +24,12 @@ internal object CustomIconShortcut {
 
   enum class Result { Requested, Updated, Unsupported, Failed }
 
-  fun savedColor(context: Context): Int =
-    prefs(context).getInt("color", 0xFFC4F5E2.toInt())
+  fun savedColor(context: Context): Int = prefs(context).getInt("color", 0xFFC4F5E2.toInt())
 
-  fun savedMark(context: Context, fallback: IconMark): IconMark {
+  fun savedMark(
+    context: Context,
+    fallback: IconMark,
+  ): IconMark {
     val name = prefs(context).getString("mark", null)
     return IconMark.entries.firstOrNull { it.name == name } ?: fallback
   }
@@ -45,9 +47,15 @@ internal object CustomIconShortcut {
     return if (mode == "color") "color" else "preset"
   }
 
-  fun saveApplied(context: Context, mode: String, color: Int, mark: IconMark) {
+  fun saveApplied(
+    context: Context,
+    mode: String,
+    color: Int,
+    mark: IconMark,
+  ) {
     require(mode == "preset" || mode == "color")
-    prefs(context).edit()
+    prefs(context)
+      .edit()
       .putString("active_mode", mode)
       .putInt("color", color or 0xFF000000.toInt())
       .putString("mark", mark.name)
@@ -56,7 +64,12 @@ internal object CustomIconShortcut {
 
   private fun prefs(context: Context) = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 
-  fun render(context: Context, color: Int, mark: IconMark, size: Int = 432): Bitmap? {
+  fun render(
+    context: Context,
+    color: Int,
+    mark: IconMark,
+    size: Int = 432,
+  ): Bitmap? {
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     canvas.drawColor(color or 0xFF000000.toInt())
@@ -70,7 +83,12 @@ internal object CustomIconShortcut {
    * The icon cut to the device's icon shape, the way launchers show the built-in icons. Recents
    * draws task icons as given, so [render]'s full-bleed adaptive layer would show as a plain square.
    */
-  fun renderMasked(context: Context, color: Int, mark: IconMark, size: Int): Bitmap? {
+  fun renderMasked(
+    context: Context,
+    color: Int,
+    mark: IconMark,
+    size: Int,
+  ): Bitmap? {
     val foreground = ContextCompat.getDrawable(context, mark.layer)?.mutate() ?: return null
     val icon = AdaptiveIconDrawable(ColorDrawable(color or 0xFF000000.toInt()), foreground)
     return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also {
@@ -80,22 +98,31 @@ internal object CustomIconShortcut {
   }
 
   /** Optional custom color shortcut, subject to launcher's pin confirmation. */
-  fun apply(context: Context, color: Int, mark: IconMark): Result {
+  fun apply(
+    context: Context,
+    color: Int,
+    mark: IconMark,
+  ): Result {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return Result.Unsupported
     val manager = context.getSystemService(ShortcutManager::class.java) ?: return Result.Unsupported
     val pinned = manager.pinnedShortcuts.firstOrNull { it.id == ID }
     if (pinned == null && !manager.isRequestPinShortcutSupported) return Result.Unsupported
     if (pinned?.isImmutable == true) return Result.Failed
     val bitmap = render(context, color, mark) ?: return Result.Failed
-    val shortcut = ShortcutInfo.Builder(context, ID)
-      .setShortLabel(context.getString(R.string.app_name))
-      .setIcon(Icon.createWithAdaptiveBitmap(bitmap))
-      .setIntent(Intent(context, MainActivity::class.java).setAction(Intent.ACTION_MAIN)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP))
-      .build()
+    val shortcut =
+      ShortcutInfo
+        .Builder(context, ID)
+        .setShortLabel(context.getString(R.string.app_name))
+        .setIcon(Icon.createWithAdaptiveBitmap(bitmap))
+        .setIntent(
+          Intent(context, MainActivity::class.java)
+            .setAction(Intent.ACTION_MAIN)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+        ).build()
     return if (pinned != null) {
-      if (!manager.updateShortcuts(listOf(shortcut))) Result.Failed
-      else {
+      if (!manager.updateShortcuts(listOf(shortcut))) {
+        Result.Failed
+      } else {
         if (!pinned.isEnabled) manager.enableShortcuts(listOf(ID))
         Result.Updated
       }

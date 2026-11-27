@@ -35,7 +35,10 @@ object RecentlyPlayedOps {
 
   private val MEDIA_STORE_PREFIX = "content://${MediaStore.AUTHORITY}/"
 
-  private class MediaStoreRow(val exists: Boolean, val path: String?)
+  private class MediaStoreRow(
+    val exists: Boolean,
+    val path: String?,
+  )
 
   suspend fun addRecentlyPlayed(
     filePath: String,
@@ -213,11 +216,12 @@ object RecentlyPlayedOps {
       }.distinctUntilChanged()
       .flowOn(Dispatchers.IO)
 
-  suspend fun removeVideoHistory(video: Video) = withContext(Dispatchers.IO) {
-    setOf(video.path, video.uri.toString(), Uri.fromFile(File(video.path)).toString()).forEach { path ->
-      repository.deleteByFilePath(path)
+  suspend fun removeVideoHistory(video: Video) =
+    withContext(Dispatchers.IO) {
+      setOf(video.path, video.uri.toString(), Uri.fromFile(File(video.path)).toString()).forEach { path ->
+        repository.deleteByFilePath(path)
+      }
     }
-  }
 
   suspend fun markLastPlayed(videos: List<Video>): Boolean =
     withContext(Dispatchers.IO) {
@@ -256,9 +260,11 @@ object RecentlyPlayedOps {
     kotlin
       .runCatching {
         repository.updateFilePath(oldPath, newPath, newFileName)
-        app.gyrolet.mpvrx.utils.logging.Log.d("RecentlyPlayedOps", "Updated history: $oldPath -> $newPath")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .d("RecentlyPlayedOps", "Updated history: $oldPath -> $newPath")
       }.onFailure { e ->
-        app.gyrolet.mpvrx.utils.logging.Log.w("RecentlyPlayedOps", "Failed to update history path: ${e.message}")
+        app.gyrolet.mpvrx.utils.logging.Log
+          .w("RecentlyPlayedOps", "Failed to update history path: ${e.message}")
       }
   }
 

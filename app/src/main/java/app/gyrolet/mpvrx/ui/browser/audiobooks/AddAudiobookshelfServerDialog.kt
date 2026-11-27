@@ -33,13 +33,24 @@ fun AddAudiobookshelfServerDialog(
   errorMessage: String?,
   initialServer: AudiobookshelfServer? = null,
   onDismiss: () -> Unit,
-  onConnect: (serverUrl: String, serverName: String, isToken: Boolean, username: String, password: String, token: String) -> Unit,
+  onConnect: (
+    serverUrl: String,
+    serverName: String,
+    isToken: Boolean,
+    username: String,
+    password: String,
+    token: String,
+  ) -> Unit,
 ) {
   if (!isOpen) return
 
   var serverUrl by remember(initialServer) { mutableStateOf(initialServer?.serverUrl ?: "") }
   var serverName by remember(initialServer) { mutableStateOf(initialServer?.name ?: "") }
-  var isTokenAuth by remember(initialServer) { mutableStateOf(initialServer?.token?.isNotBlank() == true && initialServer.username.isBlank()) }
+  var isTokenAuth by remember(initialServer) {
+    mutableStateOf(
+      initialServer?.token?.isNotBlank() == true && initialServer.username.isBlank(),
+    )
+  }
   var username by remember(initialServer) { mutableStateOf(initialServer?.username ?: "") }
   var password by remember(initialServer) { mutableStateOf("") }
   var token by remember(initialServer) { mutableStateOf(initialServer?.token ?: "") }

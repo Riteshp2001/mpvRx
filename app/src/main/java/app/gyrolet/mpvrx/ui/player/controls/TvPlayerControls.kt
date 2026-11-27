@@ -108,13 +108,16 @@ private object TvPlayerDefaults {
   val SeekBarHeight: Dp = 6.dp
   val SeekBarFocusedHeight: Dp = 10.dp
 
-  const val MinAutoHideMillis = 4_000L
-  const val FadeInMillis = 220
-  const val FadeOutMillis = 260
+  const val MIN_AUTO_HIDE_MILLIS = 4_000L
+  const val FADE_IN_MILLIS = 220
+  const val FADE_OUT_MILLIS = 260
 }
 
 /** Seek step for a held D-pad key: the chosen step, growing with the key-repeat count (NuvioTV scrub rates). */
-internal fun tvScrubStepSeconds(repeatCount: Int, baseSeconds: Int): Int {
+internal fun tvScrubStepSeconds(
+  repeatCount: Int,
+  baseSeconds: Int,
+): Int {
   val base = baseSeconds.coerceIn(TV_SEEK_DURATION_RANGE)
   return when {
     repeatCount >= 15 -> base * 6
@@ -169,7 +172,7 @@ internal fun TvPlayerControls(
 
   LaunchedEffect(controlsShown, paused, overlayOpen, lastInteraction) {
     if (controlsShown && !paused && !overlayOpen) {
-      delay(autoHideMillis.coerceAtLeast(TvPlayerDefaults.MinAutoHideMillis))
+      delay(autoHideMillis.coerceAtLeast(TvPlayerDefaults.MIN_AUTO_HIDE_MILLIS))
       viewModel.hideControls()
     }
   }
@@ -185,8 +188,8 @@ internal fun TvPlayerControls(
   ) {
     AnimatedVisibility(
       visible = controlsShown,
-      enter = fadeIn(tween(TvPlayerDefaults.FadeInMillis)),
-      exit = fadeOut(tween(TvPlayerDefaults.FadeOutMillis)),
+      enter = fadeIn(tween(TvPlayerDefaults.FADE_IN_MILLIS)),
+      exit = fadeOut(tween(TvPlayerDefaults.FADE_OUT_MILLIS)),
       modifier = Modifier.fillMaxSize(),
     ) {
       Box(Modifier.fillMaxSize()) {
@@ -452,8 +455,11 @@ private fun TvSeekBar(
   // This is observed only while the seekbar is composed. Read its value in draw, not in the
   // full player composition, so cache updates do not wake the controls while they are hidden.
   val cacheTime =
-    if (showBufferedRange) remember { PlaybackSession.propDouble["demuxer-cache-time"] }.collectAsState()
-    else null
+    if (showBufferedRange) {
+      remember { PlaybackSession.propDouble["demuxer-cache-time"] }.collectAsState()
+    } else {
+      null
+    }
 
   Canvas(
     modifier =
@@ -467,7 +473,8 @@ private fun TvSeekBar(
             return@onKeyEvent event.key == Key.DirectionLeft ||
               event.key == Key.DirectionRight ||
               event.key == Key.DirectionCenter ||
-              event.key == Key.Enter || event.key == Key.NumPadEnter
+              event.key == Key.Enter ||
+              event.key == Key.NumPadEnter
           }
           val repeat = event.nativeKeyEvent.repeatCount
           when (event.key) {
@@ -501,8 +508,12 @@ private fun TvSeekBar(
     val buffered = cacheTime?.value?.toFloat()?.takeIf { it.isFinite() && it > 0f }
     if (buffered != null && durationSeconds > 0f) {
       val bufferedFraction = (buffered / durationSeconds).coerceIn(0f, 1f)
-      drawRoundRect(Color.White.copy(alpha = 0.5f), topLeft = Offset(0f, top),
-        size = Size(size.width * bufferedFraction, h), cornerRadius = radius)
+      drawRoundRect(
+        Color.White.copy(alpha = 0.5f),
+        topLeft = Offset(0f, top),
+        size = Size(size.width * bufferedFraction, h),
+        cornerRadius = radius,
+      )
     }
     if (fraction > 0f) {
       drawRoundRect(accent, topLeft = Offset(0f, top), size = Size(size.width * fraction, h), cornerRadius = radius)

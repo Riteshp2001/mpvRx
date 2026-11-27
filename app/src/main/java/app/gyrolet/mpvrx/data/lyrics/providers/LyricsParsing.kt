@@ -117,8 +117,10 @@ private fun extractText(element: JsonElement): String? =
       }
     is JsonArray -> element.mapNotNull(::extractText).joinToString("\n").takeIf { it.isNotBlank() }
     is JsonObject -> {
-      if (element["isError"]?.toString() == "true" || element["ok"]?.toString() == "false" ||
-        element["success"]?.toString() == "false") {
+      if (element["isError"]?.toString() == "true" ||
+        element["ok"]?.toString() == "false" ||
+        element["success"]?.toString() == "false"
+      ) {
         null
       } else {
         CONTENT_KEYS

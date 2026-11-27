@@ -17,12 +17,29 @@ internal object LyricsTrackMatcher {
   private val MARKS = Regex("""\p{Mn}+""")
   private val NON_ALPHANUMERIC = Regex("""[^\p{L}\p{N}]+""")
   private val SPACES = Regex("""\s+""")
-  private val ARTIST_SPLIT = Regex("""\s*(?:,|&|;|/|\+|\band\b|\bwith\b|\bfeat\.?|\bft\.?|\bx\b)\s*""", RegexOption.IGNORE_CASE)
-  private val VERSION_WORDS = setOf(
-    "live", "remix", "remixed", "mix", "acoustic", "unplugged",
-    "instrumental", "karaoke", "demo", "edit", "cover", "sped",
-    "slowed", "nightcore", "lofi", "extended", "remaster", "remastered",
-  )
+  private val ARTIST_SPLIT =
+    Regex("""\s*(?:,|&|;|/|\+|\band\b|\bwith\b|\bfeat\.?|\bft\.?|\bx\b)\s*""", RegexOption.IGNORE_CASE)
+  private val VERSION_WORDS =
+    setOf(
+      "live",
+      "remix",
+      "remixed",
+      "mix",
+      "acoustic",
+      "unplugged",
+      "instrumental",
+      "karaoke",
+      "demo",
+      "edit",
+      "cover",
+      "sped",
+      "slowed",
+      "nightcore",
+      "lofi",
+      "extended",
+      "remaster",
+      "remastered",
+    )
 
   fun matches(
     ref: TrackRef,
@@ -42,7 +59,8 @@ internal object LyricsTrackMatcher {
       if (wanted.isEmpty() || found.none { it in wanted }) return false
     }
 
-    return durationSeconds <= 0 || resultDurationSeconds <= 0 ||
+    return durationSeconds <= 0 ||
+      resultDurationSeconds <= 0 ||
       abs(resultDurationSeconds - durationSeconds) <= MAX_DURATION_DIFFERENCE_SECONDS
   }
 
@@ -54,14 +72,18 @@ internal object LyricsTrackMatcher {
     return fold(withoutVersionSuffix)
   }
 
-  private fun versions(title: String): Set<String> =
-    fold(title).split(' ').filter { it in VERSION_WORDS }.toSet()
+  private fun versions(title: String): Set<String> = fold(title).split(' ').filter { it in VERSION_WORDS }.toSet()
 
   private fun artists(artist: String): Set<String> =
-    artist.split(ARTIST_SPLIT).map(::fold).filter { it.isNotEmpty() }.toSet()
+    artist
+      .split(ARTIST_SPLIT)
+      .map(::fold)
+      .filter { it.isNotEmpty() }
+      .toSet()
 
   private fun fold(text: String): String =
-    Normalizer.normalize(text, Normalizer.Form.NFD)
+    Normalizer
+      .normalize(text, Normalizer.Form.NFD)
       .replace(MARKS, "")
       .lowercase(Locale.ROOT)
       .replace(NON_ALPHANUMERIC, " ")

@@ -19,8 +19,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.Canvas as ComposeCanvas
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -28,6 +26,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import app.gyrolet.mpvrx.R
@@ -36,6 +35,7 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.random.Random
+import androidx.compose.ui.graphics.Canvas as ComposeCanvas
 
 /**
  * Wallpapers that are drawn in code, so no image assets are needed.
@@ -893,7 +893,6 @@ private fun DrawScope.sakuraBud(
   drawCircle(Color(0xFFFFB3CB), radius = r * 0.32f, center = Offset(cx - r * 0.12f, cy - r * 0.14f))
 }
 
-/** Sakura branch reaching in from the top-right corner, with blossoms and a few buds. */
 /** One rigid segment of branch: a dark bark stroke plus a thinner highlight along its top edge. */
 private fun DrawScope.limb(
   p0: Offset,
@@ -938,7 +937,16 @@ private fun DrawScope.drawSakuraBranch() {
   }
 
   // Main limb.
-  val m1 = listOf(Offset(w * 1.10f, h * 0.045f), Offset(w * 0.95f, h * 0.000f), Offset(w * 0.56f, h * 0.170f), Offset(w * 0.10f, h * 0.125f))
+  val m1 =
+    listOf(
+      Offset(w * 1.10f, h * 0.045f),
+      Offset(w * 0.95f, h * 0.000f),
+      Offset(w * 0.56f, h * 0.170f),
+      Offset(
+        w * 0.10f,
+        h * 0.125f,
+      ),
+    )
   limb(m1[0], m1[1], m1[2], m1[3], 30f, 8f, unit)
   addTwigs(
     m1,
@@ -959,7 +967,16 @@ private fun DrawScope.drawSakuraBranch() {
     }
 
   // Secondary, shorter limb branching lower down.
-  val m2 = listOf(Offset(w * 1.08f, h * 0.30f), Offset(w * 0.96f, h * 0.26f), Offset(w * 0.80f, h * 0.34f), Offset(w * 0.60f, h * 0.36f))
+  val m2 =
+    listOf(
+      Offset(w * 1.08f, h * 0.30f),
+      Offset(w * 0.96f, h * 0.26f),
+      Offset(w * 0.80f, h * 0.34f),
+      Offset(
+        w * 0.60f,
+        h * 0.36f,
+      ),
+    )
   limb(m2[0], m2[1], m2[2], m2[3], 20f, 6f, unit)
   addTwigs(
     m2,

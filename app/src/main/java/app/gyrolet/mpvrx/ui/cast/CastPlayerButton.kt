@@ -44,7 +44,11 @@ fun CastPlayerButton(
     androidx.compose.ui.res
       .stringResource(app.gyrolet.mpvrx.R.string.ui_cast)
   var routeButton by remember { mutableStateOf<MediaRouteButton?>(null) }
-  val castState = CastPlaybackController.instance?.castState?.collectAsState()?.value
+  val castState =
+    CastPlaybackController.instance
+      ?.castState
+      ?.collectAsState()
+      ?.value
   Box(modifier = Modifier.size(buttonSize), contentAlignment = Alignment.Center) {
     AdaptiveControlsButton(
       onClick = { routeButton?.performClick() },

@@ -60,8 +60,8 @@ class SnapshotDetailViewModel(
   application: Application,
   private val captures: List<SnapshotDetailItem>,
   private val initialIndex: Int,
-) : AndroidViewModel(application), KoinComponent {
-
+) : AndroidViewModel(application),
+  KoinComponent {
   private val repository: FrameCaptureRepository by inject()
 
   private val _currentIndex = MutableStateFlow(initialIndex.coerceIn(0, captures.lastIndex.coerceAtLeast(0)))
@@ -132,8 +132,7 @@ class SnapshotDetailViewModel(
     listOfNotNull(captures.getOrNull(index - 1), captures.getOrNull(index + 1)).forEach(::loadImage)
   }
 
-  suspend fun isImageAvailable(item: SnapshotDetailItem): Boolean =
-    repository.isImageAvailable(item.toDomain())
+  suspend fun isImageAvailable(item: SnapshotDetailItem): Boolean = repository.isImageAvailable(item.toDomain())
 
   suspend fun videoAvailability(item: SnapshotDetailItem): VideoAvailability =
     repository.videoAvailability(item.toDomain())

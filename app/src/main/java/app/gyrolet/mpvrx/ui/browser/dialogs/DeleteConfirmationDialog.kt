@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -28,7 +27,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +34,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -99,7 +99,9 @@ fun DeleteConfirmationDialog(
               modifier = Modifier.size(20.dp),
             )
             Text(
-              text = "This action cannot be undone. The selected item${if (itemCount == 1) "" else "s"} will be permanently deleted.",
+              text =
+                "This action cannot be undone. The selected item${if (itemCount == 1) "" else "s"}" +
+                  " will be permanently deleted.",
               style = MaterialTheme.typography.bodyMedium,
               fontWeight = FontWeight.Medium,
               color = MaterialTheme.colorScheme.onErrorContainer,
@@ -156,7 +158,10 @@ fun DeleteConfirmationDialog(
         app.gyrolet.mpvrx.presentation.components.DeleteSizeButton(
           paths = itemPaths,
           totalSizeBytes = totalSizeBytes,
-          onClick = { onConfirm(); onDismiss() },
+          onClick = {
+            onConfirm()
+            onDismiss()
+          },
         )
       } else {
         Button(

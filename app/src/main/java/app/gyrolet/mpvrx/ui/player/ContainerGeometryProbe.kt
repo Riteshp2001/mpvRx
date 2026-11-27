@@ -90,8 +90,7 @@ internal object ContainerGeometryProbe {
     }
 
   /** Whether a probe for [path] was already started, e.g. by [prefetch] when the video was tapped. */
-  fun isPrefetched(path: String?): Boolean =
-    !path.isNullOrBlank() && synchronized(probes) { probes.containsKey(path) }
+  fun isPrefetched(path: String?): Boolean = !path.isNullOrBlank() && synchronized(probes) { probes.containsKey(path) }
 
   private fun submit(
     key: String,

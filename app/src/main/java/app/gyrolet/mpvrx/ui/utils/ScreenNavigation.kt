@@ -48,27 +48,32 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
-import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
 import app.gyrolet.mpvrx.ui.player.LocalInAppMusicSheet
+import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
 import app.gyrolet.mpvrx.ui.preferences.ScrollableSettingsScreen
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.LocalAppWallpaperActive
 import app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor
 import app.gyrolet.mpvrx.ui.tv.TvEdgeToEdgeScreen
 import app.gyrolet.mpvrx.ui.tv.TvScreenFocusHost
-import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
+import kotlin.math.roundToInt
 
 private val NavigationEnterEasing = CubicBezierEasing(0.05f, 0.70f, 0.10f, 1.00f)
 private val NavigationExitEasing = CubicBezierEasing(0.30f, 0.00f, 0.80f, 0.15f)
 internal val LocalCurrentScreen = staticCompositionLocalOf<Screen?> { null }
 
 /** The Appearance slider is a duration multiplier: smaller values finish sooner. */
-internal fun navigationDurationMillis(speed: Float, baseMillis: Int = 260): Int =
-  (baseMillis * (speed.takeIf { it.isFinite() } ?: 1f).coerceIn(0.25f, 2.5f)).roundToInt()
+internal fun navigationDurationMillis(
+  speed: Float,
+  baseMillis: Int = 260,
+): Int = (baseMillis * (speed.takeIf { it.isFinite() } ?: 1f).coerceIn(0.25f, 2.5f)).roundToInt()
 
-private fun navigationSpringStiffness(base: Float, speed: Float): Float {
+private fun navigationSpringStiffness(
+  base: Float,
+  speed: Float,
+): Float {
   val multiplier = (speed.takeIf { it.isFinite() } ?: 1f).coerceIn(0.25f, 2.5f)
   return (base / (multiplier * multiplier)).coerceIn(110f, 2400f)
 }
@@ -212,8 +217,11 @@ internal fun ScreenNavDisplay(
         val scrollHandlesOverlay =
           route is ScrollableSettingsScreen ||
             route is app.gyrolet.mpvrx.ui.preferences.LuaScriptEditorScreen
-        val insetByHost = bottomOverlayClearance > 0.dp && route !in bottomOverlayExempt &&
-          !NavigationBarState.isInSelectionMode && !scrollHandlesOverlay
+        val insetByHost =
+          bottomOverlayClearance > 0.dp &&
+            route !in bottomOverlayExempt &&
+            !NavigationBarState.isInSelectionMode &&
+            !scrollHandlesOverlay
         val inheritedClearance = LocalNavigationBarHeight.current
         CompositionLocalProvider(
           LocalCurrentScreen provides route,
@@ -225,7 +233,8 @@ internal fun ScreenNavDisplay(
             contentColor = androidx.compose.material3.contentColorFor(entryColor),
           ) {
             Box(
-              Modifier.fillMaxSize()
+              Modifier
+                .fillMaxSize()
                 .padding(bottom = if (insetByHost) bottomOverlayClearance else 0.dp),
             ) {
               Surface(Modifier.fillMaxSize(), color = entryColor) {
@@ -288,7 +297,7 @@ private fun screenNavTransition(
                 easing = NavigationEnterEasing,
               ),
           ) { fullWidth -> fullWidth * sign / 16 }
-        ) togetherWith exit
+      ) togetherWith exit
     }
   }
 
@@ -324,7 +333,7 @@ private fun screenNavTransition(
             animationSpec = tween(durationMillis = duration, easing = NavigationEnterEasing),
             initialScale = 0.985f,
           )
-        ) togetherWith
+      ) togetherWith
         (
           fadeOut(
             tween(durationMillis = exitDuration, easing = NavigationExitEasing),
@@ -333,7 +342,7 @@ private fun screenNavTransition(
               animationSpec = tween(durationMillis = exitDuration, easing = NavigationExitEasing),
               targetScale = 0.992f,
             )
-          )
+        )
     }
 
     NavigationAnimStyle.Depth ->
@@ -349,7 +358,7 @@ private fun screenNavTransition(
             fadeIn(
               tween(durationMillis = alphaDuration, easing = NavigationEnterEasing),
             )
-          ) togetherWith
+        ) togetherWith
           (
             scaleOut(
               animationSpec = tween(durationMillis = duration, easing = NavigationExitEasing),
@@ -359,7 +368,7 @@ private fun screenNavTransition(
                 tween(durationMillis = alphaDuration, easing = NavigationExitEasing),
                 targetAlpha = 0.72f,
               )
-            )
+          )
       } else {
         (
           scaleIn(
@@ -370,7 +379,7 @@ private fun screenNavTransition(
               tween(durationMillis = alphaDuration, easing = NavigationEnterEasing),
               initialAlpha = 0.72f,
             )
-          ) togetherWith
+        ) togetherWith
           (
             slideOutHorizontally(
               animationSpec = tween(durationMillis = duration, easing = NavigationExitEasing),
@@ -382,7 +391,7 @@ private fun screenNavTransition(
               fadeOut(
                 tween(durationMillis = alphaDuration, easing = NavigationExitEasing),
               )
-            )
+          )
       }
 
     NavigationAnimStyle.Default ->
@@ -394,7 +403,7 @@ private fun screenNavTransition(
             fadeIn(
               tween(durationMillis = alphaDuration, easing = NavigationEnterEasing),
             )
-          ) togetherWith
+        ) togetherWith
           (
             slideOutHorizontally(
               animationSpec = tween(durationMillis = duration, easing = NavigationExitEasing),
@@ -403,7 +412,7 @@ private fun screenNavTransition(
                 tween(durationMillis = alphaDuration, easing = NavigationExitEasing),
                 targetAlpha = 0.90f,
               )
-            )
+          )
       } else {
         (
           slideInHorizontally(
@@ -413,7 +422,7 @@ private fun screenNavTransition(
               tween(durationMillis = alphaDuration, easing = NavigationEnterEasing),
               initialAlpha = 0.90f,
             )
-          ) togetherWith
+        ) togetherWith
           (
             slideOutHorizontally(
               animationSpec = tween(durationMillis = duration, easing = NavigationExitEasing),
@@ -421,7 +430,7 @@ private fun screenNavTransition(
               fadeOut(
                 tween(durationMillis = alphaDuration, easing = NavigationExitEasing),
               )
-            )
+          )
       }
   }
 }

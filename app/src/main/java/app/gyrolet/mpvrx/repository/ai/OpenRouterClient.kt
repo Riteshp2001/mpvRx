@@ -147,7 +147,9 @@ class OpenRouterClient(
         apiClient.newCall(request).awaitResponse().use { response ->
           val body = response.body.string()
           if (!response.isSuccessful) {
-            throw Exception("OpenRouter generate error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}")
+            throw Exception(
+              "OpenRouter generate error ${response.code}: ${AiResponseParser.error(json, body, apiKey, 200)}",
+            )
           }
           AiResponseParser.openAiCompatible(json, body, "OpenRouter")
         }

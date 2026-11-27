@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.remote
 
 import android.content.Context
@@ -26,7 +26,9 @@ internal data class PairedTv(
 )
 
 /** Pairing secrets live in their own file, so settings exports and backups never include them. */
-internal class RemoteControlStore(context: Context) {
+internal class RemoteControlStore(
+  context: Context,
+) {
   private val prefs = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
   private val json = Json { ignoreUnknownKeys = true }
 
@@ -60,15 +62,22 @@ internal class RemoteControlStore(context: Context) {
   fun savePairedTv(tv: PairedTv) =
     update(KEY_TVS, PairedTv.serializer()) { tvs -> (tvs.filterNot { it.tvId == tv.tvId } + tv).takeLast(MAX_PAIRED) }
 
-  fun removePairedTv(tvId: String) =
-    update(KEY_TVS, PairedTv.serializer()) { tvs -> tvs.filterNot { it.tvId == tvId } }
+  fun removePairedTv(tvId: String) = update(KEY_TVS, PairedTv.serializer()) { tvs -> tvs.filterNot { it.tvId == tvId } }
 
-  private fun <T> read(key: String, serializer: KSerializer<T>): List<T> =
-    prefs.getString(key, null)
+  private fun <T> read(
+    key: String,
+    serializer: KSerializer<T>,
+  ): List<T> =
+    prefs
+      .getString(key, null)
       ?.let { stored -> runCatching { json.decodeFromString(ListSerializer(serializer), stored) }.getOrNull() }
       .orEmpty()
 
-  private fun <T> update(key: String, serializer: KSerializer<T>, transform: (List<T>) -> List<T>) {
+  private fun <T> update(
+    key: String,
+    serializer: KSerializer<T>,
+    transform: (List<T>) -> List<T>,
+  ) {
     synchronized(lock) {
       val next = transform(read(key, serializer))
       prefs.edit().putString(key, json.encodeToString(ListSerializer(serializer), next)).commit()

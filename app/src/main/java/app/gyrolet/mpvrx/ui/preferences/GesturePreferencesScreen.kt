@@ -15,13 +15,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,9 +46,12 @@ import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.serialization.Serializable
 import me.zhanghai.compose.preference.FooterPreference
+import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference as SliderPreference
-import org.koin.compose.koinInject
 
 @Serializable
 object GesturePreferencesScreen : ScrollableSettingsScreen {
@@ -92,7 +92,8 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
         ) {
           // ── Swipe & Speed ──────────────────────────────────────────────
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.First, 
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.First,
               title = stringResource(R.string.pref_section_swipe_speed),
               modifier = Modifier.settingsSearchTarget(R.string.pref_gesture),
             )
@@ -188,7 +189,10 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
 
               val swipeSubtitlesInvertDirection by preferences.swipeSubtitlesInvertDirection.collectAsState()
               SwitchPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_swipe_subtitles_invert_direction),
+                modifier =
+                  Modifier.settingsSearchTarget(
+                    R.string.pref_player_gestures_swipe_subtitles_invert_direction,
+                  ),
                 value = swipeSubtitlesInvertDirection,
                 onValueChange = preferences.swipeSubtitlesInvertDirection::set,
                 title = { Text(stringResource(R.string.pref_player_gestures_swipe_subtitles_invert_direction)) },
@@ -237,28 +241,28 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
 
               val horizontalSwipeSensitivity by playerPreferences.horizontalSwipeSensitivity.collectAsState()
               ExpressivePreferenceItem {
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_horizontal_swipe_sensitivity),
-                value = horizontalSwipeSensitivity,
-                onValueChange = { playerPreferences.horizontalSwipeSensitivity.set(it.toFixed(3)) },
-                title = { Text(stringResource(R.string.pref_player_gestures_horizontal_swipe_sensitivity)) },
-                valueRange = 0.020f..0.1f,
-                summary = {
-                  val pct = (horizontalSwipeSensitivity * 1000).toInt()
-                  val level =
-                    when {
-                      pct < 30 -> stringResource(R.string.pref_sensitivity_low)
-                      pct < 55 -> stringResource(R.string.pref_sensitivity_medium)
-                      else -> stringResource(R.string.pref_sensitivity_high)
-                    }
-                  Text(
-                    stringResource(R.string.pref_swipe_sensitivity_summary, pct, level),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                onSliderValueChange = { playerPreferences.horizontalSwipeSensitivity.set(it.toFixed(3)) },
-                sliderValue = horizontalSwipeSensitivity,
-              )
+                SliderPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_horizontal_swipe_sensitivity),
+                  value = horizontalSwipeSensitivity,
+                  onValueChange = { playerPreferences.horizontalSwipeSensitivity.set(it.toFixed(3)) },
+                  title = { Text(stringResource(R.string.pref_player_gestures_horizontal_swipe_sensitivity)) },
+                  valueRange = 0.020f..0.1f,
+                  summary = {
+                    val pct = (horizontalSwipeSensitivity * 1000).toInt()
+                    val level =
+                      when {
+                        pct < 30 -> stringResource(R.string.pref_sensitivity_low)
+                        pct < 55 -> stringResource(R.string.pref_sensitivity_medium)
+                        else -> stringResource(R.string.pref_sensitivity_high)
+                      }
+                    Text(
+                      stringResource(R.string.pref_swipe_sensitivity_summary, pct, level),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  onSliderValueChange = { playerPreferences.horizontalSwipeSensitivity.set(it.toFixed(3)) },
+                  sliderValue = horizontalSwipeSensitivity,
+                )
               }
 
               PreferenceDivider()
@@ -266,32 +270,39 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
               val holdForMultipleSpeed by playerPreferences.holdForMultipleSpeed.collectAsState()
               val holdSpeedSliderValue = snapHoldSpeedBoost(holdForMultipleSpeed)
               ExpressivePreferenceItem {
-              SliderPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_hold_for_multiple_speed),
-                value = holdSpeedSliderValue,
-                onValueChange = { playerPreferences.holdForMultipleSpeed.set(snapHoldSpeedBoost(it).toFixed(2)) },
-                title = { Text(stringResource(R.string.pref_player_gestures_hold_for_multiple_speed)) },
-                valueRange = 0f..4f,
-                summary = {
-                  Text(
-                    if (holdSpeedSliderValue == 0f) {
-                      stringResource(R.string.generic_disabled)
-                    } else {
-                      stringResource(R.string.pref_hold_speed_summary_format, holdSpeedSliderValue)
-                    },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-                onSliderValueChange = { playerPreferences.holdForMultipleSpeed.set(snapHoldSpeedBoost(it).toFixed(2)) },
-                sliderValue = holdSpeedSliderValue,
-              )
+                SliderPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_player_gestures_hold_for_multiple_speed),
+                  value = holdSpeedSliderValue,
+                  onValueChange = { playerPreferences.holdForMultipleSpeed.set(snapHoldSpeedBoost(it).toFixed(2)) },
+                  title = { Text(stringResource(R.string.pref_player_gestures_hold_for_multiple_speed)) },
+                  valueRange = 0f..4f,
+                  summary = {
+                    Text(
+                      if (holdSpeedSliderValue == 0f) {
+                        stringResource(R.string.generic_disabled)
+                      } else {
+                        stringResource(R.string.pref_hold_speed_summary_format, holdSpeedSliderValue)
+                      },
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                  onSliderValueChange = {
+                    playerPreferences.holdForMultipleSpeed.set(
+                      snapHoldSpeedBoost(it).toFixed(2),
+                    )
+                  },
+                  sliderValue = holdSpeedSliderValue,
+                )
               }
             }
           }
 
           // ── Tap Gestures ───────────────────────────────────────────────
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle, title = stringResource(R.string.pref_gesture_double_tap_title))
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
+              title = stringResource(R.string.pref_gesture_double_tap_title),
+            )
           }
 
           item {
@@ -312,38 +323,38 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
               val isCustomValue = !predefinedValues.contains(doubleTapSeekDuration)
 
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_player_double_tap_seek_duration),
-                value = if (isCustomValue) -1 else doubleTapSeekDuration,
-                onValueChange = { newValue ->
-                  if (newValue == -1) {
-                    customSeekValue = doubleTapSeekDuration.toString()
-                    showCustomSeekDialog = true
-                  } else {
-                    preferences.doubleTapToSeekDuration.set(newValue)
-                  }
-                },
-                values = predefinedValues + listOf(-1),
-                valueToText = { value ->
-                  if (value == -1) {
-                    AnnotatedString(stringResource(R.string.pref_gesture_double_tap_custom))
-                  } else {
-                    AnnotatedString("${value}s")
-                  }
-                },
-                title = { Text(text = stringResource(id = R.string.pref_player_double_tap_seek_duration)) },
-                summary = {
-                  Text(
-                    text =
-                      if (isCustomValue) {
-                        stringResource(R.string.pref_custom_seek_summary_format, doubleTapSeekDuration)
-                      } else {
-                        "${doubleTapSeekDuration}s"
-                      },
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_player_double_tap_seek_duration),
+                  value = if (isCustomValue) -1 else doubleTapSeekDuration,
+                  onValueChange = { newValue ->
+                    if (newValue == -1) {
+                      customSeekValue = doubleTapSeekDuration.toString()
+                      showCustomSeekDialog = true
+                    } else {
+                      preferences.doubleTapToSeekDuration.set(newValue)
+                    }
+                  },
+                  values = predefinedValues + listOf(-1),
+                  valueToText = { value ->
+                    if (value == -1) {
+                      AnnotatedString(stringResource(R.string.pref_gesture_double_tap_custom))
+                    } else {
+                      AnnotatedString("${value}s")
+                    }
+                  },
+                  title = { Text(text = stringResource(id = R.string.pref_player_double_tap_seek_duration)) },
+                  summary = {
+                    Text(
+                      text =
+                        if (isCustomValue) {
+                          stringResource(R.string.pref_custom_seek_summary_format, doubleTapSeekDuration)
+                        } else {
+                          "${doubleTapSeekDuration}s"
+                        },
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               PreferenceDivider()
@@ -393,104 +404,116 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
               val seekAreaValues = listOf(20, 25, 30, 35, 40, 45)
 
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_double_tap_seek_area_width_title),
-                value = doubleTapSeekAreaWidth,
-                onValueChange = { preferences.doubleTapSeekAreaWidth.set(it) },
-                values = seekAreaValues,
-                valueToText = { AnnotatedString("$it%") },
-                title = { Text(text = stringResource(R.string.pref_double_tap_seek_area_width_title)) },
-                summary = {
-                  Text(
-                    text = stringResource(R.string.pref_double_tap_seek_area_width_summary, doubleTapSeekAreaWidth),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_double_tap_seek_area_width_title),
+                  value = doubleTapSeekAreaWidth,
+                  onValueChange = { preferences.doubleTapSeekAreaWidth.set(it) },
+                  values = seekAreaValues,
+                  valueToText = { AnnotatedString("$it%") },
+                  title = { Text(text = stringResource(R.string.pref_double_tap_seek_area_width_title)) },
+                  summary = {
+                    Text(
+                      text = stringResource(R.string.pref_double_tap_seek_area_width_summary, doubleTapSeekAreaWidth),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               PreferenceDivider()
 
               val leftDoubleTap by preferences.leftSingleActionGesture.collectAsState()
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_double_tap_left_title),
-                value = leftDoubleTap,
-                onValueChange = { preferences.leftSingleActionGesture.set(it) },
-                values = SingleActionGesture.entries,
-                valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
-                title = {
-                  Text(
-                    stringResource(
-                      if (useSingleTapForLeft) R.string.pref_gesture_single_tap_left_title else R.string.pref_gesture_double_tap_left_title,
-                    ),
-                  )
-                },
-                summary = {
-                  Text(
-                    text = stringResource(leftDoubleTap.titleRes),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_double_tap_left_title),
+                  value = leftDoubleTap,
+                  onValueChange = { preferences.leftSingleActionGesture.set(it) },
+                  values = SingleActionGesture.entries,
+                  valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                  title = {
+                    Text(
+                      stringResource(
+                        if (useSingleTapForLeft) {
+                          R.string.pref_gesture_single_tap_left_title
+                        } else {
+                          R.string.pref_gesture_double_tap_left_title
+                        },
+                      ),
+                    )
+                  },
+                  summary = {
+                    Text(
+                      text = stringResource(leftDoubleTap.titleRes),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               PreferenceDivider()
 
               val centerDoubleTap by preferences.centerSingleActionGesture.collectAsState()
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_double_tap_center_title),
-                value = centerDoubleTap,
-                onValueChange = { preferences.centerSingleActionGesture.set(it) },
-                values =
-                  listOf(
-                    SingleActionGesture.None,
-                    SingleActionGesture.PlayPause,
-                    SingleActionGesture.Custom,
-                  ),
-                valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
-                title = {
-                  Text(
-                    text =
-                      stringResource(
-                        if (useSingleTapForCenter) R.string.pref_gesture_single_tap_center_title else R.string.pref_gesture_double_tap_center_title,
-                      ),
-                  )
-                },
-                summary = {
-                  Text(
-                    text = stringResource(centerDoubleTap.titleRes),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_double_tap_center_title),
+                  value = centerDoubleTap,
+                  onValueChange = { preferences.centerSingleActionGesture.set(it) },
+                  values =
+                    listOf(
+                      SingleActionGesture.None,
+                      SingleActionGesture.PlayPause,
+                      SingleActionGesture.Custom,
+                    ),
+                  valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                  title = {
+                    Text(
+                      text =
+                        stringResource(
+                          if (useSingleTapForCenter) {
+                            R.string.pref_gesture_single_tap_center_title
+                          } else {
+                            R.string.pref_gesture_double_tap_center_title
+                          },
+                        ),
+                    )
+                  },
+                  summary = {
+                    Text(
+                      text = stringResource(centerDoubleTap.titleRes),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               PreferenceDivider()
 
               val rightDoubleTap by preferences.rightSingleActionGesture.collectAsState()
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_double_tap_right_title),
-                value = rightDoubleTap,
-                onValueChange = { preferences.rightSingleActionGesture.set(it) },
-                values = SingleActionGesture.entries,
-                valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
-                title = {
-                  Text(
-                    stringResource(
-                      if (useSingleTapForRight) R.string.pref_gesture_single_tap_right_title else R.string.pref_gesture_double_tap_right_title,
-                    ),
-                  )
-                },
-                summary = {
-                  Text(
-                    text = stringResource(rightDoubleTap.titleRes),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_double_tap_right_title),
+                  value = rightDoubleTap,
+                  onValueChange = { preferences.rightSingleActionGesture.set(it) },
+                  values = SingleActionGesture.entries,
+                  valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                  title = {
+                    Text(
+                      stringResource(
+                        if (useSingleTapForRight) {
+                          R.string.pref_gesture_single_tap_right_title
+                        } else {
+                          R.string.pref_gesture_double_tap_right_title
+                        },
+                      ),
+                    )
+                  },
+                  summary = {
+                    Text(
+                      text = stringResource(rightDoubleTap.titleRes),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               PreferenceDivider()
@@ -566,128 +589,131 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
                   CustomKeyCodes.DoubleTapRight,
                 ).map { it.keyCode }.toImmutableList()
               ExpressivePreferenceItem {
-              FooterPreference(
-                summary = {
-                  var annotatedString =
-                    buildAnnotatedString {
-                      append(stringResource(R.string.pref_gesture_double_tap_custom_info))
+                FooterPreference(
+                  summary = {
+                    var annotatedString =
+                      buildAnnotatedString {
+                        append(stringResource(R.string.pref_gesture_double_tap_custom_info))
+                      }
+
+                    doubleTapKeyCodes.forEach { keyCode ->
+                      annotatedString =
+                        buildAnnotatedString {
+                          val startIndex = annotatedString.indexOf(keyCode)
+                          val endIndex = startIndex + keyCode.length
+                          append(annotatedString)
+                          addStyle(
+                            style = SpanStyle(fontWeight = FontWeight.Bold),
+                            start = startIndex,
+                            end = endIndex,
+                          )
+                        }
                     }
 
-                  doubleTapKeyCodes.forEach { keyCode ->
-                    annotatedString =
-                      buildAnnotatedString {
-                        val startIndex = annotatedString.indexOf(keyCode)
-                        val endIndex = startIndex + keyCode.length
-                        append(annotatedString)
-                        addStyle(
-                          style = SpanStyle(fontWeight = FontWeight.Bold),
-                          start = startIndex,
-                          end = endIndex,
-                        )
-                      }
-                  }
-
-                  Text(
-                    text = annotatedString,
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                    Text(
+                      text = annotatedString,
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
             }
           }
 
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_gesture_media_title))
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Last,
+              title = stringResource(R.string.pref_gesture_media_title),
+            )
           }
 
           item {
             PreferenceCard {
               val mediaPreviousGesture by preferences.mediaPreviousGesture.collectAsState()
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_media_previous),
-                value = mediaPreviousGesture,
-                onValueChange = { preferences.mediaPreviousGesture.set(it) },
-                values = SingleActionGesture.entries,
-                valueToText = {
-                  AnnotatedString(
-                    resources.getString(
-                      if (it == SingleActionGesture.Seek) R.string.pref_gesture_media_previous else it.titleRes,
-                    ),
-                  )
-                },
-                title = { Text(text = stringResource(R.string.pref_gesture_media_previous)) },
-                summary = {
-                  Text(
-                    text =
-                      stringResource(
-                        if (mediaPreviousGesture == SingleActionGesture.Seek) {
-                          R.string.pref_gesture_media_previous
-                        } else {
-                          mediaPreviousGesture.titleRes
-                        },
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_media_previous),
+                  value = mediaPreviousGesture,
+                  onValueChange = { preferences.mediaPreviousGesture.set(it) },
+                  values = SingleActionGesture.entries,
+                  valueToText = {
+                    AnnotatedString(
+                      resources.getString(
+                        if (it == SingleActionGesture.Seek) R.string.pref_gesture_media_previous else it.titleRes,
                       ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                    )
+                  },
+                  title = { Text(text = stringResource(R.string.pref_gesture_media_previous)) },
+                  summary = {
+                    Text(
+                      text =
+                        stringResource(
+                          if (mediaPreviousGesture == SingleActionGesture.Seek) {
+                            R.string.pref_gesture_media_previous
+                          } else {
+                            mediaPreviousGesture.titleRes
+                          },
+                        ),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               PreferenceDivider()
               val mediaPlayGesture by preferences.mediaPlayGesture.collectAsState()
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_media_play),
-                value = mediaPlayGesture,
-                onValueChange = { preferences.mediaPlayGesture.set(it) },
-                values =
-                  listOf(
-                    SingleActionGesture.None,
-                    SingleActionGesture.PlayPause,
-                    SingleActionGesture.Custom,
-                  ),
-                valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
-                title = { Text(text = stringResource(R.string.pref_gesture_media_play)) },
-                summary = {
-                  Text(
-                    text = stringResource(mediaPlayGesture.titleRes),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_media_play),
+                  value = mediaPlayGesture,
+                  onValueChange = { preferences.mediaPlayGesture.set(it) },
+                  values =
+                    listOf(
+                      SingleActionGesture.None,
+                      SingleActionGesture.PlayPause,
+                      SingleActionGesture.Custom,
+                    ),
+                  valueToText = { AnnotatedString(resources.getString(it.titleRes)) },
+                  title = { Text(text = stringResource(R.string.pref_gesture_media_play)) },
+                  summary = {
+                    Text(
+                      text = stringResource(mediaPlayGesture.titleRes),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               PreferenceDivider()
               val mediaNextGesture by preferences.mediaNextGesture.collectAsState()
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_media_next),
-                value = mediaNextGesture,
-                onValueChange = { preferences.mediaNextGesture.set(it) },
-                values = SingleActionGesture.entries,
-                valueToText = {
-                  AnnotatedString(
-                    resources.getString(
-                      if (it == SingleActionGesture.Seek) R.string.pref_gesture_media_next else it.titleRes,
-                    ),
-                  )
-                },
-                title = { Text(text = stringResource(R.string.pref_gesture_media_next)) },
-                summary = {
-                  Text(
-                    text =
-                      stringResource(
-                        if (mediaNextGesture == SingleActionGesture.Seek) {
-                          R.string.pref_gesture_media_next
-                        } else {
-                          mediaNextGesture.titleRes
-                        },
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_gesture_media_next),
+                  value = mediaNextGesture,
+                  onValueChange = { preferences.mediaNextGesture.set(it) },
+                  values = SingleActionGesture.entries,
+                  valueToText = {
+                    AnnotatedString(
+                      resources.getString(
+                        if (it == SingleActionGesture.Seek) R.string.pref_gesture_media_next else it.titleRes,
                       ),
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                    )
+                  },
+                  title = { Text(text = stringResource(R.string.pref_gesture_media_next)) },
+                  summary = {
+                    Text(
+                      text =
+                        stringResource(
+                          if (mediaNextGesture == SingleActionGesture.Seek) {
+                            R.string.pref_gesture_media_next
+                          } else {
+                            mediaNextGesture.titleRes
+                          },
+                        ),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               val mediaKeyCodes =
@@ -697,33 +723,33 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
                   CustomKeyCodes.MediaNext,
                 ).map { it.keyCode }.toImmutableList()
               ExpressivePreferenceItem {
-              FooterPreference(
-                summary = {
-                  var annotatedString =
-                    buildAnnotatedString {
-                      append(stringResource(R.string.pref_gesture_media_custom_info))
+                FooterPreference(
+                  summary = {
+                    var annotatedString =
+                      buildAnnotatedString {
+                        append(stringResource(R.string.pref_gesture_media_custom_info))
+                      }
+
+                    mediaKeyCodes.forEach { keyCode ->
+                      annotatedString =
+                        buildAnnotatedString {
+                          val startIndex = annotatedString.indexOf(keyCode)
+                          val endIndex = startIndex + keyCode.length
+                          append(annotatedString)
+                          addStyle(
+                            style = SpanStyle(fontWeight = FontWeight.Bold),
+                            start = startIndex,
+                            end = endIndex,
+                          )
+                        }
                     }
 
-                  mediaKeyCodes.forEach { keyCode ->
-                    annotatedString =
-                      buildAnnotatedString {
-                        val startIndex = annotatedString.indexOf(keyCode)
-                        val endIndex = startIndex + keyCode.length
-                        append(annotatedString)
-                        addStyle(
-                          style = SpanStyle(fontWeight = FontWeight.Bold),
-                          start = startIndex,
-                          end = endIndex,
-                        )
-                      }
-                  }
-
-                  Text(
-                    text = annotatedString,
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                    Text(
+                      text = annotatedString,
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
             }
           }

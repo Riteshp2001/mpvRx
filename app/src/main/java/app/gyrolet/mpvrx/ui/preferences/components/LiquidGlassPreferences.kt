@@ -33,10 +33,10 @@ import app.gyrolet.mpvrx.ui.preferences.PreferenceCard
 import app.gyrolet.mpvrx.ui.preferences.PreferenceDivider
 import app.gyrolet.mpvrx.ui.preferences.PreferenceSectionHeader
 import app.gyrolet.mpvrx.ui.preferences.settingsSearchTarget
-import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
-import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference as SliderPreference
 import java.text.NumberFormat
 import java.util.Locale
+import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference as SliderPreference
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 fun LazyListScope.liquidGlassPreferences(
@@ -118,16 +118,16 @@ fun LazyListScope.liquidGlassPreferences(
       )
     PreferenceCard {
       ExpressivePreferenceItem {
-      ListPreference(
-        value = highlightStyle,
-        onValueChange = preferences.liquidGlassHighlightStyle::set,
-        values = LiquidGlassHighlightStyle.entries,
-        valueToText = { AnnotatedString(highlightLabels.getValue(it)) },
-        title = { Text(stringResource(R.string.pref_liquid_glass_highlight_style)) },
-        summary = { Text(highlightLabels.getValue(highlightStyle), color = MaterialTheme.colorScheme.outline) },
-        enabled = enabled,
-        modifier = Modifier.settingsSearchTarget(R.string.pref_liquid_glass_highlight_style),
-      )
+        ListPreference(
+          value = highlightStyle,
+          onValueChange = preferences.liquidGlassHighlightStyle::set,
+          values = LiquidGlassHighlightStyle.entries,
+          valueToText = { AnnotatedString(highlightLabels.getValue(it)) },
+          title = { Text(stringResource(R.string.pref_liquid_glass_highlight_style)) },
+          summary = { Text(highlightLabels.getValue(highlightStyle), color = MaterialTheme.colorScheme.outline) },
+          enabled = enabled,
+          modifier = Modifier.settingsSearchTarget(R.string.pref_liquid_glass_highlight_style),
+        )
       }
       PreferenceDivider()
       LiquidGlassSlider(

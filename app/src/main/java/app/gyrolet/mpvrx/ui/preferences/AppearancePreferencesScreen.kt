@@ -10,8 +10,6 @@
 package app.gyrolet.mpvrx.ui.preferences
 
 import android.app.Activity
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
-import app.gyrolet.mpvrx.ui.components.AppToastType
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -55,18 +53,20 @@ import app.gyrolet.mpvrx.preferences.ThumbnailMode
 import app.gyrolet.mpvrx.preferences.TreeFlattenDepth
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
+import app.gyrolet.mpvrx.ui.components.AppToastType
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.ControlsAnimationStyle
 import app.gyrolet.mpvrx.ui.player.NavigationAnimStyle
 import app.gyrolet.mpvrx.ui.player.VideoOpenAnimation
-import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.PreferenceAction
 import app.gyrolet.mpvrx.ui.preferences.components.RestartRequiredDialog
+import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.preferences.components.ThemePicker
-import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.CustomThemeDefinition
-import app.gyrolet.mpvrx.ui.theme.WallpaperDerivedThemeName
+import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.LocalThemeTransitionState
+import app.gyrolet.mpvrx.ui.theme.WALLPAPER_DERIVED_THEME_NAME
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -77,12 +77,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
-import app.gyrolet.mpvrx.ui.preferences.components.PreferenceAction
-import app.gyrolet.mpvrx.ui.preferences.components.AppPreference as Preference
-import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference as SliderPreference
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
+import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
+import app.gyrolet.mpvrx.ui.preferences.components.AppPreference as Preference
+import app.gyrolet.mpvrx.ui.preferences.components.AppSliderPreference as SliderPreference
 
 @Serializable
 object AppearancePreferencesScreen : ScrollableSettingsScreen {
@@ -95,7 +95,9 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
     val gesturePreferences = koinInject<GesturePreferences>()
     val playerPreferences = koinInject<PlayerPreferences>()
     val thumbnailRepository = koinInject<ThumbnailRepository>()
-    val television = app.gyrolet.mpvrx.ui.tv.isTelevision()
+    val television =
+      app.gyrolet.mpvrx.ui.tv
+        .isTelevision()
     val backstack = LocalBackStack.current
     val scope = rememberCoroutineScope()
     val systemDarkTheme = isSystemInDarkTheme()
@@ -127,9 +129,9 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
     val customThemes = remember(customTheme) { CustomThemeDefinition.parseCollection(customTheme) }
     val selectedCustomTheme = customThemes.firstOrNull { it.name == selectedCustomThemeName }
     // The wallpaper-derived theme is managed from the wallpaper editor, so it's hidden from the picker.
-    val pickerThemes = remember(customThemes) { customThemes.filterNot { it.name == WallpaperDerivedThemeName } }
+    val pickerThemes = remember(customThemes) { customThemes.filterNot { it.name == WALLPAPER_DERIVED_THEME_NAME } }
     val selectedThemeLabel =
-      if (selectedCustomTheme?.name == WallpaperDerivedThemeName) {
+      if (selectedCustomTheme?.name == WALLPAPER_DERIVED_THEME_NAME) {
         stringResource(R.string.pref_appearance_custom_wallpaper_title)
       } else {
         selectedCustomTheme?.name ?: stringResource(appTheme.titleRes)
@@ -229,7 +231,8 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
               .then(settingsHighlight),
         ) {
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.First,
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.First,
               title = stringResource(id = R.string.pref_appearance_category_theme),
               modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_title),
             )
@@ -265,7 +268,12 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                   )
                 }
                 Icon(
-                  imageVector = if (isThemeSectionExpanded) Icons.RoundedFilled.ExpandLess else Icons.RoundedFilled.ExpandMore,
+                  imageVector =
+                    if (isThemeSectionExpanded) {
+                      Icons.RoundedFilled.ExpandLess
+                    } else {
+                      Icons.RoundedFilled.ExpandMore
+                    },
                   contentDescription = null,
                   modifier = Modifier.size(20.dp),
                   tint = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -308,7 +316,9 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                     isDarkMode = isDarkMode,
                     amoledMode = amoledMode,
                     onThemeSelected = { theme, position ->
-                      if ((theme != appTheme || selectedCustomThemeName.isNotBlank()) && themeTransition?.isAnimating != true) {
+                      if ((theme != appTheme || selectedCustomThemeName.isNotBlank()) &&
+                        themeTransition?.isAnimating != true
+                      ) {
                         themeTransition?.startTransition(position)
                         scope.launch {
                           delay(50)
@@ -345,123 +355,122 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                   )
 
                   PreferenceCard {
-                   DevicePreference(R.string.pref_app_icon_title) {
-                     ExpressivePreferenceItem {
-                     Preference(
-                       modifier = Modifier.settingsSearchTarget(R.string.pref_app_icon_title),
-                       title = { Text(stringResource(R.string.pref_app_icon_title)) },
-                       summary = {
-                         Text(
-                           stringResource(R.string.pref_app_icon_summary),
-                           color = MaterialTheme.colorScheme.outline,
-                         )
-                       },
-                       onClick = { backstack.navigateTo(AppIconPreferencesScreen) },
-                     )
-                     }
+                    DevicePreference(R.string.pref_app_icon_title) {
+                      ExpressivePreferenceItem {
+                        Preference(
+                          modifier = Modifier.settingsSearchTarget(R.string.pref_app_icon_title),
+                          title = { Text(stringResource(R.string.pref_app_icon_title)) },
+                          summary = {
+                            Text(
+                              stringResource(R.string.pref_app_icon_summary),
+                              color = MaterialTheme.colorScheme.outline,
+                            )
+                          },
+                          onClick = { backstack.navigateTo(AppIconPreferencesScreen) },
+                        )
+                      }
+
+                      PreferenceDivider()
+                    }
+
+                    ExpressivePreferenceItem {
+                      Preference(
+                        title = { Text(stringResource(R.string.bg_pref_title)) },
+                        summary = {
+                          Text(
+                            stringResource(backgroundType.labelRes),
+                            color = MaterialTheme.colorScheme.outline,
+                          )
+                        },
+                        modifier = Modifier.settingsSearchTarget(R.string.bg_pref_title),
+                        onClick = { backstack.navigateTo(BackgroundAnimationPreferencesScreen) },
+                      )
+                    }
 
                     PreferenceDivider()
-                   }
 
-                  ExpressivePreferenceItem {
-                    Preference(
-                      title = { Text(stringResource(R.string.bg_pref_title)) },
+                    SwitchPreference(
+                      modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_amoled_mode_title),
+                      value = amoledMode,
+                      onValueChange = { newValue ->
+                        if (themeTransition?.isAnimating != true) {
+                          themeTransition?.startTransition(
+                            androidx.compose.ui.geometry.Offset.Zero,
+                          )
+                          scope.launch {
+                            delay(50)
+                            preferences.amoledMode.set(newValue)
+                          }
+                        }
+                      },
+                      title = {
+                        Text(
+                          text = stringResource(id = R.string.pref_appearance_amoled_mode_title),
+                        )
+                      },
                       summary = {
                         Text(
-                          stringResource(backgroundType.labelRes),
+                          text =
+                            stringResource(
+                              id = R.string.pref_appearance_amoled_mode_summary,
+                            ),
                           color = MaterialTheme.colorScheme.outline,
                         )
                       },
-                      modifier = Modifier.settingsSearchTarget(R.string.bg_pref_title),
-                      onClick = { backstack.navigateTo(BackgroundAnimationPreferencesScreen) },
+                      enabled = darkMode != DarkMode.Light,
                     )
-                  }
 
-                  PreferenceDivider()
+                    PreferenceDivider()
 
-                  SwitchPreference(
-                    modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_amoled_mode_title),
-                    value = amoledMode,
-                    onValueChange = { newValue ->
-                      if (themeTransition?.isAnimating != true) {
-                        themeTransition?.startTransition(
-                          androidx.compose.ui.geometry.Offset.Zero,
-                        )
-                        scope.launch {
-                          delay(50)
-                          preferences.amoledMode.set(newValue)
-                        }
+                    val useSystemFont by preferences.useSystemFont.collectAsState()
+                    val googleFontFamily by preferences.googleFontFamily.collectAsState()
+                    val activeFontName =
+                      when {
+                        useSystemFont -> stringResource(R.string.pref_appearance_system_font_title)
+                        googleFontFamily.isNotBlank() -> googleFontFamily
+                        else -> stringResource(R.string.app_font_google_sans_flex)
                       }
-                    },
-                    title = {
-                      Text(
-                        text = stringResource(id = R.string.pref_appearance_amoled_mode_title),
+                    ExpressivePreferenceItem {
+                      Preference(
+                        modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_app_font_title),
+                        title = { Text(stringResource(R.string.pref_appearance_app_font_title)) },
+                        summary = {
+                          Text(
+                            text = stringResource(R.string.pref_appearance_app_font_summary, activeFontName),
+                            color = MaterialTheme.colorScheme.outline,
+                          )
+                        },
+                        onClick = { isAppFontSheetOpen = true },
+                        action = PreferenceAction.Dialog,
                       )
-                    },
-                    summary = {
-                      Text(
-                        text =
-                          stringResource(
-                            id = R.string.pref_appearance_amoled_mode_summary,
-                          ),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    },
-                    enabled = darkMode != DarkMode.Light,
-                  )
-
-                  PreferenceDivider()
-
-                  val useSystemFont by preferences.useSystemFont.collectAsState()
-                  val googleFontFamily by preferences.googleFontFamily.collectAsState()
-                  val activeFontName =
-                    when {
-                      useSystemFont -> stringResource(R.string.pref_appearance_system_font_title)
-                      googleFontFamily.isNotBlank() -> googleFontFamily
-                      else -> stringResource(R.string.app_font_google_sans_flex)
                     }
-                  ExpressivePreferenceItem {
-                  Preference(
-                    modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_app_font_title),
-                    title = { Text(stringResource(R.string.pref_appearance_app_font_title)) },
-                    summary = {
-                      Text(
-                        text = stringResource(R.string.pref_appearance_app_font_summary, activeFontName),
-                        color = MaterialTheme.colorScheme.outline,
+
+                    PreferenceDivider()
+
+                    val appUiScale by preferences.appUiScale.collectAsState()
+                    ExpressivePreferenceItem {
+                      SliderPreference(
+                        modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_ui_scale_title),
+                        value = pendingAppUiScale ?: appUiScale,
+                        onValueChange = { pendingAppUiScale = it },
+                        title = {
+                          Text(stringResource(R.string.pref_appearance_ui_scale_title))
+                        },
+                        valueRange = 0.5f..1.5f,
+                        valueSteps = 19,
+                        summary = {
+                          Text(
+                            stringResource(
+                              R.string.pref_appearance_ui_scale_summary,
+                              ((pendingAppUiScale ?: appUiScale) * 100).roundToInt(),
+                            ),
+                            color = MaterialTheme.colorScheme.outline,
+                          )
+                        },
+                        onSliderValueChange = { pendingAppUiScale = it },
+                        sliderValue = pendingAppUiScale ?: appUiScale,
                       )
-                    },
-                    onClick = { isAppFontSheetOpen = true },
-                    action = PreferenceAction.Dialog,
-                  )
-                  }
-
-                  PreferenceDivider()
-
-                  val appUiScale by preferences.appUiScale.collectAsState()
-                  ExpressivePreferenceItem {
-                  SliderPreference(
-                    modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_ui_scale_title),
-                    value = pendingAppUiScale ?: appUiScale,
-                    onValueChange = { pendingAppUiScale = it },
-                    title = {
-                      Text(stringResource(R.string.pref_appearance_ui_scale_title))
-                    },
-                    valueRange = 0.5f..1.5f,
-                    valueSteps = 19,
-                    summary = {
-                      Text(
-                        stringResource(
-                          R.string.pref_appearance_ui_scale_summary,
-                          ((pendingAppUiScale ?: appUiScale) * 100).roundToInt(),
-                        ),
-                        color = MaterialTheme.colorScheme.outline,
-                      )
-                    },
-                    onSliderValueChange = { pendingAppUiScale = it },
-                    sliderValue = pendingAppUiScale ?: appUiScale,
-                  )
-                  }
-
+                    }
                   }
                 }
               }
@@ -469,7 +478,8 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
           }
 
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle,
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
               title = stringResource(id = R.string.pref_appearance_category_file_browser),
             )
           }
@@ -633,14 +643,16 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
           }
 
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Middle,
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Middle,
               title = stringResource(id = R.string.pref_appearance_category_thumbnails),
             )
           }
 
           item {
             ExpressivePreferenceGroup {
-              val showFramePosition = thumbnailGenerator != ThumbnailGenerator.MediaStore && thumbnailMode == ThumbnailMode.FrameAtPosition
+              val showFramePosition =
+                thumbnailGenerator != ThumbnailGenerator.MediaStore && thumbnailMode == ThumbnailMode.FrameAtPosition
               val itemCount = if (showFramePosition) 6 else 5
               val showVideoThumbnails by browserPreferences.showVideoThumbnails.collectAsState()
               SwitchPreference(
@@ -672,18 +684,30 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                   onValueChange = { selected ->
                     if (!changingThumbnailGenerator && selected != thumbnailGenerator) {
                       changingThumbnailGenerator = true
-                      val progressToast = Toast.loading(context, context.getString(R.string.toast_updating_thumbnail_generator))
+                      val progressToast =
+                        Toast.loading(
+                          context,
+                          context.getString(R.string.toast_updating_thumbnail_generator),
+                        )
                       scope.launch {
                         try {
                           thumbnailRepository.setThumbnailGenerator(selected)
-                          app.gyrolet.mpvrx.ui.player.MediaPlayerWidget.clearArtworkCache()
-                          app.gyrolet.mpvrx.ui.player.MediaPlayerWidget.requestUpdate(context)
+                          app.gyrolet.mpvrx.ui.player.MediaPlayerWidget
+                            .clearArtworkCache()
+                          app.gyrolet.mpvrx.ui.player.MediaPlayerWidget
+                            .requestUpdate(context)
                           progressToast.update(thumbnailCacheClearedMessage, AppToastType.Success)
                         } catch (cancelled: kotlinx.coroutines.CancellationException) {
                           progressToast.cancel()
                           throw cancelled
                         } catch (error: Exception) {
-                          progressToast.update(context.getString(R.string.pref_thumbnail_cache_clear_failed, error.message ?: "Unknown error"), AppToastType.Error)
+                          progressToast.update(
+                            context.getString(
+                              R.string.pref_thumbnail_cache_clear_failed,
+                              error.message ?: "Unknown error",
+                            ),
+                            AppToastType.Error,
+                          )
                         } finally {
                           changingThumbnailGenerator = false
                         }
@@ -705,13 +729,14 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                   title = { Text(stringResource(R.string.pref_appearance_thumbnail_generator_title)) },
                   summary = {
                     Text(
-                      text = stringResource(
-                        when (thumbnailGenerator) {
-                          ThumbnailGenerator.Auto -> R.string.pref_thumbnail_generator_auto_summary
-                          ThumbnailGenerator.Native -> R.string.pref_thumbnail_generator_native_summary
-                          ThumbnailGenerator.MediaStore -> R.string.pref_thumbnail_generator_mediastore_summary
-                        },
-                      ),
+                      text =
+                        stringResource(
+                          when (thumbnailGenerator) {
+                            ThumbnailGenerator.Auto -> R.string.pref_thumbnail_generator_auto_summary
+                            ThumbnailGenerator.Native -> R.string.pref_thumbnail_generator_native_summary
+                            ThumbnailGenerator.MediaStore -> R.string.pref_thumbnail_generator_mediastore_summary
+                          },
+                        ),
                       color = MaterialTheme.colorScheme.outline,
                     )
                   },
@@ -851,15 +876,51 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                 (savedOrder.filter { it in names } + names)
                   .distinct()
                   .filterNot { it == "HOME" }
-            val tabItems = ordered.map { id ->
-              when (id) {
-                "HOME" -> ReorderableTabItem(id, stringResource(R.string.pref_nav_home_title), stringResource(R.string.pref_nav_home_summary), true, required = true)
-                "MUSIC" -> ReorderableTabItem(id, stringResource(R.string.pref_nav_music_title), stringResource(R.string.pref_nav_music_summary), showMusicTab, titleRes = R.string.pref_nav_music_title)
-                "NETWORK" -> ReorderableTabItem(id, stringResource(R.string.pref_nav_network_title), stringResource(R.string.pref_nav_network_summary), showNetworkTab, titleRes = R.string.pref_nav_network_title)
-                "JELLYFIN" -> ReorderableTabItem(id, stringResource(R.string.pref_nav_jellyfin_title), stringResource(R.string.pref_nav_jellyfin_summary), showJellyfinTab, titleRes = R.string.pref_nav_jellyfin_title)
-                else -> ReorderableTabItem(id, stringResource(R.string.pref_nav_profile_title), stringResource(R.string.pref_nav_profile_summary), showProfileTab, titleRes = R.string.pref_nav_profile_title)
+            val tabItems =
+              ordered.map { id ->
+                when (id) {
+                  "HOME" ->
+                    ReorderableTabItem(
+                      id,
+                      stringResource(R.string.pref_nav_home_title),
+                      stringResource(R.string.pref_nav_home_summary),
+                      true,
+                      required = true,
+                    )
+                  "MUSIC" ->
+                    ReorderableTabItem(
+                      id,
+                      stringResource(R.string.pref_nav_music_title),
+                      stringResource(R.string.pref_nav_music_summary),
+                      showMusicTab,
+                      titleRes = R.string.pref_nav_music_title,
+                    )
+                  "NETWORK" ->
+                    ReorderableTabItem(
+                      id,
+                      stringResource(R.string.pref_nav_network_title),
+                      stringResource(R.string.pref_nav_network_summary),
+                      showNetworkTab,
+                      titleRes = R.string.pref_nav_network_title,
+                    )
+                  "JELLYFIN" ->
+                    ReorderableTabItem(
+                      id,
+                      stringResource(R.string.pref_nav_jellyfin_title),
+                      stringResource(R.string.pref_nav_jellyfin_summary),
+                      showJellyfinTab,
+                      titleRes = R.string.pref_nav_jellyfin_title,
+                    )
+                  else ->
+                    ReorderableTabItem(
+                      id,
+                      stringResource(R.string.pref_nav_profile_title),
+                      stringResource(R.string.pref_nav_profile_summary),
+                      showProfileTab,
+                      titleRes = R.string.pref_nav_profile_title,
+                    )
+                }
               }
-            }
             Column(modifier = Modifier.fillMaxWidth()) {
               ExpressivePreferenceGroup {
                 ReorderableTabPreferences(
@@ -933,7 +994,12 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                   value = navigationBarGlow,
                   onValueChange = preferences.navigationBarGlow::set,
                   title = { Text(stringResource(R.string.navbar_glow_title)) },
-                  summary = { Text(stringResource(R.string.navbar_glow_summary), color = MaterialTheme.colorScheme.outline) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.navbar_glow_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
                   groupIndex = 2,
                   groupSize = 6,
                 )
@@ -952,7 +1018,12 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                     if (enabled) preferences.progressiveNavigationBlur.set(false)
                   },
                   title = { Text(stringResource(R.string.legacy_navigation_bar_title)) },
-                  summary = { Text(stringResource(R.string.legacy_navigation_bar_summary), color = MaterialTheme.colorScheme.outline) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.legacy_navigation_bar_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
                   groupIndex = 3,
                   groupSize = 6,
                 )
@@ -962,7 +1033,12 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                   onValueChange = preferences.progressiveNavigationBlur::set,
                   enabled = !legacyNavigationBar,
                   title = { Text(stringResource(R.string.progressive_navigation_blur_title)) },
-                  summary = { Text(stringResource(R.string.progressive_navigation_blur_summary), color = MaterialTheme.colorScheme.outline) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.progressive_navigation_blur_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
                   groupIndex = 4,
                   groupSize = 6,
                 )
@@ -973,7 +1049,12 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                   onValueChange = preferences.connectedMiniPlayerNavigation::set,
                   enabled = !legacyNavigationBar,
                   title = { Text(stringResource(R.string.connected_mini_player_navigation_title)) },
-                  summary = { Text(stringResource(R.string.connected_mini_player_navigation_summary), color = MaterialTheme.colorScheme.outline) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.connected_mini_player_navigation_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
                   groupIndex = 5,
                   groupSize = 6,
                 )
@@ -996,7 +1077,12 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
                   value = confirmBackToExit,
                   onValueChange = gesturePreferences.confirmBackToExit::set,
                   title = { Text(stringResource(R.string.pref_tv_double_back_exit_title)) },
-                  summary = { Text(stringResource(R.string.pref_tv_double_back_exit_summary), color = MaterialTheme.colorScheme.outline) },
+                  summary = {
+                    Text(
+                      stringResource(R.string.pref_tv_double_back_exit_summary),
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
                   groupIndex = 0,
                   groupSize = 1,
                 )
@@ -1006,7 +1092,10 @@ object AppearancePreferencesScreen : ScrollableSettingsScreen {
 
           // ── Animations ────────────────────────────────────────
           item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Last, title = stringResource(R.string.pref_section_animations))
+            PreferenceSectionHeader(
+              position = PreferenceSectionPosition.Last,
+              title = stringResource(R.string.pref_section_animations),
+            )
           }
 
           item {

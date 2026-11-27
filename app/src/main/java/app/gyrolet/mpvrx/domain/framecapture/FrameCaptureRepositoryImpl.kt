@@ -20,12 +20,12 @@ import app.gyrolet.mpvrx.database.entities.SnapshotFolderEntity
 import app.gyrolet.mpvrx.domain.network.NetworkPlaybackUri
 import app.gyrolet.mpvrx.repository.NetworkProbeResult
 import app.gyrolet.mpvrx.repository.NetworkRepository
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.File
 
 /**
  * Bounded so a route that silently drops packets cannot wait out the HTTP client's own connect
@@ -41,7 +41,6 @@ class FrameCaptureRepositoryImpl(
   private val database: MpvRxDatabase,
   private val networkRepository: NetworkRepository,
 ) : FrameCaptureRepository {
-
   override fun observeAll(): Flow<List<FrameCapture>> =
     dao.observeAll().map { rows -> rows.map(FrameCaptureEntity::toDomain) }
 
@@ -98,20 +97,19 @@ class FrameCaptureRepositoryImpl(
       }
     }
 
-  override suspend fun delete(id: Long) =
-    withContext(Dispatchers.IO) { dao.delete(id) }
+  override suspend fun delete(id: Long) = withContext(Dispatchers.IO) { dao.delete(id) }
 
-  override suspend fun deleteAll(ids: Collection<Long>) =
-    withContext(Dispatchers.IO) { dao.deleteByIds(ids.toList()) }
+  override suspend fun deleteAll(ids: Collection<Long>) = withContext(Dispatchers.IO) { dao.deleteByIds(ids.toList()) }
 
   override suspend fun videoSource(capture: FrameCapture): VideoSource =
     withContext(Dispatchers.IO) {
-      val reference = NetworkPlaybackUri.parse(capture.videoUri)
-        ?: return@withContext VideoSource(
-          protocolLabel = null,
-          connectionName = null,
-          path = capture.videoPath ?: capture.videoUri,
-        )
+      val reference =
+        NetworkPlaybackUri.parse(capture.videoUri)
+          ?: return@withContext VideoSource(
+            protocolLabel = null,
+            connectionName = null,
+            path = capture.videoPath ?: capture.videoUri,
+          )
       // A connection deleted since the capture leaves its name unknown rather than failing the row.
       val connection = networkRepository.getConnectionById(reference.connectionId)
       VideoSource(

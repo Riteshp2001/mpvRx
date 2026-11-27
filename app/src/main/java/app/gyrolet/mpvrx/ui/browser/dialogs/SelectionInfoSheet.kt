@@ -6,19 +6,17 @@ package app.gyrolet.mpvrx.ui.browser.dialogs
 
 import android.content.ClipData
 import android.content.Intent
-import app.gyrolet.mpvrx.utils.logging.Log
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -98,6 +96,7 @@ import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -107,6 +106,7 @@ import java.io.File
 import java.io.IOException
 import java.text.DateFormat
 import java.util.Date
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 private data class SelectionInfoRequest(
   val videos: List<Video>,
@@ -195,129 +195,151 @@ private fun SelectionInfoPage(
   val unknown = stringResource(R.string.generic_unknown)
   val fpsFormat = stringResource(R.string.selection_info_fps_value)
   val configuration = LocalConfiguration.current
-  val dateFormat = remember(configuration) {
-    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, configuration.locales[0])
-  }
+  val dateFormat =
+    remember(configuration) {
+      DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT, configuration.locales[0])
+    }
+
   fun size(value: Long) = VideoScanUtils.formatFileSize(value)
+
   fun duration(value: Long) = VideoScanUtils.formatDuration(value)
-  val quickStats = buildList {
-    if (summary != null) {
-      add(
-        stringResource(R.string.selection_info_total_size) to
-          if (summary.knownSizeCount > 0 || summary.videos.isEmpty()) size(summary.totalSize) else unknown,
-      )
-      add(
-        stringResource(R.string.selection_info_total_duration) to
-          if (summary.knownDurationCount > 0 || summary.videos.isEmpty()) duration(summary.totalDuration) else unknown,
-      )
-      val files = summary.videos
-      if (files.isNotEmpty()) {
+  val quickStats =
+    buildList {
+      if (summary != null) {
         add(
-          stringResource(R.string.selection_info_average_size) to
-            if (summary.knownSizeCount > 0) size(summary.totalSize / summary.knownSizeCount) else unknown,
+          stringResource(R.string.selection_info_total_size) to
+            if (summary.knownSizeCount > 0 || summary.videos.isEmpty()) size(summary.totalSize) else unknown,
         )
         add(
-          stringResource(R.string.selection_info_average_duration) to
-            if (summary.knownDurationCount > 0) {
-              duration(summary.totalDuration / summary.knownDurationCount)
+          stringResource(R.string.selection_info_total_duration) to
+            if (summary.knownDurationCount > 0 ||
+              summary.videos.isEmpty()
+            ) {
+              duration(summary.totalDuration)
             } else {
               unknown
             },
         )
+        val files = summary.videos
+        if (files.isNotEmpty()) {
+          add(
+            stringResource(R.string.selection_info_average_size) to
+              if (summary.knownSizeCount > 0) size(summary.totalSize / summary.knownSizeCount) else unknown,
+          )
+          add(
+            stringResource(R.string.selection_info_average_duration) to
+              if (summary.knownDurationCount > 0) {
+                duration(summary.totalDuration / summary.knownDurationCount)
+              } else {
+                unknown
+              },
+          )
+        }
       }
     }
-  }
   val metadataBreakdowns = mutableMapOf<String, List<Pair<String, Int>>>()
-  val metadataRows = buildList<Pair<String, String>> {
-    fun addBreakdown(label: String, files: List<Video>, value: (Video) -> String) {
-      val counts = metadataBreakdown(files, unknown, value)
-      metadataBreakdowns[label] = counts
-      add(label to counts.joinToString("\n") { (name, count) -> "$name: $count" })
-    }
-    if (summary != null) {
-      val files = summary.videos
-      if (files.isNotEmpty()) {
-        if (summary.knownSizeCount < files.size || summary.knownDurationCount < files.size) {
-          add(
-            stringResource(R.string.selection_info_missing_metadata) to
-              stringResource(
-                R.string.selection_info_missing_metadata_value,
-                files.size - summary.knownSizeCount,
-                files.size - summary.knownDurationCount,
-              ),
-          )
-        }
-        addBreakdown(stringResource(R.string.selection_info_formats), files) { it.mimeType }
-        val videoFiles = files.filterNot { it.isAudio }
-        if (videoFiles.isNotEmpty()) {
-          addBreakdown(stringResource(R.string.selection_info_resolutions), videoFiles) {
-            it.resolution.substringBefore("@").takeUnless { value -> value == "--" }.orEmpty()
+  val metadataRows =
+    buildList<Pair<String, String>> {
+      fun addBreakdown(
+        label: String,
+        files: List<Video>,
+        value: (Video) -> String,
+      ) {
+        val counts = metadataBreakdown(files, unknown, value)
+        metadataBreakdowns[label] = counts
+        add(label to counts.joinToString("\n") { (name, count) -> "$name: $count" })
+      }
+      if (summary != null) {
+        val files = summary.videos
+        if (files.isNotEmpty()) {
+          if (summary.knownSizeCount < files.size || summary.knownDurationCount < files.size) {
+            add(
+              stringResource(R.string.selection_info_missing_metadata) to
+                stringResource(
+                  R.string.selection_info_missing_metadata_value,
+                  files.size - summary.knownSizeCount,
+                  files.size - summary.knownDurationCount,
+                ),
+            )
           }
-          addBreakdown(stringResource(R.string.selection_info_codecs), videoFiles) { it.videoCodec }
-          addBreakdown(stringResource(R.string.selection_info_frame_rates), videoFiles) {
-            if (it.fps.isFinite() && it.fps > 0) {
-              String.format(configuration.locales[0], fpsFormat, it.fps)
-            } else {
-              ""
+          addBreakdown(stringResource(R.string.selection_info_formats), files) { it.mimeType }
+          val videoFiles = files.filterNot { it.isAudio }
+          if (videoFiles.isNotEmpty()) {
+            addBreakdown(stringResource(R.string.selection_info_resolutions), videoFiles) {
+              it.resolution
+                .substringBefore("@")
+                .takeUnless { value -> value == "--" }
+                .orEmpty()
             }
+            addBreakdown(stringResource(R.string.selection_info_codecs), videoFiles) { it.videoCodec }
+            addBreakdown(stringResource(R.string.selection_info_frame_rates), videoFiles) {
+              if (it.fps.isFinite() && it.fps > 0) {
+                String.format(configuration.locales[0], fpsFormat, it.fps)
+              } else {
+                ""
+              }
+            }
+            add(
+              stringResource(R.string.selection_info_subtitles) to
+                stringResource(
+                  R.string.selection_info_subtitles_value,
+                  videoFiles.count { it.hasEmbeddedSubtitles },
+                  videoFiles.size,
+                ),
+            )
           }
-          add(
-            stringResource(R.string.selection_info_subtitles) to
-              stringResource(
-                R.string.selection_info_subtitles_value,
-                videoFiles.count { it.hasEmbeddedSubtitles },
-                videoFiles.size,
-              ),
-          )
-        }
-        summary.longest?.let {
-          add(stringResource(R.string.selection_info_longest) to "${it.displayName} (${duration(it.duration)})")
-        }
-        summary.largest?.let {
-          add(stringResource(R.string.selection_info_largest) to "${it.displayName} (${size(it.size)})")
-        }
-        val modifiedDates = files.map { it.dateModified }.filter { it > 0L }
-        if (modifiedDates.isNotEmpty()) {
-          val first = dateFormat.format(Date(modifiedDates.min() * 1000))
-          val last = dateFormat.format(Date(modifiedDates.max() * 1000))
-          add(stringResource(R.string.selection_info_modified) to if (first == last) first else "$first - $last")
+          summary.longest?.let {
+            add(stringResource(R.string.selection_info_longest) to "${it.displayName} (${duration(it.duration)})")
+          }
+          summary.largest?.let {
+            add(stringResource(R.string.selection_info_largest) to "${it.displayName} (${size(it.size)})")
+          }
+          val modifiedDates = files.map { it.dateModified }.filter { it > 0L }
+          if (modifiedDates.isNotEmpty()) {
+            val first = dateFormat.format(Date(modifiedDates.min() * 1000))
+            val last = dateFormat.format(Date(modifiedDates.max() * 1000))
+            add(stringResource(R.string.selection_info_modified) to if (first == last) first else "$first - $last")
+          }
         }
       }
     }
-  }
   val title = stringResource(R.string.selection_info_title)
-  val countLabels = buildList {
-    summary?.let {
-      if (it.videoCount > 0) {
-        add(pluralStringResource(R.plurals.selection_info_video_count, it.videoCount, it.videoCount))
+  val countLabels =
+    buildList {
+      summary?.let {
+        if (it.videoCount > 0) {
+          add(pluralStringResource(R.plurals.selection_info_video_count, it.videoCount, it.videoCount))
+        }
+        if (it.audioCount > 0) {
+          add(pluralStringResource(R.plurals.selection_info_audio_count, it.audioCount, it.audioCount))
+        }
       }
-      if (it.audioCount > 0) {
-        add(pluralStringResource(R.plurals.selection_info_audio_count, it.audioCount, it.audioCount))
+      if (selection.folders.isNotEmpty()) {
+        add(
+          pluralStringResource(
+            R.plurals.selection_info_folder_count,
+            selection.folders.size,
+            selection.folders.size,
+          ),
+        )
       }
     }
-    if (selection.folders.isNotEmpty()) {
-      add(
-        pluralStringResource(
-          R.plurals.selection_info_folder_count,
-          selection.folders.size,
-          selection.folders.size,
-        ),
-      )
-    }
-  }
   val countText = countLabels.joinToString(" / ")
-  fun summaryText(): String = buildString {
-    appendLine(title)
-    appendLine(countText)
-    (quickStats + metadataRows).forEach { (label, value) -> appendLine("$label: $value") }
-    selection.folders.forEach { appendLine(it.path) }
-    summary?.videos?.forEach { appendLine(it.path) }
-  }
-  val tabs = buildList {
-    add(SelectionInfoTab.Overview)
-    if (selection.folders.isNotEmpty()) add(SelectionInfoTab.Folders)
-    if (!summary?.videos.isNullOrEmpty()) add(SelectionInfoTab.Items)
-  }
+
+  fun summaryText(): String =
+    buildString {
+      appendLine(title)
+      appendLine(countText)
+      (quickStats + metadataRows).forEach { (label, value) -> appendLine("$label: $value") }
+      selection.folders.forEach { appendLine(it.path) }
+      summary?.videos?.forEach { appendLine(it.path) }
+    }
+  val tabs =
+    buildList {
+      add(SelectionInfoTab.Overview)
+      if (selection.folders.isNotEmpty()) add(SelectionInfoTab.Folders)
+      if (!summary?.videos.isNullOrEmpty()) add(SelectionInfoTab.Items)
+    }
   var selectedTab by remember(selection) { mutableStateOf(SelectionInfoTab.Overview) }
   var valueDetail by remember(selection) { mutableStateOf<Pair<String, String>?>(null) }
   var isSharing by remember(selection) { mutableStateOf(false) }
@@ -386,11 +408,12 @@ private fun SelectionInfoPage(
                     scope.launch {
                       try {
                         // Share a report like MediaInfo; a large selection must not fill an Intent's Binder payload.
-                        val uri = withContext(Dispatchers.IO) {
-                          val report = File.createTempFile("selection_info_", ".txt", context.cacheDir)
-                          report.writeText(summaryText())
-                          FileProvider.getUriForFile(context, context.packageName + ".provider", report)
-                        }
+                        val uri =
+                          withContext(Dispatchers.IO) {
+                            val report = File.createTempFile("selection_info_", ".txt", context.cacheDir)
+                            report.writeText(summaryText())
+                            FileProvider.getUriForFile(context, context.packageName + ".provider", report)
+                          }
                         context.startActivity(
                           Intent.createChooser(
                             Intent(Intent.ACTION_SEND).apply {
@@ -407,14 +430,15 @@ private fun SelectionInfoPage(
                         throw cancelled
                       } catch (error: Exception) {
                         Log.e("SelectionInfoPage", "Unable to share selection details", error)
-                        Toast.makeText(
-                          context,
-                          context.getString(
-                            R.string.pref_export_failed_toast,
-                            error.localizedMessage ?: context.getString(R.string.generic_unknown_error),
-                          ),
-                          Toast.LENGTH_LONG,
-                        ).show()
+                        Toast
+                          .makeText(
+                            context,
+                            context.getString(
+                              R.string.pref_export_failed_toast,
+                              error.localizedMessage ?: context.getString(R.string.generic_unknown_error),
+                            ),
+                            Toast.LENGTH_LONG,
+                          ).show()
                       } finally {
                         isSharing = false
                       }
@@ -537,7 +561,13 @@ private fun SelectionInfoPage(
                       ) {
                         countLabels.forEachIndexed { index, label ->
                           Surface(
-                            shape = rememberConnectedShape(index, countLabels.size, ConnectedLayout.Horizontal, tokens = AppConnectedControlShapeTokens),
+                            shape =
+                              rememberConnectedShape(
+                                index,
+                                countLabels.size,
+                                ConnectedLayout.Horizontal,
+                                tokens = AppConnectedControlShapeTokens,
+                              ),
                             color = MaterialTheme.colorScheme.surfaceContainerLow,
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                           ) {
@@ -591,33 +621,34 @@ private fun SelectionInfoPage(
                   itemsIndexed(selection.folders, key = { _, folder -> folder.path }) { _, folder ->
                     val files = folderContents[folder.path].orEmpty()
                     val folderSummary = remember(files) { summarizeSelection(files) }
-                    val folderRows = buildList {
-                      add(stringResource(R.string.media_info_file_path) to folder.path)
-                      add(
-                        stringResource(R.string.selection_info_total_size) to
-                          if (folderSummary.knownSizeCount > 0 || files.isEmpty()) {
-                            size(folderSummary.totalSize)
-                          } else {
-                            unknown
-                          },
-                      )
-                      add(
-                        stringResource(R.string.selection_info_total_duration) to
-                          if (folderSummary.knownDurationCount > 0 || files.isEmpty()) {
-                            duration(folderSummary.totalDuration)
-                          } else {
-                            unknown
-                          },
-                      )
-                      add(
-                        stringResource(R.string.selection_info_modified) to
-                          if (folder.lastModified > 0) {
-                            dateFormat.format(Date(folder.lastModified * 1000))
-                          } else {
-                            unknown
-                          },
-                      )
-                    }
+                    val folderRows =
+                      buildList {
+                        add(stringResource(R.string.media_info_file_path) to folder.path)
+                        add(
+                          stringResource(R.string.selection_info_total_size) to
+                            if (folderSummary.knownSizeCount > 0 || files.isEmpty()) {
+                              size(folderSummary.totalSize)
+                            } else {
+                              unknown
+                            },
+                        )
+                        add(
+                          stringResource(R.string.selection_info_total_duration) to
+                            if (folderSummary.knownDurationCount > 0 || files.isEmpty()) {
+                              duration(folderSummary.totalDuration)
+                            } else {
+                              unknown
+                            },
+                        )
+                        add(
+                          stringResource(R.string.selection_info_modified) to
+                            if (folder.lastModified > 0) {
+                              dateFormat.format(Date(folder.lastModified * 1000))
+                            } else {
+                              unknown
+                            },
+                        )
+                      }
                     SelectionInfoProperties(folderRows, showValue, header = {
                       Row(
                         modifier = Modifier.padding(MaterialTheme.spacing.medium),
@@ -731,10 +762,15 @@ private fun metadataBreakdown(
   unknown: String,
   value: (Video) -> String,
 ): List<Pair<String, Int>> =
-  videos.groupingBy { value(it).ifBlank { unknown } }.eachCount()
-    .toList().sortedByDescending { it.second }
+  videos
+    .groupingBy { value(it).ifBlank { unknown } }
+    .eachCount()
+    .toList()
+    .sortedByDescending { it.second }
 
-private enum class SelectionInfoTab(@StringRes val labelRes: Int) {
+private enum class SelectionInfoTab(
+  @StringRes val labelRes: Int,
+) {
   Overview(R.string.media_info_tab_overview),
   Folders(R.string.selection_info_folders),
   Items(R.string.selection_info_items),
@@ -749,11 +785,12 @@ private fun SelectionInfoTabs(
   val reduceMotion = AppMotion.shouldReduceMotion()
   Surface(color = MaterialTheme.colorScheme.surface) {
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
-        .horizontalScroll(rememberScrollState())
-        .padding(horizontal = 16.dp, vertical = 12.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+          .horizontalScroll(rememberScrollState())
+          .padding(horizontal = 16.dp, vertical = 12.dp),
       horizontalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing),
     ) {
       tabs.forEachIndexed { index, tab ->
@@ -770,19 +807,21 @@ private fun SelectionInfoTabs(
         )
         Surface(
           onClick = { onSelect(tab) },
-          shape = rememberConnectedShape(
-            index,
-            tabs.size,
-            ConnectedLayout.Horizontal,
-            tokens = AppConnectedControlShapeTokens,
-          ),
+          shape =
+            rememberConnectedShape(
+              index,
+              tabs.size,
+              ConnectedLayout.Horizontal,
+              tokens = AppConnectedControlShapeTokens,
+            ),
           color = containerColor,
           contentColor =
             if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier.heightIn(min = 48.dp).semantics {
-            selected = isSelected
-            role = Role.Tab
-          },
+          modifier =
+            Modifier.heightIn(min = 48.dp).semantics {
+              selected = isSelected
+              role = Role.Tab
+            },
         ) {
           Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -882,12 +921,13 @@ private fun SelectionInfoStat(
     title = label,
     value = value,
     icon = icon,
-    accentColor = when (index) {
-      0 -> MaterialTheme.colorScheme.primary
-      1 -> MaterialTheme.colorScheme.secondary
-      2 -> MaterialTheme.colorScheme.tertiary
-      else -> Color(0xFFFFB300)
-    },
+    accentColor =
+      when (index) {
+        0 -> MaterialTheme.colorScheme.primary
+        1 -> MaterialTheme.colorScheme.secondary
+        2 -> MaterialTheme.colorScheme.tertiary
+        else -> Color(0xFFFFB300)
+      },
     index = index,
     itemCount = count,
     columns = columns,
@@ -960,7 +1000,11 @@ private fun SelectionInfoBreakdown(counts: List<Pair<String, Int>>) {
         ) {
           Text(
             name,
-            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.smaller),
+            modifier =
+              Modifier.padding(
+                horizontal = MaterialTheme.spacing.small,
+                vertical = MaterialTheme.spacing.smaller,
+              ),
             style = MaterialTheme.typography.bodyMedium,
           )
         }
@@ -971,7 +1015,11 @@ private fun SelectionInfoBreakdown(counts: List<Pair<String, Int>>) {
         ) {
           Text(
             count.toString(),
-            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.small, vertical = MaterialTheme.spacing.smaller),
+            modifier =
+              Modifier.padding(
+                horizontal = MaterialTheme.spacing.small,
+                vertical = MaterialTheme.spacing.smaller,
+              ),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
           )
@@ -982,7 +1030,11 @@ private fun SelectionInfoBreakdown(counts: List<Pair<String, Int>>) {
 }
 
 @Composable
-private fun SelectionInfoValueDialog(label: String, value: String, onDismiss: () -> Unit) {
+private fun SelectionInfoValueDialog(
+  label: String,
+  value: String,
+  onDismiss: () -> Unit,
+) {
   val context = LocalContext.current
   AppAlertDialog(
     onDismissRequest = onDismiss,

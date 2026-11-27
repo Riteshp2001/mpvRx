@@ -6,8 +6,6 @@ package app.gyrolet.mpvrx.ui.browser.music
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import app.gyrolet.mpvrx.presentation.components.AppComboBoxChip
-import app.gyrolet.mpvrx.presentation.components.AppComboBoxOption
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.Composable
@@ -21,6 +19,8 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.MediaServerPreferences
 import app.gyrolet.mpvrx.preferences.MusicSourceProvider
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.presentation.components.AppComboBoxChip
+import app.gyrolet.mpvrx.presentation.components.AppComboBoxOption
 import app.gyrolet.mpvrx.repository.JellyfinRepository
 import app.gyrolet.mpvrx.repository.NavidromeRepository
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -34,9 +34,7 @@ import org.koin.compose.koinInject
  * Compact music source selector dropdown located directly next to the TopBar title.
  */
 @Composable
-fun MusicSourceDropdown(
-  modifier: Modifier = Modifier,
-) {
+fun MusicSourceDropdown(modifier: Modifier = Modifier) {
   val backStack = LocalBackStack.current
   val mediaServerPreferences = koinInject<MediaServerPreferences>()
   val currentMusicSource by mediaServerPreferences.musicSourceProvider.collectAsState()
@@ -49,12 +47,13 @@ fun MusicSourceDropdown(
   val navidromeServers by navidromeRepository.allServers.collectAsState(initial = emptyList())
   val hasNavidrome = navidromeServers.isNotEmpty()
 
-  val sources = buildList {
-    add(MusicSourceProvider.LOCAL)
-    if (hasJellyfin) add(MusicSourceProvider.JELLYFIN)
-    if (hasNavidrome) add(MusicSourceProvider.NAVIDROME)
-    add(MusicSourceProvider.AUDIOBOOKS)
-  }
+  val sources =
+    buildList {
+      add(MusicSourceProvider.LOCAL)
+      if (hasJellyfin) add(MusicSourceProvider.JELLYFIN)
+      if (hasNavidrome) add(MusicSourceProvider.NAVIDROME)
+      add(MusicSourceProvider.AUDIOBOOKS)
+    }
   AppComboBoxChip(
     options = sources,
     selected = currentMusicSource,
@@ -103,9 +102,10 @@ private fun MusicSourceIcon(source: MusicSourceProvider) {
   when (source) {
     MusicSourceProvider.JELLYFIN, MusicSourceProvider.NAVIDROME -> {
       androidx.compose.material3.Icon(
-        painter = painterResource(
-          if (source == MusicSourceProvider.JELLYFIN) R.drawable.ic_jellyfin else R.drawable.ic_navidrome,
-        ),
+        painter =
+          painterResource(
+            if (source == MusicSourceProvider.JELLYFIN) R.drawable.ic_jellyfin else R.drawable.ic_navidrome,
+          ),
         contentDescription = null,
         modifier = Modifier.size(20.dp),
         tint = tint,
@@ -113,8 +113,11 @@ private fun MusicSourceIcon(source: MusicSourceProvider) {
     }
     else -> {
       Icon(
-        if (source == MusicSourceProvider.AUDIOBOOKS) Icons.RoundedFilled.Audiobookshelf
-        else Icons.RoundedFilled.Folder,
+        if (source == MusicSourceProvider.AUDIOBOOKS) {
+          Icons.RoundedFilled.Audiobookshelf
+        } else {
+          Icons.RoundedFilled.Folder
+        },
         contentDescription = null,
         modifier = Modifier.size(20.dp),
         tint = tint,

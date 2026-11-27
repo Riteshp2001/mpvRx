@@ -35,6 +35,5 @@ internal object SubtitleTitleMatcher {
     return codePattern.containsMatchIn(title)
   }
 
-  private fun Char.isAsciiLetterOrDigit(): Boolean =
-    this in 'a'..'z' || this in 'A'..'Z' || this in '0'..'9'
+  private fun Char.isAsciiLetterOrDigit(): Boolean = this in 'a'..'z' || this in 'A'..'Z' || this in '0'..'9'
 }

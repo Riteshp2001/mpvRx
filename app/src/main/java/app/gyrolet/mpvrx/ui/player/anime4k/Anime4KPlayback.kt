@@ -94,7 +94,9 @@ internal fun selectRuntimeStableAnime4K(
   return Anime4KSelection(
     mode = Anime4KManager.Mode.C,
     quality = Anime4KManager.Quality.FAST,
-    reason = "Runtime pressure detected (drop=$droppedFrames delayed=$delayedFrames mistimed=$mistimedFrames); downgraded to C/Fast",
+    reason =
+      "Runtime pressure detected (drop=$droppedFrames delayed=$delayedFrames mistimed=$mistimedFrames); " +
+        "downgraded to C/Fast",
   )
 }
 

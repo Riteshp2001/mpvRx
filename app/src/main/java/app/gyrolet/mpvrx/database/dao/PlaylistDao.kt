@@ -110,7 +110,10 @@ interface PlaylistDao {
   fun observeFirstPlaylistItem(playlistId: Int): Flow<PlaylistItemEntity?>
 
   @Query("SELECT * FROM PlaylistItemEntity WHERE playlistId = :playlistId ORDER BY position ASC, id ASC LIMIT :limit")
-  fun observePlaylistPreviewItems(playlistId: Int, limit: Int = 2): Flow<List<PlaylistItemEntity>>
+  fun observePlaylistPreviewItems(
+    playlistId: Int,
+    limit: Int = 2,
+  ): Flow<List<PlaylistItemEntity>>
 
   @Query("SELECT * FROM PlaylistItemEntity WHERE playlistId = :playlistId ORDER BY position ASC")
   suspend fun getPlaylistItems(playlistId: Int): List<PlaylistItemEntity>
@@ -162,10 +165,17 @@ interface PlaylistDao {
   suspend fun clearPlayHistoryForFile(filePath: String)
 
   @Query("UPDATE PlaylistItemEntity SET lastPlayedAt = :timestamp WHERE filePath = :filePath")
-  suspend fun markFileLastPlayed(filePath: String, timestamp: Long)
+  suspend fun markFileLastPlayed(
+    filePath: String,
+    timestamp: Long,
+  )
 
   @Query("UPDATE PlaylistItemEntity SET filePath = :newPath, fileName = :newName WHERE filePath = :oldPath")
-  suspend fun updateFileLocation(oldPath: String, newPath: String, newName: String)
+  suspend fun updateFileLocation(
+    oldPath: String,
+    newPath: String,
+    newName: String,
+  )
 
   @Query("UPDATE PlaylistItemEntity SET lastPosition = 0 WHERE filePath = :filePath")
   suspend fun clearResumePositionForFile(filePath: String)

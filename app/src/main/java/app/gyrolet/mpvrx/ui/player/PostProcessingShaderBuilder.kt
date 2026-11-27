@@ -132,7 +132,8 @@ data class PostProcessingParams(
 
 /** Port of Eden NaturalColors.fx — YIQ luma curve + chroma gain (PPSSPP by ShadX/SimoneT). */
 object NaturalColorsShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Natural Colours (mpvRx)
@@ -157,12 +158,13 @@ vec4 hook() {
     ), 0.0, 1.0);
     return vec4(rgb, c.a);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden Levels.fx — input/output black+white points + gamma. */
 object LevelsShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Levels (mpvRx)
@@ -180,12 +182,13 @@ vec4 hook() {
     rgb = mix(vec3(PP_OUT_BLACK), vec3(PP_OUT_WHITE), rgb);
     return vec4(clamp(rgb, 0.0, 1.0), c.a);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden Sharpen.fx — unsharp mask. */
 object SharpenShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Sharpen (mpvRx)
@@ -202,12 +205,13 @@ vec4 hook() {
     blur *= 0.25;
     return vec4(clamp(centre + (centre - blur) * PP_AMOUNT, 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden Bloom.fx — additive luminance-weighted glow (PPSSPP bloomnoblur). */
 object BloomShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Bloom (mpvRx)
@@ -236,12 +240,13 @@ vec4 hook() {
     sum /= 16.0;
     return vec4(clamp(color + sum * PP_AMOUNT, 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden Denoise.fx — bilateral edge-preserving filter (Anime4K-derived). */
 object DenoiseShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Denoise (mpvRx)
@@ -276,12 +281,13 @@ vec4 hook() {
         }
     return vec4(sum / total, 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden CelShading.fx — quantised lighting bands + Sobel ink outlines. */
 object CelShadingShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Cel Shading (mpvRx)
@@ -334,12 +340,13 @@ vec4 hook() {
     color *= 1.0 - ink * PP_OUTLINE_STRENGTH;
     return vec4(clamp(color, 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden FilmicCurve.fx — toe/shoulder S-curve tone mapping. */
 object FilmicCurveShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Filmic Curve (mpvRx)
@@ -356,12 +363,13 @@ vec4 hook() {
     curved = 1.0 - pow(max(1.0 - curved, 0.0), vec3(PP_SHOULDER));
     return vec4(clamp(mix(rgb, curved, PP_AMOUNT), 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden Blur.fx — spiral Poisson-disc blur with optional sharp centre. */
 object BlurShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Blur (mpvRx)
@@ -407,12 +415,13 @@ vec4 hook() {
     vec3 blurred = sum / total;
     return vec4(clamp(mix(original, blurred, amount), 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden CartoonSoft.fx — shadow-aware ink outlines + smooth banding. */
 object CartoonSoftShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Cartoon Soft (mpvRx)
@@ -451,12 +460,13 @@ vec4 hook() {
     vec3 color = mix(grey, tinted, PP_SAT) * ink;
     return vec4(clamp(color, 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden ChromaticAberration.fx — radial RGB channel separation. */
 object ChromaticAberrationShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Chromatic Aberration (mpvRx)
@@ -475,12 +485,13 @@ vec4 hook() {
     float b = HOOKED_tex(HOOKED_pos - offset).b;
     return vec4(r, g, b, 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden Deband.fx — Niklas Haas ring-sample + dither (MIT). */
 object DebandShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Deband (mpvRx)
@@ -519,12 +530,13 @@ vec4 hook() {
     float dither = (debandHash(HOOKED_pos * HOOKED_size + vec2(71.3, 41.7)) - 0.5) * PP_GRAIN;
     return vec4(clamp(result + dither, 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden FilmGrain.fx — midtone-weighted photographic grain. */
 object FilmGrainShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Film Grain (mpvRx)
@@ -549,12 +561,13 @@ vec4 hook() {
     float response = 1.0 - abs(luma * 2.0 - 1.0);
     return vec4(clamp(rgb + noise * PP_INTENSITY * response, 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden Scanlines.fx — alternating row darkening with phosphor tint (PPSSPP). */
 object ScanlinesShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Scanlines (mpvRx)
@@ -574,12 +587,13 @@ vec4 hook() {
     color *= 1.1 - 0.6 * (dot(diff, diff) * 2.0);
     return vec4(clamp(color * clamp(gate, 0.0, 1.0), 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden SplitToning.fx — tints shadows and highlights independently. */
 object SplitToningShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Split Toning (mpvRx)
@@ -604,12 +618,13 @@ vec4 hook() {
     rgb += highlightTint * PP_HIGHLIGHT_STRENGTH * 0.25 * luma;
     return vec4(clamp(rgb, 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden Vignette.fx — corner darkening (PPSSPP by Henrik Rydgard). */
 object VignetteShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC Vignette (mpvRx)
@@ -625,12 +640,13 @@ vec4 hook() {
     vec3 rgb = HOOKED_tex(HOOKED_pos).rgb;
     return vec4(rgb * falloff, 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden WhiteBalance.fx — Bradford LMS chromatic adaptation. */
 object WhiteBalanceShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC White Balance (mpvRx)
@@ -663,12 +679,13 @@ vec4 hook() {
     rgb = lms2rgb * lms;
     return vec4(clamp(pow(max(rgb, 0.0), vec3(1.0/2.2)), 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }
 
 /** Port of Eden CRT.fx — scanlines + colour bleed + optional rolling bar (PPSSPP by KillaMaaki). Uses HOOKED_time. */
 object CRTShaderBuilder {
-  fun build(p: PostProcessingParams): String = """
+  fun build(p: PostProcessingParams): String =
+    """
 //!HOOK MAIN
 //!BIND HOOKED
 //!DESC CRT (mpvRx)
@@ -694,5 +711,5 @@ vec4 hook() {
     }
     return vec4(clamp(color, 0.0, 1.0), 1.0);
 }
-  """.trimIndent()
+    """.trimIndent()
 }

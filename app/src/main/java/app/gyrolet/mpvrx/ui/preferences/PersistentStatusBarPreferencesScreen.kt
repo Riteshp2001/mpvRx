@@ -35,14 +35,14 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.player.controls.PersistentPlaybackProgressLine
 import app.gyrolet.mpvrx.ui.player.controls.PersistentStatusHudRow
 import app.gyrolet.mpvrx.ui.player.controls.rememberHudClock
+import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.tv.isTelevision
 import app.gyrolet.mpvrx.ui.tv.tvContentFocus
-import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
-import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 
 /**
  * Full-featured HUD configuration, intentionally placed under Player Controls / Layout.
@@ -82,42 +82,58 @@ object PersistentStatusBarPreferencesScreen : ScrollableSettingsScreen {
           modifier = Modifier.fillMaxSize().padding(padding).tvContentFocus(),
           contentPadding = settingsContentPadding(),
         ) {
-          if (!embeddedInPlayer) item {
-            Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-              Box(
-                modifier = Modifier.fillMaxWidth()
-                  .height(172.dp)
-                  .clip(RoundedCornerShape(26.dp))
-                  .background(Color(0xFF101216)),
-              ) {
-                Column(
-                  modifier = Modifier.align(Alignment.Center),
-                  horizontalAlignment = Alignment.CenterHorizontally,
-                  verticalArrangement = Arrangement.spacedBy(6.dp),
+          if (!embeddedInPlayer) {
+            item {
+              Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Box(
+                  modifier =
+                    Modifier
+                      .fillMaxWidth()
+                      .height(172.dp)
+                      .clip(RoundedCornerShape(26.dp))
+                      .background(Color(0xFF101216)),
                 ) {
-                  Text("▶", style = MaterialTheme.typography.headlineMedium, color = Color.White.copy(alpha = 0.3f))
-                  Text(
-                    stringResource(R.string.pref_persistent_status_preview),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.55f),
-                  )
-                }
-                PersistentStatusHudRow(
-                  leftSlot = left, centerSlot = center, rightSlot = right,
-                  preferFinishTime = preferFinishTime, showSpeed = showSpeed,
-                  microBattery = microBattery, positionSeconds = 1200f, durationSeconds = 3600f,
-                  playbackSpeed = 1.5f, batteryLevel = 88, nowMillis = now, clockFormat = clockFormat,
-                  modifier = Modifier.align(
-                    if (position == PersistentStatusPosition.Top) Alignment.TopCenter
-                    else Alignment.BottomCenter,
-                  ),
-                )
-                if (showProgressLine) {
-                  PersistentPlaybackProgressLine(
+                  Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                  ) {
+                    Text("▶", style = MaterialTheme.typography.headlineMedium, color = Color.White.copy(alpha = 0.3f))
+                    Text(
+                      stringResource(R.string.pref_persistent_status_preview),
+                      style = MaterialTheme.typography.labelMedium,
+                      color = Color.White.copy(alpha = 0.55f),
+                    )
+                  }
+                  PersistentStatusHudRow(
+                    leftSlot = left,
+                    centerSlot = center,
+                    rightSlot = right,
+                    preferFinishTime = preferFinishTime,
+                    showSpeed = showSpeed,
+                    microBattery = microBattery,
                     positionSeconds = 1200f,
                     durationSeconds = 3600f,
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    playbackSpeed = 1.5f,
+                    batteryLevel = 88,
+                    nowMillis = now,
+                    clockFormat = clockFormat,
+                    modifier =
+                      Modifier.align(
+                        if (position == PersistentStatusPosition.Top) {
+                          Alignment.TopCenter
+                        } else {
+                          Alignment.BottomCenter
+                        },
+                      ),
                   )
+                  if (showProgressLine) {
+                    PersistentPlaybackProgressLine(
+                      positionSeconds = 1200f,
+                      durationSeconds = 3600f,
+                      modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                  }
                 }
               }
             }
@@ -162,8 +178,10 @@ object PersistentStatusBarPreferencesScreen : ScrollableSettingsScreen {
                   valueToText = { AnnotatedString(resources.getString(positionLabel(it))) },
                   title = { Text(stringResource(R.string.pref_persistent_status_position)) },
                   summary = {
-                    Text(resources.getString(positionLabel(position)),
-                      color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                      resources.getString(positionLabel(position)),
+                      color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                   },
                 )
               }
@@ -233,17 +251,19 @@ object PersistentStatusBarPreferencesScreen : ScrollableSettingsScreen {
   }
 }
 
-private fun positionLabel(value: PersistentStatusPosition): Int = when (value) {
-  PersistentStatusPosition.Top -> R.string.pref_persistent_status_top
-  PersistentStatusPosition.Bottom -> R.string.pref_persistent_status_bottom
-}
+private fun positionLabel(value: PersistentStatusPosition): Int =
+  when (value) {
+    PersistentStatusPosition.Top -> R.string.pref_persistent_status_top
+    PersistentStatusPosition.Bottom -> R.string.pref_persistent_status_bottom
+  }
 
-private fun slotLabel(value: PersistentStatusSlot): Int = when (value) {
-  PersistentStatusSlot.None -> R.string.pref_persistent_status_none
-  PersistentStatusSlot.PlaybackProgress -> R.string.pref_persistent_status_progress
-  PersistentStatusSlot.CurrentTime -> R.string.pref_persistent_status_clock
-  PersistentStatusSlot.BatteryStatus -> R.string.pref_persistent_status_battery
-}
+private fun slotLabel(value: PersistentStatusSlot): Int =
+  when (value) {
+    PersistentStatusSlot.None -> R.string.pref_persistent_status_none
+    PersistentStatusSlot.PlaybackProgress -> R.string.pref_persistent_status_progress
+    PersistentStatusSlot.CurrentTime -> R.string.pref_persistent_status_clock
+    PersistentStatusSlot.BatteryStatus -> R.string.pref_persistent_status_battery
+  }
 
 @Composable
 private fun StatusSlotPreference(
@@ -268,4 +288,3 @@ private fun StatusSlotPreference(
     )
   }
 }
-

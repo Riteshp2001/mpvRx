@@ -58,7 +58,15 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.ui.background.*
+import app.gyrolet.mpvrx.ui.background.AnimatedBackground
+import app.gyrolet.mpvrx.ui.background.BackdropDrawingState
+import app.gyrolet.mpvrx.ui.background.BackdropGate
+import app.gyrolet.mpvrx.ui.background.BackgroundType
+import app.gyrolet.mpvrx.ui.background.RandomBackground
+import app.gyrolet.mpvrx.ui.background.RandomInterval
+import app.gyrolet.mpvrx.ui.background.drawBackdrop
+import app.gyrolet.mpvrx.ui.background.rememberActiveBackground
+import app.gyrolet.mpvrx.ui.background.rememberBackdropPalette
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
@@ -70,22 +78,58 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import com.composables.icons.materialsymbols.MaterialSymbols
-import com.composables.icons.materialsymbols.roundedfilled.*
+import com.composables.icons.materialsymbols.roundedfilled.Ac_unit
+import com.composables.icons.materialsymbols.roundedfilled.Auto_awesome
+import com.composables.icons.materialsymbols.roundedfilled.Bubble_chart
+import com.composables.icons.materialsymbols.roundedfilled.Calendar_today
+import com.composables.icons.materialsymbols.roundedfilled.Celebration
+import com.composables.icons.materialsymbols.roundedfilled.Check
+import com.composables.icons.materialsymbols.roundedfilled.Circle
+import com.composables.icons.materialsymbols.roundedfilled.Flare
+import com.composables.icons.materialsymbols.roundedfilled.Gradient
+import com.composables.icons.materialsymbols.roundedfilled.Grain
+import com.composables.icons.materialsymbols.roundedfilled.Grid_view
+import com.composables.icons.materialsymbols.roundedfilled.Hub
+import com.composables.icons.materialsymbols.roundedfilled.Image
+import com.composables.icons.materialsymbols.roundedfilled.Lens_blur
+import com.composables.icons.materialsymbols.roundedfilled.Local_florist
+import com.composables.icons.materialsymbols.roundedfilled.Pentagon
+import com.composables.icons.materialsymbols.roundedfilled.Play_circle
+import com.composables.icons.materialsymbols.roundedfilled.Radio_button_unchecked
+import com.composables.icons.materialsymbols.roundedfilled.Rainy
+import com.composables.icons.materialsymbols.roundedfilled.Schedule
+import com.composables.icons.materialsymbols.roundedfilled.Screen_rotation
+import com.composables.icons.materialsymbols.roundedfilled.Shuffle
+import com.composables.icons.materialsymbols.roundedfilled.Visibility_off
+import com.composables.icons.materialsymbols.roundedfilled.Water_drop
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
-private val GeometricBackgrounds = listOf(
-  BackgroundType.CIRCLES, BackgroundType.RINGS, BackgroundType.SHAPES,
-  BackgroundType.GRID, BackgroundType.LAVA, BackgroundType.BOKEH,
-)
-private val NatureBackgrounds = listOf(
-  BackgroundType.SNOW, BackgroundType.RAIN, BackgroundType.SAKURA,
-  BackgroundType.FIREFLIES, BackgroundType.BUBBLES,
-)
-private val SkyBackgrounds = listOf(
-  BackgroundType.SPACE, BackgroundType.AURORA, BackgroundType.PARTICLES, BackgroundType.CONSTELLATION,
-)
+private val GeometricBackgrounds =
+  listOf(
+    BackgroundType.CIRCLES,
+    BackgroundType.RINGS,
+    BackgroundType.SHAPES,
+    BackgroundType.GRID,
+    BackgroundType.LAVA,
+    BackgroundType.BOKEH,
+  )
+private val NatureBackgrounds =
+  listOf(
+    BackgroundType.SNOW,
+    BackgroundType.RAIN,
+    BackgroundType.SAKURA,
+    BackgroundType.FIREFLIES,
+    BackgroundType.BUBBLES,
+  )
+private val SkyBackgrounds =
+  listOf(
+    BackgroundType.SPACE,
+    BackgroundType.AURORA,
+    BackgroundType.PARTICLES,
+    BackgroundType.CONSTELLATION,
+  )
 
 /** One live preview, static illustrated choices, and the same connected controls as Settings. */
 @Serializable
@@ -138,7 +182,10 @@ object BackgroundAnimationPreferencesScreen : ScrollableSettingsScreen {
         ) {
           LazyColumn(
             state = listState,
-            contentPadding = settingsContentPadding(PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp)),
+            contentPadding =
+              settingsContentPadding(
+                PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+              ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.widthIn(max = 760.dp).fillMaxSize().then(searchHighlight),
           ) {
@@ -183,7 +230,10 @@ object BackgroundAnimationPreferencesScreen : ScrollableSettingsScreen {
               }
             }
             item(key = "mode") {
-              ChoiceGrid(items = listOf(BackgroundType.NONE, BackgroundType.RANDOM), maxColumns = 2) { type, index, count, columns, modifier ->
+              ChoiceGrid(
+                items = listOf(BackgroundType.NONE, BackgroundType.RANDOM),
+                maxColumns = 2,
+              ) { type, index, count, columns, modifier ->
                 ChoiceTile(
                   selected = picked == type,
                   icon = iconFor(type),
@@ -220,7 +270,11 @@ object BackgroundAnimationPreferencesScreen : ScrollableSettingsScreen {
             }
             if (active.event != null && active.type.isSeasonal && picked != BackgroundType.NONE) {
               item(key = "seasonal_notice") {
-                Surface(modifier = backgroundItemMotion(), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.tertiaryContainer) {
+                Surface(
+                  modifier = backgroundItemMotion(),
+                  shape = RoundedCornerShape(20.dp),
+                  color = MaterialTheme.colorScheme.tertiaryContainer,
+                ) {
                   Text(
                     stringResource(R.string.bg_seasonal_notice, stringResource(active.type.labelRes)),
                     style = MaterialTheme.typography.bodyMedium,
@@ -229,9 +283,15 @@ object BackgroundAnimationPreferencesScreen : ScrollableSettingsScreen {
                 }
               }
             }
-            item(key = "geometric") { BackgroundSection(R.string.bg_geometric, GeometricBackgrounds, picked, choose, backgroundItemMotion()) }
-            item(key = "nature") { BackgroundSection(R.string.bg_nature, NatureBackgrounds, picked, choose, backgroundItemMotion()) }
-            item(key = "sky") { BackgroundSection(R.string.bg_sky, SkyBackgrounds, picked, choose, backgroundItemMotion()) }
+            item(key = "geometric") {
+              BackgroundSection(R.string.bg_geometric, GeometricBackgrounds, picked, choose, backgroundItemMotion())
+            }
+            item(key = "nature") {
+              BackgroundSection(R.string.bg_nature, NatureBackgrounds, picked, choose, backgroundItemMotion())
+            }
+            item(
+              key = "sky",
+            ) { BackgroundSection(R.string.bg_sky, SkyBackgrounds, picked, choose, backgroundItemMotion()) }
             item(key = "behavior") {
               Column(modifier = backgroundItemMotion(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionTitle(R.string.bg_behavior)
@@ -279,11 +339,12 @@ object BackgroundAnimationPreferencesScreen : ScrollableSettingsScreen {
 }
 
 @Composable
-private fun LazyItemScope.backgroundItemMotion(): Modifier = Modifier.animateItem(
-  fadeInSpec = AppMotion.spatial(AppMotion.Effect.Alpha, snap()),
-  placementSpec = AppMotion.spatial(AppMotion.Spatial.StandardOffset, snap()),
-  fadeOutSpec = AppMotion.spatial(AppMotion.Effect.Alpha, snap()),
-)
+private fun LazyItemScope.backgroundItemMotion(): Modifier =
+  Modifier.animateItem(
+    fadeInSpec = AppMotion.spatial(AppMotion.Effect.Alpha, snap()),
+    placementSpec = AppMotion.spatial(AppMotion.Spatial.StandardOffset, snap()),
+    fadeOutSpec = AppMotion.spatial(AppMotion.Effect.Alpha, snap()),
+  )
 
 @Composable
 private fun PreferenceIcon(icon: ImageVector) {
@@ -291,7 +352,9 @@ private fun PreferenceIcon(icon: ImageVector) {
 }
 
 @Composable
-private fun SectionTitle(@StringRes title: Int) {
+private fun SectionTitle(
+  @StringRes title: Int,
+) {
   Text(
     stringResource(title),
     style = MaterialTheme.typography.labelLarge,
@@ -375,18 +438,19 @@ private fun ChoiceTile(
   Surface(
     color = color,
     shape = shape,
-    modifier = modifier
-      .height(tileHeight)
-      .tvFocusHighlight(shape, focusedScale = 1.01f)
-      .appPressFeedback(interactions, pressedScale = 0.98f)
-      .clip(shape)
-      .selectable(
-        selected = selected,
-        role = Role.RadioButton,
-        interactionSource = interactions,
-        indication = ripple(),
-        onClick = onClick,
-      ),
+    modifier =
+      modifier
+        .height(tileHeight)
+        .tvFocusHighlight(shape, focusedScale = 1.01f)
+        .appPressFeedback(interactions, pressedScale = 0.98f)
+        .clip(shape)
+        .selectable(
+          selected = selected,
+          role = Role.RadioButton,
+          interactionSource = interactions,
+          indication = ripple(),
+          onClick = onClick,
+        ),
   ) {
     Box(Modifier.fillMaxSize()) {
       if (artwork != null) {
@@ -415,7 +479,16 @@ private fun ChoiceTile(
           text = label,
           style = MaterialTheme.typography.labelLarge,
           fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-          color = if (artwork != null) colors.onSurface else if (selected) colors.onSecondaryContainer else colors.onSurface,
+          color =
+            if (artwork !=
+              null
+            ) {
+              colors.onSurface
+            } else if (selected) {
+              colors.onSecondaryContainer
+            } else {
+              colors.onSurface
+            },
           textAlign = TextAlign.Center,
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
@@ -443,7 +516,10 @@ private fun ChoiceTile(
 
 /** A still from the real renderer: no extra clocks, sensor subscriptions, or animated tile grid. */
 @Composable
-private fun BackgroundThumbnail(type: BackgroundType, modifier: Modifier = Modifier) {
+private fun BackgroundThumbnail(
+  type: BackgroundType,
+  modifier: Modifier = Modifier,
+) {
   val palette = rememberBackdropPalette()
   val drawing = remember { BackdropDrawingState() }
   Canvas(modifier.clipToBounds()) {
@@ -454,29 +530,31 @@ private fun BackgroundThumbnail(type: BackgroundType, modifier: Modifier = Modif
   }
 }
 
-private fun iconFor(type: BackgroundType): ImageVector = when (type) {
-  BackgroundType.CIRCLES -> MaterialSymbols.RoundedFilled.Circle
-  BackgroundType.RINGS -> MaterialSymbols.RoundedFilled.Radio_button_unchecked
-  BackgroundType.SPACE -> MaterialSymbols.RoundedFilled.Auto_awesome
-  BackgroundType.SHAPES -> MaterialSymbols.RoundedFilled.Pentagon
-  BackgroundType.SNOW -> MaterialSymbols.RoundedFilled.Ac_unit
-  BackgroundType.GRID -> MaterialSymbols.RoundedFilled.Grid_view
-  BackgroundType.PARTICLES -> MaterialSymbols.RoundedFilled.Grain
-  BackgroundType.LAVA -> MaterialSymbols.RoundedFilled.Water_drop
-  BackgroundType.AURORA -> MaterialSymbols.RoundedFilled.Gradient
-  BackgroundType.FIREFLIES -> MaterialSymbols.RoundedFilled.Flare
-  BackgroundType.RAIN -> MaterialSymbols.RoundedFilled.Rainy
-  BackgroundType.BOKEH -> MaterialSymbols.RoundedFilled.Lens_blur
-  BackgroundType.SAKURA -> MaterialSymbols.RoundedFilled.Local_florist
-  BackgroundType.CONSTELLATION -> MaterialSymbols.RoundedFilled.Hub
-  BackgroundType.BUBBLES -> MaterialSymbols.RoundedFilled.Bubble_chart
-  BackgroundType.NONE -> MaterialSymbols.RoundedFilled.Visibility_off
-  BackgroundType.RANDOM -> MaterialSymbols.RoundedFilled.Shuffle
-  else -> MaterialSymbols.RoundedFilled.Celebration
-}
+private fun iconFor(type: BackgroundType): ImageVector =
+  when (type) {
+    BackgroundType.CIRCLES -> MaterialSymbols.RoundedFilled.Circle
+    BackgroundType.RINGS -> MaterialSymbols.RoundedFilled.Radio_button_unchecked
+    BackgroundType.SPACE -> MaterialSymbols.RoundedFilled.Auto_awesome
+    BackgroundType.SHAPES -> MaterialSymbols.RoundedFilled.Pentagon
+    BackgroundType.SNOW -> MaterialSymbols.RoundedFilled.Ac_unit
+    BackgroundType.GRID -> MaterialSymbols.RoundedFilled.Grid_view
+    BackgroundType.PARTICLES -> MaterialSymbols.RoundedFilled.Grain
+    BackgroundType.LAVA -> MaterialSymbols.RoundedFilled.Water_drop
+    BackgroundType.AURORA -> MaterialSymbols.RoundedFilled.Gradient
+    BackgroundType.FIREFLIES -> MaterialSymbols.RoundedFilled.Flare
+    BackgroundType.RAIN -> MaterialSymbols.RoundedFilled.Rainy
+    BackgroundType.BOKEH -> MaterialSymbols.RoundedFilled.Lens_blur
+    BackgroundType.SAKURA -> MaterialSymbols.RoundedFilled.Local_florist
+    BackgroundType.CONSTELLATION -> MaterialSymbols.RoundedFilled.Hub
+    BackgroundType.BUBBLES -> MaterialSymbols.RoundedFilled.Bubble_chart
+    BackgroundType.NONE -> MaterialSymbols.RoundedFilled.Visibility_off
+    BackgroundType.RANDOM -> MaterialSymbols.RoundedFilled.Shuffle
+    else -> MaterialSymbols.RoundedFilled.Celebration
+  }
 
-private fun iconFor(interval: RandomInterval): ImageVector = when (interval) {
-  RandomInterval.EACH_LAUNCH -> MaterialSymbols.RoundedFilled.Play_circle
-  RandomInterval.EVERY_DAY -> MaterialSymbols.RoundedFilled.Calendar_today
-  RandomInterval.EVERY_3_DAYS -> MaterialSymbols.RoundedFilled.Schedule
-}
+private fun iconFor(interval: RandomInterval): ImageVector =
+  when (interval) {
+    RandomInterval.EACH_LAUNCH -> MaterialSymbols.RoundedFilled.Play_circle
+    RandomInterval.EVERY_DAY -> MaterialSymbols.RoundedFilled.Calendar_today
+    RandomInterval.EVERY_3_DAYS -> MaterialSymbols.RoundedFilled.Schedule
+  }

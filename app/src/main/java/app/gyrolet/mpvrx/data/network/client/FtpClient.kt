@@ -186,7 +186,11 @@ class FtpClient(
   override suspend fun getFileUri(path: String): Result<Uri> =
     withContext(Dispatchers.IO) {
       try {
-        val host = connection.host.trim().removePrefix("[").removeSuffix("]")
+        val host =
+          connection.host
+            .trim()
+            .removePrefix("[")
+            .removeSuffix("]")
         val uri = URI("ftp", null, host, connection.port, remotePath(NetworkPath.from(path)), null, null)
         Result.success(Uri.parse(uri.toASCIIString()))
       } catch (cancellation: CancellationException) {

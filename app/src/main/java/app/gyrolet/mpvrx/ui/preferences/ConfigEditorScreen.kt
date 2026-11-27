@@ -9,9 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import app.gyrolet.mpvrx.ui.tv.tvContentFocus
-
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,8 +17,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -53,6 +48,7 @@ import app.gyrolet.mpvrx.ui.editor.MpvScriptEditor
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.MpvConfigCache
+import app.gyrolet.mpvrx.ui.tv.tvContentFocus
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
@@ -63,6 +59,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import java.io.File
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 @Serializable
 data class ConfigEditorScreen(
@@ -298,11 +297,12 @@ data class ConfigEditorScreen(
             onClick = {
               backStack.navigateTo(
                 MpvHelpScreen(
-                  initialFilter = if (configType == ConfigEditorScreen.ConfigType.MPV_CONF) {
-                    app.gyrolet.mpvrx.ui.editor.HelpEntryKind.OPTION
-                  } else {
-                    app.gyrolet.mpvrx.ui.editor.HelpEntryKind.COMMAND
-                  },
+                  initialFilter =
+                    if (configType == ConfigEditorScreen.ConfigType.MPV_CONF) {
+                      app.gyrolet.mpvrx.ui.editor.HelpEntryKind.OPTION
+                    } else {
+                      app.gyrolet.mpvrx.ui.editor.HelpEntryKind.COMMAND
+                    },
                 ),
               )
             },

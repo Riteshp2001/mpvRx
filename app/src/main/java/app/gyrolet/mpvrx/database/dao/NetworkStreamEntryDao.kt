@@ -115,4 +115,3 @@ interface NetworkStreamEntryDao {
     if (entries.isNotEmpty()) upsertAll(entries)
   }
 }
-

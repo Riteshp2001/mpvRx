@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
@@ -27,7 +26,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,6 +55,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 
 @Composable
 internal fun GoogleFontsSheet(
@@ -134,9 +134,11 @@ internal fun GoogleFontsSheet(
       catalog.filter { font ->
         font.family != BUILT_IN_FONT_FAMILY &&
           font.family !in installedSet &&
-          (searchQuery.isBlank() ||
-            font.family.contains(searchQuery, ignoreCase = true) ||
-            font.category.contains(searchQuery, ignoreCase = true))
+          (
+            searchQuery.isBlank() ||
+              font.family.contains(searchQuery, ignoreCase = true) ||
+              font.category.contains(searchQuery, ignoreCase = true)
+          )
       }
     }
 

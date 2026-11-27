@@ -3,8 +3,8 @@ package app.gyrolet.mpvrx.database.entities
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.ForeignKey
-import androidx.room.Index
 import androidx.room.Ignore
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 
@@ -39,7 +39,14 @@ data class AudiobookEntity(
 
 @Entity(
   tableName = "audiobook_tracks",
-  foreignKeys = [ForeignKey(entity = AudiobookEntity::class, parentColumns = ["id"], childColumns = ["bookId"], onDelete = ForeignKey.CASCADE)],
+  foreignKeys = [
+    ForeignKey(
+      entity = AudiobookEntity::class,
+      parentColumns = ["id"],
+      childColumns = ["bookId"],
+      onDelete = ForeignKey.CASCADE,
+    ),
+  ],
   indices = [Index(value = ["bookId"]), Index(value = ["bookId", "uri"], unique = true)],
 )
 data class AudiobookTrackEntity(
@@ -56,7 +63,14 @@ data class AudiobookTrackEntity(
 @Entity(
   tableName = "audiobook_chapters",
   primaryKeys = ["trackId", "startMs"],
-  foreignKeys = [ForeignKey(entity = AudiobookTrackEntity::class, parentColumns = ["id"], childColumns = ["trackId"], onDelete = ForeignKey.CASCADE)],
+  foreignKeys = [
+    ForeignKey(
+      entity = AudiobookTrackEntity::class,
+      parentColumns = ["id"],
+      childColumns = ["trackId"],
+      onDelete = ForeignKey.CASCADE,
+    ),
+  ],
 )
 data class AudiobookChapterEntity(
   val trackId: Long,
@@ -71,14 +85,22 @@ data class Audiobook(
 ) {
   @get:Ignore
   val orderedTracks: List<AudiobookTrackEntity> get() = tracks.sortedBy { it.position }
+
   @get:Ignore
   val durationMs: Long get() = tracks.sumOf { it.durationMs.coerceAtLeast(0) }
-  @get:Ignore
-  val progress: Float get() = if (book.finished) 1f else {
-    if (durationMs == 0L) 0f else (book.progressMs.toDouble() / durationMs).toFloat().coerceIn(0f, 1f)
-  }
 
-  fun positionInBook(trackId: Long, positionMs: Long): Long {
+  @get:Ignore
+  val progress: Float get() =
+    if (book.finished) {
+      1f
+    } else {
+      if (durationMs == 0L) 0f else (book.progressMs.toDouble() / durationMs).toFloat().coerceIn(0f, 1f)
+    }
+
+  fun positionInBook(
+    trackId: Long,
+    positionMs: Long,
+  ): Long {
     val track = tracks.firstOrNull { it.id == trackId } ?: return 0L
     return orderedTracks.takeWhile { it.id != trackId }.sumOf { it.durationMs.coerceAtLeast(0) } +
       positionMs.coerceIn(0, track.durationMs.coerceAtLeast(0))
@@ -99,17 +121,37 @@ data class Audiobook(
     var offset = 0L
     return orderedTracks.flatMap { track ->
       val duration = track.durationMs.coerceAtLeast(0)
-      val chapters = stored.filter { it.trackId == track.id && it.startMs in 0 until duration && it.endMs > it.startMs }
-        .sortedBy { it.startMs }.ifEmpty { listOf(AudiobookChapterEntity(track.id, 0, duration, track.title)) }
-      val result = chapters.map { chapter ->
-        AudiobookChapter(track.id, chapter.startMs, chapter.endMs.coerceAtMost(duration), offset, chapter.title.ifBlank { track.title })
-      }
+      val chapters =
+        stored
+          .filter { it.trackId == track.id && it.startMs in 0 until duration && it.endMs > it.startMs }
+          .sortedBy { it.startMs }
+          .ifEmpty { listOf(AudiobookChapterEntity(track.id, 0, duration, track.title)) }
+      val result =
+        chapters.map { chapter ->
+          AudiobookChapter(
+            track.id,
+            chapter.startMs,
+            chapter.endMs.coerceAtMost(
+              duration,
+            ),
+            offset,
+            chapter.title.ifBlank {
+              track.title
+            },
+          )
+        }
       offset += duration
       result
     }
   }
 }
 
-data class AudiobookChapter(val trackId: Long, val startMs: Long, val endMs: Long, val bookOffsetMs: Long, val title: String) {
+data class AudiobookChapter(
+  val trackId: Long,
+  val startMs: Long,
+  val endMs: Long,
+  val bookOffsetMs: Long,
+  val title: String,
+) {
   val bookStartMs: Long get() = bookOffsetMs + startMs
 }

@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.browser.playlist
 
-import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,19 +26,16 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.IconButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -77,8 +73,8 @@ import app.gyrolet.mpvrx.ui.browser.LocalIsMainTabPage
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.ui.browser.NavigationBarSelectionEffect
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
-import app.gyrolet.mpvrx.ui.browser.cards.PlaylistCard
 import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionListGap
+import app.gyrolet.mpvrx.ui.browser.cards.PlaylistCard
 import app.gyrolet.mpvrx.ui.browser.cards.mediaSelectionNeighbors
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
@@ -104,6 +100,10 @@ import app.gyrolet.mpvrx.ui.utils.rememberTabNavigation
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
+import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 
 /** Imported stream and archive lists stay with videos even when they carry audio entries. */
 private fun PlaylistEntity.belongsToAudioLibrary(): Boolean = isAudio && !isM3uPlaylist && !isZipPlaylist
@@ -122,7 +122,13 @@ private fun arrangePlaylists(
 }
 
 private val LIBRARY_SORT_TYPES =
-  setOf(PlaylistSortType.Original, PlaylistSortType.Name, PlaylistSortType.Location, PlaylistSortType.DateAdded, PlaylistSortType.ItemCount)
+  setOf(
+    PlaylistSortType.Original,
+    PlaylistSortType.Name,
+    PlaylistSortType.Location,
+    PlaylistSortType.DateAdded,
+    PlaylistSortType.ItemCount,
+  )
 
 @Serializable
 object PlaylistScreen : Screen {
@@ -325,7 +331,13 @@ object PlaylistScreen : Screen {
         if (!selectionManager.isInSelectionMode && isFabVisible.value) {
           ExtendedFloatingActionButton(
             onClick = {
-              if (libraryType == MediaLibraryType.Audio) showCreateAudioDialog = true else showPlaylistActionSheet = true
+              if (libraryType ==
+                MediaLibraryType.Audio
+              ) {
+                showCreateAudioDialog = true
+              } else {
+                showPlaylistActionSheet = true
+              }
             },
             icon = { Icon(Icons.RoundedFilled.Add, contentDescription = null) },
             text = { Text(stringResource(R.string.ui_create_playlist)) },
@@ -339,7 +351,15 @@ object PlaylistScreen : Screen {
           Modifier
             .fillMaxSize()
             .padding(paddingValues)
-            .onSizeChanged { contentWidthDp = with(density) { it.width.toDp().value.toInt() } },
+            .onSizeChanged {
+              contentWidthDp =
+                with(density) {
+                  it.width
+                    .toDp()
+                    .value
+                    .toInt()
+                }
+            },
       ) {
         SingleChoiceSegmentedButtonRow(
           modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -377,7 +397,14 @@ object PlaylistScreen : Screen {
             allForType.isEmpty() ->
               Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 EmptyState(
-                  icon = if (pageType == MediaLibraryType.Audio) Icons.RoundedFilled.QueueMusic else Icons.RoundedFilled.PlaylistAdd,
+                  icon =
+                    if (pageType ==
+                      MediaLibraryType.Audio
+                    ) {
+                      Icons.RoundedFilled.QueueMusic
+                    } else {
+                      Icons.RoundedFilled.PlaylistAdd
+                    },
                   title = stringResource(R.string.ui_no_playlists_yet),
                   message =
                     stringResource(
@@ -608,7 +635,12 @@ object PlaylistScreen : Screen {
           ) {
             items(count = playlistsWithCount.size, key = { playlistsWithCount[it].playlist.id }) { index ->
               val playlistWithCount = playlistsWithCount[index]
-              val neighbors = mediaSelectionNeighbors(index, playlistsWithCount.size, folderGridColumns) { n -> selectionManager.isSelected(playlistsWithCount[n]) }
+              val neighbors =
+                mediaSelectionNeighbors(
+                  index,
+                  playlistsWithCount.size,
+                  folderGridColumns,
+                ) { n -> selectionManager.isSelected(playlistsWithCount[n]) }
               PlaylistCard(
                 playlist = playlistWithCount.playlist,
                 itemCount = playlistWithCount.itemCount,
@@ -656,7 +688,12 @@ object PlaylistScreen : Screen {
           ) {
             items(count = playlistsWithCount.size, key = { playlistsWithCount[it].playlist.id }) { index ->
               val playlistWithCount = playlistsWithCount[index]
-              val neighbors = mediaSelectionNeighbors(index, playlistsWithCount.size, 1) { n -> selectionManager.isSelected(playlistsWithCount[n]) }
+              val neighbors =
+                mediaSelectionNeighbors(
+                  index,
+                  playlistsWithCount.size,
+                  1,
+                ) { n -> selectionManager.isSelected(playlistsWithCount[n]) }
               PlaylistCard(
                 playlist = playlistWithCount.playlist,
                 itemCount = playlistWithCount.itemCount,

@@ -10,12 +10,6 @@ import android.graphics.BitmapFactory
 import android.util.LruCache
 import app.gyrolet.mpvrx.network.awaitResponse
 import app.gyrolet.mpvrx.utils.logging.Log
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.security.MessageDigest
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -33,6 +27,12 @@ import okhttp3.CookieJar
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 /**
  * The highest-resolution cover the catalogues publish for a song, whatever the file embeds:
@@ -46,27 +46,38 @@ internal class HighQualityArtworkRepository(
   private val tidal: TidalArtworkRepository,
 ) {
   private val directory = File(context.applicationContext.cacheDir, CACHE_DIRECTORY)
-  private val http = client.newBuilder()
-    .cookieJar(CookieJar.NO_COOKIES)
-    .callTimeout(60, TimeUnit.SECONDS)
-    .readTimeout(20, TimeUnit.SECONDS)
-    .build()
+  private val http =
+    client
+      .newBuilder()
+      .cookieJar(CookieJar.NO_COOKIES)
+      .callTimeout(60, TimeUnit.SECONDS)
+      .readTimeout(20, TimeUnit.SECONDS)
+      .build()
   private val json = Json { ignoreUnknownKeys = true }
   private val mutex = Mutex()
   private val failedAt = ConcurrentHashMap<String, Long>()
-  private val memory = object : LruCache<String, Bitmap>(memoryBudgetBytes()) {
-    override fun sizeOf(key: String, value: Bitmap): Int = value.allocationByteCount
-  }
+  private val memory =
+    object : LruCache<String, Bitmap>(memoryBudgetBytes()) {
+      override fun sizeOf(
+        key: String,
+        value: Bitmap,
+      ): Int = value.allocationByteCount
+    }
 
   fun fromMemory(query: MotionArtworkQuery): Bitmap? = memory.get(key(query))
 
   /** The cover for [query], decoded to at most [maxDimension] px, or null when none is published. */
-  suspend fun load(query: MotionArtworkQuery, maxDimension: Int): Bitmap? = withContext(Dispatchers.IO) {
-    val key = key(query)
-    memory.get(key)?.let { return@withContext it }
-    val file = cachedFile(key) ?: mutex.withLock { cachedFile(key) ?: download(query, key) } ?: return@withContext null
-    decode(file, maxDimension)?.also { memory.put(key, it) }
-  }
+  suspend fun load(
+    query: MotionArtworkQuery,
+    maxDimension: Int,
+  ): Bitmap? =
+    withContext(Dispatchers.IO) {
+      val key = key(query)
+      memory.get(key)?.let { return@withContext it }
+      val file =
+        cachedFile(key) ?: mutex.withLock { cachedFile(key) ?: download(query, key) } ?: return@withContext null
+      decode(file, maxDimension)?.also { memory.put(key, it) }
+    }
 
   private fun cachedFile(key: String): File? =
     File(directory, "$key.jpg").takeIf { it.isFile && it.length() > 0L }?.also {
@@ -74,16 +85,20 @@ internal class HighQualityArtworkRepository(
       it.setLastModified(System.currentTimeMillis())
     }
 
-  private suspend fun download(query: MotionArtworkQuery, key: String): File? {
+  private suspend fun download(
+    query: MotionArtworkQuery,
+    key: String,
+  ): File? {
     val now = System.currentTimeMillis()
     val miss = File(directory, "$key.miss")
     if (miss.isFile && now - miss.lastModified() < MISS_TTL_MS) return null
     failedAt[key]?.let { if (now - it < FAILURE_RETRY_MS) return null }
     return try {
-      val sources = listOf<suspend () -> String?>(
-        { appleArtworkUrl(query) },
-        { tidal.findStillCover(query) },
-      )
+      val sources =
+        listOf<suspend () -> String?>(
+          { appleArtworkUrl(query) },
+          { tidal.findStillCover(query) },
+        )
       for (source in sources) {
         val url = source() ?: continue
         save(url, key)?.let { file ->
@@ -110,29 +125,39 @@ internal class HighQualityArtworkRepository(
   /** Apple Music's original cover via the public iTunes Search API, asked at its 3000px ceiling. */
   private suspend fun appleArtworkUrl(query: MotionArtworkQuery): String? {
     val title = MotionArtworkMatching.cleanTitle(query.title)
-    val terms = listOfNotNull(
-      query.album?.takeIf { it.isNotBlank() }?.let { "${query.artist} $title $it" },
-      "${query.artist} $title",
-    )
+    val terms =
+      listOfNotNull(
+        query.album?.takeIf { it.isNotBlank() }?.let { "${query.artist} $title $it" },
+        "${query.artist} $title",
+      )
     val countries = listOf(MotionArtworkMatching.storefront(), "us").distinct()
     for (country in countries) {
       for (term in terms) {
-        val url = ITUNES_SEARCH.toHttpUrl().newBuilder()
-          .addQueryParameter("term", term)
-          .addQueryParameter("entity", "song")
-          .addQueryParameter("limit", "15")
-          .addQueryParameter("country", country)
-          .build()
-        val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).build()
-        val body = http.newCall(request).awaitResponse().use { response ->
-          currentCoroutineContext().ensureActive()
-          when {
-            response.isSuccessful -> response.body.string()
-            // Not every device region is an iTunes storefront.
-            response.code == 400 || response.code == 404 -> null
-            else -> throw IOException("iTunes Search HTTP ${response.code}")
-          }
-        } ?: break
+        val url =
+          ITUNES_SEARCH
+            .toHttpUrl()
+            .newBuilder()
+            .addQueryParameter("term", term)
+            .addQueryParameter("entity", "song")
+            .addQueryParameter("limit", "15")
+            .addQueryParameter("country", country)
+            .build()
+        val request =
+          Request
+            .Builder()
+            .url(url)
+            .header("User-Agent", USER_AGENT)
+            .build()
+        val body =
+          http.newCall(request).awaitResponse().use { response ->
+            currentCoroutineContext().ensureActive()
+            when {
+              response.isSuccessful -> response.body.string()
+              // Not every device region is an iTunes storefront.
+              response.code == 400 || response.code == 404 -> null
+              else -> throw IOException("iTunes Search HTTP ${response.code}")
+            }
+          } ?: break
         val results = (json.parseToJsonElement(body) as? JsonObject)?.get("results") as? JsonArray ?: continue
         bestAppleMatch(query, results)?.let { return it }
       }
@@ -140,7 +165,10 @@ internal class HighQualityArtworkRepository(
     return null
   }
 
-  private fun bestAppleMatch(query: MotionArtworkQuery, results: JsonArray): String? {
+  private fun bestAppleMatch(
+    query: MotionArtworkQuery,
+    results: JsonArray,
+  ): String? {
     val albumTagged = !query.album.isNullOrBlank()
     return results.firstNotNullOfOrNull { element ->
       val track = element as? JsonObject ?: return@firstNotNullOfOrNull null
@@ -159,11 +187,19 @@ internal class HighQualityArtworkRepository(
     }
   }
 
-  private suspend fun save(url: String, key: String): File? {
+  private suspend fun save(
+    url: String,
+    key: String,
+  ): File? {
     directory.mkdirs()
     val target = File(directory, "$key.jpg")
     val temp = File(directory, "$key.part")
-    val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).build()
+    val request =
+      Request
+        .Builder()
+        .url(url)
+        .header("User-Agent", USER_AGENT)
+        .build()
     try {
       http.newCall(request).awaitResponse().use { response ->
         if (!response.isSuccessful) return null
@@ -198,7 +234,10 @@ internal class HighQualityArtworkRepository(
     return bounds.outWidth > 0 && bounds.outHeight > 0
   }
 
-  private fun decode(file: File, maxDimension: Int): Bitmap? {
+  private fun decode(
+    file: File,
+    maxDimension: Int,
+  ): Bitmap? {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeFile(file.path, bounds)
     val longest = maxOf(bounds.outWidth, bounds.outHeight)
@@ -208,25 +247,28 @@ internal class HighQualityArtworkRepository(
     }
     var sample = 1
     while (longest / (sample * 2) >= maxDimension) sample *= 2
-    val decoded = BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
-      ?: return null
+    val decoded =
+      BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
+        ?: return null
     val decodedLongest = maxOf(decoded.width, decoded.height)
     if (decodedLongest <= maxDimension) return decoded
     val scale = maxDimension.toFloat() / decodedLongest
-    val scaled = Bitmap.createScaledBitmap(
-      decoded,
-      (decoded.width * scale).toInt().coerceAtLeast(1),
-      (decoded.height * scale).toInt().coerceAtLeast(1),
-      true,
-    )
+    val scaled =
+      Bitmap.createScaledBitmap(
+        decoded,
+        (decoded.width * scale).toInt().coerceAtLeast(1),
+        (decoded.height * scale).toInt().coerceAtLeast(1),
+        true,
+      )
     if (scaled !== decoded) decoded.recycle()
     return scaled
   }
 
   /** Keeps the cache under [MAX_CACHE_BYTES], dropping the least recently played covers first. */
   private fun trim() {
-    val files = directory.listFiles { file -> file.name.endsWith(".jpg") }?.sortedByDescending { it.lastModified() }
-      ?: return
+    val files =
+      directory.listFiles { file -> file.name.endsWith(".jpg") }?.sortedByDescending { it.lastModified() }
+        ?: return
     var total = 0L
     for (file in files) {
       total += file.length()
@@ -235,13 +277,17 @@ internal class HighQualityArtworkRepository(
   }
 
   private fun key(query: MotionArtworkQuery): String {
-    val identity = listOf(
-      MotionArtworkMatching.normalize(query.artist),
-      MotionArtworkMatching.normalize(MotionArtworkMatching.cleanTitle(query.title)),
-      query.album?.let(MotionArtworkMatching::normalize).orEmpty(),
-    ).joinToString("|")
-    return MessageDigest.getInstance("SHA-256").digest(identity.toByteArray(Charsets.UTF_8))
-      .joinToString("") { "%02x".format(it) }.take(40)
+    val identity =
+      listOf(
+        MotionArtworkMatching.normalize(query.artist),
+        MotionArtworkMatching.normalize(MotionArtworkMatching.cleanTitle(query.title)),
+        query.album?.let(MotionArtworkMatching::normalize).orEmpty(),
+      ).joinToString("|")
+    return MessageDigest
+      .getInstance("SHA-256")
+      .digest(identity.toByteArray(Charsets.UTF_8))
+      .joinToString("") { "%02x".format(it) }
+      .take(40)
   }
 
   private fun JsonObject.text(key: String): String? = (get(key) as? JsonPrimitive)?.contentOrNull

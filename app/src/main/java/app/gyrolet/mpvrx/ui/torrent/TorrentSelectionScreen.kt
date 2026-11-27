@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,9 +55,9 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.torrent.TorrentFileItem
 import app.gyrolet.mpvrx.domain.torrent.formatTorrentBytes
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
-import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.utils.media.MediaInfoParser
 
 private const val VIEWED_TORRENT_FILES_PREFS = "torrent_viewed_files"
 
@@ -256,7 +255,9 @@ private fun TorrentReadyScreen(
               onQueryChange = { searchQuery = it },
               onSearch = {},
               modifier = Modifier.padding(bottom = 4.dp),
-              windowInsets = androidx.compose.foundation.layout.WindowInsets(0.dp),
+              windowInsets =
+                androidx.compose.foundation.layout
+                  .WindowInsets(0.dp),
               placeholder = {
                 Text(
                   stringResource(R.string.ui_search_episodes),
@@ -507,7 +508,11 @@ private fun TorrentFileRow(
   onClick: () -> Unit,
 ) {
   val episode = parseEpisode(file.name) ?: parseEpisode(file.path)
-  val extension = file.name.substringAfterLast('.', "").uppercase().take(5)
+  val extension =
+    file.name
+      .substringAfterLast('.', "")
+      .uppercase()
+      .take(5)
 
   Surface(
     modifier =
@@ -593,12 +598,13 @@ private fun TorrentFileRow(
             tint = MaterialTheme.colorScheme.primary,
           )
         }
-        else -> Icon(
-          imageVector = Icons.RoundedFilled.PlayArrow,
-          contentDescription = stringResource(R.string.downloads_play),
-          modifier = Modifier.size(22.dp),
-          tint = MaterialTheme.colorScheme.primary,
-        )
+        else ->
+          Icon(
+            imageVector = Icons.RoundedFilled.PlayArrow,
+            contentDescription = stringResource(R.string.downloads_play),
+            modifier = Modifier.size(22.dp),
+            tint = MaterialTheme.colorScheme.primary,
+          )
       }
       trailingContent()
     }

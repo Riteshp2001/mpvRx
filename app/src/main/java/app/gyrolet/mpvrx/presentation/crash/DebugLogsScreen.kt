@@ -12,8 +12,6 @@ package app.gyrolet.mpvrx.presentation.crash
 import android.content.Context
 import android.content.Intent
 import android.os.Process
-import app.gyrolet.mpvrx.utils.logging.Log
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -36,15 +34,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
-import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Scaffold
-import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -71,9 +65,11 @@ import androidx.documentfile.provider.DocumentFile
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.findChildIgnoreCase
 import app.gyrolet.mpvrx.utils.media.listTreeFilesSafely
 import app.gyrolet.mpvrx.utils.media.openPersistedTreeDocument
@@ -84,6 +80,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import java.io.File
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu as DropdownMenu
+import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem as DropdownMenuItem
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 private const val DEBUG_LOG_REFRESH_MS = 500L
 private const val DEBUG_LOG_TAG = "MpvRxDebugLogs"
@@ -135,10 +135,12 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
       val needle = query.trim()
       sourceEntries.filter { entry ->
         entry.level in selectedLevels &&
-          (needle.isEmpty() ||
-            entry.level.label.contains(needle, ignoreCase = true) ||
-            entry.tag.contains(needle, ignoreCase = true) ||
-            entry.message.contains(needle, ignoreCase = true))
+          (
+            needle.isEmpty() ||
+              entry.level.label.contains(needle, ignoreCase = true) ||
+              entry.tag.contains(needle, ignoreCase = true) ||
+              entry.message.contains(needle, ignoreCase = true)
+          )
       }
     }
 
@@ -406,7 +408,14 @@ internal fun DebugLogsScreen(onNavigateBack: () -> Unit) {
           filteredEntries.isEmpty() -> {
             val hasActiveFilter = query.isNotBlank() || selectedLevels.size != DebugLogLevel.entries.size
             DebugLogMessageState(
-              title = if (hasActiveFilter) "No matching logs" else if (isPaused) "Logs paused" else "Waiting for logs…",
+              title =
+                if (hasActiveFilter) {
+                  "No matching logs"
+                } else if (isPaused) {
+                  "Logs paused"
+                } else {
+                  "Waiting for logs…"
+                },
               message =
                 if (hasActiveFilter) {
                   "Try clearing the search or enabling more log levels."
@@ -659,16 +668,20 @@ private fun saveDebugLogsToConfigDir(
   if (text.isBlank()) return null
 
   return runCatching {
-    val root = openPersistedTreeDocument(context, configUri, requireWrite = true)
-      ?: error("Configuration folder is not writable")
-    val logDirectory = root.findChildIgnoreCase(CONFIG_LOG_DIR_NAME) ?: root.createDirectory(CONFIG_LOG_DIR_NAME)
-      ?: error("Could not create configuration logs folder")
+    val root =
+      openPersistedTreeDocument(context, configUri, requireWrite = true)
+        ?: error("Configuration folder is not writable")
+    val logDirectory =
+      root.findChildIgnoreCase(CONFIG_LOG_DIR_NAME) ?: root.createDirectory(CONFIG_LOG_DIR_NAME)
+        ?: error("Could not create configuration logs folder")
     check(logDirectory.isDirectory && logDirectory.canWrite()) { "Configuration logs folder is not writable" }
-    val file = logDirectory.createFile("text/plain", "$DEBUG_LOG_FILE_PREFIX${System.currentTimeMillis()}.txt")
-      ?: error("Could not create debug log file")
+    val file =
+      logDirectory.createFile("text/plain", "$DEBUG_LOG_FILE_PREFIX${System.currentTimeMillis()}.txt")
+        ?: error("Could not create debug log file")
     try {
-      val output = context.contentResolver.openOutputStream(file.uri, "wt")
-        ?: error("Could not open debug log file")
+      val output =
+        context.contentResolver.openOutputStream(file.uri, "wt")
+          ?: error("Could not open debug log file")
       output.bufferedWriter(Charsets.UTF_8).use { it.write(text) }
     } catch (error: Exception) {
       runCatching { file.delete() }

@@ -18,7 +18,10 @@ object ClipEditorUiState {
   private val _state = MutableStateFlow<ClipEditorRangeState?>(null)
   val state: StateFlow<ClipEditorRangeState?> = _state.asStateFlow()
 
-  internal fun publish(startSeconds: Double, endSeconds: Double?) {
+  internal fun publish(
+    startSeconds: Double,
+    endSeconds: Double?,
+  ) {
     _state.value =
       ClipEditorRangeState(
         startSeconds = startSeconds.toFloat().coerceAtLeast(0f),

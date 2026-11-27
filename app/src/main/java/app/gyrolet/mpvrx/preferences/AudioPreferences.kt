@@ -41,7 +41,13 @@ class AudioPreferences(
       serializer = { gains -> gains.joinToString(",") },
       deserializer = { stored ->
         val values = stored.split(',')
-        List(7) { index -> values.getOrNull(index)?.trim()?.toFloatOrNull()?.coerceIn(-12f, 12f) ?: 0f }
+        List(7) { index ->
+          values
+            .getOrNull(index)
+            ?.trim()
+            ?.toFloatOrNull()
+            ?.coerceIn(-12f, 12f) ?: 0f
+        }
       },
     )
   val equalizerToneX = preferenceStore.getInt("audio_equalizer_tone_x", 0)
@@ -60,26 +66,32 @@ class AudioPreferences(
   val spotifySpDcCookie = preferenceStore.getString("spotify_sp_dc_cookie", "")
   val highQualityArtwork = preferenceStore.getBoolean("audio_high_quality_artwork", true)
   val audioWavySeekbar = preferenceStore.getBoolean("audio_wavy_seekbar", true)
-  val enabledMusicTabs = preferenceStore.getStringSet(
-    "enabled_music_tabs",
-    setOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS"),
-  )
-  val musicTabOrder = preferenceStore.getObject(
-    key = "music_tab_order",
-    defaultValue = listOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS"),
-    serializer = { list -> list.joinToString(",") },
-    deserializer = { str ->
-      val parsed = str.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-      val missing = listOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS") - parsed.toSet()
-      parsed + missing
-    },
-  )
+  val enabledMusicTabs =
+    preferenceStore.getStringSet(
+      "enabled_music_tabs",
+      setOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS"),
+    )
+  val musicTabOrder =
+    preferenceStore.getObject(
+      key = "music_tab_order",
+      defaultValue = listOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS"),
+      serializer = { list -> list.joinToString(",") },
+      deserializer = { str ->
+        val parsed = str.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val missing = listOf("SONGS", "ALBUMS", "ARTISTS", "PLAYLISTS", "FOLDERS") - parsed.toSet()
+        parsed + missing
+      },
+    )
 
   /** Fetch from external lyric providers automatically only when local lyrics are absent. */
   val lyricsAutoFetchOnline = preferenceStore.getBoolean("lyrics_auto_fetch_online", true)
   val lyricsAutoTranslate = preferenceStore.getBoolean("lyrics_auto_translate", false)
   val lyricsTargetLanguage = preferenceStore.getString("lyrics_target_language", "en")
-  val lyricsTranslationDisplayMode = preferenceStore.getEnum("lyrics_translation_display_mode", LyricsTranslationDisplayMode.DualLine)
+  val lyricsTranslationDisplayMode =
+    preferenceStore.getEnum(
+      "lyrics_translation_display_mode",
+      LyricsTranslationDisplayMode.DualLine,
+    )
   val floatingLyricsEnabled = preferenceStore.getBoolean("floating_lyrics_enabled", false)
   val floatingLyricsDockEnd = preferenceStore.getBoolean("floating_lyrics_dock_end", true)
   val floatingLyricsY = preferenceStore.getInt("floating_lyrics_y", 350)
@@ -128,7 +140,6 @@ enum class AudioVisualizerStyle(
   Particle(R.string.pref_audio_visualizer_style_particle),
 }
 
-
 enum class AudioOutput(
   @StringRes val titleRes: Int,
   private val driver: String?,
@@ -159,8 +170,7 @@ enum class AudioPassthrough(
    * Android 14 and OpenSL ES open a passthrough format as PCM, so mpv would decode instead of
    * trying AudioTrack.
    */
-  fun audioOutput(output: AudioOutput): String =
-    if (this == Off) output.mpvValue else AudioOutput.AudioTrack.mpvValue
+  fun audioOutput(output: AudioOutput): String = if (this == Off) output.mpvValue else AudioOutput.AudioTrack.mpvValue
 }
 
 enum class AudioChannels(
@@ -170,6 +180,7 @@ enum class AudioChannels(
 ) {
   /** Let mpv prefer the source layout when the output device reports that it is supported. */
   Auto(R.string.pref_audio_channels_auto, "audio-channels", "auto"),
+
   /** Use the system-preferred layout and safely fall back to stereo. This is mpv's default. */
   AutoSafe(R.string.pref_audio_channels_auto_safe, "audio-channels", "auto-safe"),
   Mono(R.string.pref_audio_channels_mono, "audio-channels", "mono"),

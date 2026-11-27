@@ -9,9 +9,7 @@
 
 package app.gyrolet.mpvrx.ui.browser.jellyfin.seerr
 
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import androidx.compose.animation.AnimatedVisibility
-import app.gyrolet.mpvrx.data.network.ServerUrlUtils
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -42,7 +40,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -63,12 +60,15 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
+import app.gyrolet.mpvrx.data.network.ServerUrlUtils
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinServer
 import app.gyrolet.mpvrx.domain.seerr.JellyseerrUser
 import app.gyrolet.mpvrx.presentation.components.RemoteImage
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 enum class SeerrAuthType {
   JELLYFIN,
@@ -97,23 +97,25 @@ fun SeerrConnectionDialog(
   var authType by remember { mutableStateOf(SeerrAuthType.JELLYFIN) }
   var isEditingServer by remember { mutableStateOf(false) }
   var serverUrl by remember(currentServerUrl, activeJellyfinServer) {
-    val initial = if (currentServerUrl.isNotBlank()) {
-      currentServerUrl
-    } else if (activeJellyfinServer != null) {
-      val raw = activeJellyfinServer.serverUrl.removeSuffix("/")
-      // If Jellyfin has standard port 8096, guess Overseerr/Jellyseerr on 5055
-      if (raw.contains(":8096")) raw.replace(":8096", ":5055") else "$raw:5055"
-    } else {
-      ""
-    }
+    val initial =
+      if (currentServerUrl.isNotBlank()) {
+        currentServerUrl
+      } else if (activeJellyfinServer != null) {
+        val raw = activeJellyfinServer.serverUrl.removeSuffix("/")
+        // If Jellyfin has standard port 8096, guess Overseerr/Jellyseerr on 5055
+        if (raw.contains(":8096")) raw.replace(":8096", ":5055") else "$raw:5055"
+      } else {
+        ""
+      }
     mutableStateOf(initial)
   }
 
   var username by remember(activeJellyfinServer, currentUser) {
-    val initial = currentUser?.username
-      ?: activeJellyfinServer?.username
-      ?: currentUser?.displayName
-      ?: ""
+    val initial =
+      currentUser?.username
+        ?: activeJellyfinServer?.username
+        ?: currentUser?.displayName
+        ?: ""
     mutableStateOf(initial)
   }
   var password by remember { mutableStateOf("") }
@@ -125,10 +127,11 @@ fun SeerrConnectionDialog(
     containerColor = MaterialTheme.colorScheme.surfaceContainer,
   ) {
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 24.dp, vertical = 8.dp)
-        .verticalScroll(rememberScrollState()),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 24.dp, vertical = 8.dp)
+          .verticalScroll(rememberScrollState()),
     ) {
       Row(
         modifier = Modifier.fillMaxWidth(),
@@ -145,12 +148,13 @@ fun SeerrConnectionDialog(
             modifier = Modifier.size(40.dp),
           ) {
             val rawAvatar = currentUser?.avatar
-            val avatarUrl = when {
-              rawAvatar.isNullOrBlank() -> null
-              rawAvatar.startsWith("http") -> rawAvatar
-              currentServerUrl.isNotBlank() -> "${currentServerUrl.trimEnd('/')}/${rawAvatar.trimStart('/')}"
-              else -> null
-            }
+            val avatarUrl =
+              when {
+                rawAvatar.isNullOrBlank() -> null
+                rawAvatar.startsWith("http") -> rawAvatar
+                currentServerUrl.isNotBlank() -> "${currentServerUrl.trimEnd('/')}/${rawAvatar.trimStart('/')}"
+                else -> null
+              }
 
             if (isConnected && avatarUrl != null) {
               RemoteImage(
@@ -172,7 +176,15 @@ fun SeerrConnectionDialog(
           }
           Column {
             Text(
-              text = if (isConnected) (currentUser?.displayName ?: currentUser?.username ?: stringResource(R.string.seerr_connect_server)) else stringResource(R.string.seerr_connect_server),
+              text =
+                if (isConnected) {
+                  (
+                    currentUser?.displayName ?: currentUser?.username
+                      ?: stringResource(R.string.seerr_connect_server)
+                  )
+                } else {
+                  stringResource(R.string.seerr_connect_server)
+                },
               style = MaterialTheme.typography.titleMedium,
               fontWeight = FontWeight.Bold,
             )
@@ -199,19 +211,21 @@ fun SeerrConnectionDialog(
           modifier = Modifier.fillMaxWidth(),
         ) {
           Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(16.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
           ) {
             val rawAvatar = currentUser.avatar
-            val avatarUrl = when {
-              rawAvatar.isNullOrBlank() -> null
-              rawAvatar.startsWith("http") -> rawAvatar
-              currentServerUrl.isNotBlank() -> "${currentServerUrl.trimEnd('/')}/${rawAvatar.trimStart('/')}"
-              else -> null
-            }
+            val avatarUrl =
+              when {
+                rawAvatar.isNullOrBlank() -> null
+                rawAvatar.startsWith("http") -> rawAvatar
+                currentServerUrl.isNotBlank() -> "${currentServerUrl.trimEnd('/')}/${rawAvatar.trimStart('/')}"
+                else -> null
+              }
 
             if (avatarUrl != null) {
               RemoteImage(
@@ -219,16 +233,18 @@ fun SeerrConnectionDialog(
                 url = avatarUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                  .size(48.dp)
-                  .clip(CircleShape),
+                modifier =
+                  Modifier
+                    .size(48.dp)
+                    .clip(CircleShape),
               )
             } else {
               Box(
-                modifier = Modifier
-                  .size(48.dp)
-                  .clip(CircleShape)
-                  .background(MaterialTheme.colorScheme.primary),
+                modifier =
+                  Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary),
                 contentAlignment = Alignment.Center,
               ) {
                 Text(
@@ -278,7 +294,12 @@ fun SeerrConnectionDialog(
               Icon(
                 Icons.RoundedFilled.Edit,
                 contentDescription = "Reconfigure Server",
-                tint = if (isEditingServer) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint =
+                  if (isEditingServer) {
+                    MaterialTheme.colorScheme.primary
+                  } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                  },
                 modifier = Modifier.size(20.dp),
               )
             }
@@ -291,9 +312,10 @@ fun SeerrConnectionDialog(
           onClick = {
             onDisconnect()
           },
-          colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = MaterialTheme.colorScheme.error,
-          ),
+          colors =
+            ButtonDefaults.outlinedButtonColors(
+              contentColor = MaterialTheme.colorScheme.error,
+            ),
           shape = RoundedCornerShape(12.dp),
           modifier = Modifier.fillMaxWidth().tvFocusHighlight(RoundedCornerShape(12.dp), clipToShape = false),
         ) {
@@ -324,203 +346,217 @@ fun SeerrConnectionDialog(
         }
 
         // Server URL Input
-      OutlinedTextField(
-        value = serverUrl,
-        onValueChange = { serverUrl = it },
-        label = { Text(stringResource(R.string.seerr_server_url)) },
-        placeholder = { Text(stringResource(R.string.seerr_server_url_hint)) },
-        leadingIcon = {
-          Icon(Icons.RoundedFilled.Language, contentDescription = null)
-        },
-        singleLine = true,
-        supportingText = { Text(ServerUrlUtils.getConnectionHint(serverUrl)) },
-        shape = RoundedCornerShape(12.dp),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
-        modifier = Modifier.fillMaxWidth(),
-      )
-
-      Spacer(modifier = Modifier.height(12.dp))
-
-      // Auth Mode Selector
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        FilterChip(
-          modifier = Modifier.tvFocusHighlight(RoundedCornerShape(10.dp), clipToShape = false),
-          selected = authType == SeerrAuthType.JELLYFIN,
-          onClick = { authType = SeerrAuthType.JELLYFIN },
-          label = { Text("Jellyfin Auth") },
-          shape = RoundedCornerShape(10.dp),
-          colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-          ),
-        )
-        FilterChip(
-          modifier = Modifier.tvFocusHighlight(RoundedCornerShape(10.dp), clipToShape = false),
-          selected = authType == SeerrAuthType.LOCAL,
-          onClick = { authType = SeerrAuthType.LOCAL },
-          label = { Text("Local Account") },
-          shape = RoundedCornerShape(10.dp),
-          colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-          ),
-        )
-        FilterChip(
-          modifier = Modifier.tvFocusHighlight(RoundedCornerShape(10.dp), clipToShape = false),
-          selected = authType == SeerrAuthType.API_KEY,
-          onClick = { authType = SeerrAuthType.API_KEY },
-          label = { Text("API Key") },
-          shape = RoundedCornerShape(10.dp),
-          colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-          ),
-        )
-      }
-
-      Spacer(modifier = Modifier.height(12.dp))
-
-      if (authType == SeerrAuthType.API_KEY) {
         OutlinedTextField(
-          value = apiKey,
-          onValueChange = { apiKey = it },
-          label = { Text(stringResource(R.string.seerr_api_key)) },
-          placeholder = { Text(stringResource(R.string.seerr_api_key_hint)) },
+          value = serverUrl,
+          onValueChange = { serverUrl = it },
+          label = { Text(stringResource(R.string.seerr_server_url)) },
+          placeholder = { Text(stringResource(R.string.seerr_server_url_hint)) },
           leadingIcon = {
-            Icon(Icons.RoundedFilled.Key, contentDescription = null)
+            Icon(Icons.RoundedFilled.Language, contentDescription = null)
           },
           singleLine = true,
+          supportingText = { Text(ServerUrlUtils.getConnectionHint(serverUrl)) },
           shape = RoundedCornerShape(12.dp),
-          keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-          keyboardActions = KeyboardActions(onDone = {
-            if (serverUrl.isNotBlank() && apiKey.isNotBlank()) {
-              onConnectWithApiKey(serverUrl, apiKey)
-            }
-          }),
-          modifier = Modifier.fillMaxWidth(),
-        )
-      } else {
-        OutlinedTextField(
-          value = username,
-          onValueChange = { username = it },
-          label = {
-            Text(if (authType == SeerrAuthType.JELLYFIN) "Jellyfin Username" else "Email / Username")
-          },
-          leadingIcon = {
-            Icon(Icons.RoundedFilled.Person, contentDescription = null)
-          },
-          singleLine = true,
-          shape = RoundedCornerShape(12.dp),
-          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
           modifier = Modifier.fillMaxWidth(),
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        OutlinedTextField(
-          value = password,
-          onValueChange = { password = it },
-          label = { Text(stringResource(R.string.seerr_password)) },
-          leadingIcon = {
-            Icon(Icons.RoundedFilled.Lock, contentDescription = null)
-          },
-          trailingIcon = {
-            IconButton(modifier = Modifier.tvFocusHighlight(CircleShape, clipToShape = false), onClick = { isPasswordVisible = !isPasswordVisible }) {
+        // Auth Mode Selector
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          FilterChip(
+            modifier = Modifier.tvFocusHighlight(RoundedCornerShape(10.dp), clipToShape = false),
+            selected = authType == SeerrAuthType.JELLYFIN,
+            onClick = { authType = SeerrAuthType.JELLYFIN },
+            label = { Text("Jellyfin Auth") },
+            shape = RoundedCornerShape(10.dp),
+            colors =
+              FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+              ),
+          )
+          FilterChip(
+            modifier = Modifier.tvFocusHighlight(RoundedCornerShape(10.dp), clipToShape = false),
+            selected = authType == SeerrAuthType.LOCAL,
+            onClick = { authType = SeerrAuthType.LOCAL },
+            label = { Text("Local Account") },
+            shape = RoundedCornerShape(10.dp),
+            colors =
+              FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+              ),
+          )
+          FilterChip(
+            modifier = Modifier.tvFocusHighlight(RoundedCornerShape(10.dp), clipToShape = false),
+            selected = authType == SeerrAuthType.API_KEY,
+            onClick = { authType = SeerrAuthType.API_KEY },
+            label = { Text("API Key") },
+            shape = RoundedCornerShape(10.dp),
+            colors =
+              FilterChipDefaults.filterChipColors(
+                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+              ),
+          )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (authType == SeerrAuthType.API_KEY) {
+          OutlinedTextField(
+            value = apiKey,
+            onValueChange = { apiKey = it },
+            label = { Text(stringResource(R.string.seerr_api_key)) },
+            placeholder = { Text(stringResource(R.string.seerr_api_key_hint)) },
+            leadingIcon = {
+              Icon(Icons.RoundedFilled.Key, contentDescription = null)
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions =
+              KeyboardActions(onDone = {
+                if (serverUrl.isNotBlank() && apiKey.isNotBlank()) {
+                  onConnectWithApiKey(serverUrl, apiKey)
+                }
+              }),
+            modifier = Modifier.fillMaxWidth(),
+          )
+        } else {
+          OutlinedTextField(
+            value = username,
+            onValueChange = { username = it },
+            label = {
+              Text(if (authType == SeerrAuthType.JELLYFIN) "Jellyfin Username" else "Email / Username")
+            },
+            leadingIcon = {
+              Icon(Icons.RoundedFilled.Person, contentDescription = null)
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
+            modifier = Modifier.fillMaxWidth(),
+          )
+
+          Spacer(modifier = Modifier.height(10.dp))
+
+          OutlinedTextField(
+            value = password,
+            onValueChange = { password = it },
+            label = { Text(stringResource(R.string.seerr_password)) },
+            leadingIcon = {
+              Icon(Icons.RoundedFilled.Lock, contentDescription = null)
+            },
+            trailingIcon = {
+              IconButton(modifier = Modifier.tvFocusHighlight(CircleShape, clipToShape = false), onClick = {
+                isPasswordVisible =
+                  !isPasswordVisible
+              }) {
+                Icon(
+                  if (isPasswordVisible) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility,
+                  contentDescription = null,
+                )
+              }
+            },
+            visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions =
+              KeyboardActions(onDone = {
+                val trimmedUrl = serverUrl.trim()
+                val trimmedUser = username.trim()
+                if (trimmedUrl.isNotBlank() && trimmedUser.isNotBlank()) {
+                  onConnectWithCredentials(trimmedUrl, trimmedUser, password, authType == SeerrAuthType.JELLYFIN)
+                }
+              }),
+            modifier = Modifier.fillMaxWidth(),
+          )
+        }
+
+        // Error Message if any
+        AnimatedVisibility(visible = !errorMessage.isNullOrBlank()) {
+          Card(
+            shape = RoundedCornerShape(10.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp),
+          ) {
+            Row(
+              modifier = Modifier.padding(12.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
               Icon(
-                if (isPasswordVisible) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility,
+                Icons.RoundedFilled.ErrorOutline,
                 contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(20.dp),
+              )
+              Text(
+                text = errorMessage ?: "",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
               )
             }
-          },
-          visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-          singleLine = true,
-          shape = RoundedCornerShape(12.dp),
-          keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
-          keyboardActions = KeyboardActions(onDone = {
-            val trimmedUrl = serverUrl.trim()
-            val trimmedUser = username.trim()
-            if (trimmedUrl.isNotBlank() && trimmedUser.isNotBlank()) {
-              onConnectWithCredentials(trimmedUrl, trimmedUser, password, authType == SeerrAuthType.JELLYFIN)
-            }
-          }),
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
+          }
+        }
 
-      // Error Message if any
-      AnimatedVisibility(visible = !errorMessage.isNullOrBlank()) {
-        Card(
-          shape = RoundedCornerShape(10.dp),
-          colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 12.dp),
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(
+          onClick = {
+            val trimmedUrl = serverUrl.trim()
+            if (authType == SeerrAuthType.API_KEY) {
+              onConnectWithApiKey(trimmedUrl, apiKey.trim())
+            } else {
+              onConnectWithCredentials(trimmedUrl, username.trim(), password, authType == SeerrAuthType.JELLYFIN)
+            }
+          },
+          enabled =
+            !isConnecting &&
+              serverUrl.isNotBlank() &&
+              (
+                (authType == SeerrAuthType.API_KEY && apiKey.isNotBlank()) ||
+                  (authType != SeerrAuthType.API_KEY && username.isNotBlank())
+              ),
+          colors =
+            ButtonDefaults.buttonColors(
+              containerColor = MaterialTheme.colorScheme.primary,
+              contentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
+          shape = RoundedCornerShape(12.dp),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .height(50.dp)
+              .tvFocusHighlight(RoundedCornerShape(12.dp), clipToShape = false),
         ) {
-          Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-          ) {
-            Icon(
-              Icons.RoundedFilled.ErrorOutline,
-              contentDescription = null,
-              tint = MaterialTheme.colorScheme.onErrorContainer,
+          if (isConnecting) {
+            CircularProgressIndicator(
+              strokeWidth = 2.dp,
+              color = MaterialTheme.colorScheme.onPrimary,
               modifier = Modifier.size(20.dp),
             )
-            Text(
-              text = errorMessage ?: "",
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onErrorContainer,
-            )
-          }
-        }
-      }
-
-      Spacer(modifier = Modifier.height(20.dp))
-
-      Button(
-        onClick = {
-          val trimmedUrl = serverUrl.trim()
-          if (authType == SeerrAuthType.API_KEY) {
-            onConnectWithApiKey(trimmedUrl, apiKey.trim())
+            Spacer(modifier = Modifier.width(10.dp))
+            Text("Connecting…", fontWeight = FontWeight.Bold)
           } else {
-            onConnectWithCredentials(trimmedUrl, username.trim(), password, authType == SeerrAuthType.JELLYFIN)
+            Icon(Icons.RoundedFilled.Link, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(stringResource(R.string.seerr_login), fontWeight = FontWeight.Bold)
           }
-        },
-        enabled = !isConnecting && serverUrl.isNotBlank() && (
-          (authType == SeerrAuthType.API_KEY && apiKey.isNotBlank()) ||
-            (authType != SeerrAuthType.API_KEY && username.isNotBlank())
-          ),
-        colors = ButtonDefaults.buttonColors(
-          containerColor = MaterialTheme.colorScheme.primary,
-          contentColor = MaterialTheme.colorScheme.onPrimary,
-        ),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(50.dp)
-          .tvFocusHighlight(RoundedCornerShape(12.dp), clipToShape = false),
-      ) {
-        if (isConnecting) {
-          CircularProgressIndicator(
-            strokeWidth = 2.dp,
-            color = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.size(20.dp),
-          )
-          Spacer(modifier = Modifier.width(10.dp))
-          Text("Connecting…", fontWeight = FontWeight.Bold)
-        } else {
-          Icon(Icons.RoundedFilled.Link, contentDescription = null, modifier = Modifier.size(20.dp))
-          Spacer(modifier = Modifier.width(8.dp))
-          Text(stringResource(R.string.seerr_login), fontWeight = FontWeight.Bold)
         }
       }
-    }
 
-    Spacer(modifier = Modifier.height(32.dp))
+      Spacer(modifier = Modifier.height(32.dp))
+    }
   }
-}
 }

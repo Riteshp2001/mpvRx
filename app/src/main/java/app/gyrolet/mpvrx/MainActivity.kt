@@ -15,60 +15,59 @@ import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
-import app.gyrolet.mpvrx.utils.logging.Log
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.tappableElement
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.rememberNavBackStack
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.tappableElement
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -76,53 +75,54 @@ import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.ProvideLiquidGlassBackdrop
 import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
 import app.gyrolet.mpvrx.presentation.components.rememberLiquidGlassBackdrop
-import app.gyrolet.mpvrx.ui.browser.MainScreen
 import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
-import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedScreen
+import app.gyrolet.mpvrx.ui.browser.MainScreen
 import app.gyrolet.mpvrx.ui.browser.NavigationBarState
-import app.gyrolet.mpvrx.ui.browser.rememberMiniPlayerShape
 import app.gyrolet.mpvrx.ui.browser.TvSideNavigationDefaults
-import app.gyrolet.mpvrx.ui.tv.TvSafeArea
-import app.gyrolet.mpvrx.ui.tv.startForResultOrToast
 import app.gyrolet.mpvrx.ui.browser.components.MiniPlayer
-import app.gyrolet.mpvrx.ui.theme.AppMotion
-import app.gyrolet.mpvrx.ui.theme.DarkMode
-import app.gyrolet.mpvrx.ui.theme.AppWallpaperHost
-import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
-import app.gyrolet.mpvrx.ui.theme.rememberThemeTransitionState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import app.gyrolet.mpvrx.ui.browser.recentlyplayed.RecentlyPlayedScreen
+import app.gyrolet.mpvrx.ui.browser.rememberMiniPlayerShape
 import app.gyrolet.mpvrx.ui.player.InAppMusicPlayerSheet
-import app.gyrolet.mpvrx.ui.remote.RemotePairingPrompt
 import app.gyrolet.mpvrx.ui.player.LocalInAppMusicSheet
-import app.gyrolet.mpvrx.ui.player.coveredByInAppMusicSheet
-import app.gyrolet.mpvrx.ui.player.inAppMusicSheetMiniSource
-import app.gyrolet.mpvrx.ui.player.rememberInAppMusicSheetState
 import app.gyrolet.mpvrx.ui.player.PlayerSheetDestination
 import app.gyrolet.mpvrx.ui.player.PlayerSheetTransitionOverlay
 import app.gyrolet.mpvrx.ui.player.PlayerSheetTransitions
+import app.gyrolet.mpvrx.ui.player.coveredByInAppMusicSheet
+import app.gyrolet.mpvrx.ui.player.inAppMusicSheetMiniSource
 import app.gyrolet.mpvrx.ui.player.playerSheetBackdrop
 import app.gyrolet.mpvrx.ui.player.playerSheetMiniPlacement
+import app.gyrolet.mpvrx.ui.player.rememberInAppMusicSheetState
+import app.gyrolet.mpvrx.ui.remote.RemotePairingPrompt
+import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.theme.AppWallpaperHost
+import app.gyrolet.mpvrx.ui.theme.DarkMode
+import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
+import app.gyrolet.mpvrx.ui.theme.rememberThemeTransitionState
+import app.gyrolet.mpvrx.ui.tv.TvSafeArea
+import app.gyrolet.mpvrx.ui.tv.startForResultOrToast
+import app.gyrolet.mpvrx.ui.update.UpdateSheet
+import app.gyrolet.mpvrx.ui.update.UpdateUiState
+import app.gyrolet.mpvrx.ui.update.UpdateViewModel
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalRootBackStack
 import app.gyrolet.mpvrx.ui.utils.ScreenNavDisplay
 import app.gyrolet.mpvrx.ui.utils.popSafely
-import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import app.gyrolet.mpvrx.utils.device.appUiScaleOverrideConfiguration
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.permission.PermissionRecovery
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
-import app.gyrolet.mpvrx.ui.update.UpdateSheet
-import app.gyrolet.mpvrx.ui.update.UpdateUiState
-import app.gyrolet.mpvrx.ui.update.UpdateViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 private const val RENDERER_NOTICE_PREFERENCES = "renderer_build_notice"
 private const val NON_VULKAN_NOTICE_SHOWN = "non_vulkan_notice_shown"
@@ -173,7 +173,11 @@ open class MainActivity : AppCompatActivity() {
     registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { }
 
   @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
-  override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) =
+  override fun startActivityForResult(
+    intent: Intent,
+    requestCode: Int,
+    options: Bundle?,
+  ) =
     startForResultOrToast(intent, requestCode) { target -> super.startActivityForResult(target, requestCode, options) }
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -252,9 +256,10 @@ open class MainActivity : AppCompatActivity() {
           // Consuming it here lets nested Scaffolds/sheets avoid adding it twice.
           CompositionLocalProvider(LocalInAppMusicSheet provides musicSheet) {
             Surface(
-              modifier = Modifier.fillMaxSize().windowInsetsPadding(
-                WindowInsets.tappableElement.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
-              ),
+              modifier =
+                Modifier.fillMaxSize().windowInsetsPadding(
+                  WindowInsets.tappableElement.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+                ),
               color = Color.Transparent,
             ) {
               Navigator()
@@ -292,7 +297,6 @@ open class MainActivity : AppCompatActivity() {
         }
       }
     }
-
   }
 
   override fun attachBaseContext(newBase: android.content.Context?) {
@@ -317,14 +321,17 @@ open class MainActivity : AppCompatActivity() {
     // Interactive again without the player having taken over, so its expansion is void.
     PlayerSheetTransitions.abandonExpansion()
     mediaDiscoveryJob?.cancel()
-    mediaDiscoveryJob = lifecycleScope.launch(Dispatchers.IO) {
-      // Let the cached browser draw first. A second bounded pass catches extraction that was
-      // still finishing when the user switched back; there is no continuous storage polling.
-      delay(350L)
-      app.gyrolet.mpvrx.utils.storage.UnindexedVideoDiscovery.refresh(applicationContext)
-      delay(2_000L)
-      app.gyrolet.mpvrx.utils.storage.UnindexedVideoDiscovery.refresh(applicationContext)
-    }
+    mediaDiscoveryJob =
+      lifecycleScope.launch(Dispatchers.IO) {
+        // Let the cached browser draw first. A second bounded pass catches extraction that was
+        // still finishing when the user switched back; there is no continuous storage polling.
+        delay(350L)
+        app.gyrolet.mpvrx.utils.storage.UnindexedVideoDiscovery
+          .refresh(applicationContext)
+        delay(2_000L)
+        app.gyrolet.mpvrx.utils.storage.UnindexedVideoDiscovery
+          .refresh(applicationContext)
+      }
   }
 
   override fun onPause() {
@@ -349,8 +356,6 @@ open class MainActivity : AppCompatActivity() {
       Log.e("MainActivity", "Error during onDestroy", e)
     }
   }
-
-
 
   private fun resolveIsDarkMode(
     darkMode: DarkMode,
@@ -390,7 +395,9 @@ open class MainActivity : AppCompatActivity() {
     const val TV_EXIT_BACK_WINDOW_MS = 2_000L
 
     // Per process: alias states only change through LauncherIconManager or the repair receiver.
-    val launcherIconsReconciled = java.util.concurrent.atomic.AtomicBoolean(false)
+    val launcherIconsReconciled =
+      java.util.concurrent.atomic
+        .AtomicBoolean(false)
   }
 
   /**
@@ -399,15 +406,19 @@ open class MainActivity : AppCompatActivity() {
    */
   private fun refreshLauncherIcon() {
     if (!launcherIconsReconciled.compareAndSet(false, true)) {
-      app.gyrolet.mpvrx.ui.preferences.LauncherIconManager.refreshTaskIcon(this)
+      app.gyrolet.mpvrx.ui.preferences.LauncherIconManager
+        .refreshTaskIcon(this)
       return
     }
     lifecycleScope.launch {
       kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        runCatching { app.gyrolet.mpvrx.ui.preferences.LauncherIconManager.reconcile(applicationContext) }
-          .onFailure { Log.w("LauncherIcon", "Unable to reconcile launcher aliases", it) }
+        runCatching {
+          app.gyrolet.mpvrx.ui.preferences.LauncherIconManager
+            .reconcile(applicationContext)
+        }.onFailure { Log.w("LauncherIcon", "Unable to reconcile launcher aliases", it) }
       }
-      app.gyrolet.mpvrx.ui.preferences.LauncherIconManager.refreshTaskIcon(this@MainActivity)
+      app.gyrolet.mpvrx.ui.preferences.LauncherIconManager
+        .refreshTaskIcon(this@MainActivity)
     }
   }
 
@@ -467,7 +478,13 @@ open class MainActivity : AppCompatActivity() {
       if (hasNavEntries) {
         val miniPlayerBackdrop = rememberLiquidGlassBackdrop()
         var browserRootLeft by remember { mutableStateOf(0f) }
-        BoxWithConstraints(modifier = Modifier.fillMaxSize().onGloballyPositioned { browserRootLeft = it.positionInRoot().x }) {
+        BoxWithConstraints(
+          modifier =
+            Modifier.fillMaxSize().onGloballyPositioned {
+              browserRootLeft =
+                it.positionInRoot().x
+            },
+        ) {
           val density = LocalDensity.current
           val layoutDirection = LocalLayoutDirection.current
           val safeInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
@@ -477,9 +494,14 @@ open class MainActivity : AppCompatActivity() {
           val isDualPane = isMainScreen && !legacyNavigationBar && NavigationBarState.isDualPaneLayout
           val isNavBarVisible = isMainScreen && NavigationBarState.isNavBarVisible
           val spacing = NavigationBarState.floatingBarSpacing
-          val dockedPlayer = connectedMiniPlayerNavigation && isNavBarVisible && !legacyNavigationBar && !isDualPane &&
-            !DeviceFormFactor.isTelevision(context) && NavigationBarState.isMiniPlayerVisible &&
-            NavigationBarState.miniPlayerConnectionEnabled
+          val dockedPlayer =
+            connectedMiniPlayerNavigation &&
+              isNavBarVisible &&
+              !legacyNavigationBar &&
+              !isDualPane &&
+              !DeviceFormFactor.isTelevision(context) &&
+              NavigationBarState.isMiniPlayerVisible &&
+              NavigationBarState.miniPlayerConnectionEnabled
           val reducedMotion = AppMotion.shouldReduceMotion()
           val dockFraction by animateFloatAsState(
             targetValue = if (dockedPlayer) 1f else 0f,
@@ -493,12 +515,20 @@ open class MainActivity : AppCompatActivity() {
               maxWidth - NavigationBarState.navbarLeftOffset - NavigationBarState.navbarWidth - rightInset
             }
           val dockLeft = NavigationBarState.navbarLeftOffset - with(density) { browserRootLeft.toDp() }
-          val dockStart = if (layoutDirection == LayoutDirection.Ltr) dockLeft
-            else maxWidth - dockLeft - NavigationBarState.navbarWidth
+          val dockStart =
+            if (layoutDirection == LayoutDirection.Ltr) {
+              dockLeft
+            } else {
+              maxWidth - dockLeft - NavigationBarState.navbarWidth
+            }
           val besideStartSpacing = (navigationStart + NavigationBarState.navbarWidth + spacing).coerceAtLeast(spacing)
-          val besideNavigation = !dockedPlayer && isNavBarVisible && !legacyNavigationBar && !isDualPane &&
-            NavigationBarState.canPlaceMiniPlayerBesideNavigation(maxWidth - leftInset - rightInset) &&
-            maxWidth - leftInset - rightInset - besideStartSpacing - spacing >= NavigationBarState.miniPlayerMinWidth
+          val besideNavigation =
+            !dockedPlayer &&
+              isNavBarVisible &&
+              !legacyNavigationBar &&
+              !isDualPane &&
+              NavigationBarState.canPlaceMiniPlayerBesideNavigation(maxWidth - leftInset - rightInset) &&
+              maxWidth - leftInset - rightInset - besideStartSpacing - spacing >= NavigationBarState.miniPlayerMinWidth
           SideEffect {
             NavigationBarState.isMiniPlayerBesideNavigation = besideNavigation
             NavigationBarState.isMiniPlayerDocked = dockedPlayer
@@ -529,19 +559,27 @@ open class MainActivity : AppCompatActivity() {
             )
           }
 
-          val playerHandoff = PlayerSheetTransitions.motion != null ||
-            PlayerSheetTransitions.collapsedMediaId != null || PlayerSheetTransitions.expandingMediaId != null
-          val placementAnimation = if (reducedMotion || playerHandoff) snap() else tween<Float>(
-            durationMillis = 320,
-            easing = FastOutSlowInEasing,
-          )
-          val targetLift = when {
-            NavigationBarState.isInSelectionMode -> NavigationBarState.selectionBarClearance - spacing
-            isNavBarVisible && !besideNavigation && !isDualPane ->
-              NavigationBarState.navigationBarClearance - spacing -
-                (spacing - NavigationBarState.connectedDockSpacing) * dockFraction
-            else -> 0.dp
-          }
+          val playerHandoff =
+            PlayerSheetTransitions.motion != null ||
+              PlayerSheetTransitions.collapsedMediaId != null ||
+              PlayerSheetTransitions.expandingMediaId != null
+          val placementAnimation =
+            if (reducedMotion || playerHandoff) {
+              snap()
+            } else {
+              tween<Float>(
+                durationMillis = 320,
+                easing = FastOutSlowInEasing,
+              )
+            }
+          val targetLift =
+            when {
+              NavigationBarState.isInSelectionMode -> NavigationBarState.selectionBarClearance - spacing
+              isNavBarVisible && !besideNavigation && !isDualPane ->
+                NavigationBarState.navigationBarClearance - spacing -
+                  (spacing - NavigationBarState.connectedDockSpacing) * dockFraction
+              else -> 0.dp
+            }
           var lastLift by remember { mutableStateOf(targetLift) }
           SideEffect {
             if (targetLift > 0.dp) lastLift = targetLift
@@ -554,8 +592,24 @@ open class MainActivity : AppCompatActivity() {
           // Animate visibility changes, not heights that the navigation is already animating.
           val miniPlayerLift = (if (targetLift > 0.dp) targetLift else lastLift) * liftFraction
           // Follow the measured navigation edge directly, including its alignment animation.
-          val startInset = if (isDualPane) 0.dp else if (layoutDirection == LayoutDirection.Ltr) leftInset else rightInset
-          val endInset = if (isDualPane) 0.dp else if (layoutDirection == LayoutDirection.Ltr) rightInset else leftInset
+          val startInset =
+            if (isDualPane) {
+              0.dp
+            } else if (layoutDirection ==
+              LayoutDirection.Ltr
+            ) {
+              leftInset
+            } else {
+              rightInset
+            }
+          val endInset =
+            if (isDualPane) {
+              0.dp
+            } else if (layoutDirection == LayoutDirection.Ltr) {
+              rightInset
+            } else {
+              leftInset
+            }
           val standaloneStart = startInset + if (besideNavigation) besideStartSpacing else spacing
           val standaloneEnd = endInset + spacing
           val dockEnd = (maxWidth - dockStart - NavigationBarState.navbarWidth).coerceAtLeast(0.dp)
@@ -580,20 +634,24 @@ open class MainActivity : AppCompatActivity() {
                 .align(if (isDualPane) Alignment.BottomEnd else Alignment.BottomStart)
                 .fillMaxWidth(if (isDualPane) 0.6f else 1f)
                 .windowInsetsPadding(
-                  if (isDualPane) safeInsets.only(WindowInsetsSides.End + WindowInsetsSides.Bottom)
-                  else safeInsets.only(WindowInsetsSides.Bottom),
-                )
-                .padding(start = startSpacing, end = endSpacing, bottom = spacing)
+                  if (isDualPane) {
+                    safeInsets.only(WindowInsetsSides.End + WindowInsetsSides.Bottom)
+                  } else {
+                    safeInsets.only(WindowInsetsSides.Bottom)
+                  },
+                ).padding(start = startSpacing, end = endSpacing, bottom = spacing)
                 .offset(y = -miniPlayerLift)
             }
 
           Box(
-            modifier = miniPlayerModifier
-              .height(NavigationBarState.miniPlayerHeight)
-              .playerSheetMiniPlacement(
-                miniPlayerShape,
-                androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.96f),
-              ),
+            modifier =
+              miniPlayerModifier
+                .height(NavigationBarState.miniPlayerHeight)
+                .playerSheetMiniPlacement(
+                  miniPlayerShape,
+                  androidx.compose.material3.MaterialTheme.colorScheme.surfaceContainerHigh
+                    .copy(alpha = 0.96f),
+                ),
           )
           ProvideLiquidGlassBackdrop(
             backdrop = NavigationBarState.dockBackdrop?.takeIf { dockFraction > 0f } ?: miniPlayerBackdrop,
@@ -623,4 +681,3 @@ open class MainActivity : AppCompatActivity() {
     }
   }
 }
-

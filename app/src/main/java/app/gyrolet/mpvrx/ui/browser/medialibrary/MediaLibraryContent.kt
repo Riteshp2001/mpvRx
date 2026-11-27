@@ -11,19 +11,12 @@ package app.gyrolet.mpvrx.ui.browser.medialibrary
 
 import android.content.Intent
 import android.os.Environment
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
-import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import app.gyrolet.mpvrx.ui.theme.AppMotion
-import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
-import app.gyrolet.mpvrx.ui.browser.fab.FabScrollHelper
-import app.gyrolet.mpvrx.ui.components.InlineSearchBar
-import app.gyrolet.mpvrx.ui.components.themedSegmentedButtonColors
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,11 +57,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import app.gyrolet.mpvrx.database.repository.SecureFolderRepository
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
@@ -76,47 +68,55 @@ import app.gyrolet.mpvrx.preferences.MediaLibraryType
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.ui.browser.MainScreen
-import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
 import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
+import app.gyrolet.mpvrx.ui.browser.LocalNavigationBarHeight
+import app.gyrolet.mpvrx.ui.browser.MainScreen
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
-import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
+import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
-import app.gyrolet.mpvrx.ui.browser.dialogs.toPlaylistCandidates
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FileOperationProgressDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FolderPickerDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FolderTransfer
 import app.gyrolet.mpvrx.ui.browser.dialogs.RenameDialog
-import app.gyrolet.mpvrx.ui.browser.dialogs.rememberSelectionInfoAction
 import app.gyrolet.mpvrx.ui.browser.dialogs.VideoCompressorOverlay
 import app.gyrolet.mpvrx.ui.browser.dialogs.VideoSortDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.rememberBrowserSortDialogOpen
+import app.gyrolet.mpvrx.ui.browser.dialogs.rememberSelectionInfoAction
+import app.gyrolet.mpvrx.ui.browser.dialogs.toPlaylistCandidates
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
+import app.gyrolet.mpvrx.ui.browser.fab.FabScrollHelper
 import app.gyrolet.mpvrx.ui.browser.playlist.ALL_VIDEOS_PLAYLIST_ID
 import app.gyrolet.mpvrx.ui.browser.selection.rememberSelectionManager
 import app.gyrolet.mpvrx.ui.browser.states.EmptyState
 import app.gyrolet.mpvrx.ui.browser.videolist.VideoListContent
 import app.gyrolet.mpvrx.ui.browser.videolist.VideoWithPlaybackInfo
+import app.gyrolet.mpvrx.ui.components.InlineSearchBar
+import app.gyrolet.mpvrx.ui.components.themedSegmentedButtonColors
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.ContainerGeometryProbe
 import app.gyrolet.mpvrx.ui.player.PlaybackIdentity
 import app.gyrolet.mpvrx.ui.player.PlaybackItem
-import app.gyrolet.mpvrx.ui.player.PreparedPlaybackLaunchStore
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
+import app.gyrolet.mpvrx.ui.player.PreparedPlaybackLaunchStore
 import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
+import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.tv.focusableWhen
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
-import app.gyrolet.mpvrx.ui.tv.focusableWhen
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
 import app.gyrolet.mpvrx.utils.media.CopyPasteOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.media.OpenDocumentTreeContract
 import app.gyrolet.mpvrx.utils.sort.SortUtils
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import java.io.File
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
+import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -144,7 +144,14 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
   val mediaLayoutMode by browserPreferences.mediaLayoutMode.collectAsState()
   val includeAudioBrowser by browserPreferences.includeAudioBrowser.collectAsState()
   val savedMediaType by browserPreferences.mediaLibraryType.collectAsState()
-  val mediaType = if (forceAudio) MediaLibraryType.Audio else if (includeAudioBrowser) savedMediaType else MediaLibraryType.Video
+  val mediaType =
+    if (forceAudio) {
+      MediaLibraryType.Audio
+    } else if (includeAudioBrowser) {
+      savedMediaType
+    } else {
+      MediaLibraryType.Video
+    }
   val musicCoverArtSize by browserPreferences.musicCoverArtSize.collectAsState()
   val sortedVideos =
     remember(videos, videoSortType, videoSortOrder) {
@@ -192,13 +199,15 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
       onOperationComplete = { viewModel.refresh() },
     )
   val selectedVideos = selectionManager.getSelectedItems()
-  val showSelectionInfo = rememberSelectionInfoAction(
-    videos = { selectionManager.getSelectedItems() },
-    onSingleOpened = { selectionManager.clear() },
-  )
-  val watchedVideoIds = remember(filteredVideosWithInfo) {
-    filteredVideosWithInfo.filter(VideoWithPlaybackInfo::isWatched).mapTo(hashSetOf()) { it.video.id }
-  }
+  val showSelectionInfo =
+    rememberSelectionInfoAction(
+      videos = { selectionManager.getSelectedItems() },
+      onSingleOpened = { selectionManager.clear() },
+    )
+  val watchedVideoIds =
+    remember(filteredVideosWithInfo) {
+      filteredVideosWithInfo.filter(VideoWithPlaybackInfo::isWatched).mapTo(hashSetOf()) { it.video.id }
+    }
 
   val isRefreshing = remember { mutableStateOf(false) }
   val sortDialogOpen = rememberBrowserSortDialogOpen(useHomeState = !forceAudio)
@@ -259,10 +268,13 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
             }
           Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }.onFailure { error ->
-          Toast.error(context, context.getString(
-            R.string.secure_folder_move_failed_details,
-            error.localizedMessage ?: context.getString(R.string.generic_unknown_error),
-          ))
+          Toast.error(
+            context,
+            context.getString(
+              R.string.secure_folder_move_failed_details,
+              error.localizedMessage ?: context.getString(R.string.generic_unknown_error),
+            ),
+          )
         }
     }
   }
@@ -334,30 +346,37 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
     val index = playlistVideos.indexOfFirst { it.path == video.path }.coerceAtLeast(0)
     lastPlayRequestIndex.intValue = index
 
-    val queueItems = playlistVideos.map { item ->
-      PlaybackItem.fromUri(
-        uri = item.uri.toString(),
-        stableId = if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && item.uri.scheme == "content") {
-          app.gyrolet.mpvrx.ui.browser.videolist.videoPlaybackIdentifiers(item).first()
-        } else PlaybackIdentity.forLocalPath(item.path),
-        title = item.displayName,
-        mimeType = item.mimeType,
-        durationSeconds = (item.duration / 1000L).toInt().takeIf { it > 0 },
-        videoWidth = item.width,
-        videoHeight = item.height,
-      )
-    }
+    val queueItems =
+      playlistVideos.map { item ->
+        PlaybackItem.fromUri(
+          uri = item.uri.toString(),
+          stableId =
+            if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY && item.uri.scheme == "content") {
+              app.gyrolet.mpvrx.ui.browser.videolist
+                .videoPlaybackIdentifiers(item)
+                .first()
+            } else {
+              PlaybackIdentity.forLocalPath(item.path)
+            },
+          title = item.displayName,
+          mimeType = item.mimeType,
+          durationSeconds = (item.duration / 1000L).toInt().takeIf { it > 0 },
+          videoWidth = item.width,
+          videoHeight = item.height,
+        )
+      }
     val isAudio = mediaType == MediaLibraryType.Audio || video.isAudio
     if (MediaUtils.shouldPlayInMiniPlayerOnly(isAudio)) {
       MediaUtils.playInMiniPlayer(context, queueItems, index)
       return
     }
 
-    val launchToken = PreparedPlaybackLaunchStore.stage(
-      items = queueItems,
-      currentIndex = index,
-      isExplicitQueue = true,
-    )
+    val launchToken =
+      PreparedPlaybackLaunchStore.stage(
+        items = queueItems,
+        currentIndex = index,
+        isExplicitQueue = true,
+      )
 
     val intent =
       android.content.Intent(android.content.Intent.ACTION_VIEW, video.uri).apply {
@@ -378,10 +397,14 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
         putExtra(PlayerActivity.EXTRA_VIDEO_ROTATION, video.rotation)
       }
     ContainerGeometryProbe.prefetch(video.path, video.width, video.height, video.rotation, isAudio)
-    app.gyrolet.mpvrx.utils.media.MediaUtils.startPlayer(context, intent)
+    app.gyrolet.mpvrx.utils.media.MediaUtils
+      .startPlayer(context, intent)
   }
 
-  BackHandler(enabled = selectionManager.isInSelectionMode || isSearching || (isFabExpanded.value && !quickPlayFabDirect)) {
+  BackHandler(
+    enabled =
+      selectionManager.isInSelectionMode || isSearching || (isFabExpanded.value && !quickPlayFabDirect),
+  ) {
     when {
       isFabExpanded.value && !quickPlayFabDirect -> isFabExpanded.value = false
       selectionManager.isInSelectionMode -> selectionManager.clear()
@@ -398,134 +421,139 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
     Scaffold(
       contentWindowInsets = FabPlacement.scaffoldInsets(),
       modifier = Modifier.captureLiquidGlassBackdrop(bottomBarBackdrop),
-      containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
-    topBar = {
-      if (isSearching) {
-        InlineSearchBar(
-          query = searchQuery,
-          onQueryChange = { searchQuery = it },
-          onSearch = { },
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 16.dp, vertical = 8.dp),
-          inputFieldModifier = Modifier.focusRequester(focusRequester),
-          placeholder = {
-            Text(
-              if (mediaType ==
-                MediaLibraryType.Audio
-              ) {
-                androidx.compose.ui.res
-                  .stringResource(app.gyrolet.mpvrx.R.string.ui_search_audio)
-              } else {
-                androidx.compose.ui.res
-                  .stringResource(app.gyrolet.mpvrx.R.string.ui_search_videos)
-              },
-            )
-          },
-          leadingIcon = {
-            Icon(
-              imageVector = Icons.RoundedFilled.Search,
-              contentDescription =
-                androidx.compose.ui.res.stringResource(
-                  app.gyrolet.mpvrx.R.string.settings_search_title,
-                ),
-            )
-          },
-          trailingIcon = {
-            IconButton(
-              onClick = {
-                isSearching = false
-                searchQuery = ""
-              },
-            ) {
+      containerColor =
+        app.gyrolet.mpvrx.ui.theme
+          .wallpaperAwareBackgroundColor(),
+      topBar = {
+        if (isSearching) {
+          InlineSearchBar(
+            query = searchQuery,
+            onQueryChange = { searchQuery = it },
+            onSearch = { },
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            inputFieldModifier = Modifier.focusRequester(focusRequester),
+            placeholder = {
+              Text(
+                if (mediaType ==
+                  MediaLibraryType.Audio
+                ) {
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.ui_search_audio)
+                } else {
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.ui_search_videos)
+                },
+              )
+            },
+            leadingIcon = {
               Icon(
-                imageVector = Icons.RoundedFilled.Close,
+                imageVector = Icons.RoundedFilled.Search,
                 contentDescription =
                   androidx.compose.ui.res.stringResource(
-                    app.gyrolet.mpvrx.R.string.generic_cancel,
+                    app.gyrolet.mpvrx.R.string.settings_search_title,
                   ),
               )
-            }
-          },
-        )
-      } else {
-        BrowserTopBar(
-          title =
-            if (forceAudio) {
-              androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_music)
-            } else {
-              androidx.compose.ui.res
-                .stringResource(app.gyrolet.mpvrx.R.string.pref_media_library_section)
             },
-          isInSelectionMode = selectionManager.isInSelectionMode,
-          selectedCount = selectionManager.selectedCount,
-          totalCount = filteredVideosWithInfo.size,
-          onBackClick = null,
-          onCancelSelection = { selectionManager.clear() },
-          onSortClick = { sortDialogOpen.value = true },
-          onSearchClick = { isSearching = true },
-          onSettingsClick = {
-            backstack.navigateTo(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
-          },
-          onTitleDoubleTap = { backstack.navigateTo(SecureFolderGateScreen) },
-          onTitleLongPress = { backstack.navigateTo(SecureFolderGateScreen) },
-          isSingleSelection = selectionManager.isSingleSelection,
-          onInfoClick = showSelectionInfo,
-          onShareClick = { selectionManager.shareSelected() },
-          onPlayClick = { selectionManager.playSelected() },
-          onSelectAll = { selectionManager.selectAll() },
-          onInvertSelection = { selectionManager.invertSelection() },
-          onDeselectAll = { selectionManager.clear() },
-          onMoveToSecureClick = {
-            if (!secureFolderPreferences.isPinSet()) {
-              backstack.navigateTo(SecureFolderGateScreen)
-            } else if (secureFolderPreferences.dontAskBeforeMove.get()) {
-              moveSelectedToSecureFolder()
-            } else {
-              moveToSecureConfirmOpen.value = true
-            }
-          },
-        )
-      }
-    },
-    floatingActionButton = {
-      val isFabShouldBeVisible =
-        filteredVideosWithInfo.isNotEmpty() &&
-          showQuickPlayFab &&
-          !selectionManager.isInSelectionMode &&
-          isFabVisible.value &&
-          !MainScreen.getPermissionDeniedState()
-
-      FloatingActionButtonMenu(
-        modifier = FabPlacement.scaffoldMenu(),
-        expanded = isFabExpanded.value && !quickPlayFabDirect,
-        button = {
-          TooltipBox(
-            positionProvider =
-              TooltipDefaults.rememberTooltipPositionProvider(
-                if (isFabExpanded.value && !quickPlayFabDirect) {
-                  TooltipAnchorPosition.Start
-                } else {
-                  TooltipAnchorPosition.Above
+            trailingIcon = {
+              IconButton(
+                onClick = {
+                  isSearching = false
+                  searchQuery = ""
                 },
-              ),
-            tooltip = {
-              PlainTooltip {
-                Text(
-                  androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_toggle_menu),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.Close,
+                  contentDescription =
+                    androidx.compose.ui.res.stringResource(
+                      app.gyrolet.mpvrx.R.string.generic_cancel,
+                    ),
                 )
               }
             },
-            state = rememberTooltipState(),
-          ) {
-            ToggleFloatingActionButton(
-              modifier =
-                Modifier.animateFloatingActionButton(
-                  visible = isFabShouldBeVisible,
-                  alignment = Alignment.BottomEnd,
-                ).focusableWhen(isFabShouldBeVisible),
-              checked = isFabExpanded.value && !quickPlayFabDirect,
+          )
+        } else {
+          BrowserTopBar(
+            title =
+              if (forceAudio) {
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_music)
+              } else {
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.pref_media_library_section)
+              },
+            isInSelectionMode = selectionManager.isInSelectionMode,
+            selectedCount = selectionManager.selectedCount,
+            totalCount = filteredVideosWithInfo.size,
+            onBackClick = null,
+            onCancelSelection = { selectionManager.clear() },
+            onSortClick = { sortDialogOpen.value = true },
+            onSearchClick = { isSearching = true },
+            onSettingsClick = {
+              backstack.navigateTo(app.gyrolet.mpvrx.ui.preferences.PreferencesScreen)
+            },
+            onTitleDoubleTap = { backstack.navigateTo(SecureFolderGateScreen) },
+            onTitleLongPress = { backstack.navigateTo(SecureFolderGateScreen) },
+            isSingleSelection = selectionManager.isSingleSelection,
+            onInfoClick = showSelectionInfo,
+            onShareClick = { selectionManager.shareSelected() },
+            onPlayClick = { selectionManager.playSelected() },
+            onSelectAll = { selectionManager.selectAll() },
+            onInvertSelection = { selectionManager.invertSelection() },
+            onDeselectAll = { selectionManager.clear() },
+            onMoveToSecureClick = {
+              if (!secureFolderPreferences.isPinSet()) {
+                backstack.navigateTo(SecureFolderGateScreen)
+              } else if (secureFolderPreferences.dontAskBeforeMove.get()) {
+                moveSelectedToSecureFolder()
+              } else {
+                moveToSecureConfirmOpen.value = true
+              }
+            },
+          )
+        }
+      },
+      floatingActionButton = {
+        val isFabShouldBeVisible =
+          filteredVideosWithInfo.isNotEmpty() &&
+            showQuickPlayFab &&
+            !selectionManager.isInSelectionMode &&
+            isFabVisible.value &&
+            !MainScreen.getPermissionDeniedState()
+
+        FloatingActionButtonMenu(
+          modifier = FabPlacement.scaffoldMenu(),
+          expanded = isFabExpanded.value && !quickPlayFabDirect,
+          button = {
+            TooltipBox(
+              positionProvider =
+                TooltipDefaults.rememberTooltipPositionProvider(
+                  if (isFabExpanded.value && !quickPlayFabDirect) {
+                    TooltipAnchorPosition.Start
+                  } else {
+                    TooltipAnchorPosition.Above
+                  },
+                ),
+              tooltip = {
+                PlainTooltip {
+                  Text(
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.ui_toggle_menu),
+                  )
+                }
+              },
+              state = rememberTooltipState(),
+            ) {
+              ToggleFloatingActionButton(
+                modifier =
+                  Modifier
+                    .animateFloatingActionButton(
+                      visible = isFabShouldBeVisible,
+                      alignment = Alignment.BottomEnd,
+                    ).focusableWhen(isFabShouldBeVisible),
+                checked = isFabExpanded.value && !quickPlayFabDirect,
                 onCheckedChange = {
                   if (quickPlayFabDirect) {
                     coroutineScope.launch {
@@ -539,7 +567,13 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
               ) {
                 val imageVector by remember {
                   derivedStateOf {
-                    if (checkedProgress > 0.5f && !quickPlayFabDirect) Icons.RoundedFilled.Close else Icons.RoundedFilled.PlayArrow
+                    if (checkedProgress > 0.5f &&
+                      !quickPlayFabDirect
+                    ) {
+                      Icons.RoundedFilled.Close
+                    } else {
+                      Icons.RoundedFilled.PlayArrow
+                    }
                   }
                 }
                 Icon(
@@ -563,7 +597,8 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
               text = {
                 Text(
                   text =
-                    androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_open_file),
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.ui_open_file),
                 )
               },
             )
@@ -581,9 +616,11 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
                 Text(
                   text =
                     if (mediaType == MediaLibraryType.Audio) {
-                      androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play_recent_or_first_audio)
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_play_recent_or_first_audio)
                     } else {
-                      androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_play_recent_or_first_video)
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_play_recent_or_first_video)
                     },
                 )
               },
@@ -733,151 +770,155 @@ fun MediaLibraryContent(forceAudio: Boolean = false) {
         onAddToPlaylistClick = { addToPlaylistDialogOpen.value = true },
         showCopy = true,
         showMove = true,
-        showDownscale = selectionManager.getSelectedItems().let { items -> items.isNotEmpty() && items.none { it.isAudio } },
+        showDownscale =
+          selectionManager.getSelectedItems().let { items ->
+            items.isNotEmpty() &&
+              items.none { it.isAudio }
+          },
         showRename = selectionManager.selectedCount > 0,
         modifier = Modifier.padding(bottom = 0.dp),
       )
     }
   }
 
-    if (sortDialogOpen.value) {
-      VideoSortDialog(
-        isOpen = sortDialogOpen.value,
-        onDismiss = { sortDialogOpen.value = false },
-        sortType = videoSortType,
-        sortOrder = videoSortOrder,
-        onSortTypeChange = { browserPreferences.videoSortType.set(it) },
-        onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
-        isFolderView = false,
-        enableViewModeOptions = !forceAudio,
-        isAudio = mediaType == MediaLibraryType.Audio,
-        onMetadataFieldEnabled = viewModel::refresh,
-      )
-    }
+  if (sortDialogOpen.value) {
+    VideoSortDialog(
+      isOpen = sortDialogOpen.value,
+      onDismiss = { sortDialogOpen.value = false },
+      sortType = videoSortType,
+      sortOrder = videoSortOrder,
+      onSortTypeChange = { browserPreferences.videoSortType.set(it) },
+      onSortOrderChange = { browserPreferences.videoSortOrder.set(it) },
+      isFolderView = false,
+      enableViewModeOptions = !forceAudio,
+      isAudio = mediaType == MediaLibraryType.Audio,
+      onMetadataFieldEnabled = viewModel::refresh,
+    )
+  }
 
-    if (deleteDialogOpen.value) {
-      DeleteConfirmationDialog(
-        onDismiss = { deleteDialogOpen.value = false },
-        onConfirm = {
-          selectionManager.deleteSelected()
-          deleteDialogOpen.value = false
+  if (deleteDialogOpen.value) {
+    DeleteConfirmationDialog(
+      onDismiss = { deleteDialogOpen.value = false },
+      onConfirm = {
+        selectionManager.deleteSelected()
+        deleteDialogOpen.value = false
+      },
+      itemCount = selectionManager.selectedCount,
+      isOpen = deleteDialogOpen.value,
+      itemType = if (mediaType == MediaLibraryType.Audio) "audio file" else "video",
+      itemPaths = selectionManager.getSelectedItems().map { it.uri.toString() },
+      totalSizeBytes = selectionManager.getSelectedItems().sumOf { it.size.coerceAtLeast(0L) }.takeIf { it > 0L },
+    )
+  }
+
+  if (renameDialogOpen.value) {
+    val video = selectionManager.getSelectedItems().firstOrNull()
+    if (video != null) {
+      RenameDialog(
+        onDismiss = { renameDialogOpen.value = false },
+        onConfirm = { newName ->
+          selectionManager.renameSelected(newName)
+          renameDialogOpen.value = false
         },
-        itemCount = selectionManager.selectedCount,
-        isOpen = deleteDialogOpen.value,
+        currentName = video.displayName,
+        isOpen = renameDialogOpen.value,
         itemType = if (mediaType == MediaLibraryType.Audio) "audio file" else "video",
-        itemPaths = selectionManager.getSelectedItems().map { it.uri.toString() },
-        totalSizeBytes = selectionManager.getSelectedItems().sumOf { it.size.coerceAtLeast(0L) }.takeIf { it > 0L },
       )
     }
+  }
 
-    if (renameDialogOpen.value) {
-      val video = selectionManager.getSelectedItems().firstOrNull()
-      if (video != null) {
-        RenameDialog(
-          onDismiss = { renameDialogOpen.value = false },
-          onConfirm = { newName ->
-            selectionManager.renameSelected(newName)
-            renameDialogOpen.value = false
-          },
-          currentName = video.displayName,
-          isOpen = renameDialogOpen.value,
-          itemType = if (mediaType == MediaLibraryType.Audio) "audio file" else "video",
-        )
-      }
-    }
+  AddToPlaylistDialog(
+    isOpen = addToPlaylistDialogOpen.value,
+    candidates = selectionManager.getSelectedItems().toPlaylistCandidates(),
+    onDismiss = { addToPlaylistDialogOpen.value = false },
+    onSuccess = {
+      selectionManager.clear()
+      viewModel.refresh()
+    },
+  )
 
-    AddToPlaylistDialog(
-      isOpen = addToPlaylistDialogOpen.value,
-      candidates = selectionManager.getSelectedItems().toPlaylistCandidates(),
-      onDismiss = { addToPlaylistDialogOpen.value = false },
-      onSuccess = {
+  if (folderPickerOpen.value) {
+    FolderPickerDialog(
+      isOpen = folderPickerOpen.value,
+      currentPath =
+        videos.firstOrNull()?.let { File(it.path).parent }
+          ?: Environment.getExternalStorageDirectory().absolutePath,
+      onDismiss = {
+        folderPickerOpen.value = false
+      },
+      transfer = operationType.value?.let { type -> FolderTransfer(type) { selectionManager.getSelectedItems() } },
+      onFolderSelected = { destinationPath ->
+        folderPickerOpen.value = false
+        val selectedVideos = selectionManager.getSelectedItems()
+        if (selectedVideos.isNotEmpty() && operationType.value != null) {
+          progressDialogOpen.value = true
+          coroutineScope.launch {
+            when (operationType.value) {
+              is CopyPasteOps.OperationType.Copy -> {
+                CopyPasteOps.copyFiles(context, selectedVideos, destinationPath)
+              }
+
+              is CopyPasteOps.OperationType.Move -> {
+                CopyPasteOps.moveFiles(context, selectedVideos, destinationPath)
+              }
+
+              else -> {}
+            }
+          }
+        }
+      },
+    )
+  }
+
+  if (operationType.value != null) {
+    FileOperationProgressDialog(
+      isOpen = progressDialogOpen.value,
+      operationType = operationType.value!!,
+      progress = operationProgress,
+      onCancel = {
+        CopyPasteOps.cancelOperation()
+      },
+      onDismiss = {
+        progressDialogOpen.value = false
+        operationType.value = null
         selectionManager.clear()
         viewModel.refresh()
       },
     )
+  }
 
-    if (folderPickerOpen.value) {
-      FolderPickerDialog(
-        isOpen = folderPickerOpen.value,
-        currentPath =
-          videos.firstOrNull()?.let { File(it.path).parent }
-            ?: Environment.getExternalStorageDirectory().absolutePath,
+  if (compressorDialogOpen.value) {
+    val selectedVideos = selectionManager.getSelectedItems()
+    if (selectedVideos.isNotEmpty() && selectedVideos.none { it.isAudio }) {
+      VideoCompressorOverlay(
+        isOpen = true,
+        videos = selectedVideos,
         onDismiss = {
-          folderPickerOpen.value = false
-        },
-        transfer = operationType.value?.let { type -> FolderTransfer(type) { selectionManager.getSelectedItems() } },
-        onFolderSelected = { destinationPath ->
-          folderPickerOpen.value = false
-          val selectedVideos = selectionManager.getSelectedItems()
-          if (selectedVideos.isNotEmpty() && operationType.value != null) {
-            progressDialogOpen.value = true
-            coroutineScope.launch {
-              when (operationType.value) {
-                is CopyPasteOps.OperationType.Copy -> {
-                  CopyPasteOps.copyFiles(context, selectedVideos, destinationPath)
-                }
-
-                is CopyPasteOps.OperationType.Move -> {
-                  CopyPasteOps.moveFiles(context, selectedVideos, destinationPath)
-                }
-
-                else -> {}
-              }
-            }
-          }
-        },
-      )
-    }
-
-    if (operationType.value != null) {
-      FileOperationProgressDialog(
-        isOpen = progressDialogOpen.value,
-        operationType = operationType.value!!,
-        progress = operationProgress,
-        onCancel = {
-          CopyPasteOps.cancelOperation()
-        },
-        onDismiss = {
-          progressDialogOpen.value = false
-          operationType.value = null
+          compressorDialogOpen.value = false
           selectionManager.clear()
           viewModel.refresh()
         },
       )
     }
-
-    if (compressorDialogOpen.value) {
-      val selectedVideos = selectionManager.getSelectedItems()
-      if (selectedVideos.isNotEmpty() && selectedVideos.none { it.isAudio }) {
-        VideoCompressorOverlay(
-          isOpen = true,
-          videos = selectedVideos,
-          onDismiss = {
-            compressorDialogOpen.value = false
-            selectionManager.clear()
-            viewModel.refresh()
-          },
-        )
-      }
-    }
-
-    // Move to Secure Folder — confirm (skippable via "don't ask again"), then progress
-    app.gyrolet.mpvrx.ui.securefolder.SecureConfirmDialog(
-      isOpen = moveToSecureConfirmOpen.value,
-      title = stringResource(R.string.secure_folder_move_items_title, selectionManager.selectedCount),
-      subtitle = stringResource(R.string.secure_folder_move_items_subtitle),
-      dontAskAgain = secureFolderPreferences.dontAskBeforeMove,
-      onConfirm = {
-        moveToSecureConfirmOpen.value = false
-        moveSelectedToSecureFolder()
-      },
-      onDismiss = { moveToSecureConfirmOpen.value = false },
-    )
-
-    app.gyrolet.mpvrx.ui.securefolder.SecureFolderProgressDialog(
-      isOpen = moveToSecureProgressOpen.value,
-      progress = secureFolderProgress,
-      label = stringResource(R.string.secure_folder_moving_progress),
-      onCancel = { secureFolderRepository.cancelOperation() },
-    )
   }
+
+  // Move to Secure Folder — confirm (skippable via "don't ask again"), then progress
+  app.gyrolet.mpvrx.ui.securefolder.SecureConfirmDialog(
+    isOpen = moveToSecureConfirmOpen.value,
+    title = stringResource(R.string.secure_folder_move_items_title, selectionManager.selectedCount),
+    subtitle = stringResource(R.string.secure_folder_move_items_subtitle),
+    dontAskAgain = secureFolderPreferences.dontAskBeforeMove,
+    onConfirm = {
+      moveToSecureConfirmOpen.value = false
+      moveSelectedToSecureFolder()
+    },
+    onDismiss = { moveToSecureConfirmOpen.value = false },
+  )
+
+  app.gyrolet.mpvrx.ui.securefolder.SecureFolderProgressDialog(
+    isOpen = moveToSecureProgressOpen.value,
+    progress = secureFolderProgress,
+    label = stringResource(R.string.secure_folder_moving_progress),
+    onCancel = { secureFolderRepository.cancelOperation() },
+  )
+}

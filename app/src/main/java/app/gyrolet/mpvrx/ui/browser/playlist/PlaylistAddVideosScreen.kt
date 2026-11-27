@@ -10,8 +10,6 @@
 package app.gyrolet.mpvrx.ui.browser.playlist
 
 import android.app.Application
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
-import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -21,11 +19,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,8 +43,8 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -60,17 +58,15 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
-import app.gyrolet.mpvrx.repository.NetworkRepository
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.repository.NetworkRepository
 import app.gyrolet.mpvrx.ui.browser.cards.FolderCard
-import app.gyrolet.mpvrx.ui.browser.cards.VideoCard
-import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionListGap
 import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionGridGap
+import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionListGap
+import app.gyrolet.mpvrx.ui.browser.cards.VideoCard
 import app.gyrolet.mpvrx.ui.browser.cards.mediaSelectionNeighbors
 import app.gyrolet.mpvrx.ui.browser.cards.rememberVideoCardUiConfig
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
@@ -89,9 +85,13 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.sort.SortUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
+import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 
 /** Where the picker sources its videos from. */
 private enum class AddSourceTab { LOCAL, NETWORK }
@@ -132,8 +132,18 @@ data class PlaylistAddVideosScreen(
     val videoLayoutMode by browserPreferences.folderViewVideoLayoutMode.collectAsState()
     val manualGrid by browserPreferences.manualGridColumnsEnabled.collectAsState()
     val landscape = LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-    val folderColumnPreference = if (landscape) browserPreferences.folderGridColumnsLandscape else browserPreferences.folderGridColumnsPortrait
-    val videoColumnPreference = if (landscape) browserPreferences.videoGridColumnsLandscape else browserPreferences.videoGridColumnsPortrait
+    val folderColumnPreference =
+      if (landscape) {
+        browserPreferences.folderGridColumnsLandscape
+      } else {
+        browserPreferences.folderGridColumnsPortrait
+      }
+    val videoColumnPreference =
+      if (landscape) {
+        browserPreferences.videoGridColumnsLandscape
+      } else {
+        browserPreferences.videoGridColumnsPortrait
+      }
     val requestedFolderColumns by folderColumnPreference.collectAsState()
     val requestedVideoColumns by videoColumnPreference.collectAsState()
     val videoListState = rememberLazyListState()
@@ -163,7 +173,6 @@ data class PlaylistAddVideosScreen(
         }
       }
 
-
     fun openNetworkConnection(
       connectionId: Long,
       connectionName: String,
@@ -184,9 +193,10 @@ data class PlaylistAddVideosScreen(
     val videoFolders by folderListViewModel.videoFolders.collectAsState()
     val folderSortType by browserPreferences.folderSortType.collectAsState()
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
-    val sortedFolders = remember(videoFolders, folderSortType, folderSortOrder) {
-      SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
-    }
+    val sortedFolders =
+      remember(videoFolders, folderSortType, folderSortOrder) {
+        SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
+      }
 
     var selectedFolder by remember { mutableStateOf<VideoFolder?>(null) }
     val folder = selectedFolder
@@ -211,10 +221,11 @@ data class PlaylistAddVideosScreen(
       }
     val videoSortType by browserPreferences.videoSortType.collectAsState()
     val videoSortOrder by browserPreferences.videoSortOrder.collectAsState()
-    val sortedVideos = remember(currentVideos, videoSortType, videoSortOrder, isAudio) {
-      val filtered = currentVideos.filter { it.isAudio == isAudio }
-      SortUtils.sortVideos(filtered, videoSortType, videoSortOrder)
-    }
+    val sortedVideos =
+      remember(currentVideos, videoSortType, videoSortOrder, isAudio) {
+        val filtered = currentVideos.filter { it.isAudio == isAudio }
+        SortUtils.sortVideos(filtered, videoSortType, videoSortOrder)
+      }
 
     // Selection manager for multi-select videos step
     val selectionManager =
@@ -234,14 +245,15 @@ data class PlaylistAddVideosScreen(
       scope.launch {
         playlistDetailViewModel.addVideosToPlaylist(videos)
         withContext(Dispatchers.Main) {
-          Toast.makeText(
-            context,
-            context.getString(
-              if (isAudio) R.string.playlist_add_songs_success else R.string.playlist_add_videos_success,
-              videos.size,
-            ),
-            Toast.LENGTH_SHORT,
-          ).show()
+          Toast
+            .makeText(
+              context,
+              context.getString(
+                if (isAudio) R.string.playlist_add_songs_success else R.string.playlist_add_videos_success,
+                videos.size,
+              ),
+              Toast.LENGTH_SHORT,
+            ).show()
           backstack.popSafely()
         }
       }
@@ -259,7 +271,9 @@ data class PlaylistAddVideosScreen(
     }
 
     Scaffold(
-      containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
+      containerColor =
+        app.gyrolet.mpvrx.ui.theme
+          .wallpaperAwareBackgroundColor(),
       topBar = {
         if (onLocalVideoStep) {
           BrowserTopBar(
@@ -277,10 +291,20 @@ data class PlaylistAddVideosScreen(
         } else {
           Column {
             BrowserTopBar(
-              title = stringResource(if (isAudio) R.string.playlist_add_songs_title else R.string.playlist_add_videos_title),
+              title =
+                stringResource(
+                  if (isAudio) R.string.playlist_add_songs_title else R.string.playlist_add_videos_title,
+                ),
               isInSelectionMode = false,
               selectedCount = 0,
-              totalCount = if (selectedSourceTab == AddSourceTab.LOCAL) sortedFolders.size else connectedConnections.size,
+              totalCount =
+                if (selectedSourceTab ==
+                  AddSourceTab.LOCAL
+                ) {
+                  sortedFolders.size
+                } else {
+                  connectedConnections.size
+                },
               onCancelSelection = {},
               onBackClick = { backstack.popSafely() },
               onSortClick =
@@ -328,16 +352,46 @@ data class PlaylistAddVideosScreen(
         if (sortedFolders.isEmpty()) {
           EmptyState(
             icon = Icons.RoundedFilled.Folder,
-            title = stringResource(if (isAudio) R.string.playlist_add_songs_empty_folder_title else R.string.playlist_add_videos_empty_title),
-            message = stringResource(if (isAudio) R.string.playlist_add_songs_empty_folder_message else R.string.playlist_add_videos_empty_message),
+            title =
+              stringResource(
+                if (isAudio) {
+                  R.string.playlist_add_songs_empty_folder_title
+                } else {
+                  R.string.playlist_add_videos_empty_title
+                },
+              ),
+            message =
+              stringResource(
+                if (isAudio) {
+                  R.string.playlist_add_songs_empty_folder_message
+                } else {
+                  R.string.playlist_add_videos_empty_message
+                },
+              ),
             modifier = Modifier.padding(padding),
           )
         } else if (folderLayoutMode == MediaLayoutMode.GRID) {
-          BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(padding).onSizeChanged {
-            contentWidthDp = with(density) { it.width.toDp().value.toInt() }
-          }) {
+          BoxWithConstraints(
+            modifier =
+              Modifier.fillMaxSize().padding(padding).onSizeChanged {
+                contentWidthDp =
+                  with(density) {
+                    it.width
+                      .toDp()
+                      .value
+                      .toInt()
+                  }
+              },
+          ) {
             val maximumColumns = playlistGridColumnLimit(maxWidth.value.toInt(), true)
-            val columns = if (manualGrid && requestedFolderColumns > 0) requestedFolderColumns.coerceIn(1, maximumColumns) else maximumColumns
+            val columns =
+              if (manualGrid &&
+                requestedFolderColumns > 0
+              ) {
+                requestedFolderColumns.coerceIn(1, maximumColumns)
+              } else {
+                maximumColumns
+              }
             LazyVerticalGrid(
               columns = GridCells.Fixed(columns),
               modifier = Modifier.fillMaxSize(),
@@ -345,7 +399,11 @@ data class PlaylistAddVideosScreen(
               horizontalArrangement = Arrangement.spacedBy(2.dp),
               verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-              items(count = sortedFolders.size, key = { sortedFolders[it].bucketId }, contentType = { "folder" }) { index ->
+              items(
+                count = sortedFolders.size,
+                key = { sortedFolders[it].bucketId },
+                contentType = { "folder" },
+              ) { index ->
                 val videoFolder = sortedFolders[index]
                 FolderCard(
                   folder = videoFolder,
@@ -375,16 +433,38 @@ data class PlaylistAddVideosScreen(
       } else if (sortedVideos.isEmpty()) {
         EmptyState(
           icon = Icons.RoundedFilled.Folder,
-          title = stringResource(if (isAudio) R.string.playlist_add_songs_empty_title else R.string.playlist_add_videos_empty_title),
-          message = stringResource(if (isAudio) R.string.playlist_add_songs_empty_message else R.string.playlist_add_videos_empty_message),
+          title =
+            stringResource(
+              if (isAudio) R.string.playlist_add_songs_empty_title else R.string.playlist_add_videos_empty_title,
+            ),
+          message =
+            stringResource(
+              if (isAudio) R.string.playlist_add_songs_empty_message else R.string.playlist_add_videos_empty_message,
+            ),
           modifier = Modifier.padding(padding),
         )
       } else if (videoLayoutMode == MediaLayoutMode.GRID) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(padding).onSizeChanged {
-          contentWidthDp = with(density) { it.width.toDp().value.toInt() }
-        }) {
+        BoxWithConstraints(
+          modifier =
+            Modifier.fillMaxSize().padding(padding).onSizeChanged {
+              contentWidthDp =
+                with(density) {
+                  it.width
+                    .toDp()
+                    .value
+                    .toInt()
+                }
+            },
+        ) {
           val maximumColumns = playlistGridColumnLimit(maxWidth.value.toInt())
-          val columns = if (manualGrid && requestedVideoColumns > 0) requestedVideoColumns.coerceIn(1, maximumColumns) else maximumColumns
+          val columns =
+            if (manualGrid &&
+              requestedVideoColumns > 0
+            ) {
+              requestedVideoColumns.coerceIn(1, maximumColumns)
+            } else {
+              maximumColumns
+            }
           LazyVerticalGrid(
             columns = GridCells.Fixed(columns),
             state = videoGridState,
@@ -395,7 +475,11 @@ data class PlaylistAddVideosScreen(
           ) {
             items(count = sortedVideos.size, key = { sortedVideos[it].id }, contentType = { "video" }) { index ->
               val video = sortedVideos[index]
-              val neighbors = mediaSelectionNeighbors(index, sortedVideos.size, columns) { n -> selectionManager?.isSelected(sortedVideos[n]) == true }
+              val neighbors =
+                mediaSelectionNeighbors(index, sortedVideos.size, columns) { n ->
+                  selectionManager?.isSelected(sortedVideos[n]) ==
+                    true
+                }
               VideoCard(
                 video = video,
                 isGridMode = true,
@@ -424,7 +508,11 @@ data class PlaylistAddVideosScreen(
             contentType = { "video" },
           ) { index ->
             val video = sortedVideos[index]
-            val neighbors = mediaSelectionNeighbors(index, sortedVideos.size, 1) { n -> selectionManager?.isSelected(sortedVideos[n]) == true }
+            val neighbors =
+              mediaSelectionNeighbors(index, sortedVideos.size, 1) { n ->
+                selectionManager?.isSelected(sortedVideos[n]) ==
+                  true
+              }
             VideoCard(
               video = video,
               isSelected = selectionManager?.isSelected(video) == true,
@@ -468,7 +556,6 @@ data class PlaylistAddVideosScreen(
         )
       }
     }
-
   }
 }
 

@@ -66,5 +66,4 @@ object M3uPlaybackPolicy {
         lowerPart.contains("=m3u8")
     }
   }
-
 }

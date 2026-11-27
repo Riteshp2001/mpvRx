@@ -17,12 +17,6 @@ import app.gyrolet.mpvrx.data.network.client.DlnaXml
 import app.gyrolet.mpvrx.domain.network.NetworkPath
 import app.gyrolet.mpvrx.domain.network.NetworkProtocol
 import app.gyrolet.mpvrx.network.SharedHttpClient
-import java.net.DatagramPacket
-import java.net.DatagramSocket
-import java.net.InetAddress
-import java.net.SocketTimeoutException
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
@@ -30,9 +24,17 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
+import java.net.DatagramPacket
+import java.net.DatagramSocket
+import java.net.InetAddress
+import java.net.SocketTimeoutException
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 /** Foreground SSDP discovery; sockets and HTTP requests are bounded to the active scan. */
-internal class DlnaServerDiscovery(context: Context) {
+internal class DlnaServerDiscovery(
+  context: Context,
+) {
   private companion object {
     const val MAX_DESCRIPTION_ATTEMPTS = 2
   }
@@ -41,21 +43,23 @@ internal class DlnaServerDiscovery(context: Context) {
   private val http = SharedHttpClient.derive { callTimeout(3, TimeUnit.SECONDS) }
 
   @Suppress("DEPRECATION")
-  suspend fun discover(onServer: (ServerSuggestion) -> Unit) = coroutineScope {
-    val networks = runCatching {
-      manager?.allNetworks.orEmpty().filter { network ->
-        val caps = manager?.getNetworkCapabilities(network)
-        caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
-          caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+  suspend fun discover(onServer: (ServerSuggestion) -> Unit) =
+    coroutineScope {
+      val networks =
+        runCatching {
+          manager?.allNetworks.orEmpty().filter { network ->
+            val caps = manager?.getNetworkCapabilities(network)
+            caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true ||
+              caps?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+          }
+        }.getOrDefault(emptyList())
+      val seen = ConcurrentHashMap.newKeySet<String>()
+      // Use each local network even if mobile data is the default route.
+      val scanNetworks: List<Network?> = networks.ifEmpty { listOf(null) }
+      scanNetworks.forEach { network ->
+        launch(Dispatchers.IO) { scanNetwork(network, seen, onServer) }
       }
-    }.getOrDefault(emptyList())
-    val seen = ConcurrentHashMap.newKeySet<String>()
-    // Use each local network even if mobile data is the default route.
-    val scanNetworks: List<Network?> = networks.ifEmpty { listOf(null) }
-    scanNetworks.forEach { network ->
-      launch(Dispatchers.IO) { scanNetwork(network, seen, onServer) }
     }
-  }
 
   private suspend fun scanNetwork(
     network: Network?,
@@ -63,19 +67,28 @@ internal class DlnaServerDiscovery(context: Context) {
     onServer: (ServerSuggestion) -> Unit,
   ) {
     try {
-      val networkHttp = if (network == null) http else http.newBuilder()
-        .socketFactory(network.socketFactory)
-        .dns { host -> network.getAllByName(host).toList() }
-        .build()
+      val networkHttp =
+        if (network == null) {
+          http
+        } else {
+          http
+            .newBuilder()
+            .socketFactory(network.socketFactory)
+            .dns { host -> network.getAllByName(host).toList() }
+            .build()
+        }
       DatagramSocket().use { socket ->
         network?.bindSocket(socket)
         socket.soTimeout = 500
         val searchTypes = listOf("urn:schemas-upnp-org:device:MediaServer:1", "ssdp:all")
-        val searches = searchTypes.map { type ->
-          ("M-SEARCH * HTTP/1.1\r\n" +
-            "HOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\n" +
-            "ST: $type\r\n\r\n").toByteArray(Charsets.US_ASCII)
-        }
+        val searches =
+          searchTypes.map { type ->
+            (
+              "M-SEARCH * HTTP/1.1\r\n" +
+                "HOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\n" +
+                "ST: $type\r\n\r\n"
+            ).toByteArray(Charsets.US_ASCII)
+          }
         val target = InetAddress.getByName("239.255.255.250")
         val end = System.nanoTime() + TimeUnit.SECONDS.toNanos(6)
         var nextSearch = 0L
@@ -84,35 +97,63 @@ internal class DlnaServerDiscovery(context: Context) {
         val failures = HashMap<String, Int>()
         while (currentCoroutineContext().isActive && System.nanoTime() < end && seen.size < 100) {
           if (System.nanoTime() >= nextSearch) {
-            searches.forEach { message -> runCatching { socket.send(DatagramPacket(message, message.size, target, 1900)) } }
+            searches.forEach { message ->
+              runCatching { socket.send(DatagramPacket(message, message.size, target, 1900)) }
+            }
             nextSearch = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
           }
           val packet = DatagramPacket(ByteArray(16 * 1024), 16 * 1024)
-          try { socket.receive(packet) } catch (_: SocketTimeoutException) { continue }
+          try {
+            socket.receive(packet)
+          } catch (_: SocketTimeoutException) {
+            continue
+          }
           val response = String(packet.data, packet.offset, packet.length, Charsets.ISO_8859_1)
-          val location = response.lineSequence().mapNotNull { line ->
-            val colon = line.indexOf(':')
-            if (colon > 0 && line.substring(0, colon).trim().equals("location", true)) {
-              line.substring(colon + 1).trim()
-            } else null
-          }.firstOrNull()?.toHttpUrlOrNull() ?: continue
-          if (location.username.isNotEmpty() || location.password.isNotEmpty() ||
-            location.query != null || location.fragment != null || seen.contains(location.toString()) ||
+          val location =
+            response
+              .lineSequence()
+              .mapNotNull { line ->
+                val colon = line.indexOf(':')
+                if (colon > 0 && line.substring(0, colon).trim().equals("location", true)) {
+                  line.substring(colon + 1).trim()
+                } else {
+                  null
+                }
+              }.firstOrNull()
+              ?.toHttpUrlOrNull() ?: continue
+          if (location.username.isNotEmpty() ||
+            location.password.isNotEmpty() ||
+            location.query != null ||
+            location.fragment != null ||
+            seen.contains(location.toString()) ||
             (failures[location.toString()] ?: 0) >= MAX_DESCRIPTION_ATTEMPTS
-          ) continue
-          val path = runCatching { NetworkPath.from(location.pathSegments.joinToString("/")).value }.getOrNull() ?: continue
-          val suggestion = runCatching {
-            val request = Request.Builder().url(location).get().build()
-            networkHttp.newCall(request).execute().use { result ->
-              if (!result.isSuccessful) return@use null
-              val device = DlnaXml.description(DlnaXml.readBounded(result.body.byteStream()), result.request.url)
-              ServerSuggestion(
-                name = device.name.ifBlank { location.host }, host = location.host,
-                protocol = NetworkProtocol.DLNA, port = location.port, path = path,
-                useHttps = location.isHttps, source = ServerSuggestionSource.DISCOVERED,
-              )
-            }
-          }.getOrNull()
+          ) {
+            continue
+          }
+          val path =
+            runCatching { NetworkPath.from(location.pathSegments.joinToString("/")).value }.getOrNull() ?: continue
+          val suggestion =
+            runCatching {
+              val request =
+                Request
+                  .Builder()
+                  .url(location)
+                  .get()
+                  .build()
+              networkHttp.newCall(request).execute().use { result ->
+                if (!result.isSuccessful) return@use null
+                val device = DlnaXml.description(DlnaXml.readBounded(result.body.byteStream()), result.request.url)
+                ServerSuggestion(
+                  name = device.name.ifBlank { location.host },
+                  host = location.host,
+                  protocol = NetworkProtocol.DLNA,
+                  port = location.port,
+                  path = path,
+                  useHttps = location.isHttps,
+                  source = ServerSuggestionSource.DISCOVERED,
+                )
+              }
+            }.getOrNull()
           if (suggestion != null) {
             seen.add(location.toString())
           } else {

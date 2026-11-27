@@ -12,30 +12,30 @@ package app.gyrolet.mpvrx.ui.securefolder
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.SecureFolderPreferences
 import app.gyrolet.mpvrx.presentation.components.ExposedTextDropDownMenu
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import kotlinx.collections.immutable.toImmutableList
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 /**
  * "Change PIN" and "Change Security Question" dialogs for the Secure Folder overflow menu /
@@ -96,7 +96,7 @@ fun ChangePinDialog(
           stringResource(R.string.secure_folder_confirm_current_pin)
         } else {
           stringResource(R.string.secure_folder_choose_new_pin)
-        }
+        },
       )
     },
     text = {
@@ -165,7 +165,7 @@ fun ChangePinDialog(
             stringResource(R.string.secure_folder_next)
           } else {
             stringResource(R.string.secure_folder_save)
-          }
+          },
         )
       }
     },
@@ -224,7 +224,7 @@ fun ChangeSecurityQuestionDialog(
           stringResource(R.string.secure_folder_confirm_current_pin)
         } else {
           stringResource(R.string.secure_folder_new_security_question)
-        }
+        },
       )
     },
     text = {
@@ -275,7 +275,7 @@ fun ChangeSecurityQuestionDialog(
             stringResource(R.string.secure_folder_next)
           } else {
             stringResource(R.string.secure_folder_save)
-          }
+          },
         )
       }
     },
@@ -284,7 +284,6 @@ fun ChangeSecurityQuestionDialog(
     },
   )
 }
-
 
 private enum class ForgotPinStep { ANSWER_QUESTION, ENTER_NEW_PIN }
 
@@ -342,7 +341,7 @@ fun ForgotPinDialog(
           stringResource(R.string.secure_folder_answer_security_question)
         } else {
           stringResource(R.string.secure_folder_choose_new_pin)
-        }
+        },
       )
     },
     text = {
@@ -418,7 +417,7 @@ fun ForgotPinDialog(
             stringResource(R.string.secure_folder_verify)
           } else {
             stringResource(R.string.secure_folder_save)
-          }
+          },
         )
       }
     },

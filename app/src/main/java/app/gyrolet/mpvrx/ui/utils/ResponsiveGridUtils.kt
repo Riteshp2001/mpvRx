@@ -63,7 +63,8 @@ fun calculateResponsiveGridSpans(
   val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
   val usableWidth = maxWidth - (contentHorizontalPadding * 2) - itemSpacing
   val isTelevision =
-    app.gyrolet.mpvrx.utils.device.DeviceFormFactor.isTelevision(androidx.compose.ui.platform.LocalContext.current)
+    app.gyrolet.mpvrx.utils.device.DeviceFormFactor
+      .isTelevision(androidx.compose.ui.platform.LocalContext.current)
   val minimumFolderWidth = if (isTelevision) maxOf(folderMinWidth, 160.dp) else folderMinWidth
   val minimumVideoWidth = if (isTelevision) maxOf(videoMinWidth, 240.dp) else videoMinWidth
   val dynamicFolders = (usableWidth / minimumFolderWidth).toInt().coerceAtLeast(1)

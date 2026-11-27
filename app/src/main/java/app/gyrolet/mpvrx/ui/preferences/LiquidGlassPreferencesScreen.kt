@@ -38,8 +38,8 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -51,9 +51,9 @@ import app.gyrolet.mpvrx.ui.liquidglass.LiquidToggle
 import app.gyrolet.mpvrx.ui.liquidglass.drawShapeTint
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassEffects
 import app.gyrolet.mpvrx.ui.liquidglass.rememberLiquidGlassSettings
-import app.gyrolet.mpvrx.ui.theme.rememberLowEndDevice
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.preferences.components.liquidGlassPreferences
+import app.gyrolet.mpvrx.ui.theme.rememberLowEndDevice
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -108,11 +108,13 @@ object LiquidGlassPreferencesScreen : ScrollableSettingsScreen {
         ) {
           val compactPreview = maxHeight < 420.dp
           Column(Modifier.fillMaxSize()) {
-            if (!LocalPlayerSettingsPanel.current) LiquidGlassPreview(
-              enabled = enabled && supported,
-              height = if (compactPreview) 112.dp else 200.dp,
-              compact = compactPreview,
-            )
+            if (!LocalPlayerSettingsPanel.current) {
+              LiquidGlassPreview(
+                enabled = enabled && supported,
+                height = if (compactPreview) 112.dp else 200.dp,
+                compact = compactPreview,
+              )
+            }
             LazyColumn(
               state = listState,
               modifier = Modifier.weight(1f).fillMaxWidth().then(highlight),
@@ -126,7 +128,9 @@ object LiquidGlassPreferencesScreen : ScrollableSettingsScreen {
                 ) {
                   androidx.compose.material3.Surface(
                     color = MaterialTheme.colorScheme.tertiaryContainer,
-                    shape = androidx.compose.foundation.shape.RoundedCornerShape(50.dp),
+                    shape =
+                      androidx.compose.foundation.shape
+                        .RoundedCornerShape(50.dp),
                   ) {
                     Text(
                       text = stringResource(R.string.pref_experimental_badge),
@@ -144,45 +148,49 @@ object LiquidGlassPreferencesScreen : ScrollableSettingsScreen {
                 }
               }
               if (!playerPanel) {
-              item {
-                PreferenceSectionHeader(title = stringResource(R.string.pref_section_general))
-              }
-              item {
-                PreferenceCard {
-                  SwitchPreference(
-                    value = enabled && supported,
-                    onValueChange = preferences.liquidGlassEnabled::set,
-                    title = { Text(stringResource(R.string.pref_appearance_liquid_glass_title)) },
-                    summary = {
-                      Text(
-                        text = stringResource(
-                          if (supported) R.string.pref_appearance_liquid_glass_summary
-                          else R.string.pref_appearance_liquid_glass_summary_unavailable,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                      )
-                    },
-                    enabled = supported,
-                    modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_liquid_glass_title),
-                  )
-                  PreferenceDivider()
-                  SwitchPreference(
-                    value = glassInHdr && enabled && supported,
-                    onValueChange = { checked ->
-                      if (checked) showHdrWarning = true else preferences.liquidGlassInHdr.set(false)
-                    },
-                    title = { Text(stringResource(R.string.pref_liquid_glass_in_hdr_title)) },
-                    summary = {
-                      Text(
-                        text = stringResource(R.string.pref_liquid_glass_in_hdr_summary),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                      )
-                    },
-                    enabled = enabled && supported,
-                    modifier = Modifier.settingsSearchTarget(R.string.pref_liquid_glass_in_hdr_title),
-                  )
+                item {
+                  PreferenceSectionHeader(title = stringResource(R.string.pref_section_general))
                 }
-              }
+                item {
+                  PreferenceCard {
+                    SwitchPreference(
+                      value = enabled && supported,
+                      onValueChange = preferences.liquidGlassEnabled::set,
+                      title = { Text(stringResource(R.string.pref_appearance_liquid_glass_title)) },
+                      summary = {
+                        Text(
+                          text =
+                            stringResource(
+                              if (supported) {
+                                R.string.pref_appearance_liquid_glass_summary
+                              } else {
+                                R.string.pref_appearance_liquid_glass_summary_unavailable
+                              },
+                            ),
+                          color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                      },
+                      enabled = supported,
+                      modifier = Modifier.settingsSearchTarget(R.string.pref_appearance_liquid_glass_title),
+                    )
+                    PreferenceDivider()
+                    SwitchPreference(
+                      value = glassInHdr && enabled && supported,
+                      onValueChange = { checked ->
+                        if (checked) showHdrWarning = true else preferences.liquidGlassInHdr.set(false)
+                      },
+                      title = { Text(stringResource(R.string.pref_liquid_glass_in_hdr_title)) },
+                      summary = {
+                        Text(
+                          text = stringResource(R.string.pref_liquid_glass_in_hdr_summary),
+                          color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                      },
+                      enabled = enabled && supported,
+                      modifier = Modifier.settingsSearchTarget(R.string.pref_liquid_glass_in_hdr_title),
+                    )
+                  }
+                }
               }
               liquidGlassPreferences(preferences, enabled = enabled && supported)
             }
@@ -194,7 +202,11 @@ object LiquidGlassPreferencesScreen : ScrollableSettingsScreen {
 }
 
 @Composable
-private fun LiquidGlassPreview(enabled: Boolean, height: Dp = 200.dp, compact: Boolean = false) {
+private fun LiquidGlassPreview(
+  enabled: Boolean,
+  height: Dp = 200.dp,
+  compact: Boolean = false,
+) {
   val backdrop = rememberLayerBackdrop()
   val lowEnd = rememberLowEndDevice()
   val settings = rememberLiquidGlassSettings()

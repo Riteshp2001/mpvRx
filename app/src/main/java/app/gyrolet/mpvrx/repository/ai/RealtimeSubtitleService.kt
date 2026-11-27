@@ -223,8 +223,17 @@ class RealtimeSubtitleService(
               segments = chunk.transcript.segments,
             )
           if (!request.targetLanguage.isNullOrBlank() && candidates.isNotEmpty()) {
-            emitProgress(onProgress, completedChunks, totalChunks, context.getString(R.string.realtime_subtitles_translating))
-            val translation = aiService.translateRealtimeCues(candidates.map(RealtimeSubtitleCue::sourceText), request.targetLanguage)
+            emitProgress(
+              onProgress,
+              completedChunks,
+              totalChunks,
+              context.getString(R.string.realtime_subtitles_translating),
+            )
+            val translation =
+              aiService.translateRealtimeCues(
+                candidates.map(RealtimeSubtitleCue::sourceText),
+                request.targetLanguage,
+              )
             translation
               .onSuccess { translated ->
                 candidates = candidates.mapIndexed { index, cue -> cue.copy(displayText = translated[index]) }
@@ -376,8 +385,10 @@ class RealtimeSubtitleService(
             .Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("model", model)
-            .addFormDataPart("response_format", if (model.startsWith("whisper", ignoreCase = true)) "verbose_json" else "json")
-            .addFormDataPart("temperature", "0")
+            .addFormDataPart(
+              "response_format",
+              if (model.startsWith("whisper", ignoreCase = true)) "verbose_json" else "json",
+            ).addFormDataPart("temperature", "0")
             .addFormDataPart("file", audioFile.name, audioFile.asRequestBody(audioMediaType(audioFile)))
 
         if (!language.isNullOrBlank()) {

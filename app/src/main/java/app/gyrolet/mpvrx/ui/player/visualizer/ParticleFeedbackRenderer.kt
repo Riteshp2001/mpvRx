@@ -28,6 +28,7 @@ internal class ParticleFeedbackRenderer(
   private val audioSmoother = AudioReactiveSmoother()
 
   @Volatile private var requestedPalette = palette
+
   @Volatile private var reducedMotionEnabled = reducedMotion
 
   private object Cfg {
@@ -38,6 +39,7 @@ internal class ParticleFeedbackRenderer(
     const val MAX_TRAIL_DIMENSION = 1152f
     const val DECAY = 0.90f // Retention per 1/60 second, not per display frame.
     const val DIFFUSE = 0.004f
+
     // Keep aggregate light comparable as density rises, preserving individual particle detail.
     const val BRIGHT = 0.18f * 16_384f / NUM_PARTICLES
     const val EXPOSURE = 0.45f
@@ -136,31 +138,39 @@ internal class ParticleFeedbackRenderer(
     appliedPalette = palette
   }
 
-  override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
+  override fun onSurfaceCreated(
+    gl: GL10?,
+    config: EGLConfig?,
+  ) {
     GLES30.glDisable(GLES30.GL_CULL_FACE)
     GLES30.glDisable(GLES30.GL_DEPTH_TEST)
     GLES30.glClearColor(0f, 0f, 0f, 0f)
 
-    pInit = GlUtils.createProgram(
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_init_fragment.glsl"),
-    )
-    pSim = GlUtils.createProgram(
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_sim_fragment.glsl"),
-    )
-    pPts = GlUtils.createProgram(
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_point_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_point_fragment.glsl"),
-    )
-    pDecay = GlUtils.createProgram(
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_decay_fragment.glsl"),
-    )
-    pComp = GlUtils.createProgram(
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
-      GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_comp_fragment.glsl"),
-    )
+    pInit =
+      GlUtils.createProgram(
+        GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_init_fragment.glsl"),
+      )
+    pSim =
+      GlUtils.createProgram(
+        GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_sim_fragment.glsl"),
+      )
+    pPts =
+      GlUtils.createProgram(
+        GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_point_vertex.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_point_fragment.glsl"),
+      )
+    pDecay =
+      GlUtils.createProgram(
+        GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_decay_fragment.glsl"),
+      )
+    pComp =
+      GlUtils.createProgram(
+        GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_quad_vertex.glsl"),
+        GlUtils.readAssetText(context, "shaders/visualizer/particle/particle_comp_fragment.glsl"),
+      )
 
     // Texture names from a retired EGL context must never be deleted in the new context.
     trailTex.fill(0)
@@ -182,7 +192,11 @@ internal class ParticleFeedbackRenderer(
     elapsedSeconds = 0f
   }
 
-  override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+  override fun onSurfaceChanged(
+    gl: GL10?,
+    width: Int,
+    height: Int,
+  ) {
     viewportWidth = max(2, width)
     viewportHeight = max(2, height)
     // Bound feedback bandwidth on large/high-density displays while preserving the aspect ratio.
@@ -193,11 +207,12 @@ internal class ParticleFeedbackRenderer(
   }
 
   override fun onFrame(frameTimeNanos: Long) {
-    val dtSeconds = if (previousFrameNanos == 0L || frameTimeNanos - previousFrameNanos > 250_000_000L) {
-      1f / 60f
-    } else {
-      ((frameTimeNanos - previousFrameNanos) / 1_000_000_000f).coerceIn(0f, 0.05f)
-    }
+    val dtSeconds =
+      if (previousFrameNanos == 0L || frameTimeNanos - previousFrameNanos > 250_000_000L) {
+        1f / 60f
+      } else {
+        ((frameTimeNanos - previousFrameNanos) / 1_000_000_000f).coerceIn(0f, 0.05f)
+      }
     previousFrameNanos = frameTimeNanos
     elapsedSeconds += dtSeconds
     val frameScale = dtSeconds * 60f
@@ -214,7 +229,7 @@ internal class ParticleFeedbackRenderer(
     GLES30.glBindVertexArray(pointVao)
     GLES30.glDisable(GLES30.GL_BLEND)
 
-    /* 1. Simulate */
+    // 1. Simulate
     val nextSim = 1 - simSrc
     GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, simFbo[nextSim])
     GLES30.glViewport(0, 0, Cfg.SIM_SIZE, Cfg.SIM_SIZE)
@@ -238,7 +253,7 @@ internal class ParticleFeedbackRenderer(
     GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3)
     simSrc = nextSim
 
-    /* 2. Decay + Diffuse Previous Trail */
+    // 2. Decay + Diffuse Previous Trail
     val nextTrail = 1 - trailSrc
     GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, trailFbo[nextTrail])
     GLES30.glViewport(0, 0, trailWidth, trailHeight)
@@ -251,7 +266,7 @@ internal class ParticleFeedbackRenderer(
     GLES30.glUniform1f(uDecayDiff, diffusion)
     GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3)
 
-    /* 3. Additive Points into Trail FBO */
+    // 3. Additive Points into Trail FBO
     GLES30.glEnable(GLES30.GL_BLEND)
     GLES30.glBlendFunc(GLES30.GL_ONE, GLES30.GL_ONE)
     GLES30.glUseProgram(pPts)
@@ -279,7 +294,7 @@ internal class ParticleFeedbackRenderer(
     GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, trailTex[trailSrc])
     GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D)
 
-    /* Composite the palette-colored trail with bounded opacity. */
+    // Composite the palette-colored trail with bounded opacity.
     GLES30.glViewport(0, 0, viewportWidth, viewportHeight)
     GLES30.glClearColor(0f, 0f, 0f, 0f)
     GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
@@ -303,22 +318,26 @@ internal class ParticleFeedbackRenderer(
     GLES30.glBindVertexArray(0)
   }
 
-  private fun updateAudioAnalysis(dt: Float, nowSec: Float) {
-    val audio = audioSmoother.update(
-      AudioFeatureFrame(
-        energy = sourceAudio.scaledEnergy(),
-        subBass = sourceAudio.scaledSubBass(),
-        bass = sourceAudio.scaledBass(),
-        lowMid = sourceAudio.scaledLowMid(),
-        mid = sourceAudio.scaledMid(),
-        highMid = sourceAudio.scaledHighMid(),
-        treble = sourceAudio.scaledTreble(),
-        centroid = sourceAudio.scaledCentroid(),
-        beat = sourceAudio.scaledBeat(),
-        spectralFlux = sourceAudio.scaledSpectralFlux(),
-      ),
-      dt,
-    )
+  private fun updateAudioAnalysis(
+    dt: Float,
+    nowSec: Float,
+  ) {
+    val audio =
+      audioSmoother.update(
+        AudioFeatureFrame(
+          energy = sourceAudio.scaledEnergy(),
+          subBass = sourceAudio.scaledSubBass(),
+          bass = sourceAudio.scaledBass(),
+          lowMid = sourceAudio.scaledLowMid(),
+          mid = sourceAudio.scaledMid(),
+          highMid = sourceAudio.scaledHighMid(),
+          treble = sourceAudio.scaledTreble(),
+          centroid = sourceAudio.scaledCentroid(),
+          beat = sourceAudio.scaledBeat(),
+          spectralFlux = sourceAudio.scaledSpectralFlux(),
+        ),
+        dt,
+      )
 
     if (sourceAudio.active) {
       val subBassTarget = (audio.subBass * 1.5f).coerceAtMost(1f)
@@ -361,7 +380,13 @@ internal class ParticleFeedbackRenderer(
     beatSmoothed *= exp(-dt * 5.5f)
   }
 
-  private fun smoothVal(cur: Float, target: Float, dt: Float, upRate: Float, dnRate: Float): Float {
+  private fun smoothVal(
+    cur: Float,
+    target: Float,
+    dt: Float,
+    upRate: Float,
+    dnRate: Float,
+  ): Float {
     val rate = if (target > cur) upRate else dnRate
     return cur + (target - cur) * (1f - exp(-dt * rate))
   }
@@ -385,7 +410,13 @@ internal class ParticleFeedbackRenderer(
       GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
 
       GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, simFbo[i])
-      GLES30.glFramebufferTexture2D(GLES30.GL_FRAMEBUFFER, GLES30.GL_COLOR_ATTACHMENT0, GLES30.GL_TEXTURE_2D, simTex[i], 0)
+      GLES30.glFramebufferTexture2D(
+        GLES30.GL_FRAMEBUFFER,
+        GLES30.GL_COLOR_ATTACHMENT0,
+        GLES30.GL_TEXTURE_2D,
+        simTex[i],
+        0,
+      )
       GlUtils.checkFramebuffer("SimFbo[$i]")
     }
     GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
@@ -413,7 +444,13 @@ internal class ParticleFeedbackRenderer(
       GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE)
 
       GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, trailFbo[i])
-      GLES30.glFramebufferTexture2D(GLES30.GL_FRAMEBUFFER, GLES30.GL_COLOR_ATTACHMENT0, GLES30.GL_TEXTURE_2D, trailTex[i], 0)
+      GLES30.glFramebufferTexture2D(
+        GLES30.GL_FRAMEBUFFER,
+        GLES30.GL_COLOR_ATTACHMENT0,
+        GLES30.GL_TEXTURE_2D,
+        trailTex[i],
+        0,
+      )
       GlUtils.checkFramebuffer("TrailFbo[$i]")
 
       GLES30.glClearColor(0f, 0f, 0f, 0f)

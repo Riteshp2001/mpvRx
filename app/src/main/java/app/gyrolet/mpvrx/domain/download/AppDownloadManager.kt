@@ -12,10 +12,8 @@ package app.gyrolet.mpvrx.domain.download
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
-import app.gyrolet.mpvrx.utils.logging.Log
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
-import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.BuildConfig
+import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.database.dao.DownloadItemDao
 import app.gyrolet.mpvrx.database.entities.DownloadItemEntity
 import app.gyrolet.mpvrx.domain.torrent.TorrentStreamingEngine
@@ -23,8 +21,9 @@ import app.gyrolet.mpvrx.domain.torrent.magnetWithoutFileSelection
 import app.gyrolet.mpvrx.domain.torrent.parseMagnet
 import app.gyrolet.mpvrx.network.SharedHttpClient
 import app.gyrolet.mpvrx.network.awaitResponse
-import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.PlaybackSubtitleTrack
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,6 +52,7 @@ import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 import java.util.Collections
 import java.util.concurrent.TimeUnit
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 /**
  * In-app direct-file download engine: streams with OkHttp straight into the selected
@@ -134,27 +134,28 @@ class AppDownloadManager(
         val reservation = outputReservations.reserve(directory, fileName)
         try {
           val queuedAt = System.currentTimeMillis()
-          val id = dao.insert(
-            DownloadItemEntity(
-              url = url,
-              dirPath = directory.absolutePath,
-              fileName = reservation.fileName,
-              // Auth headers ride along for the worker, encoded as simple lines.
-              stagingPath = encodeHeaders(headers),
-              status = AppDownloadStatus.QUEUED.name,
-              source = meta.source,
-              title = meta.title,
-              posterUrl = meta.posterUrl,
-              sourceUrl = meta.sourceUrl,
-              jellyfinServerId = meta.jellyfinServerId,
-              jellyfinItemId = meta.jellyfinItemId,
-              jellyfinSeriesName = meta.jellyfinSeriesName,
-              seasonNumber = meta.seasonNumber,
-              episodeNumber = meta.episodeNumber,
-              isAudio = meta.isAudio,
-              timeQueued = queuedAt,
-            ),
-          )
+          val id =
+            dao.insert(
+              DownloadItemEntity(
+                url = url,
+                dirPath = directory.absolutePath,
+                fileName = reservation.fileName,
+                // Auth headers ride along for the worker, encoded as simple lines.
+                stagingPath = encodeHeaders(headers),
+                status = AppDownloadStatus.QUEUED.name,
+                source = meta.source,
+                title = meta.title,
+                posterUrl = meta.posterUrl,
+                sourceUrl = meta.sourceUrl,
+                jellyfinServerId = meta.jellyfinServerId,
+                jellyfinItemId = meta.jellyfinItemId,
+                jellyfinSeriesName = meta.jellyfinSeriesName,
+                seasonNumber = meta.seasonNumber,
+                episodeNumber = meta.episodeNumber,
+                isAudio = meta.isAudio,
+                timeQueued = queuedAt,
+              ),
+            )
           enqueueSubtitleSidecars(directory, reservation.fileName, subtitles, id, queuedAt)
         } finally {
           withContext(NonCancellable) { outputReservations.release(reservation) }
@@ -190,32 +191,36 @@ class AppDownloadManager(
           context.getString(R.string.torrent_picker_download_unavailable)
         }
         val key = torrentDownloadKey(magnet.infoHash, fileIndex)
-        val queued = torrentEnqueueMutex.withLock {
-          val existing = dao.getAll().map(::AppDownload).firstOrNull {
-            it.entity.source == DownloadSources.TORRENT && it.entity.sourceUrl == key && (it.isActive || it.isPlayable)
+        val queued =
+          torrentEnqueueMutex.withLock {
+            val existing =
+              dao.getAll().map(::AppDownload).firstOrNull {
+                it.entity.source == DownloadSources.TORRENT &&
+                  it.entity.sourceUrl == key &&
+                  (it.isActive || it.isPlayable)
+              }
+            if (existing != null) return@withLock false
+            val directory = locations.torrentsDir(title)
+            val reservation = outputReservations.reserve(directory, fileName)
+            try {
+              dao.insert(
+                DownloadItemEntity(
+                  url = "${magnetWithoutFileSelection(magnet.cleanMagnetUri)}&so=$fileIndex",
+                  dirPath = directory.absolutePath,
+                  fileName = reservation.fileName,
+                  totalBytes = size,
+                  source = DownloadSources.TORRENT,
+                  sourceUrl = key,
+                  title = fileName,
+                  posterUrl = posterUrl,
+                  isAudio = fileName.substringAfterLast('.', "").lowercase() in FileTypeUtils.AUDIO_EXTENSIONS,
+                ),
+              )
+            } finally {
+              withContext(NonCancellable) { outputReservations.release(reservation) }
+            }
+            true
           }
-          if (existing != null) return@withLock false
-          val directory = locations.torrentsDir(title)
-          val reservation = outputReservations.reserve(directory, fileName)
-          try {
-            dao.insert(
-              DownloadItemEntity(
-                url = "${magnetWithoutFileSelection(magnet.cleanMagnetUri)}&so=$fileIndex",
-                dirPath = directory.absolutePath,
-                fileName = reservation.fileName,
-                totalBytes = size,
-                source = DownloadSources.TORRENT,
-                sourceUrl = key,
-                title = fileName,
-                posterUrl = posterUrl,
-                isAudio = fileName.substringAfterLast('.', "").lowercase() in FileTypeUtils.AUDIO_EXTENSIONS,
-              ),
-            )
-          } finally {
-            withContext(NonCancellable) { outputReservations.release(reservation) }
-          }
-          true
-        }
         if (queued) DirectDownloadService.start(context)
         val message = if (queued) R.string.downloads_started else R.string.downloads_already_downloaded
         mainHandler.post { Toast.makeText(context, context.getString(message), Toast.LENGTH_SHORT).show() }
@@ -236,7 +241,8 @@ class AppDownloadManager(
       while (true) {
         currentCoroutineContext().ensureActive()
         val next =
-          dao.getAll()
+          dao
+            .getAll()
             .filter { it.status == AppDownloadStatus.QUEUED.name }
             .minByOrNull { it.timeQueued } ?: break
         runDownload(next, onUpdate)
@@ -276,11 +282,14 @@ class AppDownloadManager(
         }
         val legacyPart = File(directory, entity.fileName + PART_SUFFIX)
         if (!partFile.exists() && legacyPart.isFile) {
-          val owners = dao.getAll().count {
-            File(it.dirPath).canonicalPath == directory.canonicalPath && it.fileName.equals(entity.fileName, ignoreCase = true)
-          }
+          val owners =
+            dao.getAll().count {
+              File(it.dirPath).canonicalPath == directory.canonicalPath &&
+                it.fileName.equals(entity.fileName, ignoreCase = true)
+            }
           if (owners == 1 && !finalFile.exists()) {
-            java.nio.file.Files.move(legacyPart.toPath(), partFile.toPath())
+            java.nio.file.Files
+              .move(legacyPart.toPath(), partFile.toPath())
           } else {
             Log.w(TAG, "Leaving ambiguous legacy partial download untouched for item $id")
           }
@@ -299,8 +308,12 @@ class AppDownloadManager(
           }
           check(response.isSuccessful) { "HTTP ${response.code}" }
           if (resumeFrom > 0) {
-            val rangeStart = response.header("Content-Range")
-              ?.substringAfter("bytes ", "")?.substringBefore('-')?.toLongOrNull()
+            val rangeStart =
+              response
+                .header("Content-Range")
+                ?.substringAfter("bytes ", "")
+                ?.substringBefore('-')
+                ?.toLongOrNull()
             check(rangeStart == resumeFrom) { "Server returned an incorrect download resume range" }
           }
           val body = response.body
@@ -401,32 +414,34 @@ class AppDownloadManager(
     entity: DownloadItemEntity,
     partFile: File,
     onUpdate: (ActiveSnapshot) -> Unit,
-  ): Long = coroutineScope {
-    val request = requireNotNull(parseMagnet(entity.url))
-    val index = requireNotNull(request.fileIdx)
-    val title = entity.title.ifBlank { entity.fileName }
-    val initial = ActiveSnapshot(entity.id, title, 0, 0, entity.totalBytes, 0)
-    _activeSnapshot.value = initial
-    onUpdate(initial)
-    var lastProgress = -1
-    val transfer = async {
-      TorrentStreamingEngine(context).downloadFile(request.cleanMagnetUri, index, partFile) { bytes, total, speed ->
-        val progress = (bytes.toDouble() / total * 100).toInt().coerceIn(0, 99)
-        val snapshot = ActiveSnapshot(entity.id, title, progress, bytes, total, speed)
-        _activeSnapshot.value = snapshot
-        onUpdate(snapshot)
-        if (progress != lastProgress) {
-          lastProgress = progress
-          dao.findById(entity.id)?.let { dao.update(it.copy(progress = progress, totalBytes = total)) }
+  ): Long =
+    coroutineScope {
+      val request = requireNotNull(parseMagnet(entity.url))
+      val index = requireNotNull(request.fileIdx)
+      val title = entity.title.ifBlank { entity.fileName }
+      val initial = ActiveSnapshot(entity.id, title, 0, 0, entity.totalBytes, 0)
+      _activeSnapshot.value = initial
+      onUpdate(initial)
+      var lastProgress = -1
+      val transfer =
+        async {
+          TorrentStreamingEngine(context).downloadFile(request.cleanMagnetUri, index, partFile) { bytes, total, speed ->
+            val progress = (bytes.toDouble() / total * 100).toInt().coerceIn(0, 99)
+            val snapshot = ActiveSnapshot(entity.id, title, progress, bytes, total, speed)
+            _activeSnapshot.value = snapshot
+            onUpdate(snapshot)
+            if (progress != lastProgress) {
+              lastProgress = progress
+              dao.findById(entity.id)?.let { dao.update(it.copy(progress = progress, totalBytes = total)) }
+            }
+          }
         }
+      while (!transfer.isCompleted) {
+        if (entity.id in cancelledIds) throw CancelledDownloadException()
+        delay(400L)
       }
+      transfer.await()
     }
-    while (!transfer.isCompleted) {
-      if (entity.id in cancelledIds) throw CancelledDownloadException()
-      delay(400L)
-    }
-    transfer.await()
-  }
 
   /**
    * Fetches external subtitle tracks as sidecar files named `<videoBaseName>.<label>.<ext>`.
@@ -452,7 +467,12 @@ class AppDownloadManager(
               .take(24)
           val target = File(directory, "$baseName.$label.$extension")
           if (target.isFile && target.length() > 0) return@forEachIndexed
-          val request = Request.Builder().url(track.url).get().build()
+          val request =
+            Request
+              .Builder()
+              .url(track.url)
+              .get()
+              .build()
           httpClient.newCall(request).awaitResponse().use { response ->
             check(response.isSuccessful) { "HTTP ${response.code}" }
             val body = response.body.bytes()
@@ -463,7 +483,9 @@ class AppDownloadManager(
             val owner = "$downloadId:$queuedAt"
             synchronized(sidecarOwnership) {
               val names = sidecarOwnership.getStringSet(owner, emptySet()).orEmpty() + target.name
-              check(sidecarOwnership.edit().putStringSet(owner, names).commit()) { "Could not record subtitle ownership" }
+              check(
+                sidecarOwnership.edit().putStringSet(owner, names).commit(),
+              ) { "Could not record subtitle ownership" }
             }
             if (dao.findById(downloadId) == null) {
               if (!target.delete()) Log.w(TAG, "Could not remove subtitle from deleted download $downloadId")
@@ -484,21 +506,42 @@ class AppDownloadManager(
   fun sidecarSubtitles(download: AppDownload): List<File> {
     val owned = ownedSidecars(download).filter(File::isFile)
     val baseName = download.entity.fileName.substringBeforeLast('.')
-    val siblings = download.file.parentFile?.listFiles().orEmpty()
-    val mediaFiles = siblings.filter {
-      it.isFile && it.extension.lowercase() in (FileTypeUtils.VIDEO_EXTENSIONS + FileTypeUtils.AUDIO_EXTENSIONS)
-    }
-    if (mediaFiles.any { it.name != download.entity.fileName && it.nameWithoutExtension.equals(baseName, ignoreCase = true) }) {
+    val siblings =
+      download.file.parentFile
+        ?.listFiles()
+        .orEmpty()
+    val mediaFiles =
+      siblings.filter {
+        it.isFile && it.extension.lowercase() in (FileTypeUtils.VIDEO_EXTENSIONS + FileTypeUtils.AUDIO_EXTENSIONS)
+      }
+    if (mediaFiles.any {
+        it.name != download.entity.fileName &&
+          it.nameWithoutExtension.equals(baseName, ignoreCase = true)
+      }
+    ) {
       Log.w(TAG, "Subtitle ownership is ambiguous for download ${download.entity.id}")
       return owned
     }
-    val longerBases = mediaFiles.map { it.nameWithoutExtension }.filter { it.startsWith("$baseName.", ignoreCase = true) }
-    val inferred = siblings.filter { file ->
+    val longerBases =
+      mediaFiles.map { it.nameWithoutExtension }.filter {
+        it.startsWith(
+          "$baseName.",
+          ignoreCase = true,
+        )
+      }
+    val inferred =
+      siblings.filter { file ->
         file.isFile &&
           file.name != download.entity.fileName &&
           !file.name.endsWith(PART_SUFFIX) &&
-          (file.nameWithoutExtension.equals(baseName, ignoreCase = true) || file.nameWithoutExtension.startsWith("$baseName.", ignoreCase = true)) &&
-          longerBases.none { file.nameWithoutExtension.equals(it, ignoreCase = true) || file.nameWithoutExtension.startsWith("$it.", ignoreCase = true) } &&
+          (
+            file.nameWithoutExtension.equals(baseName, ignoreCase = true) ||
+              file.nameWithoutExtension.startsWith("$baseName.", ignoreCase = true)
+          ) &&
+          longerBases.none {
+            file.nameWithoutExtension.equals(it, ignoreCase = true) ||
+              file.nameWithoutExtension.startsWith("$it.", ignoreCase = true)
+          } &&
           file.extension.lowercase() in SUBTITLE_EXTENSIONS
       }
     return (owned + inferred).distinctBy(File::getAbsolutePath)
@@ -511,7 +554,9 @@ class AppDownloadManager(
       if (File(name).name != name) {
         Log.w(TAG, "Ignoring invalid subtitle ownership record for download ${download.id}")
         null
-      } else File(directory, name)
+      } else {
+        File(directory, name)
+      }
     }
   }
 
@@ -579,13 +624,20 @@ class AppDownloadManager(
   companion object {
     private const val TAG = "AppDownloadManager"
 
-    internal fun torrentDownloadKey(infoHash: String, fileIndex: Int): String =
-      "magnet:?xt=urn:btih:${infoHash.lowercase()}&so=$fileIndex"
+    internal fun torrentDownloadKey(
+      infoHash: String,
+      fileIndex: Int,
+    ): String = "magnet:?xt=urn:btih:${infoHash.lowercase()}&so=$fileIndex"
 
-    internal fun notifyCompletedMedia(context: Context, file: File) {
+    internal fun notifyCompletedMedia(
+      context: Context,
+      file: File,
+    ) {
       fun notifyLibraryChanged() {
-        app.gyrolet.mpvrx.repository.MediaFileRepository.clearCache()
-        app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.notifyChanged()
+        app.gyrolet.mpvrx.repository.MediaFileRepository
+          .clearCache()
+        app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
+          .notifyChanged()
       }
 
       runCatching {
@@ -597,6 +649,7 @@ class AppDownloadManager(
         notifyLibraryChanged()
       }
     }
+
     private const val PART_SUFFIX = ".part"
     private const val PROGRESS_INTERVAL_MS = 750L
     private const val DB_WRITE_INTERVAL_MS = 1_500L

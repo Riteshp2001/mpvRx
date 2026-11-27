@@ -14,7 +14,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import app.gyrolet.mpvrx.data.network.ServerUrlUtils
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,7 +44,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -70,11 +68,13 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
+import app.gyrolet.mpvrx.data.network.ServerUrlUtils
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
+import app.gyrolet.mpvrx.presentation.components.ResponsiveBottomSheet
 import app.gyrolet.mpvrx.ui.components.themedSegmentedButtonColors
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -281,7 +281,12 @@ fun SharedAddServerDialog(
           trailingIcon = {
             IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
               Icon(
-                imageVector = if (isPasswordVisible) Icons.RoundedFilled.VisibilityOff else Icons.RoundedFilled.Visibility,
+                imageVector =
+                  if (isPasswordVisible) {
+                    Icons.RoundedFilled.VisibilityOff
+                  } else {
+                    Icons.RoundedFilled.Visibility
+                  },
                 contentDescription = if (isPasswordVisible) "Hide password" else "Show password",
               )
             }

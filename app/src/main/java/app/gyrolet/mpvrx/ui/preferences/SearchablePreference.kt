@@ -11,10 +11,10 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.ui.background.BackgroundType
 import app.gyrolet.mpvrx.ui.background.RandomInterval
-import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.ui.browser.music.MusicTab
 import app.gyrolet.mpvrx.ui.securefolder.SecureFolderSettingsScreen
 import java.text.Normalizer
@@ -142,7 +142,17 @@ object SearchablePreferences {
         SearchablePreference(
           titleRes = R.string.pref_appearance_app_font_title,
           summaryRes = R.string.pref_appearance_app_font_summary_search,
-          keywords = listOf("font", "system", "typeface", "google sans", "google fonts", "download", "ui", "appearance"),
+          keywords =
+            listOf(
+              "font",
+              "system",
+              "typeface",
+              "google sans",
+              "google fonts",
+              "download",
+              "ui",
+              "appearance",
+            ),
           category = "Appearance",
           screen = AppearancePreferencesScreen,
         ),
@@ -195,7 +205,20 @@ object SearchablePreferences {
         SearchablePreference(
           titleRes = R.string.pref_appearance_thumbnail_generator_title,
           summaryRes = R.string.pref_appearance_thumbnail_generator_summary,
-          keywords = listOf("thumbnail", "generator", "auto", "default", "fallback", "native", "mediastore", "android", "system", "preview", "hidden"),
+          keywords =
+            listOf(
+              "thumbnail",
+              "generator",
+              "auto",
+              "default",
+              "fallback",
+              "native",
+              "mediastore",
+              "android",
+              "system",
+              "preview",
+              "hidden",
+            ),
           category = "Appearance",
           screen = AppearancePreferencesScreen,
         ),
@@ -982,7 +1005,18 @@ object SearchablePreferences {
         add(
           SearchablePreference(
             titleRes = R.string.pref_decoder_dovi_p7_title,
-            keywords = listOf("dolby vision", "dv", "dovi", "profile 7", "fel", "mel", "enhancement layer", "8.1", "hdr10"),
+            keywords =
+              listOf(
+                "dolby vision",
+                "dv",
+                "dovi",
+                "profile 7",
+                "fel",
+                "mel",
+                "enhancement layer",
+                "8.1",
+                "hdr10",
+              ),
             category = "Decoder",
             screen = DecoderPreferencesScreen,
           ),
@@ -1435,7 +1469,26 @@ object SearchablePreferences {
         SearchablePreference(
           titleRes = R.string.pref_codecs_title,
           summaryRes = R.string.pref_codecs_summary,
-          keywords = listOf("codec", "codecs", "hardware", "software", "decoder", "decoding", "av1", "hevc", "h264", "vp9", "hardware acceleration", "gpu", "cpu", "battery", "heating", "media", "mime"),
+          keywords =
+            listOf(
+              "codec",
+              "codecs",
+              "hardware",
+              "software",
+              "decoder",
+              "decoding",
+              "av1",
+              "hevc",
+              "h264",
+              "vp9",
+              "hardware acceleration",
+              "gpu",
+              "cpu",
+              "battery",
+              "heating",
+              "media",
+              "mime",
+            ),
           category = "Advanced",
           screen = CodecCapabilitiesScreen,
         ),
@@ -1466,7 +1519,8 @@ object SearchablePreferences {
       add(
         SearchablePreference(
           titleRes = R.string.pref_ai_provider_title,
-          summary = "Choose OpenCode, Groq, OpenAI, Anthropic, OpenRouter, Together, or a custom OpenAI-compatible provider",
+          summary =
+            "Choose OpenCode, Groq, OpenAI, Anthropic, OpenRouter, Together, or a custom OpenAI-compatible provider",
           keywords =
             listOf(
               "provider",
@@ -1500,7 +1554,17 @@ object SearchablePreferences {
         SearchablePreference(
           titleRes = R.string.pref_custom_openai_base_url_title,
           summaryRes = R.string.pref_custom_openai_base_url_summary,
-          keywords = listOf("custom", "openai", "compatible", "base url", "endpoint", "self hosted", "ollama", "lm studio"),
+          keywords =
+            listOf(
+              "custom",
+              "openai",
+              "compatible",
+              "base url",
+              "endpoint",
+              "self hosted",
+              "ollama",
+              "lm studio",
+            ),
           category = "AI",
           screen = AiIntegrationScreen,
           targetRes = R.string.pref_ai_provider_title,
@@ -1597,7 +1661,10 @@ object SearchablePreferences {
         category = "Appearance",
         screen = AppearancePreferencesScreen,
         anchorItemIndex = 3,
-        SearchEntrySpec(R.string.pref_tree_flatten_depth_title, listOf("tree", "folder", "path", "flatten", "compression")),
+        SearchEntrySpec(
+          R.string.pref_tree_flatten_depth_title,
+          listOf("tree", "folder", "path", "flatten", "compression"),
+        ),
         SearchEntrySpec(R.string.ui_dual_pane_view, listOf("tablet", "two pane", "split", "folder")),
       )
       if (!app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
@@ -1605,7 +1672,10 @@ object SearchablePreferences {
           category = "Appearance",
           screen = AppearancePreferencesScreen,
           anchorItemIndex = 3,
-          SearchEntrySpec(R.string.ui_delete_folder_all_contents, listOf("delete", "folder", "all files", "media only")),
+          SearchEntrySpec(
+            R.string.ui_delete_folder_all_contents,
+            listOf("delete", "folder", "all files", "media only"),
+          ),
         )
       }
       addSearchEntries(
@@ -1624,10 +1694,20 @@ object SearchablePreferences {
         anchorItemIndex = 7,
         SearchEntrySpec(R.string.pref_nav_music_title, listOf("music", "audio", "tab", "navigation")),
         SearchEntrySpec(R.string.pref_nav_profile_title, listOf("profile", "you", "library", "tab", "navigation")),
-        SearchEntrySpec(R.string.profile_layout_title, listOf("profile", "customize", "layout", "reorder", "hide", "sections")),
+        SearchEntrySpec(
+          R.string.profile_layout_title,
+          listOf("profile", "customize", "layout", "reorder", "hide", "sections"),
+        ),
         SearchEntrySpec(R.string.profile_layout_sections, listOf("profile", "sections", "order", "visibility")),
-        SearchEntrySpec(R.string.profile_recently_added, listOf("profile", "recently added", "new", "videos", "shelf"), R.string.profile_layout_sections),
-        SearchEntrySpec(R.string.navbar_glow_title, listOf("glass", "glow", "navbar", "rim", "highlight", "liquid glass")),
+        SearchEntrySpec(
+          R.string.profile_recently_added,
+          listOf("profile", "recently added", "new", "videos", "shelf"),
+          R.string.profile_layout_sections,
+        ),
+        SearchEntrySpec(
+          R.string.navbar_glow_title,
+          listOf("glass", "glow", "navbar", "rim", "highlight", "liquid glass"),
+        ),
         SearchEntrySpec(
           R.string.legacy_navigation_bar_title,
           listOf("legacy", "classic", "bottom", "navigation", "mpvex"),
@@ -1660,7 +1740,10 @@ object SearchablePreferences {
         anchorItemIndex = 9,
         SearchEntrySpec(R.string.pref_anim_controls_style_title, listOf("animation", "controls", "fade", "slide")),
         SearchEntrySpec(R.string.pref_anim_video_open_title, listOf("animation", "video", "opening", "launch")),
-        SearchEntrySpec(R.string.pref_anim_screen_nav_style_title, listOf("animation", "screen", "navigation", "transition")),
+        SearchEntrySpec(
+          R.string.pref_anim_screen_nav_style_title,
+          listOf("animation", "screen", "navigation", "transition"),
+        ),
         SearchEntrySpec(R.string.pref_anim_speed_title, listOf("animation", "speed", "duration", "motion")),
       )
 
@@ -1668,34 +1751,73 @@ object SearchablePreferences {
         category = "Appearance",
         screen = PlayerControlsPreferencesScreen,
         anchorItemIndex = 5,
-        SearchEntrySpec(R.string.pref_section_seekbar_style, listOf("seekbar", "style", "thick", "thin", "squiggly", "wavy")),
+        SearchEntrySpec(
+          R.string.pref_section_seekbar_style,
+          listOf("seekbar", "style", "thick", "thin", "squiggly", "wavy"),
+        ),
       )
       addSearchEntries(
         category = "Appearance",
         screen = ControlLayoutEditorScreen(ControlRegion.BOTTOM_RIGHT),
         anchorItemIndex = 0,
-        SearchEntrySpec(R.string.ui_landscape_seekbar_position, listOf("landscape", "seekbar", "position", "above", "below", "buttons")),
+        SearchEntrySpec(
+          R.string.ui_landscape_seekbar_position,
+          listOf("landscape", "seekbar", "position", "above", "below", "buttons"),
+        ),
         SearchEntrySpec(
           R.string.pref_layout_landscape_playback_position,
-          listOf("landscape", "playback", "play", "pause", "previous", "next", "seekbar", "above", "below", "center", "position"),
+          listOf(
+            "landscape",
+            "playback",
+            "play",
+            "pause",
+            "previous",
+            "next",
+            "seekbar",
+            "above",
+            "below",
+            "center",
+            "position",
+          ),
         ),
       )
       addSearchEntries(
         category = "Appearance",
         screen = ControlLayoutEditorScreen(ControlRegion.PORTRAIT_BOTTOM),
         anchorItemIndex = 0,
-        SearchEntrySpec(R.string.ui_portrait_seekbar_position, listOf("portrait", "seekbar", "position", "above", "below", "buttons")),
+        SearchEntrySpec(
+          R.string.ui_portrait_seekbar_position,
+          listOf("portrait", "seekbar", "position", "above", "below", "buttons"),
+        ),
         SearchEntrySpec(
           R.string.pref_layout_portrait_playback_position,
-          listOf("portrait", "playback", "play", "pause", "previous", "next", "seekbar", "above", "below", "center", "position"),
+          listOf(
+            "portrait",
+            "playback",
+            "play",
+            "pause",
+            "previous",
+            "next",
+            "seekbar",
+            "above",
+            "below",
+            "center",
+            "position",
+          ),
         ),
       )
       addSearchEntries(
         category = "Appearance",
         screen = PlayerControlsPreferencesScreen,
         anchorItemIndex = 7,
-        SearchEntrySpec(R.string.pref_player_buttons_opacity, listOf("opacity", "transparency", "transparent", "alpha", "background", "buttons", "player")),
-        SearchEntrySpec(R.string.ui_time_network_clock, listOf("clock", "time", "network", "format", "12 hour", "24 hour")),
+        SearchEntrySpec(
+          R.string.pref_player_buttons_opacity,
+          listOf("opacity", "transparency", "transparent", "alpha", "background", "buttons", "player"),
+        ),
+        SearchEntrySpec(
+          R.string.ui_time_network_clock,
+          listOf("clock", "time", "network", "format", "12 hour", "24 hour"),
+        ),
       )
       add(
         SearchablePreference(
@@ -1712,7 +1834,10 @@ object SearchablePreferences {
         category = "Player",
         screen = PlayerPreferencesScreen,
         anchorItemIndex = 1,
-        SearchEntrySpec(R.string.pref_playlist_mode_title, listOf("playlist", "next", "previous", "navigation", "queue")),
+        SearchEntrySpec(
+          R.string.pref_playlist_mode_title,
+          listOf("playlist", "next", "previous", "navigation", "queue"),
+        ),
         SearchEntrySpec(R.string.ui_show_media_info_in_chooser, listOf("media info", "chooser", "open with", "system")),
       )
       addSearchEntries(
@@ -1720,7 +1845,10 @@ object SearchablePreferences {
         screen = PlayerPreferencesScreen,
         anchorItemIndex = 3,
         SearchEntrySpec(R.string.pref_player_show_buffered_range_title, listOf("buffer", "seekbar", "cache", "range")),
-        SearchEntrySpec(R.string.pref_player_show_chapter_indicators_title, listOf("chapter", "seekbar", "markers", "indicator")),
+        SearchEntrySpec(
+          R.string.pref_player_show_chapter_indicators_title,
+          listOf("chapter", "seekbar", "markers", "indicator"),
+        ),
         SearchEntrySpec(
           R.string.pref_custom_intro_keywords_enabled,
           listOf("custom", "intro", "opening", "keywords", "chapters"),
@@ -1746,7 +1874,10 @@ object SearchablePreferences {
         category = "Player",
         screen = PlayerPreferencesScreen,
         anchorItemIndex = 5,
-        SearchEntrySpec(R.string.pref_player_safe_area_window_title, listOf("safe area", "cutout", "notch", "insets", "window")),
+        SearchEntrySpec(
+          R.string.pref_player_safe_area_window_title,
+          listOf("safe area", "cutout", "notch", "insets", "window"),
+        ),
       )
       addSearchEntries(
         category = "Player",
@@ -1771,23 +1902,41 @@ object SearchablePreferences {
         SearchEntrySpec(R.string.pref_zoom_overlay_title, listOf("overlay", "zoom", "level", "feedback")),
         SearchEntrySpec(R.string.pref_repeat_shuffle_overlay_title, listOf("overlay", "repeat", "shuffle", "feedback")),
         SearchEntrySpec(R.string.pref_action_feedback_overlay_title, listOf("overlay", "action", "feedback", "pills")),
-        SearchEntrySpec(R.string.pref_provider_status_overlay_title, listOf("overlay", "provider", "status", "network")),
+        SearchEntrySpec(
+          R.string.pref_provider_status_overlay_title,
+          listOf("overlay", "provider", "status", "network"),
+        ),
       )
 
       addSearchEntries(
         category = "Gestures",
         screen = GesturePreferencesScreen,
         anchorItemIndex = 1,
-        SearchEntrySpec(R.string.pref_player_gestures_pinch_to_zoom_subtitles, listOf("pinch", "zoom", "subtitle", "gesture")),
-        SearchEntrySpec(R.string.pref_player_gestures_swipe_subtitles_to_seek_dialog, listOf("swipe", "subtitle", "seek", "dialog")),
-        SearchEntrySpec(R.string.pref_player_gestures_swipe_subtitles_invert_direction, listOf("swipe", "subtitle", "invert", "direction")),
-        SearchEntrySpec(R.string.pref_player_gestures_enable_center_swipe_up_gesture, listOf("swipe up", "center", "playlist", "gesture")),
+        SearchEntrySpec(
+          R.string.pref_player_gestures_pinch_to_zoom_subtitles,
+          listOf("pinch", "zoom", "subtitle", "gesture"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_player_gestures_swipe_subtitles_to_seek_dialog,
+          listOf("swipe", "subtitle", "seek", "dialog"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_player_gestures_swipe_subtitles_invert_direction,
+          listOf("swipe", "subtitle", "invert", "direction"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_player_gestures_enable_center_swipe_up_gesture,
+          listOf("swipe up", "center", "playlist", "gesture"),
+        ),
       )
       addSearchEntries(
         category = "Gestures",
         screen = GesturePreferencesScreen,
         anchorItemIndex = 3,
-        SearchEntrySpec(R.string.pref_gesture_center_vertical_subtitle_position_title, listOf("hold", "drag", "subtitle", "position", "center")),
+        SearchEntrySpec(
+          R.string.pref_gesture_center_vertical_subtitle_position_title,
+          listOf("hold", "drag", "subtitle", "position", "center"),
+        ),
       )
 
       addSearchEntries(
@@ -1795,20 +1944,51 @@ object SearchablePreferences {
         screen = DecoderPreferencesScreen,
         anchorItemIndex = 1,
         SearchEntrySpec(R.string.pref_decoder_profile_title, listOf("mpv", "profile", "fast", "quality", "decoder")),
-        SearchEntrySpec(R.string.pref_anime4k_in_4k_title, listOf("anime4k", "4k", "upscale"), R.string.pref_anime4k_title),
-        SearchEntrySpec(R.string.pref_decoder_gpu_next_enable_title, listOf("gpu-next", "vulkan", "decoder", "enable"), R.string.pref_decoder_gpu_next_title),
-        SearchEntrySpec(R.string.pref_anime4k_quality_title, listOf("anime4k", "quality", "shader"), R.string.pref_anime4k_title),
-        SearchEntrySpec(R.string.pref_anime4k_darken_title, listOf("anime4k", "darken", "lines"), R.string.pref_anime4k_title),
-        SearchEntrySpec(R.string.pref_anime4k_thin_title, listOf("anime4k", "thin", "lines"), R.string.pref_anime4k_title),
-        SearchEntrySpec(R.string.pref_anime4k_deblur_title, listOf("anime4k", "deblur", "sharp"), R.string.pref_anime4k_title),
+        SearchEntrySpec(
+          R.string.pref_anime4k_in_4k_title,
+          listOf("anime4k", "4k", "upscale"),
+          R.string.pref_anime4k_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_decoder_gpu_next_enable_title,
+          listOf("gpu-next", "vulkan", "decoder", "enable"),
+          R.string.pref_decoder_gpu_next_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_anime4k_quality_title,
+          listOf("anime4k", "quality", "shader"),
+          R.string.pref_anime4k_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_anime4k_darken_title,
+          listOf("anime4k", "darken", "lines"),
+          R.string.pref_anime4k_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_anime4k_thin_title,
+          listOf("anime4k", "thin", "lines"),
+          R.string.pref_anime4k_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_anime4k_deblur_title,
+          listOf("anime4k", "deblur", "sharp"),
+          R.string.pref_anime4k_title,
+        ),
       )
       if (MotionInterpolation.isBuildSupported) {
         addSearchEntries(
           category = "Decoder",
           screen = DecoderPreferencesScreen,
           anchorItemIndex = 3,
-          SearchEntrySpec(R.string.motion_title, listOf("motion", "interpolation", "memc", "smooth", "fps", "60fps", "frame")),
-          SearchEntrySpec(R.string.motion_target_title, listOf("target", "fps", "auto", "60", "30", "24", "refresh rate", "motion"), R.string.motion_title),
+          SearchEntrySpec(
+            R.string.motion_title,
+            listOf("motion", "interpolation", "memc", "smooth", "fps", "60fps", "frame"),
+          ),
+          SearchEntrySpec(
+            R.string.motion_target_title,
+            listOf("target", "fps", "auto", "60", "30", "24", "refresh rate", "motion"),
+            R.string.motion_title,
+          ),
         )
       }
 
@@ -1825,20 +2005,68 @@ object SearchablePreferences {
         screen = AudioPreferencesScreen,
         anchorItemIndex = 3,
         SearchEntrySpec(R.string.pref_audio_ambient_mode_title, listOf("audio", "ambient", "background", "visualizer")),
-        SearchEntrySpec(R.string.pref_audio_immersive_artwork_title, listOf("audio", "music", "immersive", "artwork", "album", "cover", "background")),
-        SearchEntrySpec(R.string.pref_audio_wavy_seekbar_title, listOf("audio", "wavy", "seekbar", "visualizer", "animation", "wave")),
-        SearchEntrySpec(R.string.pref_audio_high_quality_artwork_title, listOf("audio", "music", "artwork", "album", "cover", "high quality", "hd", "resolution", "apple", "tidal", "download")),
-        SearchEntrySpec(R.string.pref_audio_animated_artwork_title, listOf("audio", "music", "animated", "artwork", "album", "cover", "apple", "tidal", "spotify", "canvas", "motion")),
-        SearchEntrySpec(R.string.pref_audio_animated_artwork_apple_music_title, listOf("audio", "music", "animated", "artwork", "apple", "motion", "cover")),
-        SearchEntrySpec(R.string.pref_audio_animated_artwork_tidal_title, listOf("audio", "music", "animated", "artwork", "tidal", "video", "cover")),
+        SearchEntrySpec(
+          R.string.pref_audio_immersive_artwork_title,
+          listOf("audio", "music", "immersive", "artwork", "album", "cover", "background"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_audio_wavy_seekbar_title,
+          listOf("audio", "wavy", "seekbar", "visualizer", "animation", "wave"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_audio_high_quality_artwork_title,
+          listOf(
+            "audio",
+            "music",
+            "artwork",
+            "album",
+            "cover",
+            "high quality",
+            "hd",
+            "resolution",
+            "apple",
+            "tidal",
+            "download",
+          ),
+        ),
+        SearchEntrySpec(
+          R.string.pref_audio_animated_artwork_title,
+          listOf(
+            "audio",
+            "music",
+            "animated",
+            "artwork",
+            "album",
+            "cover",
+            "apple",
+            "tidal",
+            "spotify",
+            "canvas",
+            "motion",
+          ),
+        ),
+        SearchEntrySpec(
+          R.string.pref_audio_animated_artwork_apple_music_title,
+          listOf("audio", "music", "animated", "artwork", "apple", "motion", "cover"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_audio_animated_artwork_tidal_title,
+          listOf("audio", "music", "animated", "artwork", "tidal", "video", "cover"),
+        ),
       )
       if (!app.gyrolet.mpvrx.BuildConfig.IS_PLAY_STORE_BUILD) {
         addSearchEntries(
           category = "Audio",
           screen = AudioPreferencesScreen,
           anchorItemIndex = 3,
-          SearchEntrySpec(R.string.pref_audio_animated_artwork_spotify_title, listOf("audio", "music", "animated", "artwork", "spotify", "canvas", "video")),
-          SearchEntrySpec(R.string.pref_spotify_sp_dc_cookie, listOf("spotify", "cookie", "sp_dc", "session", "canvas", "artwork")),
+          SearchEntrySpec(
+            R.string.pref_audio_animated_artwork_spotify_title,
+            listOf("audio", "music", "animated", "artwork", "spotify", "canvas", "video"),
+          ),
+          SearchEntrySpec(
+            R.string.pref_spotify_sp_dc_cookie,
+            listOf("spotify", "cookie", "sp_dc", "session", "canvas", "artwork"),
+          ),
         )
       }
       addSearchEntries(
@@ -1846,7 +2074,10 @@ object SearchablePreferences {
         screen = AudioPreferencesScreen,
         anchorItemIndex = 5,
         SearchEntrySpec(R.string.pref_autoplay_next_audio_title, listOf("autoplay", "next", "audio", "music")),
-        SearchEntrySpec(R.string.pref_audio_drc_title, listOf("audio", "dynamic range", "compression", "drc", "loudness")),
+        SearchEntrySpec(
+          R.string.pref_audio_drc_title,
+          listOf("audio", "dynamic range", "compression", "drc", "loudness"),
+        ),
         SearchEntrySpec(R.string.pref_lyrics_auto_translate, listOf("lyrics", "translation", "automatic", "language")),
         SearchEntrySpec(R.string.pref_lyrics_target_language, listOf("lyrics", "translation", "target", "language")),
         SearchEntrySpec(R.string.pref_lyrics_display_mode, listOf("lyrics", "translation", "display", "style")),
@@ -1857,14 +2088,21 @@ object SearchablePreferences {
         screen = SubtitlesPreferencesScreen,
         anchorItemIndex = 3,
         SearchEntrySpec(R.string.reload_fonts, listOf("subtitle", "font", "reload", "rescan")),
-        SearchEntrySpec(R.string.clear_font_directory, listOf("subtitle", "font", "clear", "folder"), R.string.pref_subtitles_fonts_dir),
+        SearchEntrySpec(
+          R.string.clear_font_directory,
+          listOf("subtitle", "font", "clear", "folder"),
+          R.string.pref_subtitles_fonts_dir,
+        ),
       )
       addSearchEntries(
         category = "Subtitles",
         screen = SubtitlesPreferencesScreen,
         anchorItemIndex = 5,
         SearchEntrySpec(R.string.pref_subtitles_search_mode_title, listOf("subtitle", "search", "mode", "source")),
-        SearchEntrySpec(R.string.pref_subtitles_subhub_sources_title, listOf("subtitle", "subhub", "sources", "provider")),
+        SearchEntrySpec(
+          R.string.pref_subtitles_subhub_sources_title,
+          listOf("subtitle", "subhub", "sources", "provider"),
+        ),
         SearchEntrySpec(
           R.string.pref_betaseries_api_key_title,
           listOf("subtitle", "betaseries", "api", "key"),
@@ -1913,7 +2151,11 @@ object SearchablePreferences {
         category = "Advanced",
         screen = AdvancedPreferencesScreen,
         anchorItemIndex = 3,
-        SearchEntrySpec(R.string.pref_clear_storage_root_title, listOf("storage", "root", "folder", "clear"), R.string.pref_advanced_mpv_conf_storage_location),
+        SearchEntrySpec(
+          R.string.pref_clear_storage_root_title,
+          listOf("storage", "root", "folder", "clear"),
+          R.string.pref_advanced_mpv_conf_storage_location,
+        ),
       )
       addSearchEntries(
         category = "Advanced",
@@ -1933,7 +2175,11 @@ object SearchablePreferences {
         category = "Advanced",
         screen = CustomButtonScreen,
         anchorItemIndex = 0,
-        SearchEntrySpec(R.string.pref_custom_buttons_title, listOf("custom", "buttons", "lua", "player", "script"), R.string.pref_custom_lua_title),
+        SearchEntrySpec(
+          R.string.pref_custom_buttons_title,
+          listOf("custom", "buttons", "lua", "player", "script"),
+          R.string.pref_custom_lua_title,
+        ),
       )
 
       if (app.gyrolet.mpvrx.BuildConfig.ENABLE_YTDLP) {
@@ -1942,9 +2188,15 @@ object SearchablePreferences {
           screen = NetworkConfigurationPreferencesScreen,
           anchorItemIndex = 0,
           SearchEntrySpec(R.string.ui_download_media_subtitles, listOf("yt-dlp", "subtitle", "download", "manual")),
-          SearchEntrySpec(R.string.ui_include_auto_generated_subtitles, listOf("yt-dlp", "subtitle", "automatic", "captions", "youtube")),
+          SearchEntrySpec(
+            R.string.ui_include_auto_generated_subtitles,
+            listOf("yt-dlp", "subtitle", "automatic", "captions", "youtube"),
+          ),
           SearchEntrySpec(R.string.ytdlp_playlist_behavior, listOf("yt-dlp", "playlist", "video", "all entries")),
-          SearchEntrySpec(R.string.ytdlp_cookies_title, listOf("youtube", "yt-dlp", "cookies", "sign in", "authentication", "bot", "import")),
+          SearchEntrySpec(
+            R.string.ytdlp_cookies_title,
+            listOf("youtube", "yt-dlp", "cookies", "sign in", "authentication", "bot", "import"),
+          ),
         )
       }
 
@@ -1957,36 +2209,66 @@ object SearchablePreferences {
         SearchEntrySpec(R.string.pref_stt_output_format_title, listOf("speech", "text", "subtitle", "srt", "vtt")),
         SearchEntrySpec(R.string.pref_stt_provider_title, listOf("speech", "text", "provider", "groq", "openai")),
         SearchEntrySpec(R.string.pref_audio_language_title, listOf("speech", "audio", "language", "detect")),
-        SearchEntrySpec(R.string.pref_enable_translation_title, listOf("subtitle", "translation", "enable", "language")),
-        SearchEntrySpec(R.string.ui_auto_translate_target_languages, listOf("subtitle", "translation", "target", "languages"), R.string.pref_translation_section),
-        SearchEntrySpec(R.string.pref_override_instructions_title, listOf("ai", "prompt", "override", "instructions", "custom")),
+        SearchEntrySpec(
+          R.string.pref_enable_translation_title,
+          listOf("subtitle", "translation", "enable", "language"),
+        ),
+        SearchEntrySpec(
+          R.string.ui_auto_translate_target_languages,
+          listOf("subtitle", "translation", "target", "languages"),
+          R.string.pref_translation_section,
+        ),
+        SearchEntrySpec(
+          R.string.pref_override_instructions_title,
+          listOf("ai", "prompt", "override", "instructions", "custom"),
+        ),
       )
 
       addSearchEntries(
         category = "Media Servers",
         screen = MediaServersPreferencesScreen,
         anchorItemIndex = 1,
-        SearchEntrySpec(R.string.pref_jellyfin_server_management, listOf("jellyfin", "server", "remote", "streaming", "account")),
+        SearchEntrySpec(
+          R.string.pref_jellyfin_server_management,
+          listOf("jellyfin", "server", "remote", "streaming", "account"),
+        ),
       )
       addSearchEntries(
         category = "Media Servers",
         screen = MediaServersPreferencesScreen,
         anchorItemIndex = 2,
-        SearchEntrySpec(R.string.pref_seerr_server_management, listOf("seerr", "jellyseerr", "overseerr", "requests", "server", "api")),
+        SearchEntrySpec(
+          R.string.pref_seerr_server_management,
+          listOf("seerr", "jellyseerr", "overseerr", "requests", "server", "api"),
+        ),
       )
       addSearchEntries(
         category = "Media Servers",
         screen = MediaServersPreferencesScreen,
         anchorItemIndex = 3,
-        SearchEntrySpec(R.string.pref_navidrome_title, listOf("navidrome", "subsonic", "opensubsonic", "music", "server", "stream", "audio")),
-        SearchEntrySpec(R.string.pref_navidrome_add_server, listOf("navidrome", "subsonic", "connect", "server", "music"), R.string.pref_navidrome_title),
+        SearchEntrySpec(
+          R.string.pref_navidrome_title,
+          listOf("navidrome", "subsonic", "opensubsonic", "music", "server", "stream", "audio"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_navidrome_add_server,
+          listOf("navidrome", "subsonic", "connect", "server", "music"),
+          R.string.pref_navidrome_title,
+        ),
       )
       addSearchEntries(
         category = "Media Servers",
         screen = MediaServersPreferencesScreen,
         anchorItemIndex = 4,
-        SearchEntrySpec(R.string.pref_audiobookshelf_title, listOf("audiobookshelf", "abs", "audiobook", "audiobooks", "server", "stream", "listening", "book")),
-        SearchEntrySpec(R.string.pref_audiobookshelf_add_server, listOf("audiobookshelf", "abs", "connect", "server", "token", "login"), R.string.pref_audiobookshelf_title),
+        SearchEntrySpec(
+          R.string.pref_audiobookshelf_title,
+          listOf("audiobookshelf", "abs", "audiobook", "audiobooks", "server", "stream", "listening", "book"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_audiobookshelf_add_server,
+          listOf("audiobookshelf", "abs", "connect", "server", "token", "login"),
+          R.string.pref_audiobookshelf_title,
+        ),
       )
 
       addSearchEntries(
@@ -1994,37 +2276,136 @@ object SearchablePreferences {
         screen = AppearancePreferencesScreen,
         anchorItemIndex = 1,
         SearchEntrySpec(R.string.pref_appearance_category_theme, listOf("theme", "dark", "light", "system", "dynamic")),
-        SearchEntrySpec(R.string.pref_appearance_system_font_title, listOf("font", "system", "default"), R.string.pref_appearance_app_font_title),
-        SearchEntrySpec(R.string.app_font_google_fonts_title, listOf("google", "font", "download", "typeface"), R.string.pref_appearance_app_font_title),
-        SearchEntrySpec(R.string.app_font_google_sans_flex, listOf("google sans", "font", "built in"), R.string.pref_appearance_app_font_title),
-        SearchEntrySpec(R.string.pref_appearance_custom_theme_title, listOf("custom", "theme", "colors", "palette"), R.string.pref_appearance_category_theme),
-        SearchEntrySpec(R.string.pref_appearance_custom_theme_name, listOf("custom", "theme", "name"), R.string.pref_appearance_category_theme),
-        SearchEntrySpec(R.string.pref_appearance_custom_theme_light_primary, listOf("custom", "theme", "light", "primary"), R.string.pref_appearance_category_theme),
-        SearchEntrySpec(R.string.pref_appearance_custom_theme_light_secondary, listOf("custom", "theme", "light", "secondary"), R.string.pref_appearance_category_theme),
-        SearchEntrySpec(R.string.pref_appearance_custom_theme_light_tertiary, listOf("custom", "theme", "light", "tertiary"), R.string.pref_appearance_category_theme),
-        SearchEntrySpec(R.string.pref_appearance_custom_theme_light_background, listOf("custom", "theme", "light", "background"), R.string.pref_appearance_category_theme),
-        SearchEntrySpec(R.string.pref_appearance_custom_theme_dark_primary, listOf("custom", "theme", "dark", "primary"), R.string.pref_appearance_category_theme),
-        SearchEntrySpec(R.string.pref_appearance_custom_theme_dark_secondary, listOf("custom", "theme", "dark", "secondary"), R.string.pref_appearance_category_theme),
-        SearchEntrySpec(R.string.pref_appearance_custom_theme_dark_tertiary, listOf("custom", "theme", "dark", "tertiary"), R.string.pref_appearance_category_theme),
-        SearchEntrySpec(R.string.pref_appearance_custom_theme_dark_background, listOf("custom", "theme", "dark", "background"), R.string.pref_appearance_category_theme),
-        SearchEntrySpec(R.string.pref_appearance_custom_wallpaper_title, listOf("wallpaper", "background", "image", "photo")),
-        SearchEntrySpec(R.string.pref_appearance_custom_wallpaper_crop_title, listOf("wallpaper", "crop", "fit", "fill"), R.string.pref_appearance_custom_wallpaper_title),
-        SearchEntrySpec(R.string.pref_appearance_custom_wallpaper_use_colors, listOf("wallpaper", "colors", "theme", "palette"), R.string.pref_appearance_custom_wallpaper_title),
-        SearchEntrySpec(R.string.pref_appearance_custom_wallpaper_zoom, listOf("wallpaper", "zoom", "scale"), R.string.pref_appearance_custom_wallpaper_title),
-        SearchEntrySpec(R.string.pref_appearance_custom_wallpaper_horizontal, listOf("wallpaper", "horizontal", "position"), R.string.pref_appearance_custom_wallpaper_title),
-        SearchEntrySpec(R.string.pref_appearance_custom_wallpaper_vertical, listOf("wallpaper", "vertical", "position"), R.string.pref_appearance_custom_wallpaper_title),
-        SearchEntrySpec(R.string.pref_appearance_custom_wallpaper_blur, listOf("wallpaper", "blur"), R.string.pref_appearance_custom_wallpaper_title),
-        SearchEntrySpec(R.string.pref_appearance_custom_wallpaper_transparency, listOf("wallpaper", "opacity", "transparency"), R.string.pref_appearance_custom_wallpaper_title),
+        SearchEntrySpec(
+          R.string.pref_appearance_system_font_title,
+          listOf("font", "system", "default"),
+          R.string.pref_appearance_app_font_title,
+        ),
+        SearchEntrySpec(
+          R.string.app_font_google_fonts_title,
+          listOf("google", "font", "download", "typeface"),
+          R.string.pref_appearance_app_font_title,
+        ),
+        SearchEntrySpec(
+          R.string.app_font_google_sans_flex,
+          listOf("google sans", "font", "built in"),
+          R.string.pref_appearance_app_font_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_theme_title,
+          listOf("custom", "theme", "colors", "palette"),
+          R.string.pref_appearance_category_theme,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_theme_name,
+          listOf("custom", "theme", "name"),
+          R.string.pref_appearance_category_theme,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_theme_light_primary,
+          listOf("custom", "theme", "light", "primary"),
+          R.string.pref_appearance_category_theme,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_theme_light_secondary,
+          listOf("custom", "theme", "light", "secondary"),
+          R.string.pref_appearance_category_theme,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_theme_light_tertiary,
+          listOf("custom", "theme", "light", "tertiary"),
+          R.string.pref_appearance_category_theme,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_theme_light_background,
+          listOf("custom", "theme", "light", "background"),
+          R.string.pref_appearance_category_theme,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_theme_dark_primary,
+          listOf("custom", "theme", "dark", "primary"),
+          R.string.pref_appearance_category_theme,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_theme_dark_secondary,
+          listOf("custom", "theme", "dark", "secondary"),
+          R.string.pref_appearance_category_theme,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_theme_dark_tertiary,
+          listOf("custom", "theme", "dark", "tertiary"),
+          R.string.pref_appearance_category_theme,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_theme_dark_background,
+          listOf("custom", "theme", "dark", "background"),
+          R.string.pref_appearance_category_theme,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_wallpaper_title,
+          listOf("wallpaper", "background", "image", "photo"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_wallpaper_crop_title,
+          listOf("wallpaper", "crop", "fit", "fill"),
+          R.string.pref_appearance_custom_wallpaper_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_wallpaper_use_colors,
+          listOf("wallpaper", "colors", "theme", "palette"),
+          R.string.pref_appearance_custom_wallpaper_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_wallpaper_zoom,
+          listOf("wallpaper", "zoom", "scale"),
+          R.string.pref_appearance_custom_wallpaper_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_wallpaper_horizontal,
+          listOf("wallpaper", "horizontal", "position"),
+          R.string.pref_appearance_custom_wallpaper_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_wallpaper_vertical,
+          listOf("wallpaper", "vertical", "position"),
+          R.string.pref_appearance_custom_wallpaper_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_wallpaper_blur,
+          listOf("wallpaper", "blur"),
+          R.string.pref_appearance_custom_wallpaper_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_appearance_custom_wallpaper_transparency,
+          listOf("wallpaper", "opacity", "transparency"),
+          R.string.pref_appearance_custom_wallpaper_title,
+        ),
       )
       addSearchEntries(
         category = "Appearance",
         screen = AppIconPreferencesScreen,
         anchorItemIndex = 0,
         SearchEntrySpec(R.string.pref_app_icon_title, listOf("app", "launcher", "icon", "logo", "purple")),
-        SearchEntrySpec(R.string.app_icon_section_logo, listOf("app", "icon", "logo", "mark"), R.string.pref_app_icon_title),
-        SearchEntrySpec(R.string.app_icon_custom_background, listOf("app", "icon", "custom", "color", "background"), R.string.pref_app_icon_title),
-        SearchEntrySpec(R.string.app_icon_use_wallpaper_colors, listOf("app", "icon", "wallpaper", "colors"), R.string.pref_app_icon_title),
-        SearchEntrySpec(R.string.app_icon_create_custom_shortcut, listOf("app", "icon", "custom", "home", "shortcut"), R.string.pref_app_icon_title),
+        SearchEntrySpec(
+          R.string.app_icon_section_logo,
+          listOf("app", "icon", "logo", "mark"),
+          R.string.pref_app_icon_title,
+        ),
+        SearchEntrySpec(
+          R.string.app_icon_custom_background,
+          listOf("app", "icon", "custom", "color", "background"),
+          R.string.pref_app_icon_title,
+        ),
+        SearchEntrySpec(
+          R.string.app_icon_use_wallpaper_colors,
+          listOf("app", "icon", "wallpaper", "colors"),
+          R.string.pref_app_icon_title,
+        ),
+        SearchEntrySpec(
+          R.string.app_icon_create_custom_shortcut,
+          listOf("app", "icon", "custom", "home", "shortcut"),
+          R.string.pref_app_icon_title,
+        ),
       )
       addSearchEntries(
         category = "Appearance",
@@ -2033,8 +2414,15 @@ object SearchablePreferences {
         SearchEntrySpec(R.string.bg_pref_title, listOf("background", "animation", "effects", "particles")),
         SearchEntrySpec(R.string.bg_parallax_title, listOf("background", "parallax", "tilt", "motion")),
         SearchEntrySpec(R.string.bg_over_wallpaper_title, listOf("background", "animation", "wallpaper", "overlay")),
-        SearchEntrySpec(R.string.bg_seasonal_title, listOf("background", "seasonal", "holiday", "festival", "halloween", "diwali")),
-        SearchEntrySpec(R.string.bg_interval_title, listOf("background", "random", "shuffle", "interval", "daily"), R.string.bg_random),
+        SearchEntrySpec(
+          R.string.bg_seasonal_title,
+          listOf("background", "seasonal", "holiday", "festival", "halloween", "diwali"),
+        ),
+        SearchEntrySpec(
+          R.string.bg_interval_title,
+          listOf("background", "random", "shuffle", "interval", "daily"),
+          R.string.bg_random,
+        ),
       )
       BackgroundType.PICKABLE.forEach { type ->
         add(
@@ -2061,44 +2449,93 @@ object SearchablePreferences {
         category = "Audio",
         screen = AudioPreferencesScreen,
         anchorItemIndex = 1,
-        SearchEntrySpec(R.string.pref_music_player_switch_title, listOf("music", "player", "source", "local", "jellyfin", "navidrome", "audiobooks")),
-        SearchEntrySpec(R.string.pref_lyrics_auto_fetch_online, listOf("lyrics", "online", "automatic", "fetch", "local")),
+        SearchEntrySpec(
+          R.string.pref_music_player_switch_title,
+          listOf("music", "player", "source", "local", "jellyfin", "navidrome", "audiobooks"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_lyrics_auto_fetch_online,
+          listOf("lyrics", "online", "automatic", "fetch", "local"),
+        ),
       )
       addSearchEntries(
         category = "Audio",
         screen = AudioPreferencesScreen,
         anchorItemIndex = 9,
-        SearchEntrySpec(R.string.pref_floating_lyrics_title, listOf("floating", "lyrics", "overlay", "pill", "background")),
+        SearchEntrySpec(
+          R.string.pref_floating_lyrics_title,
+          listOf("floating", "lyrics", "overlay", "pill", "background"),
+        ),
       )
       addSearchEntries(
         category = "AI",
         screen = AiIntegrationScreen,
         anchorItemIndex = 15,
-        SearchEntrySpec(R.string.pref_custom_rename_prompt_label, listOf("ai", "custom", "rename", "prompt"), R.string.pref_override_instructions_title),
-        SearchEntrySpec(R.string.pref_custom_translation_prompt_label, listOf("ai", "custom", "translation", "prompt"), R.string.pref_override_instructions_title),
-        SearchEntrySpec(R.string.pref_custom_format_prompt_label, listOf("ai", "custom", "subtitle", "format", "prompt"), R.string.pref_override_instructions_title),
-        SearchEntrySpec(R.string.ui_real_time_model, listOf("speech", "transcription", "stt", "model"), R.string.search_stt_title),
-        SearchEntrySpec(R.string.pref_verify_key, listOf("ai", "api", "key", "verify"), R.string.search_api_key_config_title),
-        SearchEntrySpec(R.string.pref_fetch_models, listOf("ai", "model", "fetch"), R.string.search_ai_model_selection_title),
-        SearchEntrySpec(R.string.pref_check_model_access, listOf("ai", "model", "verify", "access"), R.string.search_ai_model_selection_title),
+        SearchEntrySpec(
+          R.string.pref_custom_rename_prompt_label,
+          listOf("ai", "custom", "rename", "prompt"),
+          R.string.pref_override_instructions_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_custom_translation_prompt_label,
+          listOf("ai", "custom", "translation", "prompt"),
+          R.string.pref_override_instructions_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_custom_format_prompt_label,
+          listOf("ai", "custom", "subtitle", "format", "prompt"),
+          R.string.pref_override_instructions_title,
+        ),
+        SearchEntrySpec(
+          R.string.ui_real_time_model,
+          listOf("speech", "transcription", "stt", "model"),
+          R.string.search_stt_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_verify_key,
+          listOf("ai", "api", "key", "verify"),
+          R.string.search_api_key_config_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_fetch_models,
+          listOf("ai", "model", "fetch"),
+          R.string.search_ai_model_selection_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_check_model_access,
+          listOf("ai", "model", "verify", "access"),
+          R.string.search_ai_model_selection_title,
+        ),
       )
       addSearchEntries(
         category = "Appearance",
         screen = PlayerControlsPreferencesScreen,
         anchorItemIndex = 7,
-        SearchEntrySpec(R.string.pref_custom_time_label, listOf("custom", "time", "controls", "timeout"), R.string.pref_player_display_hide_player_control_time),
+        SearchEntrySpec(
+          R.string.pref_custom_time_label,
+          listOf("custom", "time", "controls", "timeout"),
+          R.string.pref_player_display_hide_player_control_time,
+        ),
       )
       addSearchEntries(
         category = "Player",
         screen = PlayerPreferencesScreen,
         anchorItemIndex = 7,
-        SearchEntrySpec(R.string.ui_template, listOf("screenshot", "filename", "template"), R.string.ui_filename_template),
+        SearchEntrySpec(
+          R.string.ui_template,
+          listOf("screenshot", "filename", "template"),
+          R.string.ui_filename_template,
+        ),
       )
       addSearchEntries(
         category = "Advanced",
         screen = CustomButtonScreen,
         anchorItemIndex = 0,
-        SearchEntrySpec(R.string.ui_button_title, listOf("custom", "button", "title", "name"), R.string.pref_custom_lua_title),
+        SearchEntrySpec(
+          R.string.ui_button_title,
+          listOf("custom", "button", "title", "name"),
+          R.string.pref_custom_lua_title,
+        ),
       )
       MusicTab.entries.forEach { tab ->
         add(
@@ -2115,24 +2552,52 @@ object SearchablePreferences {
         category = "Player",
         screen = PlayerPreferencesScreen,
         anchorItemIndex = 1,
-        SearchEntrySpec(R.string.pref_player_web_stream_links_title, listOf("web", "stream", "links", "external", "browser")),
-        SearchEntrySpec(R.string.pref_resume_indicator_overlay_title, listOf("resume", "indicator", "overlay", "position")),
+        SearchEntrySpec(
+          R.string.pref_player_web_stream_links_title,
+          listOf("web", "stream", "links", "external", "browser"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_resume_indicator_overlay_title,
+          listOf("resume", "indicator", "overlay", "position"),
+        ),
       )
       addSearchEntries(
         category = "Gestures",
         screen = GesturePreferencesScreen,
         anchorItemIndex = 1,
-        SearchEntrySpec(R.string.pref_gesture_show_seekbar_horizontal_title, listOf("seekbar", "horizontal", "swipe", "seek")),
-        SearchEntrySpec(R.string.pref_gesture_single_tap_left_title, listOf("single", "tap", "left", "action"), R.string.pref_gesture_double_tap_left_title),
-        SearchEntrySpec(R.string.pref_gesture_single_tap_center_title, listOf("single", "tap", "center", "action"), R.string.pref_gesture_double_tap_center_title),
-        SearchEntrySpec(R.string.pref_gesture_single_tap_right_title, listOf("single", "tap", "right", "action"), R.string.pref_gesture_double_tap_right_title),
-        SearchEntrySpec(R.string.pref_custom_seek_label, listOf("custom", "seek", "seconds", "double tap"), R.string.pref_player_double_tap_seek_duration),
+        SearchEntrySpec(
+          R.string.pref_gesture_show_seekbar_horizontal_title,
+          listOf("seekbar", "horizontal", "swipe", "seek"),
+        ),
+        SearchEntrySpec(
+          R.string.pref_gesture_single_tap_left_title,
+          listOf("single", "tap", "left", "action"),
+          R.string.pref_gesture_double_tap_left_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_gesture_single_tap_center_title,
+          listOf("single", "tap", "center", "action"),
+          R.string.pref_gesture_double_tap_center_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_gesture_single_tap_right_title,
+          listOf("single", "tap", "right", "action"),
+          R.string.pref_gesture_double_tap_right_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_custom_seek_label,
+          listOf("custom", "seek", "seconds", "double tap"),
+          R.string.pref_player_double_tap_seek_duration,
+        ),
       )
       addSearchEntries(
         category = "Advanced",
         screen = AdvancedPreferencesScreen,
         anchorItemIndex = 1,
-        SearchEntrySpec(R.string.pref_auto_backup_title, listOf("automatic", "backup", "settings", "restore", "folder")),
+        SearchEntrySpec(
+          R.string.pref_auto_backup_title,
+          listOf("automatic", "backup", "settings", "restore", "folder"),
+        ),
         SearchEntrySpec(R.string.pref_debug_log_size_title, listOf("debug", "log", "size", "limit", "storage")),
       )
       addSearchEntries(
@@ -2140,25 +2605,81 @@ object SearchablePreferences {
         screen = FoldersPreferencesScreen,
         anchorItemIndex = 0,
         SearchEntrySpec(R.string.pref_hidden_scan_per_mode_title, listOf("hidden", "folders", "scan", "nomedia")),
-        SearchEntrySpec(R.string.pref_hidden_scan_library, listOf("hidden", "scan", "library"), R.string.pref_hidden_scan_per_mode_title),
-        SearchEntrySpec(R.string.pref_hidden_scan_tree, listOf("hidden", "scan", "tree"), R.string.pref_hidden_scan_per_mode_title),
-        SearchEntrySpec(R.string.pref_hidden_scan_folders, listOf("hidden", "scan", "folders"), R.string.pref_hidden_scan_per_mode_title),
-        SearchEntrySpec(R.string.pref_folders_hidden_markers_title, listOf("hidden", "markers", "nomedia", "scan"), R.string.pref_hidden_scan_per_mode_title),
-        SearchEntrySpec(R.string.pref_hidden_scan_dot, listOf("hidden", "dot", "folders", "scan"), R.string.pref_hidden_scan_per_mode_title),
-        SearchEntrySpec(R.string.pref_folders_add_marker_title, listOf("hidden", "marker", "add", "nomedia"), R.string.pref_hidden_scan_per_mode_title),
-        SearchEntrySpec(R.string.pref_folders_marker_name, listOf("hidden", "marker", "name", "nomedia"), R.string.pref_hidden_scan_per_mode_title),
+        SearchEntrySpec(
+          R.string.pref_hidden_scan_library,
+          listOf("hidden", "scan", "library"),
+          R.string.pref_hidden_scan_per_mode_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_hidden_scan_tree,
+          listOf("hidden", "scan", "tree"),
+          R.string.pref_hidden_scan_per_mode_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_hidden_scan_folders,
+          listOf("hidden", "scan", "folders"),
+          R.string.pref_hidden_scan_per_mode_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_folders_hidden_markers_title,
+          listOf("hidden", "markers", "nomedia", "scan"),
+          R.string.pref_hidden_scan_per_mode_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_hidden_scan_dot,
+          listOf("hidden", "dot", "folders", "scan"),
+          R.string.pref_hidden_scan_per_mode_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_folders_add_marker_title,
+          listOf("hidden", "marker", "add", "nomedia"),
+          R.string.pref_hidden_scan_per_mode_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_folders_marker_name,
+          listOf("hidden", "marker", "name", "nomedia"),
+          R.string.pref_hidden_scan_per_mode_title,
+        ),
       )
       addSearchEntries(
         category = "Media Servers",
         screen = MediaServersPreferencesScreen,
         anchorItemIndex = 1,
-        SearchEntrySpec(R.string.pref_jellyfin_title, listOf("jellyfin", "server", "login"), R.string.pref_jellyfin_server_management),
-        SearchEntrySpec(R.string.pref_jellyfin_add_server, listOf("jellyfin", "add", "server"), R.string.pref_jellyfin_server_management),
-        SearchEntrySpec(R.string.pref_jellyfin_add_another_server, listOf("jellyfin", "another", "server"), R.string.pref_jellyfin_server_management),
-        SearchEntrySpec(R.string.pref_seerr_title, listOf("seerr", "jellyseerr", "overseerr", "server"), R.string.pref_seerr_server_management),
-        SearchEntrySpec(R.string.pref_seerr_add_server, listOf("seerr", "add", "server"), R.string.pref_seerr_server_management),
-        SearchEntrySpec(R.string.pref_navidrome_add_another_server, listOf("navidrome", "add", "server"), R.string.pref_navidrome_title),
-        SearchEntrySpec(R.string.pref_audiobookshelf_add_another_server, listOf("audiobookshelf", "add", "server"), R.string.pref_audiobookshelf_title),
+        SearchEntrySpec(
+          R.string.pref_jellyfin_title,
+          listOf("jellyfin", "server", "login"),
+          R.string.pref_jellyfin_server_management,
+        ),
+        SearchEntrySpec(
+          R.string.pref_jellyfin_add_server,
+          listOf("jellyfin", "add", "server"),
+          R.string.pref_jellyfin_server_management,
+        ),
+        SearchEntrySpec(
+          R.string.pref_jellyfin_add_another_server,
+          listOf("jellyfin", "another", "server"),
+          R.string.pref_jellyfin_server_management,
+        ),
+        SearchEntrySpec(
+          R.string.pref_seerr_title,
+          listOf("seerr", "jellyseerr", "overseerr", "server"),
+          R.string.pref_seerr_server_management,
+        ),
+        SearchEntrySpec(
+          R.string.pref_seerr_add_server,
+          listOf("seerr", "add", "server"),
+          R.string.pref_seerr_server_management,
+        ),
+        SearchEntrySpec(
+          R.string.pref_navidrome_add_another_server,
+          listOf("navidrome", "add", "server"),
+          R.string.pref_navidrome_title,
+        ),
+        SearchEntrySpec(
+          R.string.pref_audiobookshelf_add_another_server,
+          listOf("audiobookshelf", "add", "server"),
+          R.string.pref_audiobookshelf_title,
+        ),
       )
       addSearchEntries(
         category = "Folders",
@@ -2167,8 +2688,14 @@ object SearchablePreferences {
         SearchEntrySpec(R.string.secure_folder_settings_title, listOf("secure", "folder", "private", "vault")),
         SearchEntrySpec(R.string.secure_folder_biometric_title, listOf("secure", "folder", "biometric", "fingerprint")),
         SearchEntrySpec(R.string.secure_folder_reset_pin, listOf("secure", "folder", "pin", "password", "change")),
-        SearchEntrySpec(R.string.secure_folder_reset_security_question, listOf("secure", "folder", "security", "question")),
-        SearchEntrySpec(R.string.secure_folder_forgot_pin_title, listOf("secure", "folder", "forgot", "pin", "recover")),
+        SearchEntrySpec(
+          R.string.secure_folder_reset_security_question,
+          listOf("secure", "folder", "security", "question"),
+        ),
+        SearchEntrySpec(
+          R.string.secure_folder_forgot_pin_title,
+          listOf("secure", "folder", "forgot", "pin", "recover"),
+        ),
         SearchEntrySpec(R.string.secure_folder_hide_settings, listOf("secure", "folder", "hide", "entry")),
         SearchEntrySpec(R.string.secure_folder_destroy_title, listOf("secure", "folder", "destroy", "delete", "reset")),
       )
@@ -2177,7 +2704,11 @@ object SearchablePreferences {
           category = "Network",
           screen = NetworkConfigurationPreferencesScreen,
           anchorItemIndex = 0,
-          SearchEntrySpec(R.string.ui_yt_dlp_streaming, listOf("yt-dlp", "streaming", "install"), R.string.ui_yt_dlp_manager),
+          SearchEntrySpec(
+            R.string.ui_yt_dlp_streaming,
+            listOf("yt-dlp", "streaming", "install"),
+            R.string.ui_yt_dlp_manager,
+          ),
           SearchEntrySpec(R.string.ui_release_channel, listOf("yt-dlp", "release", "stable", "nightly", "update")),
           SearchEntrySpec(R.string.ytdlp_subtitles_language, listOf("yt-dlp", "subtitles", "language")),
         )
@@ -2194,7 +2725,10 @@ object SearchablePreferences {
             category = "About",
             screen = AboutScreen,
             anchorItemIndex = 0,
-            SearchEntrySpec(R.string.update_auto_install, listOf("update", "automatic", "install", "download", "unmetered")),
+            SearchEntrySpec(
+              R.string.update_auto_install,
+              listOf("update", "automatic", "install", "download", "unmetered"),
+            ),
           )
         }
       }
@@ -2346,14 +2880,20 @@ object SearchablePreferences {
       SearchablePreference(
         titleRes = R.string.pref_codecs_title,
         summaryRes = R.string.pref_codecs_summary,
-        keywords = listOf("codec capability hardware software av1 hevc h264 vp9 audio video mime device decoder report"),
+        keywords =
+          listOf(
+            "codec capability hardware software av1 hevc h264 vp9 audio video mime device decoder report",
+          ),
         category = "Codecs",
         screen = CodecCapabilitiesScreen,
       ),
       SearchablePreference(
         titleRes = R.string.pref_about_title,
         summaryRes = R.string.pref_about_summary,
-        keywords = listOf("version update auto update changelog release license open source libraries github privacy about"),
+        keywords =
+          listOf(
+            "version update auto update changelog release license open source libraries github privacy about",
+          ),
         category = "About",
         screen = AboutScreen,
       ),
@@ -2400,8 +2940,17 @@ object SearchablePreferences {
 
     fun available(preference: SearchablePreference): Boolean =
       (screens == null || preference.screen in screens) &&
-        preference.isAvailable() && (includeSecureFolder || preference.screen != SecureFolderSettingsScreen) &&
-        (if (television) TvSettingsPolicy.supportsSearch(preference) else TvSettingsPolicy.supportsMobileSearch(preference))
+        preference.isAvailable() &&
+        (includeSecureFolder || preference.screen != SecureFolderSettingsScreen) &&
+        (
+          if (television) {
+            TvSettingsPolicy.supportsSearch(
+              preference,
+            )
+          } else {
+            TvSettingsPolicy.supportsMobileSearch(preference)
+          }
+        )
 
     val directResults =
       staticPreferences

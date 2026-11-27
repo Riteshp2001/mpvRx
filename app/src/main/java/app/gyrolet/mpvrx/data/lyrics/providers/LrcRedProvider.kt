@@ -46,8 +46,7 @@ internal object LrcRedProvider : LyricsProviderClient {
     return null
   }
 
-  private suspend fun document(url: String): Lyrics? =
-    lyricsGet(url)?.let(TtmlLyrics::parse)?.let(::lyricsFromSynced)
+  private suspend fun document(url: String): Lyrics? = lyricsGet(url)?.let(TtmlLyrics::parse)?.let(::lyricsFromSynced)
 
   private fun String?.toDocumentUrl(): String? =
     this
@@ -73,8 +72,7 @@ internal object LrcRedProvider : LyricsProviderClient {
     val wantedVersion = versionWords(ref.title)
     val wantedArtists = artists(ref.artist)
 
-    fun gap(hit: SearchHit): Double =
-      if (seconds > 0 && hit.duration != null) abs(hit.duration - seconds) else 0.0
+    fun gap(hit: SearchHit): Double = if (seconds > 0 && hit.duration != null) abs(hit.duration - seconds) else 0.0
 
     return hits
       .asSequence()
@@ -100,7 +98,11 @@ internal object LrcRedProvider : LyricsProviderClient {
   }
 
   private fun artists(raw: String): Set<String> =
-    raw.split(ARTIST_SPLIT).map(::fold).filter { it.isNotEmpty() }.toSet()
+    raw
+      .split(ARTIST_SPLIT)
+      .map(::fold)
+      .filter { it.isNotEmpty() }
+      .toSet()
 
   /** Lower case, accents removed, letters and digits only. */
   private fun fold(value: String): String =
@@ -121,9 +123,27 @@ internal object LrcRedProvider : LyricsProviderClient {
     Regex("""\s*(?:,|&|;|/|\s+and\s+|\s+x\s+|\s+with\s+|\s+feat\.?\s+|\s+ft\.?\s+)\s*""", RegexOption.IGNORE_CASE)
   private val VERSION_WORDS =
     setOf(
-      "live", "remix", "remixed", "mix", "acoustic", "unplugged", "instrumental", "karaoke",
-      "cappella", "acapella", "demo", "edit", "version", "cover", "sped", "slowed", "reverb",
-      "nightcore", "lofi", "orchestral", "extended",
+      "live",
+      "remix",
+      "remixed",
+      "mix",
+      "acoustic",
+      "unplugged",
+      "instrumental",
+      "karaoke",
+      "cappella",
+      "acapella",
+      "demo",
+      "edit",
+      "version",
+      "cover",
+      "sped",
+      "slowed",
+      "reverb",
+      "nightcore",
+      "lofi",
+      "orchestral",
+      "extended",
     )
 
   @Serializable

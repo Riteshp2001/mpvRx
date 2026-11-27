@@ -15,6 +15,7 @@ import android.content.res.Configuration
 
 object DeviceFormFactor {
   @Volatile private var cachedTelevisionFeature: Boolean? = null
+
   @Volatile private var cachedPictureInPictureFeature: Boolean? = null
 
   // TV PiP is reserved for communication, smart-home, health and ticker use cases,

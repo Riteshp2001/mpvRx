@@ -50,27 +50,42 @@ class AndroidPreferenceStore(
   override fun getString(
     key: String,
     defaultValue: String,
-  ): Preference<String> = StringPrimitive(sharedPreferences, keyFlow, key, defaultValue).also { declare(key, PreferenceKind.STRING) }
+  ): Preference<String> =
+    StringPrimitive(sharedPreferences, keyFlow, key, defaultValue).also {
+      declare(key, PreferenceKind.STRING)
+    }
 
   override fun getLong(
     key: String,
     defaultValue: Long,
-  ): Preference<Long> = LongPrimitive(sharedPreferences, keyFlow, key, defaultValue).also { declare(key, PreferenceKind.LONG) }
+  ): Preference<Long> =
+    LongPrimitive(sharedPreferences, keyFlow, key, defaultValue).also {
+      declare(key, PreferenceKind.LONG)
+    }
 
   override fun getInt(
     key: String,
     defaultValue: Int,
-  ): Preference<Int> = IntPrimitive(sharedPreferences, keyFlow, key, defaultValue).also { declare(key, PreferenceKind.INT) }
+  ): Preference<Int> =
+    IntPrimitive(sharedPreferences, keyFlow, key, defaultValue).also {
+      declare(key, PreferenceKind.INT)
+    }
 
   override fun getFloat(
     key: String,
     defaultValue: Float,
-  ): Preference<Float> = FloatPrimitive(sharedPreferences, keyFlow, key, defaultValue).also { declare(key, PreferenceKind.FLOAT) }
+  ): Preference<Float> =
+    FloatPrimitive(sharedPreferences, keyFlow, key, defaultValue).also {
+      declare(key, PreferenceKind.FLOAT)
+    }
 
   override fun getBoolean(
     key: String,
     defaultValue: Boolean,
-  ): Preference<Boolean> = BooleanPrimitive(sharedPreferences, keyFlow, key, defaultValue).also { declare(key, PreferenceKind.BOOLEAN) }
+  ): Preference<Boolean> =
+    BooleanPrimitive(sharedPreferences, keyFlow, key, defaultValue).also {
+      declare(key, PreferenceKind.BOOLEAN)
+    }
 
   override fun getStringSet(
     key: String,

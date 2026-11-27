@@ -402,13 +402,16 @@ class CastPlaybackController(
 
   /** Keeps the local resume snapshot current, so an unexpected disconnect resumes near the receiver position. */
   private fun captureRemotePlayback(client: RemoteMediaClient) {
-    if (!transferredByThisController || client !== remoteMediaClient ||
-      transferredContentId == null || client.mediaInfo?.contentId != transferredContentId
+    if (!transferredByThisController ||
+      client !== remoteMediaClient ||
+      transferredContentId == null ||
+      client.mediaInfo?.contentId != transferredContentId
     ) {
       return
     }
     val state = client.mediaStatus?.playerState ?: return
-    if (state != MediaStatus.PLAYER_STATE_PLAYING && state != MediaStatus.PLAYER_STATE_PAUSED &&
+    if (state != MediaStatus.PLAYER_STATE_PLAYING &&
+      state != MediaStatus.PLAYER_STATE_PAUSED &&
       state != MediaStatus.PLAYER_STATE_BUFFERING
     ) {
       return

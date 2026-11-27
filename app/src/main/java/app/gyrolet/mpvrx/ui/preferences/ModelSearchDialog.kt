@@ -11,8 +11,6 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
-import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,15 +35,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.res.pluralStringResource
 import app.gyrolet.mpvrx.presentation.components.AppPickerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSearchField
 import app.gyrolet.mpvrx.repository.ai.AiModelInfo
 import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
+import app.gyrolet.mpvrx.ui.theme.appPressFeedback
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 
 @Composable
@@ -69,12 +69,15 @@ fun ModelSearchDialog(
 
   AppPickerSheet(
     onDismissRequest = onDismiss,
-    title = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_select_model),
+    title =
+      androidx.compose.ui.res
+        .stringResource(app.gyrolet.mpvrx.R.string.ui_select_model),
     scrollContent = false,
     actions = {
       TextButton(onClick = onDismiss) {
         Text(
-          androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.generic_cancel),
         )
       }
     },
@@ -83,15 +86,18 @@ fun ModelSearchDialog(
       PlayerSheetSearchField(
         query = searchQuery,
         onQueryChange = { searchQuery = it },
-        placeholder = androidx.compose.ui.res.stringResource(app.gyrolet.mpvrx.R.string.ui_search_models),
+        placeholder =
+          androidx.compose.ui.res
+            .stringResource(app.gyrolet.mpvrx.R.string.ui_search_models),
       )
       if (sortedFiltered.isNotEmpty()) {
         Text(
-          text = pluralStringResource(
-            app.gyrolet.mpvrx.R.plurals.ai_model_result_count,
-            sortedFiltered.size,
-            sortedFiltered.size,
-          ),
+          text =
+            pluralStringResource(
+              app.gyrolet.mpvrx.R.plurals.ai_model_result_count,
+              sortedFiltered.size,
+              sortedFiltered.size,
+            ),
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.outline,
           modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
@@ -99,13 +105,14 @@ fun ModelSearchDialog(
       }
       if (sortedFiltered.isEmpty()) {
         Text(
-          text = androidx.compose.ui.res.stringResource(
-            if (searchQuery.isNotBlank()) {
-              app.gyrolet.mpvrx.R.string.ai_model_search_empty
-            } else {
-              app.gyrolet.mpvrx.R.string.ai_model_none_available
-            },
-          ),
+          text =
+            androidx.compose.ui.res.stringResource(
+              if (searchQuery.isNotBlank()) {
+                app.gyrolet.mpvrx.R.string.ai_model_search_empty
+              } else {
+                app.gyrolet.mpvrx.R.string.ai_model_none_available
+              },
+            ),
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.outline,
           modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
@@ -145,14 +152,22 @@ private fun ModelSearchItem(
   val pressed by interactionSource.collectIsPressedAsState()
   Surface(
     onClick = onClick,
-    shape = rememberConnectedShape(
-      index, itemCount, ConnectedLayout.Vertical, tokens = AppConnectedControlShapeTokens,
-      pressed = pressed, selected = isSelected,
-    ),
-    color = animatedConnectedContainerColor(
-      selected = isSelected, pressed = pressed, containerColor = MaterialTheme.colorScheme.surface,
-      selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-    ),
+    shape =
+      rememberConnectedShape(
+        index,
+        itemCount,
+        ConnectedLayout.Vertical,
+        tokens = AppConnectedControlShapeTokens,
+        pressed = pressed,
+        selected = isSelected,
+      ),
+    color =
+      animatedConnectedContainerColor(
+        selected = isSelected,
+        pressed = pressed,
+        containerColor = MaterialTheme.colorScheme.surface,
+        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+      ),
     interactionSource = interactionSource,
     modifier = Modifier.fillMaxWidth().appPressFeedback(interactionSource, pressedScale = 0.985f),
   ) {

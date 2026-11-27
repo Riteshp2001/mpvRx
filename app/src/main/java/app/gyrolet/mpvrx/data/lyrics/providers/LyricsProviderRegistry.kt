@@ -9,12 +9,14 @@ import app.gyrolet.mpvrx.domain.lyrics.Lyrics
 import app.gyrolet.mpvrx.domain.lyrics.LyricsProvider
 import app.gyrolet.mpvrx.utils.logging.Log
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** What one provider said about one track. */
 sealed interface ProviderOutcome {
-  data class Found(val lyrics: Lyrics) : ProviderOutcome
+  data class Found(
+    val lyrics: Lyrics,
+  ) : ProviderOutcome
 
   /** The provider answered and has nothing for this track. */
   data object Missing : ProviderOutcome
@@ -62,19 +64,20 @@ internal class LyricsProviderRegistry(
     if (provider !in LyricsProvider.available) return ProviderOutcome.Missing
     val client = clients[provider] ?: return ProviderOutcome.Missing
     val status = LyricsRequestStatus()
-    val outcome = withTimeoutOrNull(budgetFor(provider)) {
-      withContext(status) {
-        try {
-          client.fetch(query)?.takeIf { it.isValid() }?.let(ProviderOutcome::Found)
-            ?: if (status.failed.get()) ProviderOutcome.Failed else ProviderOutcome.Missing
-        } catch (error: CancellationException) {
-          throw error
-        } catch (error: Throwable) {
-          Log.w("LyricsProviders", "${provider.name}: ${error.javaClass.simpleName}")
-          ProviderOutcome.Failed
+    val outcome =
+      withTimeoutOrNull(budgetFor(provider)) {
+        withContext(status) {
+          try {
+            client.fetch(query)?.takeIf { it.isValid() }?.let(ProviderOutcome::Found)
+              ?: if (status.failed.get()) ProviderOutcome.Failed else ProviderOutcome.Missing
+          } catch (error: CancellationException) {
+            throw error
+          } catch (error: Throwable) {
+            Log.w("LyricsProviders", "${provider.name}: ${error.javaClass.simpleName}")
+            ProviderOutcome.Failed
+          }
         }
-      }
-    } ?: ProviderOutcome.Failed
+      } ?: ProviderOutcome.Failed
     Log.d("LyricsProviders", "${provider.name}: ${outcome.javaClass.simpleName}")
     return outcome
   }

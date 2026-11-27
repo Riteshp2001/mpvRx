@@ -49,9 +49,7 @@ enum class ResumePlaybackMode(
   ),
 }
 
-
 enum class VideoAspect(
-
   @StringRes val titleRes: Int,
 ) {
   Fit(R.string.player_aspect_fit),

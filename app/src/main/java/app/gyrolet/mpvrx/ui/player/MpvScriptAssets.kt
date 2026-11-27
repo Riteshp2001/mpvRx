@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.player
 
 import android.content.Context
@@ -12,14 +12,19 @@ internal object MpvScriptAssets {
   fun installStatisticsScript(context: Context): File {
     val directory = generatedDirectory(context.filesDir)
     check(directory.isDirectory || directory.mkdirs()) { "Could not create generated script directory" }
-    val source = context.assets.open("mpv/stats.lua").bufferedReader().use { it.readText() }
+    val source =
+      context.assets
+        .open("mpv/stats.lua")
+        .bufferedReader()
+        .use { it.readText() }
     return File(directory, "stats.lua").also { script ->
       if (!script.isFile || script.readText() != source) script.writeText(source)
     }
   }
 
   fun userScriptNames(filesDir: File): Set<String> =
-    File(filesDir, "scripts").listFiles()
+    File(filesDir, "scripts")
+      .listFiles()
       ?.asSequence()
       ?.filter { it.isFile && it.extension.lowercase() in setOf("lua", "js") }
       ?.map(File::getName)
@@ -31,7 +36,8 @@ internal object MpvScriptAssets {
    * and folders with a main script, in name order. The FongMi build loads these itself.
    */
   fun autoloadEntries(filesDir: File): List<File> =
-    File(filesDir, "scripts").listFiles()
+    File(filesDir, "scripts")
+      .listFiles()
       ?.filter { entry ->
         !entry.name.startsWith('.') &&
           when {
@@ -47,13 +53,21 @@ internal object MpvScriptAssets {
    * recursive SAF walk and preserves unchanged files instead of deleting/rebuilding the cache.
    * Top-level user scripts are entry points, not modules, so only helper folders are mirrored.
    */
-  fun syncLuaModules(scriptsDir: File, modulesDir: File, helperDirectories: Set<String>? = null): Int {
+  fun syncLuaModules(
+    scriptsDir: File,
+    modulesDir: File,
+    helperDirectories: Set<String>? = null,
+  ): Int {
     check(modulesDir.isDirectory || modulesDir.mkdirs()) { "Could not create Lua module directory" }
     val expectedFiles = mutableSetOf<String>()
     val expectedDirectories = mutableSetOf<String>()
     var copied = 0
 
-    fun syncDirectory(source: File, destination: File, relativePath: String) {
+    fun syncDirectory(
+      source: File,
+      destination: File,
+      relativePath: String,
+    ) {
       expectedDirectories += relativePath
       check(destination.isDirectory || destination.mkdirs()) { "Could not create Lua module folder" }
       val children = checkNotNull(source.listFiles()) { "Could not read cached script folder" }

@@ -17,20 +17,34 @@ import java.util.Locale
 internal object TvDocumentUris {
   fun authority(context: Context): String = "${context.packageName}.tvdocuments"
 
-  fun documentUri(context: Context, file: File): Uri =
-    DocumentsContract.buildDocumentUri(authority(context), documentId(context, file))
+  fun documentUri(
+    context: Context,
+    file: File,
+  ): Uri = DocumentsContract.buildDocumentUri(authority(context), documentId(context, file))
 
-  fun documentUris(context: Context, files: List<File>): List<Uri> {
+  fun documentUris(
+    context: Context,
+    files: List<File>,
+  ): List<Uri> {
     val storageRoots = tvStorageRoots(context)
     return files.map { file -> DocumentsContract.buildDocumentUri(authority(context), documentId(file, storageRoots)) }
   }
 
-  fun treeUri(context: Context, directory: File): Uri =
-    DocumentsContract.buildTreeDocumentUri(authority(context), documentId(context, directory))
+  fun treeUri(
+    context: Context,
+    directory: File,
+  ): Uri = DocumentsContract.buildTreeDocumentUri(authority(context), documentId(context, directory))
 
-  fun documentId(context: Context, file: File): String = documentId(file, tvStorageRoots(context))
+  fun documentId(
+    context: Context,
+    file: File,
+  ): String = documentId(file, tvStorageRoots(context))
 
-  fun forEachDocument(context: Context, files: Array<File>, block: (File, String) -> Unit) {
+  fun forEachDocument(
+    context: Context,
+    files: Array<File>,
+    block: (File, String) -> Unit,
+  ) {
     val storageRoots = tvStorageRoots(context)
     files.forEach { file ->
       val id = runCatching { documentId(file, storageRoots) }.getOrNull() ?: return@forEach
@@ -38,27 +52,38 @@ internal object TvDocumentUris {
     }
   }
 
-  private fun documentId(file: File, storageRoots: List<TvStorageRoot>): String {
+  private fun documentId(
+    file: File,
+    storageRoots: List<TvStorageRoot>,
+  ): String {
     val target = file.canonicalFile
-    val root = storageRoots.sortedByDescending { it.directory.path.length }
-      .firstOrNull { contains(it.directory, target) }
-      ?: throw FileNotFoundException("File is outside mounted storage")
+    val root =
+      storageRoots
+        .sortedByDescending { it.directory.path.length }
+        .firstOrNull { contains(it.directory, target) }
+        ?: throw FileNotFoundException("File is outside mounted storage")
     val relative = if (target == root.directory) "" else target.relativeTo(root.directory).path
     return "${root.id}:$relative"
   }
 
-  fun file(context: Context, documentId: String): File {
+  fun file(
+    context: Context,
+    documentId: String,
+  ): File {
     val separator = documentId.indexOf(':')
     if (separator <= 0) throw FileNotFoundException("Invalid document ID")
-    val root = tvStorageRoots(context).firstOrNull { it.id.equals(documentId.substring(0, separator), true) }
-      ?: throw FileNotFoundException("Storage is unavailable")
+    val root =
+      tvStorageRoots(context).firstOrNull { it.id.equals(documentId.substring(0, separator), true) }
+        ?: throw FileNotFoundException("Storage is unavailable")
     val target = File(root.directory, documentId.substring(separator + 1)).canonicalFile
     if (!contains(root.directory, target)) throw FileNotFoundException("Invalid document path")
     return target
   }
 
-  private fun contains(root: File, target: File): Boolean =
-    target == root || target.path.startsWith(root.path.trimEnd(File.separatorChar) + File.separator)
+  private fun contains(
+    root: File,
+    target: File,
+  ): Boolean = target == root || target.path.startsWith(root.path.trimEnd(File.separatorChar) + File.separator)
 }
 
 class TvDocumentsProvider : DocumentsProvider() {
@@ -67,7 +92,10 @@ class TvDocumentsProvider : DocumentsProvider() {
   override fun queryRoots(projection: Array<out String>?): Cursor =
     MatrixCursor(projection ?: arrayOf(DocumentsContract.Root.COLUMN_ROOT_ID))
 
-  override fun queryDocument(documentId: String, projection: Array<out String>?): Cursor {
+  override fun queryDocument(
+    documentId: String,
+    projection: Array<out String>?,
+  ): Cursor {
     val file = existingFile(documentId)
     return MatrixCursor(projection ?: DOCUMENT_COLUMNS).apply { addDocument(this, file, documentId) }
   }
@@ -88,14 +116,22 @@ class TvDocumentsProvider : DocumentsProvider() {
 
   override fun getDocumentType(documentId: String): String = mimeType(existingFile(documentId))
 
-  override fun openDocument(documentId: String, mode: String, signal: CancellationSignal?): ParcelFileDescriptor {
+  override fun openDocument(
+    documentId: String,
+    mode: String,
+    signal: CancellationSignal?,
+  ): ParcelFileDescriptor {
     signal?.throwIfCanceled()
     val file = existingFile(documentId)
     if (!file.isFile) throw FileNotFoundException("Not a file")
     return ParcelFileDescriptor.open(file, ParcelFileDescriptor.parseMode(mode))
   }
 
-  override fun createDocument(parentDocumentId: String, mimeType: String, displayName: String): String {
+  override fun createDocument(
+    parentDocumentId: String,
+    mimeType: String,
+    displayName: String,
+  ): String {
     val parent = existingFile(parentDocumentId)
     if (!parent.isDirectory) throw FileNotFoundException("Not a folder")
     val child = childFile(parent, displayName)
@@ -109,7 +145,10 @@ class TvDocumentsProvider : DocumentsProvider() {
     if (!existingFile(documentId).delete()) throw FileNotFoundException("Could not delete document")
   }
 
-  override fun renameDocument(documentId: String, displayName: String): String {
+  override fun renameDocument(
+    documentId: String,
+    displayName: String,
+  ): String {
     if (documentId.substringAfter(':', "").isEmpty()) throw FileNotFoundException("Cannot rename storage")
     val file = existingFile(documentId)
     val parent = file.parentFile ?: throw FileNotFoundException("Cannot rename storage")
@@ -118,7 +157,10 @@ class TvDocumentsProvider : DocumentsProvider() {
     return TvDocumentUris.documentId(requireProviderContext(), target)
   }
 
-  override fun isChildDocument(parentDocumentId: String, documentId: String): Boolean {
+  override fun isChildDocument(
+    parentDocumentId: String,
+    documentId: String,
+  ): Boolean {
     val parent = TvDocumentUris.file(requireProviderContext(), parentDocumentId)
     val child = TvDocumentUris.file(requireProviderContext(), documentId)
     return child.path.startsWith(parent.path.trimEnd(File.separatorChar) + File.separator)
@@ -130,7 +172,10 @@ class TvDocumentsProvider : DocumentsProvider() {
 
   private fun requireProviderContext(): Context = context ?: throw FileNotFoundException("Provider is unavailable")
 
-  private fun childFile(parent: File, name: String): File {
+  private fun childFile(
+    parent: File,
+    name: String,
+  ): File {
     if (name.isBlank() || name == "." || name == ".." || '/' in name || '\\' in name || '\u0000' in name) {
       throw FileNotFoundException("Invalid file name")
     }
@@ -146,24 +191,27 @@ class TvDocumentsProvider : DocumentsProvider() {
   ) {
     val writable = file.canWrite()
     val flags =
-      if (!writable) 0 else if (file.isDirectory) {
+      if (!writable) {
+        0
+      } else if (file.isDirectory) {
         DocumentsContract.Document.FLAG_DIR_SUPPORTS_CREATE or
           (if (documentId.substringAfter(':').isEmpty()) 0 else DocumentsContract.Document.FLAG_SUPPORTS_RENAME)
       } else {
         DocumentsContract.Document.FLAG_SUPPORTS_WRITE or DocumentsContract.Document.FLAG_SUPPORTS_DELETE or
           DocumentsContract.Document.FLAG_SUPPORTS_RENAME
       }
-    val values = cursor.columnNames.map { column ->
-      when (column) {
-        DocumentsContract.Document.COLUMN_DOCUMENT_ID -> documentId
-        DocumentsContract.Document.COLUMN_DISPLAY_NAME -> file.name.ifBlank { file.path }
-        DocumentsContract.Document.COLUMN_MIME_TYPE -> mimeType(file)
-        DocumentsContract.Document.COLUMN_FLAGS -> flags
-        DocumentsContract.Document.COLUMN_SIZE -> if (file.isFile) file.length() else null
-        DocumentsContract.Document.COLUMN_LAST_MODIFIED -> file.lastModified()
-        else -> null
+    val values =
+      cursor.columnNames.map { column ->
+        when (column) {
+          DocumentsContract.Document.COLUMN_DOCUMENT_ID -> documentId
+          DocumentsContract.Document.COLUMN_DISPLAY_NAME -> file.name.ifBlank { file.path }
+          DocumentsContract.Document.COLUMN_MIME_TYPE -> mimeType(file)
+          DocumentsContract.Document.COLUMN_FLAGS -> flags
+          DocumentsContract.Document.COLUMN_SIZE -> if (file.isFile) file.length() else null
+          DocumentsContract.Document.COLUMN_LAST_MODIFIED -> file.lastModified()
+          else -> null
+        }
       }
-    }
     cursor.addRow(values)
   }
 
@@ -174,24 +222,26 @@ class TvDocumentsProvider : DocumentsProvider() {
       val extension = file.extension.lowercase(Locale.ROOT)
       when {
         extension == "iso" -> FileTypeUtils.getMimeTypeFromExtension(extension)
-        else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
-          ?: when (extension) {
-            in FileTypeUtils.AUDIO_EXTENSIONS ->
-              FileTypeUtils.getMimeTypeFromExtension(extension).takeUnless { it == "video/*" } ?: "audio/*"
-            in FileTypeUtils.VIDEO_EXTENSIONS -> FileTypeUtils.getMimeTypeFromExtension(extension)
-            else -> "application/octet-stream"
-          }
+        else ->
+          MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+            ?: when (extension) {
+              in FileTypeUtils.AUDIO_EXTENSIONS ->
+                FileTypeUtils.getMimeTypeFromExtension(extension).takeUnless { it == "video/*" } ?: "audio/*"
+              in FileTypeUtils.VIDEO_EXTENSIONS -> FileTypeUtils.getMimeTypeFromExtension(extension)
+              else -> "application/octet-stream"
+            }
       }
     }
 
   companion object {
-    private val DOCUMENT_COLUMNS = arrayOf(
-      DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-      DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-      DocumentsContract.Document.COLUMN_MIME_TYPE,
-      DocumentsContract.Document.COLUMN_FLAGS,
-      DocumentsContract.Document.COLUMN_SIZE,
-      DocumentsContract.Document.COLUMN_LAST_MODIFIED,
-    )
+    private val DOCUMENT_COLUMNS =
+      arrayOf(
+        DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+        DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+        DocumentsContract.Document.COLUMN_MIME_TYPE,
+        DocumentsContract.Document.COLUMN_FLAGS,
+        DocumentsContract.Document.COLUMN_SIZE,
+        DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+      )
   }
 }

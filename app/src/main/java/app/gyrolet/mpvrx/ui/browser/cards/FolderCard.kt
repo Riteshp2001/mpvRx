@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -30,8 +30,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,18 +60,19 @@ import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.BrowserPageViewPreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
+import app.gyrolet.mpvrx.preferences.ThumbnailGenerator
 import app.gyrolet.mpvrx.preferences.VideoSwipeAction
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvContextMenu
-import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
-import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.onWallpaper
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -90,7 +91,7 @@ data class FolderCardUiConfig(
   val includeAudio: Boolean = false,
   val swipeLeft: VideoSwipeAction = VideoSwipeAction.AddToPlaylist,
   val swipeRight: VideoSwipeAction = VideoSwipeAction.ToggleWatched,
-  val thumbnailGenerator: app.gyrolet.mpvrx.preferences.ThumbnailGenerator = app.gyrolet.mpvrx.preferences.ThumbnailGenerator.Auto,
+  val thumbnailGenerator: ThumbnailGenerator = ThumbnailGenerator.Auto,
 )
 
 /** Hoist this once per screen and pass the result to every card rather than collecting per item. */
@@ -99,14 +100,16 @@ fun rememberFolderCardUiConfig(viewPreferences: BrowserPageViewPreferences? = nu
   val appearancePreferences = koinInject<AppearancePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
 
-  val unlimitedNameLines by (viewPreferences?.unlimitedNameLines ?: appearancePreferences.unlimitedNameLines).collectAsState()
+  val unlimitedNameLines by (viewPreferences?.unlimitedNameLines ?: appearancePreferences.unlimitedNameLines)
+    .collectAsState()
   val showTotalVideosChip by (viewPreferences?.showItemCount ?: browserPreferences.showTotalVideosChip).collectAsState()
   val showTotalDurationChip by browserPreferences.showTotalDurationChip.collectAsState()
   val showTotalSizeChip by browserPreferences.showTotalSizeChip.collectAsState()
   val showDateChip by (viewPreferences?.showDateChip ?: browserPreferences.showDateChip).collectAsState()
   val showFolderPath by browserPreferences.showFolderPath.collectAsState()
   val centerGridTitles by (viewPreferences?.centerGridTitles ?: browserPreferences.centerGridTitles).collectAsState()
-  val showFolderThumbnails by (viewPreferences?.showThumbnails ?: browserPreferences.showFolderThumbnails).collectAsState()
+  val showFolderThumbnails by (viewPreferences?.showThumbnails ?: browserPreferences.showFolderThumbnails)
+    .collectAsState()
   val thumbnailGenerator by browserPreferences.thumbnailGenerator.collectAsState()
   val includeAudio by browserPreferences.includeAudioBrowser.collectAsState()
   val swipeLeft by browserPreferences.videoSwipeLeft.collectAsState()
@@ -190,8 +193,12 @@ fun FolderCard(
   val thumbnailRepository = koinInject<ThumbnailRepository>()
   val thumbnailCacheRevision by thumbnailRepository.cacheRevision.collectAsState()
   var thumbnailSize by remember { mutableStateOf(IntSize.Zero) }
-  var folderThumbnail by remember(folder.bucketId, thumbnailGenerator, thumbnailCacheRevision) { mutableStateOf<android.graphics.Bitmap?>(null) }
-  var folderPreviewFrames by remember(folder.bucketId, thumbnailGenerator, thumbnailCacheRevision) { mutableStateOf<List<android.graphics.Bitmap?>>(emptyList()) }
+  var folderThumbnail by remember(folder.bucketId, thumbnailGenerator, thumbnailCacheRevision) {
+    mutableStateOf<android.graphics.Bitmap?>(null)
+  }
+  var folderPreviewFrames by remember(folder.bucketId, thumbnailGenerator, thumbnailCacheRevision) {
+    mutableStateOf<List<android.graphics.Bitmap?>>(emptyList())
+  }
   // The available tile width, rather than device class alone, determines whether
   // four video previews remain readable at the current grid column count.
   val showPreviewCollage = with(LocalDensity.current) { thumbnailSize.width >= 148.dp.roundToPx() }
@@ -207,7 +214,12 @@ fun FolderCard(
     showPreviewCollage,
     allowThumbnailGeneration,
   ) {
-    if (folder.path.isNotBlank() && isGridMode && showFolderThumbnails && thumbnailSize.width > 0 && thumbnailSize.height > 0) {
+    if (folder.path.isNotBlank() &&
+      isGridMode &&
+      showFolderThumbnails &&
+      thumbnailSize.width > 0 &&
+      thumbnailSize.height > 0
+    ) {
       delay(350L)
       withContext(Dispatchers.IO) {
         // On a fresh install there is nothing to reuse. Avoid querying every folder
@@ -228,13 +240,14 @@ fun FolderCard(
           val columns = if (preview.size > 1) 2 else 1
           val cellWidth = (thumbnailSize.width / columns).coerceAtLeast(1)
           val cellHeight = (thumbnailSize.height / columns).coerceAtLeast(1)
-          val bitmaps = preview.map { video ->
-            if (allowThumbnailGeneration) {
-              thumbnailRepository.getThumbnail(video, cellWidth, cellHeight)
-            } else {
-              thumbnailRepository.getCachedThumbnail(video, cellWidth, cellHeight)
+          val bitmaps =
+            preview.map { video ->
+              if (allowThumbnailGeneration) {
+                thumbnailRepository.getThumbnail(video, cellWidth, cellHeight)
+              } else {
+                thumbnailRepository.getCachedThumbnail(video, cellWidth, cellHeight)
+              }
             }
-          }
           withContext(Dispatchers.Main) {
             folderPreviewFrames = bitmaps
             folderThumbnail = bitmaps.firstOrNull()
@@ -259,7 +272,9 @@ fun FolderCard(
   // Remove the redundant folder name from the path
   val parentPath = folder.path.substringBeforeLast("/", folder.path)
 
-  val hiddenFolderLabel = androidx.compose.ui.res.stringResource(R.string.ui_hidden_folder)
+  val hiddenFolderLabel =
+    androidx.compose.ui.res
+      .stringResource(R.string.ui_hidden_folder)
 
   @Composable
   fun PinnedFolderBadge(modifier: Modifier = Modifier) {
@@ -294,10 +309,17 @@ fun FolderCard(
     leftAction = if (scopedFolder && swipeLeft == VideoSwipeAction.Delete) VideoSwipeAction.None else swipeLeft,
     rightAction = if (scopedFolder && swipeRight == VideoSwipeAction.Delete) VideoSwipeAction.None else swipeRight,
     isWatched = null,
-    enabled = !isGridMode && !isSelected &&
-      (folder.path.startsWith('/') ||
-        (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY &&
-          app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner.isScopedFolder(folder.bucketId))),
+    enabled =
+      !isGridMode &&
+        !isSelected &&
+        (
+          folder.path.startsWith('/') ||
+            (
+              app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY &&
+                app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
+                  .isScopedFolder(folder.bucketId)
+            )
+        ),
     onAction = onSwipeAction?.let { action -> { swipe -> action(folder, swipe) } },
     modifier =
       modifier
@@ -306,7 +328,7 @@ fun FolderCard(
         .tvFocusMemory("folder:${folder.bucketId}:${folder.path}")
         .tvFocusHighlight(cardShape, focusedScale = 1.03f)
         .clip(cardShape)
-                .semantics { selected = isSelected }
+        .semantics { selected = isSelected }
         .tvContextMenu(onLongClick)
         .mediaCardClickable(
           onClick = onClick,
@@ -317,7 +339,9 @@ fun FolderCard(
   ) {
     // Size the actual Card content, not just the swipe wrapper's outer box; otherwise
     // the selected tonal background stops above a taller neighbor in the same row.
-    Box(modifier = if (isGridMode) Modifier.fillMaxWidth().heightIn(min = gridRowMinHeight) else Modifier.fillMaxWidth()) {
+    Box(
+      modifier = if (isGridMode) Modifier.fillMaxWidth().heightIn(min = gridRowMinHeight) else Modifier.fillMaxWidth(),
+    ) {
       Box(
         modifier =
           Modifier
@@ -355,8 +379,11 @@ fun FolderCard(
           ) {
             val folderImageBitmap = remember(folderThumbnail) { folderThumbnail?.asImageBitmap() }
             val resolvedThumbnail = thumbnail ?: folderImageBitmap.takeIf { showFolderThumbnails }
-            val showMosaic = thumbnail == null && showFolderThumbnails && folderPreviewFrames.size > 1 &&
-              folderPreviewFrames.any { it != null }
+            val showMosaic =
+              thumbnail == null &&
+                showFolderThumbnails &&
+                folderPreviewFrames.size > 1 &&
+                folderPreviewFrames.any { it != null }
             val previewReveal =
               rememberThumbnailReveal(
                 showMosaic || resolvedThumbnail != null,
@@ -382,7 +409,12 @@ fun FolderCard(
                 contentDescription =
                   androidx.compose.ui.res
                     .stringResource(app.gyrolet.mpvrx.R.string.ui_folder),
-                modifier = placeholderIconSize?.let { Modifier.size(it) } ?: Modifier.fillMaxWidth().aspectRatio(aspect),
+                modifier =
+                  placeholderIconSize?.let {
+                    Modifier.size(
+                      it,
+                    )
+                  } ?: Modifier.fillMaxWidth().aspectRatio(aspect),
                 tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
               )
             }
@@ -443,7 +475,7 @@ fun FolderCard(
                   Modifier
                     .align(Alignment.BottomEnd)
                     .padding(6.dp)
-                      .cardOverlay()
+                    .cardOverlay()
                     .padding(horizontal = 6.dp, vertical = 2.dp),
               ) {
                 Text(
@@ -723,7 +755,8 @@ private fun formatDuration(durationMs: Long): String {
 }
 
 private fun formatFileSize(bytes: Long): String =
-  app.gyrolet.mpvrx.utils.storage.VideoScanUtils.formatFileSize(bytes)
+  app.gyrolet.mpvrx.utils.storage.VideoScanUtils
+    .formatFileSize(bytes)
 
 // Hoisted because a card formats a date on every recomposition and SimpleDateFormat construction
 // parses the pattern and clones a Calendar each time.
@@ -734,7 +767,6 @@ private val FOLDER_DATE_FORMATTER: java.time.format.DateTimeFormatter =
 
 private fun formatDate(timestampSeconds: Long): String =
   FOLDER_DATE_FORMATTER.format(java.time.Instant.ofEpochSecond(timestampSeconds))
-
 
 // The collage uses at most four images and responds to the actual display cell width.
 // Two frames divide the cover horizontally; three/four use connected 2x2 blocks.
@@ -758,11 +790,12 @@ private fun FolderPreviewMosaic(
         for (index in first until last) {
           val bitmap = visible[index]
           Box(
-            modifier = Modifier
-              .weight(1f)
-              .fillMaxHeight()
-              .clip(rememberConnectedShape(index, visible.size, ConnectedLayout.Grid, columns))
-              .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            modifier =
+              Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .clip(rememberConnectedShape(index, visible.size, ConnectedLayout.Grid, columns))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
             contentAlignment = Alignment.Center,
           ) {
             if (bitmap != null) {

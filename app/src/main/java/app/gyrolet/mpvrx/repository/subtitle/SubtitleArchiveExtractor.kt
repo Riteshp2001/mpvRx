@@ -9,6 +9,8 @@
 
 package app.gyrolet.mpvrx.repository.subtitle
 
+import me.zhanghai.android.libarchive.Archive
+import me.zhanghai.android.libarchive.ArchiveEntry
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -17,8 +19,6 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.zip.ZipInputStream
-import me.zhanghai.android.libarchive.Archive
-import me.zhanghai.android.libarchive.ArchiveEntry
 
 object SubtitleArchiveExtractor {
   private val subtitleExtensions = setOf("srt", "vtt", "ass", "ssa", "sub")
@@ -248,8 +248,7 @@ object SubtitleArchiveExtractor {
 
   private fun String.archiveFileName(): String = substringAfterLast('/').substringAfterLast('\\')
 
-  private fun String?.normalizedFileName(): String? =
-    this?.archiveFileName()?.lowercase(Locale.ROOT)
+  private fun String?.normalizedFileName(): String? = this?.archiveFileName()?.lowercase(Locale.ROOT)
 
   private fun archiveEntryScore(
     fileName: String,

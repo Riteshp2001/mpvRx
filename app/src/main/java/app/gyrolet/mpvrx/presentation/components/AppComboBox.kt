@@ -28,15 +28,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenu
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox as MaterialExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuBoxScope
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.minimumInteractiveComponentSize
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
@@ -66,6 +64,8 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import androidx.compose.material3.ExposedDropdownMenuBox as MaterialExposedDropdownMenuBox
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 /*
  * The app's one combobox: a control that shows the current choice and opens a list to pick another.
@@ -79,13 +79,18 @@ import app.gyrolet.mpvrx.ui.theme.AppMotion
 
 object AppComboBoxDefaults {
   val MenuShape: Shape = RoundedCornerShape(24.dp)
-  val ConnectedMenuShape: Shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomEnd = 24.dp, bottomStart = 24.dp)
-  val ConnectedMenuAboveShape: Shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomEnd = 4.dp, bottomStart = 4.dp)
+  val ConnectedMenuShape: Shape =
+    RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomEnd = 24.dp, bottomStart = 24.dp)
+  val ConnectedMenuAboveShape: Shape =
+    RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomEnd = 4.dp, bottomStart = 4.dp)
   val MenuMaxHeight: Dp = 300.dp
   val ChipMinHeight: Dp = 40.dp
 
   @Composable
-  fun fieldShape(expanded: Boolean, menuAbove: Boolean = false): Shape {
+  fun fieldShape(
+    expanded: Boolean,
+    menuAbove: Boolean = false,
+  ): Shape {
     val joiningCorner by animateDpAsState(
       targetValue = if (expanded) 4.dp else 24.dp,
       animationSpec = if (AppMotion.shouldReduceMotion()) snap() else tween(200),
@@ -176,8 +181,18 @@ fun <T> AppComboBox(
       enabled = enabled,
       singleLine = true,
       isError = isError,
-      label = if (label != null) { { Text(label) } } else null,
-      placeholder = if (placeholder != null) { { Text(placeholder) } } else null,
+      label =
+        if (label != null) {
+          { Text(label) }
+        } else {
+          null
+        },
+      placeholder =
+        if (placeholder != null) {
+          { Text(placeholder) }
+        } else {
+          null
+        },
       leadingIcon = leadingIcon,
       trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) },
       supportingText = supportingText,
@@ -294,11 +309,12 @@ fun AppComboBoxChipAnchor(
     border = BorderStroke(1.dp, if (expanded) colors.primary else colors.outlineVariant),
   ) {
     Row(
-      modifier = if (text.isEmpty()) {
-        Modifier.padding(horizontal = 10.dp)
-      } else {
-        Modifier.padding(start = if (leadingIcon != null) 10.dp else 16.dp, end = 6.dp)
-      },
+      modifier =
+        if (text.isEmpty()) {
+          Modifier.padding(horizontal = 10.dp)
+        } else {
+          Modifier.padding(start = if (leadingIcon != null) 10.dp else 16.dp, end = 6.dp)
+        },
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -338,17 +354,25 @@ fun ExposedDropdownMenuBoxScope.AppComboBoxMenu(
     onDismissRequest = onDismissRequest,
     modifier = modifier.heightIn(max = AppComboBoxDefaults.MenuMaxHeight),
     matchAnchorWidth = true,
-    shape = if (connection?.menuAbove == true) AppComboBoxDefaults.ConnectedMenuAboveShape else AppComboBoxDefaults.ConnectedMenuShape,
+    shape =
+      if (connection?.menuAbove ==
+        true
+      ) {
+        AppComboBoxDefaults.ConnectedMenuAboveShape
+      } else {
+        AppComboBoxDefaults.ConnectedMenuShape
+      },
     containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)),
     content = {
       val popupView = LocalView.current
       Column(
-        modifier = Modifier.fillMaxWidth().onGloballyPositioned {
-          val location = IntArray(2)
-          popupView.rootView.getLocationOnScreen(location)
-          connection?.menuTop = location[1].toFloat()
-        },
+        modifier =
+          Modifier.fillMaxWidth().onGloballyPositioned {
+            val location = IntArray(2)
+            popupView.rootView.getLocationOnScreen(location)
+            connection?.menuTop = location[1].toFloat()
+          },
         content = content,
       )
     },
@@ -422,7 +446,12 @@ private fun <T> AppComboBoxOptions(
       index = index,
       itemCount = options.size,
       supportingText = optionSupportingText?.invoke(option),
-      leadingIcon = if (optionLeadingIcon != null) { { optionLeadingIcon(option) } } else null,
+      leadingIcon =
+        if (optionLeadingIcon != null) {
+          { optionLeadingIcon(option) }
+        } else {
+          null
+        },
       onClick = { onSelect(option) },
     )
   }

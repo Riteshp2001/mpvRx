@@ -23,14 +23,13 @@ import android.util.Rational
 import android.view.View
 import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.utils.logging.Log
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-
-import androidx.core.content.ContextCompat
 
 private const val PIP_INTENTS_FILTER = "pip_action"
 private const val PIP_INTENT_ACTION = "pip_action_code"
@@ -46,7 +45,6 @@ class MPVPipHelper(
   private val isAudioPlayer: () -> Boolean = { false },
   private val isVideoLoaded: () -> Boolean = { false },
 ) : KoinComponent {
-
   constructor(
     activity: AppCompatActivity,
     mpvView: MPVView,
@@ -105,7 +103,12 @@ class MPVPipHelper(
   }
 
   fun updatePictureInPictureParams() {
-    if (!DeviceFormFactor.supportsPlaybackPictureInPicture(activity) || activity.isFinishing || activity.isDestroyed) return
+    if (!DeviceFormFactor.supportsPlaybackPictureInPicture(activity) ||
+      activity.isFinishing ||
+      activity.isDestroyed
+    ) {
+      return
+    }
 
     val params = buildPipParams()
     runCatching { activity.setPictureInPictureParams(params) }
@@ -141,10 +144,15 @@ class MPVPipHelper(
   private fun getVideoAspectRatio(): Rational? {
     val playback = PlaybackSession.state.value
     if (
-      activity.isFinishing || activity.isDestroyed || isAudioPlayer() || !isVideoLoaded() ||
+      activity.isFinishing ||
+      activity.isDestroyed ||
+      isAudioPlayer() ||
+      !isVideoLoaded() ||
       !playback.surfaceAttached ||
       playback.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
-    ) return null
+    ) {
+      return null
+    }
 
     // video-out-params/dw and dh are valid mpv properties, but they disappear as soon as the
     // video output is detached. Prefer the already-observed source metadata so PiP layout
@@ -153,9 +161,11 @@ class MPVPipHelper(
     val height = PlaybackSession.propInt["video-params/h"].value ?: return null
     if (width <= 0 || height <= 0) return null
 
-    val sourceAspect = PlaybackSession.propDouble["video-params/aspect"].value
-      ?.takeIf { it.isFinite() && it > 0.0 }
-      ?: (width.toDouble() / height.toDouble())
+    val sourceAspect =
+      PlaybackSession.propDouble["video-params/aspect"]
+        .value
+        ?.takeIf { it.isFinite() && it > 0.0 }
+        ?: (width.toDouble() / height.toDouble())
     val rotation = (PlaybackSession.getPropertyInt("video-params/rotate") ?: 0).mod(360)
     val displayedAspect = if (rotation == 90 || rotation == 270) 1.0 / sourceAspect else sourceAspect
     if (!displayedAspect.isFinite() || displayedAspect !in 0.5..2.39) return null

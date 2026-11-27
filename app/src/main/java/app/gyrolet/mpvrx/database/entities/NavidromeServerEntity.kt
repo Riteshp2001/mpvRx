@@ -34,7 +34,12 @@ data class NavidromeServerEntity(
       username = username,
       password = password,
       token = token,
-      authMode = try { NavidromeAuthMode.valueOf(authMode) } catch (_: Exception) { NavidromeAuthMode.CREDENTIALS },
+      authMode =
+        try {
+          NavidromeAuthMode.valueOf(authMode)
+        } catch (_: Exception) {
+          NavidromeAuthMode.CREDENTIALS
+        },
       lastConnected = lastConnected,
     )
 

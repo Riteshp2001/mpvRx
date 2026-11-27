@@ -22,22 +22,22 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -48,8 +48,8 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.AbsoluteAlignment
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
@@ -60,23 +60,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.getPlayerButtonLabel
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.LocalBorderlessPlayerControls
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.DraggablePanel
 import app.gyrolet.mpvrx.ui.player.controls.components.panels.DraggablePanelHeader
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
-import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
-import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.controlColor
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 
@@ -210,7 +210,7 @@ internal fun PlayerControlEdgeHandle(
     modifier =
       modifier
         .width(EdgeTouchWidth)
-        .fillMaxHeight(EdgeTouchHeightFraction)
+        .fillMaxHeight(EDGE_TOUCH_HEIGHT_FRACTION)
         .pointerInput(enabled, thresholdPx, maxPullPx) {
           if (!enabled) return@pointerInput
           var thresholdReached = false
@@ -322,12 +322,14 @@ private fun PlayerControlPanelContent(
   val tileHeight = ((screenHeight - 148.dp) / 3f).coerceIn(68.dp, 104.dp)
 
   Column(
-    modifier = Modifier.fillMaxWidth()
-      .padding(start = 16.dp, end = 16.dp, bottom = 20.dp)
-      .tvFocusGroup(),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(start = 16.dp, end = 16.dp, bottom = 20.dp)
+        .tvFocusGroup(),
     verticalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing),
   ) {
-    buttons.chunked(PanelColumnCount).forEachIndexed { rowIndex, rowButtons ->
+    buttons.chunked(PANEL_COLUMN_COUNT).forEachIndexed { rowIndex, rowButtons ->
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing),
@@ -338,17 +340,18 @@ private fun PlayerControlPanelContent(
             active = button in activeButtons,
             renderButton = renderButton,
             tileHeight = tileHeight,
-            shape = rememberConnectedShape(
-              index = rowIndex * PanelColumnCount + columnIndex,
-              itemCount = buttons.size,
-              layout = ConnectedLayout.Grid,
-              columns = PanelColumnCount,
-              tokens = AppConnectedControlShapeTokens,
-            ),
+            shape =
+              rememberConnectedShape(
+                index = rowIndex * PANEL_COLUMN_COUNT + columnIndex,
+                itemCount = buttons.size,
+                layout = ConnectedLayout.Grid,
+                columns = PANEL_COLUMN_COUNT,
+                tokens = AppConnectedControlShapeTokens,
+              ),
             modifier = Modifier.weight(1f),
           )
         }
-        repeat(PanelColumnCount - rowButtons.size) {
+        repeat(PANEL_COLUMN_COUNT - rowButtons.size) {
           Spacer(Modifier.weight(1f))
         }
       }
@@ -412,8 +415,8 @@ private fun PlayerControlTile(
           Modifier
             .size(if (compact) 44.dp else 56.dp)
             .graphicsLayer {
-              scaleX = if (compact) 1f else PanelIconScale
-              scaleY = if (compact) 1f else PanelIconScale
+              scaleX = if (compact) 1f else PANEL_ICON_SCALE
+              scaleY = if (compact) 1f else PANEL_ICON_SCALE
             },
         contentAlignment = Alignment.Center,
       ) {
@@ -436,7 +439,6 @@ private fun PlayerControlTile(
 private val EdgeTouchWidth = 48.dp
 private val EdgePullThreshold = 64.dp
 private val EdgePullMaximum = 92.dp
-private const val PanelIconScale = 1.24f
-private const val EdgeTouchHeightFraction = 0.34f
-private const val PanelColumnCount = 3
-
+private const val PANEL_ICON_SCALE = 1.24f
+private const val EDGE_TOUCH_HEIGHT_FRACTION = 0.34f
+private const val PANEL_COLUMN_COUNT = 3

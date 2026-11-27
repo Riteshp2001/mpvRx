@@ -777,8 +777,9 @@ class WyzieSearchRepository(
 
   private suspend fun tmdbSearch(query: String): List<WyzieTmdbResult> {
     val apiKey = preferences.wyzieApiKey.get().trim()
-    val url = "$baseUrl/api/tmdb/search?q=${URLEncoder.encode(query, "UTF-8")}" +
-      if (apiKey.isNotBlank()) "&key=${URLEncoder.encode(apiKey, "UTF-8")}" else ""
+    val url =
+      "$baseUrl/api/tmdb/search?q=${URLEncoder.encode(query, "UTF-8")}" +
+        if (apiKey.isNotBlank()) "&key=${URLEncoder.encode(apiKey, "UTF-8")}" else ""
     try {
       val request =
         Request

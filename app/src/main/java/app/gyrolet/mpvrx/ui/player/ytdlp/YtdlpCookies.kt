@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.player.ytdlp
 
 import android.content.Context
@@ -19,19 +19,28 @@ internal object YtdlpCookies {
     val uri = Uri.parse(source)
     if (!uri.scheme.equals("https", true) && !uri.scheme.equals("http", true)) return false
     val host = uri.host?.lowercase(Locale.ROOT) ?: return false
-    return host == "youtu.be" || host == "youtube.com" || host.endsWith(".youtube.com") ||
-      host == "youtube-nocookie.com" || host.endsWith(".youtube-nocookie.com")
+    return host == "youtu.be" ||
+      host == "youtube.com" ||
+      host.endsWith(".youtube.com") ||
+      host == "youtube-nocookie.com" ||
+      host.endsWith(".youtube-nocookie.com")
   }
 
   fun isAuthenticationError(message: String): Boolean {
     val text = message.lowercase(Locale.ROOT)
     return (
       text.contains("sign in") &&
-        (text.contains("not a bot") || text.contains("confirm your age") ||
-          text.contains("verify your age") || text.contains("private video"))
-      ) ||
-      text.contains("login required") || text.contains("cookies are no longer valid") ||
-      text.contains("cookies have expired") || text.contains("failed to load cookies") ||
+        (
+          text.contains("not a bot") ||
+            text.contains("confirm your age") ||
+            text.contains("verify your age") ||
+            text.contains("private video")
+        )
+    ) ||
+      text.contains("login required") ||
+      text.contains("cookies are no longer valid") ||
+      text.contains("cookies have expired") ||
+      text.contains("failed to load cookies") ||
       text.contains("could not load cookies")
   }
 
@@ -40,7 +49,10 @@ internal object YtdlpCookies {
       it.key.lowercase(Locale.ROOT) in setOf("cookies", "no-cookies", "cookies-from-browser")
     }
 
-  fun importCookies(context: Context, uri: Uri): File {
+  fun importCookies(
+    context: Context,
+    uri: Uri,
+  ): File {
     val bytes =
       context.contentResolver.openInputStream(uri)?.use { input ->
         val output = ByteArrayOutputStream()
@@ -93,9 +105,12 @@ internal object YtdlpCookies {
         // Never import the unrelated account sessions in a whole-browser cookie export.
         if (domain != "youtube.com" && !domain.endsWith(".youtube.com")) return@mapNotNull null
         val expires = fields[4].toLongOrNull() ?: throw InvalidYtdlpCookiesException()
-        if (fields[1] !in setOf("TRUE", "FALSE") || fields[3] !in setOf("TRUE", "FALSE") ||
+        if (fields[1] !in setOf("TRUE", "FALSE") ||
+          fields[3] !in setOf("TRUE", "FALSE") ||
           (fields[1] == "TRUE") != cookieDomain.startsWith(".") ||
-          !fields[2].startsWith("/") || fields[5].isBlank() || expires < 0L ||
+          !fields[2].startsWith("/") ||
+          fields[5].isBlank() ||
+          expires < 0L ||
           fields.any { field -> field.any { it.isISOControl() } }
         ) {
           throw InvalidYtdlpCookiesException()

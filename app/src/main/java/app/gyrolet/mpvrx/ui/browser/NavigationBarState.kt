@@ -31,7 +31,11 @@ import com.kyant.backdrop.Backdrop
 object NavigationBarState {
   private var selectionOwner: Any? = null
 
-  internal fun claimSelection(owner: Any, inSelectionMode: Boolean, onlyVideos: Boolean) {
+  internal fun claimSelection(
+    owner: Any,
+    inSelectionMode: Boolean,
+    onlyVideos: Boolean,
+  ) {
     selectionOwner = owner
     updateSelectionState(inSelectionMode, onlyVideos)
   }
@@ -97,19 +101,21 @@ object NavigationBarState {
     get() = selectionBarHeight + floatingBarSpacing * 2
 
   val bottomBarClearance: Dp
-    get() = when {
-      isInSelectionMode -> selectionBarClearance
-      isNavBarVisible -> navigationBarClearance
-      else -> 0.dp
-    }
+    get() =
+      when {
+        isInSelectionMode -> selectionBarClearance
+        isNavBarVisible -> navigationBarClearance
+        else -> 0.dp
+      }
 
   val miniPlayerBottomSpacing: Dp
-    get() = when {
-      isInSelectionMode -> selectionBarClearance
-      isMiniPlayerDocked -> navigationPillHeight + navigationBarBottomSpacing + connectedDockSpacing
-      isNavBarVisible && !isMiniPlayerBesideNavigation && !isDualPaneLayout -> navigationBarClearance
-      else -> floatingBarSpacing
-    }
+    get() =
+      when {
+        isInSelectionMode -> selectionBarClearance
+        isMiniPlayerDocked -> navigationPillHeight + navigationBarBottomSpacing + connectedDockSpacing
+        isNavBarVisible && !isMiniPlayerBesideNavigation && !isDualPaneLayout -> navigationBarClearance
+        else -> floatingBarSpacing
+      }
 
   // Includes the complete stack below the player, but never system insets.
   val miniPlayerClearance: Dp
@@ -119,7 +125,8 @@ object NavigationBarState {
     get() = maxOf(bottomBarClearance, miniPlayerClearance)
 
   internal fun canPlaceMiniPlayerBesideNavigation(availableWidth: Dp): Boolean =
-    availableWidth >= navigationPillMaxMargin + navigationPillMaxWidth + floatingBarSpacing + miniPlayerMinWidth + floatingBarSpacing
+    availableWidth >=
+      navigationPillMaxMargin + navigationPillMaxWidth + floatingBarSpacing + miniPlayerMinWidth + floatingBarSpacing
 
   var shouldHideNavigationBar: Boolean by mutableStateOf(false)
     private set
@@ -200,7 +207,11 @@ object NavigationBarState {
 
 @Composable
 internal fun rememberMiniPlayerShape(): RoundedCornerShape {
-  val joiningCorner = 20.dp * (1f - NavigationBarState.dockProgress) +
-    NavigationBarState.connectedDockCorner * NavigationBarState.dockProgress
-  return AppShapeScale.largeIncreased.copy(bottomStart = CornerSize(joiningCorner), bottomEnd = CornerSize(joiningCorner))
+  val joiningCorner =
+    20.dp * (1f - NavigationBarState.dockProgress) +
+      NavigationBarState.connectedDockCorner * NavigationBarState.dockProgress
+  return AppShapeScale.largeIncreased.copy(
+    bottomStart = CornerSize(joiningCorner),
+    bottomEnd = CornerSize(joiningCorner),
+  )
 }

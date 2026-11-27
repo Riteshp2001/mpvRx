@@ -4,8 +4,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -34,7 +32,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -50,8 +47,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.lyrics.LyricsSourceType
+import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.controls.components.LyricsProviderPicker
@@ -87,9 +86,10 @@ fun LyricsSheet(
     modifier = modifier,
   ) {
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 20.dp, vertical = 8.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 20.dp, vertical = 8.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       // Header title + Source Switcher
@@ -150,7 +150,8 @@ fun LyricsSheet(
         val hasOnline = state.onlineLyrics != null && state.onlineLyrics?.isValid() == true
 
         FilterChip(
-          selected = state.selectedSource == LyricsSourceType.EMBEDDED || state.selectedSource == LyricsSourceType.LOCAL,
+          selected =
+            state.selectedSource == LyricsSourceType.EMBEDDED || state.selectedSource == LyricsSourceType.LOCAL,
           onClick = { viewModel.switchLyricsSource(LyricsSourceType.EMBEDDED) },
           label = {
             Text(
@@ -164,10 +165,11 @@ fun LyricsSheet(
             )
           },
           enabled = hasEmbedded || state.selectedSource == LyricsSourceType.EMBEDDED,
-          colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-          ),
+          colors =
+            FilterChipDefaults.filterChipColors(
+              selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+              selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ),
         )
 
         FilterChip(
@@ -176,10 +178,11 @@ fun LyricsSheet(
           label = {
             Text(stringResource(R.string.lyrics_source_online))
           },
-          colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-          ),
+          colors =
+            FilterChipDefaults.filterChipColors(
+              selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+              selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ),
         )
 
         if (state.isLoading) {
@@ -222,12 +225,13 @@ fun LyricsSheet(
 
       // Lyrics Content
       Box(
-        modifier = Modifier
-          .fillMaxWidth()
-          .height(340.dp)
-          .clip(RoundedCornerShape(16.dp))
-          .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.7f))
-          .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .height(340.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.7f))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
       ) {
         val activeLyrics = state.lyrics
@@ -252,29 +256,30 @@ fun LyricsSheet(
             ) {
               itemsIndexed(
                 items = activeLyrics.synced,
-                key = { index, line -> "${line.time}_${index}" },
+                key = { index, line -> "${line.time}_$index" },
                 contentType = { _, _ -> "lyric_sheet_synced" },
               ) { index, line ->
                 val isActive = index == state.activeLineIndex
                 val textColor by animateColorAsState(
-                  targetValue = if (isActive) {
-                    MaterialTheme.colorScheme.primary
-                  } else {
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
-                  },
+                  targetValue =
+                    if (isActive) {
+                      MaterialTheme.colorScheme.primary
+                    } else {
+                      MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+                    },
                   animationSpec = tween(durationMillis = 250),
                   label = "LyricTextColor",
                 )
 
                 Column(
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable {
-                      val targetSeconds = line.time / 1000f
-                      PlaybackSession.command("seek", targetSeconds.toString(), "absolute+exact")
-                    }
-                    .padding(vertical = 4.dp, horizontal = 8.dp),
+                  modifier =
+                    Modifier
+                      .fillMaxWidth()
+                      .clip(RoundedCornerShape(8.dp))
+                      .clickable {
+                        val targetSeconds = line.time / 1000f
+                        PlaybackSession.command("seek", targetSeconds.toString(), "absolute+exact")
+                      }.padding(vertical = 4.dp, horizontal = 8.dp),
                   horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                   Text(
@@ -291,7 +296,14 @@ fun LyricsSheet(
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                       text = trans,
-                      color = if (isActive) MaterialTheme.colorScheme.primary.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.70f),
+                      color =
+                        if (isActive) {
+                          MaterialTheme.colorScheme.primary.copy(
+                            alpha = 0.85f,
+                          )
+                        } else {
+                          MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.70f)
+                        },
                       fontSize = if (isActive) 15.sp else 13.sp,
                       fontWeight = FontWeight.Medium,
                       fontFamily = fontFamilyForText(trans),

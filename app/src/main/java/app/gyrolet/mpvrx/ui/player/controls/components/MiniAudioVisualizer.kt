@@ -40,10 +40,11 @@ fun MiniAudioVisualizer(
     infiniteTransition.animateFloat(
       initialValue = 0.2f,
       targetValue = 0.95f,
-      animationSpec = infiniteRepeatable(
-        animation = tween(durationMillis = 480, easing = LinearEasing),
-        repeatMode = RepeatMode.Reverse,
-      ),
+      animationSpec =
+        infiniteRepeatable(
+          animation = tween(durationMillis = 480, easing = LinearEasing),
+          repeatMode = RepeatMode.Reverse,
+        ),
       label = "bar_1",
     )
   } else {
@@ -54,10 +55,11 @@ fun MiniAudioVisualizer(
     infiniteTransition.animateFloat(
       initialValue = 0.4f,
       targetValue = 1.0f,
-      animationSpec = infiniteRepeatable(
-        animation = tween(durationMillis = 620, easing = LinearEasing),
-        repeatMode = RepeatMode.Reverse,
-      ),
+      animationSpec =
+        infiniteRepeatable(
+          animation = tween(durationMillis = 620, easing = LinearEasing),
+          repeatMode = RepeatMode.Reverse,
+        ),
       label = "bar_2",
     )
   } else {
@@ -68,10 +70,11 @@ fun MiniAudioVisualizer(
     infiniteTransition.animateFloat(
       initialValue = 0.2f,
       targetValue = 0.85f,
-      animationSpec = infiniteRepeatable(
-        animation = tween(durationMillis = 400, easing = LinearEasing),
-        repeatMode = RepeatMode.Reverse,
-      ),
+      animationSpec =
+        infiniteRepeatable(
+          animation = tween(durationMillis = 400, easing = LinearEasing),
+          repeatMode = RepeatMode.Reverse,
+        ),
       label = "bar_3",
     )
   } else {
@@ -82,10 +85,11 @@ fun MiniAudioVisualizer(
     infiniteTransition.animateFloat(
       initialValue = 0.3f,
       targetValue = 0.75f,
-      animationSpec = infiniteRepeatable(
-        animation = tween(durationMillis = 540, easing = LinearEasing),
-        repeatMode = RepeatMode.Reverse,
-      ),
+      animationSpec =
+        infiniteRepeatable(
+          animation = tween(durationMillis = 540, easing = LinearEasing),
+          repeatMode = RepeatMode.Reverse,
+        ),
       label = "bar_4",
     )
   } else {

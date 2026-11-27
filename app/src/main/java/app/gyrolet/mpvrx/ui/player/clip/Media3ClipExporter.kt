@@ -14,8 +14,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.Clock
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.effect.Crop
 import androidx.media3.effect.CanvasOverlay
+import androidx.media3.effect.Crop
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
@@ -74,17 +74,20 @@ internal object Media3ClipExporter {
         val transformer = buildTransformer(context, headers, audioTrack, completion)
 
         val mediaItem =
-          MediaItem.Builder()
+          MediaItem
+            .Builder()
             .setUri(clipMediaUri(source))
             .setClippingConfiguration(
-              MediaItem.ClippingConfiguration.Builder()
+              MediaItem.ClippingConfiguration
+                .Builder()
                 .setStartPositionMs((startSeconds.coerceAtLeast(0.0) * 1000.0).roundToLong())
                 .setEndPositionMs((endSeconds.coerceAtLeast(startSeconds) * 1000.0).roundToLong())
                 .build(),
             ).build()
 
         val editedMediaItem =
-          EditedMediaItem.Builder(mediaItem)
+          EditedMediaItem
+            .Builder(mediaItem)
             .setEffects(buildEffects(context, crop, cropFrameWidth, cropFrameHeight, subtitleCues))
             .build()
 
@@ -92,15 +95,16 @@ internal object Media3ClipExporter {
         var finished = false
         try {
           transformer.start(editedMediaItem, output)
-          progressJob = launch {
-            val holder = ProgressHolder()
-            while (completion.isActive) {
-              if (transformer.getProgress(holder) == Transformer.PROGRESS_STATE_AVAILABLE) {
-                onProgress((holder.progress / 100.0).coerceIn(0.0, 1.0))
+          progressJob =
+            launch {
+              val holder = ProgressHolder()
+              while (completion.isActive) {
+                if (transformer.getProgress(holder) == Transformer.PROGRESS_STATE_AVAILABLE) {
+                  onProgress((holder.progress / 100.0).coerceIn(0.0, 1.0))
+                }
+                delay(PROGRESS_POLL_MS)
               }
-              delay(PROGRESS_POLL_MS)
             }
-          }
           completion.await().also { finished = true }
         } finally {
           if (!finished) transformer.cancel()
@@ -118,29 +122,41 @@ internal object Media3ClipExporter {
     val dataSourceFactory = clipDataSourceFactory(context, headers)
     val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
     val decoderFactory =
-      DefaultDecoderFactory.Builder(context)
+      DefaultDecoderFactory
+        .Builder(context)
         .setEnableDecoderFallback(true)
         .build()
     // The export has its own selector; playback's audio choice is not modified.
     val assetLoaderFactory =
       if (audioTrack != null) {
-        val selectorFactory = TrackSelector.Factory { selectorContext ->
-          DefaultTrackSelector(selectorContext).apply {
-            val parameters = buildUponParameters()
-            audioTrack.language.takeIf { it.isNotBlank() }
-              ?.let(parameters::setPreferredAudioLanguage)
-            audioTrack.title.takeIf { it.isNotBlank() }
-              ?.let { parameters.setPreferredAudioLabels(it) }
-            setParameters(parameters)
+        val selectorFactory =
+          TrackSelector.Factory { selectorContext ->
+            DefaultTrackSelector(selectorContext).apply {
+              val parameters = buildUponParameters()
+              audioTrack.language
+                .takeIf { it.isNotBlank() }
+                ?.let(parameters::setPreferredAudioLanguage)
+              audioTrack.title
+                .takeIf { it.isNotBlank() }
+                ?.let { parameters.setPreferredAudioLabels(it) }
+              setParameters(parameters)
+            }
           }
-        }
         ExoPlayerAssetLoader.Factory(
-          context, decoderFactory, Clock.DEFAULT, mediaSourceFactory,
-          selectorFactory, null, null,
+          context,
+          decoderFactory,
+          Clock.DEFAULT,
+          mediaSourceFactory,
+          selectorFactory,
+          null,
+          null,
         )
       } else {
         ExoPlayerAssetLoader.Factory(
-          context, decoderFactory, Clock.DEFAULT, mediaSourceFactory,
+          context,
+          decoderFactory,
+          Clock.DEFAULT,
+          mediaSourceFactory,
         )
       }
 
@@ -165,7 +181,8 @@ internal object Media3ClipExporter {
         }
       }
 
-    return Transformer.Builder(context)
+    return Transformer
+      .Builder(context)
       .setAssetLoaderFactory(assetLoaderFactory)
       .setVideoMimeType(MimeTypes.VIDEO_H264)
       .setAudioMimeType(MimeTypes.AUDIO_AAC)
@@ -208,12 +225,16 @@ private class TimedClipSubtitleOverlay(
   private val active = mutableListOf<ClipSubtitleCue>()
   private var nextCue = 0
   private var lastTimeUs = Long.MIN_VALUE
+
   // This view is never attached to a window. It is created and drawn only on the GL thread.
   private val subtitleView by lazy(LazyThreadSafetyMode.NONE) {
     SubtitleView(context).apply { setViewType(SubtitleView.VIEW_TYPE_CANVAS) }
   }
 
-  override fun onDraw(canvas: Canvas, presentationTimeUs: Long) {
+  override fun onDraw(
+    canvas: Canvas,
+    presentationTimeUs: Long,
+  ) {
     // CanvasOverlay reuses its bitmap without clearing it between frames.
     canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
     var changed = false

@@ -165,12 +165,15 @@ object NetworkBookmarksScreen : Screen {
     val bookmarks by bookmarkPreferences.bookmarks.collectAsState()
     val connectionFlow = remember(networkRepository) { networkRepository.getAllConnections() }
     val connections by connectionFlow.collectAsState(initial = emptyList())
-    val resolvedBookmarks = remember(bookmarks, connections) {
-      resolveNetworkFolderBookmarks(bookmarks, connections)
-    }
+    val resolvedBookmarks =
+      remember(bookmarks, connections) {
+        resolveNetworkFolderBookmarks(bookmarks, connections)
+      }
 
     Scaffold(
-      containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
+      containerColor =
+        app.gyrolet.mpvrx.ui.theme
+          .wallpaperAwareBackgroundColor(),
       topBar = {
         BrowserTopBar(
           title = stringResource(R.string.network_bookmarks_title),

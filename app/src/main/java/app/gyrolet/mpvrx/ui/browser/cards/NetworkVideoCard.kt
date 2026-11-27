@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -37,11 +38,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.domain.network.NetworkConnection
@@ -54,17 +56,14 @@ import app.gyrolet.mpvrx.ui.browser.components.MediaTypeBadge
 import app.gyrolet.mpvrx.ui.browser.components.NetworkMediaType
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
-import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
 import app.gyrolet.mpvrx.ui.player.controls.components.tvContextMenu
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.AppShapeScale
+import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
-
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.ui.text.style.TextAlign
 
 @Composable
 fun NetworkVideoCard(
@@ -166,7 +165,7 @@ fun NetworkVideoCard(
         .tvFocusMemory("network:${file.path}")
         .tvFocusHighlight(cardShape, focusedScale = 1.03f)
         .clip(cardShape)
-                .semantics { selected = isSelected }
+        .semantics { selected = isSelected }
         .tvContextMenu(onLongClick)
         .mediaCardClickable(
           onClick = onClick,
@@ -189,153 +188,60 @@ fun NetworkVideoCard(
               .padding(horizontal = 4.dp, vertical = 6.dp),
           horizontalAlignment = if (centerGridTitles) Alignment.CenterHorizontally else Alignment.Start,
         ) {
-        Box(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .aspectRatio(16f / 10f)
-              .clip(AppShapeScale.medium)
-              .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-          contentAlignment = Alignment.Center,
-        ) {
-          val thumbnailBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }
-          if (thumbnailBitmap != null) {
-            Image(
-              bitmap = thumbnailBitmap,
-              contentDescription =
-                androidx.compose.ui.res
-                  .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
-              modifier = Modifier.matchParentSize(),
-              contentScale = ContentScale.Crop,
-            )
-          } else {
-            Icon(
-              Icons.RoundedFilled.PlayArrow,
-              contentDescription =
-                androidx.compose.ui.res
-                  .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
-              modifier = Modifier.size(48.dp),
-              tint = MaterialTheme.colorScheme.secondary,
-            )
+          Box(
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 10f)
+                .clip(AppShapeScale.medium)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+          ) {
+            val thumbnailBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }
+            if (thumbnailBitmap != null) {
+              Image(
+                bitmap = thumbnailBitmap,
+                contentDescription =
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+              )
+            } else {
+              Icon(
+                Icons.RoundedFilled.PlayArrow,
+                contentDescription =
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.secondary,
+              )
+            }
+            if (mediaType != null) {
+              MediaTypeBadge(
+                type = mediaType,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
+              )
+            }
           }
-          if (mediaType != null) {
-            MediaTypeBadge(
-              type = mediaType,
-              modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
-            )
-          }
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-          displayName,
-          style = MaterialTheme.typography.titleSmall,
-          color = MaterialTheme.colorScheme.onSurface,
-          maxLines = maxLines,
-          overflow = TextOverflow.Ellipsis,
-          textAlign = if (centerGridTitles) TextAlign.Center else TextAlign.Start,
-          modifier = Modifier.fillMaxWidth(),
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        FlowRow(
-          horizontalArrangement =
-            if (centerGridTitles) androidx.compose.foundation.layout.Arrangement.Center
-            else androidx.compose.foundation.layout.Arrangement.Start,
-          verticalArrangement =
-            androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
-        ) {
-          if (showSizeChip && file.size > 0) {
-            Text(
-              formatCardFileSize(file.size),
-              style = MaterialTheme.typography.labelSmall,
-              modifier =
-                Modifier
-                  .background(
-                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                    AppShapeScale.small,
-                  ).padding(horizontal = 8.dp, vertical = 4.dp),
-              color = MaterialTheme.colorScheme.onSurface,
-            )
-          }
-          if (showDateChip && file.lastModified > 0) {
-            Text(
-              formatCardDate(file.lastModified),
-              style = MaterialTheme.typography.labelSmall,
-              modifier =
-                Modifier
-                  .background(
-                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                    AppShapeScale.small,
-                  ).padding(horizontal = 8.dp, vertical = 4.dp),
-              color = MaterialTheme.colorScheme.onSurface,
-            )
-          }
-        }
-        }
-      } else {
-        Row(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 8.dp, vertical = 2.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-        // Match the normal video list thumbnail footprint.
-        Box(
-          modifier =
-            Modifier
-              .width(thumbSizeDp)
-              .aspectRatio(16f / 9f)
-              .clip(AppShapeScale.medium)
-              .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-              .mediaCardClickable(
-                onClick = onClick,
-                onLongClick = onLongClick,
-              ),
-          contentAlignment = Alignment.Center,
-        ) {
-          val listThumbnailBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }
-          if (listThumbnailBitmap != null) {
-            Image(
-              bitmap = listThumbnailBitmap,
-              contentDescription =
-                androidx.compose.ui.res
-                  .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
-              modifier = Modifier.matchParentSize(),
-              contentScale = ContentScale.Crop,
-            )
-          } else {
-            Icon(
-              Icons.RoundedFilled.PlayArrow,
-              contentDescription =
-                androidx.compose.ui.res
-                  .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
-              modifier = Modifier.size(48.dp),
-              tint = MaterialTheme.colorScheme.secondary,
-            )
-          }
-          if (mediaType != null) {
-            MediaTypeBadge(
-              type = mediaType,
-              modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
-            )
-          }
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(
-          modifier = Modifier.weight(1f),
-        ) {
+          Spacer(modifier = Modifier.height(4.dp))
           Text(
             displayName,
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
+            textAlign = if (centerGridTitles) TextAlign.Center else TextAlign.Start,
+            modifier = Modifier.fillMaxWidth(),
           )
           Spacer(modifier = Modifier.height(4.dp))
           FlowRow(
             horizontalArrangement =
-              androidx.compose.foundation.layout.Arrangement
-                .spacedBy(4.dp),
+              if (centerGridTitles) {
+                androidx.compose.foundation.layout.Arrangement.Center
+              } else {
+                androidx.compose.foundation.layout.Arrangement.Start
+              },
             verticalArrangement =
               androidx.compose.foundation.layout.Arrangement
                 .spacedBy(4.dp),
@@ -367,6 +273,103 @@ fun NetworkVideoCard(
               )
             }
           }
+        }
+      } else {
+        Row(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 8.dp, vertical = 2.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          // Match the normal video list thumbnail footprint.
+          Box(
+            modifier =
+              Modifier
+                .width(thumbSizeDp)
+                .aspectRatio(16f / 9f)
+                .clip(AppShapeScale.medium)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .mediaCardClickable(
+                  onClick = onClick,
+                  onLongClick = onLongClick,
+                ),
+            contentAlignment = Alignment.Center,
+          ) {
+            val listThumbnailBitmap = remember(thumbnail) { thumbnail?.asImageBitmap() }
+            if (listThumbnailBitmap != null) {
+              Image(
+                bitmap = listThumbnailBitmap,
+                contentDescription =
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.ui_thumbnail),
+                modifier = Modifier.matchParentSize(),
+                contentScale = ContentScale.Crop,
+              )
+            } else {
+              Icon(
+                Icons.RoundedFilled.PlayArrow,
+                contentDescription =
+                  androidx.compose.ui.res
+                    .stringResource(app.gyrolet.mpvrx.R.string.ui_play),
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.secondary,
+              )
+            }
+            if (mediaType != null) {
+              MediaTypeBadge(
+                type = mediaType,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(4.dp),
+              )
+            }
+          }
+          Spacer(modifier = Modifier.width(12.dp))
+          Column(
+            modifier = Modifier.weight(1f),
+          ) {
+            Text(
+              displayName,
+              style = MaterialTheme.typography.titleSmall,
+              color = MaterialTheme.colorScheme.onSurface,
+              maxLines = maxLines,
+              overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            FlowRow(
+              horizontalArrangement =
+                androidx.compose.foundation.layout.Arrangement
+                  .spacedBy(4.dp),
+              verticalArrangement =
+                androidx.compose.foundation.layout.Arrangement
+                  .spacedBy(4.dp),
+            ) {
+              if (showSizeChip && file.size > 0) {
+                Text(
+                  formatCardFileSize(file.size),
+                  style = MaterialTheme.typography.labelSmall,
+                  modifier =
+                    Modifier
+                      .background(
+                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                        AppShapeScale.small,
+                      ).padding(horizontal = 8.dp, vertical = 4.dp),
+                  color = MaterialTheme.colorScheme.onSurface,
+                )
+              }
+              if (showDateChip && file.lastModified > 0) {
+                Text(
+                  formatCardDate(file.lastModified),
+                  style = MaterialTheme.typography.labelSmall,
+                  modifier =
+                    Modifier
+                      .background(
+                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                        AppShapeScale.small,
+                      ).padding(horizontal = 8.dp, vertical = 4.dp),
+                  color = MaterialTheme.colorScheme.onSurface,
+                )
+              }
+            }
           }
         }
       }

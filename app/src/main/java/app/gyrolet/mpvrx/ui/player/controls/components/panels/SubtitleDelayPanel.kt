@@ -9,8 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -42,10 +40,11 @@ import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.presentation.components.OutlinedNumericChooser
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.theme.spacing
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.currentMpvConfigOverrideOptions
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
@@ -68,9 +67,7 @@ fun SubtitleDelayPanel(
    * left the secondary track stuck on the startup value, so a secondary subtitle could never
    * be synced at all. Keep the two in lockstep, each one only while mpvRx still owns it.
    */
-  fun setSubtitleDelay(
-    seconds: Float,
-  ) {
+  fun setSubtitleDelay(seconds: Float) {
     if (delayEnabled) PlaybackSession.setPropertyDouble(SUB_DELAY_PROPERTY, seconds.toDouble())
     if (secondaryDelayEnabled) PlaybackSession.setPropertyDouble(SECONDARY_SUB_DELAY_PROPERTY, seconds.toDouble())
   }

@@ -50,7 +50,12 @@ internal fun MusicSleepTimerSheet(onDismissRequest: () -> Unit) {
 
   PlayerSheet(onDismissRequest = onDismissRequest, title = stringResource(R.string.timer_title)) {
     Column(
-      modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .verticalScroll(
+            rememberScrollState(),
+          ).padding(horizontal = 20.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       if (remainingTime > 0) {
@@ -66,8 +71,11 @@ internal fun MusicSleepTimerSheet(onDismissRequest: () -> Unit) {
             onClick = { selectDuration(minutes * 60) },
             label = {
               Text(
-                if (minutes == 60) stringResource(R.string.timer_one_hour_short)
-                else stringResource(R.string.generic_minutes_short, minutes),
+                if (minutes == 60) {
+                  stringResource(R.string.timer_one_hour_short)
+                } else {
+                  stringResource(R.string.generic_minutes_short, minutes)
+                },
               )
             },
           )
@@ -119,7 +127,9 @@ private fun MusicSleepTimerTimeDialog(
       AppDialogTextButton(onClick = onDismissRequest) { Text(stringResource(R.string.generic_cancel)) }
     },
     confirmButton = {
-      AppDialogTextButton(enabled = seconds > 0, onClick = { onConfirm(seconds) }) { Text(stringResource(R.string.generic_ok)) }
+      AppDialogTextButton(enabled = seconds > 0, onClick = {
+        onConfirm(seconds)
+      }) { Text(stringResource(R.string.generic_ok)) }
     },
   )
 }

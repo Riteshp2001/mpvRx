@@ -22,10 +22,14 @@ internal object VideoListCache {
   private const val TAG = "VideoListCache"
   private const val DIR = "video_list_cache"
   private const val MAX_FOLDERS = 64
+
   // Reject snapshots whose launch rotation was read from the old MediaStore column.
   private const val HEADER_PREFIX = "orientation_v2|"
 
-  fun load(context: Context, key: String): List<Video>? =
+  fun load(
+    context: Context,
+    key: String,
+  ): List<Video>? =
     runCatching {
       val file = fileFor(context, key)
       if (!file.isFile) return null
@@ -38,7 +42,11 @@ internal object VideoListCache {
       Log.w(TAG, "Could not read video list cache", error)
     }.getOrNull()
 
-  fun save(context: Context, key: String, videos: List<Video>) {
+  fun save(
+    context: Context,
+    key: String,
+    videos: List<Video>,
+  ) {
     runCatching {
       val file = fileFor(context, key)
       if (videos.isEmpty()) {
@@ -46,13 +54,16 @@ internal object VideoListCache {
         return
       }
       val temp = File(file.parentFile, file.name + ".tmp")
-      temp.writeText(HEADER_PREFIX + key.replace('\n', ' ') + "\n" +
-        videos.joinToString(MediaLibraryCache.RECORD_SEPARATOR) { MediaLibraryCache.encode(it) })
+      temp.writeText(
+        HEADER_PREFIX + key.replace('\n', ' ') + "\n" +
+          videos.joinToString(MediaLibraryCache.RECORD_SEPARATOR) { MediaLibraryCache.encode(it) },
+      )
       if (!temp.renameTo(file)) {
         temp.delete()
         return
       }
-      file.parentFile?.listFiles { child -> child.extension == "videos" }
+      file.parentFile
+        ?.listFiles { child -> child.extension == "videos" }
         ?.sortedByDescending { it.lastModified() }
         ?.drop(MAX_FOLDERS)
         ?.forEach { it.delete() }
@@ -61,7 +72,10 @@ internal object VideoListCache {
     }
   }
 
-  private fun fileFor(context: Context, key: String): File {
+  private fun fileFor(
+    context: Context,
+    key: String,
+  ): File {
     val dir = context.noBackupFilesDir.resolve(DIR)
     if (!dir.isDirectory) dir.mkdirs()
     return dir.resolve("${key.hashCode().toUInt().toString(16)}.videos")

@@ -100,7 +100,12 @@ internal object RemoteImageLoader {
   private const val FAILURE_RETRY_MS = 30_000L
   private const val MAX_DISK_CACHE_BYTES = 128L * 1024L * 1024L
   private val dimensionTiers = intArrayOf(128, 256, 512, MAX_IMAGE_DIMENSION)
-  private data class ImageKey(val url: String, val dimension: Int)
+
+  private data class ImageKey(
+    val url: String,
+    val dimension: Int,
+  )
+
   private val loaderScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val inFlight = ConcurrentHashMap<ImageKey, Deferred<Bitmap?>>()
   private val inFlightDownloads = ConcurrentHashMap<String, Deferred<File?>>()
@@ -110,7 +115,10 @@ internal object RemoteImageLoader {
   private val transferSemaphore = Semaphore(3)
   private val downloadsSinceMaintenance = AtomicInteger()
 
-  fun getFromMemory(url: String, maxDimensionPx: Int = MAX_IMAGE_DIMENSION): Bitmap? {
+  fun getFromMemory(
+    url: String,
+    maxDimensionPx: Int = MAX_IMAGE_DIMENSION,
+  ): Bitmap? {
     val dimension = dimensionTier(maxDimensionPx)
     // A small grid decode must never satisfy the full-size player request. A larger cached copy
     // can serve a smaller card without another allocation.
@@ -120,7 +128,10 @@ internal object RemoteImageLoader {
     return null
   }
 
-  fun putInMemory(url: String, bitmap: Bitmap) {
+  fun putInMemory(
+    url: String,
+    bitmap: Bitmap,
+  ) {
     memoryCache.put(ImageKey(url, MAX_IMAGE_DIMENSION), bitmap)
   }
 
@@ -193,15 +204,17 @@ internal object RemoteImageLoader {
     url: String,
     cacheTtlMs: Long?,
   ): File? {
-    val candidate = loaderScope.async(start = CoroutineStart.LAZY) {
-      transferSemaphore.withPermit { downloadOrCachedFile(context, client, url, cacheTtlMs) }
-    }
-    // Different decode tiers share the same original and never race writes to the disk cache.
-    val operation = inFlightDownloads.putIfAbsent(url, candidate)?.also { candidate.cancel() }
-      ?: candidate.also { owned ->
-        owned.invokeOnCompletion { inFlightDownloads.remove(url, owned) }
-        owned.start()
+    val candidate =
+      loaderScope.async(start = CoroutineStart.LAZY) {
+        transferSemaphore.withPermit { downloadOrCachedFile(context, client, url, cacheTtlMs) }
       }
+    // Different decode tiers share the same original and never race writes to the disk cache.
+    val operation =
+      inFlightDownloads.putIfAbsent(url, candidate)?.also { candidate.cancel() }
+        ?: candidate.also { owned ->
+          owned.invokeOnCompletion { inFlightDownloads.remove(url, owned) }
+          owned.start()
+        }
     return operation.await()
   }
 
@@ -230,8 +243,7 @@ internal object RemoteImageLoader {
             if (!token.isNullOrBlank()) {
               header("Authorization", "Bearer $token")
             }
-          }
-          .build()
+          }.build()
       }.getOrNull() ?: return null
 
     val downloaded =
@@ -291,7 +303,10 @@ internal object RemoteImageLoader {
       }
     }.getOrNull()
 
-  private fun decodeSampled(file: File, maxDimension: Int): Bitmap? {
+  private fun decodeSampled(
+    file: File,
+    maxDimension: Int,
+  ): Bitmap? {
     if (!file.isFile || file.length() <= 0L) return null
     return runCatching {
       val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -314,12 +329,13 @@ internal object RemoteImageLoader {
   private fun dimensionTier(maxDimensionPx: Int): Int =
     dimensionTiers.firstOrNull { it >= maxDimensionPx.coerceAtLeast(1) } ?: MAX_IMAGE_DIMENSION
 
-  private fun isDecodable(file: File): Boolean = runCatching {
-    if (!file.isFile || file.length() == 0L) return@runCatching false
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(file.absolutePath, bounds)
-    bounds.outWidth > 0 && bounds.outHeight > 0
-  }.getOrDefault(false)
+  private fun isDecodable(file: File): Boolean =
+    runCatching {
+      if (!file.isFile || file.length() == 0L) return@runCatching false
+      val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+      BitmapFactory.decodeFile(file.absolutePath, bounds)
+      bounds.outWidth > 0 && bounds.outHeight > 0
+    }.getOrDefault(false)
 
   /** Only disposable remote originals are pruned; generated local/network thumbnails persist. */
   fun trimDiskCache(context: Context) {

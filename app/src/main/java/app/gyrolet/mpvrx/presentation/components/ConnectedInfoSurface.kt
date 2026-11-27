@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.presentation.components
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,9 +26,9 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
-import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
 import app.gyrolet.mpvrx.ui.theme.appPressFeedback
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 
 /** Borderless information row using the same fill and connected geometry as Selected items. */
 @Composable
@@ -55,9 +55,12 @@ internal fun ConnectedInfoSurface(
       onClick = onClick,
       modifier = modifier.fillMaxWidth().appPressFeedback(interactionSource, pressedScale = 0.985f),
       shape = shape,
-      color = animatedConnectedContainerColor(
-        selected = false, pressed = pressed, containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-      ),
+      color =
+        animatedConnectedContainerColor(
+          selected = false,
+          pressed = pressed,
+          containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ),
       interactionSource = interactionSource,
       contentColor = MaterialTheme.colorScheme.onSurface,
       content = content,
@@ -83,16 +86,20 @@ internal fun ConnectedInfoStatCard(
   Surface(
     onClick = onClick,
     modifier = modifier.appPressFeedback(interactionSource, pressedScale = 0.985f),
-    shape = rememberConnectedShape(
-      index = index,
-      itemCount = itemCount,
-      layout = if (columns == 1) ConnectedLayout.Vertical else ConnectedLayout.Grid,
-      columns = columns,
-      pressed = pressed,
-    ),
-    color = animatedConnectedContainerColor(
-      selected = false, pressed = pressed, containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ),
+    shape =
+      rememberConnectedShape(
+        index = index,
+        itemCount = itemCount,
+        layout = if (columns == 1) ConnectedLayout.Vertical else ConnectedLayout.Grid,
+        columns = columns,
+        pressed = pressed,
+      ),
+    color =
+      animatedConnectedContainerColor(
+        selected = false,
+        pressed = pressed,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+      ),
     interactionSource = interactionSource,
     contentColor = MaterialTheme.colorScheme.onSurface,
   ) {

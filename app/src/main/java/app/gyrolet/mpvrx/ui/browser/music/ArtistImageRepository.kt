@@ -27,7 +27,10 @@ object ArtistImageRepository {
   private val inFlight = ConcurrentHashMap<String, Deferred<String?>>()
   private val failedAt = ConcurrentHashMap<String, Long>()
 
-  suspend fun getArtistImageUrl(client: OkHttpClient, artistName: String): String? {
+  suspend fun getArtistImageUrl(
+    client: OkHttpClient,
+    artistName: String,
+  ): String? {
     if (artistName.isBlank() || artistName.equals("Unknown Artist", ignoreCase = true)) return null
     val key = artistName.trim().lowercase()
 

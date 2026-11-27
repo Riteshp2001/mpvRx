@@ -95,7 +95,7 @@ class OpenRouterSpeechClient(
               .orEmpty()
               .trim()
           if (text.isBlank()) throw IllegalStateException("OpenRouter returned an empty transcription")
-              Result.success(SpeechTranscript(text))
+          Result.success(SpeechTranscript(text))
         }
       } catch (cancellation: CancellationException) {
         throw cancellation
@@ -103,5 +103,4 @@ class OpenRouterSpeechClient(
         Result.failure(error)
       }
     }
-
 }

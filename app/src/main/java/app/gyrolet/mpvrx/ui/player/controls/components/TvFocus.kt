@@ -9,12 +9,12 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,8 +38,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.ui.tv.tryRequestFocus
+import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import kotlinx.coroutines.delay
 
 fun Modifier.tvFocusHighlight(
@@ -64,8 +64,7 @@ fun Modifier.tvFocusHighlight(
       .graphicsLayer {
         scaleX = scale
         scaleY = scale
-      }
-      .then(shapeClip)
+      }.then(shapeClip)
       .then(
         if (focused) {
           Modifier.border(3.dp, MaterialTheme.colorScheme.primary, shape)

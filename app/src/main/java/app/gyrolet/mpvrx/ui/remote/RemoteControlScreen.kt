@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.ui.remote
 
 import androidx.annotation.StringRes
@@ -29,7 +29,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -53,8 +52,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.ui.preferences.ScrollableSettingsScreen
-import app.gyrolet.mpvrx.ui.preferences.settingsContentPadding
 import app.gyrolet.mpvrx.remote.REMOTE_MAX_TEXT_LENGTH
 import app.gyrolet.mpvrx.remote.RemoteControlStore
 import app.gyrolet.mpvrx.remote.RemoteKey
@@ -64,12 +61,15 @@ import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.preferences.ScrollableSettingsScreen
 import app.gyrolet.mpvrx.ui.preferences.SettingsTopAppBar
+import app.gyrolet.mpvrx.ui.preferences.settingsContentPadding
 import app.gyrolet.mpvrx.ui.tv.isTelevision
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import kotlinx.serialization.Serializable
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 /** On a TV: lets phones pair with it. On a phone: finds MPVRX TVs and controls them. */
 @Serializable
@@ -129,8 +129,9 @@ private fun TvRemoteSettings() {
       if (enabled) {
         item {
           Text(
-            text = address?.let { stringResource(R.string.remote_tv_address, it) }
-              ?: stringResource(R.string.remote_tv_address_unavailable),
+            text =
+              address?.let { stringResource(R.string.remote_tv_address, it) }
+                ?: stringResource(R.string.remote_tv_address_unavailable),
             style = MaterialTheme.typography.titleMedium,
           )
         }
@@ -188,7 +189,10 @@ private fun PhoneRemoteController() {
 
   Scaffold(
     topBar = {
-      SettingsTopAppBar(title = stringResource(R.string.remote_settings_title_phone), onBack = { backStack.popSafely() })
+      SettingsTopAppBar(
+        title = stringResource(R.string.remote_settings_title_phone),
+        onBack = { backStack.popSafely() },
+      )
     },
   ) { padding ->
     val contentModifier = Modifier.fillMaxSize().padding(padding)
@@ -304,9 +308,12 @@ private fun TvPicker(
           placeholder = { Text("192.168.1.20:47821") },
           singleLine = true,
           isError = addressError,
-          supportingText = if (addressError) {
-            { Text(stringResource(R.string.remote_error_invalid_address)) }
-          } else null,
+          supportingText =
+            if (addressError) {
+              { Text(stringResource(R.string.remote_error_invalid_address)) }
+            } else {
+              null
+            },
           keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
           keyboardActions = KeyboardActions(onGo = { connectToAddress() }),
           modifier = Modifier.fillMaxWidth(),
@@ -369,8 +376,10 @@ private fun RemotePad(
   }
 
   Column(
-    modifier = modifier.verticalScroll(rememberScrollState())
-      .padding(settingsContentPadding(PaddingValues(horizontal = 24.dp, vertical = 16.dp))),
+    modifier =
+      modifier
+        .verticalScroll(rememberScrollState())
+        .padding(settingsContentPadding(PaddingValues(horizontal = 24.dp, vertical = 16.dp))),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(20.dp),
   ) {
@@ -395,7 +404,10 @@ private fun RemotePad(
     }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
       RemoteButton(Icons.RoundedFilled.FastRewind, R.string.remote_phone_rewind) { press(RemoteKey.REWIND) }
-      RemoteButton(Icons.RoundedFilled.FastForward, R.string.remote_phone_fast_forward) { press(RemoteKey.FAST_FORWARD) }
+      RemoteButton(
+        Icons.RoundedFilled.FastForward,
+        R.string.remote_phone_fast_forward,
+      ) { press(RemoteKey.FAST_FORWARD) }
       RemoteButton(Icons.RoundedFilled.VolumeDown, R.string.remote_phone_volume_down) { press(RemoteKey.VOLUME_DOWN) }
       RemoteButton(Icons.RoundedFilled.VolumeUp, R.string.remote_phone_volume_up) { press(RemoteKey.VOLUME_UP) }
     }
@@ -462,7 +474,11 @@ private fun DirectionPad(press: (String) -> Unit) {
       shape = CircleShape,
       modifier = Modifier.align(Alignment.Center).size(96.dp),
     ) {
-      Text(stringResource(R.string.remote_phone_ok), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+      Text(
+        stringResource(R.string.remote_phone_ok),
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+      )
     }
   }
 }

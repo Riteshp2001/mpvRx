@@ -11,7 +11,6 @@ package app.gyrolet.mpvrx.ui.preferences
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,11 +27,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -47,17 +47,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -77,17 +77,17 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.remote.RemoteControlScreen
+import app.gyrolet.mpvrx.ui.securefolder.SecureFolderSettingsScreen
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.LocalEmphasizedTypography
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.tv.TvFocusMemory
 import app.gyrolet.mpvrx.ui.tv.isTelevision
 import app.gyrolet.mpvrx.ui.tv.tryRequestFocus
 import app.gyrolet.mpvrx.ui.tv.tvContentFocus
 import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
-import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
-import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
-import app.gyrolet.mpvrx.ui.securefolder.SecureFolderSettingsScreen
-import app.gyrolet.mpvrx.ui.remote.RemoteControlScreen
-import app.gyrolet.mpvrx.ui.theme.LocalEmphasizedTypography
-import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.LocalShowSettingsBackArrow
 import app.gyrolet.mpvrx.ui.utils.LocalTwoPaneSettings
@@ -122,29 +122,32 @@ object PreferencesScreen : ScrollableSettingsScreen {
   override fun Content() {
     val backstack = LocalBackStack.current
     val colorScheme = MaterialTheme.colorScheme
-    val iconShapes = remember {
-      listOf(
-        MaterialShapes.Cookie4Sided,
-        MaterialShapes.Cookie6Sided,
-        MaterialShapes.Clover4Leaf,
-        MaterialShapes.SoftBurst,
-        MaterialShapes.Gem,
-      )
-    }
-    val iconShapeIndex = rememberSaveable {
-      if (lastIconShapeIndex < 0) {
-        Random.nextInt(iconShapes.size)
-      } else {
-        (lastIconShapeIndex + Random.nextInt(1, iconShapes.size)) % iconShapes.size
+    val iconShapes =
+      remember {
+        listOf(
+          MaterialShapes.Cookie4Sided,
+          MaterialShapes.Cookie6Sided,
+          MaterialShapes.Clover4Leaf,
+          MaterialShapes.SoftBurst,
+          MaterialShapes.Gem,
+        )
       }
-    }
+    val iconShapeIndex =
+      rememberSaveable {
+        if (lastIconShapeIndex < 0) {
+          Random.nextInt(iconShapes.size)
+        } else {
+          (lastIconShapeIndex + Random.nextInt(1, iconShapes.size)) % iconShapes.size
+        }
+      }
     SideEffect { lastIconShapeIndex = iconShapeIndex }
     val iconShape = iconShapes[iconShapeIndex].toShape()
     val television = isTelevision()
-    val sections = settingsSections().mapNotNull { section ->
-      val items = section.items.filter { !television || TvSettingsPolicy.supportsScreen(it.screen) }
-      section.copy(items = items).takeIf { items.isNotEmpty() }
-    }
+    val sections =
+      settingsSections().mapNotNull { section ->
+        val items = section.items.filter { !television || TvSettingsPolicy.supportsScreen(it.screen) }
+        section.copy(items = items).takeIf { items.isNotEmpty() }
+      }
 
     val configuration = LocalConfiguration.current
     val useTwoPane = television || configuration.screenWidthDp >= 600
@@ -188,10 +191,15 @@ object PreferencesScreen : ScrollableSettingsScreen {
           color = colorScheme.outlineVariant.copy(alpha = 0.5f),
           thickness = 1.dp,
         )
-        Box(modifier = Modifier.weight(1f - categoryPaneFraction).onFocusChanged { focus ->
-          detailPaneFocused = focus.hasFocus
-          if (focus.hasFocus) detailPaneActivated = true
-        }.tvFocusGroup()) {
+        Box(
+          modifier =
+            Modifier
+              .weight(1f - categoryPaneFraction)
+              .onFocusChanged { focus ->
+                detailPaneFocused = focus.hasFocus
+                if (focus.hasFocus) detailPaneActivated = true
+              }.tvFocusGroup(),
+        ) {
           CompositionLocalProvider(
             LocalBackStack provides detailBackstack,
             LocalTwoPaneSettings provides true,
@@ -357,14 +365,23 @@ object PreferencesScreen : ScrollableSettingsScreen {
           ),
       ),
       SettingsSection(
-        title = stringResource(if (television) R.string.pref_section_display_controls else R.string.pref_section_gestures_controls),
+        title =
+          stringResource(
+            if (television) R.string.pref_section_display_controls else R.string.pref_section_gestures_controls,
+          ),
         tint = colorScheme.onTertiaryContainer,
         iconContainerColor = colorScheme.tertiaryContainer,
         items =
           listOf(
             SettingsDestination(
-              title = stringResource(if (television) R.string.pref_section_display_controls else R.string.pref_layout_title),
-              summary = stringResource(if (television) R.string.pref_persistent_status_summary else R.string.pref_layout_summary),
+              title =
+                stringResource(
+                  if (television) R.string.pref_section_display_controls else R.string.pref_layout_title,
+                ),
+              summary =
+                stringResource(
+                  if (television) R.string.pref_persistent_status_summary else R.string.pref_layout_summary,
+                ),
               icon = Icons.RoundedFilled.GridView,
               screen = PlayerControlsPreferencesScreen,
             ),
@@ -423,8 +440,14 @@ object PreferencesScreen : ScrollableSettingsScreen {
               screen = MediaServersPreferencesScreen,
             ),
             SettingsDestination(
-              title = stringResource(if (television) R.string.remote_settings_title_tv else R.string.remote_settings_title_phone),
-              summary = stringResource(if (television) R.string.remote_settings_summary_tv else R.string.remote_settings_summary_phone),
+              title =
+                stringResource(
+                  if (television) R.string.remote_settings_title_tv else R.string.remote_settings_title_phone,
+                ),
+              summary =
+                stringResource(
+                  if (television) R.string.remote_settings_summary_tv else R.string.remote_settings_summary_phone,
+                ),
               icon = Icons.RoundedFilled.Tv,
               screen = RemoteControlScreen,
             ),
@@ -702,7 +725,12 @@ private fun SettingsDestinationRow(
             modifier = Modifier.weight(1f, fill = false),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+            color =
+              if (isSelected) {
+                MaterialTheme.colorScheme.onSecondaryContainer
+              } else {
+                MaterialTheme.colorScheme.onSurface
+              },
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
           )
@@ -723,7 +751,12 @@ private fun SettingsDestinationRow(
         Text(
           text = item.summary,
           style = MaterialTheme.typography.bodyMedium,
-          color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+          color =
+            if (isSelected) {
+              MaterialTheme.colorScheme.onSecondaryContainer
+            } else {
+              MaterialTheme.colorScheme.onSurfaceVariant
+            },
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
         )

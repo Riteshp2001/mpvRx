@@ -79,110 +79,123 @@ class AddToPlaylistViewModel :
   private var activeJellyfinServer: JellyfinServer? = null
   private var loadGeneration = 0L
 
-  fun loadPlaylists(isAudio: Boolean?, isJellyfin: Boolean = false) {
+  fun loadPlaylists(
+    isAudio: Boolean?,
+    isJellyfin: Boolean = false,
+  ) {
     observeJob?.cancel()
     val generation = ++loadGeneration
     _isLoading.value = true
     _playlistOptions.value = emptyList()
-    observeJob = viewModelScope.launch(Dispatchers.IO) {
-      try {
-        if (isJellyfin) {
-          val servers = jellyfinRepository.allServers.firstOrNull().orEmpty()
-          val active = servers.firstOrNull()
-          activeJellyfinServer = active
-          if (active != null) {
-            val playlists = jellyfinRepository.getItems(
-              server = active,
-              parentId = null,
-              includeItemTypes = "Playlist",
-              limit = 100,
-            ).getOrNull()?.items.orEmpty()
+    observeJob =
+      viewModelScope.launch(Dispatchers.IO) {
+        try {
+          if (isJellyfin) {
+            val servers = jellyfinRepository.allServers.firstOrNull().orEmpty()
+            val active = servers.firstOrNull()
+            activeJellyfinServer = active
+            if (active != null) {
+              val playlists =
+                jellyfinRepository
+                  .getItems(
+                    server = active,
+                    parentId = null,
+                    includeItemTypes = "Playlist",
+                    limit = 100,
+                  ).getOrNull()
+                  ?.items
+                  .orEmpty()
 
-            _playlistOptions.value = playlists
-              .sortedBy { it.name.lowercase() }
-              .map { item ->
-                PlaylistOption(
-                  id = item.id,
-                  name = item.name,
-                  itemCount = item.childCount ?: 0,
-                  jellyfinItem = item,
-                )
-              }
+              _playlistOptions.value =
+                playlists
+                  .sortedBy { it.name.lowercase() }
+                  .map { item ->
+                    PlaylistOption(
+                      id = item.id,
+                      name = item.name,
+                      itemCount = item.childCount ?: 0,
+                      jellyfinItem = item,
+                    )
+                  }
+            } else {
+              _playlistOptions.value = emptyList()
+            }
           } else {
-            _playlistOptions.value = emptyList()
+            repository.observeAllPlaylists(isAudio).collectLatest { playlists ->
+              _playlistOptions.value =
+                playlists
+                  .sortedWith(
+                    compareByDescending<PlaylistEntity> { repository.isProtectedPlaylist(it) }
+                      .thenBy { it.name.lowercase() },
+                  ).map { playlist ->
+                    val itemCount = repository.getPlaylistItems(playlist.id).size
+                    PlaylistOption(
+                      id = playlist.id.toString(),
+                      name = playlist.name,
+                      itemCount = itemCount,
+                      localPlaylist = playlist,
+                    )
+                  }
+              if (loadGeneration == generation) _isLoading.value = false
+            }
           }
-        } else {
-          repository.observeAllPlaylists(isAudio).collectLatest { playlists ->
-            _playlistOptions.value =
-              playlists
-                .sortedWith(
-                  compareByDescending<PlaylistEntity> { repository.isProtectedPlaylist(it) }
-                    .thenBy { it.name.lowercase() },
-                )
-                .map { playlist ->
-                  val itemCount = repository.getPlaylistItems(playlist.id).size
-                  PlaylistOption(
-                    id = playlist.id.toString(),
-                    name = playlist.name,
-                    itemCount = itemCount,
-                    localPlaylist = playlist,
-                  )
-                }
-            if (loadGeneration == generation) _isLoading.value = false
-          }
+        } finally {
+          if (loadGeneration == generation) _isLoading.value = false
         }
-      } finally {
-        if (loadGeneration == generation) _isLoading.value = false
       }
-    }
   }
 
   suspend fun createAndAdd(
     name: String,
     candidates: List<PlaylistAddCandidate>,
     isJellyfin: Boolean = false,
-  ): Result<Unit> = withContext(Dispatchers.IO) {
-    if (isJellyfin) {
-      val server = activeJellyfinServer ?: jellyfinRepository.allServers.firstOrNull()?.firstOrNull()
-        ?: return@withContext Result.failure(IllegalStateException("No Jellyfin server is available"))
-      jellyfinRepository.createPlaylist(server, name, candidates.mapNotNull { it.jellyfinItemId }).map { Unit }
-    } else {
-      try {
-        val isAudio = candidates.firstOrNull()?.isAudio
-          ?: throw IllegalArgumentException("No compatible items were selected")
-        val playlistId = repository.createPlaylist(name, isAudio = isAudio).toInt()
-        repository.addItemsToPlaylist(playlistId, candidates.filter { it.isAudio == isAudio }.asPlaylistItems())
-        Result.success(Unit)
-      } catch (cancelled: CancellationException) {
-        throw cancelled
-      } catch (error: Exception) {
-        Result.failure(error)
+  ): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      if (isJellyfin) {
+        val server =
+          activeJellyfinServer ?: jellyfinRepository.allServers.firstOrNull()?.firstOrNull()
+            ?: return@withContext Result.failure(IllegalStateException("No Jellyfin server is available"))
+        jellyfinRepository.createPlaylist(server, name, candidates.mapNotNull { it.jellyfinItemId }).map { Unit }
+      } else {
+        try {
+          val isAudio =
+            candidates.firstOrNull()?.isAudio
+              ?: throw IllegalArgumentException("No compatible items were selected")
+          val playlistId = repository.createPlaylist(name, isAudio = isAudio).toInt()
+          repository.addItemsToPlaylist(playlistId, candidates.filter { it.isAudio == isAudio }.asPlaylistItems())
+          Result.success(Unit)
+        } catch (cancelled: CancellationException) {
+          throw cancelled
+        } catch (error: Exception) {
+          Result.failure(error)
+        }
       }
     }
-  }
 
   suspend fun addToPlaylist(
     option: PlaylistOption,
     candidates: List<PlaylistAddCandidate>,
     isJellyfin: Boolean = false,
-  ): Result<Unit> = withContext(Dispatchers.IO) {
-    if (isJellyfin) {
-      val server = activeJellyfinServer ?: jellyfinRepository.allServers.firstOrNull()?.firstOrNull()
-        ?: return@withContext Result.failure(IllegalStateException("No Jellyfin server is available"))
-      jellyfinRepository.addToPlaylist(server, option.id, candidates.mapNotNull { it.jellyfinItemId })
-    } else {
-      try {
-        val playlistId = option.id.toIntOrNull() ?: throw IllegalArgumentException("Invalid playlist")
-        val isAudio = option.localPlaylist?.isAudio ?: throw IllegalArgumentException("Unknown playlist media type")
-        repository.addItemsToPlaylist(playlistId, candidates.filter { it.isAudio == isAudio }.asPlaylistItems())
-        Result.success(Unit)
-      } catch (cancelled: CancellationException) {
-        throw cancelled
-      } catch (error: Exception) {
-        Result.failure(error)
+  ): Result<Unit> =
+    withContext(Dispatchers.IO) {
+      if (isJellyfin) {
+        val server =
+          activeJellyfinServer ?: jellyfinRepository.allServers.firstOrNull()?.firstOrNull()
+            ?: return@withContext Result.failure(IllegalStateException("No Jellyfin server is available"))
+        jellyfinRepository.addToPlaylist(server, option.id, candidates.mapNotNull { it.jellyfinItemId })
+      } else {
+        try {
+          val playlistId = option.id.toIntOrNull() ?: throw IllegalArgumentException("Invalid playlist")
+          val isAudio = option.localPlaylist?.isAudio ?: throw IllegalArgumentException("Unknown playlist media type")
+          repository.addItemsToPlaylist(playlistId, candidates.filter { it.isAudio == isAudio }.asPlaylistItems())
+          Result.success(Unit)
+        } catch (cancelled: CancellationException) {
+          throw cancelled
+        } catch (error: Exception) {
+          Result.failure(error)
+        }
       }
     }
-  }
 
   private fun List<PlaylistAddCandidate>.asPlaylistItems(): List<PlaylistItemInput> =
     map { candidate -> PlaylistItemInput(candidate.path, candidate.name) }

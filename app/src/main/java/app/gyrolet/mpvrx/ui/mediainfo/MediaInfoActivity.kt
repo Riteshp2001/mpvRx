@@ -15,8 +15,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.text.format.Formatter
-import app.gyrolet.mpvrx.utils.logging.Log
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -52,7 +50,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.DisableSelection
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -64,7 +61,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -90,30 +86,31 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.presentation.components.ConnectedInfoStatCard
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.presentation.components.ConnectedInfoStatCard
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.controls.components.MediaFormatBadges
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.resolveLocalPath
-import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.DarkMode
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.utils.clipboard.SafeClipboard
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.MediaArtwork
 import app.gyrolet.mpvrx.utils.media.MediaArtworkOps
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
@@ -124,6 +121,9 @@ import org.koin.android.ext.android.inject
 import org.koin.compose.koinInject
 import java.io.File
 import java.util.Locale
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 private data class ValueDetailSelection(
   val label: String,
@@ -163,9 +163,7 @@ class MediaInfoActivity : AppCompatActivity() {
 
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
-  private fun MediaInfoScreen(
-    onBack: () -> Unit,
-  ) {
+  private fun MediaInfoScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var error by remember { mutableStateOf<String?>(null) }
@@ -200,7 +198,8 @@ class MediaInfoActivity : AppCompatActivity() {
 
       fileUri = uri
       fileName = mediaInfoDisplayName(context, uri, fallbackTitle)
-      MediaInfoOps.getMediaInfoReport(context, uri, fileName)
+      MediaInfoOps
+        .getMediaInfoReport(context, uri, fileName)
         .onSuccess { report = it }
         .onFailure { error = it.message ?: "Failed to load media information" }
     }
@@ -309,7 +308,10 @@ class MediaInfoActivity : AppCompatActivity() {
     }
   }
 
-  private suspend fun shareMediaInfo(content: String, fileName: String) {
+  private suspend fun shareMediaInfo(
+    content: String,
+    fileName: String,
+  ) {
     withContext(Dispatchers.IO) {
       try {
         val safeName = fileName.substringBeforeLast('.').replace(Regex("""[\\/:*?"<>|]"""), "_")
@@ -318,13 +320,14 @@ class MediaInfoActivity : AppCompatActivity() {
 
         withContext(Dispatchers.Main) {
           val fileUri = FileProvider.getUriForFile(this@MediaInfoActivity, "$packageName.provider", file)
-          val shareIntent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, fileUri)
-            putExtra(Intent.EXTRA_SUBJECT, "Media Info - $fileName")
-            putExtra(Intent.EXTRA_TEXT, "Media information for: $fileName")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-          }
+          val shareIntent =
+            Intent(Intent.ACTION_SEND).apply {
+              type = "text/plain"
+              putExtra(Intent.EXTRA_STREAM, fileUri)
+              putExtra(Intent.EXTRA_SUBJECT, "Media Info - $fileName")
+              putExtra(Intent.EXTRA_TEXT, "Media information for: $fileName")
+              addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
           startActivity(Intent.createChooser(shareIntent, "Share Media Info"))
         }
       } catch (error: java.io.IOException) {
@@ -336,22 +339,29 @@ class MediaInfoActivity : AppCompatActivity() {
   }
 }
 
-internal suspend fun mediaInfoDisplayName(context: Context, uri: Uri, fallback: String): String =
+internal suspend fun mediaInfoDisplayName(
+  context: Context,
+  uri: Uri,
+  fallback: String,
+): String =
   withContext(Dispatchers.IO) {
-    val name = if (uri.scheme == "content") {
-      try {
-        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
-          val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-          if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+    val name =
+      if (uri.scheme == "content") {
+        try {
+          context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+          }
+        } catch (error: SecurityException) {
+          Log.w("MediaInfo", "File name is not accessible", error)
+          null
+        } catch (error: IllegalArgumentException) {
+          Log.w("MediaInfo", "Provider does not expose a display name", error)
+          null
         }
-      } catch (error: SecurityException) {
-        Log.w("MediaInfo", "File name is not accessible", error)
-        null
-      } catch (error: IllegalArgumentException) {
-        Log.w("MediaInfo", "Provider does not expose a display name", error)
+      } else {
         null
       }
-    } else null
     name?.takeIf(String::isNotBlank) ?: uri.lastPathSegment?.takeIf(String::isNotBlank) ?: fallback
   }
 
@@ -498,8 +508,10 @@ internal object MediaInfoDetails {
         sections
           .firstOrNull { it.name.equals("General", ignoreCase = true) }
           ?.properties
-          ?.firstOrNull { it.first.equals("Attachments", ignoreCase = true) || it.first.equals("Attachment", ignoreCase = true) }
-          ?.second
+          ?.firstOrNull {
+            it.first.equals("Attachments", ignoreCase = true) ||
+              it.first.equals("Attachment", ignoreCase = true)
+          }?.second
           ?.split(" / ")
           ?.map(String::trim)
           ?.filter(String::isNotEmpty)
@@ -508,28 +520,30 @@ internal object MediaInfoDetails {
 
     val hasMediaStreams = audioSections.isNotEmpty() || videoSections.isNotEmpty()
     val artwork by produceState<MediaArtwork?>(null, fileUri, fileName, hasMediaStreams) {
-      value = if (fileUri != null && hasMediaStreams) {
-        MediaArtworkOps.readEmbeddedArtwork(context, fileUri, fileName)
-      } else {
-        null
-      }
+      value =
+        if (fileUri != null && hasMediaStreams) {
+          MediaArtworkOps.readEmbeddedArtwork(context, fileUri, fileName)
+        } else {
+          null
+        }
     }
     val currentArtwork = artwork
-    val displayedImageSections = if (imageSections.isEmpty() && currentArtwork != null) {
-      listOf(
-        InfoSection(
-          "Image",
-          listOf(
-            "Format" to currentArtwork.mimeType.substringAfter('/').uppercase(Locale.ROOT),
-            "Width" to currentArtwork.width.toString(),
-            "Height" to currentArtwork.height.toString(),
-            "Stream size" to Formatter.formatFileSize(context, currentArtwork.bytes.size.toLong()),
+    val displayedImageSections =
+      if (imageSections.isEmpty() && currentArtwork != null) {
+        listOf(
+          InfoSection(
+            "Image",
+            listOf(
+              "Format" to currentArtwork.mimeType.substringAfter('/').uppercase(Locale.ROOT),
+              "Width" to currentArtwork.width.toString(),
+              "Height" to currentArtwork.height.toString(),
+              "Stream size" to Formatter.formatFileSize(context, currentArtwork.bytes.size.toLong()),
+            ),
           ),
-        ),
-      )
-    } else {
-      imageSections
-    }
+        )
+      } else {
+        imageSections
+      }
 
     // Determine available tabs
     val availableTabs =
@@ -613,12 +627,13 @@ internal object MediaInfoDetails {
         horizontalArrangement = Arrangement.spacedBy(AppConnectedControlShapeTokens.spacing),
       ) {
         availableTabs.forEachIndexed { index, tab ->
-          val tabShape = rememberConnectedShape(
-            index = index,
-            itemCount = availableTabs.size,
-            layout = ConnectedLayout.Horizontal,
-            tokens = AppConnectedControlShapeTokens,
-          )
+          val tabShape =
+            rememberConnectedShape(
+              index = index,
+              itemCount = availableTabs.size,
+              layout = ConnectedLayout.Horizontal,
+              tokens = AppConnectedControlShapeTokens,
+            )
           val isSelected = selectedTab == tab
           val containerColor by animateColorAsState(
             targetValue =
@@ -643,10 +658,11 @@ internal object MediaInfoDetails {
             color = containerColor,
             contentColor = contentColor,
             shape = tabShape,
-            modifier = Modifier
-              .semantics { selected = isSelected }
-              .tvFocusHighlight(tabShape)
-              .animateContentSize(),
+            modifier =
+              Modifier
+                .semantics { selected = isSelected }
+                .tvFocusHighlight(tabShape)
+                .animateContentSize(),
           ) {
             Row(
               modifier = Modifier.heightIn(min = 48.dp).padding(horizontal = 14.dp, vertical = 6.dp),
@@ -769,7 +785,11 @@ internal object MediaInfoDetails {
     val isAudioFile = primaryAudio != null && primaryVideo == null
 
     fun imageValue(key: String): String =
-      imageSection?.properties?.firstOrNull { it.first.equals(key, ignoreCase = true) }?.second.orEmpty()
+      imageSection
+        ?.properties
+        ?.firstOrNull { it.first.equals(key, ignoreCase = true) }
+        ?.second
+        .orEmpty()
 
     val imageResolution =
       remember(imageSection) {
@@ -841,11 +861,12 @@ internal object MediaInfoDetails {
           ) {
             Box(modifier = Modifier.size(60.dp), contentAlignment = Alignment.Center) {
               Icon(
-                imageVector = when {
-                  isImageFile -> Icons.RoundedFilled.Palette
-                  isAudioFile -> Icons.RoundedFilled.Audiotrack
-                  else -> Icons.RoundedFilled.Videocam
-                },
+                imageVector =
+                  when {
+                    isImageFile -> Icons.RoundedFilled.Palette
+                    isAudioFile -> Icons.RoundedFilled.Audiotrack
+                    else -> Icons.RoundedFilled.Videocam
+                  },
                 contentDescription = null,
                 modifier = Modifier.size(30.dp),
               )
@@ -1108,19 +1129,21 @@ internal object MediaInfoDetails {
             )
 
             val pathLabel = stringResource(R.string.media_info_file_path)
-            val generalEntries = buildList<Pair<String, String>> {
-              filePath?.let { add(pathLabel to it) }
-              addAll(fileHistory)
-              generalSection?.properties?.let { addAll(it) }
-            }
+            val generalEntries =
+              buildList<Pair<String, String>> {
+                filePath?.let { add(pathLabel to it) }
+                addAll(fileHistory)
+                generalSection?.properties?.let { addAll(it) }
+              }
             SelectionContainer {
               Column(verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing)) {
                 generalEntries.forEachIndexed { index, (key, value) ->
-                  val itemShape = rememberConnectedShape(
-                    index = index,
-                    itemCount = generalEntries.size,
-                    layout = ConnectedLayout.Vertical,
-                  )
+                  val itemShape =
+                    rememberConnectedShape(
+                      index = index,
+                      itemCount = generalEntries.size,
+                      layout = ConnectedLayout.Vertical,
+                    )
                   Surface(
                     shape = itemShape,
                     color = mediaInfoDetailContainerColor(),
@@ -1285,11 +1308,12 @@ internal object MediaInfoDetails {
                     index = rowIndex * columnCount + columnIndex,
                     itemCount = properties.size,
                     columns = if (isWide) 1 else columnCount,
-                    modifier = if (isWide) {
-                      Modifier.fillMaxWidth().fillMaxHeight()
-                    } else {
-                      Modifier.weight(1f).fillMaxHeight()
-                    },
+                    modifier =
+                      if (isWide) {
+                        Modifier.fillMaxWidth().fillMaxHeight()
+                      } else {
+                        Modifier.weight(1f).fillMaxHeight()
+                      },
                   )
                 }
               }
@@ -1459,11 +1483,12 @@ internal object MediaInfoDetails {
                     }
                   }.ifBlank { "Chapter ${index + 1}" }
 
-              val chapterShape = rememberConnectedShape(
-                index = index,
-                itemCount = menuSection.properties.size,
-                layout = ConnectedLayout.Vertical,
-              )
+              val chapterShape =
+                rememberConnectedShape(
+                  index = index,
+                  itemCount = menuSection.properties.size,
+                  layout = ConnectedLayout.Vertical,
+                )
               Row(
                 modifier =
                   Modifier
@@ -1671,11 +1696,12 @@ internal object MediaInfoDetails {
                 verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
               ) {
                 attachments.forEachIndexed { index, name ->
-                  val shape = rememberConnectedShape(
-                    index = index,
-                    itemCount = attachments.size,
-                    layout = ConnectedLayout.Vertical,
-                  )
+                  val shape =
+                    rememberConnectedShape(
+                      index = index,
+                      itemCount = attachments.size,
+                      layout = ConnectedLayout.Vertical,
+                    )
                   Surface(
                     shape = shape,
                     color = mediaInfoDetailContainerColor(),
@@ -1709,17 +1735,21 @@ internal object MediaInfoDetails {
    * for reading in landscape. Copying the full report still uses the original text.
    */
   @Composable
-  private fun RawTabContent(rawText: String, sectionCount: Int) {
+  private fun RawTabContent(
+    rawText: String,
+    sectionCount: Int,
+  ) {
     val context = LocalContext.current
     val lines = remember(rawText) { rawText.lines() }
     val colors = MaterialTheme.colorScheme
 
     SelectionContainer {
       LazyColumn(
-        modifier = Modifier
-          .fillMaxSize()
-          .clip(MaterialTheme.shapes.extraLarge)
-          .background(colors.surfaceContainerLow),
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(colors.surfaceContainerLow),
         contentPadding = PaddingValues(bottom = 8.dp),
       ) {
         item(contentType = "summary") {
@@ -1791,36 +1821,44 @@ internal object MediaInfoDetails {
           val line = lines[index]
           val trimmed = line.trim()
           val delimiter = line.indexOf(" : ")
-          val isHeading = trimmed.isNotEmpty() &&
-            !line.startsWith(" ") && delimiter < 0 &&
-            !trimmed.startsWith("=") && !trimmed.contains("MEDIA INFO")
-          val annotated = buildAnnotatedString {
-            when {
-              isHeading -> withStyle(SpanStyle(color = colors.primary, fontWeight = FontWeight.Bold)) {
-                append(line)
+          val isHeading =
+            trimmed.isNotEmpty() &&
+              !line.startsWith(" ") &&
+              delimiter < 0 &&
+              !trimmed.startsWith("=") &&
+              !trimmed.contains("MEDIA INFO")
+          val annotated =
+            buildAnnotatedString {
+              when {
+                isHeading ->
+                  withStyle(SpanStyle(color = colors.primary, fontWeight = FontWeight.Bold)) {
+                    append(line)
+                  }
+                delimiter >= 0 -> {
+                  withStyle(SpanStyle(color = colors.onSurfaceVariant, fontWeight = FontWeight.SemiBold)) {
+                    append(line.substring(0, delimiter))
+                  }
+                  withStyle(SpanStyle(color = colors.primary)) {
+                    append(" : ")
+                  }
+                  withStyle(SpanStyle(color = colors.onSurface)) {
+                    append(line.substring(delimiter + 3))
+                  }
+                }
+                else -> append(line)
               }
-              delimiter >= 0 -> {
-                withStyle(SpanStyle(color = colors.onSurfaceVariant, fontWeight = FontWeight.SemiBold)) {
-                  append(line.substring(0, delimiter))
-                }
-                withStyle(SpanStyle(color = colors.primary)) {
-                  append(" : ")
-                }
-                withStyle(SpanStyle(color = colors.onSurface)) {
-                  append(line.substring(delimiter + 3))
-                }
-              }
-              else -> append(line)
             }
-          }
           Row(
-            modifier = Modifier
-              .fillMaxWidth()
-              .background(
-                if (isHeading) colors.secondaryContainer.copy(alpha = 0.62f)
-                else Color.Transparent,
-              )
-              .padding(horizontal = 12.dp, vertical = if (isHeading) 10.dp else 4.dp),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .background(
+                  if (isHeading) {
+                    colors.secondaryContainer.copy(alpha = 0.62f)
+                  } else {
+                    Color.Transparent
+                  },
+                ).padding(horizontal = 12.dp, vertical = if (isHeading) 10.dp else 4.dp),
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
           ) {
@@ -1834,10 +1872,11 @@ internal object MediaInfoDetails {
             Text(
               text = annotated,
               modifier = Modifier.weight(1f),
-              style = MaterialTheme.typography.bodySmall.copy(
-                fontFamily = FontFamily.Monospace,
-                lineHeight = 19.sp,
-              ),
+              style =
+                MaterialTheme.typography.bodySmall.copy(
+                  fontFamily = FontFamily.Monospace,
+                  lineHeight = 19.sp,
+                ),
               color = colors.onSurface,
               softWrap = true,
             )
@@ -1880,5 +1919,4 @@ internal object MediaInfoDetails {
     val name: String,
     val properties: List<Pair<String, String>>,
   )
-
 }

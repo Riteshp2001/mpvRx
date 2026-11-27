@@ -23,7 +23,10 @@ class GlobalExceptionHandler(
 ) : Thread.UncaughtExceptionHandler {
   private val handlingCrash = AtomicBoolean(false)
 
-  override fun uncaughtException(t: Thread, e: Throwable) {
+  override fun uncaughtException(
+    t: Thread,
+    e: Throwable,
+  ) {
     // A second crash while the first is being handled (often on another thread) must not race it.
     if (!handlingCrash.compareAndSet(false, true)) exitProcess(10)
     try {
@@ -32,20 +35,22 @@ class GlobalExceptionHandler(
       runCatching { Log.e(TAG, "FATAL EXCEPTION: ${t.name}", e) }
       // In the background Android blocks opening the recovery screen; it is shown on next launch.
       val canPresent = CrashMonitor.isAppVisible
-      val reportId = runCatching { CrashReportStore.capture(context, t, e, presented = canPresent) }
-        .onFailure { Log.e(TAG, "Unable to save crash report", it) }
-        .getOrNull()
+      val reportId =
+        runCatching { CrashReportStore.capture(context, t, e, presented = canPresent) }
+          .onFailure { Log.e(TAG, "Unable to save crash report", it) }
+          .getOrNull()
       // Reported here, so the next launch must not count it again as an unexplained death.
       if (reportId != null) CrashMonitor.clearSessionMarker(context)
       if (canPresent || reportId == null) {
         val stack = runCatching { e.stackTraceToString() }.getOrDefault(e.toString())
-        val intent = Intent(context, activity).apply {
-          addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-          putExtra("exception", stack.take(32 * 1024))
-          putExtra("crash_exception_class", e.javaClass.name)
-          putExtra("crash_thread", t.name)
-          reportId?.let { putExtra("crash_report_id", it) }
-        }
+        val intent =
+          Intent(context, activity).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+            putExtra("exception", stack.take(32 * 1024))
+            putExtra("crash_exception_class", e.javaClass.name)
+            putExtra("crash_thread", t.name)
+            reportId?.let { putExtra("crash_report_id", it) }
+          }
         context.startActivity(intent)
       }
     } catch (error: Throwable) {

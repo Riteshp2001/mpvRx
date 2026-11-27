@@ -11,16 +11,12 @@ package app.gyrolet.mpvrx.ui.browser.filesystem
 
 import android.content.Context
 import android.content.Intent
-import app.gyrolet.mpvrx.utils.logging.Log
-import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
-import app.gyrolet.mpvrx.ui.browser.fab.FabScrollHelper
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -61,10 +57,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -73,17 +69,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
-import app.gyrolet.mpvrx.ui.browser.components.rememberVideoSwipeActions
-import app.gyrolet.mpvrx.ui.browser.components.rememberSwipePlaybackInfo
 import app.gyrolet.mpvrx.domain.archive.ZipArchiveMedia
 import app.gyrolet.mpvrx.domain.browser.FileSystemItem
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
@@ -91,58 +84,64 @@ import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
 import app.gyrolet.mpvrx.preferences.MediaLayoutMode
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
+import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
 import app.gyrolet.mpvrx.presentation.components.pullrefresh.PullRefreshBox
 import app.gyrolet.mpvrx.ui.browser.cards.FolderCard
-import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionListGap
 import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionGridGap
-import app.gyrolet.mpvrx.ui.browser.cards.mediaSelectionNeighbors
-import app.gyrolet.mpvrx.ui.browser.cards.rememberFolderCardUiConfig
+import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionListGap
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCard
 import app.gyrolet.mpvrx.ui.browser.cards.VideoCardUiConfig
-import app.gyrolet.mpvrx.presentation.components.captureLiquidGlassBackdrop
+import app.gyrolet.mpvrx.ui.browser.cards.mediaSelectionNeighbors
+import app.gyrolet.mpvrx.ui.browser.cards.rememberFolderCardUiConfig
 import app.gyrolet.mpvrx.ui.browser.components.BrowserBottomBar
-import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
+import app.gyrolet.mpvrx.ui.browser.components.rememberBrowserBottomBarBackdrop
+import app.gyrolet.mpvrx.ui.browser.components.rememberSwipePlaybackInfo
+import app.gyrolet.mpvrx.ui.browser.components.rememberVideoSwipeActions
 import app.gyrolet.mpvrx.ui.browser.dialogs.AddToPlaylistDialog
-import app.gyrolet.mpvrx.ui.browser.dialogs.toPlaylistCandidates
 import app.gyrolet.mpvrx.ui.browser.dialogs.DeleteConfirmationDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FileOperationProgressDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FileSystemSortDialog
-import app.gyrolet.mpvrx.ui.browser.dialogs.rememberBrowserSortDialogOpen
 import app.gyrolet.mpvrx.ui.browser.dialogs.FolderPickerDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.FolderTransfer
 import app.gyrolet.mpvrx.ui.browser.dialogs.RenameDialog
 import app.gyrolet.mpvrx.ui.browser.dialogs.VideoCompressorOverlay
+import app.gyrolet.mpvrx.ui.browser.dialogs.rememberBrowserSortDialogOpen
 import app.gyrolet.mpvrx.ui.browser.dialogs.rememberSelectionInfoAction
+import app.gyrolet.mpvrx.ui.browser.dialogs.toPlaylistCandidates
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
+import app.gyrolet.mpvrx.ui.browser.fab.FabScrollHelper
 import app.gyrolet.mpvrx.ui.browser.selection.rememberSelectionManager
 import app.gyrolet.mpvrx.ui.browser.sheets.PlayLinkSheet
 import app.gyrolet.mpvrx.ui.browser.states.EmptyState
 import app.gyrolet.mpvrx.ui.browser.states.LoadingState
 import app.gyrolet.mpvrx.ui.browser.states.PermissionDeniedState
 import app.gyrolet.mpvrx.ui.components.InlineSearchBar
-import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.securefolder.SecureFolderGateScreen
 import app.gyrolet.mpvrx.ui.theme.AppMotion
-import app.gyrolet.mpvrx.ui.utils.LocalBackStack
-import app.gyrolet.mpvrx.ui.utils.navigateTo
-import app.gyrolet.mpvrx.ui.utils.popUpTo
-import app.gyrolet.mpvrx.ui.utils.calculateResponsiveGridSpans
-import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.ui.tv.focusableWhen
 import app.gyrolet.mpvrx.ui.tv.isTelevision
+import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.calculateResponsiveGridSpans
+import app.gyrolet.mpvrx.ui.utils.navigateTo
+import app.gyrolet.mpvrx.ui.utils.popSafely
+import app.gyrolet.mpvrx.ui.utils.popUpTo
 import app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.CopyPasteOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.media.OpenDocumentTreeContract
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils
+import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionStatus
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
@@ -153,6 +152,7 @@ import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import java.io.File
 import kotlin.coroutines.coroutineContext
+import app.gyrolet.mpvrx.ui.utils.NavigationBackHandler as BackHandler
 
 /**
  * Root File System Browser screen - shows storage volumes
@@ -319,25 +319,26 @@ fun FileSystemBrowserScreen(path: String? = null) {
   val totalCount = items.size
   val onlyVideosSelected = selectedVideos.isNotEmpty() && selectedFolders.isEmpty()
   val foldersBlacklistedMessage = stringResource(app.gyrolet.mpvrx.R.string.pref_folders_blacklisted)
-  val showSelectionInfo = rememberSelectionInfoAction(
-    videos = { selectedVideos },
-    onSingleOpened = { selectionManager.clear() },
-    folders = {
-      selectedFolders.map { folder ->
-        app.gyrolet.mpvrx.domain.media.model.VideoFolder(
-          bucketId = folder.path,
-          name = folder.name,
-          path = folder.path,
-          videoCount = folder.videoCount,
-          totalSize = folder.totalSize,
-          totalDuration = folder.totalDuration,
-          lastModified = folder.lastModified / 1000,
-          isHidden = folder.isHidden,
-        )
-      }
-    },
-    loadFolderVideos = { folder -> collectVideosForSelectionInfo(context, folder.path) },
-  )
+  val showSelectionInfo =
+    rememberSelectionInfoAction(
+      videos = { selectedVideos },
+      onSingleOpened = { selectionManager.clear() },
+      folders = {
+        selectedFolders.map { folder ->
+          app.gyrolet.mpvrx.domain.media.model.VideoFolder(
+            bucketId = folder.path,
+            name = folder.name,
+            path = folder.path,
+            videoCount = folder.videoCount,
+            totalSize = folder.totalSize,
+            totalDuration = folder.totalDuration,
+            lastModified = folder.lastModified / 1000,
+            isHidden = folder.isHidden,
+          )
+        }
+      },
+      loadFolderVideos = { folder -> collectVideosForSelectionInfo(context, folder.path) },
+    )
 
   suspend fun selectedPlayableVideos(): List<app.gyrolet.mpvrx.domain.media.model.Video> {
     val videosFromFolders =
@@ -373,7 +374,8 @@ fun FileSystemBrowserScreen(path: String? = null) {
     )
   }
 
-  app.gyrolet.mpvrx.ui.browser.NavigationBarSelectionEffect(isInSelectionMode)
+  app.gyrolet.mpvrx.ui.browser
+    .NavigationBarSelectionEffect(isInSelectionMode)
   val isActiveRoot = isAppRoot && app.gyrolet.mpvrx.ui.utils.LocalNavigationPageActive.current
   androidx.lifecycle.compose.LifecycleResumeEffect(isActiveRoot, showBottomNavigation, isPermissionSetupCompleted) {
     if (isActiveRoot) {
@@ -427,18 +429,28 @@ fun FileSystemBrowserScreen(path: String? = null) {
         val foldersToTransfer = selectedFolders.toList()
         val videosToTransfer = selectedPlayableVideos()
         if (videosToTransfer.isEmpty()) return@launch
-        val request = if (op is CopyPasteOps.OperationType.Move) {
-          viewModel.beginItemRemoval(foldersToTransfer + videosToTransfer.filter { video ->
-            foldersToTransfer.none { video.path.startsWith(it.path.trimEnd('/') + "/") }
-          }.map {
-            FileSystemItem.VideoFile(it.displayName, it.path, it.dateModified, it)
-          })
-        } else emptyMap()
-        val targets = videosToTransfer.filter { video ->
-          op !is CopyPasteOps.OperationType.Move || video.path in request || foldersToTransfer.any {
-            it.path in request && video.path.startsWith(it.path.trimEnd('/') + "/")
+        val request =
+          if (op is CopyPasteOps.OperationType.Move) {
+            viewModel.beginItemRemoval(
+              foldersToTransfer +
+                videosToTransfer
+                  .filter { video ->
+                    foldersToTransfer.none { video.path.startsWith(it.path.trimEnd('/') + "/") }
+                  }.map {
+                    FileSystemItem.VideoFile(it.displayName, it.path, it.dateModified, it)
+                  },
+            )
+          } else {
+            emptyMap()
           }
-        }
+        val targets =
+          videosToTransfer.filter { video ->
+            op !is CopyPasteOps.OperationType.Move ||
+              video.path in request ||
+              foldersToTransfer.any {
+                it.path in request && video.path.startsWith(it.path.trimEnd('/') + "/")
+              }
+          }
         if (targets.isEmpty()) {
           viewModel.finishItemChanges(request)
           return@launch
@@ -452,10 +464,11 @@ fun FileSystemBrowserScreen(path: String? = null) {
         try {
           when (op) {
             is CopyPasteOps.OperationType.Copy -> CopyPasteOps.copyFilesToTreeUri(context, targets, uri)
-            is CopyPasteOps.OperationType.Move -> CopyPasteOps.moveFilesToTreeUri(context, targets, uri) {
-              movedPaths += it.path
-              viewModel.confirmItemChanges(request, listOf(it.path))
-            }
+            is CopyPasteOps.OperationType.Move ->
+              CopyPasteOps.moveFilesToTreeUri(context, targets, uri) {
+                movedPaths += it.path
+                viewModel.confirmItemChanges(request, listOf(it.path))
+              }
             else -> {}
           }
         } finally {
@@ -468,7 +481,8 @@ fun FileSystemBrowserScreen(path: String? = null) {
           }
           viewModel.finishItemChanges(request)
           viewModel.refreshAfterOperation()
-          app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.notifyChanged()
+          app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
+            .notifyChanged()
         }
       }
     }
@@ -554,7 +568,9 @@ fun FileSystemBrowserScreen(path: String? = null) {
     Scaffold(
       contentWindowInsets = FabPlacement.scaffoldInsets(),
       modifier = Modifier.captureLiquidGlassBackdrop(bottomBarBackdrop),
-      containerColor = app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor(),
+      containerColor =
+        app.gyrolet.mpvrx.ui.theme
+          .wallpaperAwareBackgroundColor(),
       topBar = {
         if (isSearching) {
           // Search mode - show search bar instead of top bar
@@ -655,12 +671,18 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 {
                   coroutineScope.launch {
                     val paths = selectedFolders.map { it.path }.toSet()
-                    foldersPreferences.addBlacklistedFolders(paths, app.gyrolet.mpvrx.preferences.BlacklistScope.VIDEO_ONLY)
+                    foldersPreferences.addBlacklistedFolders(
+                      paths,
+                      app.gyrolet.mpvrx.preferences.BlacklistScope.VIDEO_ONLY,
+                    )
                     selectionManager.clear()
                     viewModel.refresh()
                     app.gyrolet.mpvrx.ui.components.AppToast
-                      .makeText(context, foldersBlacklistedMessage, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT)
-                      .show()
+                      .makeText(
+                        context,
+                        foldersBlacklistedMessage,
+                        app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_SHORT,
+                      ).show()
                   }
                 }
               } else {
@@ -737,7 +759,13 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 ) {
                   val imageVector by remember {
                     derivedStateOf {
-                      if (checkedProgress > 0.5f && !quickPlayFabDirect) Icons.RoundedFilled.Close else Icons.RoundedFilled.PlayArrow
+                      if (checkedProgress > 0.5f &&
+                        !quickPlayFabDirect
+                      ) {
+                        Icons.RoundedFilled.Close
+                      } else {
+                        Icons.RoundedFilled.PlayArrow
+                      }
                     }
                   }
                   Icon(
@@ -769,7 +797,9 @@ fun FileSystemBrowserScreen(path: String? = null) {
                 onClick = {
                   isFabExpanded.value = false
                   coroutineScope.launch {
-                    val lastPlayed = app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps.getLastPlayedEntity()
+                    val lastPlayed =
+                      app.gyrolet.mpvrx.utils.history.RecentlyPlayedOps
+                        .getLastPlayedEntity()
                     if (lastPlayed != null) {
                       MediaUtils.playFile(lastPlayed.filePath, context, "recently_played_button")
                     }
@@ -803,115 +833,115 @@ fun FileSystemBrowserScreen(path: String? = null) {
             }
           }
         }
-      }
-  ) { padding ->
+      },
+    ) { padding ->
       Box(modifier = Modifier.padding(padding)) {
         if (isArchiveBrowser || (isPermissionSetupCompleted && permissionState.status == PermissionStatus.Granted)) {
-            if (isSearching) {
-              // Show search results
-              FileSystemSearchContent(
-                onChanged = { viewModel.refresh() },
-                listState = listState, // Use the main listState for FAB tracking
-                gridState = gridState,
-                searchQuery = searchQuery,
-                searchResults = searchResults,
-                isLoading = isSearchLoading,
-                videoFilesWithPlayback = videoFilesWithPlayback,
-                recentlyPlayedFilePath = recentlyPlayedFilePath,
-                newVideoIds = newVideoIds,
-                showSubtitleIndicator = showSubtitleIndicator && !isArchiveBrowser,
-                archiveMode = isArchiveBrowser,
-                isAtRoot = isAppRoot,
-                navigationBarHeight = navigationBarHeight,
-                isFabVisible = isFabVisible, // Pass FAB visibility state
-                onVideoClick = { video ->
-                  MediaUtils.playFile(video, context, "search")
-                },
-                onFolderClick = { folder ->
+          if (isSearching) {
+            // Show search results
+            FileSystemSearchContent(
+              onChanged = { viewModel.refresh() },
+              listState = listState, // Use the main listState for FAB tracking
+              gridState = gridState,
+              searchQuery = searchQuery,
+              searchResults = searchResults,
+              isLoading = isSearchLoading,
+              videoFilesWithPlayback = videoFilesWithPlayback,
+              recentlyPlayedFilePath = recentlyPlayedFilePath,
+              newVideoIds = newVideoIds,
+              showSubtitleIndicator = showSubtitleIndicator && !isArchiveBrowser,
+              archiveMode = isArchiveBrowser,
+              isAtRoot = isAppRoot,
+              navigationBarHeight = navigationBarHeight,
+              isFabVisible = isFabVisible, // Pass FAB visibility state
+              onVideoClick = { video ->
+                MediaUtils.playFile(video, context, "search")
+              },
+              onFolderClick = { folder ->
+                backstack.navigateTo(FileSystemDirectoryScreen(folder.path))
+                isSearching = false
+                searchQuery = ""
+              },
+              modifier = Modifier,
+            )
+          } else {
+            FileSystemBrowserContent(
+              listState = listState,
+              gridState = gridState,
+              items = items,
+              videoFilesWithPlayback = videoFilesWithPlayback,
+              recentlyPlayedFilePath = recentlyPlayedFilePath,
+              newVideoIds = newVideoIds,
+              watchedVideoIds = watchedVideoIds,
+              isLoading = isLoading && items.isEmpty(),
+              isRefreshing = isRefreshing,
+              error = error,
+              isAtRoot = isAtRoot,
+              isOpenedFolder = path != null || !isAtRoot,
+              breadcrumbs = breadcrumbs,
+              playlistMode = playlistMode,
+              itemsWereDeletedOrMoved = itemsWereDeletedOrMoved,
+              showSubtitleIndicator = showSubtitleIndicator && !isArchiveBrowser,
+              archiveMode = isArchiveBrowser,
+              navigationBarHeight = navigationBarHeight,
+              onRefresh = { viewModel.refresh() },
+              onFolderClick = { folder ->
+                if (isInSelectionMode && !ZipArchiveMedia.isBrowserPath(folder.path)) {
+                  selectionManager.toggleFromUser(folder)
+                } else if (!isInSelectionMode) {
                   backstack.navigateTo(FileSystemDirectoryScreen(folder.path))
-                  isSearching = false
-                  searchQuery = ""
-                },
-                modifier = Modifier,
-              )
-            } else {
-              FileSystemBrowserContent(
-                listState = listState,
-                gridState = gridState,
-                items = items,
-                videoFilesWithPlayback = videoFilesWithPlayback,
-                recentlyPlayedFilePath = recentlyPlayedFilePath,
-                newVideoIds = newVideoIds,
-                watchedVideoIds = watchedVideoIds,
-                isLoading = isLoading && items.isEmpty(),
-                isRefreshing = isRefreshing,
-                error = error,
-                isAtRoot = isAtRoot,
-                isOpenedFolder = path != null || !isAtRoot,
-                breadcrumbs = breadcrumbs,
-                playlistMode = playlistMode,
-                itemsWereDeletedOrMoved = itemsWereDeletedOrMoved,
-                showSubtitleIndicator = showSubtitleIndicator && !isArchiveBrowser,
-                archiveMode = isArchiveBrowser,
-                navigationBarHeight = navigationBarHeight,
-                onRefresh = { viewModel.refresh() },
-                onFolderClick = { folder ->
-                  if (isInSelectionMode && !ZipArchiveMedia.isBrowserPath(folder.path)) {
-                    selectionManager.toggleFromUser(folder)
-                  } else if (!isInSelectionMode) {
-                    backstack.navigateTo(FileSystemDirectoryScreen(folder.path))
-                  }
-                },
-                onFolderLongClick = { folder ->
-                  if (!ZipArchiveMedia.isBrowserPath(folder.path)) selectionManager.handleLongClick(folder)
-                },
-                onVideoClick = { videoFile ->
-                  val video = videoFile.video
-                  val archiveEntry = ZipArchiveMedia.isPlaybackUri(video.uri.toString())
-                  if (isInSelectionMode && !archiveEntry) {
-                    selectionManager.toggleFromUser(videoFile)
-                  } else if (!isInSelectionMode) {
-                    if (playerPreferences.shouldBuildAutomaticQueue(video.isAudio) || archiveEntry) {
-                      val allVideos = videos
-                      val startIndex = allVideos.indexOfFirst { it.id == video.id }
-                      if (startIndex >= 0) {
-                        if (allVideos.size == 1) {
-                          MediaUtils.playFile(video, context)
-                        } else {
-                          MediaUtils.playFiles(allVideos, context, startIndex)
-                        }
-                      } else {
+                }
+              },
+              onFolderLongClick = { folder ->
+                if (!ZipArchiveMedia.isBrowserPath(folder.path)) selectionManager.handleLongClick(folder)
+              },
+              onVideoClick = { videoFile ->
+                val video = videoFile.video
+                val archiveEntry = ZipArchiveMedia.isPlaybackUri(video.uri.toString())
+                if (isInSelectionMode && !archiveEntry) {
+                  selectionManager.toggleFromUser(videoFile)
+                } else if (!isInSelectionMode) {
+                  if (playerPreferences.shouldBuildAutomaticQueue(video.isAudio) || archiveEntry) {
+                    val allVideos = videos
+                    val startIndex = allVideos.indexOfFirst { it.id == video.id }
+                    if (startIndex >= 0) {
+                      if (allVideos.size == 1) {
                         MediaUtils.playFile(video, context)
+                      } else {
+                        MediaUtils.playFiles(allVideos, context, startIndex)
                       }
                     } else {
                       MediaUtils.playFile(video, context)
                     }
+                  } else {
+                    MediaUtils.playFile(video, context)
                   }
-                },
-                onVideoLongClick = { videoFile ->
-                  if (!ZipArchiveMedia.isPlaybackUri(videoFile.video.uri.toString())) {
-                    selectionManager.handleLongClick(videoFile)
-                  }
-                },
-                onBreadcrumbClick = { component ->
-                  val target = FileSystemDirectoryScreen(component.fullPath)
-                  when {
-                    !ZipArchiveMedia.isBrowserPath(component.fullPath) -> backstack.navigateTo(target)
-                    component.fullPath == path -> Unit
-                    // Unwind to an ancestor already on the stack instead of stacking duplicates.
-                    target in backstack -> backstack.popUpTo { it == target }
-                    // The archive root is hosted by its playlist page, not a directory screen.
-                    ZipArchiveMedia.isArchiveRoot(component.fullPath) ->
-                      backstack.popUpTo { !(it is FileSystemDirectoryScreen && ZipArchiveMedia.isBrowserPath(it.path)) }
-                    else -> backstack.navigateTo(target)
-                  }
-                },
-                selectionManager = selectionManager,
-                modifier = Modifier,
-                isInSelectionMode = isInSelectionMode,
-                pinnedVideoPaths = pinnedVideoPaths,
-              )
-            }
+                }
+              },
+              onVideoLongClick = { videoFile ->
+                if (!ZipArchiveMedia.isPlaybackUri(videoFile.video.uri.toString())) {
+                  selectionManager.handleLongClick(videoFile)
+                }
+              },
+              onBreadcrumbClick = { component ->
+                val target = FileSystemDirectoryScreen(component.fullPath)
+                when {
+                  !ZipArchiveMedia.isBrowserPath(component.fullPath) -> backstack.navigateTo(target)
+                  component.fullPath == path -> Unit
+                  // Unwind to an ancestor already on the stack instead of stacking duplicates.
+                  target in backstack -> backstack.popUpTo { it == target }
+                  // The archive root is hosted by its playlist page, not a directory screen.
+                  ZipArchiveMedia.isArchiveRoot(component.fullPath) ->
+                    backstack.popUpTo { !(it is FileSystemDirectoryScreen && ZipArchiveMedia.isBrowserPath(it.path)) }
+                  else -> backstack.navigateTo(target)
+                }
+              },
+              selectionManager = selectionManager,
+              modifier = Modifier,
+              isInSelectionMode = isInSelectionMode,
+              pinnedVideoPaths = pinnedVideoPaths,
+            )
+          }
         } else if (isPermissionSetupCompleted) {
           app.gyrolet.mpvrx.ui.browser.states.StoragePermissionPrompt(
             onRequestPermission = { permissionState.launchPermissionRequest() },
@@ -995,8 +1025,9 @@ fun FileSystemBrowserScreen(path: String? = null) {
         unpinLabelRes = R.string.ui_unpin_videos,
         showDownscale =
           selectedVideos.isNotEmpty() && selectedVideos.none { it.isAudio } && selectedFolders.isEmpty(),
-        showRename = selectionManager.isSingleSelection &&
-          (!app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY || onlyVideosSelected),
+        showRename =
+          selectionManager.isSingleSelection &&
+            (!app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY || onlyVideosSelected),
         showDelete = !app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY || onlyVideosSelected,
         showAddToPlaylist = onlyVideosSelected,
         modifier = Modifier.padding(bottom = 0.dp),
@@ -1034,9 +1065,10 @@ fun FileSystemBrowserScreen(path: String? = null) {
           },
         itemCount = selectedCount,
         itemNames = selectedItems.map { it.name },
-        itemPaths = selectedItems.map { item ->
-          if (item is FileSystemItem.VideoFile) item.video.uri.toString() else item.path
-        },
+        itemPaths =
+          selectedItems.map { item ->
+            if (item is FileSystemItem.VideoFile) item.video.uri.toString() else item.path
+          },
       )
     }
 
@@ -1113,13 +1145,26 @@ fun FileSystemBrowserScreen(path: String? = null) {
         val op = operationType.value
         if (op != null) {
           coroutineScope.launch {
-            val request = if (op is CopyPasteOps.OperationType.Move) {
-              viewModel.beginItemRemoval(selectedFolders + selectedVideos.map {
-                FileSystemItem.VideoFile(it.displayName, it.path, it.dateModified, it)
-              })
-            } else emptyMap()
-            val foldersToTransfer = selectedFolders.filter { op !is CopyPasteOps.OperationType.Move || it.path in request }
-            val videosToTransfer = selectedVideos.filter { op !is CopyPasteOps.OperationType.Move || it.path in request }
+            val request =
+              if (op is CopyPasteOps.OperationType.Move) {
+                viewModel.beginItemRemoval(
+                  selectedFolders +
+                    selectedVideos.map {
+                      FileSystemItem.VideoFile(it.displayName, it.path, it.dateModified, it)
+                    },
+                )
+              } else {
+                emptyMap()
+              }
+            val foldersToTransfer =
+              selectedFolders.filter {
+                op !is CopyPasteOps.OperationType.Move ||
+                  it.path in request
+              }
+            val videosToTransfer =
+              selectedVideos.filter {
+                op !is CopyPasteOps.OperationType.Move || it.path in request
+              }
             if (foldersToTransfer.isEmpty() && videosToTransfer.isEmpty()) return@launch
             CopyPasteOps.resetOperation()
             transferError = null
@@ -1132,19 +1177,25 @@ fun FileSystemBrowserScreen(path: String? = null) {
                   for (folder in foldersToTransfer) {
                     val dst = File(destinationPath, folder.name)
                     if (dst.absolutePath == folder.path ||
-                      destinationPath.startsWith(folder.path.trimEnd('/') + "/")) continue
+                      destinationPath.startsWith(folder.path.trimEnd('/') + "/")
+                    ) {
+                      continue
+                    }
                     withContext(Dispatchers.IO) {
                       if (File(folder.path).renameTo(dst)) {
                         viewModel.confirmItemChanges(request, listOf(folder.path))
-                      } else needFallback.add(folder)
+                      } else {
+                        needFallback.add(folder)
+                      }
                     }
                   }
 
                   if (videosToTransfer.isNotEmpty()) {
                     progressDialogOpen.value = true
-                    CopyPasteOps.moveFiles(context, videosToTransfer, destinationPath) {
-                      viewModel.confirmItemChanges(request, listOf(it.path))
-                    }.getOrThrow()
+                    CopyPasteOps
+                      .moveFiles(context, videosToTransfer, destinationPath) {
+                        viewModel.confirmItemChanges(request, listOf(it.path))
+                      }.getOrThrow()
                   }
 
                   if (needFallback.isNotEmpty()) {
@@ -1152,9 +1203,10 @@ fun FileSystemBrowserScreen(path: String? = null) {
                     for (folder in needFallback) {
                       val videos = collectVideosRecursively(context, folder.path)
                       if (videos.isNotEmpty()) {
-                        val subDest = withContext(Dispatchers.IO) {
-                          File(destinationPath, folder.name).also { it.mkdirs() }.absolutePath
-                        }
+                        val subDest =
+                          withContext(Dispatchers.IO) {
+                            File(destinationPath, folder.name).also { it.mkdirs() }.absolutePath
+                          }
                         CopyPasteOps.moveFiles(context, videos, subDest).getOrThrow()
                         viewModel.confirmItemChanges(request, listOf(folder.path))
                       }
@@ -1178,12 +1230,16 @@ fun FileSystemBrowserScreen(path: String? = null) {
                     progressDialogOpen.value = true
                     for (folder in foldersToTransfer) {
                       if (destinationPath == folder.path ||
-                        destinationPath.startsWith(folder.path.trimEnd('/') + "/")) continue
+                        destinationPath.startsWith(folder.path.trimEnd('/') + "/")
+                      ) {
+                        continue
+                      }
                       val videos = collectVideosRecursively(context, folder.path)
                       if (videos.isNotEmpty()) {
-                        val subDest = withContext(Dispatchers.IO) {
-                          File(destinationPath, folder.name).also { it.mkdirs() }.absolutePath
-                        }
+                        val subDest =
+                          withContext(Dispatchers.IO) {
+                            File(destinationPath, folder.name).also { it.mkdirs() }.absolutePath
+                          }
                         CopyPasteOps.copyFiles(context, videos, subDest).getOrThrow()
                       }
                     }
@@ -1199,7 +1255,8 @@ fun FileSystemBrowserScreen(path: String? = null) {
               transferRunning = false
               viewModel.finishItemChanges(request)
               viewModel.refreshAfterOperation()
-              app.gyrolet.mpvrx.utils.media.MediaLibraryEvents.notifyChanged()
+              app.gyrolet.mpvrx.utils.media.MediaLibraryEvents
+                .notifyChanged()
             }
           }
         }
@@ -1211,11 +1268,15 @@ fun FileSystemBrowserScreen(path: String? = null) {
       FileOperationProgressDialog(
         isOpen = progressDialogOpen.value,
         operationType = operationType.value!!,
-        progress = operationProgress.copy(
-          isComplete = !transferRunning && !operationProgress.isCancelled &&
-            transferError == null && operationProgress.error == null,
-          error = transferError ?: operationProgress.error,
-        ),
+        progress =
+          operationProgress.copy(
+            isComplete =
+              !transferRunning &&
+                !operationProgress.isCancelled &&
+                transferError == null &&
+                operationProgress.error == null,
+            error = transferError ?: operationProgress.error,
+          ),
         onCancel = {
           CopyPasteOps.cancelOperation()
         },
@@ -1263,9 +1324,10 @@ suspend fun searchRecursively(
     Log.d("FileSystemBrowserScreen", "Scanning directory: $directoryPath for query: $query")
     if (ZipArchiveMedia.isBrowserPath(directoryPath)) {
       // One central-directory read covers every nested ZIP folder.
-      return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        ZipArchiveMedia.allMedia(context, directoryPath, includeAudio = true).getOrDefault(emptyList())
-      }.filter { it.displayName.contains(query, ignoreCase = true) }
+      return kotlinx.coroutines
+        .withContext(kotlinx.coroutines.Dispatchers.IO) {
+          ZipArchiveMedia.allMedia(context, directoryPath, includeAudio = true).getOrDefault(emptyList())
+        }.filter { it.displayName.contains(query, ignoreCase = true) }
         .map { video -> FileSystemItem.VideoFile(video.displayName, video.path, video.dateModified * 1000L, video) }
     }
     // Scan the current directory
@@ -1326,11 +1388,13 @@ private suspend fun collectVideosForSelectionInfo(
     kotlinx.coroutines.currentCoroutineContext().ensureActive()
     val path = pending.removeFirst()
     if (!visited.add(path)) continue
-    val items = if (ZipArchiveMedia.isBrowserPath(path)) {
-      ZipArchiveMedia.scan(context, path, includeAudio = true)
-    } else {
-      app.gyrolet.mpvrx.repository.MediaFileRepository.scanDirectory(context, path)
-    }.getOrThrow()
+    val items =
+      if (ZipArchiveMedia.isBrowserPath(path)) {
+        ZipArchiveMedia.scan(context, path, includeAudio = true)
+      } else {
+        app.gyrolet.mpvrx.repository.MediaFileRepository
+          .scanDirectory(context, path)
+      }.getOrThrow()
     items.forEach { item ->
       when (item) {
         is FileSystemItem.VideoFile -> videos.add(item.video)
@@ -1560,8 +1624,18 @@ private fun FileSystemBrowserContent(
       val isGridMode = mediaLayoutMode == MediaLayoutMode.GRID
       val latestVideos by rememberUpdatedState(videos)
       // Root displays folders/cached art only; new thumbnails begin after opening a directory.
-      LaunchedEffect(folderId, isOpenedFolder, showVideoThumbnails, thumbnailGenerator, thumbWidthPx,
-        thumbHeightPx, mediaLayoutMode, videos.size, listState, gridState) {
+      LaunchedEffect(
+        folderId,
+        isOpenedFolder,
+        showVideoThumbnails,
+        thumbnailGenerator,
+        thumbWidthPx,
+        thumbHeightPx,
+        mediaLayoutMode,
+        videos.size,
+        listState,
+        gridState,
+      ) {
         val generationId = "tree:$folderId:${mediaLayoutMode.name}"
         try {
           if (isOpenedFolder && showVideoThumbnails && latestVideos.isNotEmpty()) {
@@ -1666,9 +1740,17 @@ private fun FileSystemBrowserContent(
                   FolderCard(
                     folder = folderModel,
                     isSelected = selectionManager.isSelected(folder),
-                    selectionNeighbors = mediaSelectionNeighbors(index, folderItems.size, (spansInfo.spans / spansInfo.folderSpan).coerceAtLeast(1)) { neighbor ->
-                      selectionManager.isSelected(folderItems[neighbor])
-                    },
+                    selectionNeighbors =
+                      mediaSelectionNeighbors(
+                        index,
+                        folderItems.size,
+                        (
+                          spansInfo.spans /
+                            spansInfo.folderSpan
+                        ).coerceAtLeast(1),
+                      ) { neighbor ->
+                        selectionManager.isSelected(folderItems[neighbor])
+                      },
                     isRecentlyPlayed = false,
                     onClick = { onFolderClick(folder) },
                     onLongClick = if (archiveFolder) null else ({ onFolderLongClick(folder) }),
@@ -1679,7 +1761,15 @@ private fun FileSystemBrowserContent(
                       } else {
                         { onFolderClick(folder) }
                       },
-                    customIcon = if (ZipArchiveMedia.isArchiveRoot(folder.path)) Icons.RoundedFilled.FolderZip else null,
+                    customIcon =
+                      if (ZipArchiveMedia.isArchiveRoot(
+                          folder.path,
+                        )
+                      ) {
+                        Icons.RoundedFilled.FolderZip
+                      } else {
+                        null
+                      },
                     newVideoCount = folder.newCount,
                     isGridMode = true,
                     allowThumbnailGeneration = archiveFolder && isOpenedFolder,
@@ -1696,31 +1786,39 @@ private fun FileSystemBrowserContent(
                   val videoFile = videoItems[index]
                   val archiveEntry = ZipArchiveMedia.isPlaybackUri(videoFile.video.uri.toString())
                   VideoCard(
-                      video = videoFile.video,
-                      progressPercentage = videoFilesWithPlayback[videoFile.video.id],
-                      isRecentlyPlayed = RecentlyPlayedOps.matchesVideoPath(recentlyPlayedFilePath, videoFile.video),
-                      isSelected = selectionManager.isSelected(videoFile),
-                      selectionNeighbors = mediaSelectionNeighbors(index, videoItems.size, (spansInfo.spans / spansInfo.videoSpan).coerceAtLeast(1)) { neighbor ->
+                    video = videoFile.video,
+                    progressPercentage = videoFilesWithPlayback[videoFile.video.id],
+                    isRecentlyPlayed = RecentlyPlayedOps.matchesVideoPath(recentlyPlayedFilePath, videoFile.video),
+                    isSelected = selectionManager.isSelected(videoFile),
+                    selectionNeighbors =
+                      mediaSelectionNeighbors(
+                        index,
+                        videoItems.size,
+                        (
+                          spansInfo.spans /
+                            spansInfo.videoSpan
+                        ).coerceAtLeast(1),
+                      ) { neighbor ->
                         selectionManager.isSelected(videoItems[neighbor])
                       },
-                      onClick = { onVideoClick(videoFile) },
-                      onLongClick = if (archiveEntry) null else ({ onVideoLongClick(videoFile) }),
-                      onThumbClick =
-                        if (tapThumbnailToSelect && !archiveEntry) {
-                          { selectionManager.toggleFromUser(videoFile) }
-                        } else {
-                          { onVideoClick(videoFile) }
-                        },
-                      isOldAndUnplayed = newVideoIds.contains(videoFile.video.id),
-                      isWatched = watchedVideoIds.contains(videoFile.video.id),
-                      isPinned = videoFile.video.path in pinnedVideoPaths,
-                      isGridMode = true,
-                      showSubtitleIndicator = showSubtitleIndicator,
-                      overrideShowSizeChip = null,
-                      overrideShowResolutionChip = null,
-                      useFolderNameStyle = false,
-                      allowThumbnailGeneration = isOpenedFolder,
-                      uiConfig = videoCardUiConfig,
+                    onClick = { onVideoClick(videoFile) },
+                    onLongClick = if (archiveEntry) null else ({ onVideoLongClick(videoFile) }),
+                    onThumbClick =
+                      if (tapThumbnailToSelect && !archiveEntry) {
+                        { selectionManager.toggleFromUser(videoFile) }
+                      } else {
+                        { onVideoClick(videoFile) }
+                      },
+                    isOldAndUnplayed = newVideoIds.contains(videoFile.video.id),
+                    isWatched = watchedVideoIds.contains(videoFile.video.id),
+                    isPinned = videoFile.video.path in pinnedVideoPaths,
+                    isGridMode = true,
+                    showSubtitleIndicator = showSubtitleIndicator,
+                    overrideShowSizeChip = null,
+                    overrideShowResolutionChip = null,
+                    useFolderNameStyle = false,
+                    allowThumbnailGeneration = isOpenedFolder,
+                    uiConfig = videoCardUiConfig,
                   )
                 }
               }
@@ -1794,7 +1892,8 @@ private fun FileSystemBrowserContent(
                 FolderCard(
                   folder = folderModel,
                   isSelected = selectionManager.isSelected(folder),
-                    selectionNeighbors = mediaSelectionNeighbors(index, folderItems.size, 1) { neighbor ->
+                  selectionNeighbors =
+                    mediaSelectionNeighbors(index, folderItems.size, 1) { neighbor ->
                       selectionManager.isSelected(folderItems[neighbor])
                     },
                   isRecentlyPlayed = false,
@@ -1812,7 +1911,11 @@ private fun FileSystemBrowserContent(
                   allowThumbnailGeneration = archiveFolder && isOpenedFolder,
                   customIcon = if (ZipArchiveMedia.isArchiveRoot(folder.path)) Icons.RoundedFilled.FolderZip else null,
                   onSwipeAction =
-                    swipeActions.folder.takeUnless { archiveFolder || selectionManager.isInSelectionMode || isInSelectionMode },
+                    swipeActions.folder.takeUnless {
+                      archiveFolder ||
+                        selectionManager.isInSelectionMode ||
+                        isInSelectionMode
+                    },
                 )
               }
 
@@ -1825,35 +1928,40 @@ private fun FileSystemBrowserContent(
                 val videoFile = videoItems[index]
                 val archiveEntry = ZipArchiveMedia.isPlaybackUri(videoFile.video.uri.toString())
                 VideoCard(
-                    video = videoFile.video,
-                    progressPercentage = videoFilesWithPlayback[videoFile.video.id],
-                    isRecentlyPlayed = RecentlyPlayedOps.matchesVideoPath(recentlyPlayedFilePath, videoFile.video),
-                    isSelected = selectionManager.isSelected(videoFile),
-                      selectionNeighbors = mediaSelectionNeighbors(index, videoItems.size, 1) { neighbor ->
-                        selectionManager.isSelected(videoItems[neighbor])
-                      },
-                    onClick = { onVideoClick(videoFile) },
-                    onLongClick = if (archiveEntry) null else ({ onVideoLongClick(videoFile) }),
-                    onThumbClick =
-                      if (tapThumbnailToSelect && !archiveEntry) {
-                        { selectionManager.toggleFromUser(videoFile) }
-                      } else {
-                        { onVideoClick(videoFile) }
-                      },
-                    isOldAndUnplayed = newVideoIds.contains(videoFile.video.id),
-                    isWatched = watchedVideoIds.contains(videoFile.video.id),
-                    isPinned = videoFile.video.path in pinnedVideoPaths,
-                    isGridMode = false,
-                    onSwipeAction =
-                      swipeActions.video.takeUnless { archiveEntry || selectionManager.isInSelectionMode || isInSelectionMode },
-                    showSubtitleIndicator = showSubtitleIndicator,
-                    overrideShowSizeChip = null,
-                    overrideShowResolutionChip = null,
-                    useFolderNameStyle = false,
-                    allowThumbnailGeneration = isOpenedFolder,
-                    uiConfig = videoCardUiConfig,
-                    thumbnailWidthPx = if (videoFile.video.isAudio) audioCoverArtSizePx else null,
-                    thumbnailHeightPx = if (videoFile.video.isAudio) audioCoverArtSizePx else null,
+                  video = videoFile.video,
+                  progressPercentage = videoFilesWithPlayback[videoFile.video.id],
+                  isRecentlyPlayed = RecentlyPlayedOps.matchesVideoPath(recentlyPlayedFilePath, videoFile.video),
+                  isSelected = selectionManager.isSelected(videoFile),
+                  selectionNeighbors =
+                    mediaSelectionNeighbors(index, videoItems.size, 1) { neighbor ->
+                      selectionManager.isSelected(videoItems[neighbor])
+                    },
+                  onClick = { onVideoClick(videoFile) },
+                  onLongClick = if (archiveEntry) null else ({ onVideoLongClick(videoFile) }),
+                  onThumbClick =
+                    if (tapThumbnailToSelect && !archiveEntry) {
+                      { selectionManager.toggleFromUser(videoFile) }
+                    } else {
+                      { onVideoClick(videoFile) }
+                    },
+                  isOldAndUnplayed = newVideoIds.contains(videoFile.video.id),
+                  isWatched = watchedVideoIds.contains(videoFile.video.id),
+                  isPinned = videoFile.video.path in pinnedVideoPaths,
+                  isGridMode = false,
+                  onSwipeAction =
+                    swipeActions.video.takeUnless {
+                      archiveEntry ||
+                        selectionManager.isInSelectionMode ||
+                        isInSelectionMode
+                    },
+                  showSubtitleIndicator = showSubtitleIndicator,
+                  overrideShowSizeChip = null,
+                  overrideShowResolutionChip = null,
+                  useFolderNameStyle = false,
+                  allowThumbnailGeneration = isOpenedFolder,
+                  uiConfig = videoCardUiConfig,
+                  thumbnailWidthPx = if (videoFile.video.isAudio) audioCoverArtSizePx else null,
+                  thumbnailHeightPx = if (videoFile.video.isAudio) audioCoverArtSizePx else null,
                 )
               }
             }
@@ -1908,9 +2016,10 @@ private fun FileSystemSearchContent(
   archiveMode: Boolean = false,
 ) {
   val swipeActions = rememberVideoSwipeActions(onChanged = onChanged)
-  val swipePlaybackInfo = rememberSwipePlaybackInfo(
-    searchResults.filterIsInstance<FileSystemItem.VideoFile>().map { it.video },
-  )
+  val swipePlaybackInfo =
+    rememberSwipePlaybackInfo(
+      searchResults.filterIsInstance<FileSystemItem.VideoFile>().map { it.video },
+    )
   val gesturePreferences = koinInject<GesturePreferences>()
   val browserPreferences = koinInject<BrowserPreferences>()
   val appearancePreferences = koinInject<AppearancePreferences>()
@@ -2138,7 +2247,15 @@ private fun FileSystemSearchContent(
                     newVideoCount = folder.newCount,
                     isGridMode = true,
                     uiConfig = folderCardUiConfig,
-                    customIcon = if (ZipArchiveMedia.isArchiveRoot(folder.path)) Icons.RoundedFilled.FolderZip else null,
+                    customIcon =
+                      if (ZipArchiveMedia.isArchiveRoot(
+                          folder.path,
+                        )
+                      ) {
+                        Icons.RoundedFilled.FolderZip
+                      } else {
+                        null
+                      },
                   )
                 }
 

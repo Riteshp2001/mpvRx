@@ -34,6 +34,7 @@ import app.gyrolet.mpvrx.ui.player.AudioFormatInfo
 import app.gyrolet.mpvrx.ui.player.AudioQuality
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import org.koin.compose.koinInject
+
 private val audioLogoGold = Color(0xFFFFD166)
 private val audioLogoSilver = Color(0xFFE9EEF4)
 
@@ -56,10 +57,11 @@ internal fun AudioFormatArtworkBadge(
       transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-          animation = tween(durationMillis = 2_000, delayMillis = 1_200, easing = LinearEasing),
-          repeatMode = RepeatMode.Restart,
-        ),
+        animationSpec =
+          infiniteRepeatable(
+            animation = tween(durationMillis = 2_000, delayMillis = 1_200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+          ),
         label = "audioFormatSilverSweep",
       )
     } else {
@@ -67,15 +69,16 @@ internal fun AudioFormatArtworkBadge(
     }
   val ink = if (colorize) audioLogoGold else MaterialTheme.colorScheme.onSurface
   val inkFilter = remember(ink) { ColorFilter.tint(ink) }
-  val qualityLabel = stringResource(
-    when (format.quality) {
-      AudioQuality.HiRes -> R.string.audio_quality_hi_res
-      AudioQuality.Lossless -> R.string.audio_quality_lossless
-      AudioQuality.Lossy -> R.string.audio_quality_lossy
-      AudioQuality.Dsd -> R.string.audio_quality_dsd
-      AudioQuality.Unknown -> R.string.audio_quality_audio
-    },
-  )
+  val qualityLabel =
+    stringResource(
+      when (format.quality) {
+        AudioQuality.HiRes -> R.string.audio_quality_hi_res
+        AudioQuality.Lossless -> R.string.audio_quality_lossless
+        AudioQuality.Lossy -> R.string.audio_quality_lossy
+        AudioQuality.Dsd -> R.string.audio_quality_dsd
+        AudioQuality.Unknown -> R.string.audio_quality_audio
+      },
+    )
   val sheenModifier =
     if (sheenProgress != null) {
       Modifier
@@ -86,15 +89,16 @@ internal fun AudioFormatArtworkBadge(
           val bandStart = sheenProgress.value * (this.size.width + bandWidth) - bandWidth
           // SrcAtop keeps the silver sweep inside the SVG's painted pixels.
           drawRect(
-            brush = Brush.horizontalGradient(
-              0f to Color.Transparent,
-              0.35f to audioLogoSilver.copy(alpha = 0.2f),
-              0.5f to audioLogoSilver.copy(alpha = 0.9f),
-              0.65f to audioLogoSilver.copy(alpha = 0.2f),
-              1f to Color.Transparent,
-              startX = bandStart,
-              endX = bandStart + bandWidth,
-            ),
+            brush =
+              Brush.horizontalGradient(
+                0f to Color.Transparent,
+                0.35f to audioLogoSilver.copy(alpha = 0.2f),
+                0.5f to audioLogoSilver.copy(alpha = 0.9f),
+                0.65f to audioLogoSilver.copy(alpha = 0.2f),
+                1f to Color.Transparent,
+                startX = bandStart,
+                endX = bandStart + bandWidth,
+              ),
             blendMode = BlendMode.SrcAtop,
           )
         }
@@ -105,11 +109,12 @@ internal fun AudioFormatArtworkBadge(
     painter = logoPainter,
     contentDescription = format.details(qualityLabel),
     contentScale = ContentScale.Fit,
-    colorFilter = when {
-      logo.isMonochrome -> inkFilter
-      !colorize -> GrayscaleLogoFilter
-      else -> null
-    },
+    colorFilter =
+      when {
+        logo.isMonochrome -> inkFilter
+        !colorize -> GrayscaleLogoFilter
+        else -> null
+      },
     modifier = modifier.size(width, height).then(sheenModifier),
   )
 }

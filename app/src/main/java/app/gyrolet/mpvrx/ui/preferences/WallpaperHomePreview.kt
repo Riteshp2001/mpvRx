@@ -31,7 +31,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
@@ -53,16 +52,17 @@ import app.gyrolet.mpvrx.preferences.MediaLayoutMode
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.browser.ExpressivePillNavigationBar
 import app.gyrolet.mpvrx.ui.browser.MainScreen
-import app.gyrolet.mpvrx.ui.browser.mainNavigationTabs
 import app.gyrolet.mpvrx.ui.browser.cards.FolderCard
 import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
+import app.gyrolet.mpvrx.ui.browser.mainNavigationTabs
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.theme.LocalAppWallpaperActive
 import app.gyrolet.mpvrx.ui.theme.LocalLightTextOnWallpaper
-import app.gyrolet.mpvrx.ui.theme.rememberLightTextOnWallpaper
 import app.gyrolet.mpvrx.ui.theme.WallpaperImage
 import app.gyrolet.mpvrx.ui.theme.WallpaperScaleMode
+import app.gyrolet.mpvrx.ui.theme.rememberLightTextOnWallpaper
 import app.gyrolet.mpvrx.ui.theme.rememberWallpaperScrimColor
 import app.gyrolet.mpvrx.ui.theme.wallpaperAwareBackgroundColor
 import app.gyrolet.mpvrx.ui.utils.calculateResponsiveGridSpans
@@ -258,7 +258,12 @@ internal fun WallpaperHomePreviewDialog(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
           ) {
-            Icon(Icons.RoundedFilled.Close, contentDescription = null, tint = colors.inverseOnSurface, modifier = Modifier.size(16.dp))
+            Icon(
+              Icons.RoundedFilled.Close,
+              contentDescription = null,
+              tint = colors.inverseOnSurface,
+              modifier = Modifier.size(16.dp),
+            )
             Text(
               text = stringResource(R.string.pref_appearance_custom_wallpaper_home_preview_close),
               style = MaterialTheme.typography.labelMedium,
@@ -280,11 +285,59 @@ private fun previewFolders(): List<VideoFolder> {
   val mb = 1024L * 1024L
   val minute = 60_000L
   return listOf(
-    VideoFolder("preview_camera", "Camera", "/storage/emulated/0/DCIM/Camera", 128, 3_200L * mb, 214 * minute, now - day),
-    VideoFolder("preview_downloads", "Downloads", "/storage/emulated/0/Download", 42, 8_400L * mb, 356 * minute, now - 2 * day),
-    VideoFolder("preview_movies", "Movies", "/storage/emulated/0/Movies", 17, 12_900L * mb, 1_120 * minute, now - 5 * day),
-    VideoFolder("preview_recordings", "Screen recordings", "/storage/emulated/0/Movies/Screen recordings", 9, 640L * mb, 38 * minute, now - 9 * day),
-    VideoFolder("preview_whatsapp", "WhatsApp Video", "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video", 63, 1_900L * mb, 96 * minute, now - 14 * day),
-    VideoFolder("preview_telegram", "Telegram", "/storage/emulated/0/Telegram/Telegram Video", 24, 2_300L * mb, 141 * minute, now - 21 * day),
+    VideoFolder(
+      "preview_camera",
+      "Camera",
+      "/storage/emulated/0/DCIM/Camera",
+      128,
+      3_200L * mb,
+      214 * minute,
+      now - day,
+    ),
+    VideoFolder(
+      "preview_downloads",
+      "Downloads",
+      "/storage/emulated/0/Download",
+      42,
+      8_400L * mb,
+      356 * minute,
+      now - 2 * day,
+    ),
+    VideoFolder(
+      "preview_movies",
+      "Movies",
+      "/storage/emulated/0/Movies",
+      17,
+      12_900L * mb,
+      1_120 * minute,
+      now - 5 * day,
+    ),
+    VideoFolder(
+      "preview_recordings",
+      "Screen recordings",
+      "/storage/emulated/0/Movies/Screen recordings",
+      9,
+      640L * mb,
+      38 * minute,
+      now - 9 * day,
+    ),
+    VideoFolder(
+      "preview_whatsapp",
+      "WhatsApp Video",
+      "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Video",
+      63,
+      1_900L * mb,
+      96 * minute,
+      now - 14 * day,
+    ),
+    VideoFolder(
+      "preview_telegram",
+      "Telegram",
+      "/storage/emulated/0/Telegram/Telegram Video",
+      24,
+      2_300L * mb,
+      141 * minute,
+      now - 21 * day,
+    ),
   )
 }

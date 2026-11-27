@@ -35,16 +35,21 @@ internal object HwPlusGuard {
    * Returns true, and says why in a toast, when HW+ would silently ignore [feature].
    * The toast can switch to HW decoding and then run [retry].
    */
-  fun blocks(context: Context, @StringRes feature: Int, retry: () -> Unit): Boolean {
+  fun blocks(
+    context: Context,
+    @StringRes feature: Int,
+    retry: () -> Unit,
+  ): Boolean {
     // Switching to HW decoding cannot help there; its copied frames could not be shown at all.
     if (MediaCodecEmbed.blocks(context, feature)) return true
     if (!inUse()) return false
     val toast =
-      AppToast.makeText(
-        context,
-        context.getString(R.string.player_hwplus_unsupported, context.getString(feature)),
-        AppToast.LENGTH_LONG,
-      ).withType(AppToastType.Warning)
+      AppToast
+        .makeText(
+          context,
+          context.getString(R.string.player_hwplus_unsupported, context.getString(feature)),
+          AppToast.LENGTH_LONG,
+        ).withType(AppToastType.Warning)
     if (!MpvConfigOverridePolicy.isOwnedByMpvConf("hwdec")) {
       toast.withAction(context.getString(R.string.player_hwplus_use_hw)) {
         PlaybackSession.setPropertyString("hwdec", Decoder.HW.value)

@@ -36,7 +36,10 @@ enum class IntroSegmentProvider(
 
 /** Slot content for the optional always-visible in-video status HUD. */
 enum class PersistentStatusSlot {
-  None, PlaybackProgress, CurrentTime, BatteryStatus,
+  None,
+  PlaybackProgress,
+  CurrentTime,
+  BatteryStatus,
 }
 
 enum class PersistentStatusPosition { Top, Bottom }
@@ -92,12 +95,25 @@ class PlayerPreferences(
 
   val allowGesturesInPanels = preferenceStore.getBoolean("allow_gestures_in_panels")
   val showControlsDrawer = preferenceStore.getBoolean("show_controls_drawer", true)
+
   // This HUD is drawn over video, independently of the Android system status bar.
   val persistentStatusEnabled = preferenceStore.getBoolean("persistent_status_enabled", false)
   val persistentStatusPosition = preferenceStore.getEnum("persistent_status_position", PersistentStatusPosition.Top)
-  val persistentStatusLeftSlot = preferenceStore.getEnum("persistent_status_left_slot", PersistentStatusSlot.CurrentTime)
-  val persistentStatusCenterSlot = preferenceStore.getEnum("persistent_status_center_slot", PersistentStatusSlot.BatteryStatus)
-  val persistentStatusRightSlot = preferenceStore.getEnum("persistent_status_right_slot", PersistentStatusSlot.PlaybackProgress)
+  val persistentStatusLeftSlot =
+    preferenceStore.getEnum(
+      "persistent_status_left_slot",
+      PersistentStatusSlot.CurrentTime,
+    )
+  val persistentStatusCenterSlot =
+    preferenceStore.getEnum(
+      "persistent_status_center_slot",
+      PersistentStatusSlot.BatteryStatus,
+    )
+  val persistentStatusRightSlot =
+    preferenceStore.getEnum(
+      "persistent_status_right_slot",
+      PersistentStatusSlot.PlaybackProgress,
+    )
   val persistentStatusPreferFinishTime = preferenceStore.getBoolean("persistent_status_prefer_finish_time", true)
   val persistentStatusShowSpeed = preferenceStore.getBoolean("persistent_status_show_speed", true)
   val persistentStatusMicroBattery = preferenceStore.getBoolean("persistent_status_micro_battery", true)
@@ -242,29 +258,36 @@ class PlayerPreferences(
   // Post-Processing
   val isPostProcessingEnabled = preferenceStore.getBoolean("pp_enabled", false)
   val postProcessingPreset = preferenceStore.getEnum("pp_preset", PostProcessingPreset.None)
+
   // NaturalColors
   val ppNaturalLuma = preferenceStore.getFloat("pp_natural_luma", 1.2f)
   val ppNaturalChroma = preferenceStore.getFloat("pp_natural_chroma", 1.2f)
+
   // Levels
   val ppLevelsInputBlack = preferenceStore.getFloat("pp_levels_input_black", 0.0f)
   val ppLevelsInputWhite = preferenceStore.getFloat("pp_levels_input_white", 1.0f)
   val ppLevelsGamma = preferenceStore.getFloat("pp_levels_gamma", 1.0f)
   val ppLevelsOutputBlack = preferenceStore.getFloat("pp_levels_output_black", 0.0f)
   val ppLevelsOutputWhite = preferenceStore.getFloat("pp_levels_output_white", 1.0f)
+
   // Sharpen
   val ppSharpenAmount = preferenceStore.getFloat("pp_sharpen_amount", 0.6f)
+
   // Bloom
   val ppBloomRadius = preferenceStore.getFloat("pp_bloom_radius", 1.0f)
   val ppBloomAmount = preferenceStore.getFloat("pp_bloom_amount", 0.6f)
+
   // ColorGrade
   val ppCgSaturation = preferenceStore.getFloat("pp_cg_saturation", 1.0f)
   val ppCgBrightness = preferenceStore.getFloat("pp_cg_brightness", 1.0f)
   val ppCgContrast = preferenceStore.getFloat("pp_cg_contrast", 1.0f)
   val ppCgGamma = preferenceStore.getFloat("pp_cg_gamma", 1.0f)
+
   // Denoise
   val ppDenoiseStrength = preferenceStore.getFloat("pp_denoise_strength", 0.1f)
   val ppDenoiseRadius = preferenceStore.getFloat("pp_denoise_radius", 1.0f)
   val ppDenoiseCurve = preferenceStore.getFloat("pp_denoise_curve", 1.0f)
+
   // CelShading
   val ppCelBands = preferenceStore.getFloat("pp_cel_bands", 4.0f)
   val ppCelBandContrast = preferenceStore.getFloat("pp_cel_band_contrast", 0.5f)
@@ -273,45 +296,55 @@ class PlayerPreferences(
   val ppCelOutlineStrength = preferenceStore.getFloat("pp_cel_outline_strength", 0.8f)
   val ppCelOutlineThreshold = preferenceStore.getFloat("pp_cel_outline_threshold", 0.18f)
   val ppCelSaturation = preferenceStore.getFloat("pp_cel_saturation", 1.25f)
+
   // FilmicCurve
   val ppFilmicExposure = preferenceStore.getFloat("pp_filmic_exposure", 1.0f)
   val ppFilmicToe = preferenceStore.getFloat("pp_filmic_toe", 1.2f)
   val ppFilmicShoulder = preferenceStore.getFloat("pp_filmic_shoulder", 1.2f)
   val ppFilmicAmount = preferenceStore.getFloat("pp_filmic_amount", 0.7f)
+
   // Blur
   val ppBlurRadius = preferenceStore.getFloat("pp_blur_radius", 4.0f)
   val ppBlurStrength = preferenceStore.getFloat("pp_blur_strength", 1.0f)
   val ppBlurFocusSize = preferenceStore.getFloat("pp_blur_focus_size", 0.0f)
   val ppBlurFocusSoftness = preferenceStore.getFloat("pp_blur_focus_softness", 0.4f)
+
   // Cartoon
   val ppCartoonEdgeStrength = preferenceStore.getFloat("pp_cartoon_edge_strength", 0.5f)
   val ppCartoonLevels = preferenceStore.getFloat("pp_cartoon_levels", 4.0f)
+
   // CartoonSoft
   val ppCartoonSoftEdgeStrength = preferenceStore.getFloat("pp_cartoon_soft_edge_strength", 0.45f)
   val ppCartoonSoftShadowGuard = preferenceStore.getFloat("pp_cartoon_soft_shadow_guard", 0.8f)
   val ppCartoonSoftLevels = preferenceStore.getFloat("pp_cartoon_soft_levels", 6.0f)
   val ppCartoonSoftSmoothing = preferenceStore.getFloat("pp_cartoon_soft_smoothing", 0.75f)
   val ppCartoonSoftSaturation = preferenceStore.getFloat("pp_cartoon_soft_saturation", 1.15f)
+
   // ChromaticAberration
   val ppCaStrength = preferenceStore.getFloat("pp_ca_strength", 1.5f)
   val ppCaFalloff = preferenceStore.getFloat("pp_ca_falloff", 2.0f)
+
   // Deband
   val ppDebandThreshold = preferenceStore.getFloat("pp_deband_threshold", 0.012f)
   val ppDebandRadius = preferenceStore.getFloat("pp_deband_radius", 8.0f)
   val ppDebandGrain = preferenceStore.getFloat("pp_deband_grain", 0.004f)
+
   // FilmGrain
   val ppGrainIntensity = preferenceStore.getFloat("pp_grain_intensity", 0.03f)
   val ppGrainSize = preferenceStore.getFloat("pp_grain_size", 1.0f)
   val ppGrainColored = preferenceStore.getFloat("pp_grain_colored", 0.0f)
+
   // LensDistortion
   val ppLensDistortion = preferenceStore.getFloat("pp_lens_distortion", 0.1f)
   val ppLensZoom = preferenceStore.getFloat("pp_lens_zoom", 1.0f)
+
   // MotionBlur
   val ppMotionLength = preferenceStore.getFloat("pp_motion_length", 5.0f)
   val ppMotionZoom = preferenceStore.getFloat("pp_motion_zoom", 1.0f)
   val ppMotionPan = preferenceStore.getFloat("pp_motion_pan", 0.0f)
   val ppMotionAngle = preferenceStore.getFloat("pp_motion_angle", 0.0f)
   val ppMotionSpin = preferenceStore.getFloat("pp_motion_spin", 0.0f)
+
   // Reflections
   val ppReflHorizon = preferenceStore.getFloat("pp_refl_horizon", 0.55f)
   val ppReflAmount = preferenceStore.getFloat("pp_refl_amount", 0.35f)
@@ -319,27 +352,31 @@ class PlayerPreferences(
   val ppReflPerspective = preferenceStore.getFloat("pp_refl_perspective", 1.0f)
   val ppReflRipple = preferenceStore.getFloat("pp_refl_ripple", 0.0f)
   val ppReflRippleSpeed = preferenceStore.getFloat("pp_refl_ripple_speed", 1.0f)
+
   // Scanlines
   val ppScanlinesDensity = preferenceStore.getFloat("pp_scanlines_density", 340.0f)
   val ppScanlinesIntensity = preferenceStore.getFloat("pp_scanlines_intensity", 0.5f)
   val ppScanlinesTint = preferenceStore.getFloat("pp_scanlines_tint", 1.0f)
+
   // SplitToning
   val ppSplitShadowHue = preferenceStore.getFloat("pp_split_shadow_hue", 210.0f)
   val ppSplitShadowStrength = preferenceStore.getFloat("pp_split_shadow_strength", 0.0f)
   val ppSplitHighlightHue = preferenceStore.getFloat("pp_split_highlight_hue", 45.0f)
   val ppSplitHighlightStrength = preferenceStore.getFloat("pp_split_highlight_strength", 0.0f)
   val ppSplitBalance = preferenceStore.getFloat("pp_split_balance", 0.0f)
+
   // Vignette
   val ppVignetteStrength = preferenceStore.getFloat("pp_vignette_strength", 0.6f)
   val ppVignetteAspect = preferenceStore.getFloat("pp_vignette_aspect", 1.0f)
+
   // WhiteBalance
   val ppWbTemperature = preferenceStore.getFloat("pp_wb_temperature", 0.0f)
   val ppWbTint = preferenceStore.getFloat("pp_wb_tint", 0.0f)
+
   // CRT
   val ppCrtDensity = preferenceStore.getFloat("pp_crt_density", 272.0f)
   val ppCrtRollSpeed = preferenceStore.getFloat("pp_crt_roll_speed", 1.0f)
   val ppCrtBleed = preferenceStore.getFloat("pp_crt_bleed", 1.0f)
-
 
   val showAppToasts = preferenceStore.getBoolean("show_app_toasts", true)
 

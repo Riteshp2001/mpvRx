@@ -13,9 +13,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /** An image's own pixel size, as read from its file header. */
 data class ImageDimensions(
@@ -43,25 +43,25 @@ data class ImageDimensions(
  * blow the heap within a screenful.
  */
 object SnapshotImageLoader {
-
   suspend fun load(
     context: Context,
     imageUri: String?,
     imagePath: String?,
     targetMaxPx: Int,
     force: Boolean = false,
-  ): Bitmap? = withContext(Dispatchers.IO) {
-    runCatching {
-      val bounds = readBounds(context, imageUri, imagePath, force) ?: return@runCatching null
+  ): Bitmap? =
+    withContext(Dispatchers.IO) {
+      runCatching {
+        val bounds = readBounds(context, imageUri, imagePath, force) ?: return@runCatching null
 
-      val options =
-        BitmapFactory.Options().apply {
-          inSampleSize = sampleSizeFor(bounds.first, bounds.second, targetMaxPx)
-          inPreferredConfig = Bitmap.Config.ARGB_8888
-        }
-      decode(context, imageUri, imagePath, options, force)
-    }.getOrNull()
-  }
+        val options =
+          BitmapFactory.Options().apply {
+            inSampleSize = sampleSizeFor(bounds.first, bounds.second, targetMaxPx)
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+          }
+        decode(context, imageUri, imagePath, options, force)
+      }.getOrNull()
+    }
 
   /**
    * The image's own pixel size, read from the file header without decoding it.
@@ -78,11 +78,12 @@ object SnapshotImageLoader {
     context: Context,
     imageUri: String?,
     imagePath: String?,
-  ): ImageDimensions? = withContext(Dispatchers.IO) {
-    runCatching { readBounds(context, imageUri, imagePath, force = false) }.getOrNull()?.let { (width, height) ->
-      ImageDimensions(width, height)
+  ): ImageDimensions? =
+    withContext(Dispatchers.IO) {
+      runCatching { readBounds(context, imageUri, imagePath, force = false) }.getOrNull()?.let { (width, height) ->
+        ImageDimensions(width, height)
+      }
     }
-  }
 
   /**
    * Width and height from a header-only pass, or null when the image could not be read.
@@ -112,8 +113,12 @@ object SnapshotImageLoader {
     if (imageUri != null) {
       val uri = Uri.parse(imageUri)
       val bitmap =
-        runCatching { context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) } }
-          .getOrNull()
+        runCatching {
+          context.contentResolver
+            .openInputStream(
+              uri,
+            )?.use { BitmapFactory.decodeStream(it, null, options) }
+        }.getOrNull()
       if (bitmap != null || !force) return bitmap
     }
     val path = imagePath ?: return null
@@ -125,7 +130,11 @@ object SnapshotImageLoader {
    * Largest power-of-two divisor that keeps the longer edge at or above [targetMaxPx]. Matches the
    * rounding used by `calculateThumbnailSampleSize` in the thumbnail package.
    */
-  internal fun sampleSizeFor(width: Int, height: Int, targetMaxPx: Int): Int {
+  internal fun sampleSizeFor(
+    width: Int,
+    height: Int,
+    targetMaxPx: Int,
+  ): Int {
     if (width <= targetMaxPx && height <= targetMaxPx) return 1
     var sample = 1
     val maxDimension = maxOf(width, height)

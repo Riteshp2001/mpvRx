@@ -46,22 +46,23 @@ import app.gyrolet.mpvrx.ui.browser.dialogs.FolderPickerDialog
 import app.gyrolet.mpvrx.ui.components.AppToast
 import app.gyrolet.mpvrx.ui.theme.MpvrxTheme
 import app.gyrolet.mpvrx.utils.permission.PermissionRecovery
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class TvPickerActivity : AppCompatActivity() {
   private var returningResult = false
   private var storageRefresh by mutableIntStateOf(0)
   private val requestStoragePermissions =
     registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { storageRefresh++ }
-  private val systemPicker = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-    if (result.resultCode == Activity.RESULT_OK && result.data != null) {
-      setResult(result.resultCode, result.data)
-      finish()
+  private val systemPicker =
+    registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+      if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+        setResult(result.resultCode, result.data)
+        finish()
+      }
     }
-  }
 
   override fun onResume() {
     super.onResume()
@@ -79,19 +80,26 @@ class TvPickerActivity : AppCompatActivity() {
     val isTree = action == Intent.ACTION_OPEN_DOCUMENT_TREE
     val isCreate = action == Intent.ACTION_CREATE_DOCUMENT
     val multiple = intent.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
-    val mimeTypes = intent.getStringArrayExtra(Intent.EXTRA_MIME_TYPES)?.filter(String::isNotBlank)
-      ?.takeIf { it.isNotEmpty() } ?: listOf(intent.type ?: "*/*")
-    val initialFolder = if (isTree || isCreate) {
-      initialPath() ?: if (BuildConfig.SCOPED_STORAGE_ONLY) {
-        getExternalFilesDir(null)?.absolutePath ?: Environment.getExternalStorageDirectory().absolutePath
+    val mimeTypes =
+      intent
+        .getStringArrayExtra(Intent.EXTRA_MIME_TYPES)
+        ?.filter(String::isNotBlank)
+        ?.takeIf { it.isNotEmpty() } ?: listOf(intent.type ?: "*/*")
+    val initialFolder =
+      if (isTree || isCreate) {
+        initialPath() ?: if (BuildConfig.SCOPED_STORAGE_ONLY) {
+          getExternalFilesDir(null)?.absolutePath ?: Environment.getExternalStorageDirectory().absolutePath
+        } else {
+          Environment.getExternalStorageDirectory().absolutePath
+        }
       } else {
-        Environment.getExternalStorageDirectory().absolutePath
+        null
       }
-    } else {
-      null
-    }
-    val suggestedName = intent.getStringExtra(Intent.EXTRA_TITLE).orEmpty()
-      .ifBlank { getString(R.string.app_name) }
+    val suggestedName =
+      intent
+        .getStringExtra(Intent.EXTRA_TITLE)
+        .orEmpty()
+        .ifBlank { getString(R.string.app_name) }
 
     setContent {
       MpvrxTheme {
@@ -122,49 +130,64 @@ class TvPickerActivity : AppCompatActivity() {
   }
 
   @Composable
-  private fun TvFilePicker(mimeTypes: List<String>, multiple: Boolean) {
+  private fun TvFilePicker(
+    mimeTypes: List<String>,
+    multiple: Boolean,
+  ) {
     val extensions = remember { intent.getStringArrayExtra(EXTRA_EXTENSIONS)?.toList().orEmpty() }
-    val systemIntent = remember {
-      Intent(intent).setComponent(null).apply {
-        removeExtra(EXTRA_EXTENSIONS)
-        removeExtra(EXTRA_INITIAL_PATH)
-        removeExtra(EXTRA_MATCH_TO_NAME)
+    val systemIntent =
+      remember {
+        Intent(intent).setComponent(null).apply {
+          removeExtra(EXTRA_EXTENSIONS)
+          removeExtra(EXTRA_INITIAL_PATH)
+          removeExtra(EXTRA_MATCH_TO_NAME)
+        }
       }
-    }
     val refresh = storageRefresh
     val snapshot by produceState<FilePickerSnapshot?>(null, refresh) {
       val previous = value
-      value = withContext(Dispatchers.IO) {
-        val storage = tvPickerStorage(this@TvPickerActivity)
-        val initialPath = if (previous != null) {
-          previous.initialPath
-        } else {
-          initialPath() ?: intent.getStringExtra(EXTRA_INITIAL_PATH)
-            ?.takeIf(String::isNotBlank)?.let(::File)?.takeIf(File::isDirectory)?.absolutePath
+      value =
+        withContext(Dispatchers.IO) {
+          val storage = tvPickerStorage(this@TvPickerActivity)
+          val initialPath =
+            if (previous != null) {
+              previous.initialPath
+            } else {
+              initialPath() ?: intent
+                .getStringExtra(EXTRA_INITIAL_PATH)
+                ?.takeIf(String::isNotBlank)
+                ?.let(::File)
+                ?.takeIf(File::isDirectory)
+                ?.absolutePath
+            }
+          FilePickerSnapshot(initialPath, storage)
         }
-        FilePickerSnapshot(initialPath, storage)
+    }
+    val (path, storage) =
+      snapshot ?: run {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        return
       }
-    }
-    val (path, storage) = snapshot ?: run {
-      Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-      return
-    }
-    val needsAllFilesAccess = remember(refresh) {
-      PermissionRecovery.usesAllFilesAccess() && !PermissionRecovery.isStorageGranted(this)
-    }
-    val missingPermissions = remember(refresh) {
-      storagePermissions(mimeTypes, extensions.isNotEmpty()).filter {
-        ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+    val needsAllFilesAccess =
+      remember(refresh) {
+        PermissionRecovery.usesAllFilesAccess() && !PermissionRecovery.isStorageGranted(this)
       }
-    }
-    val onOpenSystemPicker: (() -> Unit)? = remember(refresh) {
-      if (systemIntent.resolveActivity(packageManager) == null) null else ({ openSystemPicker(systemIntent) })
-    }
-    val requestStorageAccess: (() -> Unit)? = when {
-      needsAllFilesAccess -> ::openStorageSettings
-      missingPermissions.isNotEmpty() -> ({ requestStoragePermissions.launch(missingPermissions.toTypedArray()) })
-      else -> null
-    }
+    val missingPermissions =
+      remember(refresh) {
+        storagePermissions(mimeTypes, extensions.isNotEmpty()).filter {
+          ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+      }
+    val onOpenSystemPicker: (() -> Unit)? =
+      remember(refresh) {
+        if (systemIntent.resolveActivity(packageManager) == null) null else ({ openSystemPicker(systemIntent) })
+      }
+    val requestStorageAccess: (() -> Unit)? =
+      when {
+        needsAllFilesAccess -> ::openStorageSettings
+        missingPermissions.isNotEmpty() -> ({ requestStoragePermissions.launch(missingPermissions.toTypedArray()) })
+        else -> null
+      }
     FilePickerDialog(
       isOpen = true,
       currentPath = path,
@@ -175,11 +198,12 @@ class TvPickerActivity : AppCompatActivity() {
       matchToName = intent.getStringExtra(EXTRA_MATCH_TO_NAME),
       allowedExtensions = extensions,
       allowedMimeTypes = mimeTypes.takeIf { extensions.isEmpty() },
-      onFilesSelected = if (multiple) {
-        { files -> finishWithDocuments(files.map(::File), tree = false) }
-      } else {
-        null
-      },
+      onFilesSelected =
+        if (multiple) {
+          { files -> finishWithDocuments(files.map(::File), tree = false) }
+        } else {
+          null
+        },
       tvStorage = storage,
       storageRefresh = refresh,
       onStorageAccessRequest = requestStorageAccess,
@@ -210,32 +234,38 @@ class TvPickerActivity : AppCompatActivity() {
       return null
     }
     return runCatching {
-      val id = if (DocumentsContract.isTreeUri(uri)) {
-        DocumentsContract.getTreeDocumentId(uri)
-      } else {
-        DocumentsContract.getDocumentId(uri)
-      }
+      val id =
+        if (DocumentsContract.isTreeUri(uri)) {
+          DocumentsContract.getTreeDocumentId(uri)
+        } else {
+          DocumentsContract.getDocumentId(uri)
+        }
       val file = TvDocumentUris.file(this, id)
       val directory = if (file.isDirectory) file else file.parentFile?.takeIf(File::isDirectory)
       directory?.absolutePath
     }.getOrNull()
   }
 
-  private fun finishWithDocuments(files: List<File>, tree: Boolean) {
+  private fun finishWithDocuments(
+    files: List<File>,
+    tree: Boolean,
+  ) {
     if (returningResult) return
     returningResult = true
     lifecycleScope.launch {
-      val result = withContext(Dispatchers.IO) {
-        runCatching { buildTvPickerResult(this@TvPickerActivity, files, tree) }
-      }
+      val result =
+        withContext(Dispatchers.IO) {
+          runCatching { buildTvPickerResult(this@TvPickerActivity, files, tree) }
+        }
       returningResult = false
-      result.onSuccess {
-        setResult(Activity.RESULT_OK, it)
-        finish()
-      }.onFailure { error ->
-        val message = if (error is SecurityException) R.string.tv_picker_no_access else R.string.generic_unknown_error
-        AppToast.warning(this@TvPickerActivity, getString(message))
-      }
+      result
+        .onSuccess {
+          setResult(Activity.RESULT_OK, it)
+          finish()
+        }.onFailure { error ->
+          val message = if (error is SecurityException) R.string.tv_picker_no_access else R.string.generic_unknown_error
+          AppToast.warning(this@TvPickerActivity, getString(message))
+        }
     }
   }
 
@@ -244,28 +274,40 @@ class TvPickerActivity : AppCompatActivity() {
     internal const val EXTRA_INITIAL_PATH = "app.gyrolet.mpvrx.tv.INITIAL_PATH"
     internal const val EXTRA_MATCH_TO_NAME = "app.gyrolet.mpvrx.tv.MATCH_TO_NAME"
     internal val FILE_ACTIONS = setOf(Intent.ACTION_OPEN_DOCUMENT, Intent.ACTION_GET_CONTENT)
-    internal val SUPPORTED_ACTIONS = FILE_ACTIONS + setOf(Intent.ACTION_OPEN_DOCUMENT_TREE, Intent.ACTION_CREATE_DOCUMENT)
+    internal val SUPPORTED_ACTIONS =
+      FILE_ACTIONS + setOf(Intent.ACTION_OPEN_DOCUMENT_TREE, Intent.ACTION_CREATE_DOCUMENT)
   }
 }
 
-private data class FilePickerSnapshot(val initialPath: String?, val storage: TvPickerStorage)
+private data class FilePickerSnapshot(
+  val initialPath: String?,
+  val storage: TvPickerStorage,
+)
 
-private fun storagePermissions(mimeTypes: List<String>, hasExtensionFilter: Boolean): List<String> =
+private fun storagePermissions(
+  mimeTypes: List<String>,
+  hasExtensionFilter: Boolean,
+): List<String> =
   when {
     PermissionRecovery.usesAllFilesAccess() -> emptyList()
     Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> listOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-    else -> buildList {
-      val acceptsAnyMedia = !hasExtensionFilter && "*/*" in mimeTypes
-      if (acceptsAnyMedia || mimeTypes.any { it.startsWith("video/", ignoreCase = true) }) {
-        add(Manifest.permission.READ_MEDIA_VIDEO)
+    else ->
+      buildList {
+        val acceptsAnyMedia = !hasExtensionFilter && "*/*" in mimeTypes
+        if (acceptsAnyMedia || mimeTypes.any { it.startsWith("video/", ignoreCase = true) }) {
+          add(Manifest.permission.READ_MEDIA_VIDEO)
+        }
+        if (acceptsAnyMedia || mimeTypes.any { it.startsWith("audio/", ignoreCase = true) }) {
+          add(Manifest.permission.READ_MEDIA_AUDIO)
+        }
       }
-      if (acceptsAnyMedia || mimeTypes.any { it.startsWith("audio/", ignoreCase = true) }) {
-        add(Manifest.permission.READ_MEDIA_AUDIO)
-      }
-    }
   }
 
-internal fun buildTvPickerResult(context: Context, files: List<File>, tree: Boolean): Intent {
+internal fun buildTvPickerResult(
+  context: Context,
+  files: List<File>,
+  tree: Boolean,
+): Intent {
   require(files.isNotEmpty())
   require(!tree || files.size == 1)
   files.forEach { file ->
@@ -277,9 +319,10 @@ internal fun buildTvPickerResult(context: Context, files: List<File>, tree: Bool
   return Intent().apply {
     data = uris.first()
     if (uris.size > 1) {
-      clipData = ClipData.newRawUri("documents", uris.first()).apply {
-        uris.drop(1).forEach { uri -> addItem(ClipData.Item(uri)) }
-      }
+      clipData =
+        ClipData.newRawUri("documents", uris.first()).apply {
+          uris.drop(1).forEach { uri -> addItem(ClipData.Item(uri)) }
+        }
     }
     addFlags(
       Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
@@ -308,7 +351,10 @@ private fun SaveDocumentDialog(
       Column {
         AppTextField(
           value = name,
-          onValueChange = { name = it; error = null },
+          onValueChange = {
+            name = it
+            error = null
+          },
           modifier = Modifier.fillMaxWidth(),
           label = { Text(stringResource(R.string.ui_name)) },
           singleLine = true,
@@ -322,30 +368,36 @@ private fun SaveDocumentDialog(
         enabled = !saving,
         onClick = {
           val filename = name.trim()
-          if (filename.isBlank() || filename == "." || filename == ".." ||
-            '/' in filename || '\\' in filename || '\u0000' in filename
+          if (filename.isBlank() ||
+            filename == "." ||
+            filename == ".." ||
+            '/' in filename ||
+            '\\' in filename ||
+            '\u0000' in filename
           ) {
             error = context.getString(R.string.pref_folders_marker_invalid)
           } else {
             saving = true
             scope.launch {
-              val result = withContext(Dispatchers.IO) {
-                runCatching {
-                  val parent = File(directory).canonicalFile
-                  val file = File(parent, filename).canonicalFile
-                  require(file.parentFile == parent)
-                  TvDocumentUris.documentId(context, file)
-                  if (file.exists() || !file.createNewFile()) throw java.nio.file.FileAlreadyExistsException(filename)
-                  file
+              val result =
+                withContext(Dispatchers.IO) {
+                  runCatching {
+                    val parent = File(directory).canonicalFile
+                    val file = File(parent, filename).canonicalFile
+                    require(file.parentFile == parent)
+                    TvDocumentUris.documentId(context, file)
+                    if (file.exists() || !file.createNewFile()) throw java.nio.file.FileAlreadyExistsException(filename)
+                    file
+                  }
                 }
-              }
               saving = false
               result.onSuccess(onSaved).onFailure { failure ->
-                error = if (failure is java.nio.file.FileAlreadyExistsException) {
-                  context.getString(R.string.tv_picker_file_exists)
-                } else {
-                  context.getString(R.string.pref_export_failed, failure.localizedMessage.orEmpty())
-                }
+                error =
+                  if (failure is java.nio.file.FileAlreadyExistsException) {
+                    context.getString(R.string.tv_picker_file_exists)
+                  } else {
+                    context.getString(R.string.pref_export_failed, failure.localizedMessage.orEmpty())
+                  }
               }
             }
           }

@@ -21,8 +21,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -90,8 +90,8 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.tv.TvSafeArea
 import app.gyrolet.mpvrx.ui.theme.AppMotion
+import app.gyrolet.mpvrx.ui.tv.TvSafeArea
 
 internal object TvSideNavigationDefaults {
   val CollapsedWidth: Dp = 88.dp
@@ -101,10 +101,10 @@ internal object TvSideNavigationDefaults {
   val LeadingVisualSize: Dp = 34.dp
   val PanelCornerRadius: Dp = 30.dp
 
-  const val PanelInMillis = 345
-  const val PanelOutMillis = 385
-  const val ColorMillis = 180
-  const val FocusedScale = 1.06f
+  const val PANEL_IN_MILLIS = 345
+  const val PANEL_OUT_MILLIS = 385
+  const val COLOR_MILLIS = 180
+  const val FOCUSED_SCALE = 1.06f
   val EmphasizedEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 }
 
@@ -138,19 +138,28 @@ internal fun TvSideNavigation(
       if (reduceMotion) {
         snap()
       } else if (expanded) {
-        tween(TvSideNavigationDefaults.PanelInMillis, easing = FastOutSlowInEasing)
+        tween(TvSideNavigationDefaults.PANEL_IN_MILLIS, easing = FastOutSlowInEasing)
       } else {
-        tween(TvSideNavigationDefaults.PanelOutMillis, easing = LinearOutSlowInEasing)
+        tween(TvSideNavigationDefaults.PANEL_OUT_MILLIS, easing = LinearOutSlowInEasing)
       },
     label = "tv_rail_progress",
   )
   val width by animateDpAsState(
     targetValue = if (expanded) TvSideNavigationDefaults.ExpandedWidth else TvSideNavigationDefaults.CollapsedWidth,
     animationSpec =
-      if (reduceMotion) snap() else tween(
-        durationMillis = if (expanded) TvSideNavigationDefaults.PanelInMillis else TvSideNavigationDefaults.PanelOutMillis,
-        easing = TvSideNavigationDefaults.EmphasizedEasing,
-      ),
+      if (reduceMotion) {
+        snap()
+      } else {
+        tween(
+          durationMillis =
+            if (expanded) {
+              TvSideNavigationDefaults.PANEL_IN_MILLIS
+            } else {
+              TvSideNavigationDefaults.PANEL_OUT_MILLIS
+            },
+          easing = TvSideNavigationDefaults.EmphasizedEasing,
+        )
+      },
     label = "tv_rail_width",
   )
 
@@ -278,8 +287,8 @@ private fun TvRailHeader(expanded: Boolean) {
     }
     AnimatedVisibility(
       visible = expanded,
-      enter = fadeIn(tween(280)) + expandHorizontally(tween(TvSideNavigationDefaults.PanelInMillis)),
-      exit = fadeOut(tween(200)) + shrinkHorizontally(tween(TvSideNavigationDefaults.PanelOutMillis)),
+      enter = fadeIn(tween(280)) + expandHorizontally(tween(TvSideNavigationDefaults.PANEL_IN_MILLIS)),
+      exit = fadeOut(tween(200)) + shrinkHorizontally(tween(TvSideNavigationDefaults.PANEL_OUT_MILLIS)),
     ) {
       Text(
         text = stringResource(R.string.app_name),
@@ -333,7 +342,7 @@ private fun TvSideNavigationItem(
     label = "tv_rail_item_content",
   )
   val scale by animateFloatAsState(
-    targetValue = if (focused && !reduceMotion) TvSideNavigationDefaults.FocusedScale else 1f,
+    targetValue = if (focused && !reduceMotion) TvSideNavigationDefaults.FOCUSED_SCALE else 1f,
     animationSpec = if (reduceMotion) snap() else AppMotion.Spatial.ExpressiveFast,
     label = "tv_rail_item_scale",
   )
@@ -346,8 +355,7 @@ private fun TvSideNavigationItem(
         .semantics {
           contentDescription = label
           this.selected = selected
-        }
-        .graphicsLayer {
+        }.graphicsLayer {
           scaleX = scale
           scaleY = scale
         }.clip(CircleShape)
@@ -356,8 +364,7 @@ private fun TvSideNavigationItem(
           width = 2.dp,
           color = if (focused) contentColor else Color.Transparent,
           shape = CircleShape,
-        )
-        .clickable(
+        ).clickable(
           interactionSource = interactionSource,
           indication = null,
           role = Role.Tab,
@@ -373,8 +380,20 @@ private fun TvSideNavigationItem(
     }
     AnimatedVisibility(
       visible = expanded,
-      enter = if (reduceMotion) EnterTransition.None else fadeIn(tween(280)) + expandHorizontally(tween(TvSideNavigationDefaults.PanelInMillis)),
-      exit = if (reduceMotion) ExitTransition.None else fadeOut(tween(200)) + shrinkHorizontally(tween(TvSideNavigationDefaults.PanelOutMillis)),
+      enter =
+        if (reduceMotion) {
+          EnterTransition.None
+        } else {
+          fadeIn(tween(280)) +
+            expandHorizontally(tween(TvSideNavigationDefaults.PANEL_IN_MILLIS))
+        },
+      exit =
+        if (reduceMotion) {
+          ExitTransition.None
+        } else {
+          fadeOut(tween(200)) +
+            shrinkHorizontally(tween(TvSideNavigationDefaults.PANEL_OUT_MILLIS))
+        },
     ) {
       Text(
         text = label,

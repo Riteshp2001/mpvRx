@@ -10,8 +10,8 @@ import android.provider.DocumentsContract
 import app.gyrolet.mpvrx.domain.media.model.Video
 import app.gyrolet.mpvrx.domain.media.model.VideoFolder
 import app.gyrolet.mpvrx.utils.logging.Log
-import app.gyrolet.mpvrx.utils.storage.MediaScanOptions
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import app.gyrolet.mpvrx.utils.storage.MediaScanOptions
 import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import app.gyrolet.mpvrx.utils.storage.normalizeHiddenMarkerName
 import app.gyrolet.mpvrx.utils.storage.storagePathKey
@@ -36,17 +36,20 @@ object ScopedHiddenFolderScanner {
     bucketId.startsWith("content://") && Uri.parse(bucketId).path?.startsWith("/tree/") == true
 
   /** A document keeps its identity when reached through a parent grant or a child grant. */
-  internal fun documentKey(uri: Uri): String = runCatching {
-    val id = runCatching { DocumentsContract.getDocumentId(uri) }
-      .getOrElse { DocumentsContract.getTreeDocumentId(uri) }
-    DocumentsContract.buildDocumentUri(uri.authority, id).toString()
-  }.getOrDefault(uri.toString())
+  internal fun documentKey(uri: Uri): String =
+    runCatching {
+      val id =
+        runCatching { DocumentsContract.getDocumentId(uri) }
+          .getOrElse { DocumentsContract.getTreeDocumentId(uri) }
+      DocumentsContract.buildDocumentUri(uri.authority, id).toString()
+    }.getOrDefault(uri.toString())
 
   fun localPathOf(uri: Uri): String? {
     if (!isPathBasedDocumentAuthority(uri.authority)) return null
-    val id = runCatching { DocumentsContract.getDocumentId(uri) }
-      .recoverCatching { DocumentsContract.getTreeDocumentId(uri) }
-      .getOrNull() ?: return null
+    val id =
+      runCatching { DocumentsContract.getDocumentId(uri) }
+        .recoverCatching { DocumentsContract.getTreeDocumentId(uri) }
+        .getOrNull() ?: return null
     val volume = id.substringBefore(':', "")
     if (volume.isEmpty()) return null
     val relative = id.substringAfter(':').trim('/')
@@ -60,11 +63,15 @@ object ScopedHiddenFolderScanner {
   }
 
   /** Drops granted folders that are the same directory as a MediaStore/filesystem folder. */
-  fun withoutLocalDuplicates(localFolders: List<VideoFolder>, scopedFolders: List<VideoFolder>): List<VideoFolder> {
+  fun withoutLocalDuplicates(
+    localFolders: List<VideoFolder>,
+    scopedFolders: List<VideoFolder>,
+  ): List<VideoFolder> {
     if (scopedFolders.isEmpty()) return scopedFolders
-    val localKeys = localFolders.mapNotNullTo(hashSetOf()) { folder ->
-      if (isScopedFolder(folder.path)) null else storagePathKey(folder.path)
-    }
+    val localKeys =
+      localFolders.mapNotNullTo(hashSetOf()) { folder ->
+        if (isScopedFolder(folder.path)) null else storagePathKey(folder.path)
+      }
     if (localKeys.isEmpty()) return scopedFolders
     return scopedFolders.filterNot { folder ->
       localPathOf(Uri.parse(folder.bucketId))?.let(::storagePathKey) in localKeys
@@ -93,7 +100,10 @@ object ScopedHiddenFolderScanner {
   // Filled by getFolders so a folder can be opened without walking its grant again.
   @Volatile private var indexedDirectories: Map<String, IndexedDirectory> = emptyMap()
 
-  fun isIndexedDescendant(bucketId: String, ancestorBucketId: String): Boolean {
+  fun isIndexedDescendant(
+    bucketId: String,
+    ancestorBucketId: String,
+  ): Boolean {
     var current = bucketId
     val visited = hashSetOf<String>()
     while (visited.add(current)) {
@@ -108,7 +118,10 @@ object ScopedHiddenFolderScanner {
    * grants. URI matching here is only a fast filter; getVideos still finds the child by walking
    * an accessible persisted tree, so a fabricated document URI cannot bypass the grant.
    */
-  fun isGrantedFolder(bucketId: String, grantedTreeUris: Set<String>): Boolean {
+  fun isGrantedFolder(
+    bucketId: String,
+    grantedTreeUris: Set<String>,
+  ): Boolean {
     if (!isScopedFolder(bucketId)) return false
     val requested = Uri.parse(bucketId)
     val parts = requested.pathSegments
@@ -134,43 +147,46 @@ object ScopedHiddenFolderScanner {
     markerNames: Set<String> = setOf(".nomedia"),
     ignoredMarkerNames: Set<String> = emptySet(),
     scanOptions: MediaScanOptions = MediaScanOptions(),
-  ): List<VideoFolder> = withContext(Dispatchers.IO) {
-    val normalizedMarkers = markerNames.mapNotNull(::normalizeHiddenMarkerName).toSet()
-    val ignoredMarkers = ignoredMarkerNames.mapNotNull(::normalizeHiddenMarkerName).toSet()
-    val excludedMarkers = if (includeMarkedFolders) normalizedMarkers.intersect(ignoredMarkers) else normalizedMarkers
-    val folders = mutableListOf<VideoFolder>()
-    val discovered = mutableMapOf<String, IndexedDirectory>()
-    for (treeUri in grantedTreeUris.sorted()) {
-      walkGrant(context, treeUri, skipDotDirectories = !includeDotFolders) { visit, children ->
-        if (children.any { it.isFile && it.name in excludedMarkers }) {
-          return@walkGrant WalkStep.SkipSubtree
+  ): List<VideoFolder> =
+    withContext(Dispatchers.IO) {
+      val normalizedMarkers = markerNames.mapNotNull(::normalizeHiddenMarkerName).toSet()
+      val ignoredMarkers = ignoredMarkerNames.mapNotNull(::normalizeHiddenMarkerName).toSet()
+      val excludedMarkers = if (includeMarkedFolders) normalizedMarkers.intersect(ignoredMarkers) else normalizedMarkers
+      val folders = mutableListOf<VideoFolder>()
+      val discovered = mutableMapOf<String, IndexedDirectory>()
+      for (treeUri in grantedTreeUris.sorted()) {
+        walkGrant(context, treeUri, skipDotDirectories = !includeDotFolders) { visit, children ->
+          if (children.any { it.isFile && it.name in excludedMarkers }) {
+            return@walkGrant WalkStep.SkipSubtree
+          }
+          discovered[visit.bucketId] = IndexedDirectory(visit, treeUri)
+          val items =
+            mediaItems(visit.bucketId, visit.displayName, children, includeAudio, audioOnly)
+              .filter { (includeDotFolders || !it.displayName.startsWith(".")) && scanOptions.includesVideo(it) }
+          // Keep the directory in the traversal index, but only show folders with playable items.
+          // Empty parents must still be descended into so their non-empty children remain visible.
+          if (items.isNotEmpty()) {
+            folders +=
+              VideoFolder(
+                bucketId = visit.bucketId,
+                name = visit.displayName,
+                path = visit.bucketId,
+                videoCount = items.size,
+                totalSize = items.sumOf { it.size },
+                totalDuration = 0L,
+                lastModified = items.maxOfOrNull { it.dateModified } ?: 0L,
+                // Folders MediaStore also lists are dropped as local duplicates; the rest are hidden.
+                isHidden = true,
+              )
+          }
+          WalkStep.Descend
         }
-        discovered[visit.bucketId] = IndexedDirectory(visit, treeUri)
-        val items = mediaItems(visit.bucketId, visit.displayName, children, includeAudio, audioOnly)
-          .filter { (includeDotFolders || !it.displayName.startsWith(".")) && scanOptions.includesVideo(it) }
-        // Keep the directory in the traversal index, but only show folders with playable items.
-        // Empty parents must still be descended into so their non-empty children remain visible.
-        if (items.isNotEmpty()) {
-          folders += VideoFolder(
-            bucketId = visit.bucketId,
-            name = visit.displayName,
-            path = visit.bucketId,
-            videoCount = items.size,
-            totalSize = items.sumOf { it.size },
-            totalDuration = 0L,
-            lastModified = items.maxOfOrNull { it.dateModified } ?: 0L,
-            // Folders MediaStore also lists are dropped as local duplicates; the rest are hidden.
-            isHidden = true,
-          )
-        }
-        WalkStep.Descend
       }
+      // Retain every grant alias in the index so removing one grant or using a saved folder link
+      // still resolves correctly. Only the displayed folder list collapses equivalent documents.
+      indexedDirectories = discovered.toMap()
+      folders.distinctBy { documentKey(Uri.parse(it.bucketId)) }.sortedBy { it.name.lowercase(Locale.ROOT) }
     }
-    // Retain every grant alias in the index so removing one grant or using a saved folder link
-    // still resolves correctly. Only the displayed folder list collapses equivalent documents.
-    indexedDirectories = discovered.toMap()
-    folders.distinctBy { documentKey(Uri.parse(it.bucketId)) }.sortedBy { it.name.lowercase(Locale.ROOT) }
-  }
 
   /**
    * Collects every playable item beneath a folder for the explicit folder-swipe action. Unlike a
@@ -182,15 +198,16 @@ object ScopedHiddenFolderScanner {
     grantedTreeUris: Set<String>,
     includeAudio: Boolean,
     audioOnly: Boolean = false,
-  ): List<Video> = withContext(Dispatchers.IO) {
-    val start = resolveDirectory(context, bucketId, grantedTreeUris) ?: return@withContext emptyList()
-    val videos = mutableListOf<Video>()
-    walkFrom(context, start, skipDotDirectories = false) { visit, children ->
-      videos += mediaItems(visit.bucketId, visit.displayName, children, includeAudio, audioOnly)
-      WalkStep.Descend
+  ): List<Video> =
+    withContext(Dispatchers.IO) {
+      val start = resolveDirectory(context, bucketId, grantedTreeUris) ?: return@withContext emptyList()
+      val videos = mutableListOf<Video>()
+      walkFrom(context, start, skipDotDirectories = false) { visit, children ->
+        videos += mediaItems(visit.bucketId, visit.displayName, children, includeAudio, audioOnly)
+        WalkStep.Descend
+      }
+      videos.distinctBy { documentKey(it.uri) }.sortedBy { it.displayName.lowercase(Locale.ROOT) }
     }
-    videos.distinctBy { documentKey(it.uri) }.sortedBy { it.displayName.lowercase(Locale.ROOT) }
-  }
 
   /** The folder behind [bucketId] inside a persisted grant, reusing the last folder-list walk when still valid. */
   private suspend fun resolveDirectory(
@@ -200,7 +217,8 @@ object ScopedHiddenFolderScanner {
   ): DirectoryVisit? {
     if (!isGrantedFolder(bucketId, grantedTreeUris)) return null
     val cached = indexedDirectories[bucketId]
-    if (cached != null && cached.grantedTreeUri in grantedTreeUris &&
+    if (cached != null &&
+      cached.grantedTreeUri in grantedTreeUris &&
       openPersistedTreeDocument(context, cached.grantedTreeUri) != null
     ) {
       return cached.visit
@@ -270,11 +288,12 @@ object ScopedHiddenFolderScanner {
     includeAudio: Boolean,
     grantedTreeUris: Set<String>,
     scanOptions: MediaScanOptions = MediaScanOptions(),
-  ): List<Video> = withContext(Dispatchers.IO) {
-    val directory = resolveDirectory(context, bucketId, grantedTreeUris) ?: return@withContext emptyList()
-    mediaItems(bucketId, directory.displayName, listChildren(context, directory.uri), includeAudio, audioOnly = false)
-      .filter(scanOptions::includesVideo)
-  }
+  ): List<Video> =
+    withContext(Dispatchers.IO) {
+      val directory = resolveDirectory(context, bucketId, grantedTreeUris) ?: return@withContext emptyList()
+      mediaItems(bucketId, directory.displayName, listChildren(context, directory.uri), includeAudio, audioOnly = false)
+        .filter(scanOptions::includesVideo)
+    }
 
   /** Playable items of one listing. Names and MIME types decide the kind; nothing is opened or probed. */
   private fun mediaItems(
@@ -284,41 +303,48 @@ object ScopedHiddenFolderScanner {
     includeAudio: Boolean,
     audioOnly: Boolean,
   ): List<Video> =
-    children.mapNotNull { child ->
-      if (!child.isFile) return@mapNotNull null
-      val mimeType = child.mimeType
-      val file = File(child.name)
-      val isAudio = mimeType.startsWith("audio/") ||
-        (!mimeType.startsWith("video/") && FileTypeUtils.isAudioFile(file))
-      val isVideo = mimeType.startsWith("video/") || (!isAudio && FileTypeUtils.isVideoFile(file))
-      if (audioOnly && !isAudio) return@mapNotNull null
-      if (!(isVideo || (includeAudio && isAudio))) return@mapNotNull null
-      val size = child.size.coerceAtLeast(0L)
-      val modified = (child.lastModified / 1_000L).coerceAtLeast(0L)
-      Video(
-        id = child.uri.toString().hashCode().toLong(),
-        title = child.name.substringBeforeLast('.', child.name),
-        displayName = child.name,
-        path = child.uri.toString(),
-        uri = child.uri,
-        // Probed later in the background; blank keeps the card from showing a bogus "0s".
-        duration = 0L,
-        durationFormatted = "",
-        size = size,
-        sizeFormatted = VideoScanUtils.formatFileSize(size),
-        dateModified = modified,
-        dateAdded = modified,
-        mimeType = mimeType.takeIf { it.startsWith("audio/") || it.startsWith("video/") }
-          ?: if (isAudio) "audio/*" else "video/*",
-        bucketId = bucketId,
-        bucketDisplayName = folderName,
-        width = 0,
-        height = 0,
-        fps = 0f,
-        resolution = "",
-        isAudio = isAudio,
-      )
-    }.sortedBy { it.displayName.lowercase(Locale.ROOT) }
+    children
+      .mapNotNull { child ->
+        if (!child.isFile) return@mapNotNull null
+        val mimeType = child.mimeType
+        val file = File(child.name)
+        val isAudio =
+          mimeType.startsWith("audio/") ||
+            (!mimeType.startsWith("video/") && FileTypeUtils.isAudioFile(file))
+        val isVideo = mimeType.startsWith("video/") || (!isAudio && FileTypeUtils.isVideoFile(file))
+        if (audioOnly && !isAudio) return@mapNotNull null
+        if (!(isVideo || (includeAudio && isAudio))) return@mapNotNull null
+        val size = child.size.coerceAtLeast(0L)
+        val modified = (child.lastModified / 1_000L).coerceAtLeast(0L)
+        Video(
+          id =
+            child.uri
+              .toString()
+              .hashCode()
+              .toLong(),
+          title = child.name.substringBeforeLast('.', child.name),
+          displayName = child.name,
+          path = child.uri.toString(),
+          uri = child.uri,
+          // Probed later in the background; blank keeps the card from showing a bogus "0s".
+          duration = 0L,
+          durationFormatted = "",
+          size = size,
+          sizeFormatted = VideoScanUtils.formatFileSize(size),
+          dateModified = modified,
+          dateAdded = modified,
+          mimeType =
+            mimeType.takeIf { it.startsWith("audio/") || it.startsWith("video/") }
+              ?: if (isAudio) "audio/*" else "video/*",
+          bucketId = bucketId,
+          bucketDisplayName = folderName,
+          width = 0,
+          height = 0,
+          fps = 0f,
+          resolution = "",
+          isAudio = isAudio,
+        )
+      }.sortedBy { it.displayName.lowercase(Locale.ROOT) }
 
   private data class ChildEntry(
     val uri: Uri,
@@ -331,37 +357,45 @@ object ScopedHiddenFolderScanner {
     val isFile: Boolean get() = !isDirectory && mimeType.isNotEmpty()
   }
 
-  private val childColumns = arrayOf(
-    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-    DocumentsContract.Document.COLUMN_MIME_TYPE,
-    DocumentsContract.Document.COLUMN_SIZE,
-    DocumentsContract.Document.COLUMN_LAST_MODIFIED,
-  )
+  private val childColumns =
+    arrayOf(
+      DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+      DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+      DocumentsContract.Document.COLUMN_MIME_TYPE,
+      DocumentsContract.Document.COLUMN_SIZE,
+      DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+    )
 
   // One cursor per directory returns every column a row needs. DocumentFile would cost a separate
   // provider call for the name, type and size of each child.
-  private fun listChildren(context: Context, directoryUri: Uri): List<ChildEntry> =
+  private fun listChildren(
+    context: Context,
+    directoryUri: Uri,
+  ): List<ChildEntry> =
     runCatching {
-      val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-        directoryUri,
-        DocumentsContract.getDocumentId(directoryUri),
-      )
-      context.contentResolver.query(childrenUri, childColumns, null, null, null)?.use { cursor ->
-        val entries = ArrayList<ChildEntry>(cursor.count)
-        while (cursor.moveToNext()) {
-          val id = cursor.getString(0) ?: continue
-          val name = cursor.getString(1) ?: continue
-          entries += ChildEntry(
-            uri = DocumentsContract.buildDocumentUriUsingTree(directoryUri, id),
-            name = name,
-            mimeType = cursor.getString(2).orEmpty(),
-            size = if (cursor.isNull(3)) 0L else cursor.getLong(3),
-            lastModified = if (cursor.isNull(4)) 0L else cursor.getLong(4),
-          )
-        }
-        entries
-      }.orEmpty()
+      val childrenUri =
+        DocumentsContract.buildChildDocumentsUriUsingTree(
+          directoryUri,
+          DocumentsContract.getDocumentId(directoryUri),
+        )
+      context.contentResolver
+        .query(childrenUri, childColumns, null, null, null)
+        ?.use { cursor ->
+          val entries = ArrayList<ChildEntry>(cursor.count)
+          while (cursor.moveToNext()) {
+            val id = cursor.getString(0) ?: continue
+            val name = cursor.getString(1) ?: continue
+            entries +=
+              ChildEntry(
+                uri = DocumentsContract.buildDocumentUriUsingTree(directoryUri, id),
+                name = name,
+                mimeType = cursor.getString(2).orEmpty(),
+                size = if (cursor.isNull(3)) 0L else cursor.getLong(3),
+                lastModified = if (cursor.isNull(4)) 0L else cursor.getLong(4),
+              )
+          }
+          entries
+        }.orEmpty()
     }.onFailure { error ->
       Log.w(TAG, "Cannot list a selected folder", error)
     }.getOrDefault(emptyList())

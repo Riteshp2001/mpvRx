@@ -54,9 +54,10 @@ internal fun FloatingLyricsPreference(preferences: AudioPreferences) {
     }
   }
 
-  val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-    finishRequest()
-  }
+  val permission =
+    rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+      finishRequest()
+    }
   LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { finishRequest() }
 
   fun requestPermission() {

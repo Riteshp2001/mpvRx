@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 package app.gyrolet.mpvrx.ui.mediainfo
 
@@ -83,11 +83,12 @@ private fun queryMediaStore(
         // MediaStore stores added/modified in seconds and the capture time in milliseconds.
         addedMillis = it.positiveLong(MediaStore.MediaColumns.DATE_ADDED)?.times(1_000L),
         modifiedMillis = it.positiveLong(MediaStore.MediaColumns.DATE_MODIFIED)?.times(1_000L),
-        takenMillis = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-          it.positiveLong(MediaStore.MediaColumns.DATE_TAKEN)
-        } else {
-          null
-        },
+        takenMillis =
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            it.positiveLong(MediaStore.MediaColumns.DATE_TAKEN)
+          } else {
+            null
+          },
         ownerPackage =
           if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             it.text(MediaStore.MediaColumns.OWNER_PACKAGE_NAME)
@@ -149,7 +150,11 @@ private fun localModifiedMillis(
   uri: Uri,
   localPath: String?,
 ): Long? {
-  localPath?.let(::File)?.lastModified()?.takeIf { it > 0L }?.let { return it }
+  localPath
+    ?.let(::File)
+    ?.lastModified()
+    ?.takeIf { it > 0L }
+    ?.let { return it }
   if (!DocumentsContract.isDocumentUri(context, uri)) return null
   return try {
     context.contentResolver

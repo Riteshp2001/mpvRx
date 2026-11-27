@@ -34,8 +34,8 @@ class ImageViewerViewModel(
   private val connectionId: Long,
   val images: List<NetworkFile>,
   val initialIndex: Int,
-) : AndroidViewModel(application), KoinComponent {
-
+) : AndroidViewModel(application),
+  KoinComponent {
   private val imageRepository: NetworkImageRepository by inject()
 
   private val _currentIndex = MutableStateFlow(initialIndex.coerceIn(0, images.lastIndex.coerceAtLeast(0)))
@@ -136,7 +136,10 @@ class ImageViewerViewModel(
    *
    * [force] re-attempts a file whose bytes previously failed to decode; only a manual retry sets it.
    */
-  fun loadImage(file: NetworkFile, force: Boolean = false) {
+  fun loadImage(
+    file: NetworkFile,
+    force: Boolean = false,
+  ) {
     val current = _imageStates.value[file.path]
     if (current?.bitmap != null || current?.isLoading == true) return
 
@@ -165,20 +168,21 @@ class ImageViewerViewModel(
     if (file.path in preloadJobs) return
     if (_imageStates.value[file.path]?.bitmap != null) return
 
-    preloadJobs[file.path] = viewModelScope.launch {
-      try {
-        val bitmap = fetchFullImage(file, force = false)
-        if (bitmap != null) {
-          updateState(file.path) { it.copy(bitmap = bitmap) }
+    preloadJobs[file.path] =
+      viewModelScope.launch {
+        try {
+          val bitmap = fetchFullImage(file, force = false)
+          if (bitmap != null) {
+            updateState(file.path) { it.copy(bitmap = bitmap) }
+          }
+        } catch (_: CancellationException) {
+          // Routine: closing the viewer cancels pre-loads. The finally block still runs.
+        } catch (_: Exception) {
+          // ignore pre-load failures
+        } finally {
+          preloadJobs.remove(file.path)
         }
-      } catch (_: CancellationException) {
-        // Routine: closing the viewer cancels pre-loads. The finally block still runs.
-      } catch (_: Exception) {
-        // ignore pre-load failures
-      } finally {
-        preloadJobs.remove(file.path)
       }
-    }
   }
 
   fun retryImage(file: NetworkFile) {
@@ -247,15 +251,16 @@ class ImageViewerViewModel(
             path in thumbnailWindow -> path to state.copy(bitmap = null)
             else -> null
           }
-        }
-        .toMap()
+        }.toMap()
     if (pruned != current) _imageStates.value = pruned
   }
 
   // The repository already switches to Dispatchers.IO internally; wrapping again only added a
   // redundant context hop.
-  private suspend fun fetchFullImage(file: NetworkFile, force: Boolean): Bitmap? =
-    imageRepository.getFullImage(connectionId, file, force = force)
+  private suspend fun fetchFullImage(
+    file: NetworkFile,
+    force: Boolean,
+  ): Bitmap? = imageRepository.getFullImage(connectionId, file, force = force)
 
   private suspend fun loadThumbnail(file: NetworkFile): Bitmap? =
     imageRepository.getThumbnail(connectionId, file, widthPx = 256, heightPx = 256)
@@ -265,9 +270,10 @@ class ImageViewerViewModel(
     transform: (ImageViewerItemState) -> ImageViewerItemState,
   ) {
     if (closed) return
-    _imageStates.value = _imageStates.value.toMutableMap().apply {
-      this[path] = transform(this[path] ?: ImageViewerItemState())
-    }
+    _imageStates.value =
+      _imageStates.value.toMutableMap().apply {
+        this[path] = transform(this[path] ?: ImageViewerItemState())
+      }
   }
 
   companion object {

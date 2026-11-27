@@ -12,10 +12,16 @@ import java.io.File
 
 /** Reopen video and subtitle sources with the same authentication as playback. */
 @UnstableApi
-internal fun clipDataSourceFactory(context: Context, headers: Map<String, String>): DefaultDataSource.Factory {
+internal fun clipDataSourceFactory(
+  context: Context,
+  headers: Map<String, String>,
+): DefaultDataSource.Factory {
   val httpFactory = DefaultHttpDataSource.Factory()
-  headers.entries.firstOrNull { it.key.equals("User-Agent", ignoreCase = true) }
-    ?.value?.takeIf { it.isNotBlank() }?.let(httpFactory::setUserAgent)
+  headers.entries
+    .firstOrNull { it.key.equals("User-Agent", ignoreCase = true) }
+    ?.value
+    ?.takeIf { it.isNotBlank() }
+    ?.let(httpFactory::setUserAgent)
   httpFactory.setDefaultRequestProperties(headers.filterKeys { !it.equals("User-Agent", ignoreCase = true) })
   return DefaultDataSource.Factory(context, httpFactory)
 }

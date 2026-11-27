@@ -63,14 +63,14 @@ import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.components.InlineSearchBar
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.LocalEmphasizedTypography
-import app.gyrolet.mpvrx.ui.utils.LocalBackStack
-import app.gyrolet.mpvrx.ui.utils.navigateTo
-import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.ui.tv.isTelevision
 import app.gyrolet.mpvrx.ui.tv.tvContentFocus
 import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.navigateTo
+import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -501,24 +501,23 @@ private fun SearchResultItem(
 }
 
 @Composable
-private fun localizedSearchCategory(category: String): String =
-  stringResource(searchCategoryTitleRes(category))
+private fun localizedSearchCategory(category: String): String = stringResource(searchCategoryTitleRes(category))
 
 @androidx.annotation.StringRes
 internal fun searchCategoryTitleRes(category: String): Int =
-    when (category) {
-      "About" -> R.string.pref_section_about
-      "Advanced" -> R.string.search_category_advanced
-      "AI" -> R.string.search_category_ai
-      "Appearance" -> R.string.search_category_appearance
-      "Audio" -> R.string.search_category_audio
-      "Decoder" -> R.string.search_category_decoder
-      "Codecs" -> R.string.pref_codecs_title
-      "Folders" -> R.string.search_category_folders
-      "Media Servers" -> R.string.pref_media_servers_title
-      "Gestures" -> R.string.search_category_gestures
-      "Network" -> R.string.ui_network
-      "Player" -> R.string.search_category_player
-      "Subtitles" -> R.string.search_category_subtitles
-      else -> R.string.search_category_advanced
-    }
+  when (category) {
+    "About" -> R.string.pref_section_about
+    "Advanced" -> R.string.search_category_advanced
+    "AI" -> R.string.search_category_ai
+    "Appearance" -> R.string.search_category_appearance
+    "Audio" -> R.string.search_category_audio
+    "Decoder" -> R.string.search_category_decoder
+    "Codecs" -> R.string.pref_codecs_title
+    "Folders" -> R.string.search_category_folders
+    "Media Servers" -> R.string.pref_media_servers_title
+    "Gestures" -> R.string.search_category_gestures
+    "Network" -> R.string.ui_network
+    "Player" -> R.string.search_category_player
+    "Subtitles" -> R.string.search_category_subtitles
+    else -> R.string.search_category_advanced
+  }

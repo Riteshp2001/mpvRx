@@ -38,49 +38,51 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
-import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
-import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.presentation.components.PlayerSheet
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.components.themedSegmentedButtonColors
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberTvInitialFocusRequester
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 
-enum class EqualizerMode(@StringRes val titleRes: Int) {
+enum class EqualizerMode(
+  @StringRes val titleRes: Int,
+) {
   DYNAMIC(R.string.equalizer_mode_dynamic),
   MANUAL(R.string.equalizer_mode_manual),
 }
@@ -174,8 +176,10 @@ fun EqualizerSheet(
       IconSwitch(
         checked = state.isEnabled,
         onCheckedChange = onEnabledChanged,
-        modifier = Modifier.tvInitialFocus(initialFocusRequester)
-          .tvFocusHighlight(RoundedCornerShape(12.dp), focusedScale = 1.04f),
+        modifier =
+          Modifier
+            .tvInitialFocus(initialFocusRequester)
+            .tvFocusHighlight(RoundedCornerShape(12.dp), focusedScale = 1.04f),
       )
     },
   ) {
@@ -186,7 +190,10 @@ fun EqualizerSheet(
           .padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
       SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-        listOf(R.string.equalizer_tab_tone, R.string.equalizer_tab_bands, R.string.autoeq_title).forEachIndexed { index, title ->
+        listOf(R.string.equalizer_tab_tone, R.string.equalizer_tab_bands, R.string.autoeq_title).forEachIndexed {
+          index,
+          title,
+          ->
           SegmentedButton(
             selected = selectedTab == index,
             onClick = {
@@ -202,8 +209,12 @@ fun EqualizerSheet(
       }
 
       Column(
-        modifier = Modifier.fillMaxWidth().weight(1f, fill = false)
-          .verticalScroll(scrollState).padding(bottom = 16.dp),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .weight(1f, fill = false)
+            .verticalScroll(scrollState)
+            .padding(bottom = 16.dp),
       ) {
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -212,20 +223,22 @@ fun EqualizerSheet(
             enabled = state.isEnabled,
             onChooseHeadphones = { showHeadphonePicker = true },
           )
-        } else when (state.mode) {
-          EqualizerMode.DYNAMIC -> {
-            DynamicEqualizerContent(
-              state = state,
-              onToneChanged = onToneChanged,
-              onToneFocusChanged = onToneFocusChanged,
-            )
-          }
-          EqualizerMode.MANUAL -> {
-            ManualEqualizerContent(
-              state = state,
-              onPresetSelected = onPresetSelected,
-              onBandChanged = onBandChanged,
-            )
+        } else {
+          when (state.mode) {
+            EqualizerMode.DYNAMIC -> {
+              DynamicEqualizerContent(
+                state = state,
+                onToneChanged = onToneChanged,
+                onToneFocusChanged = onToneFocusChanged,
+              )
+            }
+            EqualizerMode.MANUAL -> {
+              ManualEqualizerContent(
+                state = state,
+                onPresetSelected = onPresetSelected,
+                onBandChanged = onBandChanged,
+              )
+            }
           }
         }
 
@@ -252,7 +265,14 @@ fun EqualizerSheet(
             fontWeight = FontWeight.SemiBold,
           )
           Text(
-            text = if (state.volumeBoostDb > 0) "+${state.volumeBoostDb} dB" else stringResource(R.string.player_sheets_off),
+            text =
+              if (state.volumeBoostDb >
+                0
+              ) {
+                "+${state.volumeBoostDb} dB"
+              } else {
+                stringResource(R.string.player_sheets_off)
+              },
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
             color =
               if (state.isEnabled) {
@@ -270,7 +290,9 @@ fun EqualizerSheet(
         Spacer(modifier = Modifier.height(8.dp))
 
         var volumeBoostValue by remember(state.volumeBoostDb) { mutableFloatStateOf(state.volumeBoostDb.toFloat()) }
-        val boostHaptics = app.gyrolet.mpvrx.ui.utils.rememberAdjustmentHaptics(0f, 10f)
+        val boostHaptics =
+          app.gyrolet.mpvrx.ui.utils
+            .rememberAdjustmentHaptics(0f, 10f)
         Slider(
           value = volumeBoostValue,
           onValueChange = { newValue ->
@@ -461,12 +483,17 @@ private fun TonePad(
             down.consume()
             var lastX = latestX
             var lastY = latestY
+
             fun report(position: Offset) {
               val inset = 18.dp.toPx()
               val width = (size.width - inset * 2f).coerceAtLeast(1f)
               val height = (size.height - inset * 2f).coerceAtLeast(1f)
-              val nextX = ((((position.x - inset) / width).coerceIn(0f, 1f) * EQ_TONE_STEPS * 2f).roundToInt() - EQ_TONE_STEPS)
-              val nextY = EQ_TONE_STEPS - (((position.y - inset) / height).coerceIn(0f, 1f) * EQ_TONE_STEPS * 2f).roundToInt()
+              val nextX = (
+                (((position.x - inset) / width).coerceIn(0f, 1f) * EQ_TONE_STEPS * 2f).roundToInt() -
+                  EQ_TONE_STEPS
+              )
+              val nextY =
+                EQ_TONE_STEPS - (((position.y - inset) / height).coerceIn(0f, 1f) * EQ_TONE_STEPS * 2f).roundToInt()
               if (nextX != lastX || nextY != lastY) {
                 lastX = nextX
                 lastY = nextY
@@ -499,10 +526,11 @@ private fun TonePad(
         drawCircle(
           color = dotColor.copy(alpha = if (onAxis) 0.55f else 0.26f),
           radius = if (onAxis) 2.dp.toPx() else 1.5.dp.toPx(),
-          center = Offset(
-            x = inset + usableWidth * column / divisions,
-            y = inset + usableHeight * row / divisions,
-          ),
+          center =
+            Offset(
+              x = inset + usableWidth * column / divisions,
+              y = inset + usableHeight * row / divisions,
+            ),
         )
       }
     }
@@ -511,7 +539,15 @@ private fun TonePad(
         x = inset + usableWidth * (animatedX + EQ_TONE_STEPS) / divisions,
         y = inset + usableHeight * (EQ_TONE_STEPS - animatedY) / divisions,
       )
-    drawCircle(color = Color.Black.copy(alpha = 0.18f), radius = 15.dp.toPx(), center = puckCenter.copy(y = puckCenter.y + 2.dp.toPx()))
+    drawCircle(
+      color = Color.Black.copy(alpha = 0.18f),
+      radius = 15.dp.toPx(),
+      center =
+        puckCenter.copy(
+          y =
+            puckCenter.y + 2.dp.toPx(),
+        ),
+    )
     drawCircle(color = puckColor.copy(alpha = if (enabled) 1f else 0.38f), radius = 13.dp.toPx(), center = puckCenter)
     drawCircle(color = puckMarkColor, radius = 4.dp.toPx(), center = puckCenter)
   }
@@ -574,7 +610,9 @@ private fun BandColumn(
   modifier: Modifier = Modifier,
 ) {
   var sliderValue by remember(gainDb) { mutableFloatStateOf(gainDb) }
-  val gainHaptics = app.gyrolet.mpvrx.ui.utils.rememberAdjustmentHaptics(EQ_MIN_DB, EQ_MAX_DB)
+  val gainHaptics =
+    app.gyrolet.mpvrx.ui.utils
+      .rememberAdjustmentHaptics(EQ_MIN_DB, EQ_MAX_DB)
 
   Column(
     modifier = modifier.fillMaxHeight(),

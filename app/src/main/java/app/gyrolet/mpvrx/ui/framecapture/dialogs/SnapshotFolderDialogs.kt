@@ -18,12 +18,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,6 +39,9 @@ import app.gyrolet.mpvrx.ui.framecapture.SnapshotFolderRow
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 /**
  * Create and rename share one dialog: both are "name a folder, reject a blank or duplicate one".
@@ -118,7 +118,8 @@ fun SnapshotDeleteFolderDialog(
       )
     },
     confirmButton = {
-      app.gyrolet.mpvrx.presentation.components.DeleteSizeButton(paths = paths, onClick = onConfirm)
+      app.gyrolet.mpvrx.presentation.components
+        .DeleteSizeButton(paths = paths, onClick = onConfirm)
     },
     dismissButton = {
       TextButton(onClick = onDismiss) { Text(stringResource(R.string.generic_cancel)) }
@@ -144,7 +145,8 @@ fun SnapshotDeleteConfirmDialog(
     title = { Text(stringResource(R.string.snapshot_delete_selected_title, count)) },
     text = { Text(stringResource(R.string.snapshot_delete_message)) },
     confirmButton = {
-      app.gyrolet.mpvrx.presentation.components.DeleteSizeButton(paths = paths, onClick = onConfirm)
+      app.gyrolet.mpvrx.presentation.components
+        .DeleteSizeButton(paths = paths, onClick = onConfirm)
     },
     dismissButton = {
       TextButton(onClick = onDismiss) { Text(stringResource(R.string.generic_cancel)) }

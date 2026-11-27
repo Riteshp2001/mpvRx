@@ -9,6 +9,9 @@
 
 package app.gyrolet.mpvrx.ui.browser.jellyfin
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -24,6 +27,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -44,12 +48,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,13 +58,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.carousel.CarouselDefaults
-import androidx.compose.material3.carousel.CarouselItemScope
-import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
-import androidx.compose.material3.carousel.rememberCarouselState
-import android.content.Intent
-import android.net.Uri
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
@@ -72,14 +66,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.carousel.CarouselDefaults
+import androidx.compose.material3.carousel.CarouselItemScope
+import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -92,6 +90,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.selected
@@ -107,6 +108,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.currentStateAsState
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.data.jellyfin.JellyfinClient
 import app.gyrolet.mpvrx.domain.jellyfin.JellyfinItem
@@ -116,26 +120,22 @@ import app.gyrolet.mpvrx.ui.browser.cards.MediaSelectionNeighbors
 import app.gyrolet.mpvrx.ui.browser.cards.mediaCardClickable
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvContextMenu
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
-import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
-import app.gyrolet.mpvrx.ui.tv.focusableWhen
-import app.gyrolet.mpvrx.ui.theme.LocalDarkAppColorScheme
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.ConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.LocalDarkAppColorScheme
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.ui.tv.focusableWhen
+import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
 import app.gyrolet.mpvrx.ui.utils.LocalNavigationPageActive
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.currentStateAsState
-import android.content.ActivityNotFoundException
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 /** Watch-progress overlay drawn on top of artwork; uses the always-dark accent so the
  * fill stays visible on the black track in light mode. */
@@ -161,8 +161,8 @@ private fun buildStarSubtitle(
   communityRating: Double?,
   criticRating: Double?,
   partsAfterRating: List<String> = emptyList(),
-): AnnotatedString {
-  return buildAnnotatedString {
+): AnnotatedString =
+  buildAnnotatedString {
     var hasContent = false
     partsBeforeRating.filter { it.isNotBlank() }.forEach { part ->
       if (hasContent) append(" • ")
@@ -188,7 +188,6 @@ private fun buildStarSubtitle(
       hasContent = true
     }
   }
-}
 
 // ============================================================================
 // Hero Featured Carousel (Material 3 Expressive multi-browse carousel)
@@ -219,8 +218,13 @@ fun JellyfinHeroBanner(
   val pageActive = LocalNavigationPageActive.current
   val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
   var hasFocus by remember { mutableStateOf(false) }
-  val canAutoAdvance = autoAdvance && pageActive && lifecycle.isAtLeast(Lifecycle.State.STARTED) &&
-    !isTelevision && !reduceMotion && !hasFocus
+  val canAutoAdvance =
+    autoAdvance &&
+      pageActive &&
+      lifecycle.isAtLeast(Lifecycle.State.STARTED) &&
+      !isTelevision &&
+      !reduceMotion &&
+      !hasFocus
   val gutter = jellyfinGutter()
   val currentItem = carouselState.currentItem.coerceIn(0, items.lastIndex)
 
@@ -239,11 +243,14 @@ fun JellyfinHeroBanner(
   val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
   // Landscape previously pinned a short 300 dp strip; scale with the display width instead so
   // the slide keeps cinema-like proportions on tablets instead of a cramped banner.
-  val heroHeight = (when {
-    isTelevision -> 420.dp
-    isLandscape -> (configuration.screenWidthDp.dp * 0.42f).coerceIn(360.dp, 480.dp)
-    else -> 440.dp
-  }) * configuration.fontScale.coerceAtLeast(1f)
+  val heroHeight =
+    (
+      when {
+        isTelevision -> 420.dp
+        isLandscape -> (configuration.screenWidthDp.dp * 0.42f).coerceIn(360.dp, 480.dp)
+        else -> 440.dp
+      }
+    ) * configuration.fontScale.coerceAtLeast(1f)
 
   Column(
     modifier =
@@ -348,7 +355,14 @@ private fun CarouselItemScope.JellyfinHeroSlide(
     }
 
   val logoUrl =
-    remember(server.serverUrl, item.id, item.logoImageTag, item.parentLogoImageTag, item.parentLogoItemId, server.accessToken) {
+    remember(
+      server.serverUrl,
+      item.id,
+      item.logoImageTag,
+      item.parentLogoImageTag,
+      item.parentLogoItemId,
+      server.accessToken,
+    ) {
       if (!item.logoImageTag.isNullOrBlank()) {
         JellyfinClient.getLogoUrl(
           serverUrl = server.serverUrl,
@@ -365,7 +379,9 @@ private fun CarouselItemScope.JellyfinHeroSlide(
           maxWidth = 800,
           token = server.accessToken,
         )
-      } else null
+      } else {
+        null
+      }
     }
 
   Box(
@@ -596,11 +612,22 @@ private fun CarouselItemScope.JellyfinHeroSlide(
             enabled = isCurrent,
             modifier = Modifier.weight(1f).heightIn(min = 52.dp).tvFocusHighlight(CircleShape),
             shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(containerColor = artworkColors.primary, contentColor = artworkColors.onPrimary),
+            colors =
+              ButtonDefaults.buttonColors(
+                containerColor = artworkColors.primary,
+                contentColor = artworkColors.onPrimary,
+              ),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
           ) {
             Icon(
-              imageVector = if (item.isSeries && item.progressPercent <= 0.05f) Icons.RoundedFilled.Tv else Icons.RoundedFilled.PlayArrow,
+              imageVector =
+                if (item.isSeries &&
+                  item.progressPercent <= 0.05f
+                ) {
+                  Icons.RoundedFilled.Tv
+                } else {
+                  Icons.RoundedFilled.PlayArrow
+                },
               contentDescription = null,
               modifier = Modifier.size(18.dp),
             )
@@ -623,9 +650,11 @@ private fun CarouselItemScope.JellyfinHeroSlide(
             enabled = isCurrent,
             modifier = Modifier.size(52.dp).tvFocusHighlight(CircleShape),
             shape = CircleShape,
-            colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
-              containerColor = Color.White.copy(alpha = 0.16f), contentColor = Color.White,
-            ),
+            colors =
+              androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = Color.White.copy(alpha = 0.16f),
+                contentColor = Color.White,
+              ),
           ) {
             Icon(
               imageVector = Icons.RoundedFilled.Info,
@@ -637,15 +666,23 @@ private fun CarouselItemScope.JellyfinHeroSlide(
           FilledTonalIconButton(
             onClick = {
               val rawUrl = item.remoteTrailerUrl?.takeIf { it.isNotBlank() }
-              val trailerUrl = if (!rawUrl.isNullOrBlank()) {
-                if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) rawUrl
-                else "https://www.youtube.com/watch?v=$rawUrl"
-              } else {
-                "https://www.youtube.com/results?search_query=${java.net.URLEncoder.encode("${item.name} trailer", "UTF-8")}"
-              }
-              val intent = Intent(Intent.ACTION_VIEW, Uri.parse(trailerUrl)).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-              }
+              val trailerUrl =
+                if (!rawUrl.isNullOrBlank()) {
+                  if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+                    rawUrl
+                  } else {
+                    "https://www.youtube.com/watch?v=$rawUrl"
+                  }
+                } else {
+                  "https://www.youtube.com/results?search_query=${java.net.URLEncoder.encode(
+                    "${item.name} trailer",
+                    "UTF-8",
+                  )}"
+                }
+              val intent =
+                Intent(Intent.ACTION_VIEW, Uri.parse(trailerUrl)).apply {
+                  addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
               try {
                 context.startActivity(intent)
               } catch (_: ActivityNotFoundException) {
@@ -655,9 +692,11 @@ private fun CarouselItemScope.JellyfinHeroSlide(
             enabled = isCurrent,
             shape = CircleShape,
             modifier = Modifier.size(52.dp).tvFocusHighlight(CircleShape),
-            colors = androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
-              containerColor = Color.White.copy(alpha = 0.16f), contentColor = Color.White,
-            ),
+            colors =
+              androidx.compose.material3.IconButtonDefaults.filledTonalIconButtonColors(
+                containerColor = Color.White.copy(alpha = 0.16f),
+                contentColor = Color.White,
+              ),
           ) {
             Icon(
               imageVector = Icons.RoundedFilled.Movie,
@@ -819,7 +858,14 @@ fun JellyfinSectionHeader(
         )
         Spacer(Modifier.width(4.dp))
         Icon(
-          imageVector = if (LocalLayoutDirection.current == LayoutDirection.Rtl) Icons.RoundedFilled.ChevronLeft else Icons.RoundedFilled.ChevronRight,
+          imageVector =
+            if (LocalLayoutDirection.current ==
+              LayoutDirection.Rtl
+            ) {
+              Icons.RoundedFilled.ChevronLeft
+            } else {
+              Icons.RoundedFilled.ChevronRight
+            },
           contentDescription = null,
           modifier = Modifier.size(18.dp),
         )
@@ -1001,19 +1047,21 @@ fun JellyfinStudioCard(
     }
 
   Column(
-    modifier = modifier
-      .width(230.dp)
-      .tvFocusMemory(listOf("JellyfinStudioCard", server.id, studio.id))
-      .tvFocusHighlight(shape, focusedScale = 1.03f)
-      .mediaCardClickable(onClick = onClick),
+    modifier =
+      modifier
+        .width(230.dp)
+        .tvFocusMemory(listOf("JellyfinStudioCard", server.id, studio.id))
+        .tvFocusHighlight(shape, focusedScale = 1.03f)
+        .mediaCardClickable(onClick = onClick),
   ) {
     Surface(
       shape = shape,
       color = MaterialTheme.colorScheme.surfaceVariant,
       tonalElevation = 4.dp,
-      modifier = Modifier
-        .fillMaxWidth()
-        .aspectRatio(16f / 9f),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .aspectRatio(16f / 9f),
     ) {
       Box(
         modifier = Modifier.fillMaxSize(),
@@ -1063,23 +1111,26 @@ fun JellyfinRowSkeleton(
   isSpotlight: Boolean = false,
 ) {
   val infiniteTransition = rememberInfiniteTransition(label = "jellyfin_shimmer")
-  val shimmerTranslate = infiniteTransition.animateFloat(
-    initialValue = 0f,
-    targetValue = 1000f,
-    animationSpec = infiniteRepeatable(
-      animation = tween(durationMillis = 1200, easing = LinearEasing),
-      repeatMode = RepeatMode.Restart,
-    ),
-    label = "jellyfin_shimmer",
-  )
+  val shimmerTranslate =
+    infiniteTransition.animateFloat(
+      initialValue = 0f,
+      targetValue = 1000f,
+      animationSpec =
+        infiniteRepeatable(
+          animation = tween(durationMillis = 1200, easing = LinearEasing),
+          repeatMode = RepeatMode.Restart,
+        ),
+      label = "jellyfin_shimmer",
+    )
 
   val baseColor = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.6f)
   val shimmerColor = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.9f)
-  val shimmerBrush = Brush.linearGradient(
-    colors = listOf(baseColor, shimmerColor, baseColor),
-    start = Offset(shimmerTranslate.value - 300f, 0f),
-    end = Offset(shimmerTranslate.value, 0f),
-  )
+  val shimmerBrush =
+    Brush.linearGradient(
+      colors = listOf(baseColor, shimmerColor, baseColor),
+      start = Offset(shimmerTranslate.value - 300f, 0f),
+      end = Offset(shimmerTranslate.value, 0f),
+    )
 
   Column(
     modifier = modifier.fillMaxWidth(),
@@ -1095,36 +1146,40 @@ fun JellyfinRowSkeleton(
     val aspectRatio = if (isSpotlight) 16f / 9f else 2f / 3f
 
     Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .horizontalScroll(rememberScrollState(), enabled = false)
-        .padding(horizontal = gutter),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .horizontalScroll(rememberScrollState(), enabled = false)
+          .padding(horizontal = gutter),
       horizontalArrangement = Arrangement.spacedBy(JellyfinSpacing.RowItemGap),
     ) {
       repeat(5) {
         Column(modifier = Modifier.width(cardWidth)) {
           Box(
-            modifier = Modifier
-              .fillMaxWidth()
-              .aspectRatio(aspectRatio)
-              .clip(RoundedCornerShape(8.dp))
-              .background(shimmerBrush),
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .aspectRatio(aspectRatio)
+                .clip(RoundedCornerShape(8.dp))
+                .background(shimmerBrush),
           )
           Spacer(Modifier.height(8.dp))
           Box(
-            modifier = Modifier
-              .fillMaxWidth(0.7f)
-              .height(14.dp)
-              .clip(RoundedCornerShape(4.dp))
-              .background(shimmerBrush),
+            modifier =
+              Modifier
+                .fillMaxWidth(0.7f)
+                .height(14.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(shimmerBrush),
           )
           Spacer(Modifier.height(4.dp))
           Box(
-            modifier = Modifier
-              .fillMaxWidth(0.4f)
-              .height(12.dp)
-              .clip(RoundedCornerShape(4.dp))
-              .background(shimmerBrush),
+            modifier =
+              Modifier
+                .fillMaxWidth(0.4f)
+                .height(12.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(shimmerBrush),
           )
         }
       }
@@ -1307,11 +1362,16 @@ fun JellyfinResumeCard(
         if (item.seriesName != null && item.indexNumber != null) {
           AnnotatedString("S${item.parentIndexNumber ?: 1}:E${item.indexNumber} • ${item.name}")
         } else {
-          val before = buildList {
-            item.productionYear?.let { add(it.toString()) }
-            val dur = item.formattedDuration
-            if (dur.isNotBlank()) add(dur) else if (item.productionYear == null) add(item.type)
-          }
+          val before =
+            buildList {
+              item.productionYear?.let { add(it.toString()) }
+              val dur = item.formattedDuration
+              if (dur.isNotBlank()) {
+                add(dur)
+              } else if (item.productionYear == null) {
+                add(item.type)
+              }
+            }
           buildStarSubtitle(before, item.communityRating, item.criticRating)
         }
 
@@ -1357,16 +1417,21 @@ fun JellyfinPosterCard(
   focusKey: Any = item.id,
   rankIndex: Int? = null,
 ) {
-  val posterImageTag = if (item.type == "Episode" && !item.seriesPrimaryImageTag.isNullOrBlank()) {
-    item.seriesPrimaryImageTag
-  } else {
-    item.primaryImageTag
-  }
-  val posterItemId = if (item.type == "Episode" && !item.seriesId.isNullOrBlank() && !item.seriesPrimaryImageTag.isNullOrBlank()) {
-    item.seriesId
-  } else {
-    item.id
-  }
+  val posterImageTag =
+    if (item.type == "Episode" && !item.seriesPrimaryImageTag.isNullOrBlank()) {
+      item.seriesPrimaryImageTag
+    } else {
+      item.primaryImageTag
+    }
+  val posterItemId =
+    if (item.type == "Episode" &&
+      !item.seriesId.isNullOrBlank() &&
+      !item.seriesPrimaryImageTag.isNullOrBlank()
+    ) {
+      item.seriesId
+    } else {
+      item.id
+    }
   val imageUrl =
     remember(server.serverUrl, posterItemId, posterImageTag, server.accessToken) {
       JellyfinClient.getImageUrl(
@@ -1392,12 +1457,13 @@ fun JellyfinPosterCard(
     if (isSelected) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, posterShape) else Modifier
 
   Column(
-    modifier = cardModifier
-      .tvFocusMemory(listOf("JellyfinPosterCard", server.id, focusKey))
-      .tvFocusHighlight(posterShape, focusedScale = 1.03f)
-      .semantics { selected = isSelected }
-      .tvContextMenu(onLongClick)
-      .mediaCardClickable(onClick = onClick, onLongClick = onLongClick),
+    modifier =
+      cardModifier
+        .tvFocusMemory(listOf("JellyfinPosterCard", server.id, focusKey))
+        .tvFocusHighlight(posterShape, focusedScale = 1.03f)
+        .semantics { selected = isSelected }
+        .tvContextMenu(onLongClick)
+        .mediaCardClickable(onClick = onClick, onLongClick = onLongClick),
   ) {
     Box(
       modifier =
@@ -1546,20 +1612,21 @@ fun JellyfinPosterCard(
       )
       val subtitle =
         run {
-          val before = buildList {
-            item.productionYear?.let { add(it.toString()) }
-            if (item.isSeries && item.childCount != null && item.childCount > 0) {
-              add(if (item.childCount == 1) "1 Season" else "${item.childCount} Seasons")
-            } else if (item.type == "Episode") {
-              if (item.parentIndexNumber != null && item.indexNumber != null) {
-                add("S${item.parentIndexNumber}:E${item.indexNumber}")
-              } else {
-                add("Episode")
+          val before =
+            buildList {
+              item.productionYear?.let { add(it.toString()) }
+              if (item.isSeries && item.childCount != null && item.childCount > 0) {
+                add(if (item.childCount == 1) "1 Season" else "${item.childCount} Seasons")
+              } else if (item.type == "Episode") {
+                if (item.parentIndexNumber != null && item.indexNumber != null) {
+                  add("S${item.parentIndexNumber}:E${item.indexNumber}")
+                } else {
+                  add("Episode")
+                }
+              } else if (item.productionYear == null) {
+                add(item.type)
               }
-            } else if (item.productionYear == null) {
-              add(item.type)
             }
-          }
           buildStarSubtitle(before, item.communityRating, item.criticRating)
         }
       Text(
@@ -1729,7 +1796,19 @@ fun JellyfinGenreChipRow(
     FilterChip(
       selected = selectedGenre == null,
       onClick = { onSelectGenre(null) },
-      label = { Text(stringResource(R.string.jellyfin_filter_all), fontWeight = if (selectedGenre == null) FontWeight.Bold else FontWeight.Normal) },
+      label = {
+        Text(
+          stringResource(R.string.jellyfin_filter_all),
+          fontWeight =
+            if (selectedGenre ==
+              null
+            ) {
+              FontWeight.Bold
+            } else {
+              FontWeight.Normal
+            },
+        )
+      },
       modifier = Modifier.tvFocusHighlight(CircleShape),
       shape = CircleShape,
       colors =
@@ -2009,7 +2088,8 @@ fun JellyfinEpisodeCard(
   onCancelDownload: (() -> Unit)? = null,
 ) {
   val hasOwnImage = !item.primaryImageTag.isNullOrBlank()
-  val fallbackSeriesImage = !hasOwnImage && !item.seriesId.isNullOrBlank() && !item.seriesPrimaryImageTag.isNullOrBlank()
+  val fallbackSeriesImage =
+    !hasOwnImage && !item.seriesId.isNullOrBlank() && !item.seriesPrimaryImageTag.isNullOrBlank()
   val imageItemId = if (fallbackSeriesImage) item.seriesId!! else item.id
   val imageTag = if (fallbackSeriesImage) item.seriesPrimaryImageTag else item.primaryImageTag
 
@@ -2256,13 +2336,15 @@ fun JellyfinEpisodeCard(
               } else {
                 item.formattedDuration
               }
-            val before = buildList {
-              if (timePart.isNotBlank()) add(timePart)
-            }
-            val after = buildList {
-              item.videoResolution?.takeIf { it.isNotBlank() }?.let(::add)
-              if (item.isPlayed) add("Watched")
-            }
+            val before =
+              buildList {
+                if (timePart.isNotBlank()) add(timePart)
+              }
+            val after =
+              buildList {
+                item.videoResolution?.takeIf { it.isNotBlank() }?.let(::add)
+                if (item.isPlayed) add("Watched")
+              }
             buildStarSubtitle(before, item.communityRating, item.criticRating, after)
           }
         if (metaText.isNotBlank()) {
@@ -2368,10 +2450,11 @@ fun HotstarDownloadProgressCircle(
   val indeterminateRotation by infiniteTransition.animateFloat(
     initialValue = 0f,
     targetValue = 360f,
-    animationSpec = infiniteRepeatable(
-      animation = tween(1200, easing = LinearEasing),
-      repeatMode = RepeatMode.Restart,
-    ),
+    animationSpec =
+      infiniteRepeatable(
+        animation = tween(1200, easing = LinearEasing),
+        repeatMode = RepeatMode.Restart,
+      ),
     label = "spin_angle",
   )
 
@@ -2425,9 +2508,10 @@ fun HotstarDownloadProgressCircle(
     if (showStopSquare) {
       val centerSquareSize = (strokeWidth * 2.4f).coerceAtLeast(6.dp).coerceAtMost(8.dp)
       Box(
-        modifier = Modifier
-          .size(centerSquareSize)
-          .background(progressColor, shape = RoundedCornerShape(1.5.dp)),
+        modifier =
+          Modifier
+            .size(centerSquareSize)
+            .background(progressColor, shape = RoundedCornerShape(1.5.dp)),
       )
     }
   }
@@ -2616,17 +2700,19 @@ fun JellyfinListItemCard(
         )
         val details =
           run {
-            val before = buildList {
-              item.productionYear?.let { add(it.toString()) }
-              if (item.isSeries && item.childCount != null) {
-                add("${item.childCount} Seasons")
-              } else if (item.productionYear == null) {
-                add(item.type)
+            val before =
+              buildList {
+                item.productionYear?.let { add(it.toString()) }
+                if (item.isSeries && item.childCount != null) {
+                  add("${item.childCount} Seasons")
+                } else if (item.productionYear == null) {
+                  add(item.type)
+                }
               }
-            }
-            val after = buildList {
-              item.qualityBadge?.let { add(it) }
-            }
+            val after =
+              buildList {
+                item.qualityBadge?.let { add(it) }
+              }
             buildStarSubtitle(before, item.communityRating, item.criticRating, after)
           }
 

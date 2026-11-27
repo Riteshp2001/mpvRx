@@ -11,6 +11,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,17 +20,15 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import app.gyrolet.mpvrx.ui.theme.AppMotion
-import app.gyrolet.mpvrx.ui.liquidglass.drawShapeTint
+import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.liquidglass.connectedGlassRim
+import app.gyrolet.mpvrx.ui.liquidglass.drawShapeTint
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassEffects
 import app.gyrolet.mpvrx.ui.liquidglass.outsideShadow
 import app.gyrolet.mpvrx.ui.liquidglass.rememberLiquidGlassSettings
-import app.gyrolet.mpvrx.preferences.AppearancePreferences
-import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import androidx.compose.runtime.getValue
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.LocalAppBackgroundBackdrop
-import org.koin.compose.koinInject
 import com.kyant.backdrop.Backdrop
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
@@ -41,6 +40,7 @@ import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.Capsule
 import com.kyant.shapes.RoundedRectangle
+import org.koin.compose.koinInject
 
 typealias LiquidGlassBackdrop = LayerBackdrop
 
@@ -114,18 +114,21 @@ fun LiquidGlassSurface(
   val reducedMotion = AppMotion.shouldReduceMotion()
   val connection = connectionProgress.coerceIn(0f, 1f)
   val surfaceTint = lerp(glassColor, MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.34f), connection)
-  val blurRadius = when (style) {
-    LiquidGlassStyle.MiniPlayer -> 12.dp * (1f - connection) + 8.dp * connection
-    LiquidGlassStyle.Navigation -> 8.dp
-  }
-  val refractionHeight = when (style) {
-    LiquidGlassStyle.MiniPlayer -> 18.dp
-    LiquidGlassStyle.Navigation -> 14.dp
-  }
-  val refractionAmount = when (style) {
-    LiquidGlassStyle.MiniPlayer -> 26.dp
-    LiquidGlassStyle.Navigation -> 22.dp
-  }
+  val blurRadius =
+    when (style) {
+      LiquidGlassStyle.MiniPlayer -> 12.dp * (1f - connection) + 8.dp * connection
+      LiquidGlassStyle.Navigation -> 8.dp
+    }
+  val refractionHeight =
+    when (style) {
+      LiquidGlassStyle.MiniPlayer -> 18.dp
+      LiquidGlassStyle.Navigation -> 14.dp
+    }
+  val refractionAmount =
+    when (style) {
+      LiquidGlassStyle.MiniPlayer -> 26.dp
+      LiquidGlassStyle.Navigation -> 22.dp
+    }
   val shadowElevation: Dp = if (style == LiquidGlassStyle.MiniPlayer) 10.dp else 8.dp
   val glassShape =
     when {
@@ -142,12 +145,20 @@ fun LiquidGlassSurface(
           shape = { glassShape },
           effects = {
             liquidGlassEffects(
-              glassSettings, blurRadius.toPx(), refractionHeight.toPx(), refractionAmount.toPx(),
+              glassSettings,
+              blurRadius.toPx(),
+              refractionHeight.toPx(),
+              refractionAmount.toPx(),
               vibrant = true,
             )
           },
           highlight = {
-            glassSettings.highlight(Highlight.Ambient.copy(alpha = (if (reducedMotion) 0.28f else 0.52f) * glowStrength * (1f - connection)))
+            glassSettings.highlight(
+              Highlight.Ambient.copy(
+                alpha =
+                  (if (reducedMotion) 0.28f else 0.52f) * glowStrength * (1f - connection),
+              ),
+            )
           },
           shadow = {
             Shadow(
@@ -164,14 +175,17 @@ fun LiquidGlassSurface(
           onDrawSurface = {
             drawShapeTint(glassShape, glassSettings.surfaceColor(surfaceTint))
           },
-        )
-        .then(
-          if (connection > 0f) Modifier.connectedGlassRim(
-            glassShape,
-            joinedAtTop = false,
-            strength = connection * glowStrength * glassSettings.highlightStrength.coerceAtMost(1f),
-            connectionProgress = connection,
-          ) else Modifier,
+        ).then(
+          if (connection > 0f) {
+            Modifier.connectedGlassRim(
+              glassShape,
+              joinedAtTop = false,
+              strength = connection * glowStrength * glassSettings.highlightStrength.coerceAtMost(1f),
+              connectionProgress = connection,
+            )
+          } else {
+            Modifier
+          },
         )
     } else {
       modifier

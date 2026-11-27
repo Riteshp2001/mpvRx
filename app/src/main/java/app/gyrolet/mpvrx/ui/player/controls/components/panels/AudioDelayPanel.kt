@@ -11,8 +11,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -22,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AudioPreferences
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 

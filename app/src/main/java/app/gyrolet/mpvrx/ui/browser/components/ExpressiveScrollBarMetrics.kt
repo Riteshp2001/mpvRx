@@ -50,10 +50,19 @@ internal class AxisObservationTracker {
   }
 
   /** Visible-item offsets change every pixel, but item size/stride usually do not. */
-  fun shouldSampleWindow(firstIndex: Int, lastIndex: Int, firstSize: Int, lastSize: Int): Boolean {
-    if (sampledFirstIndex == firstIndex && sampledLastIndex == lastIndex &&
-      sampledFirstSize == firstSize && sampledLastSize == lastSize
-    ) return false
+  fun shouldSampleWindow(
+    firstIndex: Int,
+    lastIndex: Int,
+    firstSize: Int,
+    lastSize: Int,
+  ): Boolean {
+    if (sampledFirstIndex == firstIndex &&
+      sampledLastIndex == lastIndex &&
+      sampledFirstSize == firstSize &&
+      sampledLastSize == lastSize
+    ) {
+      return false
+    }
     sampledFirstIndex = firstIndex
     sampledLastIndex = lastIndex
     sampledFirstSize = firstSize

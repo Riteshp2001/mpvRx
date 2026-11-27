@@ -17,10 +17,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
 import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.ui.theme.spacing
 
 @Composable
 fun VideoSettingsPanel(

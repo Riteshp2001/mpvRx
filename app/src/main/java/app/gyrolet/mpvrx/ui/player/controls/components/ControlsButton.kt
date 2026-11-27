@@ -90,14 +90,18 @@ internal fun PlayerControlSurface(
       if (alpha > 0f) {
         val base = baseColor ?: PlayerLiquidTokens.surfaceColor
         val tint = base.copy(alpha = PlayerButtonAlpha.glassTint(base.alpha, level))
-        val opacity = if (alpha < 1f) {
-          Modifier.graphicsLayer {
-            this.alpha = alpha
-            compositingStrategy = CompositingStrategy.ModulateAlpha
+        val opacity =
+          if (alpha < 1f) {
+            Modifier.graphicsLayer {
+              this.alpha = alpha
+              compositingStrategy = CompositingStrategy.ModulateAlpha
+            }
+          } else {
+            Modifier
           }
-        } else Modifier
         Spacer(
-          Modifier.matchParentSize()
+          Modifier
+            .matchParentSize()
             .then(opacity)
             .liquidControlBackground(LocalKyantPlayerBackdrop.current, shape, tint),
         )
@@ -106,10 +110,15 @@ internal fun PlayerControlSurface(
       val fill = baseColor?.asPlayerButtonBackground() ?: playerButtonContainerColor()
       if (fill.alpha > 0f) {
         Spacer(
-          Modifier.matchParentSize().background(fill, shape)
+          Modifier
+            .matchParentSize()
+            .background(fill, shape)
             .then(
-              if (baseColor == null) Modifier.border(1.dp, playerButtonBorderColor(), shape)
-              else Modifier,
+              if (baseColor == null) {
+                Modifier.border(1.dp, playerButtonBorderColor(), shape)
+              } else {
+                Modifier
+              },
             ),
         )
       }
@@ -136,7 +145,8 @@ fun ControlsButton(
     icon = icon,
     onLongClick = onLongClick,
     title = title,
-    color = color ?: if (LocalBorderlessPlayerControls.current) LocalContentColor.current else playerButtonContentColor(),
+    color =
+      color ?: if (LocalBorderlessPlayerControls.current) LocalContentColor.current else playerButtonContentColor(),
     enabled = enabled,
     onLongClickLabel = onLongClickLabel,
     borderless = LocalBorderlessPlayerControls.current,

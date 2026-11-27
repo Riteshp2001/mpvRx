@@ -83,17 +83,21 @@ class AiService(
       client.fetchModels(apiKey).mapCatching { fetched ->
         AiModelCapabilities
           .normalize(
-            if (provider == AiProvider.CUSTOM_OPENAI) fetched else
-              fetched.filter { model -> AiModelCapabilities.isTextGenerationModel(model.id) },
-          )
-          .also { models -> check(models.isNotEmpty()) { "$provider returned no compatible text-generation models" } }
+            if (provider == AiProvider.CUSTOM_OPENAI) {
+              fetched
+            } else {
+              fetched.filter { model -> AiModelCapabilities.isTextGenerationModel(model.id) }
+            },
+          ).also { models -> check(models.isNotEmpty()) { "$provider returned no compatible text-generation models" } }
       }
     }
 
   suspend fun fetchSpeechModelsForProvider(provider: AiProvider): Result<List<AiModelInfo>> =
     withContext(Dispatchers.IO) {
       if (provider !in setOf(AiProvider.GROQ, AiProvider.OPENAI, AiProvider.OPENROUTER)) {
-        return@withContext Result.failure(IllegalArgumentException("$provider does not provide speech-to-text in mpvRx"))
+        return@withContext Result.failure(
+          IllegalArgumentException("$provider does not provide speech-to-text in mpvRx"),
+        )
       }
       val apiKey = getApiKey(provider)
       if (apiKey.isBlank()) {
@@ -196,9 +200,10 @@ class AiService(
       if (targetLanguage.isBlank()) return@withContext Result.success(texts)
 
       val input =
-        texts.mapIndexed { index, text ->
-          "[CUE_$index] ${text.replace(Regex("\\s+"), " ").trim()}"
-        }.joinToString("\n")
+        texts
+          .mapIndexed { index, text ->
+            "[CUE_$index] ${text.replace(Regex("\\s+"), " ").trim()}"
+          }.joinToString("\n")
       val instruction =
         "TARGET LANGUAGE: $targetLanguage\n" +
           "Translate each cue independently. Return exactly one line per cue using the unchanged " +
@@ -539,7 +544,12 @@ class AiService(
     val model = preferences.selectedModelFor(provider).get()
     val parts = mutableListOf(content, targetLanguage, format.orEmpty(), provider.name, model)
     if (provider == AiProvider.CUSTOM_OPENAI) {
-      parts.add(preferences.customOpenAiBaseUrl.get().trim().trimEnd('/'))
+      parts.add(
+        preferences.customOpenAiBaseUrl
+          .get()
+          .trim()
+          .trimEnd('/'),
+      )
     }
     val input = parts.joinToString("\u001f")
     val digest = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())

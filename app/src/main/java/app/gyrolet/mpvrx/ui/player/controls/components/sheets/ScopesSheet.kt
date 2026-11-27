@@ -75,8 +75,11 @@ fun ScopesSheet(
     },
   ) {
     Column(
-      modifier = modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-        .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
+      modifier =
+        modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState())
+          .padding(horizontal = MaterialTheme.spacing.medium, vertical = MaterialTheme.spacing.small),
       verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
       SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
@@ -140,11 +143,12 @@ fun ScopesSheet(
                   viewModel.setMediaScopesOverlayVisible(true)
                 },
                 label = { Text(getTrackTitle(track), maxLines = 1) },
-                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-          containerColor = playerSheetSelectionColor(false),
-          selectedContainerColor = playerSheetSelectionColor(true),
-          selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
+                colors =
+                  androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                    containerColor = playerSheetSelectionColor(false),
+                    selectedContainerColor = playerSheetSelectionColor(true),
+                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                  ),
               )
             }
           }
@@ -239,11 +243,12 @@ private fun ScopeOptionRow(
         selected = selected == value,
         onClick = { onSelect(value) },
         label = { Text(valueLabel(value)) },
-        colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-          containerColor = playerSheetSelectionColor(false),
-          selectedContainerColor = playerSheetSelectionColor(true),
-          selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
+        colors =
+          androidx.compose.material3.FilterChipDefaults.filterChipColors(
+            containerColor = playerSheetSelectionColor(false),
+            selectedContainerColor = playerSheetSelectionColor(true),
+            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+          ),
       )
     }
   }

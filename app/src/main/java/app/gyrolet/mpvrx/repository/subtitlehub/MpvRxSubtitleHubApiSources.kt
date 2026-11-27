@@ -118,7 +118,8 @@ internal class MpvRxSubtitleHubApiSources(
     val showSearchRoot = fetchJsonObject(showSearchUrl, "BetaSeries", acceptedErrorStatuses = setOf(400))
     checkBetaSeriesErrors(showSearchRoot)
     val show =
-      showSearchRoot.array("shows")
+      showSearchRoot
+        .array("shows")
         ?.mapNotNull { it.obj() }
         ?.maxByOrNull { candidate ->
           SubtitleHubSearchMatcher.titleMatchScore(
@@ -146,42 +147,49 @@ internal class MpvRxSubtitleHubApiSources(
     val root = fetchJsonObject(episodesUrl, "BetaSeries", acceptedErrorStatuses = setOf(400))
     checkBetaSeriesErrors(root)
     val rows =
-      root.array("episodes")
+      root
+        .array("episodes")
         ?.firstOrNull()
         ?.obj()
         ?.array("subtitles")
         ?: root.obj("episode")?.array("subtitles")
         ?: return emptyList()
 
-    return rows.mapNotNull { element ->
-      val row = element.obj() ?: return@mapNotNull null
-      if (row.string("source").equals("seriessub", ignoreCase = true)) return@mapNotNull null
-      val languageCode =
-        when (row.string("language")?.lowercase()) {
-          "vo" -> "en"
-          "vf" -> "fr"
-          else -> return@mapNotNull null
-        }
-      if (languageCode !in languages) return@mapNotNull null
-      val subtitleId = row.string("id") ?: row.int("id")?.toString() ?: return@mapNotNull null
-      val downloadUrl = row.string("url")?.takeIf(String::isNotBlank) ?: return@mapNotNull null
-      val release = row.string("file").orEmpty()
-      val fileName = downloadUrl.toHttpUrlOrNull()?.pathSegments?.lastOrNull()?.takeIf(String::isNotBlank)
-      OnlineSubtitle(
-        provider = SubtitleProvider.MPVRX_SUBTITLE_HUB,
-        id = "${MpvRxSubtitleHubSources.BETASERIES_KEY}:$subtitleId:$languageCode",
-        url = downloadUrl,
-        fileName = fileName,
-        release = release.takeIf(String::isNotBlank),
-        media = show.string("title") ?: request.query,
-        displayName = release.ifBlank { fileName ?: "BetaSeries subtitle" },
-        displayLanguage = displayLanguage(languageCode),
-        language = languageCode,
-        source = "BetaSeries",
-        format = displayFormat(fileName ?: downloadUrl),
-        metadata = authenticatedMetadata(MpvRxSubtitleHubSources.BETASERIES_KEY),
-      )
-    }.distinctBy { it.url.lowercase() }
+    return rows
+      .mapNotNull { element ->
+        val row = element.obj() ?: return@mapNotNull null
+        if (row.string("source").equals("seriessub", ignoreCase = true)) return@mapNotNull null
+        val languageCode =
+          when (row.string("language")?.lowercase()) {
+            "vo" -> "en"
+            "vf" -> "fr"
+            else -> return@mapNotNull null
+          }
+        if (languageCode !in languages) return@mapNotNull null
+        val subtitleId = row.string("id") ?: row.int("id")?.toString() ?: return@mapNotNull null
+        val downloadUrl = row.string("url")?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+        val release = row.string("file").orEmpty()
+        val fileName =
+          downloadUrl
+            .toHttpUrlOrNull()
+            ?.pathSegments
+            ?.lastOrNull()
+            ?.takeIf(String::isNotBlank)
+        OnlineSubtitle(
+          provider = SubtitleProvider.MPVRX_SUBTITLE_HUB,
+          id = "${MpvRxSubtitleHubSources.BETASERIES_KEY}:$subtitleId:$languageCode",
+          url = downloadUrl,
+          fileName = fileName,
+          release = release.takeIf(String::isNotBlank),
+          media = show.string("title") ?: request.query,
+          displayName = release.ifBlank { fileName ?: "BetaSeries subtitle" },
+          displayLanguage = displayLanguage(languageCode),
+          language = languageCode,
+          source = "BetaSeries",
+          format = displayFormat(fileName ?: downloadUrl),
+          metadata = authenticatedMetadata(MpvRxSubtitleHubSources.BETASERIES_KEY),
+        )
+      }.distinctBy { it.url.lowercase() }
   }
 
   private fun searchJimaku(
@@ -220,44 +228,47 @@ internal class MpvRxSubtitleHubApiSources(
       }
     var files = fetchJsonArray(filesUrl, "Jimaku") { header("Authorization", apiKey) }
     if (files.isEmpty() && request.isEpisode) {
-      files = fetchJsonArray(apiUrl(JIMAKU_API_BASE_URL, "entries/$entryId/files"), "Jimaku") {
-        header("Authorization", apiKey)
-      }
+      files =
+        fetchJsonArray(apiUrl(JIMAKU_API_BASE_URL, "entries/$entryId/files"), "Jimaku") {
+          header("Authorization", apiKey)
+        }
     }
 
-    return files.mapNotNull { element ->
-      val file = element.obj() ?: return@mapNotNull null
-      val fileName = file.string("name")?.takeIf(String::isNotBlank) ?: return@mapNotNull null
-      val extension = extensionFromName(fileName)
-      if (extension !in SUBTITLE_EXTENSIONS && extension !in ARCHIVE_EXTENSIONS) return@mapNotNull null
-      if ((file.int("size") ?: JIMAKU_MIN_FILE_SIZE) < JIMAKU_MIN_FILE_SIZE) return@mapNotNull null
-      val downloadUrl =
-        file.string("url")
-          ?.takeIf(String::isNotBlank)
-          ?.let { absoluteUrl(JIMAKU_API_BASE_URL, it) }
-          ?: return@mapNotNull null
-      OnlineSubtitle(
-        provider = SubtitleProvider.MPVRX_SUBTITLE_HUB,
-        id = "${MpvRxSubtitleHubSources.JIMAKU_KEY}:$entryId:${downloadUrl.hashCode()}",
-        url = downloadUrl,
-        fileName = fileName,
-        release = fileName,
-        media = entry.string("name") ?: entry.string("english_name") ?: request.query,
-        displayName = fileName,
-        displayLanguage = displayLanguage("ja"),
-        language = "ja",
-        source = "Jimaku",
-        format = displayFormat(fileName),
-        metadata =
-          authenticatedMetadata(
-            MpvRxSubtitleHubSources.JIMAKU_KEY,
-            buildMap {
-              request.season?.let { put("season", it.toString()) }
-              request.episode?.let { put("episode", it.toString()) }
-            },
-          ),
-      )
-    }.distinctBy { it.url.lowercase() }
+    return files
+      .mapNotNull { element ->
+        val file = element.obj() ?: return@mapNotNull null
+        val fileName = file.string("name")?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+        val extension = extensionFromName(fileName)
+        if (extension !in SUBTITLE_EXTENSIONS && extension !in ARCHIVE_EXTENSIONS) return@mapNotNull null
+        if ((file.int("size") ?: JIMAKU_MIN_FILE_SIZE) < JIMAKU_MIN_FILE_SIZE) return@mapNotNull null
+        val downloadUrl =
+          file
+            .string("url")
+            ?.takeIf(String::isNotBlank)
+            ?.let { absoluteUrl(JIMAKU_API_BASE_URL, it) }
+            ?: return@mapNotNull null
+        OnlineSubtitle(
+          provider = SubtitleProvider.MPVRX_SUBTITLE_HUB,
+          id = "${MpvRxSubtitleHubSources.JIMAKU_KEY}:$entryId:${downloadUrl.hashCode()}",
+          url = downloadUrl,
+          fileName = fileName,
+          release = fileName,
+          media = entry.string("name") ?: entry.string("english_name") ?: request.query,
+          displayName = fileName,
+          displayLanguage = displayLanguage("ja"),
+          language = "ja",
+          source = "Jimaku",
+          format = displayFormat(fileName),
+          metadata =
+            authenticatedMetadata(
+              MpvRxSubtitleHubSources.JIMAKU_KEY,
+              buildMap {
+                request.season?.let { put("season", it.toString()) }
+                request.episode?.let { put("episode", it.toString()) }
+              },
+            ),
+        )
+      }.distinctBy { it.url.lowercase() }
   }
 
   private fun searchSubDl(
@@ -292,19 +303,23 @@ internal class MpvRxSubtitleHubApiSources(
       throw IllegalStateException("SubDL API returned an error")
     }
 
-    return root.array("subtitles").orEmpty().flatMap { element ->
-      val item = element.obj() ?: return@flatMap emptyList()
-      val matchingChildren =
-        item.array("unpack_files")
-          ?.mapNotNull { it.obj() }
-          ?.filter { child -> request.episode == null || child.int("episode") == request.episode }
-          .orEmpty()
-      if (matchingChildren.isNotEmpty()) {
-        matchingChildren.mapNotNull { child -> subDlResult(request, selectedLanguages, item, child) }
-      } else {
-        listOfNotNull(subDlResult(request, selectedLanguages, item, null))
-      }
-    }.distinctBy { it.url.lowercase() }
+    return root
+      .array("subtitles")
+      .orEmpty()
+      .flatMap { element ->
+        val item = element.obj() ?: return@flatMap emptyList()
+        val matchingChildren =
+          item
+            .array("unpack_files")
+            ?.mapNotNull { it.obj() }
+            ?.filter { child -> request.episode == null || child.int("episode") == request.episode }
+            .orEmpty()
+        if (matchingChildren.isNotEmpty()) {
+          matchingChildren.mapNotNull { child -> subDlResult(request, selectedLanguages, item, child) }
+        } else {
+          listOfNotNull(subDlResult(request, selectedLanguages, item, null))
+        }
+      }.distinctBy { it.url.lowercase() }
   }
 
   private fun subDlResult(
@@ -331,7 +346,11 @@ internal class MpvRxSubtitleHubApiSources(
         ?: item.array("releases")?.firstOrNull()?.stringValue()
     val episodeFrom = item.int("episode_from")
     val episodeTo = item.int("episode_end")
-    if (request.episode != null && episodeFrom != null && episodeTo != null && request.episode !in episodeFrom..episodeTo) {
+    if (request.episode != null &&
+      episodeFrom != null &&
+      episodeTo != null &&
+      request.episode !in episodeFrom..episodeTo
+    ) {
       return null
     }
     val itemEpisode = child?.int("episode") ?: item.int("episode")
@@ -404,49 +423,50 @@ internal class MpvRxSubtitleHubApiSources(
 
     val languageQueries =
       selectedLanguages?.map { code -> displayLanguage(code).lowercase() }?.distinct() ?: listOf(null)
-    return languageQueries.flatMap { language ->
-      val subtitlesUrl =
-        apiUrl(SUBSOURCE_API_BASE_URL, "api/v1/subtitles") {
-          addQueryParameter("movieId", movie.id.toString())
-          addQueryParameter("limit", SUBSOURCE_RESULT_LIMIT.toString())
-          addQueryParameter("sort", "popular")
-          language?.let { addQueryParameter("language", it) }
-        }
-      fetchJsonObject(subtitlesUrl, "SubSource") { header("X-API-Key", apiKey) }
-        .array("data")
-        .orEmpty()
-        .mapNotNull { element ->
-          val subtitle = element.obj() ?: return@mapNotNull null
-          val subtitleId = subtitle.int("subtitleId") ?: return@mapNotNull null
-          val languageRaw = subtitle.string("language")
-          val languageCode = languageRaw?.toLanguageCode()
-          if (languageCode != null && !languageMatches(languageCode, selectedLanguages)) return@mapNotNull null
-          val releases = subtitle.array("releaseInfo")?.mapNotNull { it.stringValue() }.orEmpty()
-          val release = releases.joinToString(" • ")
-          OnlineSubtitle(
-            provider = SubtitleProvider.MPVRX_SUBTITLE_HUB,
-            id = "${MpvRxSubtitleHubSources.SUBSOURCE_KEY}:$subtitleId",
-            url = absoluteUrl(SUBSOURCE_API_BASE_URL, "api/v1/subtitles/$subtitleId/download"),
-            release = release.takeIf(String::isNotBlank),
-            media = movie.title,
-            displayName = release.ifBlank { "${movie.title} - ${languageRaw ?: "Subtitle"}" },
-            displayLanguage = languageCode?.let(::displayLanguage) ?: languageRaw ?: "Unknown",
-            language = languageCode,
-            source = "SubSource.net",
-            format = "zip",
-            downloadCount = subtitle.int("downloads"),
-            isHearingImpaired = subtitle.bool("hearingImpaired") == true,
-            metadata =
-              authenticatedMetadata(
-                MpvRxSubtitleHubSources.SUBSOURCE_KEY,
-                buildMap {
-                  request.season?.let { put("season", it.toString()) }
-                  request.episode?.let { put("episode", it.toString()) }
-                },
-              ),
-          )
-        }
-    }.distinctBy { it.url.lowercase() }
+    return languageQueries
+      .flatMap { language ->
+        val subtitlesUrl =
+          apiUrl(SUBSOURCE_API_BASE_URL, "api/v1/subtitles") {
+            addQueryParameter("movieId", movie.id.toString())
+            addQueryParameter("limit", SUBSOURCE_RESULT_LIMIT.toString())
+            addQueryParameter("sort", "popular")
+            language?.let { addQueryParameter("language", it) }
+          }
+        fetchJsonObject(subtitlesUrl, "SubSource") { header("X-API-Key", apiKey) }
+          .array("data")
+          .orEmpty()
+          .mapNotNull { element ->
+            val subtitle = element.obj() ?: return@mapNotNull null
+            val subtitleId = subtitle.int("subtitleId") ?: return@mapNotNull null
+            val languageRaw = subtitle.string("language")
+            val languageCode = languageRaw?.toLanguageCode()
+            if (languageCode != null && !languageMatches(languageCode, selectedLanguages)) return@mapNotNull null
+            val releases = subtitle.array("releaseInfo")?.mapNotNull { it.stringValue() }.orEmpty()
+            val release = releases.joinToString(" • ")
+            OnlineSubtitle(
+              provider = SubtitleProvider.MPVRX_SUBTITLE_HUB,
+              id = "${MpvRxSubtitleHubSources.SUBSOURCE_KEY}:$subtitleId",
+              url = absoluteUrl(SUBSOURCE_API_BASE_URL, "api/v1/subtitles/$subtitleId/download"),
+              release = release.takeIf(String::isNotBlank),
+              media = movie.title,
+              displayName = release.ifBlank { "${movie.title} - ${languageRaw ?: "Subtitle"}" },
+              displayLanguage = languageCode?.let(::displayLanguage) ?: languageRaw ?: "Unknown",
+              language = languageCode,
+              source = "SubSource.net",
+              format = "zip",
+              downloadCount = subtitle.int("downloads"),
+              isHearingImpaired = subtitle.bool("hearingImpaired") == true,
+              metadata =
+                authenticatedMetadata(
+                  MpvRxSubtitleHubSources.SUBSOURCE_KEY,
+                  buildMap {
+                    request.season?.let { put("season", it.toString()) }
+                    request.episode?.let { put("episode", it.toString()) }
+                  },
+                ),
+            )
+          }
+      }.distinctBy { it.url.lowercase() }
   }
 
   private fun searchSubsRo(
@@ -457,44 +477,45 @@ internal class MpvRxSubtitleHubApiSources(
     val apiKey = apiKey(MpvRxSubtitleHubSources.SUBS_RO_KEY)
     val languageCodes =
       mapOf("ro" to "ro", "en" to "en").filterKeys { languageMatches(it, selectedLanguages) }
-    return languageCodes.flatMap { (apiLanguage, languageCode) ->
-      val url =
-        apiUrl(SUBS_RO_API_BASE_URL, "search/imdbid/${normalizeImdbId(imdbId)}") {
-          addQueryParameter("language", apiLanguage)
-        }
-      fetchJsonObject(url, "Subs.ro") { header("X-Subs-Api-Key", apiKey) }
-        .array("items")
-        .orEmpty()
-        .mapNotNull { element ->
-          val item = element.obj() ?: return@mapNotNull null
-          val subtitleId = item.string("id") ?: item.int("id")?.toString() ?: return@mapNotNull null
-          val title = item.string("title")?.takeIf(String::isNotBlank) ?: return@mapNotNull null
-          val downloadUrl =
-            item.string("downloadLink")?.takeIf(String::isNotBlank)
-              ?: "subtitle/$subtitleId/download"
-          val release = item.string("description")?.takeIf(String::isNotBlank) ?: title
-          OnlineSubtitle(
-            provider = SubtitleProvider.MPVRX_SUBTITLE_HUB,
-            id = "${MpvRxSubtitleHubSources.SUBS_RO_KEY}:$subtitleId:$languageCode",
-            url = absoluteUrl(SUBS_RO_API_BASE_URL, downloadUrl),
-            release = release,
-            media = request.query,
-            displayName = title,
-            displayLanguage = displayLanguage(languageCode),
-            language = languageCode,
-            source = "Subs.ro",
-            format = displayFormat(downloadUrl, "zip"),
-            metadata =
-              authenticatedMetadata(
-                MpvRxSubtitleHubSources.SUBS_RO_KEY,
-                buildMap {
-                  request.season?.let { put("season", it.toString()) }
-                  request.episode?.let { put("episode", it.toString()) }
-                },
-              ),
-          )
-        }
-    }.distinctBy { it.url.lowercase() }
+    return languageCodes
+      .flatMap { (apiLanguage, languageCode) ->
+        val url =
+          apiUrl(SUBS_RO_API_BASE_URL, "search/imdbid/${normalizeImdbId(imdbId)}") {
+            addQueryParameter("language", apiLanguage)
+          }
+        fetchJsonObject(url, "Subs.ro") { header("X-Subs-Api-Key", apiKey) }
+          .array("items")
+          .orEmpty()
+          .mapNotNull { element ->
+            val item = element.obj() ?: return@mapNotNull null
+            val subtitleId = item.string("id") ?: item.int("id")?.toString() ?: return@mapNotNull null
+            val title = item.string("title")?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+            val downloadUrl =
+              item.string("downloadLink")?.takeIf(String::isNotBlank)
+                ?: "subtitle/$subtitleId/download"
+            val release = item.string("description")?.takeIf(String::isNotBlank) ?: title
+            OnlineSubtitle(
+              provider = SubtitleProvider.MPVRX_SUBTITLE_HUB,
+              id = "${MpvRxSubtitleHubSources.SUBS_RO_KEY}:$subtitleId:$languageCode",
+              url = absoluteUrl(SUBS_RO_API_BASE_URL, downloadUrl),
+              release = release,
+              media = request.query,
+              displayName = title,
+              displayLanguage = displayLanguage(languageCode),
+              language = languageCode,
+              source = "Subs.ro",
+              format = displayFormat(downloadUrl, "zip"),
+              metadata =
+                authenticatedMetadata(
+                  MpvRxSubtitleHubSources.SUBS_RO_KEY,
+                  buildMap {
+                    request.season?.let { put("season", it.toString()) }
+                    request.episode?.let { put("episode", it.toString()) }
+                  },
+                ),
+            )
+          }
+      }.distinctBy { it.url.lowercase() }
   }
 
   private fun searchSubX(
@@ -506,68 +527,85 @@ internal class MpvRxSubtitleHubApiSources(
     val queries =
       if (request.isEpisode && request.season != null && request.episode != null) {
         listOf(
-          "${request.query} S${request.season.toString().padStart(2, '0')}E${request.episode.toString().padStart(2, '0')}",
+          "${request.query} S${request.season.toString().padStart(
+            2,
+            '0',
+          )}E${request.episode.toString().padStart(2, '0')}",
           "${request.query} S${request.season.toString().padStart(2, '0')}",
           request.query,
         )
       } else {
         listOf(request.query)
       }
-    return queries.asSequence().map { query ->
-      val url =
-        apiUrl(SUBX_API_BASE_URL, "api/subtitles/search") {
-          addQueryParameter("limit", SUBX_RESULT_LIMIT.toString())
-          addQueryParameter("video_type", if (request.isEpisode) "episode" else "movie")
-          if (!request.imdbId.isNullOrBlank()) {
-            addQueryParameter("imdb_id", request.imdbId)
-          } else {
-            addQueryParameter("title", query)
+    return queries
+      .asSequence()
+      .map { query ->
+        val url =
+          apiUrl(SUBX_API_BASE_URL, "api/subtitles/search") {
+            addQueryParameter("limit", SUBX_RESULT_LIMIT.toString())
+            addQueryParameter("video_type", if (request.isEpisode) "episode" else "movie")
+            if (!request.imdbId.isNullOrBlank()) {
+              addQueryParameter("imdb_id", request.imdbId)
+            } else {
+              addQueryParameter("title", query)
+            }
+            request.yearInt?.let { addQueryParameter("year", it.toString()) }
           }
-          request.yearInt?.let { addQueryParameter("year", it.toString()) }
-        }
-      fetchJsonObject(url, "SubX") { header("Authorization", "Bearer $apiKey") }
-        .array("items")
-        .orEmpty()
-        .mapNotNull { element ->
-          val item = element.obj() ?: return@mapNotNull null
-          val itemSeason = item.int("season")
-          val itemEpisode = item.int("episode")
-          if (request.season != null && itemSeason != request.season) return@mapNotNull null
-          val seasonPack = request.isEpisode && itemEpisode == null && itemSeason == request.season
-          if (request.episode != null && itemEpisode != request.episode && !seasonPack) return@mapNotNull null
-          val subtitleId = item.string("id") ?: item.int("id")?.toString() ?: return@mapNotNull null
-          val description = item.string("description").orEmpty()
-          val variant = if (SUBX_SPAIN_MARKERS.any { description.contains(it, ignoreCase = true) }) "Spain" else "Latin America"
-          val downloadUrl =
-            item.string("download_url")?.takeIf(String::isNotBlank)
-              ?: "api/subtitles/$subtitleId/download"
-          val title = item.string("title").orEmpty()
-          val release = listOf(title, description).filter(String::isNotBlank).joinToString(" | ")
-          OnlineSubtitle(
-            provider = SubtitleProvider.MPVRX_SUBTITLE_HUB,
-            id = "${MpvRxSubtitleHubSources.SUBX_KEY}:$subtitleId:$variant",
-            url = absoluteUrl(SUBX_API_BASE_URL, downloadUrl),
-            fileName = "subx.$subtitleId.es.zip",
-            release = release.takeIf(String::isNotBlank),
-            media = request.query,
-            displayName = release.ifBlank { "SubX subtitle" },
-            displayLanguage = "${displayLanguage("es")} ($variant)",
-            language = "es",
-            source = "SubX",
-            format = "zip",
-            downloadCount = item.int("downloads"),
-            metadata =
-              authenticatedMetadata(
-                MpvRxSubtitleHubSources.SUBX_KEY,
-                buildMap {
-                  itemSeason?.let { put("season", it.toString()) }
-                  request.episode?.let { put("episode", it.toString()) }
-                  if (seasonPack) put("seasonPack", "true")
-                },
-              ),
-          )
-        }
-    }.firstOrNull { it.isNotEmpty() }.orEmpty()
+        fetchJsonObject(url, "SubX") { header("Authorization", "Bearer $apiKey") }
+          .array("items")
+          .orEmpty()
+          .mapNotNull { element ->
+            val item = element.obj() ?: return@mapNotNull null
+            val itemSeason = item.int("season")
+            val itemEpisode = item.int("episode")
+            if (request.season != null && itemSeason != request.season) return@mapNotNull null
+            val seasonPack = request.isEpisode && itemEpisode == null && itemSeason == request.season
+            if (request.episode != null && itemEpisode != request.episode && !seasonPack) return@mapNotNull null
+            val subtitleId = item.string("id") ?: item.int("id")?.toString() ?: return@mapNotNull null
+            val description = item.string("description").orEmpty()
+            val variant =
+              if (SUBX_SPAIN_MARKERS.any {
+                  description.contains(
+                    it,
+                    ignoreCase = true,
+                  )
+                }
+              ) {
+                "Spain"
+              } else {
+                "Latin America"
+              }
+            val downloadUrl =
+              item.string("download_url")?.takeIf(String::isNotBlank)
+                ?: "api/subtitles/$subtitleId/download"
+            val title = item.string("title").orEmpty()
+            val release = listOf(title, description).filter(String::isNotBlank).joinToString(" | ")
+            OnlineSubtitle(
+              provider = SubtitleProvider.MPVRX_SUBTITLE_HUB,
+              id = "${MpvRxSubtitleHubSources.SUBX_KEY}:$subtitleId:$variant",
+              url = absoluteUrl(SUBX_API_BASE_URL, downloadUrl),
+              fileName = "subx.$subtitleId.es.zip",
+              release = release.takeIf(String::isNotBlank),
+              media = request.query,
+              displayName = release.ifBlank { "SubX subtitle" },
+              displayLanguage = "${displayLanguage("es")} ($variant)",
+              language = "es",
+              source = "SubX",
+              format = "zip",
+              downloadCount = item.int("downloads"),
+              metadata =
+                authenticatedMetadata(
+                  MpvRxSubtitleHubSources.SUBX_KEY,
+                  buildMap {
+                    itemSeason?.let { put("season", it.toString()) }
+                    request.episode?.let { put("episode", it.toString()) }
+                    if (seasonPack) put("seasonPack", "true")
+                  },
+                ),
+            )
+          }
+      }.firstOrNull { it.isNotEmpty() }
+      .orEmpty()
   }
 
   private fun fetchJsonObject(
@@ -661,7 +699,12 @@ internal class MpvRxSubtitleHubApiSources(
   ): Map<String, String> = values + (AUTHENTICATED_SOURCE_METADATA_KEY to source)
 
   private fun checkBetaSeriesErrors(root: JsonObject) {
-    val code = root.array("errors")?.firstOrNull()?.obj()?.int("code") ?: return
+    val code =
+      root
+        .array("errors")
+        ?.firstOrNull()
+        ?.obj()
+        ?.int("code") ?: return
     if (code == 4001) return
     if (code == 1001) throw IllegalArgumentException("BetaSeries API key was rejected")
     throw IllegalStateException("BetaSeries API returned an error")
@@ -714,12 +757,18 @@ internal class MpvRxSubtitleHubApiSources(
   ): String? = SubtitleHubSearchMatcher.displayFormat(extensionFromName(value) ?: fallback)
 
   private fun extensionFromName(value: String): String? =
-    app.gyrolet.mpvrx.repository.subtitle.SubtitleArchiveExtractor.extensionFromName(value)
+    app.gyrolet.mpvrx.repository.subtitle.SubtitleArchiveExtractor
+      .extensionFromName(value)
 
   private fun absoluteUrl(
     baseUrl: String,
     path: String,
-  ): String = path.toHttpUrlOrNull()?.toString() ?: baseUrl.toHttpUrl().resolve(path)?.toString().orEmpty()
+  ): String =
+    path.toHttpUrlOrNull()?.toString() ?: baseUrl
+      .toHttpUrl()
+      .resolve(path)
+      ?.toString()
+      .orEmpty()
 
   private fun normalizeImdbId(value: String): String {
     val normalized = value.trim()

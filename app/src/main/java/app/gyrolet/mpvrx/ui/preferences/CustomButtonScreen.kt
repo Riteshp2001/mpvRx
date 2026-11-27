@@ -9,10 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.preferences
 
-import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
-import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
-import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -26,8 +22,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +34,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -47,11 +44,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.clickable
-import androidx.compose.material3.contentColorFor
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
-import app.gyrolet.mpvrx.ui.tv.TvReorderButtons
-import app.gyrolet.mpvrx.ui.tv.isTelevision
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -63,14 +55,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import app.gyrolet.mpvrx.ui.components.IconSwitch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -80,10 +71,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -96,11 +87,17 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
-import app.gyrolet.mpvrx.presentation.Screen
+import app.gyrolet.mpvrx.ui.components.IconSwitch
 import app.gyrolet.mpvrx.ui.editor.MpvHelpScreen
 import app.gyrolet.mpvrx.ui.editor.MpvScriptEditor
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
+import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
+import app.gyrolet.mpvrx.ui.tv.TvReorderButtons
+import app.gyrolet.mpvrx.ui.tv.isTelevision
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import kotlinx.serialization.Serializable
@@ -110,6 +107,8 @@ import org.koin.compose.koinInject
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.util.UUID
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data models
@@ -255,13 +254,13 @@ object CustomButtonScreen : ScrollableSettingsScreen {
     val lazyListState = rememberLazyListState()
     val settingsHighlight =
       rememberSettingsSearchHighlight(CustomButtonScreen, lazyListState, MaterialTheme.colorScheme.primary)
-    val NON_SLOT_ITEMS_BEFORE = 1 // the Spacer item()
+    val nonSlotItemsBefore = 1 // the Spacer item()
     // TV: Move up / Move down replace the drag handle, which a remote cannot use.
     val isTelevision = isTelevision()
     val reorderState =
       rememberReorderableLazyListState(lazyListState) { from, to ->
-        val fromIdx = (from.index - NON_SLOT_ITEMS_BEFORE).coerceIn(0, buttonSlots.lastIndex)
-        val toIdx = (to.index - NON_SLOT_ITEMS_BEFORE).coerceIn(0, buttonSlots.lastIndex)
+        val fromIdx = (from.index - nonSlotItemsBefore).coerceIn(0, buttonSlots.lastIndex)
+        val toIdx = (to.index - nonSlotItemsBefore).coerceIn(0, buttonSlots.lastIndex)
         val moved = buttonSlots.removeAt(fromIdx)
         buttonSlots.add(toIdx.coerceIn(0, buttonSlots.size), moved)
       }

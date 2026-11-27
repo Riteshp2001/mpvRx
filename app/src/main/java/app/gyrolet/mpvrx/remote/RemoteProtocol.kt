@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.remote
 
 import kotlinx.serialization.Serializable
@@ -106,7 +106,10 @@ internal fun String?.fromBase64(expectedSize: Int? = null): ByteArray {
 }
 
 /** AES-256-GCM per direction; counters are the nonces, so a replayed or reordered frame fails to open. */
-internal class RemoteCipher(sendKeyBytes: ByteArray, receiveKeyBytes: ByteArray) {
+internal class RemoteCipher(
+  sendKeyBytes: ByteArray,
+  receiveKeyBytes: ByteArray,
+) {
   private val sendKey = SecretKeySpec(sendKeyBytes, "AES")
   private val receiveKey = SecretKeySpec(receiveKeyBytes, "AES")
   private var sent = 0L
@@ -116,7 +119,12 @@ internal class RemoteCipher(sendKeyBytes: ByteArray, receiveKeyBytes: ByteArray)
 
   fun open(sealed: ByteArray): ByteArray = transform(Cipher.DECRYPT_MODE, receiveKey, received++, sealed)
 
-  private fun transform(mode: Int, key: SecretKeySpec, counter: Long, input: ByteArray): ByteArray {
+  private fun transform(
+    mode: Int,
+    key: SecretKeySpec,
+    counter: Long,
+    input: ByteArray,
+  ): ByteArray {
     val iv = ByteArray(12)
     for (index in 0 until 8) iv[4 + index] = (counter ushr (56 - index * 8)).toByte()
     return Cipher.getInstance("AES/GCM/NoPadding").run {
@@ -127,7 +135,9 @@ internal class RemoteCipher(sendKeyBytes: ByteArray, receiveKeyBytes: ByteArray)
 }
 
 /** Length-prefixed JSON frames, sealed once the handshake has produced a [cipher]. */
-internal class RemoteChannel(private val socket: Socket) : Closeable {
+internal class RemoteChannel(
+  private val socket: Socket,
+) : Closeable {
   private val input = DataInputStream(BufferedInputStream(socket.getInputStream()))
   private val output = DataOutputStream(BufferedOutputStream(socket.getOutputStream()))
   private val writeLock = Any()
@@ -176,15 +186,21 @@ internal object RemoteCrypto {
   fun decodePublicKey(encoded: ByteArray): PublicKey =
     KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(encoded))
 
-  fun sharedSecret(keyPair: KeyPair, peer: PublicKey): ByteArray =
+  fun sharedSecret(
+    keyPair: KeyPair,
+    peer: PublicKey,
+  ): ByteArray =
     KeyAgreement.getInstance("ECDH").run {
       init(keyPair.private)
       doPhase(peer, true)
       generateSecret()
     }
 
-  fun commitment(serverKey: ByteArray, clientKey: ByteArray, serverNonce: ByteArray): ByteArray =
-    sha256(label, "commit".encodeToByteArray(), serverKey, clientKey, serverNonce)
+  fun commitment(
+    serverKey: ByteArray,
+    clientKey: ByteArray,
+    serverNonce: ByteArray,
+  ): ByteArray = sha256(label, "commit".encodeToByteArray(), serverKey, clientKey, serverNonce)
 
   fun transcript(
     clientKey: ByteArray,
@@ -193,7 +209,15 @@ internal object RemoteCrypto {
     serverNonce: ByteArray,
     tvId: String,
   ): ByteArray =
-    sha256(label, "transcript".encodeToByteArray(), clientKey, serverKey, clientNonce, serverNonce, tvId.encodeToByteArray())
+    sha256(
+      label,
+      "transcript".encodeToByteArray(),
+      clientKey,
+      serverKey,
+      clientNonce,
+      serverNonce,
+      tvId.encodeToByteArray(),
+    )
 
   fun pairingCode(transcript: ByteArray): String {
     val digest = sha256(label, "code".encodeToByteArray(), transcript)
@@ -205,17 +229,28 @@ internal object RemoteCrypto {
     return (value % 1_000_000L).toString().padStart(6, '0')
   }
 
-  fun proof(secret: ByteArray, role: String, transcript: ByteArray): ByteArray =
-    hmac(secret, label, role.encodeToByteArray(), transcript)
+  fun proof(
+    secret: ByteArray,
+    role: String,
+    transcript: ByteArray,
+  ): ByteArray = hmac(secret, label, role.encodeToByteArray(), transcript)
 
-  fun sessionCipher(shared: ByteArray, secret: ByteArray?, transcript: ByteArray, server: Boolean): RemoteCipher {
+  fun sessionCipher(
+    shared: ByteArray,
+    secret: ByteArray?,
+    transcript: ByteArray,
+    server: Boolean,
+  ): RemoteCipher {
     val keys = hkdf(shared + (secret ?: ByteArray(0)), transcript, label, 64)
     val clientToServer = keys.copyOfRange(0, 32)
     val serverToClient = keys.copyOfRange(32, 64)
     return if (server) RemoteCipher(serverToClient, clientToServer) else RemoteCipher(clientToServer, serverToClient)
   }
 
-  fun matches(expected: ByteArray, actual: ByteArray): Boolean = MessageDigest.isEqual(expected, actual)
+  fun matches(
+    expected: ByteArray,
+    actual: ByteArray,
+  ): Boolean = MessageDigest.isEqual(expected, actual)
 
   private fun sha256(vararg parts: ByteArray): ByteArray =
     MessageDigest.getInstance("SHA-256").run {
@@ -223,7 +258,10 @@ internal object RemoteCrypto {
       digest()
     }
 
-  private fun hmac(key: ByteArray, vararg parts: ByteArray): ByteArray =
+  private fun hmac(
+    key: ByteArray,
+    vararg parts: ByteArray,
+  ): ByteArray =
     Mac.getInstance("HmacSHA256").run {
       init(SecretKeySpec(key, "HmacSHA256"))
       parts.forEach { update(it) }
@@ -231,7 +269,12 @@ internal object RemoteCrypto {
     }
 
   /** RFC 5869 HKDF-SHA256. */
-  private fun hkdf(ikm: ByteArray, salt: ByteArray, info: ByteArray, length: Int): ByteArray {
+  private fun hkdf(
+    ikm: ByteArray,
+    salt: ByteArray,
+    info: ByteArray,
+    length: Int,
+  ): ByteArray {
     val prk = hmac(salt, ikm)
     val output = ByteArray(length)
     var block = ByteArray(0)

@@ -1,15 +1,11 @@
 package app.gyrolet.mpvrx.ui.browser.components
 
-import app.gyrolet.mpvrx.utils.logging.Log
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,6 +37,7 @@ import app.gyrolet.mpvrx.ui.browser.videolist.videoPlaybackIdentifiers
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
+import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.media.PlaybackStateEvents
 import app.gyrolet.mpvrx.utils.media.PlaybackStateOps
 import app.gyrolet.mpvrx.utils.permission.PermissionUtils.StorageOps
@@ -57,13 +54,19 @@ import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 import java.io.File
 import java.nio.file.Files
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 internal class VideoSwipeActions(
   val video: (Video, Boolean, VideoSwipeAction) -> Unit,
   val folder: (VideoFolder, VideoSwipeAction) -> Unit,
 )
 
-private data class SwipeTarget(val videos: List<Video>, val folderName: String? = null)
+private data class SwipeTarget(
+  val videos: List<Video>,
+  val folderName: String? = null,
+)
 
 @Composable
 internal fun rememberSwipePlaybackInfo(videos: List<Video>): Map<String, VideoWithPlaybackInfo> {
@@ -82,38 +85,46 @@ internal fun rememberSwipePlaybackInfo(videos: List<Video>): Map<String, VideoWi
       if (identifier.isNotBlank() && index != null) {
         val affected = index[identifier] ?: return@collectLatest
         val current = playbackInfo
-        playbackInfo = withContext(Dispatchers.IO) {
-          val now = System.currentTimeMillis()
-          current + affected.associate { video ->
-            video.path to buildVideoWithPlaybackInfo(
-              video = video,
-              playbackState = videoPlaybackIdentifiers(video).firstNotNullOfOrNull { repository.getVideoDataByTitle(it) },
-              currentTimeMillis = now,
-              newLabelDays = newDays,
-              watchedThreshold = threshold,
-            )
+        playbackInfo =
+          withContext(Dispatchers.IO) {
+            val now = System.currentTimeMillis()
+            current +
+              affected.associate { video ->
+                video.path to
+                  buildVideoWithPlaybackInfo(
+                    video = video,
+                    playbackState =
+                      videoPlaybackIdentifiers(
+                        video,
+                      ).firstNotNullOfOrNull { repository.getVideoDataByTitle(it) },
+                    currentTimeMillis = now,
+                    newLabelDays = newDays,
+                    watchedThreshold = threshold,
+                  )
+              }
           }
-        }
         return@collectLatest
       }
-      val (rebuiltInfo, rebuiltIndex) = withContext(Dispatchers.IO) {
-        val states = repository.getAllPlaybackStates().associateBy { it.mediaTitle }
-        val now = System.currentTimeMillis()
-        val byIdentifier = HashMap<String, MutableList<Video>>()
-        val info =
-          videos.associate { video ->
-            val identifiers = videoPlaybackIdentifiers(video)
-            identifiers.forEach { byIdentifier.getOrPut(it) { ArrayList(1) }.add(video) }
-            video.path to buildVideoWithPlaybackInfo(
-              video = video,
-              playbackState = identifiers.firstNotNullOfOrNull(states::get),
-              currentTimeMillis = now,
-              newLabelDays = newDays,
-              watchedThreshold = threshold,
-            )
-          }
-        info to byIdentifier
-      }
+      val (rebuiltInfo, rebuiltIndex) =
+        withContext(Dispatchers.IO) {
+          val states = repository.getAllPlaybackStates().associateBy { it.mediaTitle }
+          val now = System.currentTimeMillis()
+          val byIdentifier = HashMap<String, MutableList<Video>>()
+          val info =
+            videos.associate { video ->
+              val identifiers = videoPlaybackIdentifiers(video)
+              identifiers.forEach { byIdentifier.getOrPut(it) { ArrayList(1) }.add(video) }
+              video.path to
+                buildVideoWithPlaybackInfo(
+                  video = video,
+                  playbackState = identifiers.firstNotNullOfOrNull(states::get),
+                  currentTimeMillis = now,
+                  newLabelDays = newDays,
+                  watchedThreshold = threshold,
+                )
+            }
+          info to byIdentifier
+        }
       videosByIdentifier = rebuiltIndex
       playbackInfo = rebuiltInfo
     }
@@ -162,7 +173,11 @@ internal fun rememberVideoSwipeActions(
     AlertDialog(
       onDismissRequest = { if (!busy) deleteTarget = null },
       icon = { Icon(Icons.RoundedFilled.Delete, null, tint = MaterialTheme.colorScheme.error) },
-      title = { Text(stringResource(if (isAudio) R.string.audio_swipe_delete_title else R.string.video_swipe_delete_title)) },
+      title = {
+        Text(
+          stringResource(if (isAudio) R.string.audio_swipe_delete_title else R.string.video_swipe_delete_title),
+        )
+      },
       text = {
         Text(
           if (target.folderName != null) {
@@ -188,15 +203,16 @@ internal fun rememberVideoSwipeActions(
                   val (deleted, failed) = StorageOps.deleteVideos(context, target.videos) { confirmedDeletes += it }
                   if (deleted > 0) {
                     metadataCache.invalidateVideos(confirmedDeletes.map { it.path })
-                    val deletedVideos = if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
-                      confirmedDeletes
-                    } else {
-                      withContext(Dispatchers.IO) {
-                        confirmedDeletes.filter { video ->
-                          runCatching { Files.notExists(File(video.path).toPath()) }.getOrDefault(false)
+                    val deletedVideos =
+                      if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
+                        confirmedDeletes
+                      } else {
+                        withContext(Dispatchers.IO) {
+                          confirmedDeletes.filter { video ->
+                            runCatching { Files.notExists(File(video.path).toPath()) }.getOrDefault(false)
+                          }
                         }
                       }
-                    }
                     currentOnDeleted(deletedVideos)
                     haptics.confirm()
                     currentOnChanged()
@@ -216,8 +232,11 @@ internal fun rememberVideoSwipeActions(
             }
           },
         ) {
-          if (busy) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-          else Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+          if (busy) {
+            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+          } else {
+            Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
+          }
         }
       },
       dismissButton = {
@@ -292,87 +311,119 @@ internal fun rememberVideoSwipeActions(
 
   return VideoSwipeActions(
     video = { video, _, action ->
-      if (!busy && !collecting && deleteTarget == null && playlistTarget == null &&
-        (video.path.startsWith('/') ||
-          (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY &&
-            video.uri.scheme == "content" &&
-            android.provider.DocumentsContract.isDocumentUri(context, video.uri)))) {
+      if (!busy &&
+        !collecting &&
+        deleteTarget == null &&
+        playlistTarget == null &&
+        (
+          video.path.startsWith('/') ||
+            (
+              app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY &&
+                video.uri.scheme == "content" &&
+                android.provider.DocumentsContract.isDocumentUri(context, video.uri)
+            )
+        )
+      ) {
         perform(SwipeTarget(listOf(video)), action)
       }
     },
     folder = { folder, action ->
       val isScopedDirectory = app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY
-      if (!busy && !collecting && deleteTarget == null && playlistTarget == null &&
-        action != VideoSwipeAction.None && !(isScopedDirectory && action == VideoSwipeAction.Delete)
+      if (!busy &&
+        !collecting &&
+        deleteTarget == null &&
+        playlistTarget == null &&
+        action != VideoSwipeAction.None &&
+        !(isScopedDirectory && action == VideoSwipeAction.Delete)
       ) {
         collecting = true
-        scanJob = scope.launch {
-          try {
-            val videos = withContext(Dispatchers.IO) {
-              if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY &&
-                app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner.isScopedFolder(folder.bucketId)
-              ) {
-                // SAF folder buckets are document-tree URIs, not File paths.
-                return@withContext app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
-                  .getVideosRecursively(
-                    context = context,
-                    bucketId = folder.bucketId,
-                    grantedTreeUris = foldersPreferences.scopedHiddenFolderUris.get(),
-                    includeAudio = audioOnly || preferences.includeAudioBrowser.get(),
-                    audioOnly = audioOnly,
-                  )
-              }
-              if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
-                val folders = if (audioOnly) {
-                  MediaFileRepository.getAllAudioFolders(context, preferences.minimumAudioDurationSeconds.get())
-                } else {
-                  MediaFileRepository.getAllVideoFolders(context, includeAudioOverride = preferences.includeAudioBrowser.get())
-                }
-                val buckets = folders.filter {
-                  app.gyrolet.mpvrx.utils.storage.isMediaPathInFolder(it.path, folder.path)
-                }.mapTo(mutableSetOf()) { it.bucketId }
-                return@withContext MediaFileRepository.getVideosForBuckets(
-                  context, buckets, includeAudioOverride = audioOnly || preferences.includeAudioBrowser.get(),
-                ).filter { !audioOnly || it.isAudio }
-              }
-              val root = File(folder.path).canonicalFile
-              require(root.isDirectory && root.canRead())
-              val coroutineContext = currentCoroutineContext()
-              val files = root.walkTopDown()
-                .onEnter { directory ->
+        scanJob =
+          scope.launch {
+            try {
+              val videos =
+                withContext(Dispatchers.IO) {
+                  if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY &&
+                    app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
+                      .isScopedFolder(folder.bucketId)
+                  ) {
+                    // SAF folder buckets are document-tree URIs, not File paths.
+                    return@withContext app.gyrolet.mpvrx.utils.media.ScopedHiddenFolderScanner
+                      .getVideosRecursively(
+                        context = context,
+                        bucketId = folder.bucketId,
+                        grantedTreeUris = foldersPreferences.scopedHiddenFolderUris.get(),
+                        includeAudio = audioOnly || preferences.includeAudioBrowser.get(),
+                        audioOnly = audioOnly,
+                      )
+                  }
+                  if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {
+                    val folders =
+                      if (audioOnly) {
+                        MediaFileRepository.getAllAudioFolders(context, preferences.minimumAudioDurationSeconds.get())
+                      } else {
+                        MediaFileRepository.getAllVideoFolders(
+                          context,
+                          includeAudioOverride = preferences.includeAudioBrowser.get(),
+                        )
+                      }
+                    val buckets =
+                      folders
+                        .filter {
+                          app.gyrolet.mpvrx.utils.storage
+                            .isMediaPathInFolder(it.path, folder.path)
+                        }.mapTo(mutableSetOf()) { it.bucketId }
+                    return@withContext MediaFileRepository
+                      .getVideosForBuckets(
+                        context,
+                        buckets,
+                        includeAudioOverride = audioOnly || preferences.includeAudioBrowser.get(),
+                      ).filter { !audioOnly || it.isAudio }
+                  }
+                  val root = File(folder.path).canonicalFile
+                  require(root.isDirectory && root.canRead())
+                  val coroutineContext = currentCoroutineContext()
+                  val files =
+                    root
+                      .walkTopDown()
+                      .onEnter { directory ->
+                        coroutineContext.ensureActive()
+                        !Files.isSymbolicLink(directory.toPath())
+                      }.onFail { _, error -> throw error }
+                      .filter { file ->
+                        coroutineContext.ensureActive()
+                        file.isFile &&
+                          !Files.isSymbolicLink(file.toPath()) &&
+                          (if (audioOnly) FileTypeUtils.isAudioFile(file) else FileTypeUtils.isVideoFile(file))
+                      }.toList()
+                  val resolved =
+                    MediaFileRepository.getVideosFromFiles(context, files).let { videos ->
+                      if (audioOnly) videos.map { it.copy(isAudio = true) } else videos.filterNot { it.isAudio }
+                    }
                   coroutineContext.ensureActive()
-                  !Files.isSymbolicLink(directory.toPath())
+                  check(resolved.size == files.size)
+                  resolved.distinctBy { it.path }.sortedBy { it.path.lowercase() }
                 }
-                .onFail { _, error -> throw error }
-                .filter { file ->
-                  coroutineContext.ensureActive()
-                  file.isFile && !Files.isSymbolicLink(file.toPath()) &&
-                    (if (audioOnly) FileTypeUtils.isAudioFile(file) else FileTypeUtils.isVideoFile(file))
-                }.toList()
-              val resolved = MediaFileRepository.getVideosFromFiles(context, files).let { videos ->
-                if (audioOnly) videos.map { it.copy(isAudio = true) } else videos.filterNot { it.isAudio }
+              currentCoroutineContext().ensureActive()
+              if (videos.isEmpty()) {
+                Toast
+                  .makeText(
+                    context,
+                    if (audioOnly) R.string.audio_swipe_folder_empty else R.string.video_swipe_folder_empty,
+                    Toast.LENGTH_SHORT,
+                  ).show()
+              } else {
+                perform(SwipeTarget(videos, folder.name), action)
               }
-              coroutineContext.ensureActive()
-              check(resolved.size == files.size)
-              resolved.distinctBy { it.path }.sortedBy { it.path.lowercase() }
+            } catch (cancelled: CancellationException) {
+              throw cancelled
+            } catch (error: Exception) {
+              Log.e("VideoSwipeActions", "Unable to collect folder videos", error)
+              Toast.makeText(context, R.string.generic_unknown_error, Toast.LENGTH_SHORT).show()
+            } finally {
+              collecting = false
+              scanJob = null
             }
-            currentCoroutineContext().ensureActive()
-            if (videos.isEmpty()) {
-              Toast.makeText(context, if (audioOnly) R.string.audio_swipe_folder_empty else R.string.video_swipe_folder_empty,
-                Toast.LENGTH_SHORT).show()
-            } else {
-              perform(SwipeTarget(videos, folder.name), action)
-            }
-          } catch (cancelled: CancellationException) {
-            throw cancelled
-          } catch (error: Exception) {
-            Log.e("VideoSwipeActions", "Unable to collect folder videos", error)
-            Toast.makeText(context, R.string.generic_unknown_error, Toast.LENGTH_SHORT).show()
-          } finally {
-            collecting = false
-            scanJob = null
           }
-        }
       }
     },
   )

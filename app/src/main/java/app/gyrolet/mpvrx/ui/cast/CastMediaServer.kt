@@ -229,7 +229,8 @@ internal class CastMediaServer private constructor(
           ?.let { return it.second.address.hostAddress }
       }
       val connectivity = context.getSystemService(ConnectivityManager::class.java)
-      connectivity.getLinkProperties(connectivity.activeNetwork)
+      connectivity
+        .getLinkProperties(connectivity.activeNetwork)
         ?.linkAddresses
         ?.asSequence()
         ?.map { it.address }
@@ -252,7 +253,6 @@ internal class CastMediaServer private constructor(
       return (address.ipv4Bits() and mask) == (target.ipv4Bits() and mask)
     }
 
-    private fun InetAddress.ipv4Bits(): Int =
-      address.fold(0) { bits, byte -> (bits shl 8) or (byte.toInt() and 0xFF) }
+    private fun InetAddress.ipv4Bits(): Int = address.fold(0) { bits, byte -> (bits shl 8) or (byte.toInt() and 0xFF) }
   }
 }

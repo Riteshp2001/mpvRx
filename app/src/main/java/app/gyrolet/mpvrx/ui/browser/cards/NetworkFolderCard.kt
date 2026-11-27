@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,22 +34,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.domain.network.NetworkFile
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
+import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
+import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.controls.components.tvContextMenu
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.tv.tvFocusMemory
-import app.gyrolet.mpvrx.ui.player.controls.components.tvContextMenu
-import app.gyrolet.mpvrx.ui.icons.Icons
 import org.koin.compose.koinInject
-
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.height
-import androidx.compose.ui.text.style.TextAlign
-import app.gyrolet.mpvrx.preferences.BrowserPreferences
 
 @Composable
 fun NetworkFolderCard(
@@ -74,7 +73,7 @@ fun NetworkFolderCard(
         .tvFocusMemory("network:${file.path}")
         .tvFocusHighlight(cardShape, focusedScale = 1.03f)
         .clip(cardShape)
-                .semantics { selected = isSelected }
+        .semantics { selected = isSelected }
         .tvContextMenu(onLongClick)
         .mediaCardClickable(
           onClick = onClick,
@@ -97,32 +96,32 @@ fun NetworkFolderCard(
               .padding(horizontal = 4.dp, vertical = 6.dp),
           horizontalAlignment = if (centerGridTitles) Alignment.CenterHorizontally else Alignment.Start,
         ) {
-        Box(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .aspectRatio(20f / 17f),
-          contentAlignment = Alignment.Center,
-        ) {
-          Icon(
-            Icons.RoundedFilled.Folder,
-            contentDescription =
-              androidx.compose.ui.res
-                .stringResource(app.gyrolet.mpvrx.R.string.ui_folder),
-            modifier = Modifier.matchParentSize(),
-            tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
+          Box(
+            modifier =
+              Modifier
+                .fillMaxWidth()
+                .aspectRatio(20f / 17f),
+            contentAlignment = Alignment.Center,
+          ) {
+            Icon(
+              Icons.RoundedFilled.Folder,
+              contentDescription =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_folder),
+              modifier = Modifier.matchParentSize(),
+              tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
+            )
+          }
+          Spacer(modifier = Modifier.height(4.dp))
+          Text(
+            file.name,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = maxLines,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (centerGridTitles) TextAlign.Center else TextAlign.Start,
+            modifier = Modifier.fillMaxWidth(),
           )
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-          file.name,
-          style = MaterialTheme.typography.titleMedium,
-          color = MaterialTheme.colorScheme.onSurface,
-          maxLines = maxLines,
-          overflow = TextOverflow.Ellipsis,
-          textAlign = if (centerGridTitles) TextAlign.Center else TextAlign.Start,
-          modifier = Modifier.fillMaxWidth(),
-        )
         }
       } else {
         Row(
@@ -132,32 +131,32 @@ fun NetworkFolderCard(
               .padding(horizontal = 8.dp, vertical = 2.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-        Box(
-          modifier =
-            Modifier
-              .size(72.dp),
-          contentAlignment = Alignment.Center,
-        ) {
-          Icon(
-            Icons.RoundedFilled.Folder,
-            contentDescription =
-              androidx.compose.ui.res
-                .stringResource(app.gyrolet.mpvrx.R.string.ui_folder),
-            modifier = Modifier.matchParentSize(),
-            tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
-          )
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(
-          modifier = Modifier.weight(1f),
-        ) {
-          Text(
-            file.name,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = maxLines,
-            overflow = TextOverflow.Ellipsis,
-          )
+          Box(
+            modifier =
+              Modifier
+                .size(72.dp),
+            contentAlignment = Alignment.Center,
+          ) {
+            Icon(
+              Icons.RoundedFilled.Folder,
+              contentDescription =
+                androidx.compose.ui.res
+                  .stringResource(app.gyrolet.mpvrx.R.string.ui_folder),
+              modifier = Modifier.matchParentSize(),
+              tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
+            )
+          }
+          Spacer(modifier = Modifier.width(12.dp))
+          Column(
+            modifier = Modifier.weight(1f),
+          ) {
+            Text(
+              file.name,
+              style = MaterialTheme.typography.titleMedium,
+              color = MaterialTheme.colorScheme.onSurface,
+              maxLines = maxLines,
+              overflow = TextOverflow.Ellipsis,
+            )
           }
         }
       }

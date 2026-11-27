@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 package app.gyrolet.mpvrx.ui.player.controls.components
 
@@ -39,7 +39,10 @@ internal fun PlayerTitlePill(
   val clickEvent = LocalPlayerButtonsClickEvent.current
   PlayerControlSurface(CircleShape, modifier) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-      IconButton(onClick = { clickEvent(); onOpenInfo() }) {
+      IconButton(onClick = {
+        clickEvent()
+        onOpenInfo()
+      }) {
         Icon(
           imageVector = Icons.RoundedFilled.Info,
           contentDescription = stringResource(R.string.ui_media_info),
@@ -49,17 +52,20 @@ internal fun PlayerTitlePill(
       }
       if (!title.isNullOrBlank()) {
         Row(
-          modifier = Modifier.weight(1f, fill = false)
-            .heightIn(min = height)
-            .then(
-              if (onOpenPlaylist != null) {
-                Modifier.clip(CircleShape).clickable(role = Role.Button) {
-                  clickEvent()
-                  onOpenPlaylist()
-                }
-              } else Modifier,
-            )
-            .padding(end = 14.dp),
+          modifier =
+            Modifier
+              .weight(1f, fill = false)
+              .heightIn(min = height)
+              .then(
+                if (onOpenPlaylist != null) {
+                  Modifier.clip(CircleShape).clickable(role = Role.Button) {
+                    clickEvent()
+                    onOpenPlaylist()
+                  }
+                } else {
+                  Modifier
+                },
+              ).padding(end = 14.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
           Text(

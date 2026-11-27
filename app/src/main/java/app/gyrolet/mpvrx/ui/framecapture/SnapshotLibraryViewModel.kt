@@ -30,8 +30,8 @@ import org.koin.core.component.inject
 
 class SnapshotLibraryViewModel(
   application: Application,
-) : AndroidViewModel(application), KoinComponent {
-
+) : AndroidViewModel(application),
+  KoinComponent {
   private val repository: FrameCaptureRepository by inject()
 
   private val thumbnails =
@@ -39,9 +39,8 @@ class SnapshotLibraryViewModel(
 
   val library: StateFlow<SnapshotLibraryData> =
     combine(repository.observeFolders(), repository.observeAll()) { folders, captures ->
-        SnapshotLibraryData.of(folders, captures)
-      }
-      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), EMPTY_LIBRARY)
+      SnapshotLibraryData.of(folders, captures)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), EMPTY_LIBRARY)
 
   val thumbnailCache: StateFlow<Map<Long, Bitmap>> = thumbnails.thumbnails
 

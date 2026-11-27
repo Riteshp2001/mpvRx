@@ -16,8 +16,8 @@ import androidx.lifecycle.viewModelScope
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.domain.update.Asset
 import app.gyrolet.mpvrx.domain.update.Release
-import app.gyrolet.mpvrx.domain.update.UpdateManager
 import app.gyrolet.mpvrx.domain.update.UpdateInstaller
+import app.gyrolet.mpvrx.domain.update.UpdateManager
 import app.gyrolet.mpvrx.domain.update.UpdateStage
 import app.gyrolet.mpvrx.domain.update.UpdateTaskState
 import app.gyrolet.mpvrx.domain.update.UpdateWork
@@ -52,12 +52,15 @@ data class UpdateUiState(
   val queued: Boolean = false,
 )
 
-class UpdateViewModel(application: Application) : AndroidViewModel(application) {
+class UpdateViewModel(
+  application: Application,
+) : AndroidViewModel(application) {
   private val updateManager = UpdateManager(application)
   private val prefs = application.getSharedPreferences("mpvrx_prefs", Context.MODE_PRIVATE)
-  private val _isAutoUpdateEnabled = MutableStateFlow(
-    BuildConfig.ENABLE_UPDATE_FEATURE && prefs.getBoolean("auto_update", false),
-  )
+  private val _isAutoUpdateEnabled =
+    MutableStateFlow(
+      BuildConfig.ENABLE_UPDATE_FEATURE && prefs.getBoolean("auto_update", false),
+    )
   val isAutoUpdateEnabled = _isAutoUpdateEnabled.asStateFlow()
   private val _isAutoInstallEnabled = MutableStateFlow(UpdateWork.automaticEnabled(application))
   val isAutoInstallEnabled = _isAutoInstallEnabled.asStateFlow()
@@ -98,8 +101,11 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
 
   fun showPendingUpdate() {
     applyTask(UpdateWork.state(getApplication()).value)
-    if (_uiState.value.release != null) _uiState.update { it.copy(visible = true) }
-    else checkForUpdate(manual = true)
+    if (_uiState.value.release != null) {
+      _uiState.update { it.copy(visible = true) }
+    } else {
+      checkForUpdate(manual = true)
+    }
   }
 
   fun checkForUpdate(manual: Boolean = false) {
@@ -111,27 +117,31 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     if (!manual && _uiState.value.visible) return
     checkJob?.cancel()
     if (manual) _uiState.update { it.copy(visible = true, checking = true, checkError = false, noUpdate = false) }
-    checkJob = viewModelScope.launch {
-      try {
-        val release = updateManager.checkForUpdate(forceShow = manual)
-        ensureActive()
-        if (busy()) return@launch
-        val asset = release?.let(updateManager::selectUpdateAsset)
-        if (release != null && asset != null) {
-          _uiState.value = UpdateUiState(visible = true, release = release, asset = asset, selecting = true)
-          val file = updateManager.getApkFile(release)
+    checkJob =
+      viewModelScope.launch {
+        try {
+          val release = updateManager.checkForUpdate(forceShow = manual)
           ensureActive()
-          _uiState.update { it.copy(readyToInstall = file != null, selecting = false) }
-        } else if (manual) {
-          _uiState.update { it.copy(checking = false, noUpdate = true) }
+          if (busy()) return@launch
+          val asset = release?.let(updateManager::selectUpdateAsset)
+          if (release != null && asset != null) {
+            _uiState.value = UpdateUiState(visible = true, release = release, asset = asset, selecting = true)
+            val file = updateManager.getApkFile(release)
+            ensureActive()
+            _uiState.update { it.copy(readyToInstall = file != null, selecting = false) }
+          } else if (manual) {
+            _uiState.update { it.copy(checking = false, noUpdate = true) }
+          }
+        } catch (cancellation: CancellationException) {
+          throw cancellation
+        } catch (_: Exception) {
+          if (manual) {
+            _uiState.update { it.copy(checking = false, selecting = false, checkError = true) }
+          } else {
+            _uiState.update { it.copy(selecting = false) }
+          }
         }
-      } catch (cancellation: CancellationException) {
-        throw cancellation
-      } catch (_: Exception) {
-        if (manual) _uiState.update { it.copy(checking = false, selecting = false, checkError = true) }
-        else _uiState.update { it.copy(selecting = false) }
       }
-    }
   }
 
   fun downloadUpdate() {
@@ -165,28 +175,33 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
     if (!BuildConfig.ENABLE_UPDATE_FEATURE || busy() || state.selecting || !state.readyToInstall) return
     val release = state.release ?: return
     _uiState.update { it.copy(selecting = true, installError = false, installPermissionRequired = false) }
-    selectionJob = viewModelScope.launch {
-      try {
-        val file = updateManager.getApkFile(release)
-        ensureActive()
-        if (file == null) {
-          _uiState.update { it.copy(readyToInstall = false, downloadError = true) }
-          return@launch
-        }
-        withContext(Dispatchers.IO) {
-          if (UpdateWork.state(getApplication()).value.release?.tagName != release.tagName) {
-            UpdateWork.update(getApplication()) { UpdateTaskState(release = release, stage = UpdateStage.READY) }
+    selectionJob =
+      viewModelScope.launch {
+        try {
+          val file = updateManager.getApkFile(release)
+          ensureActive()
+          if (file == null) {
+            _uiState.update { it.copy(readyToInstall = false, downloadError = true) }
+            return@launch
           }
-          UpdateInstaller.requestUserInstall(getApplication(), release)
+          withContext(Dispatchers.IO) {
+            if (UpdateWork
+                .state(getApplication())
+                .value.release
+                ?.tagName != release.tagName
+            ) {
+              UpdateWork.update(getApplication()) { UpdateTaskState(release = release, stage = UpdateStage.READY) }
+            }
+            UpdateInstaller.requestUserInstall(getApplication(), release)
+          }
+        } catch (cancellation: CancellationException) {
+          throw cancellation
+        } catch (_: Exception) {
+          _uiState.update { it.copy(installError = true) }
+        } finally {
+          _uiState.update { it.copy(selecting = false) }
         }
-      } catch (cancellation: CancellationException) {
-        throw cancellation
-      } catch (_: Exception) {
-        _uiState.update { it.copy(installError = true) }
-      } finally {
-        _uiState.update { it.copy(selecting = false) }
       }
-    }
   }
 
   fun dismiss() {
@@ -228,8 +243,9 @@ class UpdateViewModel(application: Application) : AndroidViewModel(application) 
         awaitingApproval = task.stage == UpdateStage.APPROVAL,
         queued = task.stage == UpdateStage.QUEUED,
         progress = task.progress,
-        readyToInstall = task.stage in setOf(UpdateStage.READY, UpdateStage.APPROVAL, UpdateStage.PERMISSION) ||
-          (task.stage == UpdateStage.FAILED && !task.downloadError),
+        readyToInstall =
+          task.stage in setOf(UpdateStage.READY, UpdateStage.APPROVAL, UpdateStage.PERMISSION) ||
+            (task.stage == UpdateStage.FAILED && !task.downloadError),
         downloadError = task.stage == UpdateStage.FAILED && task.downloadError,
         installError = task.stage == UpdateStage.FAILED && !task.downloadError,
         installPermissionRequired = task.stage == UpdateStage.PERMISSION,

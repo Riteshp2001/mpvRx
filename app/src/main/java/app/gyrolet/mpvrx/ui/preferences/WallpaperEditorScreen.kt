@@ -20,22 +20,22 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -51,9 +51,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Scaffold
-import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -71,16 +69,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -91,30 +89,32 @@ import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
+import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
+import app.gyrolet.mpvrx.ui.preferences.components.WallpaperPresetCard
 import app.gyrolet.mpvrx.ui.theme.CustomThemeDefinition
-import app.gyrolet.mpvrx.ui.theme.WallpaperDerivedThemeName
+import app.gyrolet.mpvrx.ui.theme.WALLPAPER_DERIVED_THEME_NAME
 import app.gyrolet.mpvrx.ui.theme.WallpaperImage
 import app.gyrolet.mpvrx.ui.theme.WallpaperPreset
-import app.gyrolet.mpvrx.ui.theme.drawWallpaperPreset
-import app.gyrolet.mpvrx.ui.preferences.components.WallpaperPresetCard
 import app.gyrolet.mpvrx.ui.theme.WallpaperScaleMode
 import app.gyrolet.mpvrx.ui.theme.downloadWallpaperFromLink
+import app.gyrolet.mpvrx.ui.theme.drawWallpaperPreset
 import app.gyrolet.mpvrx.ui.theme.extractThemeFromWallpaper
 import app.gyrolet.mpvrx.ui.theme.isWallpaperLink
 import app.gyrolet.mpvrx.ui.theme.loadWallpaperBitmap
 import app.gyrolet.mpvrx.ui.theme.saveWallpaperCopy
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusGroup
-import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
-import kotlin.math.roundToInt
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import kotlin.math.roundToInt
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
+import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 
 @Serializable
 data class WallpaperEditorScreen(
@@ -157,7 +157,7 @@ data class WallpaperEditorScreen(
       mutableStateOf(
         isEditingCurrent &&
           preferences.customWallpaperUseColors.get() &&
-          preferences.selectedCustomThemeName.get() == WallpaperDerivedThemeName,
+          preferences.selectedCustomThemeName.get() == WALLPAPER_DERIVED_THEME_NAME,
       )
     }
     var previewLocked by rememberSaveable(sourceUri) { mutableStateOf(false) }
@@ -172,11 +172,21 @@ data class WallpaperEditorScreen(
           restore = { it },
         )
       }
-    var selectedSource by rememberSaveable(sourceUri, stateSaver = selectedSourceSaver) { mutableStateOf(resolvedSource) }
+    var selectedSource by rememberSaveable(
+      sourceUri,
+      stateSaver = selectedSourceSaver,
+    ) { mutableStateOf(resolvedSource) }
     val loadedWallpaper =
       produceState<Pair<String, Bitmap?>?>(initialValue = null, selectedSource) {
         val source = selectedSource
-        val loaded = if (source.isBlank()) null else withContext(Dispatchers.IO) { loadWallpaperBitmap(context, source) }
+        val loaded =
+          if (source.isBlank()) {
+            null
+          } else {
+            withContext(
+              Dispatchers.IO,
+            ) { loadWallpaperBitmap(context, source) }
+          }
         value = source to loaded
       }.value
     // Ignore a bitmap that belongs to the previously selected source while the new one is loading.
@@ -247,9 +257,9 @@ data class WallpaperEditorScreen(
                       val remainingThemes =
                         CustomThemeDefinition
                           .parseCollection(preferences.customTheme.get())
-                          .filterNot { it.name == WallpaperDerivedThemeName }
+                          .filterNot { it.name == WALLPAPER_DERIVED_THEME_NAME }
                       preferences.customTheme.set(CustomThemeDefinition.serializeCollection(remainingThemes))
-                      if (preferences.selectedCustomThemeName.get() == WallpaperDerivedThemeName) {
+                      if (preferences.selectedCustomThemeName.get() == WALLPAPER_DERIVED_THEME_NAME) {
                         preferences.selectedCustomThemeName.set("")
                       }
                       backStack.popSafely()
@@ -273,7 +283,7 @@ data class WallpaperEditorScreen(
                         val otherThemes =
                           CustomThemeDefinition
                             .parseCollection(preferences.customTheme.get())
-                            .filterNot { it.name == WallpaperDerivedThemeName }
+                            .filterNot { it.name == WALLPAPER_DERIVED_THEME_NAME }
                         preferences.customTheme.set(
                           CustomThemeDefinition.serializeCollection(otherThemes + extracted),
                         )
@@ -286,12 +296,11 @@ data class WallpaperEditorScreen(
                             context,
                             R.string.pref_appearance_custom_wallpaper_colors_failed,
                             app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG,
-                          )
-                          .show()
+                          ).show()
                       }
                     } else {
                       preferences.customWallpaperUseColors.set(false)
-                      if (preferences.selectedCustomThemeName.get() == WallpaperDerivedThemeName) {
+                      if (preferences.selectedCustomThemeName.get() == WALLPAPER_DERIVED_THEME_NAME) {
                         preferences.selectedCustomThemeName.set("")
                       }
                     }
@@ -301,8 +310,11 @@ data class WallpaperEditorScreen(
                     throw error
                   } catch (_: Exception) {
                     app.gyrolet.mpvrx.ui.components.AppToast
-                      .makeText(context, R.string.wallpaper_save_failed, app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG)
-                      .show()
+                      .makeText(
+                        context,
+                        R.string.wallpaper_save_failed,
+                        app.gyrolet.mpvrx.ui.components.AppToast.LENGTH_LONG,
+                      ).show()
                   } finally {
                     isSaving = false
                   }
@@ -343,19 +355,24 @@ data class WallpaperEditorScreen(
               modifier =
                 Modifier
                   .background(
-                    if (previewLocked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+                    if (previewLocked) {
+                      MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                      MaterialTheme.colorScheme.surfaceContainerHighest
+                    },
                     CircleShape,
                   ).tvFocusHighlight(CircleShape, focusedScale = 1.05f),
             ) {
               Icon(
                 if (previewLocked) Icons.RoundedFilled.Lock else Icons.RoundedFilled.LockOpen,
-                contentDescription = stringResource(
-                  if (previewLocked) {
-                    R.string.pref_appearance_custom_wallpaper_preview_locked
-                  } else {
-                    R.string.pref_appearance_custom_wallpaper_preview_unlocked
-                  },
-                ),
+                contentDescription =
+                  stringResource(
+                    if (previewLocked) {
+                      R.string.pref_appearance_custom_wallpaper_preview_locked
+                    } else {
+                      R.string.pref_appearance_custom_wallpaper_preview_unlocked
+                    },
+                  ),
                 tint =
                   if (previewLocked) {
                     MaterialTheme.colorScheme.onPrimaryContainer

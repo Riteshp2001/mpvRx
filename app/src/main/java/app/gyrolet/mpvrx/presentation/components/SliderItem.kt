@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,6 +29,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.ui.utils.rememberAdjustmentHaptics
 import kotlin.math.roundToInt
+import app.gyrolet.mpvrx.ui.components.AppSlider as Slider
 
 @Composable
 fun SliderItem(
@@ -44,9 +44,13 @@ fun SliderItem(
   hapticLandmarks: List<Int> = emptyList(),
   icon: @Composable () -> Unit = {},
 ) {
-  val haptics = rememberAdjustmentHaptics(
-    min.toFloat(), max.toFloat(), (max - min - 1).coerceAtLeast(0), hapticLandmarks.map(Int::toFloat),
-  )
+  val haptics =
+    rememberAdjustmentHaptics(
+      min.toFloat(),
+      max.toFloat(),
+      (max - min - 1).coerceAtLeast(0),
+      hapticLandmarks.map(Int::toFloat),
+    )
 
   Row(
     modifier =
@@ -81,8 +85,7 @@ fun SliderItem(
             .semantics {
               contentDescription = label
               stateDescription = valueText
-            }
-            .tvFocusHighlight(MaterialTheme.shapes.medium, enabled = enabled, focusedScale = 1.01f),
+            }.tvFocusHighlight(MaterialTheme.shapes.medium, enabled = enabled, focusedScale = 1.01f),
         valueRange = min.toFloat()..max.toFloat(),
         steps = (max - min - 1).coerceAtLeast(0),
         enabled = enabled,
@@ -140,8 +143,7 @@ fun SliderItem(
             .semantics {
               contentDescription = label
               stateDescription = valueText
-            }
-            .tvFocusHighlight(MaterialTheme.shapes.medium, enabled = enabled, focusedScale = 1.01f),
+            }.tvFocusHighlight(MaterialTheme.shapes.medium, enabled = enabled, focusedScale = 1.01f),
         valueRange = min..max,
         steps = steps,
         enabled = enabled,

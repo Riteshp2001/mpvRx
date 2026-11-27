@@ -45,7 +45,7 @@ data class PlaylistItemEntity(
   val licenseType: String? = null, // DRM license type (e.g. com.widevine.alpha)
   val licenseKey: String? = null, // DRM license key URL
   val userAgent: String? = null, // Per-stream user-agent from the playlist
-  val isFavorite: Boolean = false, // User-starred item
+  val isFavorite: Boolean = false,
   /**
    * Size captured when a network entry was added. Local entries resolve size from the file itself,
    * so this stays null for them; it is also null for network entries added before this column

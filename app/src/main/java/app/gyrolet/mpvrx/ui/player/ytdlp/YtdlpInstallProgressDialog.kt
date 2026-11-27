@@ -53,10 +53,19 @@ fun YtdlpInstallProgressDialog(
       Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (error == null) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
         if (lastLogLine.isNotBlank()) {
-          Text(lastLogLine, style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+          Text(
+            lastLogLine,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
         }
-        if (error != null) Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        if (error !=
+          null
+        ) {
+          Text(error, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
       }
     },
     confirmButton = {

@@ -38,11 +38,19 @@ internal fun isTelevision(): Boolean = DeviceFormFactor.isTelevision(LocalContex
 internal fun <I> ActivityResultLauncher<I>.canLaunch(
   context: Context,
   input: I,
-): Boolean = runCatching { contract.createIntent(context, input).resolveActivity(context.packageManager) != null }
-  .getOrDefault(false)
+): Boolean =
+  runCatching { contract.createIntent(context, input).resolveActivity(context.packageManager) != null }
+    .getOrDefault(false)
 
-internal fun shouldOfferTvPickerFallback(isTelevision: Boolean, requestCode: Int, intent: Intent): Boolean =
-  isTelevision && requestCode >= 0 && intent.component == null && intent.`package` == null &&
+internal fun shouldOfferTvPickerFallback(
+  isTelevision: Boolean,
+  requestCode: Int,
+  intent: Intent,
+): Boolean =
+  isTelevision &&
+    requestCode >= 0 &&
+    intent.component == null &&
+    intent.`package` == null &&
     intent.action in TvPickerActivity.SUPPORTED_ACTIONS
 
 internal inline fun Activity.startForResultOrToast(
@@ -57,12 +65,13 @@ internal inline fun Activity.startForResultOrToast(
       null
     }
   // Open files in the remote-friendly browser even if the system has a phone-style picker.
-  val target = when {
-    fallback == null -> intent
-    intent.action in TvPickerActivity.FILE_ACTIONS -> fallback
-    intent.resolveActivity(packageManager) == null -> fallback
-    else -> intent
-  }
+  val target =
+    when {
+      fallback == null -> intent
+      intent.action in TvPickerActivity.FILE_ACTIONS -> fallback
+      intent.resolveActivity(packageManager) == null -> fallback
+      else -> intent
+    }
   try {
     start(target)
   } catch (error: RuntimeException) {

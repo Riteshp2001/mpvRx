@@ -62,11 +62,13 @@ internal class GitHubContributorsRepository(
           it.type.equals("Bot", ignoreCase = true) ||
             it.login?.endsWith("[bot]", ignoreCase = true) == true ||
             it.name?.endsWith("[bot]", ignoreCase = true) == true
-        }
-        .mapNotNull { contributor ->
+        }.mapNotNull { contributor ->
           val login = contributor.login?.trim()?.takeIf(String::isNotBlank)
-          val name = login ?: contributor.name?.trim()?.takeIf(String::isNotBlank)
-            ?.takeUnless { Patterns.EMAIL_ADDRESS.matcher(it).find() }
+          val name =
+            login ?: contributor.name
+              ?.trim()
+              ?.takeIf(String::isNotBlank)
+              ?.takeUnless { Patterns.EMAIL_ADDRESS.matcher(it).find() }
           name?.let {
             GitHubContributor(
               displayName = it,
@@ -75,8 +77,7 @@ internal class GitHubContributorsRepository(
               contributions = contributor.contributions.coerceAtLeast(0),
             )
           }
-        }
-        .groupBy { it.profileUrl ?: "anonymous:${it.displayName}" }
+        }.groupBy { it.profileUrl ?: "anonymous:${it.displayName}" }
         .values
         .map { entries -> entries.first().copy(contributions = entries.sumOf { it.contributions }) }
         .sortedWith(contributorOrder)
@@ -98,33 +99,38 @@ internal class GitHubContributorsRepository(
             profileUrl = "https://github.com/${author.login}",
             contributions = commits.size,
           )
-        }
-        .sortedWith(contributorOrder)
+        }.sortedWith(contributorOrder)
     }
 
   suspend fun communityMembers(forceRefresh: Boolean = false): Result<List<GitHubCommunityMember>> =
     cachedCredits("community", GitHubCommunityMember.serializer(), forceRefresh) {
-      val issues = fetchPages(
-        "issues",
-        GitHubIssueResponse.serializer(),
-        mapOf("state" to "all", "sort" to "created", "direction" to "asc"),
-      ).filter { it.pullRequest == null }.distinctBy { it.number }
+      val issues =
+        fetchPages(
+          "issues",
+          GitHubIssueResponse.serializer(),
+          mapOf("state" to "all", "sort" to "created", "direction" to "asc"),
+        ).filter { it.pullRequest == null }.distinctBy { it.number }
       val issueNumbers = issues.mapTo(mutableSetOf()) { it.number }
       val members = linkedMapOf<String, GitHubCommunityMember>()
 
-      fun credit(user: GitHubUserResponse?, issue: Boolean) {
+      fun credit(
+        user: GitHubUserResponse?,
+        issue: Boolean,
+      ) {
         if (user == null || !user.isPerson()) return
         val key = user.login.lowercase(Locale.ROOT)
-        val member = members[key] ?: GitHubCommunityMember(
-          login = user.login,
-          avatarUrl = avatarThumbnail(user.avatarUrl),
-          profileUrl = "https://github.com/${user.login}",
-        )
-        members[key] = if (issue) {
-          member.copy(issuesReported = member.issuesReported + 1)
-        } else {
-          member.copy(feedbackComments = member.feedbackComments + 1)
-        }
+        val member =
+          members[key] ?: GitHubCommunityMember(
+            login = user.login,
+            avatarUrl = avatarThumbnail(user.avatarUrl),
+            profileUrl = "https://github.com/${user.login}",
+          )
+        members[key] =
+          if (issue) {
+            member.copy(issuesReported = member.issuesReported + 1)
+          } else {
+            member.copy(feedbackComments = member.feedbackComments + 1)
+          }
       }
 
       issues.forEach { credit(it.user, issue = true) }
@@ -139,42 +145,47 @@ internal class GitHubContributorsRepository(
       )
     }
 
-  private fun avatarThumbnail(url: String?): String? = url?.toHttpUrlOrNull()
-    ?.takeIf { it.isHttps && it.host == "avatars.githubusercontent.com" }
-    ?.newBuilder()
-    ?.setQueryParameter("s", "160")
-    ?.build()
-    ?.toString()
+  private fun avatarThumbnail(url: String?): String? =
+    url
+      ?.toHttpUrlOrNull()
+      ?.takeIf { it.isHttps && it.host == "avatars.githubusercontent.com" }
+      ?.newBuilder()
+      ?.setQueryParameter("s", "160")
+      ?.build()
+      ?.toString()
 
   private suspend fun <T> cachedCredits(
     key: String,
     serializer: KSerializer<T>,
     forceRefresh: Boolean,
     fetch: suspend () -> List<T>,
-  ): Result<List<T>> = withContext(Dispatchers.IO) {
-    cacheMutex.withLock {
-      val listSerializer = ListSerializer(serializer)
-      val cached = preferences.getString(key, null)?.let { encoded ->
-        runCatching { json.decodeFromString(listSerializer, encoded) }.getOrNull()
-      }
-      val age = System.currentTimeMillis() - preferences.getLong("${key}_updated", 0L)
-      if (!forceRefresh && cached != null && age in 0L until CACHE_TTL_MS) {
-        return@withLock Result.success(cached)
-      }
-      try {
-        val entries = fetch()
-        preferences.edit()
-          .putString(key, json.encodeToString(listSerializer, entries))
-          .putLong("${key}_updated", System.currentTimeMillis())
-          .apply()
-        Result.success(entries)
-      } catch (cancellation: CancellationException) {
-        throw cancellation
-      } catch (error: Exception) {
-        if (cached != null) Result.success(cached) else Result.failure(error)
+  ): Result<List<T>> =
+    withContext(Dispatchers.IO) {
+      cacheMutex.withLock {
+        val listSerializer = ListSerializer(serializer)
+        val cached =
+          preferences.getString(key, null)?.let { encoded ->
+            runCatching { json.decodeFromString(listSerializer, encoded) }.getOrNull()
+          }
+        val age = System.currentTimeMillis() - preferences.getLong("${key}_updated", 0L)
+        if (!forceRefresh && cached != null && age in 0L until CACHE_TTL_MS) {
+          return@withLock Result.success(cached)
+        }
+        try {
+          val entries = fetch()
+          preferences
+            .edit()
+            .putString(key, json.encodeToString(listSerializer, entries))
+            .putLong("${key}_updated", System.currentTimeMillis())
+            .apply()
+          Result.success(entries)
+        } catch (cancellation: CancellationException) {
+          throw cancellation
+        } catch (error: Exception) {
+          if (cached != null) Result.success(cached) else Result.failure(error)
+        }
       }
     }
-  }
 
   private suspend fun <T> fetchPages(
     endpoint: String,
@@ -184,28 +195,35 @@ internal class GitHubContributorsRepository(
     val entries = mutableListOf<T>()
     var pageNumber = 1
     do {
-      val url = "$API_URL/$endpoint".toHttpUrl().newBuilder()
-        .addQueryParameter("per_page", PAGE_SIZE.toString())
-        .addQueryParameter("page", pageNumber.toString())
+      val url =
+        "$API_URL/$endpoint"
+          .toHttpUrl()
+          .newBuilder()
+          .addQueryParameter("per_page", PAGE_SIZE.toString())
+          .addQueryParameter("page", pageNumber.toString())
       parameters.forEach { (name, value) -> url.addQueryParameter(name, value) }
-      val request = Request.Builder()
-        .url(url.build())
-        .header("Accept", "application/vnd.github+json")
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .header("User-Agent", "mpvRx-Android")
-        .build()
-      val hasNextPage = client.newCall(request).awaitResponse().use { response ->
-        check(response.isSuccessful && response.code != 202) {
-          "GitHub credits request failed with HTTP ${response.code}"
+      val request =
+        Request
+          .Builder()
+          .url(url.build())
+          .header("Accept", "application/vnd.github+json")
+          .header("X-GitHub-Api-Version", "2022-11-28")
+          .header("User-Agent", "mpvRx-Android")
+          .build()
+      val hasNextPage =
+        client.newCall(request).awaitResponse().use { response ->
+          check(response.isSuccessful && response.code != 202) {
+            "GitHub credits request failed with HTTP ${response.code}"
+          }
+          val pageEntries = json.decodeFromString(ListSerializer(serializer), response.body.string())
+          entries += pageEntries
+          val linkHeader = response.header("Link")
+          pageEntries.isNotEmpty() &&
+            (
+              linkHeader?.contains("rel=\"next\"") == true ||
+                (linkHeader == null && pageEntries.size == PAGE_SIZE)
+            )
         }
-        val pageEntries = json.decodeFromString(ListSerializer(serializer), response.body.string())
-        entries += pageEntries
-        val linkHeader = response.header("Link")
-        pageEntries.isNotEmpty() && (
-          linkHeader?.contains("rel=\"next\"") == true ||
-            (linkHeader == null && pageEntries.size == PAGE_SIZE)
-        )
-      }
       pageNumber++
     } while (hasNextPage)
     return entries
@@ -253,7 +271,8 @@ internal class GitHubContributorsRepository(
     const val API_URL = "https://api.github.com/repos/Riteshp2001/mpvRx"
     const val PAGE_SIZE = 100
     const val CACHE_TTL_MS = 24L * 60L * 60L * 1_000L
-    val contributorOrder = compareByDescending<GitHubContributor> { it.contributions }
-      .thenBy { it.displayName.lowercase(Locale.ROOT) }
+    val contributorOrder =
+      compareByDescending<GitHubContributor> { it.contributions }
+        .thenBy { it.displayName.lowercase(Locale.ROOT) }
   }
 }

@@ -55,7 +55,6 @@ import java.io.IOException
  * Simplified storage permission utilities with MANAGE_EXTERNAL_STORAGE support.
  */
 object PermissionUtils {
-
   private var mediaRequestLauncher: ActivityResultLauncher<IntentSenderRequest>? = null
   private var resultOkCallback: () -> Unit = {}
   private var resultCancelledCallback: () -> Unit = {}
@@ -111,8 +110,7 @@ object PermissionUtils {
       }
     }
 
-  private fun isMediaStoreUri(uri: Uri): Boolean =
-    uri.scheme == "content" && uri.authority == MediaStore.AUTHORITY
+  private fun isMediaStoreUri(uri: Uri): Boolean = uri.scheme == "content" && uri.authority == MediaStore.AUTHORITY
 
   suspend fun requestScopedDeleteAccess(
     context: Context,
@@ -190,8 +188,7 @@ object PermissionUtils {
           override val status: PermissionStatus
             get() = videoPermissionState.status
 
-          override fun launchPermissionRequest() =
-            mediaPermissionsState.launchMultiplePermissionRequest()
+          override fun launchPermissionRequest() = mediaPermissionsState.launchMultiplePermissionRequest()
         }
       }
     }
@@ -345,7 +342,11 @@ object PermissionUtils {
     ): Pair<Int, Int> {
       check(BuildConfig.SCOPED_STORAGE_ONLY)
       return deleteVideosScoped(
-        context, videos, onDeleted, preserveHistory = true, onDeleteFailed = onDeleteFailed,
+        context,
+        videos,
+        onDeleted,
+        preserveHistory = true,
+        onDeleteFailed = onDeleteFailed,
       )
     }
 
@@ -369,15 +370,16 @@ object PermissionUtils {
           // Android 16 caps each request at 2,000 URIs.
           for (batch in contentVideos.chunked(2_000)) {
             var requestError: Exception? = null
-            val granted = try {
-              requestDeleteAccess(context, batch.map { it.uri })
-            } catch (error: CancellationException) {
-              throw error
-            } catch (error: Exception) {
-              Log.e(TAG, "Could not request media deletion", error)
-              requestError = error
-              false
-            }
+            val granted =
+              try {
+                requestDeleteAccess(context, batch.map { it.uri })
+              } catch (error: CancellationException) {
+                throw error
+              } catch (error: Exception) {
+                Log.e(TAG, "Could not request media deletion", error)
+                requestError = error
+                false
+              }
             if (granted) {
               batch.forEach { video ->
                 deleted++
@@ -395,18 +397,19 @@ object PermissionUtils {
         } else {
           for (video in contentVideos) {
             try {
-              val rows = try {
-                context.contentResolver.delete(video.uri, null, null)
-              } catch (error: SecurityException) {
-                if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q &&
-                  error is RecoverableSecurityException &&
-                  requestMediaApproval { error.userAction.actionIntent.intentSender }
-                ) {
+              val rows =
+                try {
                   context.contentResolver.delete(video.uri, null, null)
-                } else {
-                  throw error
+                } catch (error: SecurityException) {
+                  if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q &&
+                    error is RecoverableSecurityException &&
+                    requestMediaApproval { error.userAction.actionIntent.intentSender }
+                  ) {
+                    context.contentResolver.delete(video.uri, null, null)
+                  } else {
+                    throw error
+                  }
                 }
-              }
               if (rows > 0) {
                 deleted++
                 onDeleted(video)
@@ -567,8 +570,10 @@ object PermissionUtils {
             .walkTopDown()
             .filter { file ->
               file.isFile &&
-                (file.extension.lowercase() in FileTypeUtils.VIDEO_EXTENSIONS ||
-                  file.extension.lowercase() in FileTypeUtils.AUDIO_EXTENSIONS)
+                (
+                  file.extension.lowercase() in FileTypeUtils.VIDEO_EXTENSIONS ||
+                    file.extension.lowercase() in FileTypeUtils.AUDIO_EXTENSIONS
+                )
             }.map { file ->
               file.absolutePath to File(destination, file.relativeTo(source).path).absolutePath
             }.toList()
@@ -620,8 +625,9 @@ object PermissionUtils {
 
           if (!isMediaStoreUri(video.uri)) {
             check(DocumentsContract.isDocumentUri(context, video.uri)) { "Unsupported content provider" }
-            val renamedUri = DocumentsContract.renameDocument(context.contentResolver, video.uri, newDisplayName)
-              ?: return@withContext Result.failure(IllegalStateException("Document rename failed"))
+            val renamedUri =
+              DocumentsContract.renameDocument(context.contentResolver, video.uri, newDisplayName)
+                ?: return@withContext Result.failure(IllegalStateException("Document rename failed"))
             PlaybackStateOps.onScopedVideoRenamed(video, renamedUri.toString(), renamedUri, newDisplayName)
             MediaLibraryEvents.notifyChanged()
             return@withContext Result.success(Unit)
@@ -640,18 +646,19 @@ object PermissionUtils {
               put(MediaStore.MediaColumns.DISPLAY_NAME, newDisplayName)
             }
 
-          val updated = try {
-            context.contentResolver.update(video.uri, values, null, null)
-          } catch (error: SecurityException) {
-            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q &&
-              error is RecoverableSecurityException &&
-              requestMediaApproval { error.userAction.actionIntent.intentSender }
-            ) {
+          val updated =
+            try {
               context.contentResolver.update(video.uri, values, null, null)
-            } else {
-              throw error
+            } catch (error: SecurityException) {
+              if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q &&
+                error is RecoverableSecurityException &&
+                requestMediaApproval { error.userAction.actionIntent.intentSender }
+              ) {
+                context.contentResolver.update(video.uri, values, null, null)
+              } else {
+                throw error
+              }
             }
-          }
           if (updated > 0) {
             val oldPath = video.path
             val parent = oldPath.takeIf { it.startsWith('/') }?.let { File(it).parentFile }

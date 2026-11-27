@@ -9,8 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 import android.content.res.Configuration
 import android.text.format.DateUtils
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -32,7 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.material3.TimeInput
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -51,9 +48,11 @@ import app.gyrolet.mpvrx.presentation.components.PlayerSheetAction
 import app.gyrolet.mpvrx.ui.icons.AppIcon
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.anime4k.Anime4KUiState
 import app.gyrolet.mpvrx.ui.theme.spacing
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -85,11 +84,12 @@ fun MoreSheet(
     title = stringResource(R.string.player_sheets_more_title),
     scrollHeaderActions = true,
     actions = {
-      val timerLabel = if (remainingTime == 0) {
-        stringResource(R.string.timer_title)
-      } else {
-        stringResource(R.string.timer_remaining, DateUtils.formatElapsedTime(remainingTime.toLong()))
-      }
+      val timerLabel =
+        if (remainingTime == 0) {
+          stringResource(R.string.timer_title)
+        } else {
+          stringResource(R.string.timer_remaining, DateUtils.formatElapsedTime(remainingTime.toLong()))
+        }
       MoreHeaderAction(Icons.RoundedFilled.Timer, timerLabel, showActionLabels, onOpenSleepTimerSheet)
       if (onEnterEqualizerSheet != null) {
         MoreHeaderAction(
@@ -116,7 +116,12 @@ fun MoreSheet(
         highlighted = enableLuaScripts && selectedLuaScripts.isNotEmpty(),
       )
       if (onEnterSettingsPanel != null) {
-        MoreHeaderAction(Icons.RoundedFilled.Settings, stringResource(R.string.ui_settings), showActionLabels, onEnterSettingsPanel)
+        MoreHeaderAction(
+          Icons.RoundedFilled.Settings,
+          stringResource(R.string.ui_settings),
+          showActionLabels,
+          onEnterSettingsPanel,
+        )
       }
     },
   ) {
@@ -153,11 +158,12 @@ fun MoreSheet(
               // closes the console itself and keeps the overlay from being blind-toggled.
               PlaybackSession.setStatisticsPage(page)
             },
-            colors = FilterChipDefaults.filterChipColors(
-              containerColor = playerSheetSelectionColor(false),
-              selectedContainerColor = playerSheetSelectionColor(true),
-              selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            ),
+            colors =
+              FilterChipDefaults.filterChipColors(
+                containerColor = playerSheetSelectionColor(false),
+                selectedContainerColor = playerSheetSelectionColor(true),
+                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+              ),
           )
         }
       }
@@ -190,11 +196,12 @@ fun MoreSheet(
               label = { Text(stringResource(mode.titleRes)) },
               selected = anime4KUiState.selectedMode == mode.name,
               enabled = anime4KEnabled && (anime4KUiState.allowHighRes || mode == Anime4KManager.Mode.OFF),
-              colors = FilterChipDefaults.filterChipColors(
-                containerColor = playerSheetSelectionColor(false),
-                selectedContainerColor = playerSheetSelectionColor(true),
-                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-              ),
+              colors =
+                FilterChipDefaults.filterChipColors(
+                  containerColor = playerSheetSelectionColor(false),
+                  selectedContainerColor = playerSheetSelectionColor(true),
+                  selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
               onClick = { onAnime4KModeSelected(mode) },
             )
           }
@@ -238,19 +245,23 @@ fun SleepTimerSheet(
   onStartTimer: (Int) -> Unit,
   remainingTime: Int,
 ) {
-  val state = rememberTimePickerState(
-    remainingTime / 3600,
-    (remainingTime % 3600) / 60,
-    is24Hour = true,
-  )
+  val state =
+    rememberTimePickerState(
+      remainingTime / 3600,
+      (remainingTime % 3600) / 60,
+      is24Hour = true,
+    )
 
   PlayerSheet(
     onDismissRequest = onDismissRequest,
     title = stringResource(R.string.timer_title),
   ) {
     Column(
-      modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-        .padding(horizontal = 20.dp, vertical = 12.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .verticalScroll(rememberScrollState())
+          .padding(horizontal = 20.dp, vertical = 12.dp),
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       Text(
@@ -278,11 +289,12 @@ fun SleepTimerSheet(
               },
               label = { Text(stringResource(R.string.generic_minutes_short, minutes)) },
               leadingIcon = null,
-              colors = FilterChipDefaults.filterChipColors(
-                containerColor = playerSheetSelectionColor(false),
-                selectedContainerColor = playerSheetSelectionColor(true),
-                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-              ),
+              colors =
+                FilterChipDefaults.filterChipColors(
+                  containerColor = playerSheetSelectionColor(false),
+                  selectedContainerColor = playerSheetSelectionColor(true),
+                  selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
             )
           }
         }

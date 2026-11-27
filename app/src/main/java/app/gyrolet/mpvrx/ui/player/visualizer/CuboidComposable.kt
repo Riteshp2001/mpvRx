@@ -12,14 +12,13 @@
 
 package app.gyrolet.mpvrx.ui.player.visualizer
 
-import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -40,6 +39,7 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
+import android.graphics.Color as AndroidColor
 
 private const val CUBOID_FOV = 250f
 private const val CUBOID_SPEED = 0.75f
@@ -424,8 +424,7 @@ private fun tunnelCenter(
   )
 }
 
-private fun projectionScale(z: Float): Float =
-  CUBOID_FOV / (CUBOID_FOV + z).coerceAtLeast(1f)
+private fun projectionScale(z: Float): Float = CUBOID_FOV / (CUBOID_FOV + z).coerceAtLeast(1f)
 
 private fun project(
   angle: Float,

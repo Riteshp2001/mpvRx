@@ -72,25 +72,29 @@ class JellyfinSessionReporter(
       try {
         val uri = Uri.parse(url)
         val pathSegments = uri.pathSegments
-        val mediaIndex = pathSegments.indexOfFirst {
-          it.equals("Videos", ignoreCase = true) ||
-            it.equals("Audio", ignoreCase = true) ||
-            it.equals("Items", ignoreCase = true)
-        }
+        val mediaIndex =
+          pathSegments.indexOfFirst {
+            it.equals("Videos", ignoreCase = true) ||
+              it.equals("Audio", ignoreCase = true) ||
+              it.equals("Items", ignoreCase = true)
+          }
         if (mediaIndex == -1 || mediaIndex + 1 >= pathSegments.size) {
           return null
         }
         val itemId = pathSegments[mediaIndex + 1]
-        val apiKey = uri.getQueryParameter("api_key")
-          ?: uri.getQueryParameter("ApiKey")
-          ?: fallbackToken
-          ?: return null
-        val playSessionId = uri.getQueryParameter("playSessionId")
-          ?: uri.getQueryParameter("PlaySessionId")
-          ?: UUID.randomUUID().toString().replace("-", "")
-        val mediaSourceId = uri.getQueryParameter("mediaSourceId")
-          ?: uri.getQueryParameter("MediaSourceId")
-          ?: itemId
+        val apiKey =
+          uri.getQueryParameter("api_key")
+            ?: uri.getQueryParameter("ApiKey")
+            ?: fallbackToken
+            ?: return null
+        val playSessionId =
+          uri.getQueryParameter("playSessionId")
+            ?: uri.getQueryParameter("PlaySessionId")
+            ?: UUID.randomUUID().toString().replace("-", "")
+        val mediaSourceId =
+          uri.getQueryParameter("mediaSourceId")
+            ?: uri.getQueryParameter("MediaSourceId")
+            ?: itemId
 
         val scheme = uri.scheme ?: "http"
         val authority = uri.encodedAuthority ?: return null
@@ -213,7 +217,8 @@ class JellyfinSessionReporter(
   ) {
     try {
       val request =
-        Request.Builder()
+        Request
+          .Builder()
           .url(urlString)
           .addJellyfinHeaders(apiKey)
           .header("Content-Type", "application/json")
@@ -235,4 +240,3 @@ class JellyfinSessionReporter(
     }
   }
 }
-

@@ -62,15 +62,23 @@ internal object ContainerMetadataProbe {
     var durationMs = 0L
     var sizeBytes = 0L
     var bytesRead = 0
-    val reader = DataReader { buffer, offset, length ->
-      coroutineContext.ensureActive()
-      val remaining = MAX_PROBE_BYTES - bytesRead
-      if (remaining <= 0) throw IOException("Container metadata probe reached its byte limit")
-      dataSource.read(buffer, offset, minOf(length, remaining)).also { if (it > 0) bytesRead += it }
-    }
+    val reader =
+      DataReader { buffer, offset, length ->
+        coroutineContext.ensureActive()
+        val remaining = MAX_PROBE_BYTES - bytesRead
+        if (remaining <= 0) throw IOException("Container metadata probe reached its byte limit")
+        dataSource.read(buffer, offset, minOf(length, remaining)).also { if (it > 0) bytesRead += it }
+      }
 
     fun openInput(position: Long): DefaultExtractorInput {
-      val remaining = dataSource.open(DataSpec.Builder().setUri(uri).setPosition(position).build())
+      val remaining =
+        dataSource.open(
+          DataSpec
+            .Builder()
+            .setUri(uri)
+            .setPosition(position)
+            .build(),
+        )
       val length = if (remaining == C.LENGTH_UNSET.toLong()) C.LENGTH_UNSET.toLong() else position + remaining
       if (length > 0L) sizeBytes = length
       return DefaultExtractorInput(reader, position, length)
@@ -78,32 +86,37 @@ internal object ContainerMetadataProbe {
 
     try {
       var input = openInput(0L)
-      val extractor = extractors.firstOrNull { candidate ->
-        try {
-          candidate.sniff(input)
-        } catch (_: EOFException) {
-          false
-        } finally {
-          input.resetPeekPosition()
+      val extractor =
+        extractors.firstOrNull { candidate ->
+          try {
+            candidate.sniff(input)
+          } catch (_: EOFException) {
+            false
+          } finally {
+            input.resetPeekPosition()
+          }
         }
-      }
       if (extractor == null) {
         Log.d(TAG, "No container extractor for ${uri.lastPathSegment}")
         return null
       }
-      extractor.init(object : ExtractorOutput {
-        override fun track(id: Int, type: Int): TrackOutput =
-          tracks.getOrPut(id) { MetadataTrack(type, readFrameRate) }
+      extractor.init(
+        object : ExtractorOutput {
+          override fun track(
+            id: Int,
+            type: Int,
+          ): TrackOutput = tracks.getOrPut(id) { MetadataTrack(type, readFrameRate) }
 
-        override fun endTracks() {
-          tracksEnded = true
-        }
+          override fun endTracks() {
+            tracksEnded = true
+          }
 
-        override fun seekMap(seekMap: SeekMap) {
-          seekMapReceived = true
-          durationMs = seekMap.durationUs.takeIf { it > 0L }?.div(1000L) ?: 0L
-        }
-      })
+          override fun seekMap(seekMap: SeekMap) {
+            seekMapReceived = true
+            durationMs = seekMap.durationUs.takeIf { it > 0L }?.div(1000L) ?: 0L
+          }
+        },
+      )
       val seekPosition = PositionHolder()
       var seeks = 0
       // Matroska reports its duration with the seek map at the first cluster, after the tracks.
@@ -173,8 +186,11 @@ internal object ContainerMetadataProbe {
     private val declaredFrameRate: Float?
       get() = trackFormat?.frameRate?.takeIf { it.isFinite() && it > 0f }
     val needsSamples: Boolean
-      get() = type == C.TRACK_TYPE_VIDEO && readFrameRate &&
-        declaredFrameRate == null && timestamps.size < FPS_SAMPLE_COUNT
+      get() =
+        type == C.TRACK_TYPE_VIDEO &&
+          readFrameRate &&
+          declaredFrameRate == null &&
+          timestamps.size < FPS_SAMPLE_COUNT
     val frameRate: Float
       get() {
         declaredFrameRate?.let { return it }
@@ -188,7 +204,13 @@ internal object ContainerMetadataProbe {
       trackFormat = format
     }
 
-    override fun sampleMetadata(timeUs: Long, flags: Int, size: Int, offset: Int, cryptoData: TrackOutput.CryptoData?) {
+    override fun sampleMetadata(
+      timeUs: Long,
+      flags: Int,
+      size: Int,
+      offset: Int,
+      cryptoData: TrackOutput.CryptoData?,
+    ) {
       if (needsSamples && timeUs >= 0L) timestamps += timeUs
     }
   }

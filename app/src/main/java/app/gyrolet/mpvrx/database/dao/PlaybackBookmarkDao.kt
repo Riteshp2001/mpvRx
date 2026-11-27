@@ -15,7 +15,10 @@ interface PlaybackBookmarkDao {
   suspend fun add(bookmark: PlaybackBookmarkEntity): Long
 
   @Query("UPDATE playback_bookmarks SET title = :title WHERE id = :id")
-  suspend fun rename(id: Long, title: String)
+  suspend fun rename(
+    id: Long,
+    title: String,
+  )
 
   @Query("DELETE FROM playback_bookmarks WHERE id = :id")
   suspend fun delete(id: Long)

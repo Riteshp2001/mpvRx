@@ -23,7 +23,6 @@ import app.gyrolet.mpvrx.domain.framecapture.ImageDimensions
 import app.gyrolet.mpvrx.domain.framecapture.SnapshotFolder
 import app.gyrolet.mpvrx.domain.framecapture.SnapshotImageLoader
 import app.gyrolet.mpvrx.domain.framecapture.SnapshotThumbnailStore
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -34,6 +33,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Header reads in flight at once while the size backfill runs. */
 private const val IMAGE_SIZE_BACKFILL_CONCURRENCY = 16
@@ -48,8 +48,8 @@ data class SnapshotFolderContent(
 class SnapshotViewModel(
   application: Application,
   private val folderId: Long,
-) : AndroidViewModel(application), KoinComponent {
-
+) : AndroidViewModel(application),
+  KoinComponent {
   private val repository: FrameCaptureRepository by inject()
 
   // The folder page is the one that can show a mosaic, and a mosaic cell is twice as wide as a grid
@@ -66,20 +66,19 @@ class SnapshotViewModel(
 
   val content: StateFlow<SnapshotFolderContent> =
     combine(repository.observeFolders(), repository.observeAll()) { folders, captures ->
-        // Counts come from the shared derivation so the number shown against a folder in the move
-        // dialog matches the row count here.
-        val library = SnapshotLibraryData.of(folders, captures)
-        SnapshotFolderContent(
-          folder = folders.firstOrNull { it.id == folderId },
-          snapshots = captures.filter { it.folderId == folderId },
-          moveTargets = library.folders,
-        )
-      }
-      .stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000L),
-        SnapshotFolderContent(folder = null, snapshots = emptyList(), moveTargets = emptyList()),
+      // Counts come from the shared derivation so the number shown against a folder in the move
+      // dialog matches the row count here.
+      val library = SnapshotLibraryData.of(folders, captures)
+      SnapshotFolderContent(
+        folder = folders.firstOrNull { it.id == folderId },
+        snapshots = captures.filter { it.folderId == folderId },
+        moveTargets = library.folders,
       )
+    }.stateIn(
+      viewModelScope,
+      SharingStarted.WhileSubscribed(5_000L),
+      SnapshotFolderContent(folder = null, snapshots = emptyList(), moveTargets = emptyList()),
+    )
 
   val thumbnailCache: StateFlow<Map<Long, Bitmap>> = thumbnails.thumbnails
 
@@ -114,8 +113,7 @@ class SnapshotViewModel(
                       imagePath = capture.imagePath,
                     )
                 }
-              }
-              .awaitAll()
+              }.awaitAll()
           }
           // A snapshot whose gallery file has since been deleted is stamped unreadable rather than
           // left blank, so this is the last time anything tries to open it.
@@ -155,7 +153,6 @@ class SnapshotViewModel(
     fun factory(
       application: Application,
       folderId: Long,
-    ): ViewModelProvider.Factory =
-      viewModelFactory { initializer { SnapshotViewModel(application, folderId) } }
+    ): ViewModelProvider.Factory = viewModelFactory { initializer { SnapshotViewModel(application, folderId) } }
   }
 }

@@ -37,7 +37,11 @@ class SftpClient(
   override suspend fun connect(): Result<Unit> =
     withContext(Dispatchers.IO) {
       try {
-        val host = connection.host.trim().removePrefix("[").removeSuffix("]")
+        val host =
+          connection.host
+            .trim()
+            .removePrefix("[")
+            .removeSuffix("]")
         val username = if (connection.isAnonymous) "anonymous" else connection.username
         val candidate = JSch().getSession(username, host, connection.port)
         candidate.setConfig("StrictHostKeyChecking", "no")
@@ -171,7 +175,11 @@ class SftpClient(
   override suspend fun getFileUri(path: String): Result<Uri> =
     withContext(Dispatchers.IO) {
       try {
-        val host = connection.host.trim().removePrefix("[").removeSuffix("]")
+        val host =
+          connection.host
+            .trim()
+            .removePrefix("[")
+            .removeSuffix("]")
         val uri = URI("sftp", null, host, connection.port, remotePath(NetworkPath.from(path)), null, null)
         Result.success(Uri.parse(uri.toASCIIString()))
       } catch (cancellation: CancellationException) {
@@ -181,8 +189,7 @@ class SftpClient(
       }
     }
 
-  private fun requireSession(): Session =
-    session?.takeIf { it.isConnected } ?: throw IOException("Not connected")
+  private fun requireSession(): Session = session?.takeIf { it.isConnected } ?: throw IOException("Not connected")
 
   private inline fun <T> withChannel(
     session: Session,

@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.utils.memory
 
 import android.content.ComponentCallbacks2
@@ -17,8 +17,10 @@ internal open class BitmapMemoryCache<K : Any>(
     BitmapMemoryCaches.register(this)
   }
 
-  override fun sizeOf(key: K, value: Bitmap): Int =
-    ((value.allocationByteCount.toLong() + 1023L) / 1024L).coerceAtLeast(1L).toInt()
+  override fun sizeOf(
+    key: K,
+    value: Bitmap,
+  ): Int = ((value.allocationByteCount.toLong() + 1023L) / 1024L).coerceAtLeast(1L).toInt()
 
   internal fun trimMemory(evict: Boolean) {
     if (evict) evictAll() else trimToSize(size() / 2)
@@ -29,11 +31,15 @@ internal open class BitmapMemoryCache<K : Any>(
   protected open fun onMemoryTrim() = Unit
 }
 
-private fun budgetKiB(heapDivisor: Int, maxSizeMiB: Int): Int {
+private fun budgetKiB(
+  heapDivisor: Int,
+  maxSizeMiB: Int,
+): Int {
   val capKiB = maxSizeMiB * 1024 / if (DevicePerformance.isLowEnd) 2 else 1
   // largeHeap is also used by playback: it must not turn each UI cache into hundreds of MiB.
   return (Runtime.getRuntime().maxMemory() / 1024L / heapDivisor)
-    .coerceIn(1L, capKiB.toLong()).toInt()
+    .coerceIn(1L, capKiB.toLong())
+    .toInt()
 }
 
 internal object BitmapMemoryCaches {
@@ -45,10 +51,12 @@ internal object BitmapMemoryCaches {
 
   @Suppress("DEPRECATION")
   fun trimMemory(level: Int) {
-    val evict = level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ||
-      level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL
-    val halve = level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ||
-      level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
+    val evict =
+      level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND ||
+        level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL
+    val halve =
+      level == ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN ||
+        level == ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW
     if (!evict && !halve) return
     for (reference in caches) {
       val cache = reference.get()

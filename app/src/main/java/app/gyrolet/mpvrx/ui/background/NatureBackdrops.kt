@@ -17,7 +17,7 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 
-/* Weather and nature family: Snow, Rain, Sakura, Fireflies, Bubbles. */
+// Weather and nature family: Snow, Rain, Sakura, Fireflies, Bubbles.
 
 /**
  * A tiny six-arm snowflake with two branches per arm. Built only once and reused for every flake.
@@ -53,19 +53,27 @@ private val TelegramStyleSnowflake: Path by lazy {
  * allocations, per-frame random calls, particle lists or extra animation clocks. This also lets
  * the picker draw the same effect at a fixed instant without starting an animation.
  */
-internal fun DrawScope.drawSnow(t: Float, tilt: Offset, p: BackdropPalette, intensity: Float = 1f) {
+internal fun DrawScope.drawSnow(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+  intensity: Float = 1f,
+) {
   val w = size.width
   val h = size.height
   if (w <= 0f || h <= 0f || intensity <= 0f) return
 
   val spacing = 50.dp.toPx()
-  val count = ((w * h / (spacing * spacing)).toInt().coerceIn(24, 140) * intensity)
-    .toInt().coerceIn(0, 210)
-  val ice = if (p.isDark) {
-    lerp(Color.White, p.primary, 0.06f)
-  } else {
-    lerp(p.ink, p.primary, 0.14f)
-  }
+  val count =
+    ((w * h / (spacing * spacing)).toInt().coerceIn(24, 140) * intensity)
+      .toInt()
+      .coerceIn(0, 210)
+  val ice =
+    if (p.isDark) {
+      lerp(Color.White, p.primary, 0.06f)
+    } else {
+      lerp(p.ink, p.primary, 0.14f)
+    }
   val drift = sin(t * 0.22f) * 4.dp.toPx()
   val margin = 8.dp.toPx()
 
@@ -89,8 +97,9 @@ internal fun DrawScope.drawSnow(t: Float, tilt: Offset, p: BackdropPalette, inte
     if (x < -margin || x > w + margin || y < -margin || y > h + margin) continue
 
     // Telegram-inspired gentle entrance and longer departure, with depth-based transparency.
-    val opacity = smoothstep(0f, 0.07f, phase) *
-      smoothstep(1f, 0.56f, phase) * (0.32f + 0.54f * depth)
+    val opacity =
+      smoothstep(0f, 0.07f, phase) *
+        smoothstep(1f, 0.56f, phase) * (0.32f + 0.54f * depth)
     if (opacity < 0.005f) continue
 
     val center = Offset(x, y)
@@ -118,7 +127,11 @@ internal fun DrawScope.drawSnow(t: Float, tilt: Offset, p: BackdropPalette, inte
 }
 
 /** Slanted rain in three layers with small elliptical ripples where it lands near the bottom. */
-internal fun DrawScope.drawRain(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawRain(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   val tint = lerp(p.ink, p.secondary, 0.35f)
@@ -171,7 +184,11 @@ private fun Path.addPetal(s: Float) {
 private val SakuraPetal: Path by lazy { Path().apply { addPetal(1f) } }
 
 /** Cherry-blossom petals that flutter down, flipping edge-on as they turn. */
-internal fun DrawScope.drawSakura(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawSakura(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   val pink = lerp(Color(0xFFF6A5C0), p.tertiary, 0.2f)
@@ -179,7 +196,10 @@ internal fun DrawScope.drawSakura(t: Float, tilt: Offset, p: BackdropPalette) {
   for (i in 0 until backdropCount(28, minimum = 16, maximum = 40)) {
     val depth = 0.45f + 0.55f * hash01(i, 6)
     val u = fract(hash01(i, 1) + t * (0.017f + 0.022f * hash01(i, 2)))
-    val x = w * (hash01(i, 3) * 0.9f - 0.1f) + u * w * 0.22f + (sin(u * TAU * 1.6f + i) * 26.dp.toPx() + sin(t * 0.16f) * 12.dp.toPx()) * depth + tilt.x * 24.dp.toPx() * depth
+    val x =
+      w * (hash01(i, 3) * 0.9f - 0.1f) + u * w * 0.22f +
+        (sin(u * TAU * 1.6f + i) * 26.dp.toPx() + sin(t * 0.16f) * 12.dp.toPx()) * depth +
+        tilt.x * 24.dp.toPx() * depth
     val y = h * (u * 1.14f - 0.07f) + tilt.y * 14.dp.toPx() * depth
     val spin = (t * (0.5f + 0.7f * hash01(i, 4)) * (if (i % 2 == 0) 1f else -1f) + hash01(i, 5) * TAU) * 57.29578f
     val flip = cos(t * (0.8f + 0.5f * hash01(i, 7)) + i)
@@ -197,14 +217,24 @@ internal fun DrawScope.drawSakura(t: Float, tilt: Offset, p: BackdropPalette) {
 }
 
 /** Fireflies wandering on looping paths, each blinking on its own beat with a soft green-gold glow. */
-internal fun DrawScope.drawFireflies(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawFireflies(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   val glow = lerp(Color(0xFFD8F36A), p.secondary, 0.15f)
   for (i in 0 until backdropCount(30, minimum = 18, maximum = 40)) {
     val depth = 0.4f + 0.6f * hash01(i, 8)
-    val x = w * (0.06f + 0.88f * hash01(i, 1)) + sin(t * (0.17f + 0.2f * hash01(i, 2)) + i) * 44.dp.toPx() + sin(t * (0.41f + 0.2f * hash01(i, 3)) + i * 2f) * 20.dp.toPx() + tilt.x * 24.dp.toPx() * depth
-    val y = h * (0.10f + 0.80f * hash01(i, 4)) + cos(t * (0.14f + 0.2f * hash01(i, 5)) + i * 1.4f) * 40.dp.toPx() + sin(t * 0.37f + i) * 16.dp.toPx() + tilt.y * 24.dp.toPx() * depth
+    val x =
+      w * (0.06f + 0.88f * hash01(i, 1)) + sin(t * (0.17f + 0.2f * hash01(i, 2)) + i) * 44.dp.toPx() +
+        sin(t * (0.41f + 0.2f * hash01(i, 3)) + i * 2f) * 20.dp.toPx() +
+        tilt.x * 24.dp.toPx() * depth
+    val y =
+      h * (0.10f + 0.80f * hash01(i, 4)) + cos(t * (0.14f + 0.2f * hash01(i, 5)) + i * 1.4f) * 40.dp.toPx() +
+        sin(t * 0.37f + i) * 16.dp.toPx() +
+        tilt.y * 24.dp.toPx() * depth
     val b = wave01(t * (0.55f + 0.65f * hash01(i, 6)) + i * 2.1f)
     val blink = b * b
     val warmth = lerp(glow, p.tertiary, 0.18f * hash01(i, 9))
@@ -219,14 +249,19 @@ internal fun DrawScope.drawFireflies(t: Float, tilt: Offset, p: BackdropPalette)
 }
 
 /** Soap bubbles: hollow, rim-lit, swelling as they rise and fading out near the top. */
-internal fun DrawScope.drawBubbles(t: Float, tilt: Offset, p: BackdropPalette) {
+internal fun DrawScope.drawBubbles(
+  t: Float,
+  tilt: Offset,
+  p: BackdropPalette,
+) {
   val w = size.width
   val h = size.height
   val base = min(w, h)
   for (i in 0 until backdropCount(20, minimum = 12, maximum = 28)) {
     val depth = 0.35f + 0.65f * hash01(i, 6)
     val u = fract(hash01(i, 1) + t * (0.018f + 0.03f * hash01(i, 2)))
-    val x = w * (0.04f + 0.92f * hash01(i, 3)) + sin(u * TAU * 3f + i) * 18.dp.toPx() * depth + tilt.x * 26.dp.toPx() * depth
+    val x =
+      w * (0.04f + 0.92f * hash01(i, 3)) + sin(u * TAU * 3f + i) * 18.dp.toPx() * depth + tilt.x * 26.dp.toPx() * depth
     val y = h * (1.08f - 1.16f * u) + tilt.y * 14.dp.toPx() * depth
     val r = base * (0.022f + 0.055f * depth) * (0.85f + 0.3f * u) * (1f + 0.035f * sin(t * 0.7f + i))
     val a = smoothstep(0f, 0.08f, u) * smoothstep(1f, 0.90f, u)
@@ -235,7 +270,12 @@ internal fun DrawScope.drawBubbles(t: Float, tilt: Offset, p: BackdropPalette) {
     drawCircle(
       brush =
         Brush.radialGradient(
-          colorStops = arrayOf(0f to Color.Transparent, 0.7f to color.copy(alpha = 0.05f * a), 1f to color.copy(alpha = 0.22f * a)),
+          colorStops =
+            arrayOf(
+              0f to Color.Transparent,
+              0.7f to color.copy(alpha = 0.05f * a),
+              1f to color.copy(alpha = 0.22f * a),
+            ),
           center = c,
           radius = r,
         ),

@@ -25,9 +25,10 @@ internal val LocalBrowserSortDialogState = staticCompositionLocalOf<BrowserSortD
 @Composable
 internal fun BrowserSortDialogScope(content: @Composable () -> Unit) {
   val isOpen = rememberSaveable { mutableStateOf(false) }
-  val sheetContent = remember {
-    movableContentOf<@Composable () -> Unit> { body -> body() }
-  }
+  val sheetContent =
+    remember {
+      movableContentOf<@Composable () -> Unit> { body -> body() }
+    }
   val state = remember(isOpen, sheetContent) { BrowserSortDialogState(isOpen, sheetContent) }
   CompositionLocalProvider(LocalBrowserSortDialogState provides state, content = content)
 }

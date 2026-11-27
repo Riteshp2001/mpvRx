@@ -22,14 +22,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Scaffold
-import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -65,6 +63,7 @@ import app.gyrolet.mpvrx.ui.browser.components.BrowserTopBar
 import app.gyrolet.mpvrx.ui.browser.components.ExpressiveScrollBar
 import app.gyrolet.mpvrx.ui.browser.components.fastScrollGlyph
 import app.gyrolet.mpvrx.ui.browser.dialogs.VideoSortDialog
+import app.gyrolet.mpvrx.ui.browser.fab.FabPlacement
 import app.gyrolet.mpvrx.ui.browser.states.EmptyState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
@@ -74,6 +73,7 @@ import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.media.MediaInfoOps
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import app.gyrolet.mpvrx.utils.sort.SortUtils
+import app.gyrolet.mpvrx.utils.storage.VideoScanUtils
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 import java.io.File
@@ -93,7 +93,6 @@ data object SecureFolderScreen : Screen {
     val backstack = LocalBackStack.current
     val viewModel: SecureFolderViewModel =
       viewModel(factory = SecureFolderViewModel.factory(context.applicationContext as android.app.Application))
-
 
     val browserPreferences = koinInject<BrowserPreferences>()
     val appearancePreferences = koinInject<AppearancePreferences>()
@@ -204,7 +203,14 @@ data object SecureFolderScreen : Screen {
               width = metadata?.width ?: 0,
               height = metadata?.height ?: 0,
               fps = metadata?.fps ?: 0f,
-              resolution = metadata?.let { VideoScanUtils.formatResolutionWithFps(it.width, it.height, it.fps) } ?: "--",
+              resolution =
+                metadata?.let {
+                  VideoScanUtils.formatResolutionWithFps(
+                    it.width,
+                    it.height,
+                    it.fps,
+                  )
+                } ?: "--",
               isAudio = entity.mimeType.startsWith("audio/"),
             )
         }
@@ -541,17 +547,10 @@ private fun formatDuration(durationMs: Long): String {
 private fun formatResolution(
   width: Int,
   height: Int,
-): String {
-  return VideoScanUtils.formatResolution(width, height)
-}
+): String = VideoScanUtils.formatResolution(width, height)
 
 private fun formatResolutionWithFps(
   width: Int,
   height: Int,
   fps: Float,
-): String {
-  return VideoScanUtils.formatResolutionWithFps(width, height, fps)
-}
-
-
-
+): String = VideoScanUtils.formatResolutionWithFps(width, height, fps)

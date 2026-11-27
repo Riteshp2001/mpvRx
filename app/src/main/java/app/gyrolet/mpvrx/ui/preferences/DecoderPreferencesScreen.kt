@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,7 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,12 +45,13 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.anime4k.Anime4KManager
+import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.DolbyVisionProfile7
-import app.gyrolet.mpvrx.preferences.MpvConfigOverride
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
+import app.gyrolet.mpvrx.preferences.MpvConfigOverride
 import app.gyrolet.mpvrx.preferences.VulkanFrameImport
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -62,7 +61,6 @@ import app.gyrolet.mpvrx.ui.player.DolbyVisionDirect
 import app.gyrolet.mpvrx.ui.player.FongMiMpv
 import app.gyrolet.mpvrx.ui.player.HwPlusGuard
 import app.gyrolet.mpvrx.ui.player.MPVProfile
-import app.gyrolet.mpvrx.domain.motion.MotionInterpolation
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.RendererBackendPolicy
 import app.gyrolet.mpvrx.ui.player.shouldUseTextureRendering
@@ -71,8 +69,10 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import app.gyrolet.mpvrx.utils.device.VulkanCapabilities
 import kotlinx.serialization.Serializable
-import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.presentation.components.AppAlertDialog as AlertDialog
+import app.gyrolet.mpvrx.presentation.components.AppDialogTextButton as TextButton
+import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference as ListPreference
 
 @Serializable
 object DecoderPreferencesScreen : ScrollableSettingsScreen {
@@ -125,11 +125,14 @@ object DecoderPreferencesScreen : ScrollableSettingsScreen {
               .padding(padding)
               .then(settingsHighlight),
         ) {
-          if (!embeddedInPlayer) item {
-            PreferenceSectionHeader(position = PreferenceSectionPosition.Single, 
-              title = stringResource(R.string.pref_decoder),
-              modifier = Modifier.settingsSearchTarget(R.string.pref_decoder),
-            )
+          if (!embeddedInPlayer) {
+            item {
+              PreferenceSectionHeader(
+                position = PreferenceSectionPosition.Single,
+                title = stringResource(R.string.pref_decoder),
+                modifier = Modifier.settingsSearchTarget(R.string.pref_decoder),
+              )
+            }
           }
 
           item {
@@ -137,20 +140,20 @@ object DecoderPreferencesScreen : ScrollableSettingsScreen {
               val profile by preferences.profile.collectAsState()
               val currentProfile = MPVProfile.fromValue(profile)
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_profile_title),
-                value = currentProfile,
-                onValueChange = { preferences.profile.set(it.value) },
-                values = MPVProfile.entries,
-                enabled = !profileConfigOwned,
-                title = { Text(stringResource(R.string.pref_decoder_profile_title)) },
-                summary = {
-                  Text(
-                    currentProfile.displayName,
-                    color = MaterialTheme.colorScheme.outline,
-                  )
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_profile_title),
+                  value = currentProfile,
+                  onValueChange = { preferences.profile.set(it.value) },
+                  values = MPVProfile.entries,
+                  enabled = !profileConfigOwned,
+                  title = { Text(stringResource(R.string.pref_decoder_profile_title)) },
+                  summary = {
+                    Text(
+                      currentProfile.displayName,
+                      color = MaterialTheme.colorScheme.outline,
+                    )
+                  },
+                )
               }
 
               PreferenceDivider()
@@ -338,27 +341,27 @@ object DecoderPreferencesScreen : ScrollableSettingsScreen {
                 // How MediaCodec frames reach Vulkan; a forced mode helps when one path misrenders.
                 val vulkanFrameImport by preferences.vulkanFrameImport.collectAsState()
                 ExpressivePreferenceItem {
-                ListPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_vulkan_import_title),
-                  value = vulkanFrameImport,
-                  onValueChange = {
-                    preferences.vulkanFrameImport.set(it)
-                    // The next hardware decoder picks it up.
-                    if (embeddedInPlayer) {
-                      PlaybackSession.setPropertyString("android-vulkan-aimagereader-backend", it.mpvValue)
-                    }
-                  },
-                  values = VulkanFrameImport.entries,
-                  valueToText = { AnnotatedString(stringResource(it.titleRes)) },
-                  enabled = useVulkan && !vulkanFrameImportConfigOwned && !mediaCodecEmbed,
-                  title = { Text(stringResource(R.string.pref_decoder_vulkan_import_title)) },
-                  summary = {
-                    Text(
-                      stringResource(vulkanFrameImport.titleRes),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_vulkan_import_title),
+                    value = vulkanFrameImport,
+                    onValueChange = {
+                      preferences.vulkanFrameImport.set(it)
+                      // The next hardware decoder picks it up.
+                      if (embeddedInPlayer) {
+                        PlaybackSession.setPropertyString("android-vulkan-aimagereader-backend", it.mpvValue)
+                      }
+                    },
+                    values = VulkanFrameImport.entries,
+                    valueToText = { AnnotatedString(stringResource(it.titleRes)) },
+                    enabled = useVulkan && !vulkanFrameImportConfigOwned && !mediaCodecEmbed,
+                    title = { Text(stringResource(R.string.pref_decoder_vulkan_import_title)) },
+                    summary = {
+                      Text(
+                        stringResource(vulkanFrameImport.titleRes),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
                 }
               }
 
@@ -366,33 +369,34 @@ object DecoderPreferencesScreen : ScrollableSettingsScreen {
 
               val debanding by preferences.debanding.collectAsState()
               ExpressivePreferenceItem {
-              ListPreference(
-                modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_debanding_title),
-                value = debanding,
-                onValueChange = {
-                  val select: () -> Unit = {
-                    preferences.debanding.set(it)
-                    if (embeddedInPlayer) PlaybackSession.applyDebanding(it)
-                  }
-                  val blocked =
-                    embeddedInPlayer && it == Debanding.CPU &&
-                      HwPlusGuard.blocks(context, R.string.player_hwplus_cpu_deband, select)
-                  if (!blocked) select()
-                },
-                values = Debanding.entries,
-                enabled = !debandingConfigOwned && !mediaCodecEmbed,
-                title = { Text(stringResource(R.string.pref_decoder_debanding_title)) },
-                summary = {
-                  if (mediaCodecEmbed) {
-                    MediaCodecEmbedNote(R.string.pref_decoder_mediacodec_embed_blocks)
-                  } else {
-                    Text(
-                      debanding.name,
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  }
-                },
-              )
+                ListPreference(
+                  modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_debanding_title),
+                  value = debanding,
+                  onValueChange = {
+                    val select: () -> Unit = {
+                      preferences.debanding.set(it)
+                      if (embeddedInPlayer) PlaybackSession.applyDebanding(it)
+                    }
+                    val blocked =
+                      embeddedInPlayer &&
+                        it == Debanding.CPU &&
+                        HwPlusGuard.blocks(context, R.string.player_hwplus_cpu_deband, select)
+                    if (!blocked) select()
+                  },
+                  values = Debanding.entries,
+                  enabled = !debandingConfigOwned && !mediaCodecEmbed,
+                  title = { Text(stringResource(R.string.pref_decoder_debanding_title)) },
+                  summary = {
+                    if (mediaCodecEmbed) {
+                      MediaCodecEmbedNote(R.string.pref_decoder_mediacodec_embed_blocks)
+                    } else {
+                      Text(
+                        debanding.name,
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    }
+                  },
+                )
               }
 
               PreferenceDivider()
@@ -459,25 +463,25 @@ object DecoderPreferencesScreen : ScrollableSettingsScreen {
                 PreferenceDivider()
                 val doviProfile7 by preferences.doviProfile7.collectAsState()
                 ExpressivePreferenceItem {
-                ListPreference(
-                  modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_dovi_p7_title),
-                  value = doviProfile7,
-                  onValueChange = {
-                    preferences.doviProfile7.set(it)
-                    // The demuxer reads it when the next video opens.
-                    PlaybackSession.applyDolbyVisionProfile7()
-                  },
-                  values = DolbyVisionProfile7.entries,
-                  valueToText = { AnnotatedString(stringResource(it.titleRes)) },
-                  enabled = !doviProfile7ConfigOwned,
-                  title = { Text(stringResource(R.string.pref_decoder_dovi_p7_title)) },
-                  summary = {
-                    Text(
-                      stringResource(doviProfile7.titleRes),
-                      color = MaterialTheme.colorScheme.outline,
-                    )
-                  },
-                )
+                  ListPreference(
+                    modifier = Modifier.settingsSearchTarget(R.string.pref_decoder_dovi_p7_title),
+                    value = doviProfile7,
+                    onValueChange = {
+                      preferences.doviProfile7.set(it)
+                      // The demuxer reads it when the next video opens.
+                      PlaybackSession.applyDolbyVisionProfile7()
+                    },
+                    values = DolbyVisionProfile7.entries,
+                    valueToText = { AnnotatedString(stringResource(it.titleRes)) },
+                    enabled = !doviProfile7ConfigOwned,
+                    title = { Text(stringResource(R.string.pref_decoder_dovi_p7_title)) },
+                    summary = {
+                      Text(
+                        stringResource(doviProfile7.titleRes),
+                        color = MaterialTheme.colorScheme.outline,
+                      )
+                    },
+                  )
                 }
               }
 
@@ -538,7 +542,9 @@ object DecoderPreferencesScreen : ScrollableSettingsScreen {
                     Modifier
                       .fillMaxWidth()
                       .padding(horizontal = 8.dp, vertical = 4.dp),
-                  shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                  shape =
+                    androidx.compose.foundation.shape
+                      .RoundedCornerShape(12.dp),
                   color = MaterialTheme.colorScheme.surfaceContainerLow,
                 ) {
                   Column {
@@ -588,20 +594,20 @@ object DecoderPreferencesScreen : ScrollableSettingsScreen {
 
                         val anime4kQuality by preferences.anime4kQuality.collectAsState()
                         ExpressivePreferenceItem {
-                        ListPreference(
-                          modifier = Modifier.settingsSearchTarget(R.string.pref_anime4k_quality_title),
-                          value = anime4kQuality,
-                          onValueChange = { preferences.anime4kQuality.set(it) },
-                          values = Anime4KManager.Quality.entries,
-                          valueToText = { AnnotatedString(context.getString(it.titleRes)) },
-                          title = { Text(stringResource(R.string.pref_anime4k_quality_title)) },
-                          summary = {
-                            Text(
-                              stringResource(anime4kQuality.titleRes),
-                              color = MaterialTheme.colorScheme.outline,
-                            )
-                          },
-                        )
+                          ListPreference(
+                            modifier = Modifier.settingsSearchTarget(R.string.pref_anime4k_quality_title),
+                            value = anime4kQuality,
+                            onValueChange = { preferences.anime4kQuality.set(it) },
+                            values = Anime4KManager.Quality.entries,
+                            valueToText = { AnnotatedString(context.getString(it.titleRes)) },
+                            title = { Text(stringResource(R.string.pref_anime4k_quality_title)) },
+                            summary = {
+                              Text(
+                                stringResource(anime4kQuality.titleRes),
+                                color = MaterialTheme.colorScheme.outline,
+                              )
+                            },
+                          )
                         }
 
                         PreferenceDivider()
@@ -660,10 +666,13 @@ object DecoderPreferencesScreen : ScrollableSettingsScreen {
           }
 
           if (MotionInterpolation.isBuildSupported) {
-            if (!embeddedInPlayer) item {
-              PreferenceSectionHeader(position = PreferenceSectionPosition.Single,
-                title = stringResource(R.string.motion_title),
-              )
+            if (!embeddedInPlayer) {
+              item {
+                PreferenceSectionHeader(
+                  position = PreferenceSectionPosition.Single,
+                  title = stringResource(R.string.motion_title),
+                )
+              }
             }
 
             item {

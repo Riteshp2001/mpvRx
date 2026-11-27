@@ -17,13 +17,13 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -63,8 +63,8 @@ import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.outsideShadow
-import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
 import app.gyrolet.mpvrx.ui.player.controls.VideoControlsLayoutPreset
+import app.gyrolet.mpvrx.ui.player.controls.components.AbLoopIcon
 import app.gyrolet.mpvrx.ui.preferences.components.AppListPreference
 import app.gyrolet.mpvrx.ui.preferences.components.PlayerButtonChip
 import app.gyrolet.mpvrx.ui.preferences.components.PlayerLayoutPreview
@@ -87,12 +87,13 @@ data class ControlLayoutEditorScreen(
     val backstack = LocalBackStack.current
     val preferences = koinInject<AppearancePreferences>()
 
-    val prefToEdit: Preference<String> = when (region) {
-      ControlRegion.TOP_RIGHT -> preferences.topRightControls
-      ControlRegion.BOTTOM_RIGHT -> preferences.bottomRightControls
-      ControlRegion.BOTTOM_LEFT -> preferences.bottomLeftControls
-      ControlRegion.PORTRAIT_BOTTOM -> preferences.portraitBottomControls
-    }
+    val prefToEdit: Preference<String> =
+      when (region) {
+        ControlRegion.TOP_RIGHT -> preferences.topRightControls
+        ControlRegion.BOTTOM_RIGHT -> preferences.bottomRightControls
+        ControlRegion.BOTTOM_LEFT -> preferences.bottomLeftControls
+        ControlRegion.PORTRAIT_BOTTOM -> preferences.portraitBottomControls
+      }
     val selection by prefToEdit.collectAsState()
     val selectedButtons = remember(selection) { preferences.parseButtons(selection, mutableSetOf()) }
     val topRightState by preferences.topRightControls.collectAsState()
@@ -100,15 +101,17 @@ data class ControlLayoutEditorScreen(
     val bottomRightState by preferences.bottomRightControls.collectAsState()
     val bottomLeftState by preferences.bottomLeftControls.collectAsState()
     val portraitState by preferences.portraitBottomControls.collectAsState()
-    val disabledButtons = remember(region, topRightState, topLeftState, bottomRightState, bottomLeftState) {
-      val otherRegions = when (region) {
-        ControlRegion.TOP_RIGHT -> listOf(topLeftState, bottomRightState, bottomLeftState)
-        ControlRegion.BOTTOM_RIGHT -> listOf(topLeftState, topRightState, bottomLeftState)
-        ControlRegion.BOTTOM_LEFT -> listOf(topLeftState, topRightState, bottomRightState)
-        ControlRegion.PORTRAIT_BOTTOM -> emptyList()
+    val disabledButtons =
+      remember(region, topRightState, topLeftState, bottomRightState, bottomLeftState) {
+        val otherRegions =
+          when (region) {
+            ControlRegion.TOP_RIGHT -> listOf(topLeftState, bottomRightState, bottomLeftState)
+            ControlRegion.BOTTOM_RIGHT -> listOf(topLeftState, topRightState, bottomLeftState)
+            ControlRegion.BOTTOM_LEFT -> listOf(topLeftState, topRightState, bottomRightState)
+            ControlRegion.PORTRAIT_BOTTOM -> emptyList()
+          }
+        preferences.parseButtons(otherRegions.joinToString(","), mutableSetOf()).toSet()
       }
-      preferences.parseButtons(otherRegions.joinToString(","), mutableSetOf()).toSet()
-    }
     val (topRightButtons, bottomRightButtons, bottomLeftButtons) =
       remember(topRightState, bottomRightState, bottomLeftState) {
         val used = mutableSetOf<PlayerButton>()
@@ -123,25 +126,43 @@ data class ControlLayoutEditorScreen(
       if (region.isPortrait) preferences.portraitSeekbarPlacement else preferences.landscapeSeekbarPlacement
     val seekbarPlacement by seekbarPreference.collectAsState()
     val preset = VideoControlsLayoutPreset.fromPreferences(seekbarPlacement)
-    val seekbarTitle = if (region.isPortrait) R.string.ui_portrait_seekbar_position else R.string.ui_landscape_seekbar_position
+    val seekbarTitle =
+      if (region.isPortrait) {
+        R.string.ui_portrait_seekbar_position
+      } else {
+        R.string.ui_landscape_seekbar_position
+      }
     val playbackPreference =
-      if (region.isPortrait) preferences.portraitPlaybackControlsPlacement else preferences.landscapePlaybackControlsPlacement
+      if (region.isPortrait) {
+        preferences.portraitPlaybackControlsPlacement
+      } else {
+        preferences.landscapePlaybackControlsPlacement
+      }
     val storedPlaybackPlacement by playbackPreference.collectAsState()
     val playbackControlsPlacement =
       if (!region.isPortrait && storedPlaybackPlacement != PlaybackControlsPlacement.Center) {
         PlaybackControlsPlacement.BelowSeekbar
-      } else storedPlaybackPlacement
+      } else {
+        storedPlaybackPlacement
+      }
     val playbackTitle =
-      if (region.isPortrait) R.string.pref_layout_portrait_playback_position else R.string.pref_layout_landscape_playback_position
+      if (region.isPortrait) {
+        R.string.pref_layout_portrait_playback_position
+      } else {
+        R.string.pref_layout_landscape_playback_position
+      }
     val withButtonRowLabel = stringResource(R.string.pref_layout_playback_with_buttons)
     var previewPlaylist by rememberSaveable(region) { mutableStateOf(true) }
     var portraitPreviewExpanded by rememberSaveable(region) { mutableStateOf(true) }
     val configuration = LocalConfiguration.current
     val isTablet = configuration.smallestScreenWidthDp >= 600
     val portraitPreviewRatio =
-      if (isTablet) (9f / 16f)
-      else minOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1).toFloat() /
-        maxOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1)
+      if (isTablet) {
+        (9f / 16f)
+      } else {
+        minOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1).toFloat() /
+          maxOf(configuration.screenWidthDp, configuration.screenHeightDp).coerceAtLeast(1)
+      }
     val embeddedInPlayer = LocalPlayerSettingsPanel.current
     val title = stringResource(region.titleRes)
     var showResetDialog by rememberSaveable(region) { mutableStateOf(false) }
@@ -179,30 +200,32 @@ data class ControlLayoutEditorScreen(
               Text(stringResource(R.string.pref_layout_reset_default))
             }
           }
-        } else TopAppBar(
-          title = { Text(text = title) },
-          navigationIcon = {
-            IconButton(onClick = { backstack.popSafely() }) {
-              AppSymbolIcon(
-                Icons.RoundedFilled.ArrowBack,
-                contentDescription =
-                  androidx.compose.ui.res
-                    .stringResource(app.gyrolet.mpvrx.R.string.back),
-              )
-            }
-          },
-          actions = {
-            IconButton(onClick = { showResetDialog = true }) {
-              AppSymbolIcon(
-                Icons.RoundedFilled.Refresh,
-                contentDescription =
-                  androidx.compose.ui.res.stringResource(
-                    app.gyrolet.mpvrx.R.string.pref_layout_reset_default,
-                  ),
-              )
-            }
-          },
-        )
+        } else {
+          TopAppBar(
+            title = { Text(text = title) },
+            navigationIcon = {
+              IconButton(onClick = { backstack.popSafely() }) {
+                AppSymbolIcon(
+                  Icons.RoundedFilled.ArrowBack,
+                  contentDescription =
+                    androidx.compose.ui.res
+                      .stringResource(app.gyrolet.mpvrx.R.string.back),
+                )
+              }
+            },
+            actions = {
+              IconButton(onClick = { showResetDialog = true }) {
+                AppSymbolIcon(
+                  Icons.RoundedFilled.Refresh,
+                  contentDescription =
+                    androidx.compose.ui.res.stringResource(
+                      app.gyrolet.mpvrx.R.string.pref_layout_reset_default,
+                    ),
+                )
+              }
+            },
+          )
+        }
       },
     ) { padding ->
       ProvideExpressivePreferenceLocals {
@@ -223,7 +246,9 @@ data class ControlLayoutEditorScreen(
                 current.toMutableList().apply {
                   add(toIndex, removeAt(fromIndex))
                 }
-              } else current
+              } else {
+                current
+              }
             }
           }
 
@@ -242,7 +267,10 @@ data class ControlLayoutEditorScreen(
             onExpandedChange = if (collapsible) ({ portraitPreviewExpanded = !portraitPreviewExpanded }) else null,
           )
         }
-        val editorContent: @Composable (Modifier, androidx.compose.ui.unit.Dp?) -> Unit = { gridModifier, portraitPreviewHeight ->
+        val editorContent: @Composable (
+          Modifier,
+          androidx.compose.ui.unit.Dp?,
+        ) -> Unit = { gridModifier, portraitPreviewHeight ->
           LazyVerticalGrid(
             state = gridState,
             columns = GridCells.Adaptive(minSize = 72.dp),
@@ -283,20 +311,34 @@ data class ControlLayoutEditorScreen(
                   modifier = Modifier.settingsSearchTarget(playbackTitle),
                   value = playbackControlsPlacement,
                   onValueChange = { playbackPreference.set(it) },
-                  values = if (region.isPortrait) PlaybackControlsPlacement.entries else listOf(
-                    PlaybackControlsPlacement.BelowSeekbar, PlaybackControlsPlacement.Center,
-                  ),
+                  values =
+                    if (region.isPortrait) {
+                      PlaybackControlsPlacement.entries
+                    } else {
+                      listOf(
+                        PlaybackControlsPlacement.BelowSeekbar,
+                        PlaybackControlsPlacement.Center,
+                      )
+                    },
                   valueToText = {
                     AnnotatedString(
-                      if (!region.isPortrait && it != PlaybackControlsPlacement.Center) withButtonRowLabel
-                      else stringResource(it.titleRes),
+                      if (!region.isPortrait && it != PlaybackControlsPlacement.Center) {
+                        withButtonRowLabel
+                      } else {
+                        stringResource(it.titleRes)
+                      },
                     )
                   },
                   title = { Text(stringResource(playbackTitle)) },
                   summary = {
                     Text(
-                      if (!region.isPortrait && playbackControlsPlacement != PlaybackControlsPlacement.Center) withButtonRowLabel
-                      else stringResource(playbackControlsPlacement.titleRes),
+                      if (!region.isPortrait &&
+                        playbackControlsPlacement != PlaybackControlsPlacement.Center
+                      ) {
+                        withButtonRowLabel
+                      } else {
+                        stringResource(playbackControlsPlacement.titleRes)
+                      },
                     )
                   },
                 )
@@ -399,7 +441,8 @@ data class ControlLayoutEditorScreen(
                             Modifier
                           },
                         ).outsideShadow(
-                          androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+                          androidx.compose.foundation.shape
+                            .RoundedCornerShape(24.dp),
                           radius = elevation.dp,
                         ),
                     shape =
@@ -497,22 +540,34 @@ data class ControlLayoutEditorScreen(
           val previewHeight = (maxHeight * 0.38f).coerceIn(96.dp, maxPreviewHeight).coerceAtMost(maxHeight / 2)
           if (sideBySide) {
             Row(Modifier.fillMaxSize()) {
-              previewContent(Modifier.weight(0.45f).fillMaxHeight().padding(start = 12.dp, top = 8.dp, bottom = 8.dp), false)
+              previewContent(
+                Modifier.weight(0.45f).fillMaxHeight().padding(start = 12.dp, top = 8.dp, bottom = 8.dp),
+                false,
+              )
               editorContent(Modifier.weight(0.55f).fillMaxHeight(), null)
             }
           } else if (region.isPortrait) {
             // A phone-shaped scene cannot remain readable in a short, fixed-height thumbnail.
             // On phones, let it scroll; on tablets, keep it at a compact, balanced height.
             val expandedHeight =
-              if (isTablet) 350.dp
-              else (maxWidth - 52.dp).coerceAtLeast(1.dp) / portraitPreviewRatio + 84.dp
+              if (isTablet) {
+                350.dp
+              } else {
+                (maxWidth - 52.dp).coerceAtLeast(1.dp) / portraitPreviewRatio + 84.dp
+              }
             val portraitPreviewHeight =
-              if (portraitPreviewExpanded) expandedHeight
-              else 84.dp
+              if (portraitPreviewExpanded) {
+                expandedHeight
+              } else {
+                84.dp
+              }
             editorContent(Modifier.fillMaxSize(), portraitPreviewHeight)
           } else {
             Column(Modifier.fillMaxSize()) {
-              previewContent(Modifier.fillMaxWidth().height(previewHeight).padding(horizontal = 16.dp, vertical = 4.dp), false)
+              previewContent(
+                Modifier.fillMaxWidth().height(previewHeight).padding(horizontal = 16.dp, vertical = 4.dp),
+                false,
+              )
               editorContent(Modifier.weight(1f).fillMaxWidth(), null)
             }
           }
@@ -618,4 +673,3 @@ private fun IconsLegend() {
     }
   }
 }
-

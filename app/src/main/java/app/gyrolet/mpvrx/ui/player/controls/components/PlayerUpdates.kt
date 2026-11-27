@@ -10,7 +10,6 @@
 package app.gyrolet.mpvrx.ui.player.controls.components
 
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
-import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
@@ -50,8 +49,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
@@ -68,9 +67,12 @@ import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
 import app.gyrolet.mpvrx.ui.liquidglass.drawCapsuleTint
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassEffects
 import app.gyrolet.mpvrx.ui.liquidglass.outsideShadow
 import app.gyrolet.mpvrx.ui.liquidglass.rememberLiquidGlassSettings
+import app.gyrolet.mpvrx.ui.player.PlayerActivity
+import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import com.composables.icons.materialsymbols.MaterialSymbols
 import com.composables.icons.materialsymbols.roundedfilled.Replay
@@ -81,10 +83,8 @@ import com.kyant.backdrop.shadow.Shadow
 import com.kyant.shapes.Capsule
 import `is`.xyz.mpv.Utils
 import kotlinx.coroutines.flow.StateFlow
-import kotlin.math.roundToInt
 import java.util.Locale
-import app.gyrolet.mpvrx.ui.player.PlayerActivity
-import app.gyrolet.mpvrx.ui.player.PlayerViewModel
+import kotlin.math.roundToInt
 
 private val compactSpeedIndicatorWidth = 32.dp
 
@@ -267,23 +267,25 @@ fun CompactSpeedIndicator(
       modifier = Modifier.widthIn(min = compactSpeedIndicatorWidth),
       contentAlignment = Alignment.Center,
       transitionSpec = {
-        (fadeIn(animationSpec = tween(100)) +
-          scaleIn(
-            initialScale = 0.85f,
-            animationSpec =
-              spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow,
-              ),
-          ) +
-          slideInVertically(
-            initialOffsetY = { it / 3 },
-            animationSpec =
-              spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow,
-              ),
-          )).togetherWith(
+        (
+          fadeIn(animationSpec = tween(100)) +
+            scaleIn(
+              initialScale = 0.85f,
+              animationSpec =
+                spring(
+                  dampingRatio = Spring.DampingRatioMediumBouncy,
+                  stiffness = Spring.StiffnessLow,
+                ),
+            ) +
+            slideInVertically(
+              initialOffsetY = { it / 3 },
+              animationSpec =
+                spring(
+                  dampingRatio = Spring.DampingRatioMediumBouncy,
+                  stiffness = Spring.StiffnessLow,
+                ),
+            )
+        ).togetherWith(
           fadeOut(animationSpec = tween(100)) +
             scaleOut(targetScale = 1.1f, animationSpec = tween(100)) +
             slideOutVertically(targetOffsetY = { -it / 3 }, animationSpec = tween(100)),

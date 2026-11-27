@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,6 +57,7 @@ import `is`.xyz.mpv.Utils
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 
 @Composable
 fun ChaptersSheet(
@@ -77,7 +77,11 @@ fun ChaptersSheet(
     }
   }
 
-  val isAudiobook = app.gyrolet.mpvrx.ui.player.PlaybackSession.state.collectAsStateWithLifecycle().value.currentItem?.audiobook != null
+  val isAudiobook =
+    app.gyrolet.mpvrx.ui.player.PlaybackSession.state
+      .collectAsStateWithLifecycle()
+      .value.currentItem
+      ?.audiobook != null
   PlayerSheet(
     onDismissRequest,
     title = stringResource(if (isAudiobook) R.string.audiobook_chapters else R.string.btn_label_bookmarks),
@@ -165,8 +169,11 @@ fun ChapterTrack(
           maxLines = 2,
           overflow = TextOverflow.Ellipsis,
         )
-        Text(Utils.prettyTime(chapter.start.toInt()), style = MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+          Utils.prettyTime(chapter.start.toInt()),
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
       }
       trailingContent()
     }
@@ -174,7 +181,11 @@ fun ChapterTrack(
 }
 
 @Composable
-internal fun PlaybackBookmarkEditor(viewModel: PlayerViewModel, onSaved: () -> Unit, onDismiss: () -> Unit) {
+internal fun PlaybackBookmarkEditor(
+  viewModel: PlayerViewModel,
+  onSaved: () -> Unit,
+  onDismiss: () -> Unit,
+) {
   val draft by viewModel.bookmarkDraft.collectAsStateWithLifecycle()
   val mediaId by viewModel.bookmarkMediaId.collectAsStateWithLifecycle()
   val bookmark = draft?.takeIf { it.mediaId == mediaId }
@@ -187,13 +198,33 @@ internal fun PlaybackBookmarkEditor(viewModel: PlayerViewModel, onSaved: () -> U
   var failed by remember(bookmark) { mutableStateOf(false) }
   val scope = rememberCoroutineScope()
   val haptics = rememberAppHaptics()
-  PlayerSheet(onDismissRequest = { if (!saving) onDismiss() }, title = stringResource(R.string.audiobook_bookmark_name)) {
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-      Text(Utils.prettyTime((viewModel.bookmarkPositionMs(bookmark) / 1000).toInt()),
-        style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-      OutlinedTextField(name, { name = it }, modifier = Modifier.fillMaxWidth(), enabled = !saving, maxLines = 3,
-        label = { Text(stringResource(R.string.audiobook_bookmark_name)) })
-      if (failed) Text(stringResource(R.string.playback_bookmark_update_failed), color = MaterialTheme.colorScheme.error)
+  PlayerSheet(
+    onDismissRequest = { if (!saving) onDismiss() },
+    title = stringResource(R.string.audiobook_bookmark_name),
+  ) {
+    Column(
+      Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      Text(
+        Utils.prettyTime((viewModel.bookmarkPositionMs(bookmark) / 1000).toInt()),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+      OutlinedTextField(
+        name,
+        { name = it },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !saving,
+        maxLines = 3,
+        label = { Text(stringResource(R.string.audiobook_bookmark_name)) },
+      )
+      if (failed) {
+        Text(
+          stringResource(R.string.playback_bookmark_update_failed),
+          color = MaterialTheme.colorScheme.error,
+        )
+      }
       Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
         TextButton(onClick = onDismiss, enabled = !saving) { Text(stringResource(R.string.generic_cancel)) }
         TextButton(enabled = name.isNotBlank() && !saving, onClick = {

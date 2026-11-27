@@ -37,7 +37,10 @@ internal data class NavigationJellyFrame(
 )
 
 @Stable
-internal class NavigationJellyMotion(initialIndex: Int, private val tabCount: Int) {
+internal class NavigationJellyMotion(
+  initialIndex: Int,
+  private val tabCount: Int,
+) {
   private val position = NavigationJellySpring(initialIndex.coerceIn(0, tabCount - 1).toDouble(), 1000.0, 1.0)
   private val velocity = NavigationJellySpring(0.0, 300.0, 0.5)
   private val press = NavigationJellySpring(0.0, 1000.0, 1.0)
@@ -72,7 +75,10 @@ internal class NavigationJellyMotion(initialIndex: Int, private val tabCount: In
   var frame by mutableStateOf(NavigationJellyFrame(position.value.toFloat()))
     private set
 
-  fun resize(width: Float, height: Float) {
+  fun resize(
+    width: Float,
+    height: Float,
+  ) {
     this.width = width.toDouble()
     this.height = height.toDouble()
     if (!dragging) originX = this.width / 2
@@ -101,7 +107,10 @@ internal class NavigationJellyMotion(initialIndex: Int, private val tabCount: In
     running = true
   }
 
-  fun begin(positionX: Float, positionY: Float) {
+  fun begin(
+    positionX: Float,
+    positionY: Float,
+  ) {
     downX = positionX.toDouble()
     downY = positionY.toDouble().coerceIn(0.0, height)
     originX = downX.coerceIn(0.0, width)
@@ -118,7 +127,10 @@ internal class NavigationJellyMotion(initialIndex: Int, private val tabCount: In
     running = true
   }
 
-  fun drag(distanceX: Float, distanceY: Float) {
+  fun drag(
+    distanceX: Float,
+    distanceY: Float,
+  ) {
     if (!dragging || tabWidth <= 0) return
     val deltaX = distanceX.toDouble()
     val deltaY = distanceY.toDouble()
@@ -132,8 +144,12 @@ internal class NavigationJellyMotion(initialIndex: Int, private val tabCount: In
   }
 
   fun finish(): Int {
-    val index = if (movedDistance < 4 && tabWidth > 0) indexAt(downX)
-    else floor(target + 0.5).toInt().coerceIn(0, maxIndex)
+    val index =
+      if (movedDistance < 4 && tabWidth > 0) {
+        indexAt(downX)
+      } else {
+        floor(target + 0.5).toInt().coerceIn(0, maxIndex)
+      }
     dragging = false
     panel.velocity = 0.0
     target = index.toDouble()
@@ -163,39 +179,63 @@ internal class NavigationJellyMotion(initialIndex: Int, private val tabCount: In
       if (trackX.isAtRest(1.0)) originX = width / 2
     }
     publish()
-    running = dragging || releasePending || !position.isAtRest(target) || !velocity.isAtRest(0.0) ||
-      !press.isAtRest(0.0) || !scaleX.isAtRest(1.0) || !scaleY.isAtRest(1.0) ||
-      !panel.isAtRest(0.0) || !trackY.isAtRest(0.0) || !trackX.isAtRest(1.0) ||
-      !trackPress.isAtRest(1.0) || !glow.isAtRest(0.0)
+    running = dragging ||
+      releasePending ||
+      !position.isAtRest(target) ||
+      !velocity.isAtRest(0.0) ||
+      !press.isAtRest(0.0) ||
+      !scaleX.isAtRest(1.0) ||
+      !scaleY.isAtRest(1.0) ||
+      !panel.isAtRest(0.0) ||
+      !trackY.isAtRest(0.0) ||
+      !trackX.isAtRest(1.0) ||
+      !trackPress.isAtRest(1.0) ||
+      !glow.isAtRest(0.0)
   }
 
   private fun indexAt(positionX: Double): Int = floor((positionX - 4) / tabWidth).toInt().coerceIn(0, maxIndex)
 
   private fun publish() {
     val speed = velocity.value / 10
-    frame = NavigationJellyFrame(
-      position = position.value.toFloat(),
-      pillScaleX = (scaleX.value / (1 - (speed * 0.75).coerceIn(-0.2, 0.2))).toFloat(),
-      pillScaleY = (scaleY.value * (1 - (speed * 0.25).coerceIn(-0.2, 0.2))).toFloat(),
-      contentScale = (1 + 0.2 * press.value).toFloat(),
-      panelOffset = navigationPanelOffset(panel.value, width),
-      trackScale = trackPress.value.toFloat(),
-      trackScaleX = trackX.value.toFloat(),
-      trackOffsetY = trackY.value.toFloat(),
-      originX = originX.toFloat(),
-      glowY = downY.toFloat(),
-      glowOpacity = glow.value.toFloat().coerceIn(0f, 1f),
-    )
+    frame =
+      NavigationJellyFrame(
+        position = position.value.toFloat(),
+        pillScaleX = (scaleX.value / (1 - (speed * 0.75).coerceIn(-0.2, 0.2))).toFloat(),
+        pillScaleY = (scaleY.value * (1 - (speed * 0.25).coerceIn(-0.2, 0.2))).toFloat(),
+        contentScale = (1 + 0.2 * press.value).toFloat(),
+        panelOffset = navigationPanelOffset(panel.value, width),
+        trackScale = trackPress.value.toFloat(),
+        trackScaleX = trackX.value.toFloat(),
+        trackOffsetY = trackY.value.toFloat(),
+        originX = originX.toFloat(),
+        glowY = downY.toFloat(),
+        glowOpacity = glow.value.toFloat().coerceIn(0f, 1f),
+      )
   }
 }
 
-private class NavigationJellySpring(var value: Double, private val stiffness: Double, private val dampingRatio: Double) {
+private class NavigationJellySpring(
+  var value: Double,
+  private val stiffness: Double,
+  private val dampingRatio: Double,
+) {
   var velocity = 0.0
-  fun isAtRest(target: Double): Boolean = abs(value - target) < 0.0001 && abs(velocity) < 0.0001
-  fun snapTo(target: Double) { value = target; velocity = 0.0 }
 
-  fun advance(target: Double, seconds: Double) {
-    if (isAtRest(target)) { snapTo(target); return }
+  fun isAtRest(target: Double): Boolean = abs(value - target) < 0.0001 && abs(velocity) < 0.0001
+
+  fun snapTo(target: Double) {
+    value = target
+    velocity = 0.0
+  }
+
+  fun advance(
+    target: Double,
+    seconds: Double,
+  ) {
+    if (isAtRest(target)) {
+      snapTo(target)
+      return
+    }
     val displacement = value - target
     val frequency = sqrt(stiffness)
     if (dampingRatio == 1.0) {
@@ -217,13 +257,19 @@ private class NavigationJellySpring(var value: Double, private val stiffness: Do
   }
 }
 
-private fun navigationRubberBand(distance: Double, dimension: Double): Double {
+private fun navigationRubberBand(
+  distance: Double,
+  dimension: Double,
+): Double {
   if (distance == 0.0 || dimension <= 0.0) return 0.0
   val damped = (1 - 1 / (abs(distance) * 0.14 / dimension + 1)) * dimension
   return if (distance < 0) -damped else damped
 }
 
-private fun navigationPanelOffset(rawOffset: Double, width: Double): Float {
+private fun navigationPanelOffset(
+  rawOffset: Double,
+  width: Double,
+): Float {
   if (width <= 0 || rawOffset == 0.0) return 0f
   val fraction = (rawOffset / width).coerceIn(-1.0, 1.0)
   val distance = abs(fraction)
@@ -239,7 +285,10 @@ private fun navigationPanelOffset(rawOffset: Double, width: Double): Float {
   return ((if (fraction < 0) -4 else 4) * eased).toFloat()
 }
 
-internal fun DrawScope.navigationJellyPath(frame: NavigationJellyFrame, count: Int): Path {
+internal fun DrawScope.navigationJellyPath(
+  frame: NavigationJellyFrame,
+  count: Int,
+): Path {
   val inset = 4.dp.toPx()
   val tabWidth = ((size.width - 2 * inset) / count).coerceAtLeast(0f)
   val itemHeight = (size.height - 2 * inset).coerceAtLeast(0f)
@@ -248,19 +297,33 @@ internal fun DrawScope.navigationJellyPath(frame: NavigationJellyFrame, count: I
   val halfHeight = itemHeight * frame.pillScaleY / 2
   val radius = min(tabWidth, itemHeight) / 2
   return Path().apply {
-    addRoundRect(RoundRect(centerX - halfWidth, size.height / 2 - halfHeight, centerX + halfWidth,
-      size.height / 2 + halfHeight, CornerRadius(radius * frame.pillScaleX, radius * frame.pillScaleY)))
+    addRoundRect(
+      RoundRect(
+        centerX - halfWidth,
+        size.height / 2 - halfHeight,
+        centerX + halfWidth,
+        size.height / 2 + halfHeight,
+        CornerRadius(radius * frame.pillScaleX, radius * frame.pillScaleY),
+      ),
+    )
   }
 }
 
-internal fun DrawScope.drawNavigationJellyGlow(frame: NavigationJellyFrame, color: Color) {
+internal fun DrawScope.drawNavigationJellyGlow(
+  frame: NavigationJellyFrame,
+  color: Color,
+) {
   if (frame.glowOpacity <= 0f) return
   val alpha = 0.15f * frame.glowOpacity * color.alpha
   drawRect(
-    brush = Brush.radialGradient(
-      0f to color.copy(alpha = alpha), 0.45f to color.copy(alpha = alpha * 0.43f), 1f to Color.Transparent,
-      center = Offset(frame.originX.dp.toPx(), frame.glowY.dp.toPx()), radius = 300.dp.toPx(),
-    ),
+    brush =
+      Brush.radialGradient(
+        0f to color.copy(alpha = alpha),
+        0.45f to color.copy(alpha = alpha * 0.43f),
+        1f to Color.Transparent,
+        center = Offset(frame.originX.dp.toPx(), frame.glowY.dp.toPx()),
+        radius = 300.dp.toPx(),
+      ),
     topLeft = Offset(-48.dp.toPx(), -16.dp.toPx()),
     size = Size(size.width + 96.dp.toPx(), size.height + 32.dp.toPx()),
   )

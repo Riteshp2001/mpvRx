@@ -13,12 +13,25 @@ import okhttp3.Request
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-internal data class AutoEqEntry(val name: String, val url: String) {
+internal data class AutoEqEntry(
+  val name: String,
+  val url: String,
+) {
   val measurementSource: String
-    get() = url.toHttpUrlOrNull()?.pathSegments?.getOrNull(4).orEmpty()
+    get() =
+      url
+        .toHttpUrlOrNull()
+        ?.pathSegments
+        ?.getOrNull(4)
+        .orEmpty()
 }
 
-internal data class AutoEqBand(val kind: String, val frequency: Double, val gain: Double, val q: Double)
+internal data class AutoEqBand(
+  val kind: String,
+  val frequency: Double,
+  val gain: Double,
+  val q: Double,
+)
 
 internal data class AutoEqProfile(
   val entry: AutoEqEntry,
@@ -29,26 +42,35 @@ internal data class AutoEqProfile(
   fun saved(): String = Json.encodeToString(SavedAutoEq(entry.name, entry.url, presetText))
 
   fun mpvFilter(): String {
-    val graph = buildList {
-      add("volume=${preampDb.number()}dB")
-      for (band in bands) {
-        val filter = when (band.kind) {
-          "PK" -> "equalizer"
-          "LS", "LSC" -> "bass"
-          "HS", "HSC" -> "treble"
-          else -> error("Unsupported AutoEq filter")
+    val graph =
+      buildList {
+        add("volume=${preampDb.number()}dB")
+        for (band in bands) {
+          val filter =
+            when (band.kind) {
+              "PK" -> "equalizer"
+              "LS", "LSC" -> "bass"
+              "HS", "HSC" -> "treble"
+              else -> error("Unsupported AutoEq filter")
+            }
+          add("$filter=f=${band.frequency.number()}:t=q:w=${band.q.number()}:g=${band.gain.number()}")
         }
-        add("$filter=f=${band.frequency.number()}:t=q:w=${band.q.number()}:g=${band.gain.number()}")
-      }
-    }.joinToString(",")
+      }.joinToString(",")
     return "@${AutoEq.FILTER_LABEL}:lavfi=[$graph]"
   }
 }
 
 @Serializable
-private data class SavedAutoEq(val name: String, val url: String, val preset: String)
+private data class SavedAutoEq(
+  val name: String,
+  val url: String,
+  val preset: String,
+)
 
-internal data class EqTargetPoint(val frequency: Double, val response: Double)
+internal data class EqTargetPoint(
+  val frequency: Double,
+  val response: Double,
+)
 
 internal object AutoEq {
   const val FILTER_LABEL = "mpvrx-autoeq"
@@ -56,10 +78,12 @@ internal object AutoEq {
   private const val PRESET_PATH = "/gh/jaakkopasanen/AutoEq@master/results/"
   private val numberPattern = "([+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+))"
   private val preampPattern = Regex("Preamp:\\s*$numberPattern\\s+dB", RegexOption.IGNORE_CASE)
-  private val bandPattern = Regex(
-    "Filter\\s+\\d+:\\s+(ON|OFF)\\s+([A-Z]+)\\s+Fc\\s+$numberPattern\\s+Hz\\s+Gain\\s+$numberPattern\\s+dB\\s+Q\\s+$numberPattern",
-    RegexOption.IGNORE_CASE,
-  )
+  private val bandPattern =
+    Regex(
+      "Filter\\s+\\d+:\\s+(ON|OFF)\\s+([A-Z]+)\\s+Fc\\s+$numberPattern\\s+Hz\\s+Gain\\s+$numberPattern\\s+dB\\s+Q\\s+$numberPattern",
+      RegexOption.IGNORE_CASE,
+    )
+
   @Volatile private var cachedEntries: List<AutoEqEntry>? = null
   private val client by lazy {
     SharedHttpClient.derive {
@@ -73,41 +97,60 @@ internal object AutoEq {
 
   fun validUrl(value: String): Boolean {
     val url = value.toHttpUrlOrNull() ?: return false
-    return url.isHttps && url.host == "cdn.jsdelivr.net" && url.port == 443 &&
-      url.username.isEmpty() && url.password.isEmpty() && url.query == null && url.fragment == null &&
-      url.encodedPath.startsWith(PRESET_PATH) && url.encodedPath.endsWith("ParametricEQ.txt")
+    return url.isHttps &&
+      url.host == "cdn.jsdelivr.net" &&
+      url.port == 443 &&
+      url.username.isEmpty() &&
+      url.password.isEmpty() &&
+      url.query == null &&
+      url.fragment == null &&
+      url.encodedPath.startsWith(PRESET_PATH) &&
+      url.encodedPath.endsWith("ParametricEQ.txt")
   }
 
-  suspend fun entries(context: Context): List<AutoEqEntry> = withContext(Dispatchers.IO) {
-    cachedEntries ?: context.assets.open("autoeq_index.tsv").bufferedReader().use { reader ->
-      reader.lineSequence().mapNotNull { line ->
-        val columns = line.trimStart('\uFEFF').split('\t', limit = 2)
-        if (columns.size != 2 || columns[0].isBlank() || !validUrl(columns[1])) null
-        else AutoEqEntry(columns[0].trim(), columns[1])
-      }.distinctBy { it.url }.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }).toList()
-    }.also { cachedEntries = it }
-  }
-
-  suspend fun download(entry: AutoEqEntry): AutoEqProfile = withContext(Dispatchers.IO) {
-    require(validUrl(entry.url))
-    client.newCall(Request.Builder().url(entry.url).build()).awaitResponse().use { response ->
-      check(response.isSuccessful)
-      val body = checkNotNull(response.body)
-      check(body.contentLength() <= MAX_PRESET_CHARS)
-      val text = body.charStream().use { reader ->
-        val buffer = CharArray(MAX_PRESET_CHARS + 1)
-        var count = 0
-        while (count < buffer.size) {
-          val read = reader.read(buffer, count, buffer.size - count)
-          if (read < 0) break
-          count += read
-        }
-        require(count <= MAX_PRESET_CHARS)
-        String(buffer, 0, count)
-      }
-      parse(entry, text)
+  suspend fun entries(context: Context): List<AutoEqEntry> =
+    withContext(Dispatchers.IO) {
+      cachedEntries ?: context.assets
+        .open("autoeq_index.tsv")
+        .bufferedReader()
+        .use { reader ->
+          reader
+            .lineSequence()
+            .mapNotNull { line ->
+              val columns = line.trimStart('\uFEFF').split('\t', limit = 2)
+              if (columns.size != 2 || columns[0].isBlank() || !validUrl(columns[1])) {
+                null
+              } else {
+                AutoEqEntry(columns[0].trim(), columns[1])
+              }
+            }.distinctBy { it.url }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            .toList()
+        }.also { cachedEntries = it }
     }
-  }
+
+  suspend fun download(entry: AutoEqEntry): AutoEqProfile =
+    withContext(Dispatchers.IO) {
+      require(validUrl(entry.url))
+      client.newCall(Request.Builder().url(entry.url).build()).awaitResponse().use { response ->
+        check(response.isSuccessful)
+        val body = checkNotNull(response.body)
+        check(body.contentLength() <= MAX_PRESET_CHARS)
+        val text =
+          body.charStream().use { reader ->
+            val buffer = CharArray(MAX_PRESET_CHARS + 1)
+            var count = 0
+            while (count < buffer.size) {
+              val read = reader.read(buffer, count, buffer.size - count)
+              if (read < 0) break
+              count += read
+            }
+            require(count <= MAX_PRESET_CHARS)
+            String(buffer, 0, count)
+          }
+        parse(entry, text)
+      }
+    }
 
   fun restore(value: String): AutoEqProfile? {
     if (value.isBlank() || value.length > MAX_PRESET_CHARS * 2) return null
@@ -117,7 +160,10 @@ internal object AutoEq {
     }.getOrNull()
   }
 
-  fun parse(entry: AutoEqEntry, text: String): AutoEqProfile {
+  fun parse(
+    entry: AutoEqEntry,
+    text: String,
+  ): AutoEqProfile {
     require(entry.name.isNotBlank() && entry.name.length <= 512 && validUrl(entry.url))
     require(text.length <= MAX_PRESET_CHARS)
     var preamp: Double? = null
@@ -146,22 +192,34 @@ internal object AutoEq {
     return AutoEqProfile(entry, requireNotNull(preamp), bands, text)
   }
 
-  suspend fun target(context: Context, inEar: Boolean): List<EqTargetPoint> = withContext(Dispatchers.IO) {
-    val asset = if (inEar) "harman_in_ear_2019v2.csv" else "harman_over_ear_2018.csv"
-    context.assets.open("eq_targets/$asset").bufferedReader().use { reader ->
-      val lines = reader.lineSequence().map(String::trim).filter { it.isNotEmpty() && !it.startsWith('#') }.iterator()
-      require(lines.hasNext() && lines.next() == "frequency,raw")
-      val points = lines.asSequence().map { line ->
-        val columns = line.split(',')
-        require(columns.size == 2)
-        EqTargetPoint(columns[0].toDouble(), columns[1].toDouble()).also {
-          require(it.frequency.isFinite() && it.frequency > 0 && it.response.isFinite())
-        }
-      }.toList()
-      require(points.size >= 2 && points.zipWithNext().all { (left, right) -> left.frequency < right.frequency })
-      points
+  suspend fun target(
+    context: Context,
+    inEar: Boolean,
+  ): List<EqTargetPoint> =
+    withContext(Dispatchers.IO) {
+      val asset = if (inEar) "harman_in_ear_2019v2.csv" else "harman_over_ear_2018.csv"
+      context.assets.open("eq_targets/$asset").bufferedReader().use { reader ->
+        val lines =
+          reader
+            .lineSequence()
+            .map(String::trim)
+            .filter { it.isNotEmpty() && !it.startsWith('#') }
+            .iterator()
+        require(lines.hasNext() && lines.next() == "frequency,raw")
+        val points =
+          lines
+            .asSequence()
+            .map { line ->
+              val columns = line.split(',')
+              require(columns.size == 2)
+              EqTargetPoint(columns[0].toDouble(), columns[1].toDouble()).also {
+                require(it.frequency.isFinite() && it.frequency > 0 && it.response.isFinite())
+              }
+            }.toList()
+        require(points.size >= 2 && points.zipWithNext().all { (left, right) -> left.frequency < right.frequency })
+        points
+      }
     }
-  }
 }
 
 private fun Double.number(): String = String.format(Locale.ROOT, "%.6f", this)

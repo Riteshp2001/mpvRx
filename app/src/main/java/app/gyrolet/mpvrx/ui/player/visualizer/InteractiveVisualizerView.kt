@@ -28,22 +28,29 @@ internal abstract class InteractiveVisualizerView(
   private var downY = 0f
   private var moved = false
   private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
-  private val scaleDetector = if (enablePinch) {
-    ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-      override fun onScale(detector: ScaleGestureDetector): Boolean {
-        onPinch(detector.scaleFactor)
-        return true
-      }
-    })
-  } else {
-    null
-  }
+  private val scaleDetector =
+    if (enablePinch) {
+      ScaleGestureDetector(
+        context,
+        object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+          override fun onScale(detector: ScaleGestureDetector): Boolean {
+            onPinch(detector.scaleFactor)
+            return true
+          }
+        },
+      )
+    } else {
+      null
+    }
 
   init {
     isClickable = true
   }
 
-  protected open fun onPointerDrag(normalizedDx: Float, normalizedDy: Float) = Unit
+  protected open fun onPointerDrag(
+    normalizedDx: Float,
+    normalizedDy: Float,
+  ) = Unit
 
   protected open fun onPinch(scaleFactor: Float) = Unit
 
@@ -75,9 +82,10 @@ internal abstract class InteractiveVisualizerView(
       }
       MotionEvent.ACTION_POINTER_UP -> {
         // Rebase even when a secondary finger lifts, so ending a pinch cannot jump the rotation.
-        val index = (0 until event.pointerCount).firstOrNull {
-          it != event.actionIndex && event.getPointerId(it) == activePointerId
-        } ?: (0 until event.pointerCount).firstOrNull { it != event.actionIndex }
+        val index =
+          (0 until event.pointerCount).firstOrNull {
+            it != event.actionIndex && event.getPointerId(it) == activePointerId
+          } ?: (0 until event.pointerCount).firstOrNull { it != event.actionIndex }
         if (index != null) {
           activePointerId = event.getPointerId(index)
           updatePointer(event, index)
@@ -93,7 +101,10 @@ internal abstract class InteractiveVisualizerView(
     return true
   }
 
-  private fun updatePointer(event: MotionEvent, index: Int) {
+  private fun updatePointer(
+    event: MotionEvent,
+    index: Int,
+  ) {
     previousX = event.getX(index)
     previousY = event.getY(index)
     interaction.update(
@@ -105,19 +116,20 @@ internal abstract class InteractiveVisualizerView(
   }
 
   override fun onHoverEvent(event: MotionEvent): Boolean {
-    val handled = when (event.actionMasked) {
-      MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE -> {
-        if (activePointerId == MotionEvent.INVALID_POINTER_ID) {
-          interaction.update(event.x / width.coerceAtLeast(1), event.y / height.coerceAtLeast(1), true, false)
+    val handled =
+      when (event.actionMasked) {
+        MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE -> {
+          if (activePointerId == MotionEvent.INVALID_POINTER_ID) {
+            interaction.update(event.x / width.coerceAtLeast(1), event.y / height.coerceAtLeast(1), true, false)
+          }
+          true
         }
-        true
+        MotionEvent.ACTION_HOVER_EXIT -> {
+          if (activePointerId == MotionEvent.INVALID_POINTER_ID) interaction.release()
+          true
+        }
+        else -> false
       }
-      MotionEvent.ACTION_HOVER_EXIT -> {
-        if (activePointerId == MotionEvent.INVALID_POINTER_ID) interaction.release()
-        true
-      }
-      else -> false
-    }
     return super.onHoverEvent(event) || handled
   }
 
@@ -127,7 +139,10 @@ internal abstract class InteractiveVisualizerView(
     parent?.requestDisallowInterceptTouchEvent(false)
   }
 
-  override fun onVisibilityChanged(changedView: View, visibility: Int) {
+  override fun onVisibilityChanged(
+    changedView: View,
+    visibility: Int,
+  ) {
     super.onVisibilityChanged(changedView, visibility)
     if (visibility != VISIBLE) releaseInteraction()
   }

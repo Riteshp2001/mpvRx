@@ -6,7 +6,6 @@ package app.gyrolet.mpvrx.ui.player.controls.components.sheets
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,19 +15,20 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,7 +66,6 @@ import app.gyrolet.mpvrx.presentation.components.AppDropdownMenu
 import app.gyrolet.mpvrx.presentation.components.AppDropdownMenuItem
 import app.gyrolet.mpvrx.presentation.components.ConfirmDialog
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
@@ -74,17 +73,18 @@ import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.controls.components.rememberSmoothedPositionMs
-import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.AppConnectedControlShapeTokens
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
+import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
-import app.gyrolet.mpvrx.ui.theme.fontFamilyForText
-import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.ui.theme.animatedConnectedContainerColor
 import app.gyrolet.mpvrx.ui.theme.appPressFeedback
+import app.gyrolet.mpvrx.ui.theme.fontFamilyForText
+import app.gyrolet.mpvrx.ui.theme.rememberConnectedShape
 import app.gyrolet.mpvrx.utils.media.LyricsUtils
 import kotlinx.coroutines.flow.update
 import kotlin.math.roundToLong
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 @Composable
 fun LyricsEditAction(
@@ -97,8 +97,11 @@ fun LyricsEditAction(
   val state by viewModel.lyricsUiState.collectAsState()
   val editState by viewModel.lyricsEditUiState.collectAsState()
   val playback by PlaybackSession.state.collectAsStateWithLifecycle()
-  val enabled = !state.isLoading && !editState.isSaving && playback.currentItem?.audiobook == null &&
-    playback.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+  val enabled =
+    !state.isLoading &&
+      !editState.isSaving &&
+      playback.currentItem?.audiobook == null &&
+      playback.phase in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
   if (connectedIndex == null) {
     IconButton(onClick = { viewModel.openLyricsEditor(origin) }, enabled = enabled, modifier = modifier) {
       Icon(Icons.RoundedFilled.Edit, contentDescription = stringResource(R.string.lyrics_editor_title))
@@ -106,21 +109,32 @@ fun LyricsEditAction(
   } else {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val shape = rememberConnectedShape(
-      connectedIndex, connectedCount, ConnectedLayout.Vertical,
-      tokens = AppConnectedControlShapeTokens, pressed = pressed,
-    )
+    val shape =
+      rememberConnectedShape(
+        connectedIndex,
+        connectedCount,
+        ConnectedLayout.Vertical,
+        tokens = AppConnectedControlShapeTokens,
+        pressed = pressed,
+      )
     Surface(
       onClick = { viewModel.openLyricsEditor(origin) },
       enabled = enabled,
       shape = shape,
       interactionSource = interactionSource,
-      color = animatedConnectedContainerColor(
-        selected = false, pressed = pressed, enabled = enabled,
-        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-      ),
-      contentColor = if (enabled) MaterialTheme.colorScheme.onSecondaryContainer
-        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+      color =
+        animatedConnectedContainerColor(
+          selected = false,
+          pressed = pressed,
+          enabled = enabled,
+          containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        ),
+      contentColor =
+        if (enabled) {
+          MaterialTheme.colorScheme.onSecondaryContainer
+        } else {
+          MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+        },
       modifier = modifier.appPressFeedback(interactionSource, enabled, pressedScale = 0.95f),
     ) {
       Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -135,7 +149,10 @@ fun LyricsEditAction(
 }
 
 @Composable
-fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
+fun LyricsEditorSheet(
+  viewModel: PlayerViewModel,
+  onDismiss: () -> Unit,
+) {
   val editTarget by viewModel.lyricsEditTarget.collectAsState()
   val target = editTarget
   if (target == null) {
@@ -190,9 +207,10 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
       }
     }
   }
-  val successMessage = stringResource(
-    if (editState.restoredOriginal) R.string.lyrics_editor_restored else R.string.lyrics_editor_saved,
-  )
+  val successMessage =
+    stringResource(
+      if (editState.restoredOriginal) R.string.lyrics_editor_restored else R.string.lyrics_editor_saved,
+    )
   val confirmClose: () -> Boolean = {
     when {
       viewModel.lyricsEditUiState.value.isSaving -> false
@@ -249,14 +267,20 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
               text = { Text(stringResource(R.string.lyrics_editor_paste)) },
               index = 0,
               itemCount = optionCount,
-              onClick = { optionsExpanded = false; pasteDialog = true },
+              onClick = {
+                optionsExpanded = false
+                pasteDialog = true
+              },
             )
             AppDropdownMenuItem(
               text = { Text(stringResource(R.string.lyrics_editor_clear_times)) },
               index = 1,
               itemCount = optionCount,
               enabled = draft.lines.any { it.timeMs != null },
-              onClick = { optionsExpanded = false; clearTimesPrompt = true },
+              onClick = {
+                optionsExpanded = false
+                clearTimesPrompt = true
+              },
             )
             if (target.hasSavedEdits) {
               AppDropdownMenuItem(
@@ -265,7 +289,10 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
                 },
                 index = 2,
                 itemCount = optionCount,
-                onClick = { optionsExpanded = false; restorePrompt = true },
+                onClick = {
+                  optionsExpanded = false
+                  restorePrompt = true
+                },
               )
             }
           }
@@ -304,16 +331,26 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
             onClick = { selected = index },
             enabled = !editState.isSaving,
             interactionSource = lineInteraction,
-            shape = rememberConnectedShape(
-              index, draft.lines.size, ConnectedLayout.Vertical,
-              pressed = linePressed && !editState.isSaving, selected = selected == index,
-            ),
-            color = animatedPlayerSheetSelectionColor(
-              selected == index, pressed = linePressed, enabled = !editState.isSaving,
-            ),
-            modifier = Modifier.appPressFeedback(
-              lineInteraction, enabled = !editState.isSaving, pressedScale = 0.99f,
-            ),
+            shape =
+              rememberConnectedShape(
+                index,
+                draft.lines.size,
+                ConnectedLayout.Vertical,
+                pressed = linePressed && !editState.isSaving,
+                selected = selected == index,
+              ),
+            color =
+              animatedPlayerSheetSelectionColor(
+                selected == index,
+                pressed = linePressed,
+                enabled = !editState.isSaving,
+              ),
+            modifier =
+              Modifier.appPressFeedback(
+                lineInteraction,
+                enabled = !editState.isSaving,
+                pressedScale = 0.99f,
+              ),
           ) {
             Row(
               modifier = Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
@@ -322,16 +359,28 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
               TextButton(
                 enabled = !editState.isSaving,
                 modifier = Modifier.widthIn(min = 78.dp, max = 104.dp),
-                colors = ButtonDefaults.textButtonColors(
-                  containerColor = if (singingLine == index) MaterialTheme.colorScheme.primaryContainer
-                    else Color.Transparent,
-                  contentColor = if (singingLine == index) MaterialTheme.colorScheme.onPrimaryContainer
-                    else if (selected == index) MaterialTheme.colorScheme.onSecondaryContainer
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
+                colors =
+                  ButtonDefaults.textButtonColors(
+                    containerColor =
+                      if (singingLine == index) {
+                        MaterialTheme.colorScheme.primaryContainer
+                      } else {
+                        Color.Transparent
+                      },
+                    contentColor =
+                      if (singingLine == index) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                      } else if (selected == index) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                      } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                      },
+                  ),
                 onClick = {
                   selected = index
-                  if (canTime && seekable == true && line.timeMs != null &&
+                  if (canTime &&
+                    seekable == true &&
+                    line.timeMs != null &&
                     viewModel.isLyricsEditTrackCurrent(target)
                   ) {
                     viewModel.seekFromScrub(line.timeMs / 1000f)
@@ -354,23 +403,35 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
                 enabled = !editState.isSaving,
                 maxLines = if (selected == index) 4 else 2,
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                textStyle = MaterialTheme.typography.bodyLarge.copy(
-                  fontFamily = fontFamilyForText(line.text),
-                  color = if (selected == index) MaterialTheme.colorScheme.onSecondaryContainer
-                    else MaterialTheme.colorScheme.onSurface,
-                ),
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                  .padding(horizontal = 8.dp, vertical = 12.dp)
-                  .onFocusChanged { if (it.isFocused) selected = index }
-                  .semantics { contentDescription = lineLabel },
+                textStyle =
+                  MaterialTheme.typography.bodyLarge.copy(
+                    fontFamily = fontFamilyForText(line.text),
+                    color =
+                      if (selected == index) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                      } else {
+                        MaterialTheme.colorScheme.onSurface
+                      },
+                  ),
+                modifier =
+                  Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp)
+                    .padding(horizontal = 8.dp, vertical = 12.dp)
+                    .onFocusChanged { if (it.isFocused) selected = index }
+                    .semantics { contentDescription = lineLabel },
                 decorationBox = { field ->
                   Box {
                     if (line.text.isEmpty()) {
                       Text(
                         lineLabel,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = if (selected == index) MaterialTheme.colorScheme.onSecondaryContainer
-                          else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color =
+                          if (selected == index) {
+                            MaterialTheme.colorScheme.onSecondaryContainer
+                          } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                          },
                       )
                     }
                     field()
@@ -379,7 +440,10 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
               )
               Box {
                 IconButton(
-                  onClick = { selected = index; lineMenu = true },
+                  onClick = {
+                    selected = index
+                    lineMenu = true
+                  },
                   enabled = !editState.isSaving,
                 ) {
                   Icon(
@@ -476,12 +540,18 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
           val selectedTime = draft.lines[selected].timeMs
           FilledTonalButton(
             modifier = Modifier.weight(1f),
-            shape = rememberConnectedShape(
-              0, 3, ConnectedLayout.Horizontal, tokens = AppConnectedControlShapeTokens,
-            ),
+            shape =
+              rememberConnectedShape(
+                0,
+                3,
+                ConnectedLayout.Horizontal,
+                tokens = AppConnectedControlShapeTokens,
+              ),
             enabled = selectedTime != null && !editState.isSaving,
             onClick = {
-              val current = viewModel.lyricsEditDraft.value.lines[selected].timeMs
+              val current =
+                viewModel.lyricsEditDraft.value.lines[selected]
+                  .timeMs
               if (current == null) {
                 validationError = LyricsDraftError.INCOMPLETE_TIMING
               } else {
@@ -492,9 +562,13 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
           ) { Text(stringResource(R.string.lyrics_editor_earlier)) }
           Button(
             modifier = Modifier.weight(1.6f),
-            shape = rememberConnectedShape(
-              1, 3, ConnectedLayout.Horizontal, tokens = AppConnectedControlShapeTokens,
-            ),
+            shape =
+              rememberConnectedShape(
+                1,
+                3,
+                ConnectedLayout.Horizontal,
+                tokens = AppConnectedControlShapeTokens,
+              ),
             enabled = canTime,
             onClick = {
               if (viewModel.isLyricsEditTrackCurrent(target)) {
@@ -507,12 +581,18 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
           ) { Text(stringResource(R.string.lyrics_editor_set_time)) }
           FilledTonalButton(
             modifier = Modifier.weight(1f),
-            shape = rememberConnectedShape(
-              2, 3, ConnectedLayout.Horizontal, tokens = AppConnectedControlShapeTokens,
-            ),
+            shape =
+              rememberConnectedShape(
+                2,
+                3,
+                ConnectedLayout.Horizontal,
+                tokens = AppConnectedControlShapeTokens,
+              ),
             enabled = selectedTime != null && !editState.isSaving,
             onClick = {
-              val current = viewModel.lyricsEditDraft.value.lines[selected].timeMs
+              val current =
+                viewModel.lyricsEditDraft.value.lines[selected]
+                  .timeMs
               if (current == null) {
                 validationError = LyricsDraftError.INCOMPLETE_TIMING
               } else {
@@ -547,7 +627,8 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
         ) {
           if (editState.isSaving) {
             CircularProgressIndicator(
-              modifier = Modifier.size(20.dp), strokeWidth = 2.dp,
+              modifier = Modifier.size(20.dp),
+              strokeWidth = 2.dp,
               color = MaterialTheme.colorScheme.onPrimary,
             )
           } else {
@@ -563,7 +644,10 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
       title = stringResource(R.string.lyrics_editor_discard_title),
       subtitle = stringResource(R.string.lyrics_editor_discard_message),
       confirmText = stringResource(R.string.lyrics_editor_discard),
-      onConfirm = { discardPrompt = false; onDismiss() },
+      onConfirm = {
+        discardPrompt = false
+        onDismiss()
+      },
       onCancel = { discardPrompt = false },
     )
   }
@@ -571,7 +655,10 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
     ConfirmDialog(
       title = stringResource(R.string.lyrics_editor_restore_title),
       subtitle = stringResource(R.string.lyrics_editor_restore_message),
-      onConfirm = { restorePrompt = false; viewModel.restoreOriginalLyrics() },
+      onConfirm = {
+        restorePrompt = false
+        viewModel.restoreOriginalLyrics()
+      },
       onCancel = { restorePrompt = false },
     )
   }
@@ -594,7 +681,10 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
       text = {
         OutlinedTextField(
           value = pasteText,
-          onValueChange = { viewModel.lyricsEditPasteText.value = it; pasteError = false },
+          onValueChange = {
+            viewModel.lyricsEditPasteText.value = it
+            pasteError = false
+          },
           modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 320.dp),
           label = { Text(stringResource(R.string.lyrics_editor_paste_hint)) },
           isError = pasteError,
@@ -667,9 +757,10 @@ fun LyricsEditorSheet(viewModel: PlayerViewModel, onDismiss: () -> Unit) {
 }
 
 @androidx.annotation.StringRes
-private fun LyricsDraftError.messageRes(): Int = when (this) {
-  LyricsDraftError.EMPTY -> R.string.lyrics_editor_empty
-  LyricsDraftError.INCOMPLETE_TIMING -> R.string.lyrics_editor_incomplete_timing
-  LyricsDraftError.OUT_OF_ORDER -> R.string.lyrics_editor_out_of_order
-  LyricsDraftError.INVALID_TIME -> R.string.lyrics_editor_time_invalid
-}
+private fun LyricsDraftError.messageRes(): Int =
+  when (this) {
+    LyricsDraftError.EMPTY -> R.string.lyrics_editor_empty
+    LyricsDraftError.INCOMPLETE_TIMING -> R.string.lyrics_editor_incomplete_timing
+    LyricsDraftError.OUT_OF_ORDER -> R.string.lyrics_editor_out_of_order
+    LyricsDraftError.INVALID_TIME -> R.string.lyrics_editor_time_invalid
+  }

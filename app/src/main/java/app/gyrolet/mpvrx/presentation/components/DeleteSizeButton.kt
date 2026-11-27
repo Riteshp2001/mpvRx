@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: AGPL-3.0-or-later */
+// SPDX-License-Identifier: AGPL-3.0-or-later
 package app.gyrolet.mpvrx.presentation.components
 
 import android.content.Context
@@ -43,7 +43,10 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
 
-private data class DeleteSize(val bytes: Long?, val loading: Boolean = false)
+private data class DeleteSize(
+  val bytes: Long?,
+  val loading: Boolean = false,
+)
 
 /** A read-only size segment connected to the existing destructive confirmation action. */
 @Composable
@@ -59,11 +62,12 @@ fun DeleteSizeButton(
       value = DeleteSize(withContext(Dispatchers.IO) { deletionSize(context, paths) } ?: totalSizeBytes)
     }
   }
-  val sizeText = when {
-    size.bytes != null -> Formatter.formatShortFileSize(context, checkNotNull(size.bytes))
-    size.loading -> stringResource(R.string.delete_size_loading)
-    else -> stringResource(R.string.delete_size_unknown)
-  }
+  val sizeText =
+    when {
+      size.bytes != null -> Formatter.formatShortFileSize(context, checkNotNull(size.bytes))
+      size.loading -> stringResource(R.string.delete_size_loading)
+      else -> stringResource(R.string.delete_size_unknown)
+    }
   val sizeDescription = stringResource(R.string.delete_size_description, sizeText)
   Row(
     modifier = modifier,
@@ -78,8 +82,10 @@ fun DeleteSizeButton(
       contentColor = MaterialTheme.colorScheme.onErrorContainer,
     ) {
       Box(
-        Modifier.heightIn(min = ButtonDefaults.MinHeight)
-          .semantics { contentDescription = sizeDescription }.padding(ButtonDefaults.TextButtonContentPadding),
+        Modifier
+          .heightIn(min = ButtonDefaults.MinHeight)
+          .semantics { contentDescription = sizeDescription }
+          .padding(ButtonDefaults.TextButtonContentPadding),
         contentAlignment = Alignment.Center,
       ) {
         Text(
@@ -97,10 +103,11 @@ fun DeleteSizeButton(
       onClick = onClick,
       modifier = Modifier.tvFocusHighlight(actionShape, focusedScale = 1.04f),
       shape = actionShape,
-      colors = ButtonDefaults.textButtonColors(
-        containerColor = MaterialTheme.colorScheme.error,
-        contentColor = MaterialTheme.colorScheme.onError,
-      ),
+      colors =
+        ButtonDefaults.textButtonColors(
+          containerColor = MaterialTheme.colorScheme.error,
+          contentColor = MaterialTheme.colorScheme.onError,
+        ),
       contentPadding = ButtonDefaults.TextButtonContentPadding,
     ) {
       Row(
@@ -108,14 +115,23 @@ fun DeleteSizeButton(
         verticalAlignment = Alignment.CenterVertically,
       ) {
         Icon(Icons.RoundedFilled.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-        Text(stringResource(R.string.delete), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+        Text(
+          stringResource(R.string.delete),
+          style = MaterialTheme.typography.labelLarge,
+          fontWeight = FontWeight.Bold,
+          maxLines = 1,
+          softWrap = false,
+        )
       }
     }
   }
 }
 
 /** Count each file once, including nested folders, without blocking the dialog or following cycles. */
-private suspend fun deletionSize(context: Context, paths: List<String>): Long? {
+private suspend fun deletionSize(
+  context: Context,
+  paths: List<String>,
+): Long? {
   val visited = HashSet<String>()
   val pending = ArrayDeque<File>()
   var total = 0L
@@ -126,9 +142,10 @@ private suspend fun deletionSize(context: Context, paths: List<String>): Long? {
       when (uri.scheme) {
         null, "file" -> pending.addLast(File(if (uri.scheme == "file") uri.path ?: return null else source))
         "content" -> {
-          val bytes = context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
-            if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getLong(0).takeIf { it >= 0L } else null
-          } ?: return null
+          val bytes =
+            context.contentResolver.query(uri, arrayOf(OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+              if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getLong(0).takeIf { it >= 0L } else null
+            } ?: return null
           total += bytes
         }
         else -> return null
@@ -143,7 +160,9 @@ private suspend fun deletionSize(context: Context, paths: List<String>): Long? {
         children.forEach(pending::addLast)
       } else if (file.isFile) {
         total += file.length()
-      } else return null
+      } else {
+        return null
+      }
     }
     return total
   } catch (cancelled: CancellationException) {

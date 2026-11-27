@@ -22,15 +22,16 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -43,7 +44,6 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.MaterialTheme
 import app.gyrolet.mpvrx.preferences.AppearancePreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.background.AnimatedBackground
@@ -351,28 +351,30 @@ private const val PRESET_MAX_HEIGHT_PX = 2600f
 suspend fun saveWallpaperCopy(
   context: android.content.Context,
   sourceUri: String,
-): String = withContext(Dispatchers.IO) {
-  // Presets are drawn in code, so only the tiny "preset:<id>" reference is stored.
-  if (WallpaperPreset.isPresetUri(sourceUri)) return@withContext sourceUri
-  val bitmap = requireNotNull(loadWallpaperBitmap(context, sourceUri)) {
-    context.getString(app.gyrolet.mpvrx.R.string.wallpaper_save_failed)
-  }
-  try {
-    if (sourceUri.startsWith(WALLPAPER_DATA_PREFIX)) return@withContext sourceUri
-    val output = java.io.ByteArrayOutputStream()
-    android.util.Base64OutputStream(output, android.util.Base64.NO_WRAP).use { encodedStream ->
-      check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, encodedStream)) {
+): String =
+  withContext(Dispatchers.IO) {
+    // Presets are drawn in code, so only the tiny "preset:<id>" reference is stored.
+    if (WallpaperPreset.isPresetUri(sourceUri)) return@withContext sourceUri
+    val bitmap =
+      requireNotNull(loadWallpaperBitmap(context, sourceUri)) {
         context.getString(app.gyrolet.mpvrx.R.string.wallpaper_save_failed)
       }
+    try {
+      if (sourceUri.startsWith(WALLPAPER_DATA_PREFIX)) return@withContext sourceUri
+      val output = java.io.ByteArrayOutputStream()
+      android.util.Base64OutputStream(output, android.util.Base64.NO_WRAP).use { encodedStream ->
+        check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, encodedStream)) {
+          context.getString(app.gyrolet.mpvrx.R.string.wallpaper_save_failed)
+        }
+      }
+      require(output.size() <= MAX_WALLPAPER_ENCODED_LENGTH) {
+        context.getString(app.gyrolet.mpvrx.R.string.wallpaper_save_failed)
+      }
+      WALLPAPER_DATA_PREFIX + output.toString(Charsets.US_ASCII.name())
+    } finally {
+      bitmap.recycle()
     }
-    require(output.size() <= MAX_WALLPAPER_ENCODED_LENGTH) {
-      context.getString(app.gyrolet.mpvrx.R.string.wallpaper_save_failed)
-    }
-    WALLPAPER_DATA_PREFIX + output.toString(Charsets.US_ASCII.name())
-  } finally {
-    bitmap.recycle()
   }
-}
 
 fun loadWallpaperBitmap(
   context: android.content.Context,
@@ -388,15 +390,19 @@ fun loadWallpaperBitmap(
       val file = uri.path?.let { java.io.File(it) }?.takeIf { it.isFile && it.canRead() } ?: return@runCatching null
       if (file.length() == 0L) return@runCatching null
     }
-    val imageBytes = if (uri.scheme.equals("data", ignoreCase = true)) {
-      val header = wallpaperUri.substringBefore(',')
-      if (!header.startsWith("data:image/", ignoreCase = true) || !header.endsWith(";base64", ignoreCase = true)) {
-        return@runCatching null
+    val imageBytes =
+      if (uri.scheme.equals("data", ignoreCase = true)) {
+        val header = wallpaperUri.substringBefore(',')
+        if (!header.startsWith("data:image/", ignoreCase = true) || !header.endsWith(";base64", ignoreCase = true)) {
+          return@runCatching null
+        }
+        val encoded = wallpaperUri.substringAfter(',', "")
+        if (encoded.isEmpty() || encoded.length > MAX_WALLPAPER_ENCODED_LENGTH) return@runCatching null
+        android.util.Base64.decode(encoded, android.util.Base64.DEFAULT)
+      } else {
+        null
       }
-      val encoded = wallpaperUri.substringAfter(',', "")
-      if (encoded.isEmpty() || encoded.length > MAX_WALLPAPER_ENCODED_LENGTH) return@runCatching null
-      android.util.Base64.decode(encoded, android.util.Base64.DEFAULT)
-    } else null
+
     fun decode(options: BitmapFactory.Options): Bitmap? =
       if (imageBytes != null) {
         BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
@@ -421,6 +427,7 @@ fun loadWallpaperBitmap(
 private const val WALLPAPER_DATA_PREFIX = "data:image/png;base64,"
 private const val MAX_WALLPAPER_ENCODED_LENGTH = 40 * 1024 * 1024
 private const val MAX_WALLPAPER_DIMENSION_PX = 2560
+
 // Must outlast the crossfade, or the outgoing bitmap is recycled while it is still being drawn.
 private const val WALLPAPER_CROSSFADE_MS = 260
 private const val WALLPAPER_RECYCLE_DELAY_MS = 800L
@@ -428,7 +435,8 @@ private const val MAX_WALLPAPER_DOWNLOAD_BYTES = 25L * 1024 * 1024
 private const val WALLPAPER_DOWNLOAD_DIR = "wallpaper_downloads"
 
 private val wallpaperDownloadClient by lazy {
-  OkHttpClient.Builder()
+  OkHttpClient
+    .Builder()
     .connectTimeout(15, TimeUnit.SECONDS)
     .readTimeout(30, TimeUnit.SECONDS)
     .callTimeout(90, TimeUnit.SECONDS)
@@ -441,41 +449,47 @@ fun isWallpaperLink(link: String): Boolean = link.trim().toHttpUrlOrNull() != nu
 suspend fun downloadWallpaperFromLink(
   context: android.content.Context,
   link: String,
-): String = withContext(Dispatchers.IO) {
-  val url = requireNotNull(link.trim().toHttpUrlOrNull()) { "Unsupported wallpaper link" }
-  val directory = java.io.File(context.cacheDir, WALLPAPER_DOWNLOAD_DIR).apply { mkdirs() }
-  val file = java.io.File(directory, "wallpaper-${System.currentTimeMillis()}")
-  try {
-    val request = Request.Builder().url(url).header("Accept", "image/*").build()
-    wallpaperDownloadClient.newCall(request).execute().use { response ->
-      check(response.isSuccessful) { "Wallpaper download failed: HTTP ${response.code}" }
-      val body = response.body
-      require(body.contentLength() <= MAX_WALLPAPER_DOWNLOAD_BYTES) { "Wallpaper is too large" }
-      body.byteStream().use { input ->
-        file.outputStream().use { output ->
-          val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-          var total = 0L
-          while (true) {
-            ensureActive()
-            val read = input.read(buffer)
-            if (read < 0) break
-            total += read
-            require(total <= MAX_WALLPAPER_DOWNLOAD_BYTES) { "Wallpaper is too large" }
-            output.write(buffer, 0, read)
+): String =
+  withContext(Dispatchers.IO) {
+    val url = requireNotNull(link.trim().toHttpUrlOrNull()) { "Unsupported wallpaper link" }
+    val directory = java.io.File(context.cacheDir, WALLPAPER_DOWNLOAD_DIR).apply { mkdirs() }
+    val file = java.io.File(directory, "wallpaper-${System.currentTimeMillis()}")
+    try {
+      val request =
+        Request
+          .Builder()
+          .url(url)
+          .header("Accept", "image/*")
+          .build()
+      wallpaperDownloadClient.newCall(request).execute().use { response ->
+        check(response.isSuccessful) { "Wallpaper download failed: HTTP ${response.code}" }
+        val body = response.body
+        require(body.contentLength() <= MAX_WALLPAPER_DOWNLOAD_BYTES) { "Wallpaper is too large" }
+        body.byteStream().use { input ->
+          file.outputStream().use { output ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var total = 0L
+            while (true) {
+              ensureActive()
+              val read = input.read(buffer)
+              if (read < 0) break
+              total += read
+              require(total <= MAX_WALLPAPER_DOWNLOAD_BYTES) { "Wallpaper is too large" }
+              output.write(buffer, 0, read)
+            }
           }
         }
       }
+      val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+      BitmapFactory.decodeFile(file.path, bounds)
+      require(bounds.outWidth > 0 && bounds.outHeight > 0) { "Link is not an image" }
+      directory.listFiles()?.filter { it != file }?.forEach { it.delete() }
+      Uri.fromFile(file).toString()
+    } catch (error: Throwable) {
+      file.delete()
+      throw error
     }
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    BitmapFactory.decodeFile(file.path, bounds)
-    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "Link is not an image" }
-    directory.listFiles()?.filter { it != file }?.forEach { it.delete() }
-    Uri.fromFile(file).toString()
-  } catch (error: Throwable) {
-    file.delete()
-    throw error
   }
-}
 
 /** Same rule the host uses; lets the settings preview match the real screen. */
 @Composable
@@ -484,7 +498,13 @@ fun rememberLightTextOnWallpaper(bitmap: Bitmap?): Boolean {
   val luminance =
     produceState(initialValue = 0.4f, bitmap) {
       value =
-        if (bitmap == null || bitmap.isRecycled) 0.4f else withContext(Dispatchers.Default) { bitmap.estimateLuminance() }
+        if (bitmap == null ||
+          bitmap.isRecycled
+        ) {
+          0.4f
+        } else {
+          withContext(Dispatchers.Default) { bitmap.estimateLuminance() }
+        }
     }.value
   return bitmap != null && isLightTheme && luminance < LIGHT_TEXT_LUMINANCE_THRESHOLD
 }

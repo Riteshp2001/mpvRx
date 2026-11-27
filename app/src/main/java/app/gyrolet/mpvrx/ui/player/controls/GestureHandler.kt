@@ -9,10 +9,7 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
-import app.gyrolet.mpvrx.ui.player.PlaybackSession
-
 import android.os.SystemClock
-import android.view.ViewConfiguration as AndroidViewConfiguration
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
@@ -45,15 +42,16 @@ import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.player.Panels
+import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerUpdates
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.player.Sheets
 import app.gyrolet.mpvrx.ui.player.SingleActionGesture
-import app.gyrolet.mpvrx.ui.player.getSubtitleGestureRegion
-import app.gyrolet.mpvrx.ui.player.SubtitleGestureTarget
 import app.gyrolet.mpvrx.ui.player.SubtitleGestureRegion
-import app.gyrolet.mpvrx.ui.player.findSubtitleGestureTarget
+import app.gyrolet.mpvrx.ui.player.SubtitleGestureTarget
 import app.gyrolet.mpvrx.ui.player.draggedSubtitlePosition
+import app.gyrolet.mpvrx.ui.player.findSubtitleGestureTarget
+import app.gyrolet.mpvrx.ui.player.getSubtitleGestureRegion
 import app.gyrolet.mpvrx.ui.player.getTrackSelectionId
 import app.gyrolet.mpvrx.ui.player.isSecondarySubtitleActive
 import app.gyrolet.mpvrx.ui.player.nearestVideoZoomStop
@@ -69,11 +67,13 @@ import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import android.view.ViewConfiguration as AndroidViewConfiguration
 
 private val holdSpeedPresets = listOf(0.5f, 1f, 1.5f, 2f, 2.5f, 3f, 3.5f, 4f)
 private const val SPEED_HOLD_INTENT_THRESHOLD_MS = 250L
 private const val MULTI_TAP_SEEK_TIMEOUT_MS = 1_200L
 private const val CENTER_SINGLE_TAP_VERTICAL_EDGE_FRACTION = 0.35f
+
 // How long a seek chip stays up after the finger lifts.
 private const val HORIZONTAL_SEEK_UPDATE_LINGER_MS = 300L
 
@@ -82,8 +82,10 @@ private data class TapSeekFeedback(
   val generation: Long,
   val lastSeekUptimeMs: Long,
 ) {
-  fun isActiveAt(generation: Long, downUptimeMs: Long): Boolean =
-    this.generation == generation && downUptimeMs - lastSeekUptimeMs in 0L..MULTI_TAP_SEEK_TIMEOUT_MS
+  fun isActiveAt(
+    generation: Long,
+    downUptimeMs: Long,
+  ): Boolean = this.generation == generation && downUptimeMs - lastSeekUptimeMs in 0L..MULTI_TAP_SEEK_TIMEOUT_MS
 }
 
 private enum class GestureOwner {
@@ -126,10 +128,13 @@ fun GestureHandler(
     SubtitleGestureTarget.entries.mapNotNull { target ->
       val track = subtitleTracks.find { it.id == getTrackSelectionId(target.selectionProperty) }
       val isAss = track?.codec?.let { it.contains("ass", true) || it.contains("ssa", true) } == true
-      val preserveAssLayout = isAss &&
-        PlaybackSession.getPropertyString("${target.prefix}-ass-override") != "force"
+      val preserveAssLayout =
+        isAss &&
+          PlaybackSession.getPropertyString("${target.prefix}-ass-override") != "force"
       getSubtitleGestureRegion(
-        target, width, height,
+        target,
+        width,
+        height,
         preserveAssLayout || PlaybackSession.getPropertyString("sub-use-margins") == "no",
       )
     }
@@ -141,7 +146,9 @@ fun GestureHandler(
     val isAss = track?.codec?.let { it.contains("ass", true) || it.contains("ssa", true) } == true
     val preserveAssLayout = isAss && PlaybackSession.getPropertyString("sub-ass-override") != "force"
     getSubtitleGestureRegion(
-      target, width, height,
+      target,
+      width,
+      height,
       preserveAssLayout || PlaybackSession.getPropertyString("sub-use-margins") == "no",
       includeWhenTextEmpty = true,
     )?.takeUnless { MpvConfigOverridePolicy.isOwnedByMpvConf("sub-pos") }
@@ -153,12 +160,16 @@ fun GestureHandler(
   val settingsPanelShown = panelShown == Panels.PlayerSettings
   val subtitlePanelShown = panelShown == Panels.SubtitleDelay || panelShown == Panels.SubtitleSettings
   // Subtitle tuning leaves the uncovered video interactive; panel controls own their hit region.
-  val allowGesturesInPanels = !settingsPanelShown &&
-    (allowPanelGesturesPreference || (subtitlePanelShown && !externalPanelShown))
+  val allowGesturesInPanels =
+    !settingsPanelShown &&
+      (allowPanelGesturesPreference || (subtitlePanelShown && !externalPanelShown))
   val currentExternalPanelShown by rememberUpdatedState(externalPanelShown)
+
   // Panels may allow ordinary playback gestures, but the playlist must never replace them.
-  fun isPlaylistSwipeBlocked() = currentExternalPanelShown || viewModel.panelShown.value != Panels.None ||
-    viewModel.sheetShown.value != Sheets.None
+  fun isPlaylistSwipeBlocked() =
+    currentExternalPanelShown ||
+      viewModel.panelShown.value != Panels.None ||
+      viewModel.sheetShown.value != Sheets.None
   val paused by PlaybackSession.propBoolean["pause"].collectAsState()
   val duration by PlaybackSession.propInt["duration"].collectAsState()
   val position by PlaybackSession.propInt["time-pos"].collectAsState()
@@ -239,11 +250,18 @@ fun GestureHandler(
   val currentMPVVolume by PlaybackSession.propInt["volume"].collectAsState()
   val currentBrightness by viewModel.currentBrightness.collectAsState()
   val volumeBoostingCap = audioPreferences.volumeBoostCap.get()
-  val actionHaptics = app.gyrolet.mpvrx.ui.utils.rememberAppHaptics()
-  val volumeHaptics = app.gyrolet.mpvrx.ui.utils.rememberAdjustmentHaptics(
-    0f, 100f + volumeBoostingCap, landmarks = listOf(100f),
-  )
-  val brightnessHaptics = app.gyrolet.mpvrx.ui.utils.rememberAdjustmentHaptics(0f, 1f)
+  val actionHaptics =
+    app.gyrolet.mpvrx.ui.utils
+      .rememberAppHaptics()
+  val volumeHaptics =
+    app.gyrolet.mpvrx.ui.utils.rememberAdjustmentHaptics(
+      0f,
+      100f + volumeBoostingCap,
+      landmarks = listOf(100f),
+    )
+  val brightnessHaptics =
+    app.gyrolet.mpvrx.ui.utils
+      .rememberAdjustmentHaptics(0f, 1f)
   val coroutineScope = rememberCoroutineScope()
   val density = LocalDensity.current
   val topStatusBarInsetPx = WindowInsets.statusBars.getTop(density).toFloat()
@@ -271,9 +289,10 @@ fun GestureHandler(
   var lastTapRegion by remember { mutableStateOf<String?>(null) }
   var pendingSingleTapRegion by remember { mutableStateOf<String?>(null) }
   val doubleTapTimeout = AndroidViewConfiguration.getDoubleTapTimeout().toLong()
-  val doubleTapSlop = remember(context) {
-    AndroidViewConfiguration.get(context).scaledDoubleTapSlop.toFloat()
-  }
+  val doubleTapSlop =
+    remember(context) {
+      AndroidViewConfiguration.get(context).scaledDoubleTapSlop.toFloat()
+    }
 
   fun toggleControls() {
     if (anyPanelShown && !allowGesturesInPanels) {
@@ -358,1309 +377,1405 @@ fun GestureHandler(
   // The playlist detector must be an ancestor of the controls: a background sibling never
   // receives gestures starting on buttons, the title or the seekbar. Wait for an upward drag
   // before consuming anything so their taps and horizontal drags still reach those controls.
-  val playlistSwipeModifier = Modifier.pointerInput(
-    areControlsLocked,
-    enableCenterSwipeUpGesture,
-    statisticsScrolling,
-    mediaGeneration,
-  ) {
-    if (areControlsLocked || !enableCenterSwipeUpGesture || statisticsScrolling) return@pointerInput
+  val playlistSwipeModifier =
+    Modifier.pointerInput(
+      areControlsLocked,
+      enableCenterSwipeUpGesture,
+      statisticsScrolling,
+      mediaGeneration,
+    ) {
+      if (areControlsLocked || !enableCenterSwipeUpGesture || statisticsScrolling) return@pointerInput
 
-    awaitEachGesture {
-      val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-      if (
-        isPlaylistSwipeBlocked() ||
-        down.position.x !in (size.width / 3f)..(size.width * 2f / 3f) ||
-        !viewModel.hasPlaylistSupport()
-      ) {
-        return@awaitEachGesture
-      }
-      beginGesture(down.id.value, down.uptimeMillis)
-      val dragThreshold = max(viewConfiguration.touchSlop, 20f)
-      var playlistSwipeStarted = false
-      var longPressEligible = true
+      awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+        if (
+          isPlaylistSwipeBlocked() ||
+          down.position.x !in (size.width / 3f)..(size.width * 2f / 3f) ||
+          !viewModel.hasPlaylistSupport()
+        ) {
+          return@awaitEachGesture
+        }
+        beginGesture(down.id.value, down.uptimeMillis)
+        val dragThreshold = max(viewConfiguration.touchSlop, 20f)
+        var playlistSwipeStarted = false
+        var longPressEligible = true
 
-      try {
-        do {
-          val event = awaitPointerEvent(PointerEventPass.Initial)
-          if (event.changes.count { it.pressed } > 1) break
-          val change = event.changes.firstOrNull { it.id == down.id } ?: break
-          val drag = change.position - down.position
+        try {
+          do {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            if (event.changes.count { it.pressed } > 1) break
+            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+            val drag = change.position - down.position
 
-          if (!playlistSwipeStarted) {
-            if (
-              !change.pressed || gestureOwner != null || isPlaylistSwipeBlocked()
-            ) {
-              break
+            if (!playlistSwipeStarted) {
+              if (
+                !change.pressed || gestureOwner != null || isPlaylistSwipeBlocked()
+              ) {
+                break
+              }
+              if (longPressEligible) {
+                if (change.uptimeMillis - down.uptimeMillis >= viewConfiguration.longPressTimeoutMillis) break
+                if (drag.getDistance() > viewConfiguration.touchSlop) longPressEligible = false
+              }
+              if (drag.y > dragThreshold || (abs(drag.x) > dragThreshold && abs(drag.x) >= abs(drag.y))) break
+              if (drag.y >= -dragThreshold || abs(drag.y) <= abs(drag.x) * 1.5f) continue
+              if (!viewModel.hasPlaylistSupport() || !claimGesture(GestureOwner.PLAYLIST)) break
+
+              playlistSwipeStarted = true
+              speedHoldPending = false
+              tapCount = 0
+              pendingSingleTapRegion = null
+              actionHaptics.pickup()
+              viewModel.isPlaylistSwipeActive.value = true
+              viewModel.playlistSwipeOffset.value = drag.y
+              viewModel.sheetShown.update { Sheets.Playlist }
+              viewModel.hideControls()
             }
-            if (longPressEligible) {
-              if (change.uptimeMillis - down.uptimeMillis >= viewConfiguration.longPressTimeoutMillis) break
-              if (drag.getDistance() > viewConfiguration.touchSlop) longPressEligible = false
-            }
-            if (drag.y > dragThreshold || (abs(drag.x) > dragThreshold && abs(drag.x) >= abs(drag.y))) break
-            if (drag.y >= -dragThreshold || abs(drag.y) <= abs(drag.x) * 1.5f) continue
-            if (!viewModel.hasPlaylistSupport() || !claimGesture(GestureOwner.PLAYLIST)) break
 
-            playlistSwipeStarted = true
-            speedHoldPending = false
-            tapCount = 0
-            pendingSingleTapRegion = null
-            actionHaptics.pickup()
-            viewModel.isPlaylistSwipeActive.value = true
             viewModel.playlistSwipeOffset.value = drag.y
-            viewModel.sheetShown.update { Sheets.Playlist }
-            viewModel.hideControls()
+            change.consume()
+          } while (change.pressed)
+        } finally {
+          if (playlistSwipeStarted) {
+            viewModel.isPlaylistSwipeActive.value = false
+            releaseGesture(GestureOwner.PLAYLIST)
           }
-
-          viewModel.playlistSwipeOffset.value = drag.y
-          change.consume()
-        } while (change.pressed)
-      } finally {
-        if (playlistSwipeStarted) {
-          viewModel.isPlaylistSwipeActive.value = false
-          releaseGesture(GestureOwner.PLAYLIST)
         }
       }
     }
-  }
 
   val backgroundGestureModifier =
-      Modifier
-        .fillMaxSize()
-        .pointerInput(
-          areControlsLocked,
-          doubleTapSeekAreaWidth,
-          useSingleTapForLeft,
-          useSingleTapForCenter,
-          useSingleTapForRight,
-          doubleTapToSeekDuration,
-          requireDoubleTapForEverySeek,
-          leftTapGesture,
-          centerTapGesture,
-          rightTapGesture,
-          gesturePreferences,
-          isVerticalGestureActive,
-          mediaGeneration,
-          externalPanelShown,
-          anyPanelShown,
-          allowGesturesInPanels,
-          settingsPanelShown,
-        ) {
-          // Tap detection is isolated from drags and multi-finger gestures.
-          if (isVerticalGestureActive || settingsPanelShown) return@pointerInput
-          awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false)
-            beginGesture(down.id.value, down.uptimeMillis)
-            val downPosition = down.position
-            val downTime = down.uptimeMillis
-            val generation = PlaybackSession.state.value.generation
-            tapInProgress = true
-            var completedTap = false
+    Modifier
+      .fillMaxSize()
+      .pointerInput(
+        areControlsLocked,
+        doubleTapSeekAreaWidth,
+        useSingleTapForLeft,
+        useSingleTapForCenter,
+        useSingleTapForRight,
+        doubleTapToSeekDuration,
+        requireDoubleTapForEverySeek,
+        leftTapGesture,
+        centerTapGesture,
+        rightTapGesture,
+        gesturePreferences,
+        isVerticalGestureActive,
+        mediaGeneration,
+        externalPanelShown,
+        anyPanelShown,
+        allowGesturesInPanels,
+        settingsPanelShown,
+      ) {
+        // Tap detection is isolated from drags and multi-finger gestures.
+        if (isVerticalGestureActive || settingsPanelShown) return@pointerInput
+        awaitEachGesture {
+          val down = awaitFirstDown(requireUnconsumed = false)
+          beginGesture(down.id.value, down.uptimeMillis)
+          val downPosition = down.position
+          val downTime = down.uptimeMillis
+          val generation = PlaybackSession.state.value.generation
+          tapInProgress = true
+          var completedTap = false
 
-            try {
-              if (areControlsLocked) {
-                currentOnLockedTouchSideChanged(downPosition.x < size.width / 2f)
-              }
+          try {
+            if (areControlsLocked) {
+              currentOnLockedTouchSideChanged(downPosition.x < size.width / 2f)
+            }
 
-              val seekAreaFraction = (doubleTapSeekAreaWidth / 100f).coerceIn(0.01f, 0.5f)
-              val leftBoundary = size.width * seekAreaFraction
-              val rightBoundary = size.width * (1f - seekAreaFraction)
-              val region = when {
+            val seekAreaFraction = (doubleTapSeekAreaWidth / 100f).coerceIn(0.01f, 0.5f)
+            val leftBoundary = size.width * seekAreaFraction
+            val rightBoundary = size.width * (1f - seekAreaFraction)
+            val region =
+              when {
                 downPosition.x > rightBoundary -> "right"
                 downPosition.x < leftBoundary -> "left"
                 else -> "center"
               }
-              val singleTapEnabled = when (region) {
+            val singleTapEnabled =
+              when (region) {
                 "left" -> useSingleTapForLeft
                 "right" -> useSingleTapForRight
                 else -> useSingleTapForCenter
               }
-              // Only center single taps use the middle 30% of the player's height.
-              // The existing horizontal regions give the center 30% width by default.
-              val isSingleTapActionArea = region != "center" ||
-                (downPosition.y >= size.height * CENTER_SINGLE_TAP_VERTICAL_EDGE_FRACTION &&
-                  downPosition.y < size.height * (1f - CENTER_SINGLE_TAP_VERTICAL_EDGE_FRACTION))
-              val seekRegionWidth = (size.width * seekAreaFraction).coerceAtLeast(1f)
-              val seekRegionStart = if (region == "right") rightBoundary else 0f
-              val ripplePosition = Offset(
+            // Only center single taps use the middle 30% of the player's height.
+            // The existing horizontal regions give the center 30% width by default.
+            val isSingleTapActionArea =
+              region != "center" ||
+                (
+                  downPosition.y >= size.height * CENTER_SINGLE_TAP_VERTICAL_EDGE_FRACTION &&
+                    downPosition.y < size.height * (1f - CENTER_SINGLE_TAP_VERTICAL_EDGE_FRACTION)
+                )
+            val seekRegionWidth = (size.width * seekAreaFraction).coerceAtLeast(1f)
+            val seekRegionStart = if (region == "right") rightBoundary else 0f
+            val ripplePosition =
+              Offset(
                 x = ((downPosition.x - seekRegionStart) / seekRegionWidth).coerceIn(0f, 1f),
                 y = (downPosition.y / size.height.coerceAtLeast(1)).coerceIn(0f, 1f),
               )
-              var isDrag = false
-              var wasOwnedByAnotherGesture = gestureOwner != null
+            var isDrag = false
+            var wasOwnedByAnotherGesture = gestureOwner != null
 
-              do {
-                val event = awaitPointerEvent()
-                val pointer = event.changes.firstOrNull { it.id == down.id } ?: break
-                if (gestureOwner != null || event.changes.count { it.pressed } > 1) {
-                  wasOwnedByAnotherGesture = true
-                }
-                val distance = (pointer.position - downPosition).getDistance()
-                if (distance > viewConfiguration.touchSlop) isDrag = true
+            do {
+              val event = awaitPointerEvent()
+              val pointer = event.changes.firstOrNull { it.id == down.id } ?: break
+              if (gestureOwner != null || event.changes.count { it.pressed } > 1) {
+                wasOwnedByAnotherGesture = true
+              }
+              val distance = (pointer.position - downPosition).getDistance()
+              if (distance > viewConfiguration.touchSlop) isDrag = true
 
-                if (!pointer.pressed) {
-                  completedTap = true
-                  if (!isDrag && !wasOwnedByAnotherGesture && !gestureClaimedForPointer) {
-                    // A tap after a volume/brightness swipe should restore access to controls
-                    // immediately, without waiting for the overlay timer or firing a tap action.
-                    if (viewModel.dismissAdjustmentOverlays()) {
-                      tapCount = 0
-                      isTapSeeking = false
-                      seekFeedbackBurst = null
-                      lastTapRegion = null
-                      pendingSingleTapRegion = null
-                      viewModel.updateSeekText(null)
-                      viewModel.hideSeekBar()
-                      viewModel.updateSeekAmount(0)
-                      viewModel.showControls()
-                      pointer.consume()
-                      break
-                    }
-                    // Platform double-tap timing measures first UP to second DOWN. Input uptime
-                    // remains accurate when a busy frame delays delivery of a pointer event.
-                    val gap = downTime - lastTapTime
-                    val sameMediaAndRegion = lastTapGeneration == generation && lastTapRegion == region
-                    val gesture = when (region) {
-                      "left" -> leftTapGesture
-                      "right" -> rightTapGesture
-                      else -> centerTapGesture
-                    }
-                    val isSeekRegion = region != "center" && gesture == SingleActionGesture.Seek
-                    val tapActionsAllowed = !areControlsLocked && (!anyPanelShown || allowGesturesInPanels)
-                    val isSingleTap = tapActionsAllowed && singleTapEnabled && isSingleTapActionArea
-                    val isDoubleTap = tapActionsAllowed && !singleTapEnabled && tapCount == 1 && sameMediaAndRegion &&
-                      gap in 0L..doubleTapTimeout &&
-                      (downPosition - lastTapPosition).getDistance() <= doubleTapSlop
-                    val activeSeekFeedback = seekFeedbackBurst?.takeIf {
-                      isTapSeeking && it.isActiveAt(generation, downTime)
-                    }
-                    val isContinuedSeekTap = tapActionsAllowed && isSeekRegion &&
-                      !requireDoubleTapForEverySeek && activeSeekFeedback != null
-
-                    if (singleTapEnabled && (!isSingleTapActionArea || !tapActionsAllowed)) {
-                      tapCount = 0
-                      pendingSingleTapRegion = null
-                      isTapSeeking = false
-                      seekFeedbackBurst = null
-                      viewModel.updateSeekAmount(0)
-                      toggleControls()
-                    } else if (isSingleTap || isDoubleTap || isContinuedSeekTap) {
-                      tapCount = 0
-                      pendingSingleTapRegion = null
-                      isTapSeeking = isSeekRegion
-                      if (isSeekRegion) {
-                        val continuesFeedback = activeSeekFeedback?.region == region
-                        if (!continuesFeedback) viewModel.updateSeekAmount(0)
-                        seekFeedbackBurst = TapSeekFeedback(region, generation, pointer.uptimeMillis)
-                        seekFeedbackRevision++
-                      } else {
-                        seekFeedbackBurst = null
-                        viewModel.updateSeekText(null)
-                        viewModel.hideSeekBar()
-                        viewModel.updateSeekAmount(0)
-                      }
-                      when (region) {
-                        "right" -> viewModel.handleRightTap()
-                        "left" -> viewModel.handleLeftTap()
-                        else -> viewModel.handleCenterTap()
-                      }
-                      if (isSeekRegion) {
-                        currentOnSeekRipple(SeekRippleRequest(ripplePosition, isForward = region == "right"))
-                      }
-                    } else {
-                      // A moved, opposite-side or expired tap starts a new candidate. Never drop
-                      // a rapid tap just because it failed the previous sequence's conditions.
-                      tapCount = 1
-                      pendingSingleTapRegion = region
-                      // Keep the visual burst while waiting for a pair, but never seek on this tap.
-                      val keepSeekFeedback = requireDoubleTapForEverySeek && tapActionsAllowed &&
-                        isSeekRegion && activeSeekFeedback != null
-                      if (!keepSeekFeedback) {
-                        isTapSeeking = false
-                        seekFeedbackBurst = null
-                        viewModel.updateSeekText(null)
-                        viewModel.hideSeekBar()
-                        viewModel.updateSeekAmount(0)
-                      }
-                    }
-                    lastTapTime = pointer.uptimeMillis
-                    lastTapPosition = downPosition
-                    lastTapRegion = region
-                    lastTapGeneration = generation
-                    pointer.consume()
-                  } else {
+              if (!pointer.pressed) {
+                completedTap = true
+                if (!isDrag && !wasOwnedByAnotherGesture && !gestureClaimedForPointer) {
+                  // A tap after a volume/brightness swipe should restore access to controls
+                  // immediately, without waiting for the overlay timer or firing a tap action.
+                  if (viewModel.dismissAdjustmentOverlays()) {
                     tapCount = 0
                     isTapSeeking = false
                     seekFeedbackBurst = null
                     lastTapRegion = null
                     pendingSingleTapRegion = null
+                    viewModel.updateSeekText(null)
+                    viewModel.hideSeekBar()
+                    viewModel.updateSeekAmount(0)
+                    viewModel.showControls()
+                    pointer.consume()
+                    break
                   }
-                  break
-                }
-              } while (event.changes.any { it.pressed })
-            } finally {
-              if (!completedTap) {
-                tapCount = 0
-                isTapSeeking = false
-                seekFeedbackBurst = null
-                lastTapRegion = null
-                pendingSingleTapRegion = null
-              }
-              tapInProgress = false
-            }
-          }
-        }.pointerInput(
-          mediaGeneration,
-          areControlsLocked,
-          statisticsScrolling,
-          multipleSpeedGesture,
-          brightnessGesture,
-          volumeGesture,
-          centerVerticalSubtitlePositionGesture,
-          pinchToZoomSubtitles,
-          secondarySubPinchZoomEnabled,
-          enableCenterSwipeUpGesture,
-          externalPanelShown,
-          anyPanelShown,
-          allowGesturesInPanels,
-        ) {
-          if (
-            (
-              !brightnessGesture &&
-                !volumeGesture &&
-                !statisticsScrolling &&
-                !centerVerticalSubtitlePositionGesture &&
-                !enableCenterSwipeUpGesture &&
-                multipleSpeedGesture <= 0f
-            ) ||
-            areControlsLocked || (anyPanelShown && !allowGesturesInPanels)
-          ) {
-            return@pointerInput
-          }
+                  // Platform double-tap timing measures first UP to second DOWN. Input uptime
+                  // remains accurate when a busy frame delays delivery of a pointer event.
+                  val gap = downTime - lastTapTime
+                  val sameMediaAndRegion = lastTapGeneration == generation && lastTapRegion == region
+                  val gesture =
+                    when (region) {
+                      "left" -> leftTapGesture
+                      "right" -> rightTapGesture
+                      else -> centerTapGesture
+                    }
+                  val isSeekRegion = region != "center" && gesture == SingleActionGesture.Seek
+                  val tapActionsAllowed = !areControlsLocked && (!anyPanelShown || allowGesturesInPanels)
+                  val isSingleTap = tapActionsAllowed && singleTapEnabled && isSingleTapActionArea
+                  val isDoubleTap =
+                    tapActionsAllowed &&
+                      !singleTapEnabled &&
+                      tapCount == 1 &&
+                      sameMediaAndRegion &&
+                      gap in 0L..doubleTapTimeout &&
+                      (downPosition - lastTapPosition).getDistance() <= doubleTapSlop
+                  val activeSeekFeedback =
+                    seekFeedbackBurst?.takeIf {
+                      isTapSeeking && it.isActiveAt(generation, downTime)
+                    }
+                  val isContinuedSeekTap =
+                    tapActionsAllowed &&
+                      isSeekRegion &&
+                      !requireDoubleTapForEverySeek &&
+                      activeSeekFeedback != null
 
-          awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false)
-            if (statisticsScrolling && down.isConsumed) return@awaitEachGesture
-            beginGesture(down.id.value, down.uptimeMillis)
-            val startPosition = down.position
-            val isVerticalGestureDeadZone =
-              startPosition.y <= topGestureDeadZonePx ||
-                startPosition.y >= size.height - bottomGestureDeadZonePx
-            val subtitleHit = if (!statisticsScrolling && centerVerticalSubtitlePositionGesture) {
+                  if (singleTapEnabled && (!isSingleTapActionArea || !tapActionsAllowed)) {
+                    tapCount = 0
+                    pendingSingleTapRegion = null
+                    isTapSeeking = false
+                    seekFeedbackBurst = null
+                    viewModel.updateSeekAmount(0)
+                    toggleControls()
+                  } else if (isSingleTap || isDoubleTap || isContinuedSeekTap) {
+                    tapCount = 0
+                    pendingSingleTapRegion = null
+                    isTapSeeking = isSeekRegion
+                    if (isSeekRegion) {
+                      val continuesFeedback = activeSeekFeedback?.region == region
+                      if (!continuesFeedback) viewModel.updateSeekAmount(0)
+                      seekFeedbackBurst = TapSeekFeedback(region, generation, pointer.uptimeMillis)
+                      seekFeedbackRevision++
+                    } else {
+                      seekFeedbackBurst = null
+                      viewModel.updateSeekText(null)
+                      viewModel.hideSeekBar()
+                      viewModel.updateSeekAmount(0)
+                    }
+                    when (region) {
+                      "right" -> viewModel.handleRightTap()
+                      "left" -> viewModel.handleLeftTap()
+                      else -> viewModel.handleCenterTap()
+                    }
+                    if (isSeekRegion) {
+                      currentOnSeekRipple(SeekRippleRequest(ripplePosition, isForward = region == "right"))
+                    }
+                  } else {
+                    // A moved, opposite-side or expired tap starts a new candidate. Never drop
+                    // a rapid tap just because it failed the previous sequence's conditions.
+                    tapCount = 1
+                    pendingSingleTapRegion = region
+                    // Keep the visual burst while waiting for a pair, but never seek on this tap.
+                    val keepSeekFeedback =
+                      requireDoubleTapForEverySeek &&
+                        tapActionsAllowed &&
+                        isSeekRegion &&
+                        activeSeekFeedback != null
+                    if (!keepSeekFeedback) {
+                      isTapSeeking = false
+                      seekFeedbackBurst = null
+                      viewModel.updateSeekText(null)
+                      viewModel.hideSeekBar()
+                      viewModel.updateSeekAmount(0)
+                    }
+                  }
+                  lastTapTime = pointer.uptimeMillis
+                  lastTapPosition = downPosition
+                  lastTapRegion = region
+                  lastTapGeneration = generation
+                  pointer.consume()
+                } else {
+                  tapCount = 0
+                  isTapSeeking = false
+                  seekFeedbackBurst = null
+                  lastTapRegion = null
+                  pendingSingleTapRegion = null
+                }
+                break
+              }
+            } while (event.changes.any { it.pressed })
+          } finally {
+            if (!completedTap) {
+              tapCount = 0
+              isTapSeeking = false
+              seekFeedbackBurst = null
+              lastTapRegion = null
+              pendingSingleTapRegion = null
+            }
+            tapInProgress = false
+          }
+        }
+      }.pointerInput(
+        mediaGeneration,
+        areControlsLocked,
+        statisticsScrolling,
+        multipleSpeedGesture,
+        brightnessGesture,
+        volumeGesture,
+        centerVerticalSubtitlePositionGesture,
+        pinchToZoomSubtitles,
+        secondarySubPinchZoomEnabled,
+        enableCenterSwipeUpGesture,
+        externalPanelShown,
+        anyPanelShown,
+        allowGesturesInPanels,
+      ) {
+        if (
+          (
+            !brightnessGesture &&
+              !volumeGesture &&
+              !statisticsScrolling &&
+              !centerVerticalSubtitlePositionGesture &&
+              !enableCenterSwipeUpGesture &&
+              multipleSpeedGesture <= 0f
+          ) ||
+          areControlsLocked ||
+          (anyPanelShown && !allowGesturesInPanels)
+        ) {
+          return@pointerInput
+        }
+
+        awaitEachGesture {
+          val down = awaitFirstDown(requireUnconsumed = false)
+          if (statisticsScrolling && down.isConsumed) return@awaitEachGesture
+          beginGesture(down.id.value, down.uptimeMillis)
+          val startPosition = down.position
+          val isVerticalGestureDeadZone =
+            startPosition.y <= topGestureDeadZonePx ||
+              startPosition.y >= size.height - bottomGestureDeadZonePx
+          val subtitleHit =
+            if (!statisticsScrolling && centerVerticalSubtitlePositionGesture) {
               findSubtitleGestureTarget(
                 subtitleRegions(size.width.toFloat(), size.height.toFloat()),
-                startPosition.x, startPosition.y, 12.dp.toPx(),
+                startPosition.x,
+                startPosition.y,
+                12.dp.toPx(),
               )
-            } else null
-            val touchedSubtitle = subtitleHit?.takeUnless {
+            } else {
+              null
+            }
+          val touchedSubtitle =
+            subtitleHit?.takeUnless {
               MpvConfigOverridePolicy.isOwnedByMpvConf("${it.target.prefix}-pos")
             }
-            // Direct subtitle hits select that track; a center hold elsewhere selects primary.
-            // This is independent of the center swipe-up toggle, so ordinary swipes keep working.
-            val centerSubtitle = if (!statisticsScrolling && subtitleHit == null && centerVerticalSubtitlePositionGesture &&
+          // Direct subtitle hits select that track; a center hold elsewhere selects primary.
+          // This is independent of the center swipe-up toggle, so ordinary swipes keep working.
+          val centerSubtitle =
+            if (!statisticsScrolling &&
+              subtitleHit == null &&
+              centerVerticalSubtitlePositionGesture &&
               !isVerticalGestureDeadZone &&
               startPosition.x in (size.width * 0.35f)..(size.width * 0.65f)
             ) {
               primarySubtitleDragRegion(size.width.toFloat(), size.height.toFloat())
-            } else null
-            val selectedSubtitle = touchedSubtitle ?: centerSubtitle
-            val subtitleGestureGeneration = PlaybackSession.state.value.generation
-            val isStartOnSubtitleText = subtitleHit != null
-            speedHoldPending = !statisticsScrolling && paused == false && multipleSpeedGesture > 0f && selectedSubtitle == null
+            } else {
+              null
+            }
+          val selectedSubtitle = touchedSubtitle ?: centerSubtitle
+          val subtitleGestureGeneration = PlaybackSession.state.value.generation
+          val isStartOnSubtitleText = subtitleHit != null
+          speedHoldPending =
+            !statisticsScrolling &&
+            paused == false &&
+            multipleSpeedGesture > 0f &&
+            selectedSubtitle == null
 
-            // Reset long press tracking at the start of each gesture
-            longPressTriggeredDuringTouch = false
+          // Reset long press tracking at the start of each gesture
+          longPressTriggeredDuringTouch = false
 
-            // State for vertical gestures (volume/brightness)
-            var startingY = 0f
-            var mpvVolumeStartingY = 0f
-            var originalVolumePercent = currentVolumePercent
-            var originalMPVVolume = currentMPVVolume
-            var originalBrightness = currentBrightness
-            var lastVolumePercentValue = currentVolumePercent
-            var lastMPVVolumeValue = currentMPVVolume ?: 100
-            var lastBrightnessValue = currentBrightness
-            var statisticsLastY = startPosition.y
-            var statisticsRemainder = 0f
-            val statisticsLineHeight = 24.dp.toPx()
-            val brightnessGestureSens = 0.001f
-            // Match the anime4k gesture feel, but snap to whole-number volume steps.
-            val volumeGestureSens = 0.1f
-            val mpvVolumeGestureSens = 0.1f
-            var subtitleDragStartY = startPosition.y
-            var subtitleDragPosition = selectedSubtitle?.position ?: 0f
-            var lastDraggedPosition: Float? = null
-            var heldSubScale = selectedSubtitle?.scale ?: 1f
-            var heldScaleChanged = false
-            val secondaryTrackId =
-              if (selectedSubtitle?.target == SubtitleGestureTarget.Primary && secondarySubPinchZoomEnabled) {
-                getTrackSelectionId("secondary-sid")
-              } else 0
-            var heldSecondaryScale =
-              if (secondaryTrackId > 0) {
-                PlaybackSession.getPropertyFloat("secondary-sub-scale") ?: subtitlesPreferences.secondarySubScale.get()
-              } else 1f
-            var heldSecondaryScaleChanged = false
-            var pinchStartDistance = 0f
-            var pinchStartScale = heldSubScale
-            var pinchStartSecondaryScale = heldSecondaryScale
-            var pinchFirstPointerId: Long? = null
-            var pinchSecondPointerId: Long? = null
-            var returningFromPinch = false
-            var heldPinchStarted = false
-            var linkedHighlightShown = false
-            // A moving finger is a swipe, not a pending subtitle long-press.
-            var subtitleHoldEligible = selectedSubtitle != null
-            var subtitleHighlightShown = false
+          // State for vertical gestures (volume/brightness)
+          var startingY = 0f
+          var mpvVolumeStartingY = 0f
+          var originalVolumePercent = currentVolumePercent
+          var originalMPVVolume = currentMPVVolume
+          var originalBrightness = currentBrightness
+          var lastVolumePercentValue = currentVolumePercent
+          var lastMPVVolumeValue = currentMPVVolume ?: 100
+          var lastBrightnessValue = currentBrightness
+          var statisticsLastY = startPosition.y
+          var statisticsRemainder = 0f
+          val statisticsLineHeight = 24.dp.toPx()
+          val brightnessGestureSens = 0.001f
+          // Match the anime4k gesture feel, but snap to whole-number volume steps.
+          val volumeGestureSens = 0.1f
+          val mpvVolumeGestureSens = 0.1f
+          var subtitleDragStartY = startPosition.y
+          var subtitleDragPosition = selectedSubtitle?.position ?: 0f
+          var lastDraggedPosition: Float? = null
+          var heldSubScale = selectedSubtitle?.scale ?: 1f
+          var heldScaleChanged = false
+          val secondaryTrackId =
+            if (selectedSubtitle?.target == SubtitleGestureTarget.Primary && secondarySubPinchZoomEnabled) {
+              getTrackSelectionId("secondary-sid")
+            } else {
+              0
+            }
+          var heldSecondaryScale =
+            if (secondaryTrackId > 0) {
+              PlaybackSession.getPropertyFloat("secondary-sub-scale") ?: subtitlesPreferences.secondarySubScale.get()
+            } else {
+              1f
+            }
+          var heldSecondaryScaleChanged = false
+          var pinchStartDistance = 0f
+          var pinchStartScale = heldSubScale
+          var pinchStartSecondaryScale = heldSecondaryScale
+          var pinchFirstPointerId: Long? = null
+          var pinchSecondPointerId: Long? = null
+          var returningFromPinch = false
+          var heldPinchStarted = false
+          var linkedHighlightShown = false
+          // A moving finger is a swipe, not a pending subtitle long-press.
+          var subtitleHoldEligible = selectedSubtitle != null
+          var subtitleHighlightShown = false
 
-            // Original speed for long press
-            var originalSpeed = playbackSpeed ?: 1f
+          // Original speed for long press
+          var originalSpeed = playbackSpeed ?: 1f
 
-            // Track long press separately
-            var longPressTriggered = false
-            var isSubtitleHoldActive = false
-            val longPressDelay = viewConfiguration.longPressTimeoutMillis
-            var longPressJob =
-              coroutineScope.launch {
-                delay(longPressDelay)
-                if (!statisticsScrolling && !longPressTriggered && PlaybackSession.isCurrentGeneration(subtitleGestureGeneration)) {
-                  // Gesture movement cancels the subtitle hold before this callback runs.
-                  if (subtitleHoldEligible || !isStartOnSubtitleText) {
-                    if (subtitleHoldEligible && claimGesture(GestureOwner.SUBTITLE_VERTICAL)) {
-                      longPressTriggered = true
-                      isSubtitleHoldActive = true
-                      speedHoldPending = false
-                      suppressHorizontalSeekForPointer = true
-                      viewModel.setSubtitleGestureHighlight(true, selectedSubtitle?.target)
-                      subtitleHighlightShown = true
-                      longPressTriggeredDuringTouch = true
-                      actionHaptics.pickup()
-                      viewModel.playerUpdate.update {
-                        PlayerUpdates.ShowText(
-                          context.getString(
-                            if (pinchToZoomSubtitles) R.string.player_move_resize_subtitles_hint
-                            else R.string.player_move_subtitles_hint,
-                          ),
-                        )
-                      }
-                    } else if (
-                      selectedSubtitle == null &&
-                      paused == false &&
-                      multipleSpeedGesture > 0f &&
-                      claimGesture(GestureOwner.SPEED)
-                    ) {
-                      speedHoldPending = false
-                      longPressTriggered = true
-                      isLongPressing = true
-                      longPressTriggeredDuringTouch = true
-                      actionHaptics.pickup()
-                      originalSpeed = playbackSpeed ?: 1f
-                      val targetSpeed = nearestHoldSpeedPreset(multipleSpeedGesture)
-                      viewModel.setGesturePlaybackSpeed(targetSpeed, subtitleGestureGeneration, ramp = true)
-
-                      isDynamicSpeedControlActive = true
-                      hasSwipedEnough = false
-                      dynamicSpeedStartX = startPosition.x
-                      dynamicSpeedStartValue = targetSpeed
-                      lastAppliedSpeed = targetSpeed
-                      viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(targetSpeed) }
+          // Track long press separately
+          var longPressTriggered = false
+          var isSubtitleHoldActive = false
+          val longPressDelay = viewConfiguration.longPressTimeoutMillis
+          var longPressJob =
+            coroutineScope.launch {
+              delay(longPressDelay)
+              if (!statisticsScrolling &&
+                !longPressTriggered &&
+                PlaybackSession.isCurrentGeneration(subtitleGestureGeneration)
+              ) {
+                // Gesture movement cancels the subtitle hold before this callback runs.
+                if (subtitleHoldEligible || !isStartOnSubtitleText) {
+                  if (subtitleHoldEligible && claimGesture(GestureOwner.SUBTITLE_VERTICAL)) {
+                    longPressTriggered = true
+                    isSubtitleHoldActive = true
+                    speedHoldPending = false
+                    suppressHorizontalSeekForPointer = true
+                    viewModel.setSubtitleGestureHighlight(true, selectedSubtitle?.target)
+                    subtitleHighlightShown = true
+                    longPressTriggeredDuringTouch = true
+                    actionHaptics.pickup()
+                    viewModel.playerUpdate.update {
+                      PlayerUpdates.ShowText(
+                        context.getString(
+                          if (pinchToZoomSubtitles) {
+                            R.string.player_move_resize_subtitles_hint
+                          } else {
+                            R.string.player_move_subtitles_hint
+                          },
+                        ),
+                      )
                     }
+                  } else if (
+                    selectedSubtitle == null &&
+                    paused == false &&
+                    multipleSpeedGesture > 0f &&
+                    claimGesture(GestureOwner.SPEED)
+                  ) {
+                    speedHoldPending = false
+                    longPressTriggered = true
+                    isLongPressing = true
+                    longPressTriggeredDuringTouch = true
+                    actionHaptics.pickup()
+                    originalSpeed = playbackSpeed ?: 1f
+                    val targetSpeed = nearestHoldSpeedPreset(multipleSpeedGesture)
+                    viewModel.setGesturePlaybackSpeed(targetSpeed, subtitleGestureGeneration, ramp = true)
+
+                    isDynamicSpeedControlActive = true
+                    hasSwipedEnough = false
+                    dynamicSpeedStartX = startPosition.x
+                    dynamicSpeedStartValue = targetSpeed
+                    lastAppliedSpeed = targetSpeed
+                    viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(targetSpeed) }
                   }
                 }
               }
+            }
 
-            var gestureType: String? = null
+          var gestureType: String? = null
 
-            try {
-              do {
-                val event = awaitPointerEvent()
-                val pointerCount = event.changes.count { it.pressed }
+          try {
+            do {
+              val event = awaitPointerEvent()
+              val pointerCount = event.changes.count { it.pressed }
 
-                if (gestureOwner == GestureOwner.PLAYLIST) {
-                  speedHoldPending = false
-                  longPressJob.cancel()
-                  continue
-                }
+              if (gestureOwner == GestureOwner.PLAYLIST) {
+                speedHoldPending = false
+                longPressJob.cancel()
+                continue
+              }
 
-                if (isSubtitleHoldActive && gestureOwner == GestureOwner.SUBTITLE_VERTICAL && pointerCount > 1) {
-                  // Keep the hold's locked track even when the pinch midpoint is nowhere near
-                  // the subtitle text. Two fingers resize only; midpoint drift must not move it.
-                  longPressJob.cancel()
-                  returningFromPinch = true
-                  val pressed = event.changes.filter { it.pressed }
-                  val selected = selectedSubtitle
-                  if (pointerCount == 2 && pinchToZoomSubtitles && selected != null &&
-                    PlaybackSession.state.value.generation == subtitleGestureGeneration &&
-                    getTrackSelectionId(selected.target.selectionProperty) == selected.trackId &&
-                    !MpvConfigOverridePolicy.isOwnedByMpvConf("${selected.target.prefix}-scale")
-                  ) {
-                    val firstPointerId = pressed[0].id.value
-                    val secondPointerId = pressed[1].id.value
-                    val distance = (pressed[0].position - pressed[1].position).getDistance()
-                    if (distance.isFinite() && distance >= 1f) {
-                      if (firstPointerId != pinchFirstPointerId || secondPointerId != pinchSecondPointerId) {
-                        pinchFirstPointerId = firstPointerId
-                        pinchSecondPointerId = secondPointerId
-                        pinchStartDistance = distance
-                        pinchStartScale = heldSubScale
-                        pinchStartSecondaryScale = heldSecondaryScale
-                        heldPinchStarted = false
-                      } else {
-                        if (abs(distance - pinchStartDistance) > 5f) heldPinchStarted = true
-                        if (heldPinchStarted) {
-                          val ratio = distance / pinchStartDistance
-                          val scale = (pinchStartScale * ratio).coerceIn(0.1f, 5f)
-                          if (abs(scale - heldSubScale) > 0.001f) {
-                            heldSubScale = scale
-                            heldScaleChanged = true
-                            viewModel.previewSubtitleScale(scale, selected.target)
-                          }
-                          val linkSecondary = selected.target == SubtitleGestureTarget.Primary &&
-                            secondarySubPinchZoomEnabled && secondaryTrackId > 0 &&
+              if (isSubtitleHoldActive && gestureOwner == GestureOwner.SUBTITLE_VERTICAL && pointerCount > 1) {
+                // Keep the hold's locked track even when the pinch midpoint is nowhere near
+                // the subtitle text. Two fingers resize only; midpoint drift must not move it.
+                longPressJob.cancel()
+                returningFromPinch = true
+                val pressed = event.changes.filter { it.pressed }
+                val selected = selectedSubtitle
+                if (pointerCount == 2 &&
+                  pinchToZoomSubtitles &&
+                  selected != null &&
+                  PlaybackSession.state.value.generation == subtitleGestureGeneration &&
+                  getTrackSelectionId(selected.target.selectionProperty) == selected.trackId &&
+                  !MpvConfigOverridePolicy.isOwnedByMpvConf("${selected.target.prefix}-scale")
+                ) {
+                  val firstPointerId = pressed[0].id.value
+                  val secondPointerId = pressed[1].id.value
+                  val distance = (pressed[0].position - pressed[1].position).getDistance()
+                  if (distance.isFinite() && distance >= 1f) {
+                    if (firstPointerId != pinchFirstPointerId || secondPointerId != pinchSecondPointerId) {
+                      pinchFirstPointerId = firstPointerId
+                      pinchSecondPointerId = secondPointerId
+                      pinchStartDistance = distance
+                      pinchStartScale = heldSubScale
+                      pinchStartSecondaryScale = heldSecondaryScale
+                      heldPinchStarted = false
+                    } else {
+                      if (abs(distance - pinchStartDistance) > 5f) heldPinchStarted = true
+                      if (heldPinchStarted) {
+                        val ratio = distance / pinchStartDistance
+                        val scale = (pinchStartScale * ratio).coerceIn(0.1f, 5f)
+                        if (abs(scale - heldSubScale) > 0.001f) {
+                          heldSubScale = scale
+                          heldScaleChanged = true
+                          viewModel.previewSubtitleScale(scale, selected.target)
+                        }
+                        val linkSecondary =
+                          selected.target == SubtitleGestureTarget.Primary &&
+                            secondarySubPinchZoomEnabled &&
+                            secondaryTrackId > 0 &&
                             getTrackSelectionId("secondary-sid") == secondaryTrackId &&
                             !MpvConfigOverridePolicy.isOwnedByMpvConf("secondary-sub-scale")
-                          if (linkSecondary) {
-                            if (!linkedHighlightShown) {
-                              viewModel.setSubtitleGestureHighlight(false)
-                              viewModel.setSubtitleGestureHighlight(true)
-                              linkedHighlightShown = true
-                            }
-                            val secondaryScale = (pinchStartSecondaryScale * ratio).coerceIn(0.1f, 5f)
-                            if (abs(secondaryScale - heldSecondaryScale) > 0.001f) {
-                              heldSecondaryScale = secondaryScale
-                              heldSecondaryScaleChanged = true
-                              viewModel.previewSubtitleScale(secondaryScale, SubtitleGestureTarget.Secondary)
-                            }
+                        if (linkSecondary) {
+                          if (!linkedHighlightShown) {
+                            viewModel.setSubtitleGestureHighlight(false)
+                            viewModel.setSubtitleGestureHighlight(true)
+                            linkedHighlightShown = true
                           }
-                          viewModel.playerUpdate.update {
-                            PlayerUpdates.SubtitleZoom(heldSubScale, selected.target == SubtitleGestureTarget.Secondary)
+                          val secondaryScale = (pinchStartSecondaryScale * ratio).coerceIn(0.1f, 5f)
+                          if (abs(secondaryScale - heldSecondaryScale) > 0.001f) {
+                            heldSecondaryScale = secondaryScale
+                            heldSecondaryScaleChanged = true
+                            viewModel.previewSubtitleScale(secondaryScale, SubtitleGestureTarget.Secondary)
                           }
+                        }
+                        viewModel.playerUpdate.update {
+                          PlayerUpdates.SubtitleZoom(heldSubScale, selected.target == SubtitleGestureTarget.Secondary)
                         }
                       }
                     }
-                  } else {
-                    // Rebase after an extra finger or a temporarily unavailable track/property.
-                    pinchFirstPointerId = null
-                    pinchSecondPointerId = null
                   }
-                  pressed.forEach { it.consume() }
+                } else {
+                  // Rebase after an extra finger or a temporarily unavailable track/property.
+                  pinchFirstPointerId = null
+                  pinchSecondPointerId = null
+                }
+                pressed.forEach { it.consume() }
+                continue
+              }
+
+              if (pointerCount == 1) {
+                if (returningFromPinch && isSubtitleHoldActive) {
+                  // Either finger may remain. Its current position becomes the new drag
+                  // origin, so lifting a finger cannot make the subtitle jump.
+                  subtitleDragStartY =
+                    event.changes
+                      .first { it.pressed }
+                      .position.y
+                  subtitleDragPosition = lastDraggedPosition ?: selectedSubtitle?.position ?: subtitleDragPosition
+                  gestureType = "subtitle_vertical"
+                  pinchFirstPointerId = null
+                  pinchSecondPointerId = null
+                  returningFromPinch = false
+                  event.changes.forEach { it.consume() }
                   continue
                 }
+                event.changes.forEach { change ->
+                  if (change.pressed) {
+                    val currentPosition = change.position
+                    val deltaX = currentPosition.x - startPosition.x
+                    val deltaY = currentPosition.y - startPosition.y
+                    if (subtitleHoldEligible &&
+                      sqrt(deltaX * deltaX + deltaY * deltaY) > viewConfiguration.touchSlop
+                    ) {
+                      subtitleHoldEligible = false
+                      longPressJob.cancel()
+                    }
 
-                if (pointerCount == 1) {
-                  if (returningFromPinch && isSubtitleHoldActive) {
-                    // Either finger may remain. Its current position becomes the new drag
-                    // origin, so lifting a finger cannot make the subtitle jump.
-                    subtitleDragStartY = event.changes.first { it.pressed }.position.y
-                    subtitleDragPosition = lastDraggedPosition ?: selectedSubtitle?.position ?: subtitleDragPosition
-                    gestureType = "subtitle_vertical"
-                    pinchFirstPointerId = null
-                    pinchSecondPointerId = null
-                    returningFromPinch = false
-                    event.changes.forEach { it.consume() }
-                    continue
-                  }
-                  event.changes.forEach { change ->
-                    if (change.pressed) {
-                      val currentPosition = change.position
-                      val deltaX = currentPosition.x - startPosition.x
-                      val deltaY = currentPosition.y - startPosition.y
-                      if (subtitleHoldEligible && sqrt(deltaX * deltaX + deltaY * deltaY) > viewConfiguration.touchSlop) {
-                        subtitleHoldEligible = false
-                        longPressJob.cancel()
-                      }
+                    // Determine gesture type based on initial drag direction
+                    if (gestureType == null && (abs(deltaX) > 20f || abs(deltaY) > 20f)) {
+                      val isHorizontalDrag = abs(deltaX) > abs(deltaY) * 1.5f
+                      val isVerticalDrag = abs(deltaY) > abs(deltaX) * 1.5f
 
-                      // Determine gesture type based on initial drag direction
-                      if (gestureType == null && (abs(deltaX) > 20f || abs(deltaY) > 20f)) {
-                        val isHorizontalDrag = abs(deltaX) > abs(deltaY) * 1.5f
-                        val isVerticalDrag = abs(deltaY) > abs(deltaX) * 1.5f
-
-                        if (isSubtitleHoldActive) {
-                          if (isVerticalDrag && (isStartOnSubtitleText || !isVerticalGestureDeadZone)) {
-                            gestureType = "subtitle_vertical"
-                          } else {
-                            return@forEach
-                          }
+                      if (isSubtitleHoldActive) {
+                        if (isVerticalDrag && (isStartOnSubtitleText || !isVerticalGestureDeadZone)) {
+                          gestureType = "subtitle_vertical"
                         } else {
-                          if (
-                            speedHoldPending &&
-                            isHorizontalDrag &&
-                            change.uptimeMillis - down.uptimeMillis >= SPEED_HOLD_INTENT_THRESHOLD_MS
-                          ) {
-                            suppressHorizontalSeekForPointer = true
-                          }
-                          speedHoldPending = false
-                          val isCenterTouch =
-                            enableCenterSwipeUpGesture && startPosition.x in (size.width / 3f)..(size.width * 2f / 3f)
-                          if (statisticsScrolling && isVerticalDrag && !isVerticalGestureDeadZone &&
-                            claimGesture(GestureOwner.VERTICAL)
-                          ) {
-                            longPressJob.cancel()
-                            gestureType = "stats_scroll"
-                          } else if (
-                            isLongPressing &&
-                              isDynamicSpeedControlActive &&
-                              gestureOwner == GestureOwner.SPEED &&
-                              (abs(deltaX) > 10f || abs(deltaY) > 10f)
-                          ) {
-                            longPressJob.cancel()
-                            gestureType = "speed_control"
-                          } else if (isCenterTouch && isVerticalDrag) {
-                            longPressJob.cancel()
-                            // The ancestor handles playlist swipes across the full center strip.
-                            return@forEach
-                          } else {
-                            // Cancel long press if drag started
-                            longPressJob.cancel()
-
-                            // Check if we're in long press mode with dynamic speed control
-                            if (
-                              isLongPressing &&
-                              isDynamicSpeedControlActive &&
-                              gestureOwner == GestureOwner.SPEED &&
-                              abs(deltaX) > 10f
-                            ) {
-                              gestureType = "speed_control"
-                            } else {
-                              gestureType =
-                                if (isHorizontalDrag) {
-                                  "horizontal"
-                                } else if (
-                                  isVerticalDrag &&
-                                  !isVerticalGestureDeadZone &&
-                                  claimGesture(GestureOwner.VERTICAL)
-                                ) {
-                                  "vertical"
-                                } else {
-                                  null
-                                }
-                            }
-                          }
+                          return@forEach
                         }
+                      } else {
+                        if (
+                          speedHoldPending &&
+                          isHorizontalDrag &&
+                          change.uptimeMillis - down.uptimeMillis >= SPEED_HOLD_INTENT_THRESHOLD_MS
+                        ) {
+                          suppressHorizontalSeekForPointer = true
+                        }
+                        speedHoldPending = false
+                        val isCenterTouch =
+                          enableCenterSwipeUpGesture && startPosition.x in (size.width / 3f)..(size.width * 2f / 3f)
+                        if (statisticsScrolling &&
+                          isVerticalDrag &&
+                          !isVerticalGestureDeadZone &&
+                          claimGesture(GestureOwner.VERTICAL)
+                        ) {
+                          longPressJob.cancel()
+                          gestureType = "stats_scroll"
+                        } else if (
+                          isLongPressing &&
+                          isDynamicSpeedControlActive &&
+                          gestureOwner == GestureOwner.SPEED &&
+                          (abs(deltaX) > 10f || abs(deltaY) > 10f)
+                        ) {
+                          longPressJob.cancel()
+                          gestureType = "speed_control"
+                        } else if (isCenterTouch && isVerticalDrag) {
+                          longPressJob.cancel()
+                          // The ancestor handles playlist swipes across the full center strip.
+                          return@forEach
+                        } else {
+                          // Cancel long press if drag started
+                          longPressJob.cancel()
 
-                        // Initialize gesture-specific state
-                        when (gestureType) {
-                          "stats_scroll" -> {
-                            isVerticalGestureActive = true
-                            statisticsLastY = currentPosition.y
-                          }
-                          "speed_control" -> {
-                            dynamicSpeedStartX = currentPosition.x
-                            dynamicSpeedStartValue = PlaybackSession.getPropertyFloat("speed") ?: multipleSpeedGesture
-                          }
-                          "vertical" -> {
-                            if ((brightnessGesture || volumeGesture) && !isLongPressing) {
-                              isVerticalGestureActive = true
-                              startingY = 0f
-                              mpvVolumeStartingY = 0f
-                              originalVolumePercent = currentVolumePercent
-                              originalMPVVolume = currentMPVVolume
-                              originalBrightness = currentBrightness
-                              lastVolumePercentValue = currentVolumePercent
-                              lastMPVVolumeValue = currentMPVVolume ?: 100
-                              lastBrightnessValue = currentBrightness
-                            }
-                          }
-                          "subtitle_vertical" -> {
-                            isVerticalGestureActive = true
-                            subtitleDragStartY = currentPosition.y
-                            subtitleDragPosition = selectedSubtitle?.position ?: subtitleDragPosition
-                            if (!subtitleHighlightShown) {
-                              viewModel.setSubtitleGestureHighlight(true, selectedSubtitle?.target)
-                              subtitleHighlightShown = true
-                            }
-                            startingY = 0f
+                          // Check if we're in long press mode with dynamic speed control
+                          if (
+                            isLongPressing &&
+                            isDynamicSpeedControlActive &&
+                            gestureOwner == GestureOwner.SPEED &&
+                            abs(deltaX) > 10f
+                          ) {
+                            gestureType = "speed_control"
+                          } else {
+                            gestureType =
+                              if (isHorizontalDrag) {
+                                "horizontal"
+                              } else if (
+                                isVerticalDrag &&
+                                !isVerticalGestureDeadZone &&
+                                claimGesture(GestureOwner.VERTICAL)
+                              ) {
+                                "vertical"
+                              } else {
+                                null
+                              }
                           }
                         }
                       }
 
-                      // Handle the appropriate gesture
+                      // Initialize gesture-specific state
                       when (gestureType) {
                         "stats_scroll" -> {
-                          statisticsRemainder += statisticsLastY - currentPosition.y
+                          isVerticalGestureActive = true
                           statisticsLastY = currentPosition.y
-                          val lines = (statisticsRemainder / statisticsLineHeight).toInt().coerceIn(-4, 4)
-                          if (lines != 0) {
-                            PlaybackSession.scrollStatisticsPage(lines)
-                            statisticsRemainder -= lines * statisticsLineHeight
-                          }
-                          change.consume()
                         }
                         "speed_control" -> {
-                          if (isLongPressing && isDynamicSpeedControlActive && paused == false) {
-                            change.consume()
-
-                            val speedPresets = holdSpeedPresets
-                            val screenWidth = size.width.toFloat()
-
-                            val deltaX = currentPosition.x - dynamicSpeedStartX
-                            val deltaY = currentPosition.y - startPosition.y
-                            val swipeDetectionThreshold = 10.dp.toPx()
-                            val speedLockThreshold = 60.dp.toPx()
-
-                            if (deltaY < -speedLockThreshold && !isSpeedLocked) {
-                              isSpeedLocked = true
-                              actionHaptics.pickup()
-                              viewModel.playerUpdate.update {
-                                PlayerUpdates.ShowText(context.getString(R.string.player_speed_gesture_locked))
-                              }
-                            } else if (deltaY > speedLockThreshold && isSpeedLocked) {
-                              isSpeedLocked = false
-                              isDynamicSpeedControlActive = false
-                              originalSpeed = playerPreferences.defaultSpeed.get()
-                              viewModel.setGesturePlaybackSpeed(originalSpeed, subtitleGestureGeneration)
-                              actionHaptics.pickup()
-                              viewModel.playerUpdate.update {
-                                PlayerUpdates.ShowText(context.getString(R.string.player_speed_gesture_restored))
-                              }
-                              return@forEach
-                            }
-
-                            if (!hasSwipedEnough && abs(deltaX) >= swipeDetectionThreshold) {
-                              hasSwipedEnough = true
-                              viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(lastAppliedSpeed) }
-                            }
-
-                            if (hasSwipedEnough) {
-                              val presetsRange = speedPresets.size - 1
-                              val indexDelta = (deltaX / screenWidth) * presetsRange * 3.5f
-
-                              val startIndex =
-                                speedPresets
-                                  .indexOfFirst {
-                                    abs(it - dynamicSpeedStartValue) < 0.01f
-                                  }.takeIf { it >= 0 } ?: speedPresets
-                                  .indexOfFirst {
-                                    it >= dynamicSpeedStartValue
-                                  }.takeIf { it >= 0 } ?: speedPresets.lastIndex
-
-                              val newIndex = (startIndex + indexDelta.toInt()).coerceIn(0, speedPresets.size - 1)
-                              val newSpeed = speedPresets[newIndex]
-
-                              if (abs(lastAppliedSpeed - newSpeed) > 0.01f) {
-                                actionHaptics.tick()
-                                lastAppliedSpeed = newSpeed
-                                viewModel.setGesturePlaybackSpeed(newSpeed, subtitleGestureGeneration)
-                                viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(newSpeed) }
-                              }
-                            }
-                          }
-                        }
-                        "subtitle_vertical" -> {
-                          if (isSubtitleHoldActive && gestureOwner == GestureOwner.SUBTITLE_VERTICAL) {
-                            val selected = selectedSubtitle
-                            if (selected != null && PlaybackSession.state.value.generation == subtitleGestureGeneration &&
-                              getTrackSelectionId(selected.target.selectionProperty) == selected.trackId
-                            ) {
-                              // Lock the target for this entire touch, even if the tracks cross.
-                              val newPosition = draggedSubtitlePosition(
-                                subtitleDragPosition, currentPosition.y - subtitleDragStartY, selected.positionHeight,
-                              )
-                              viewModel.previewSubtitlePosition(newPosition, selected.target)
-                              lastDraggedPosition = newPosition
-                            }
-                            change.consume()
-                          }
+                          dynamicSpeedStartX = currentPosition.x
+                          dynamicSpeedStartValue = PlaybackSession.getPropertyFloat("speed") ?: multipleSpeedGesture
                         }
                         "vertical" -> {
                           if ((brightnessGesture || volumeGesture) && !isLongPressing) {
-                            val amount = currentPosition.y - startPosition.y
+                            isVerticalGestureActive = true
+                            startingY = 0f
+                            mpvVolumeStartingY = 0f
+                            originalVolumePercent = currentVolumePercent
+                            originalMPVVolume = currentMPVVolume
+                            originalBrightness = currentBrightness
+                            lastVolumePercentValue = currentVolumePercent
+                            lastMPVVolumeValue = currentMPVVolume ?: 100
+                            lastBrightnessValue = currentBrightness
+                          }
+                        }
+                        "subtitle_vertical" -> {
+                          isVerticalGestureActive = true
+                          subtitleDragStartY = currentPosition.y
+                          subtitleDragPosition = selectedSubtitle?.position ?: subtitleDragPosition
+                          if (!subtitleHighlightShown) {
+                            viewModel.setSubtitleGestureHighlight(true, selectedSubtitle?.target)
+                            subtitleHighlightShown = true
+                          }
+                          startingY = 0f
+                        }
+                      }
+                    }
 
-                            val changeVolume: () -> Unit = {
-                              val isIncreasingVolumeBoost: (Float) -> Boolean = {
-                                volumeBoostingCap > 0 &&
-                                  currentVolumePercent == 100 &&
-                                  (currentMPVVolume ?: 100) - 100 < volumeBoostingCap &&
-                                  amount < 0
-                              }
-                              val isDecreasingVolumeBoost: (Float) -> Boolean = {
-                                volumeBoostingCap > 0 &&
-                                  currentVolumePercent == 100 &&
-                                  (currentMPVVolume ?: 100) - 100 in 1..volumeBoostingCap &&
-                                  amount > 0
-                              }
+                    // Handle the appropriate gesture
+                    when (gestureType) {
+                      "stats_scroll" -> {
+                        statisticsRemainder += statisticsLastY - currentPosition.y
+                        statisticsLastY = currentPosition.y
+                        val lines = (statisticsRemainder / statisticsLineHeight).toInt().coerceIn(-4, 4)
+                        if (lines != 0) {
+                          PlaybackSession.scrollStatisticsPage(lines)
+                          statisticsRemainder -= lines * statisticsLineHeight
+                        }
+                        change.consume()
+                      }
+                      "speed_control" -> {
+                        if (isLongPressing && isDynamicSpeedControlActive && paused == false) {
+                          change.consume()
 
-                              if (isIncreasingVolumeBoost(amount) || isDecreasingVolumeBoost(amount)) {
-                                if (mpvVolumeStartingY == 0f) {
-                                  startingY = 0f
-                                  originalVolumePercent = currentVolumePercent
-                                  mpvVolumeStartingY = currentPosition.y
-                                }
-                                val newMPVVolume =
-                                  calculateNewVerticalGestureValue(
-                                    originalMPVVolume ?: 100,
-                                    mpvVolumeStartingY,
-                                    currentPosition.y,
-                                    mpvVolumeGestureSens,
-                                  ).coerceIn(100..volumeBoostingCap + 100)
+                          val speedPresets = holdSpeedPresets
+                          val screenWidth = size.width.toFloat()
 
-                                if (newMPVVolume != lastMPVVolumeValue) {
-                                  viewModel.changeMPVVolumeTo(newMPVVolume)
-                                  volumeHaptics.move(lastMPVVolumeValue.toFloat(), newMPVVolume.toFloat())
-                                  lastMPVVolumeValue = newMPVVolume
-                                }
-                              } else {
-                                if (startingY == 0f) {
-                                  mpvVolumeStartingY = 0f
-                                  originalMPVVolume = currentMPVVolume
-                                  startingY = currentPosition.y
-                                }
-                                val newVolumePercent =
-                                  calculateNewVerticalGestureValue(
-                                    originalVolumePercent,
-                                    startingY,
-                                    currentPosition.y,
-                                    volumeGestureSens,
-                                  ).coerceIn(0, 100)
+                          val deltaX = currentPosition.x - dynamicSpeedStartX
+                          val deltaY = currentPosition.y - startPosition.y
+                          val swipeDetectionThreshold = 10.dp.toPx()
+                          val speedLockThreshold = 60.dp.toPx()
 
-                                if (newVolumePercent != lastVolumePercentValue) {
-                                  viewModel.changeVolumePercentTo(newVolumePercent)
-                                  volumeHaptics.move(lastVolumePercentValue.toFloat(), newVolumePercent.toFloat())
-                                  lastVolumePercentValue = newVolumePercent
-                                }
-                              }
-
-                              viewModel.displayVolumeSlider()
+                          if (deltaY < -speedLockThreshold && !isSpeedLocked) {
+                            isSpeedLocked = true
+                            actionHaptics.pickup()
+                            viewModel.playerUpdate.update {
+                              PlayerUpdates.ShowText(context.getString(R.string.player_speed_gesture_locked))
                             }
-                            val changeBrightness: () -> Unit = {
-                              if (startingY == 0f) startingY = currentPosition.y
-                              val newBrightness =
+                          } else if (deltaY > speedLockThreshold && isSpeedLocked) {
+                            isSpeedLocked = false
+                            isDynamicSpeedControlActive = false
+                            originalSpeed = playerPreferences.defaultSpeed.get()
+                            viewModel.setGesturePlaybackSpeed(originalSpeed, subtitleGestureGeneration)
+                            actionHaptics.pickup()
+                            viewModel.playerUpdate.update {
+                              PlayerUpdates.ShowText(context.getString(R.string.player_speed_gesture_restored))
+                            }
+                            return@forEach
+                          }
+
+                          if (!hasSwipedEnough && abs(deltaX) >= swipeDetectionThreshold) {
+                            hasSwipedEnough = true
+                            viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(lastAppliedSpeed) }
+                          }
+
+                          if (hasSwipedEnough) {
+                            val presetsRange = speedPresets.size - 1
+                            val indexDelta = (deltaX / screenWidth) * presetsRange * 3.5f
+
+                            val startIndex =
+                              speedPresets
+                                .indexOfFirst {
+                                  abs(it - dynamicSpeedStartValue) < 0.01f
+                                }.takeIf { it >= 0 } ?: speedPresets
+                                .indexOfFirst {
+                                  it >= dynamicSpeedStartValue
+                                }.takeIf { it >= 0 } ?: speedPresets.lastIndex
+
+                            val newIndex = (startIndex + indexDelta.toInt()).coerceIn(0, speedPresets.size - 1)
+                            val newSpeed = speedPresets[newIndex]
+
+                            if (abs(lastAppliedSpeed - newSpeed) > 0.01f) {
+                              actionHaptics.tick()
+                              lastAppliedSpeed = newSpeed
+                              viewModel.setGesturePlaybackSpeed(newSpeed, subtitleGestureGeneration)
+                              viewModel.playerUpdate.update { PlayerUpdates.DynamicSpeedControl(newSpeed) }
+                            }
+                          }
+                        }
+                      }
+                      "subtitle_vertical" -> {
+                        if (isSubtitleHoldActive && gestureOwner == GestureOwner.SUBTITLE_VERTICAL) {
+                          val selected = selectedSubtitle
+                          if (selected != null &&
+                            PlaybackSession.state.value.generation == subtitleGestureGeneration &&
+                            getTrackSelectionId(selected.target.selectionProperty) == selected.trackId
+                          ) {
+                            // Lock the target for this entire touch, even if the tracks cross.
+                            val newPosition =
+                              draggedSubtitlePosition(
+                                subtitleDragPosition,
+                                currentPosition.y - subtitleDragStartY,
+                                selected.positionHeight,
+                              )
+                            viewModel.previewSubtitlePosition(newPosition, selected.target)
+                            lastDraggedPosition = newPosition
+                          }
+                          change.consume()
+                        }
+                      }
+                      "vertical" -> {
+                        if ((brightnessGesture || volumeGesture) && !isLongPressing) {
+                          val amount = currentPosition.y - startPosition.y
+
+                          val changeVolume: () -> Unit = {
+                            val isIncreasingVolumeBoost: (Float) -> Boolean = {
+                              volumeBoostingCap > 0 &&
+                                currentVolumePercent == 100 &&
+                                (currentMPVVolume ?: 100) - 100 < volumeBoostingCap &&
+                                amount < 0
+                            }
+                            val isDecreasingVolumeBoost: (Float) -> Boolean = {
+                              volumeBoostingCap > 0 &&
+                                currentVolumePercent == 100 &&
+                                (currentMPVVolume ?: 100) - 100 in 1..volumeBoostingCap &&
+                                amount > 0
+                            }
+
+                            if (isIncreasingVolumeBoost(amount) || isDecreasingVolumeBoost(amount)) {
+                              if (mpvVolumeStartingY == 0f) {
+                                startingY = 0f
+                                originalVolumePercent = currentVolumePercent
+                                mpvVolumeStartingY = currentPosition.y
+                              }
+                              val newMPVVolume =
                                 calculateNewVerticalGestureValue(
-                                  originalBrightness,
+                                  originalMPVVolume ?: 100,
+                                  mpvVolumeStartingY,
+                                  currentPosition.y,
+                                  mpvVolumeGestureSens,
+                                ).coerceIn(100..volumeBoostingCap + 100)
+
+                              if (newMPVVolume != lastMPVVolumeValue) {
+                                viewModel.changeMPVVolumeTo(newMPVVolume)
+                                volumeHaptics.move(lastMPVVolumeValue.toFloat(), newMPVVolume.toFloat())
+                                lastMPVVolumeValue = newMPVVolume
+                              }
+                            } else {
+                              if (startingY == 0f) {
+                                mpvVolumeStartingY = 0f
+                                originalMPVVolume = currentMPVVolume
+                                startingY = currentPosition.y
+                              }
+                              val newVolumePercent =
+                                calculateNewVerticalGestureValue(
+                                  originalVolumePercent,
                                   startingY,
                                   currentPosition.y,
-                                  brightnessGestureSens,
-                                )
+                                  volumeGestureSens,
+                                ).coerceIn(0, 100)
 
-                              if (abs(newBrightness - lastBrightnessValue) > 0.001f) {
-                                viewModel.changeBrightnessTo(newBrightness)
-                                brightnessHaptics.move(
-                                  lastBrightnessValue.coerceIn(0f, 1f),
-                                  newBrightness.coerceIn(0f, 1f),
-                                )
-                                lastBrightnessValue = newBrightness
+                              if (newVolumePercent != lastVolumePercentValue) {
+                                viewModel.changeVolumePercentTo(newVolumePercent)
+                                volumeHaptics.move(lastVolumePercentValue.toFloat(), newVolumePercent.toFloat())
+                                lastVolumePercentValue = newVolumePercent
                               }
-
-                              viewModel.displayBrightnessSlider()
-                            }
-                            when {
-                              volumeGesture && brightnessGesture -> {
-                                if (swapVolumeAndBrightness) {
-                                  if (currentPosition.x > size.width / 2) changeBrightness() else changeVolume()
-                                } else {
-                                  if (currentPosition.x < size.width / 2) changeBrightness() else changeVolume()
-                                }
-                              }
-                              brightnessGesture -> changeBrightness()
-                              volumeGesture -> changeVolume()
-                              else -> {}
                             }
 
-                            change.consume()
+                            viewModel.displayVolumeSlider()
                           }
-                        }
-                      }
-                    }
-                  }
-                } else if (pointerCount > 1) {
-                  // Multi-finger gesture detected
-                  speedHoldPending = false
-                  longPressJob.cancel()
-                  if (gestureType != null) {
-                    when (gestureType) {
-                      "stats_scroll",
-                      "vertical",
-                      "subtitle_vertical",
-                      -> {
-                        if (brightnessGesture || volumeGesture || isSubtitleHoldActive || isVerticalGestureActive) {
-                          isVerticalGestureActive = false
-                          startingY = 0f
-                          lastVolumePercentValue = currentVolumePercent
-                          lastMPVVolumeValue = currentMPVVolume ?: 100
-                          lastBrightnessValue = currentBrightness
-                        }
-                      }
-                    }
-                    gestureType = null
-                  }
-                  when (gestureOwner) {
-                    GestureOwner.SPEED,
-                    GestureOwner.VERTICAL,
-                    GestureOwner.SUBTITLE_VERTICAL,
-                    -> gestureOwner = null
-                    else -> Unit
-                  }
-                  break
-                }
-              } while (event.changes.any { it.pressed })
+                          val changeBrightness: () -> Unit = {
+                            if (startingY == 0f) startingY = currentPosition.y
+                            val newBrightness =
+                              calculateNewVerticalGestureValue(
+                                originalBrightness,
+                                startingY,
+                                currentPosition.y,
+                                brightnessGestureSens,
+                              )
 
-              // Handle gesture end
-              speedHoldPending = false
-              longPressJob.cancel()
+                            if (abs(newBrightness - lastBrightnessValue) > 0.001f) {
+                              viewModel.changeBrightnessTo(newBrightness)
+                              brightnessHaptics.move(
+                                lastBrightnessValue.coerceIn(0f, 1f),
+                                newBrightness.coerceIn(0f, 1f),
+                              )
+                              lastBrightnessValue = newBrightness
+                            }
 
-              if (isLongPressing) {
-                isLongPressing = false
-                isDynamicSpeedControlActive = false
-                hasSwipedEnough = false
-                if (!isSpeedLocked) {
-                  viewModel.setGesturePlaybackSpeed(originalSpeed, subtitleGestureGeneration, ramp = true)
-                }
-                viewModel.playerUpdate.update { PlayerUpdates.None }
-              }
-
-              if (isSubtitleHoldActive) {
-                isSubtitleHoldActive = false
-                viewModel.playerUpdate.update { PlayerUpdates.None }
-              }
-
-              when (gestureType) {
-                "stats_scroll",
-                "vertical",
-                "subtitle_vertical",
-                -> {
-                  if (brightnessGesture || volumeGesture || isVerticalGestureActive) {
-                    isVerticalGestureActive = false
-                    startingY = 0f
-                    lastVolumePercentValue = currentVolumePercent
-                    lastMPVVolumeValue = currentMPVVolume ?: 100
-                    lastBrightnessValue = currentBrightness
-                  }
-                }
-              }
-
-              when (gestureOwner) {
-                GestureOwner.SPEED,
-                GestureOwner.VERTICAL,
-                GestureOwner.SUBTITLE_VERTICAL,
-                -> gestureOwner = null
-                else -> Unit
-              }
-            } finally {
-              longPressJob.cancel()
-              if (subtitleHighlightShown) viewModel.setSubtitleGestureHighlight(false)
-              if (PlaybackSession.state.value.generation == subtitleGestureGeneration) {
-                val selected = selectedSubtitle
-                lastDraggedPosition?.let { position ->
-                  if (selected != null && getTrackSelectionId(selected.target.selectionProperty) == selected.trackId) {
-                    viewModel.persistSubtitleGesturePosition(selected.target, position)
-                  }
-                }
-                if (selected != null && getTrackSelectionId(selected.target.selectionProperty) == selected.trackId) {
-                  if (heldScaleChanged && !MpvConfigOverridePolicy.isOwnedByMpvConf("${selected.target.prefix}-scale")) {
-                    if (selected.target == SubtitleGestureTarget.Secondary) {
-                      subtitlesPreferences.secondarySubScale.set(heldSubScale)
-                    } else {
-                      subtitlesPreferences.subScale.set(heldSubScale)
-                    }
-                  }
-                  if (heldSecondaryScaleChanged && getTrackSelectionId("secondary-sid") == secondaryTrackId &&
-                    !MpvConfigOverridePolicy.isOwnedByMpvConf("secondary-sub-scale")
-                  ) {
-                    subtitlesPreferences.secondarySubScale.set(heldSecondaryScale)
-                  }
-                }
-              }
-              isVerticalGestureActive = false
-              releaseGesture(GestureOwner.SUBTITLE_VERTICAL)
-              if (isSubtitleHoldActive) {
-                isSubtitleHoldActive = false
-                viewModel.playerUpdate.update { PlayerUpdates.None }
-              }
-              if (isLongPressing) {
-                if (!isSpeedLocked) viewModel.setGesturePlaybackSpeed(originalSpeed, subtitleGestureGeneration)
-                isLongPressing = false
-                isDynamicSpeedControlActive = false
-                viewModel.playerUpdate.update { PlayerUpdates.None }
-              }
-              releaseGesture(GestureOwner.SPEED)
-            }
-          }
-        }.pointerInput(
-          pinchToZoomGesture,
-          pinchToZoomSubtitles,
-          secondarySubPinchZoomEnabled,
-          panAndZoomEnabled,
-          areControlsLocked,
-          centerVerticalSubtitlePositionGesture,
-          anyPanelShown,
-          allowGesturesInPanels,
-        ) {
-          if ((!pinchToZoomGesture && !pinchToZoomSubtitles && !panAndZoomEnabled) ||
-            (anyPanelShown && !allowGesturesInPanels) || areControlsLocked
-          ) {
-            return@pointerInput
-          }
-
-          awaitEachGesture {
-            var zoom = 0f
-            var zoomStops: List<Float>? = null
-            var snappedZoom: Float? = null
-            var gestureStarted = false
-            var prevDist = 0f
-            var prevMidX = 0f
-            var prevMidY = 0f
-
-            var selectedSubtitle: SubtitleGestureRegion? = null
-            var isSubZoomMode = false
-            var initialSubScale = 1f
-            var initialDist = 1f
-            var lastCalculatedSubScale = 1f
-            var initialSecondarySubScale = 1f
-            var lastCalculatedSecondarySubScale = 1f
-            var scaleChanged = false
-            var linkedScaleChanged = false
-            var linkSecondaryScale = false
-            var pinchHighlightShown = false
-
-            var currentPanX = 0f
-            var currentPanY = 0f
-            var sw = 0f
-            var sh = 0f
-
-            val down = awaitFirstDown(requireUnconsumed = false)
-            beginGesture(down.id.value, down.uptimeMillis)
-            val subtitleGestureGeneration = PlaybackSession.state.value.generation
-            val firstTouchedSubtitle = if (pinchToZoomSubtitles) {
-              findSubtitleGestureTarget(
-                subtitleRegions(size.width.toFloat(), size.height.toFloat()),
-                down.position.x, down.position.y, 12.dp.toPx(),
-              )
-            } else null
-
-            try {
-              do {
-                val event = awaitPointerEvent()
-                val pressed = event.changes.filter { it.pressed }
-
-                if (pressed.size == 2) {
-                  // An established subtitle hold owns its entire drag/pinch sequence.
-                  if (gestureOwner == GestureOwner.SUBTITLE_VERTICAL) continue
-                  if (!claimGesture(GestureOwner.PINCH)) continue
-                  val p1 = pressed[0].position
-                  val p2 = pressed[1].position
-                  val dx = p2.x - p1.x
-                  val dy = p2.y - p1.y
-                  val dist = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
-                  val midX = (p1.x + p2.x) / 2f
-                  val midY = (p1.y + p2.y) / 2f
-
-                  if (prevDist == 0f) {
-                    // First frame — capture baseline
-                    prevDist = dist
-                    prevMidX = midX
-                    prevMidY = midY
-
-                    sw = size.width.toFloat()
-                    sh = size.height.toFloat()
-
-                    currentPanX = viewModel.videoPanX.value
-                    currentPanY = viewModel.videoPanY.value
-
-                    selectedSubtitle = if (pinchToZoomSubtitles) {
-                      val regions = subtitleRegions(sw, sh)
-                      regions.find { it.target == firstTouchedSubtitle?.target && it.trackId == firstTouchedSubtitle.trackId }
-                        ?: findSubtitleGestureTarget(regions, midX, midY, 12.dp.toPx())
-                    } else null
-
-                    val selected = selectedSubtitle
-                    if (selected != null) {
-                      isSubZoomMode = true
-                      initialSubScale = selected.scale
-                      initialDist = dist.coerceAtLeast(1f)
-                      lastCalculatedSubScale = initialSubScale
-                      initialSecondarySubScale =
-                        PlaybackSession.getPropertyFloat("secondary-sub-scale") ?: subtitlesPreferences.secondarySubScale.get()
-                      lastCalculatedSecondarySubScale = initialSecondarySubScale
-                      linkSecondaryScale = selected.target == SubtitleGestureTarget.Primary && secondarySubPinchZoomEnabled &&
-                        isSecondarySubtitleActive() && !MpvConfigOverridePolicy.isOwnedByMpvConf("secondary-sub-scale")
-                      // A linked pinch resizes both tracks, so keep both visible.
-                      viewModel.setSubtitleGestureHighlight(true, selected.target.takeUnless { linkSecondaryScale })
-                      pinchHighlightShown = true
-                    } else if (pinchToZoomGesture || panAndZoomEnabled) {
-                      isSubZoomMode = false
-                      zoom = viewModel.videoZoom.value
-                    } else {
-                      isSubZoomMode = false
-                    }
-                  } else {
-                    if (isSubZoomMode) {
-                      // Pinch is zoom-only: vertical midpoint drift must not move the
-                      // subtitle position. Position changes only via press-and-hold
-                      // single-finger vertical drag (subtitle_vertical path above).
-                      if (!gestureStarted && abs(dist - initialDist) > 5f) {
-                        gestureStarted = true
-                      }
-
-                      val selected = selectedSubtitle
-                      if (gestureStarted && selected != null &&
-                        PlaybackSession.state.value.generation == subtitleGestureGeneration
-                      ) {
-                        val scaleProperty = "${selected.target.prefix}-scale"
-                        if (!MpvConfigOverridePolicy.isOwnedByMpvConf(scaleProperty)) {
-                          val currentSubScale = (initialSubScale * (dist / initialDist)).coerceIn(0.1f, 5f)
-                          scaleChanged = scaleChanged || abs(currentSubScale - initialSubScale) > 0.001f
-                          lastCalculatedSubScale = currentSubScale
-                          viewModel.previewSubtitleScale(currentSubScale, selected.target)
-                          if (linkSecondaryScale) {
-                            lastCalculatedSecondarySubScale = (initialSecondarySubScale * (dist / initialDist)).coerceIn(0.1f, 5f)
-                            viewModel.previewSubtitleScale(lastCalculatedSecondarySubScale, SubtitleGestureTarget.Secondary)
-                            linkedScaleChanged = true
+                            viewModel.displayBrightnessSlider()
                           }
-                          viewModel.playerUpdate.update {
-                            PlayerUpdates.SubtitleZoom(currentSubScale, selected.target == SubtitleGestureTarget.Secondary)
+                          when {
+                            volumeGesture && brightnessGesture -> {
+                              if (swapVolumeAndBrightness) {
+                                if (currentPosition.x > size.width / 2) changeBrightness() else changeVolume()
+                              } else {
+                                if (currentPosition.x < size.width / 2) changeBrightness() else changeVolume()
+                              }
+                            }
+                            brightnessGesture -> changeBrightness()
+                            volumeGesture -> changeVolume()
+                            else -> {}
                           }
-                        }
-                      }
-                    } else if (pinchToZoomGesture || panAndZoomEnabled) {
-                      // Activate on significant pinch movement OR mid movement (pan)
-                      val distDelta = abs(dist - prevDist)
-                      val midDeltaX = abs(midX - prevMidX)
-                      val midDeltaY = abs(midY - prevMidY)
-
-                      if (!gestureStarted && (distDelta > 5f || (panAndZoomEnabled && (midDeltaX > 3f || midDeltaY > 3f)))) {
-                        gestureStarted = true
-                        if (pinchToZoomGesture && distDelta > 5f) {
-                          viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
-                        }
-                      }
-
-                      if (gestureStarted) {
-                        val previousScale = 2f.pow(viewModel.videoZoom.value)
-                        var justSnapped = false
-                        if (pinchToZoomGesture && prevDist > 0f && distDelta > 0.5f) {
-                          // Per-frame zoom: ratio of current distance to previous distance
-                          val zoomRatio = dist / prevDist
-                          val zoomDelta = ln(zoomRatio.toDouble()).toFloat() * 1.2f
-                          zoom = (zoom + zoomDelta).coerceIn(-1f, 3f)
-                          val stops = zoomStops ?: viewModel.videoZoomSnapTargets(sw, sh).also { zoomStops = it }
-                          val stop = nearestVideoZoomStop(zoom, stops, snappedZoom)
-                          justSnapped = stop != null && stop != snappedZoom
-                          snappedZoom = stop
-                          viewModel.setVideoZoom(stop ?: zoom)
-                        }
-
-                        // Simultaneous pan while pinching or moving two fingers
-                        if (justSnapped) {
-                          currentPanX = 0f
-                          currentPanY = 0f
-                          viewModel.resetVideoPan()
-                        } else if (snappedZoom == null && panAndZoomEnabled && sw > 0f && sh > 0f) {
-                          val currentZoom = viewModel.videoZoom.value
-                          val scale = 2f.pow(currentZoom)
-                          val extraWidth = (scale - 1f) * sw
-                          val extraHeight = (scale - 1f) * sh
-                          val maxX = (extraWidth / 2f).coerceAtLeast(0f)
-                          val maxY = (extraHeight / 2f).coerceAtLeast(0f)
-                          val scaleRatio = scale / previousScale
-                          val centerX = sw / 2f
-                          val centerY = sh / 2f
-
-                          currentPanX =
-                            (
-                              midX - centerX -
-                                (prevMidX - centerX - currentPanX) * scaleRatio
-                            ).coerceIn(-maxX, maxX)
-                          currentPanY =
-                            (
-                              midY - centerY -
-                                (prevMidY - centerY - currentPanY) * scaleRatio
-                            ).coerceIn(-maxY, maxY)
-                          viewModel.setVideoPan(currentPanX, currentPanY)
-                        }
-                      }
-                    }
-
-                    prevDist = dist
-                    prevMidX = midX
-                    prevMidY = midY
-                  }
-
-                  pressed.forEach { it.consume() }
-                } else if (pressed.size < 2 && prevDist != 0f) {
-                  break
-                }
-              } while (event.changes.any { it.pressed })
-
-            } finally {
-              val selected = selectedSubtitle
-              val stillSameTrack = selected != null && PlaybackSession.state.value.generation == subtitleGestureGeneration &&
-                getTrackSelectionId(selected.target.selectionProperty) == selected.trackId
-              if (scaleChanged && stillSameTrack) {
-                if (selectedSubtitle.target == SubtitleGestureTarget.Secondary) {
-                  subtitlesPreferences.secondarySubScale.set(lastCalculatedSubScale)
-                } else {
-                  subtitlesPreferences.subScale.set(lastCalculatedSubScale)
-                }
-              }
-              if (linkedScaleChanged && stillSameTrack) subtitlesPreferences.secondarySubScale.set(lastCalculatedSecondarySubScale)
-              if (pinchHighlightShown) viewModel.setSubtitleGestureHighlight(false)
-              releaseGesture(GestureOwner.PINCH)
-              viewModel.playerUpdate.update { PlayerUpdates.None }
-            }
-          }
-        }.pointerInput(
-          horizontalSwipeToSeek,
-          areControlsLocked,
-          gesturePreferences,
-          isVerticalGestureActive,
-          swipeSubtitlesToSeekDialog,
-          isSwipeSubtitlesInverted,
-          anyPanelShown,
-          allowGesturesInPanels,
-        ) {
-          if ((!horizontalSwipeToSeek && !swipeSubtitlesToSeekDialog) ||
-            areControlsLocked ||
-            isVerticalGestureActive
-          ) {
-            return@pointerInput
-          }
-
-          awaitEachGesture {
-            val down = awaitFirstDown(requireUnconsumed = false)
-            beginGesture(down.id.value, down.uptimeMillis)
-            val startPosition = down.position
-            val startTime = System.currentTimeMillis()
-
-            val primaryRegion = subtitleRegions(size.width.toFloat(), size.height.toFloat())
-              .find { it.target == SubtitleGestureTarget.Primary }
-            val isSubtitleTouch = swipeSubtitlesToSeekDialog &&
-              primaryRegion?.contains(startPosition.x, startPosition.y, 12.dp.toPx()) == true
-
-            var gestureType: String? = null
-            var hasStartedSeeking = false
-            var initialVideoPosition = 0f
-            var seekOriginX = 0f
-            var pendingSeekPosition: Float? = null
-            // Use the sensitivity preference instead of hardcoded value
-            val seekSensitivity = horizontalSwipeSensitivity
-
-            try {
-              do {
-                val event = awaitPointerEvent()
-                val pointerCount = event.changes.count { it.pressed }
-
-                if (pointerCount == 1) {
-                  event.changes.forEach { change ->
-                    if (change.pressed) {
-                      val currentPosition = change.position
-                      val deltaX = currentPosition.x - startPosition.x
-                      val deltaY = currentPosition.y - startPosition.y
-                      val timeSinceStart = System.currentTimeMillis() - startTime
-
-                      if (
-                        gestureType == null &&
-                        isSubtitleTouch &&
-                        abs(deltaX) > 40f &&
-                        abs(deltaX) > abs(deltaY) * 2f &&
-                        claimGesture(GestureOwner.SUBTITLE_SEEK)
-                      ) {
-                        gestureType = "subtitle_dialog_seek"
-                        hasStartedSeeking = true
-                        viewModel.setSubtitleGestureHighlight(true, SubtitleGestureTarget.Primary)
-                        val isForward = if (isSwipeSubtitlesInverted) deltaX < 0 else deltaX > 0
-                        val direction = if (isForward) "1" else "-1"
-                        PlaybackSession.command("sub-seek", direction)
-                        viewModel.playerUpdate.update {
-                          PlayerUpdates.ShowText(
-                            context.getString(
-                              if (isForward) R.string.player_next_dialog else R.string.player_previous_dialog,
-                            ),
-                          )
-                        }
-                        change.consume()
-                      }
-
-                      if (gestureType == "subtitle_dialog_seek") {
-                        change.consume()
-                      }
-
-                      // Only activate if this is clearly a horizontal gesture
-                      // and not conflicting with other gestures
-                      if (gestureType == null &&
-                        gestureOwner == null &&
-                        !speedHoldPending &&
-                        !suppressHorizontalSeekForPointer &&
-                        horizontalSwipeToSeek &&
-                        !isSubtitleTouch &&
-                        abs(deltaX) > 30f &&
-                        abs(deltaX) > abs(deltaY) * 2f &&
-                        // Must be strongly horizontal
-                        timeSinceStart > 100L &&
-                        // Avoid conflicts with double-tap
-                        !isLongPressing &&
-                        // Don't conflict with long press
-                        !isDynamicSpeedControlActive &&
-                        // Don't conflict with speed control
-                        (!anyPanelShown || allowGesturesInPanels) &&
-                        // Like mpv-android, a swipe cannot seek media of unknown length.
-                        (duration ?: 0) > 0
-                      ) {
-                        if (claimGesture(GestureOwner.HORIZONTAL_SEEK)) {
-                          gestureType = "horizontal_seek"
-                          hasStartedSeeking = true
-                          // Follow the same high precision clock that drives the seekbar.
-                          initialVideoPosition = viewModel.precisePosition.value
-                            .takeIf { it.isFinite() && it >= 0f }
-                            ?: position?.toFloat()
-                            ?: 0f
-                          // Measure from here, so the thumb starts where playback is instead of
-                          // jumping by the distance it took to recognise the swipe.
-                          seekOriginX = currentPosition.x
-                          pendingSeekPosition = initialVideoPosition
-                          viewModel.showHorizontalSeekUpdate(initialVideoPosition)
 
                           change.consume()
                         }
                       }
+                    }
+                  }
+                }
+              } else if (pointerCount > 1) {
+                // Multi-finger gesture detected
+                speedHoldPending = false
+                longPressJob.cancel()
+                if (gestureType != null) {
+                  when (gestureType) {
+                    "stats_scroll",
+                    "vertical",
+                    "subtitle_vertical",
+                    -> {
+                      if (brightnessGesture || volumeGesture || isSubtitleHoldActive || isVerticalGestureActive) {
+                        isVerticalGestureActive = false
+                        startingY = 0f
+                        lastVolumePercentValue = currentVolumePercent
+                        lastMPVVolumeValue = currentMPVVolume ?: 100
+                        lastBrightnessValue = currentBrightness
+                      }
+                    }
+                  }
+                  gestureType = null
+                }
+                when (gestureOwner) {
+                  GestureOwner.SPEED,
+                  GestureOwner.VERTICAL,
+                  GestureOwner.SUBTITLE_VERTICAL,
+                  -> gestureOwner = null
+                  else -> Unit
+                }
+                break
+              }
+            } while (event.changes.any { it.pressed })
 
-                      if (gestureType == "horizontal_seek" && hasStartedSeeking) {
-                        // The ViewModel clamps to the media and an active A-B loop. Moves only update
-                        // the thumb; the chip and seeks follow from there, off this frame's work.
-                        val targetPosition =
-                          (initialVideoPosition + (currentPosition.x - seekOriginX) * seekSensitivity).coerceAtLeast(0f)
-                        if (targetPosition != pendingSeekPosition) {
-                          viewModel.gestureSeekTo(targetPosition)
-                          pendingSeekPosition = targetPosition
+            // Handle gesture end
+            speedHoldPending = false
+            longPressJob.cancel()
+
+            if (isLongPressing) {
+              isLongPressing = false
+              isDynamicSpeedControlActive = false
+              hasSwipedEnough = false
+              if (!isSpeedLocked) {
+                viewModel.setGesturePlaybackSpeed(originalSpeed, subtitleGestureGeneration, ramp = true)
+              }
+              viewModel.playerUpdate.update { PlayerUpdates.None }
+            }
+
+            if (isSubtitleHoldActive) {
+              isSubtitleHoldActive = false
+              viewModel.playerUpdate.update { PlayerUpdates.None }
+            }
+
+            when (gestureType) {
+              "stats_scroll",
+              "vertical",
+              "subtitle_vertical",
+              -> {
+                if (brightnessGesture || volumeGesture || isVerticalGestureActive) {
+                  isVerticalGestureActive = false
+                  startingY = 0f
+                  lastVolumePercentValue = currentVolumePercent
+                  lastMPVVolumeValue = currentMPVVolume ?: 100
+                  lastBrightnessValue = currentBrightness
+                }
+              }
+            }
+
+            when (gestureOwner) {
+              GestureOwner.SPEED,
+              GestureOwner.VERTICAL,
+              GestureOwner.SUBTITLE_VERTICAL,
+              -> gestureOwner = null
+              else -> Unit
+            }
+          } finally {
+            longPressJob.cancel()
+            if (subtitleHighlightShown) viewModel.setSubtitleGestureHighlight(false)
+            if (PlaybackSession.state.value.generation == subtitleGestureGeneration) {
+              val selected = selectedSubtitle
+              lastDraggedPosition?.let { position ->
+                if (selected != null && getTrackSelectionId(selected.target.selectionProperty) == selected.trackId) {
+                  viewModel.persistSubtitleGesturePosition(selected.target, position)
+                }
+              }
+              if (selected != null && getTrackSelectionId(selected.target.selectionProperty) == selected.trackId) {
+                if (heldScaleChanged &&
+                  !MpvConfigOverridePolicy.isOwnedByMpvConf("${selected.target.prefix}-scale")
+                ) {
+                  if (selected.target == SubtitleGestureTarget.Secondary) {
+                    subtitlesPreferences.secondarySubScale.set(heldSubScale)
+                  } else {
+                    subtitlesPreferences.subScale.set(heldSubScale)
+                  }
+                }
+                if (heldSecondaryScaleChanged &&
+                  getTrackSelectionId("secondary-sid") == secondaryTrackId &&
+                  !MpvConfigOverridePolicy.isOwnedByMpvConf("secondary-sub-scale")
+                ) {
+                  subtitlesPreferences.secondarySubScale.set(heldSecondaryScale)
+                }
+              }
+            }
+            isVerticalGestureActive = false
+            releaseGesture(GestureOwner.SUBTITLE_VERTICAL)
+            if (isSubtitleHoldActive) {
+              isSubtitleHoldActive = false
+              viewModel.playerUpdate.update { PlayerUpdates.None }
+            }
+            if (isLongPressing) {
+              if (!isSpeedLocked) viewModel.setGesturePlaybackSpeed(originalSpeed, subtitleGestureGeneration)
+              isLongPressing = false
+              isDynamicSpeedControlActive = false
+              viewModel.playerUpdate.update { PlayerUpdates.None }
+            }
+            releaseGesture(GestureOwner.SPEED)
+          }
+        }
+      }.pointerInput(
+        pinchToZoomGesture,
+        pinchToZoomSubtitles,
+        secondarySubPinchZoomEnabled,
+        panAndZoomEnabled,
+        areControlsLocked,
+        centerVerticalSubtitlePositionGesture,
+        anyPanelShown,
+        allowGesturesInPanels,
+      ) {
+        if ((!pinchToZoomGesture && !pinchToZoomSubtitles && !panAndZoomEnabled) ||
+          (anyPanelShown && !allowGesturesInPanels) ||
+          areControlsLocked
+        ) {
+          return@pointerInput
+        }
+
+        awaitEachGesture {
+          var zoom = 0f
+          var zoomStops: List<Float>? = null
+          var snappedZoom: Float? = null
+          var gestureStarted = false
+          var prevDist = 0f
+          var prevMidX = 0f
+          var prevMidY = 0f
+
+          var selectedSubtitle: SubtitleGestureRegion? = null
+          var isSubZoomMode = false
+          var initialSubScale = 1f
+          var initialDist = 1f
+          var lastCalculatedSubScale = 1f
+          var initialSecondarySubScale = 1f
+          var lastCalculatedSecondarySubScale = 1f
+          var scaleChanged = false
+          var linkedScaleChanged = false
+          var linkSecondaryScale = false
+          var pinchHighlightShown = false
+
+          var currentPanX = 0f
+          var currentPanY = 0f
+          var sw = 0f
+          var sh = 0f
+
+          val down = awaitFirstDown(requireUnconsumed = false)
+          beginGesture(down.id.value, down.uptimeMillis)
+          val subtitleGestureGeneration = PlaybackSession.state.value.generation
+          val firstTouchedSubtitle =
+            if (pinchToZoomSubtitles) {
+              findSubtitleGestureTarget(
+                subtitleRegions(size.width.toFloat(), size.height.toFloat()),
+                down.position.x,
+                down.position.y,
+                12.dp.toPx(),
+              )
+            } else {
+              null
+            }
+
+          try {
+            do {
+              val event = awaitPointerEvent()
+              val pressed = event.changes.filter { it.pressed }
+
+              if (pressed.size == 2) {
+                // An established subtitle hold owns its entire drag/pinch sequence.
+                if (gestureOwner == GestureOwner.SUBTITLE_VERTICAL) continue
+                if (!claimGesture(GestureOwner.PINCH)) continue
+                val p1 = pressed[0].position
+                val p2 = pressed[1].position
+                val dx = p2.x - p1.x
+                val dy = p2.y - p1.y
+                val dist = sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+                val midX = (p1.x + p2.x) / 2f
+                val midY = (p1.y + p2.y) / 2f
+
+                if (prevDist == 0f) {
+                  // First frame — capture baseline
+                  prevDist = dist
+                  prevMidX = midX
+                  prevMidY = midY
+
+                  sw = size.width.toFloat()
+                  sh = size.height.toFloat()
+
+                  currentPanX = viewModel.videoPanX.value
+                  currentPanY = viewModel.videoPanY.value
+
+                  selectedSubtitle =
+                    if (pinchToZoomSubtitles) {
+                      val regions = subtitleRegions(sw, sh)
+                      regions.find {
+                        it.target == firstTouchedSubtitle?.target &&
+                          it.trackId == firstTouchedSubtitle.trackId
+                      }
+                        ?: findSubtitleGestureTarget(regions, midX, midY, 12.dp.toPx())
+                    } else {
+                      null
+                    }
+
+                  val selected = selectedSubtitle
+                  if (selected != null) {
+                    isSubZoomMode = true
+                    initialSubScale = selected.scale
+                    initialDist = dist.coerceAtLeast(1f)
+                    lastCalculatedSubScale = initialSubScale
+                    initialSecondarySubScale =
+                      PlaybackSession.getPropertyFloat("secondary-sub-scale")
+                        ?: subtitlesPreferences.secondarySubScale.get()
+                    lastCalculatedSecondarySubScale = initialSecondarySubScale
+                    linkSecondaryScale =
+                      selected.target == SubtitleGestureTarget.Primary &&
+                      secondarySubPinchZoomEnabled &&
+                      isSecondarySubtitleActive() &&
+                      !MpvConfigOverridePolicy.isOwnedByMpvConf("secondary-sub-scale")
+                    // A linked pinch resizes both tracks, so keep both visible.
+                    viewModel.setSubtitleGestureHighlight(true, selected.target.takeUnless { linkSecondaryScale })
+                    pinchHighlightShown = true
+                  } else if (pinchToZoomGesture || panAndZoomEnabled) {
+                    isSubZoomMode = false
+                    zoom = viewModel.videoZoom.value
+                  } else {
+                    isSubZoomMode = false
+                  }
+                } else {
+                  if (isSubZoomMode) {
+                    // Pinch is zoom-only: vertical midpoint drift must not move the
+                    // subtitle position. Position changes only via press-and-hold
+                    // single-finger vertical drag (subtitle_vertical path above).
+                    if (!gestureStarted && abs(dist - initialDist) > 5f) {
+                      gestureStarted = true
+                    }
+
+                    val selected = selectedSubtitle
+                    if (gestureStarted &&
+                      selected != null &&
+                      PlaybackSession.state.value.generation == subtitleGestureGeneration
+                    ) {
+                      val scaleProperty = "${selected.target.prefix}-scale"
+                      if (!MpvConfigOverridePolicy.isOwnedByMpvConf(scaleProperty)) {
+                        val currentSubScale = (initialSubScale * (dist / initialDist)).coerceIn(0.1f, 5f)
+                        scaleChanged = scaleChanged || abs(currentSubScale - initialSubScale) > 0.001f
+                        lastCalculatedSubScale = currentSubScale
+                        viewModel.previewSubtitleScale(currentSubScale, selected.target)
+                        if (linkSecondaryScale) {
+                          lastCalculatedSecondarySubScale =
+                            (initialSecondarySubScale * (dist / initialDist)).coerceIn(0.1f, 5f)
+                          viewModel.previewSubtitleScale(
+                            lastCalculatedSecondarySubScale,
+                            SubtitleGestureTarget.Secondary,
+                          )
+                          linkedScaleChanged = true
                         }
+                        viewModel.playerUpdate.update {
+                          PlayerUpdates.SubtitleZoom(
+                            currentSubScale,
+                            selected.target == SubtitleGestureTarget.Secondary,
+                          )
+                        }
+                      }
+                    }
+                  } else if (pinchToZoomGesture || panAndZoomEnabled) {
+                    // Activate on significant pinch movement OR mid movement (pan)
+                    val distDelta = abs(dist - prevDist)
+                    val midDeltaX = abs(midX - prevMidX)
+                    val midDeltaY = abs(midY - prevMidY)
+
+                    if (!gestureStarted &&
+                      (distDelta > 5f || (panAndZoomEnabled && (midDeltaX > 3f || midDeltaY > 3f)))
+                    ) {
+                      gestureStarted = true
+                      if (pinchToZoomGesture && distDelta > 5f) {
+                        viewModel.playerUpdate.update { PlayerUpdates.VideoZoom }
+                      }
+                    }
+
+                    if (gestureStarted) {
+                      val previousScale = 2f.pow(viewModel.videoZoom.value)
+                      var justSnapped = false
+                      if (pinchToZoomGesture && prevDist > 0f && distDelta > 0.5f) {
+                        // Per-frame zoom: ratio of current distance to previous distance
+                        val zoomRatio = dist / prevDist
+                        val zoomDelta = ln(zoomRatio.toDouble()).toFloat() * 1.2f
+                        zoom = (zoom + zoomDelta).coerceIn(-1f, 3f)
+                        val stops = zoomStops ?: viewModel.videoZoomSnapTargets(sw, sh).also { zoomStops = it }
+                        val stop = nearestVideoZoomStop(zoom, stops, snappedZoom)
+                        justSnapped = stop != null && stop != snappedZoom
+                        snappedZoom = stop
+                        viewModel.setVideoZoom(stop ?: zoom)
+                      }
+
+                      // Simultaneous pan while pinching or moving two fingers
+                      if (justSnapped) {
+                        currentPanX = 0f
+                        currentPanY = 0f
+                        viewModel.resetVideoPan()
+                      } else if (snappedZoom == null && panAndZoomEnabled && sw > 0f && sh > 0f) {
+                        val currentZoom = viewModel.videoZoom.value
+                        val scale = 2f.pow(currentZoom)
+                        val extraWidth = (scale - 1f) * sw
+                        val extraHeight = (scale - 1f) * sh
+                        val maxX = (extraWidth / 2f).coerceAtLeast(0f)
+                        val maxY = (extraHeight / 2f).coerceAtLeast(0f)
+                        val scaleRatio = scale / previousScale
+                        val centerX = sw / 2f
+                        val centerY = sh / 2f
+
+                        currentPanX =
+                          (
+                            midX - centerX -
+                              (prevMidX - centerX - currentPanX) * scaleRatio
+                          ).coerceIn(-maxX, maxX)
+                        currentPanY =
+                          (
+                            midY - centerY -
+                              (prevMidY - centerY - currentPanY) * scaleRatio
+                          ).coerceIn(-maxY, maxY)
+                        viewModel.setVideoPan(currentPanX, currentPanY)
+                      }
+                    }
+                  }
+
+                  prevDist = dist
+                  prevMidX = midX
+                  prevMidY = midY
+                }
+
+                pressed.forEach { it.consume() }
+              } else if (pressed.size < 2 && prevDist != 0f) {
+                break
+              }
+            } while (event.changes.any { it.pressed })
+          } finally {
+            val selected = selectedSubtitle
+            val stillSameTrack =
+              selected != null &&
+                PlaybackSession.state.value.generation == subtitleGestureGeneration &&
+                getTrackSelectionId(selected.target.selectionProperty) == selected.trackId
+            if (scaleChanged && stillSameTrack) {
+              if (selectedSubtitle.target == SubtitleGestureTarget.Secondary) {
+                subtitlesPreferences.secondarySubScale.set(lastCalculatedSubScale)
+              } else {
+                subtitlesPreferences.subScale.set(lastCalculatedSubScale)
+              }
+            }
+            if (linkedScaleChanged &&
+              stillSameTrack
+            ) {
+              subtitlesPreferences.secondarySubScale.set(lastCalculatedSecondarySubScale)
+            }
+            if (pinchHighlightShown) viewModel.setSubtitleGestureHighlight(false)
+            releaseGesture(GestureOwner.PINCH)
+            viewModel.playerUpdate.update { PlayerUpdates.None }
+          }
+        }
+      }.pointerInput(
+        horizontalSwipeToSeek,
+        areControlsLocked,
+        gesturePreferences,
+        isVerticalGestureActive,
+        swipeSubtitlesToSeekDialog,
+        isSwipeSubtitlesInverted,
+        anyPanelShown,
+        allowGesturesInPanels,
+      ) {
+        if ((!horizontalSwipeToSeek && !swipeSubtitlesToSeekDialog) ||
+          areControlsLocked ||
+          isVerticalGestureActive
+        ) {
+          return@pointerInput
+        }
+
+        awaitEachGesture {
+          val down = awaitFirstDown(requireUnconsumed = false)
+          beginGesture(down.id.value, down.uptimeMillis)
+          val startPosition = down.position
+          val startTime = System.currentTimeMillis()
+
+          val primaryRegion =
+            subtitleRegions(size.width.toFloat(), size.height.toFloat())
+              .find { it.target == SubtitleGestureTarget.Primary }
+          val isSubtitleTouch =
+            swipeSubtitlesToSeekDialog &&
+              primaryRegion?.contains(startPosition.x, startPosition.y, 12.dp.toPx()) == true
+
+          var gestureType: String? = null
+          var hasStartedSeeking = false
+          var initialVideoPosition = 0f
+          var seekOriginX = 0f
+          var pendingSeekPosition: Float? = null
+          // Use the sensitivity preference instead of hardcoded value
+          val seekSensitivity = horizontalSwipeSensitivity
+
+          try {
+            do {
+              val event = awaitPointerEvent()
+              val pointerCount = event.changes.count { it.pressed }
+
+              if (pointerCount == 1) {
+                event.changes.forEach { change ->
+                  if (change.pressed) {
+                    val currentPosition = change.position
+                    val deltaX = currentPosition.x - startPosition.x
+                    val deltaY = currentPosition.y - startPosition.y
+                    val timeSinceStart = System.currentTimeMillis() - startTime
+
+                    if (
+                      gestureType == null &&
+                      isSubtitleTouch &&
+                      abs(deltaX) > 40f &&
+                      abs(deltaX) > abs(deltaY) * 2f &&
+                      claimGesture(GestureOwner.SUBTITLE_SEEK)
+                    ) {
+                      gestureType = "subtitle_dialog_seek"
+                      hasStartedSeeking = true
+                      viewModel.setSubtitleGestureHighlight(true, SubtitleGestureTarget.Primary)
+                      val isForward = if (isSwipeSubtitlesInverted) deltaX < 0 else deltaX > 0
+                      val direction = if (isForward) "1" else "-1"
+                      PlaybackSession.command("sub-seek", direction)
+                      viewModel.playerUpdate.update {
+                        PlayerUpdates.ShowText(
+                          context.getString(
+                            if (isForward) R.string.player_next_dialog else R.string.player_previous_dialog,
+                          ),
+                        )
+                      }
+                      change.consume()
+                    }
+
+                    if (gestureType == "subtitle_dialog_seek") {
+                      change.consume()
+                    }
+
+                    // Only activate if this is clearly a horizontal gesture
+                    // and not conflicting with other gestures
+                    if (gestureType == null &&
+                      gestureOwner == null &&
+                      !speedHoldPending &&
+                      !suppressHorizontalSeekForPointer &&
+                      horizontalSwipeToSeek &&
+                      !isSubtitleTouch &&
+                      abs(deltaX) > 30f &&
+                      abs(deltaX) > abs(deltaY) * 2f &&
+                      // Must be strongly horizontal
+                      timeSinceStart > 100L &&
+                      // Avoid conflicts with double-tap
+                      !isLongPressing &&
+                      // Don't conflict with long press
+                      !isDynamicSpeedControlActive &&
+                      // Don't conflict with speed control
+                      (!anyPanelShown || allowGesturesInPanels) &&
+                      // Like mpv-android, a swipe cannot seek media of unknown length.
+                      (duration ?: 0) > 0
+                    ) {
+                      if (claimGesture(GestureOwner.HORIZONTAL_SEEK)) {
+                        gestureType = "horizontal_seek"
+                        hasStartedSeeking = true
+                        // Follow the same high precision clock that drives the seekbar.
+                        initialVideoPosition = viewModel.precisePosition.value
+                          .takeIf { it.isFinite() && it >= 0f }
+                          ?: position?.toFloat()
+                          ?: 0f
+                        // Measure from here, so the thumb starts where playback is instead of
+                        // jumping by the distance it took to recognise the swipe.
+                        seekOriginX = currentPosition.x
+                        pendingSeekPosition = initialVideoPosition
+                        viewModel.showHorizontalSeekUpdate(initialVideoPosition)
 
                         change.consume()
                       }
                     }
-                  }
-                } else if (pointerCount > 1) {
-                  // Multi-finger detected, cancel horizontal seek
-                  if (hasStartedSeeking) {
-                    hasStartedSeeking = false
-                    // Clean up seeking state without showing controls
-                    viewModel.playerUpdate.update { PlayerUpdates.None }
-                  }
-                  releaseGesture(GestureOwner.HORIZONTAL_SEEK)
-                  releaseGesture(GestureOwner.SUBTITLE_SEEK)
-                  break
-                }
-              } while (event.changes.any { it.pressed })
-            } finally {
-              if (gestureType == "subtitle_dialog_seek") viewModel.setSubtitleGestureHighlight(false)
-              // Also runs on cancellation, so the seekbar never stays detached from playback.
-              if (gestureType == "horizontal_seek") {
-                viewModel.finishGestureSeek(pendingSeekPosition.takeIf { hasStartedSeeking })
-                // Keep the chip visible briefly after the gesture settles. The ViewModel owns the
-                // delay, so the chip cannot outlive a cancelled or disposed handler.
-                viewModel.dismissHorizontalSeekUpdate(HORIZONTAL_SEEK_UPDATE_LINGER_MS)
-              }
-            }
 
-            if (hasStartedSeeking && gestureType == "subtitle_dialog_seek") {
-              // Keep the chip visible briefly after the gesture settles.
-              coroutineScope.launch {
-                delay(HORIZONTAL_SEEK_UPDATE_LINGER_MS)
-                viewModel.playerUpdate.update { PlayerUpdates.None }
+                    if (gestureType == "horizontal_seek" && hasStartedSeeking) {
+                      // The ViewModel clamps to the media and an active A-B loop. Moves only update
+                      // the thumb; the chip and seeks follow from there, off this frame's work.
+                      val targetPosition =
+                        (initialVideoPosition + (currentPosition.x - seekOriginX) * seekSensitivity).coerceAtLeast(0f)
+                      if (targetPosition != pendingSeekPosition) {
+                        viewModel.gestureSeekTo(targetPosition)
+                        pendingSeekPosition = targetPosition
+                      }
+
+                      change.consume()
+                    }
+                  }
+                }
+              } else if (pointerCount > 1) {
+                // Multi-finger detected, cancel horizontal seek
+                if (hasStartedSeeking) {
+                  hasStartedSeeking = false
+                  // Clean up seeking state without showing controls
+                  viewModel.playerUpdate.update { PlayerUpdates.None }
+                }
+                releaseGesture(GestureOwner.HORIZONTAL_SEEK)
+                releaseGesture(GestureOwner.SUBTITLE_SEEK)
+                break
               }
+            } while (event.changes.any { it.pressed })
+          } finally {
+            if (gestureType == "subtitle_dialog_seek") viewModel.setSubtitleGestureHighlight(false)
+            // Also runs on cancellation, so the seekbar never stays detached from playback.
+            if (gestureType == "horizontal_seek") {
+              viewModel.finishGestureSeek(pendingSeekPosition.takeIf { hasStartedSeeking })
+              // Keep the chip visible briefly after the gesture settles. The ViewModel owns the
+              // delay, so the chip cannot outlive a cancelled or disposed handler.
+              viewModel.dismissHorizontalSeekUpdate(HORIZONTAL_SEEK_UPDATE_LINGER_MS)
             }
-            releaseGesture(GestureOwner.HORIZONTAL_SEEK)
-            releaseGesture(GestureOwner.SUBTITLE_SEEK)
           }
+
+          if (hasStartedSeeking && gestureType == "subtitle_dialog_seek") {
+            // Keep the chip visible briefly after the gesture settles.
+            coroutineScope.launch {
+              delay(HORIZONTAL_SEEK_UPDATE_LINGER_MS)
+              viewModel.playerUpdate.update { PlayerUpdates.None }
+            }
+          }
+          releaseGesture(GestureOwner.HORIZONTAL_SEEK)
+          releaseGesture(GestureOwner.SUBTITLE_SEEK)
         }
+      }
 
   Box(modifier = modifier.fillMaxSize().then(playlistSwipeModifier)) {
     Box(modifier = backgroundGestureModifier)

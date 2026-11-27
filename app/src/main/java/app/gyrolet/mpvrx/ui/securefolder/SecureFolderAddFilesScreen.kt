@@ -10,7 +10,6 @@
 package app.gyrolet.mpvrx.ui.securefolder
 
 import android.app.Application
-import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -61,6 +60,7 @@ import app.gyrolet.mpvrx.utils.sort.SortUtils
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
+import app.gyrolet.mpvrx.ui.components.AppToast as Toast
 
 /**
  * In-app file picker for the Secure Folder: browse storage folders (same folder browsing/sort
@@ -93,9 +93,10 @@ data object SecureFolderAddFilesScreen : Screen {
     val videoFolders by folderListViewModel.videoFolders.collectAsState()
     val folderSortType by browserPreferences.folderSortType.collectAsState()
     val folderSortOrder by browserPreferences.folderSortOrder.collectAsState()
-    val sortedFolders = remember(videoFolders, folderSortType, folderSortOrder) {
-      SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
-    }
+    val sortedFolders =
+      remember(videoFolders, folderSortType, folderSortOrder) {
+        SortUtils.sortFolders(videoFolders, folderSortType, folderSortOrder)
+      }
 
     var selectedFolder by remember { mutableStateOf<VideoFolder?>(null) }
     val folder = selectedFolder
@@ -123,9 +124,10 @@ data object SecureFolderAddFilesScreen : Screen {
       }
     val videoSortType by browserPreferences.videoSortType.collectAsState()
     val videoSortOrder by browserPreferences.videoSortOrder.collectAsState()
-    val sortedVideos = remember(currentVideos, videoSortType, videoSortOrder) {
-      SortUtils.sortVideos(currentVideos, videoSortType, videoSortOrder)
-    }
+    val sortedVideos =
+      remember(currentVideos, videoSortType, videoSortOrder) {
+        SortUtils.sortVideos(currentVideos, videoSortType, videoSortOrder)
+      }
 
     val selectionManager =
       if (folder != null) {
@@ -157,10 +159,13 @@ data object SecureFolderAddFilesScreen : Screen {
               }
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
           }.onFailure { error ->
-            Toast.error(context, context.getString(
-              R.string.secure_folder_move_failed_details,
-              error.localizedMessage ?: context.getString(R.string.generic_unknown_error),
-            ))
+            Toast.error(
+              context,
+              context.getString(
+                R.string.secure_folder_move_failed_details,
+                error.localizedMessage ?: context.getString(R.string.generic_unknown_error),
+              ),
+            )
           }
         if (result.isSuccess) {
           selectionManager?.clear()

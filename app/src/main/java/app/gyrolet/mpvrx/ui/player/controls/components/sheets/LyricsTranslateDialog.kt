@@ -48,8 +48,8 @@ import app.gyrolet.mpvrx.preferences.LyricsTranslationDisplayMode
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.PlayerSheet
 import app.gyrolet.mpvrx.presentation.components.PlayerSheetSearchField
-import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerGlassSurfaceActive
+import app.gyrolet.mpvrx.ui.liquidglass.liquidGlassActive
 import app.gyrolet.mpvrx.ui.player.PlayerViewModel
 import app.gyrolet.mpvrx.ui.theme.fontFamilyForText
 import org.koin.compose.koinInject
@@ -64,15 +64,16 @@ fun LyricsTranslateDialog(
   val state by viewModel.lyricsUiState.collectAsState()
   var searchQuery by rememberSaveable { mutableStateOf("") }
 
-  val filteredLanguages = remember(searchQuery) {
-    if (searchQuery.isBlank()) {
-      LyricsLanguageOptions.ALL_LANGUAGES
-    } else {
-      LyricsLanguageOptions.ALL_LANGUAGES.filter {
-        it.displayName.contains(searchQuery, ignoreCase = true) || it.code.contains(searchQuery, ignoreCase = true)
+  val filteredLanguages =
+    remember(searchQuery) {
+      if (searchQuery.isBlank()) {
+        LyricsLanguageOptions.ALL_LANGUAGES
+      } else {
+        LyricsLanguageOptions.ALL_LANGUAGES.filter {
+          it.displayName.contains(searchQuery, ignoreCase = true) || it.code.contains(searchQuery, ignoreCase = true)
+        }
       }
     }
-  }
 
   // Opt into the shared PlayerSheet so the translate picker gets the same liquid glass
   // material as the other player sheets when liquid glass is turned on. Liquid glass
@@ -86,10 +87,11 @@ fun LyricsTranslateDialog(
     scrimAlpha = scrimAlpha,
   ) {
     Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 20.dp)
-        .padding(bottom = 8.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 20.dp)
+          .padding(bottom = 8.dp),
     ) {
       if (state.isTranslating) {
         Row(
@@ -113,18 +115,23 @@ fun LyricsTranslateDialog(
 
       // Option to toggle off (original lyrics)
       Surface(
-        modifier = Modifier
-          .fillMaxWidth()
-          .clip(RoundedCornerShape(12.dp))
-          .clickable {
-            viewModel.showOriginalLyrics()
-            onDismiss()
-          },
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable {
+              viewModel.showOriginalLyrics()
+              onDismiss()
+            },
         color =
           if (LocalPlayerGlassSurfaceActive.current) {
             playerSheetSelectionColor(!state.isTranslationActive)
           } else {
-            if (!state.isTranslationActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+            if (!state.isTranslationActive) {
+              MaterialTheme.colorScheme.primaryContainer
+            } else {
+              MaterialTheme.colorScheme.surfaceVariant
+            }
           },
         shape = RoundedCornerShape(12.dp),
       ) {
@@ -142,7 +149,12 @@ fun LyricsTranslateDialog(
               text = stringResource(R.string.lyrics_translation_off),
               style = MaterialTheme.typography.bodyLarge,
               fontWeight = FontWeight.Bold,
-              color = if (!state.isTranslationActive) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+              color =
+                if (!state.isTranslationActive) {
+                  MaterialTheme.colorScheme.onSecondaryContainer
+                } else {
+                  MaterialTheme.colorScheme.onSurface
+                },
             )
             Text(
               text = stringResource(R.string.lyrics_translation_off_summary),
@@ -205,9 +217,10 @@ fun LyricsTranslateDialog(
           text = stringResource(R.string.lyrics_translation_no_languages),
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 24.dp),
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(vertical = 24.dp),
         )
       } else {
         LazyColumn(
@@ -219,22 +232,21 @@ fun LyricsTranslateDialog(
             val isSelected = state.isTranslationActive && state.targetLanguage.equals(lang.code, ignoreCase = true)
             val frosted = LocalPlayerGlassSurfaceActive.current
             Row(
-              modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .clickable {
-                  audioPreferences.lyricsTargetLanguage.set(lang.code)
-                  viewModel.translateLyrics(lang.code)
-                  onDismiss()
-                }
-                .background(
-                  when {
-                    frosted -> playerSheetSelectionColor(isSelected)
-                    isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                    else -> Color.Transparent
-                  },
-                )
-                .padding(horizontal = 10.dp, vertical = 10.dp),
+              modifier =
+                Modifier
+                  .fillMaxWidth()
+                  .clip(RoundedCornerShape(8.dp))
+                  .clickable {
+                    audioPreferences.lyricsTargetLanguage.set(lang.code)
+                    viewModel.translateLyrics(lang.code)
+                    onDismiss()
+                  }.background(
+                    when {
+                      frosted -> playerSheetSelectionColor(isSelected)
+                      isSelected -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
+                      else -> Color.Transparent
+                    },
+                  ).padding(horizontal = 10.dp, vertical = 10.dp),
               verticalAlignment = Alignment.CenterVertically,
             ) {
               RadioButton(
@@ -248,7 +260,12 @@ fun LyricsTranslateDialog(
                   style = MaterialTheme.typography.bodyMedium,
                   fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                   fontFamily = fontFamilyForText(lang.displayName),
-                  color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+                  color =
+                    if (isSelected) {
+                      MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                      MaterialTheme.colorScheme.onSurface
+                    },
                 )
                 if (lang.isRomanization) {
                   Text(
