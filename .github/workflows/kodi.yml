@@ -1,12 +1,15 @@
 name: Kodi CI/CD Build
 
+# Builds the kodi distribution: mpvRx playing with the headless Kodi engine. Gradle downloads the
+# engine AAR from mpvlibAndroid's kodi-v<mpvlibKodi> prerelease (gradle/libs.versions.toml), which
+# mpvlibAndroid's kodi workflow builds from Kodi sources with the engine patches.
+
 on:
   push:
     branches: [kodi]
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
 
 concurrency:
@@ -19,27 +22,33 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
+    env:
+      KODI_ABIS: universal arm64-v8a armeabi-v7a x86
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
+          # BuildConfig.GIT_COUNT needs full history.
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Download pinned Kodi AAR
+      - name: Check the mpvlib-kodi release
         shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.MPVLIB_ACTIONS_TOKEN || github.token }}
         run: |
           set -euo pipefail
-          cd "$RUNNER_TEMP"
-          # https://github.com/Riteshp2001/mpvlibAndroid/actions/runs/45860767410/artifacts/15138446870
-          curl --fail --silent --show-error --location --retry 3 \
-            --header "Authorization: Bearer $GH_TOKEN" \
-            --output mpvlib-kodi.zip \
-            https://api.github.com/repos/Riteshp2001/mpvlibAndroid/actions/artifacts/15138446870/zip
-          echo 'dea871468a8d60887162ce412866ee397fc43c1b18dd9ae2f8664f91878a5411  mpvlib-kodi.zip' | sha256sum --check --strict
-          unzip -p mpvlib-kodi.zip mpvlib-kodi-21.3.0.aar > mpvlib-kodi-21.3.0.aar
+          version="$(sed -n 's/^mpvlibKodi = "\(.*\)"$/\1/p' gradle/libs.versions.toml)"
+          test -n "$version"
+          aar="mpvlib-kodi-${version}.aar"
+          url="https://github.com/Riteshp2001/mpvlibAndroid/releases/download/kodi-v${version}/${aar}"
+          if ! curl --fail --silent --show-error --location --retry 3 \
+              --output "$RUNNER_TEMP/$aar.sha256" "$url.sha256"; then
+            echo "::error::mpvlib-kodi ${version} is not published: run mpvlibAndroid's kodi workflow with publish."
+            exit 1
+          fi
+          echo "MPVLIB_KODI_VERSION=$version" >> "$GITHUB_ENV"
+          echo "MPVLIB_KODI_SHA256=$(cut -d ' ' -f 1 "$RUNNER_TEMP/$aar.sha256")" >> "$GITHUB_ENV"
+          cat "$RUNNER_TEMP/$aar.sha256"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v6
@@ -52,13 +61,44 @@ jobs:
         run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.2"'
 
       - name: Build Kodi release APKs
+        shell: bash
         run: |
+          set -euo pipefail
           chmod +x ./gradlew
           ./gradlew :app:assembleKodiRelease --stacktrace --no-daemon --max-workers=2 \
-            -PtargetAbi=arm64-v8a,armeabi-v7a,x86 \
-            "-PmpvlibKodiAar=$RUNNER_TEMP/mpvlib-kodi-21.3.0.aar"
+            -PtargetAbi=arm64-v8a,armeabi-v7a,x86
 
-      - name: Verify and stage Kodi APKs
+      - name: Verify the engine in the APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The AAR Gradle resolved must be the published one.
+          resolved="$(find ~/.gradle/caches/modules-2/files-2.1/app.gyrolet.mpvlib.kodi \
+            -name "mpvlib-kodi-${MPVLIB_KODI_VERSION}.aar" -print -quit)"
+          test -n "$resolved"
+          echo "${MPVLIB_KODI_SHA256}  ${resolved}" | sha256sum --check --strict
+
+          out_dir=app/build/outputs/apk/kodi/release
+          lib="$RUNNER_TEMP/libkodi.so"
+          for abi in $KODI_ABIS; do
+            base="app-kodi-$abi-release"
+            apk="$out_dir/$base-unsigned.apk"
+            [[ -f "$apk" ]] || apk="$out_dir/$base.apk"
+            unzip -Z1 "$apk" assets/kodi/kodi-assets.zip > /dev/null
+            native_abis="$abi"
+            [[ "$abi" == universal ]] && native_abis="arm64-v8a armeabi-v7a x86"
+            for native_abi in $native_abis; do
+              unzip -Z1 "$apk" "lib/$native_abi/libkodiengine.so" > /dev/null
+              unzip -p "$apk" "lib/$native_abi/libkodi.so" > "$lib"
+              for marker in KODI_ENGINE_MODE Player.GetVideoSettings Player.GetChapters; do
+                grep -aq "$marker" "$lib" ||
+                  { echo "$apk: lib/$native_abi/libkodi.so lacks the engine patches ($marker)"; exit 1; }
+              done
+            done
+          done
+          rm -f "$lib"
+
+      - name: Sign Kodi APKs
         shell: bash
         env:
           SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
@@ -69,37 +109,29 @@ jobs:
           set -euo pipefail
           out_dir=app/build/outputs/apk/kodi/release
           mkdir -p kodi-apks
-          if [[ -n "$SIGNING_KEYSTORE" ]]; then
-            : "${SIGNING_KEY_ALIAS:?Missing signing alias}" \
-              "${SIGNING_STORE_PASSWORD:?Missing signing store password}" \
-              "${KEY_PASSWORD:?Missing signing key password}"
-            keystore="$RUNNER_TEMP/kodi.keystore"
-            trap 'rm -f "$keystore"' EXIT
-            printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > "$keystore"
-            apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          if [[ -z "$SIGNING_KEYSTORE" ]]; then
+            echo "SIGNING_KEYSTORE is unavailable; uploading unsigned APKs."
+            for abi in $KODI_ABIS; do
+              cp "$out_dir/app-kodi-$abi-release"*.apk kodi-apks/
+            done
+            exit 0
           fi
-
-          for abi in universal arm64-v8a armeabi-v7a x86; do
+          : "${SIGNING_KEY_ALIAS:?Missing signing alias}" \
+            "${SIGNING_STORE_PASSWORD:?Missing signing store password}" \
+            "${KEY_PASSWORD:?Missing signing key password}"
+          keystore="$RUNNER_TEMP/kodi.keystore"
+          trap 'rm -f "$keystore"' EXIT
+          printf '%s' "$SIGNING_KEYSTORE" | base64 --decode > "$keystore"
+          apksigner="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+          test -x "$apksigner"
+          for abi in $KODI_ABIS; do
             base="app-kodi-$abi-release"
             apk="$out_dir/$base-unsigned.apk"
             [[ -f "$apk" ]] || apk="$out_dir/$base.apk"
-            unzip -Z1 "$apk" assets/kodi/kodi-assets.zip
-            if [[ "$abi" == universal ]]; then
-              for native_abi in arm64-v8a armeabi-v7a x86; do
-                unzip -Z1 "$apk" "lib/$native_abi/libkodi.so"
-              done
-            else
-              unzip -Z1 "$apk" "lib/$abi/libkodi.so"
-            fi
-
-            if [[ -n "$SIGNING_KEYSTORE" ]]; then
-              "$apksigner" sign --ks "$keystore" --ks-key-alias "$SIGNING_KEY_ALIAS" \
-                --ks-pass env:SIGNING_STORE_PASSWORD --key-pass env:KEY_PASSWORD \
-                --out "kodi-apks/$base.apk" "$apk"
-              "$apksigner" verify "kodi-apks/$base.apk"
-            else
-              cp "$apk" kodi-apks/
-            fi
+            "$apksigner" sign --ks "$keystore" --ks-key-alias "$SIGNING_KEY_ALIAS" \
+              --ks-pass env:SIGNING_STORE_PASSWORD --key-pass env:KEY_PASSWORD \
+              --out "kodi-apks/mpvRx-kodi-$abi-release.apk" "$apk"
+            "$apksigner" verify "kodi-apks/mpvRx-kodi-$abi-release.apk"
           done
 
       - name: Upload Kodi APKs
@@ -108,5 +140,5 @@ jobs:
           name: mpvRx-kodi-${{ github.sha }}
           path: kodi-apks/*.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
           compression-level: 0
