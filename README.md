@@ -417,7 +417,7 @@ For help, reproducible bug reports, or feature suggestions, start with the [supp
 
 The `kodi` variant (`applicationId` suffix `.kodi`) plays with Kodi 21.3's engine instead of libmpv,
 behind mpvRx's own player screen and controls. The
-[`mpvlib-kodi` AAR](https://github.com/Riteshp2001/mpvlibAndroid/tree/kodi/kodi) runs Kodi headless in
+[KodiLibAndroid AAR](https://github.com/Riteshp2001/kodilibandroid) runs Kodi headless in
 the app's `:kodi` process: Kodi shows no interface of its own, renders video and subtitles into mpvRx's
 player, and mpvRx controls it with the commands and properties it sends to mpv.
 
@@ -432,12 +432,15 @@ player, and mpvRx controls it with the commands and properties it sends to mpv.
 
 Kodi publishes no `x86_64` libraries, so this variant has no `x86_64` APK; x86_64 devices use the `x86` one.
 
-Gradle downloads the AAR from mpvlibAndroid's `kodi-v<mpvlibKodi>` prerelease (`mpvlibKodi` in
-`gradle/libs.versions.toml`), which mpvlibAndroid's `kodi` workflow builds from Kodi's sources with the
-engine patches. The **Kodi CI/CD Build** workflow runs on pushes to `kodi`: it checks the AAR against
+Gradle downloads the AAR from the [KodiLibAndroid releases](https://github.com/Riteshp2001/kodilibandroid/releases).
+The `kodi-v<mpvlibKodi>` prerelease (`mpvlibKodi` in `gradle/libs.versions.toml`) packages Kodi built
+from source with the engine patches. The **Kodi CI/CD Build** workflow runs on pushes to `kodi`: it checks the AAR against
 the release checksum and the engine patches in the APKs' Kodi libraries. Download the universal,
 arm64-v8a, armeabi-v7a and x86 APKs from the run's **Artifacts** section. APKs are signed when the
 repository's release signing secrets are configured.
+
+The pinned `21.3.0-engine.3` is the legacy mpv-compatible engine. New KodiLibAndroid releases use a
+separate Kodi-native API and require an adapter change before this variant can upgrade.
 
 To build with an AAR you built yourself, pass it to Gradle:
 

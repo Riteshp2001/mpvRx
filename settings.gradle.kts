@@ -38,13 +38,14 @@ dependencyResolutionManagement {
         includeGroup("app.gyrolet.mpvlib")
       }
     }
-    // The embedded Kodi AAR. Its kodi-v* tags stay out of mpvlibAndroid's v*.*.* release workflow.
+    // KodiLibAndroid. Migrated prereleases retain their original mpvlib-kodi filenames.
     exclusiveContent {
       forRepository {
         ivy {
-          name = "mpvlibKodiGitHubReleases"
-          url = uri("https://github.com/Riteshp2001/mpvlibAndroid/releases/download")
+          name = "kodiLibAndroidGitHubReleases"
+          url = uri("https://github.com/Riteshp2001/kodilibandroid/releases/download")
           patternLayout {
+            artifact("kodi-v[revision]/kodilibandroid-[revision].[ext]")
             artifact("kodi-v[revision]/[artifact]-[revision].[ext]")
           }
           metadataSources {

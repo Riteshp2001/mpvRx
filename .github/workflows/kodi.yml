@@ -1,8 +1,7 @@
 name: Kodi CI/CD Build
 
 # Builds the kodi distribution: mpvRx playing with the headless Kodi engine. Gradle downloads the
-# engine AAR from mpvlibAndroid's kodi-v<mpvlibKodi> prerelease (gradle/libs.versions.toml), which
-# mpvlibAndroid's kodi workflow builds from Kodi sources with the engine patches.
+# engine AAR from KodiLibAndroid's kodi-v<mpvlibKodi> prerelease (gradle/libs.versions.toml).
 
 on:
   push:
@@ -33,22 +32,29 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Check the mpvlib-kodi release
+      - name: Check the KodiLibAndroid release
         shell: bash
         run: |
           set -euo pipefail
           version="$(sed -n 's/^mpvlibKodi = "\(.*\)"$/\1/p' gradle/libs.versions.toml)"
           test -n "$version"
-          aar="mpvlib-kodi-${version}.aar"
-          url="https://github.com/Riteshp2001/mpvlibAndroid/releases/download/kodi-v${version}/${aar}"
-          if ! curl --fail --silent --show-error --location --retry 3 \
-              --output "$RUNNER_TEMP/$aar.sha256" "$url.sha256"; then
-            echo "::error::mpvlib-kodi ${version} is not published: run mpvlibAndroid's kodi workflow with publish."
+          release="https://github.com/Riteshp2001/kodilibandroid/releases/download/kodi-v${version}"
+          checksum="$RUNNER_TEMP/kodi-aar.sha256"
+          status="$(curl --silent --show-error --location --retry 3 \
+            --write-out '%{http_code}' --output "$checksum" "$release/kodilibandroid-${version}.aar.sha256")"
+          case "$status" in
+            200) ;;
+            404) curl --fail --silent --show-error --location --retry 3 \
+              --output "$checksum" "$release/mpvlib-kodi-${version}.aar.sha256" ;;
+            *) echo "::error::KodiLibAndroid ${version} checksum returned HTTP ${status}."; exit 1 ;;
+          esac
+          sha256="$(cut -d ' ' -f 1 "$checksum")"
+          if [[ ! "$sha256" =~ ^[a-f0-9]{64}$ ]]; then
+            echo "::error::Invalid SHA-256 for KodiLibAndroid ${version}."
             exit 1
           fi
           echo "MPVLIB_KODI_VERSION=$version" >> "$GITHUB_ENV"
-          echo "MPVLIB_KODI_SHA256=$(cut -d ' ' -f 1 "$RUNNER_TEMP/$aar.sha256")" >> "$GITHUB_ENV"
-          cat "$RUNNER_TEMP/$aar.sha256"
+          echo "MPVLIB_KODI_SHA256=$sha256" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v6
@@ -76,7 +82,8 @@ jobs:
           set -euo pipefail
           # The AAR Gradle resolved must be the published one.
           resolved="$(find ~/.gradle/caches/modules-2/files-2.1/app.gyrolet.mpvlib.kodi \
-            -name "mpvlib-kodi-${MPVLIB_KODI_VERSION}.aar" -print -quit)"
+            \( -name "mpvlib-kodi-${MPVLIB_KODI_VERSION}.aar" \
+              -o -name "kodilibandroid-${MPVLIB_KODI_VERSION}.aar" \) -print -quit)"
           test -n "$resolved"
           echo "${MPVLIB_KODI_SHA256}  ${resolved}" | sha256sum --check --strict
 
