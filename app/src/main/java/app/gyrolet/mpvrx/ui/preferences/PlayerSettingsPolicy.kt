@@ -198,7 +198,13 @@ internal fun isLivePlayerSetting(
   when (screen) {
     is ControlLayoutEditorScreen -> true
     PlayerControlsPreferencesScreen, PersistentStatusBarPreferencesScreen -> true
-    GesturePreferencesScreen -> key !in setOf(R.string.pref_video_swipe_title, R.string.pref_nested_tab_swipes_title)
+    GesturePreferencesScreen ->
+      key !in
+        setOf(
+          R.string.pref_video_swipe_title,
+          R.string.pref_main_page_swipes_title,
+          R.string.pref_nested_tab_swipes_title,
+        )
     PlayerPreferencesScreen -> key in livePlayerSettings
     AudioPreferencesScreen -> key in liveAudioSettings
     SubtitlesPreferencesScreen -> key in liveSubtitleSettings

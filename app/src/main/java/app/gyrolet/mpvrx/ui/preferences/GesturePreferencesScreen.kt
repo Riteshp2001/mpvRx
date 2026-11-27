@@ -117,6 +117,16 @@ object GesturePreferencesScreen : ScrollableSettingsScreen {
               )
               PreferenceDivider()
 
+              val mainPageSwipesEnabled by preferences.mainPageSwipesEnabled.collectAsState()
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_main_page_swipes_title),
+                value = mainPageSwipesEnabled,
+                onValueChange = preferences.mainPageSwipesEnabled::set,
+                title = { Text(stringResource(R.string.pref_main_page_swipes_title)) },
+                summary = { Text(stringResource(R.string.pref_main_page_swipes_summary)) },
+              )
+              PreferenceDivider()
+
               val nestedTabSwipesEnabled by preferences.nestedTabSwipesEnabled.collectAsState()
               SwitchPreference(
                 modifier = Modifier.settingsSearchTarget(R.string.pref_nested_tab_swipes_title),

@@ -2545,6 +2545,8 @@
   <string name="wallpaper_save_failed">Could not save the wallpaper. Please choose the image again.</string>
   <string name="pref_haptic_feedback_title">Haptic feedback</string>
   <string name="pref_haptic_feedback_summary">Feedback for selections, dragging and adjustments. Follows system settings.</string>
+  <string name="pref_main_page_swipes_title">Swipe between pages</string>
+  <string name="pref_main_page_swipes_summary">Swipe between main pages like Home, Music and Profile. Turn off to switch pages only with the navigation buttons.</string>
   <string name="pref_nested_tab_swipes_title">Swipe between inner tabs</string>
   <string name="pref_nested_tab_swipes_summary">Swipe between sub-tabs in Music, Network and Recents.</string>
 
@@ -2594,6 +2596,10 @@
   <string name="pref_video_swipe_change">Change</string>
   <string name="pref_video_swipe_zone_width">Swipe zone width</string>
   <string name="pref_video_swipe_zone_percent">Swipe zone: %1$d%%</string>
+  <string name="pref_video_swipe_separate_audio">Separate audio and video actions</string>
+  <string name="pref_video_swipe_separate_audio_summary">Use different swipe actions for audio and video items</string>
+  <string name="pref_video_swipe_target_video">Video</string>
+  <string name="pref_video_swipe_target_audio">Audio</string>
   <string name="video_swipe_delete_title">Delete videos?</string>
   <string name="video_swipe_delete_message">Permanently delete \"%1$s\"? This cannot be undone.</string>
   <string name="video_swipe_delete_folder_message">Permanently delete %1$d videos in \"%2$s\" and its subfolders? Other files and folders will be kept. This cannot be undone.</string>

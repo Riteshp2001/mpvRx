@@ -1177,108 +1177,27 @@ fun JellyfinDetailSheet(
             verticalArrangement = Arrangement.spacedBy(4.dp),
           ) {
             if (directors.isNotEmpty()) {
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-              ) {
-                Text(
-                  text = if (directors.size > 1) "Directors: " else "Director: ",
-                  style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                  color = MaterialTheme.colorScheme.onSurface,
-                )
-                directors.forEachIndexed { index, person ->
-                  Text(
-                    text = person.name + if (index < directors.lastIndex) ", " else "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color =
-                      if (onPersonClick !=
-                        null
-                      ) {
-                        MaterialTheme.colorScheme.primary
-                      } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                      },
-                    modifier =
-                      Modifier.tvFocusHighlight(MaterialTheme.shapes.small, clipToShape = false).clickable(
-                        enabled =
-                          onPersonClick != null,
-                      ) {
-                        onPersonClick?.invoke(person)
-                      },
-                  )
-                }
-              }
+              JellyfinCreditsRow(
+                label = if (directors.size > 1) "Directors: " else "Director: ",
+                people = directors,
+                onPersonClick = onPersonClick,
+              )
             }
 
             if (writers.isNotEmpty()) {
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-              ) {
-                Text(
-                  text = if (writers.size > 1) "Writers: " else "Writer: ",
-                  style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                  color = MaterialTheme.colorScheme.onSurface,
-                )
-                writers.forEachIndexed { index, person ->
-                  Text(
-                    text = person.name + if (index < writers.lastIndex) ", " else "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color =
-                      if (onPersonClick !=
-                        null
-                      ) {
-                        MaterialTheme.colorScheme.primary
-                      } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                      },
-                    modifier =
-                      Modifier.tvFocusHighlight(MaterialTheme.shapes.small, clipToShape = false).clickable(
-                        enabled =
-                          onPersonClick != null,
-                      ) {
-                        onPersonClick?.invoke(person)
-                      },
-                  )
-                }
-              }
+              JellyfinCreditsRow(
+                label = if (writers.size > 1) "Writers: " else "Writer: ",
+                people = writers,
+                onPersonClick = onPersonClick,
+              )
             }
 
             if (producers.isNotEmpty()) {
-              Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-              ) {
-                Text(
-                  text = if (producers.size > 1) "Producers: " else "Producer: ",
-                  style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                  color = MaterialTheme.colorScheme.onSurface,
-                )
-                producers.forEachIndexed { index, person ->
-                  Text(
-                    text = person.name + if (index < producers.lastIndex) ", " else "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color =
-                      if (onPersonClick !=
-                        null
-                      ) {
-                        MaterialTheme.colorScheme.primary
-                      } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                      },
-                    modifier =
-                      Modifier.tvFocusHighlight(MaterialTheme.shapes.small, clipToShape = false).clickable(
-                        enabled =
-                          onPersonClick != null,
-                      ) {
-                        onPersonClick?.invoke(person)
-                      },
-                  )
-                }
-              }
+              JellyfinCreditsRow(
+                label = if (producers.size > 1) "Producers: " else "Producer: ",
+                people = producers,
+                onPersonClick = onPersonClick,
+              )
             }
           }
         }
@@ -1468,6 +1387,48 @@ fun JellyfinDetailSheet(
 }
 
 /** Pulsing placeholder block used while sheet sections stream in. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun JellyfinCreditsRow(
+  label: String,
+  people: List<JellyfinPerson>,
+  onPersonClick: ((JellyfinPerson) -> Unit)?,
+) {
+  // Wrap long credit lists onto new lines instead of squeezing the last names into a vertical column.
+  FlowRow(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalArrangement = Arrangement.spacedBy(2.dp),
+    itemVerticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(
+      text = label,
+      style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+      color = MaterialTheme.colorScheme.onSurface,
+    )
+    people.forEachIndexed { index, person ->
+      Text(
+        text = person.name + if (index < people.lastIndex) "," else "",
+        style = MaterialTheme.typography.bodyMedium,
+        color =
+          if (onPersonClick != null) {
+            MaterialTheme.colorScheme.primary
+          } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+          },
+        maxLines = 1,
+        softWrap = false,
+        modifier =
+          Modifier.tvFocusHighlight(MaterialTheme.shapes.small, clipToShape = false).clickable(
+            enabled = onPersonClick != null,
+          ) {
+            onPersonClick?.invoke(person)
+          },
+      )
+    }
+  }
+}
+
 @Composable
 private fun GhostBlock(modifier: Modifier = Modifier) {
   val transition = rememberInfiniteTransition(label = "ghost_pulse")

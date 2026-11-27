@@ -84,18 +84,23 @@ internal fun NavigationPager(
   userScrollEnabled: Boolean = true,
   key: ((Int) -> Any)? = null,
   allowNestedSwipes: Boolean = false,
+  isMainNavigation: Boolean = false,
   activePageFocusRequester: FocusRequester? = null,
   content: @Composable PagerScope.(Int) -> Unit,
 ) {
   val gesturePreferences = koinInject<GesturePreferences>()
   val playerPreferences = koinInject<PlayerPreferences>()
   val nestedTabSwipesEnabled by gesturePreferences.nestedTabSwipesEnabled.collectAsState()
+  val mainPageSwipesEnabled by gesturePreferences.mainPageSwipesEnabled.collectAsState()
   val style by playerPreferences.appNavStyle.collectAsState()
   val reduceMotion = AppMotion.shouldReduceMotion()
   val isTelevision = isTelevision()
   val isNestedPager = LocalNavigationPagerPresent.current
   val ownsHorizontalSwipes =
-    !isTelevision && userScrollEnabled && (!isNestedPager || (allowNestedSwipes && nestedTabSwipesEnabled))
+    !isTelevision &&
+      userScrollEnabled &&
+      (!isMainNavigation || mainPageSwipesEnabled) &&
+      (!isNestedPager || (allowNestedSwipes && nestedTabSwipesEnabled))
   val nestedScrollConnection =
     if (ownsHorizontalSwipes) {
       PagerDefaults.pageNestedScrollConnection(state, Orientation.Horizontal)

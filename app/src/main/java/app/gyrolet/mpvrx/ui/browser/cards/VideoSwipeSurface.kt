@@ -114,6 +114,21 @@ internal fun VideoSwipeAction.contentColor(): Color =
     VideoSwipeAction.None, VideoSwipeAction.ClearHistory -> MaterialTheme.colorScheme.onSurfaceVariant
   }
 
+/** Returns (left, right); audio rows use their own actions once the user separates them from video. */
+@Composable
+internal fun rememberSwipeActions(
+  isAudio: Boolean,
+  videoLeft: VideoSwipeAction,
+  videoRight: VideoSwipeAction,
+): Pair<VideoSwipeAction, VideoSwipeAction> {
+  if (!isAudio) return videoLeft to videoRight
+  val preferences = koinInject<BrowserPreferences>()
+  val separateAudio by preferences.separateAudioSwipeActions.collectAsState()
+  val audioLeft by preferences.audioSwipeLeft.collectAsState()
+  val audioRight by preferences.audioSwipeRight.collectAsState()
+  return if (separateAudio) audioLeft to audioRight else videoLeft to videoRight
+}
+
 @Composable
 internal fun VideoSwipeSurface(
   identity: String,
@@ -125,6 +140,7 @@ internal fun VideoSwipeSurface(
   modifier: Modifier,
   shape: Shape,
   colors: CardColors,
+  isAudio: Boolean = false,
   content: @Composable ColumnScope.() -> Unit,
 ) {
   // Keep the same composition subtree while selection temporarily disables swiping. Switching
@@ -135,8 +151,14 @@ internal fun VideoSwipeSurface(
     return
   }
   val preferences = koinInject<BrowserPreferences>()
-  val rightZonePercent by preferences.videoSwipeRightZonePercent.collectAsState()
-  val leftZonePercent by preferences.videoSwipeLeftZonePercent.collectAsState()
+  val separateAudio by preferences.separateAudioSwipeActions.collectAsState()
+  val videoRightZonePercent by preferences.videoSwipeRightZonePercent.collectAsState()
+  val videoLeftZonePercent by preferences.videoSwipeLeftZonePercent.collectAsState()
+  val audioRightZonePercent by preferences.audioSwipeRightZonePercent.collectAsState()
+  val audioLeftZonePercent by preferences.audioSwipeLeftZonePercent.collectAsState()
+  val useAudioZones = isAudio && separateAudio
+  val rightZonePercent = if (useAudioZones) audioRightZonePercent else videoRightZonePercent
+  val leftZonePercent = if (useAudioZones) audioLeftZonePercent else videoLeftZonePercent
   val rightSwipeZoneFraction = rightZonePercent.coerceIn(BrowserPreferences.VIDEO_SWIPE_ZONE_RANGE) / 100f
   val leftSwipeZoneFraction = leftZonePercent.coerceIn(BrowserPreferences.VIDEO_SWIPE_ZONE_RANGE) / 100f
   val haptics = rememberAppHaptics()

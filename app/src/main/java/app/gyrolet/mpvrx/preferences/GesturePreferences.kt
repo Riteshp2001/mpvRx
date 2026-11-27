@@ -17,6 +17,7 @@ class GesturePreferences(
   preferenceStore: PreferenceStore,
 ) {
   val hapticFeedbackEnabled = preferenceStore.getBoolean("haptic_feedback_enabled", true)
+  val mainPageSwipesEnabled = preferenceStore.getBoolean("main_page_swipes_enabled", true)
   val nestedTabSwipesEnabled = preferenceStore.getBoolean("nested_tab_swipes_enabled", true)
   val confirmBackToExit = preferenceStore.getBoolean("confirm_back_to_exit", false)
   val showSeekbarDuringHorizontalSeeking = preferenceStore.getBoolean("show_seekbar_during_horizontal_seeking", false)

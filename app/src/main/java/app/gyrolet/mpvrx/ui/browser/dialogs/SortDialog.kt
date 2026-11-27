@@ -131,7 +131,6 @@ fun SortDialog(
       modifier = modifier,
     ) {
       Column {
-        HorizontalDivider()
         Column(
           modifier = Modifier.fillMaxWidth(),
         ) {

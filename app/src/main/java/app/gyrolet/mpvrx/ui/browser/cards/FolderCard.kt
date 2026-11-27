@@ -187,8 +187,8 @@ fun FolderCard(
   val showFolderThumbnails = resolvedUiConfig.showFolderThumbnails
   val thumbnailGenerator = resolvedUiConfig.thumbnailGenerator
   val includeAudio = resolvedUiConfig.includeAudio
-  val swipeLeft = resolvedUiConfig.swipeLeft
-  val swipeRight = resolvedUiConfig.swipeRight
+  val (swipeLeft, swipeRight) =
+    rememberSwipeActions(isAudioOnly, resolvedUiConfig.swipeLeft, resolvedUiConfig.swipeRight)
   val context = androidx.compose.ui.platform.LocalContext.current
   val thumbnailRepository = koinInject<ThumbnailRepository>()
   val thumbnailCacheRevision by thumbnailRepository.cacheRevision.collectAsState()
@@ -308,6 +308,7 @@ fun FolderCard(
     identity = folder.path,
     leftAction = if (scopedFolder && swipeLeft == VideoSwipeAction.Delete) VideoSwipeAction.None else swipeLeft,
     rightAction = if (scopedFolder && swipeRight == VideoSwipeAction.Delete) VideoSwipeAction.None else swipeRight,
+    isAudio = isAudioOnly,
     isWatched = null,
     enabled =
       !isGridMode &&

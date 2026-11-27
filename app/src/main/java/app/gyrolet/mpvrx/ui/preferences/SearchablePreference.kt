@@ -602,10 +602,28 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_main_page_swipes_title,
+          summaryRes = R.string.pref_main_page_swipes_summary,
+          keywords = listOf("swipe", "page", "pages", "navigation", "buttons", "home", "music", "profile"),
+          category = "Gestures",
+          screen = GesturePreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_nested_tab_swipes_title,
           keywords = listOf("swipe", "nested", "inner", "tabs", "navigation", "music", "network", "recents"),
           category = "Gestures",
           screen = GesturePreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
+          titleRes = R.string.pref_video_swipe_separate_audio,
+          summaryRes = R.string.pref_video_swipe_separate_audio_summary,
+          keywords = listOf("swipe", "audio", "video", "music", "separate", "action"),
+          category = "Gestures",
+          screen = VideoSwipePreferencesScreen,
         ),
       )
       add(

@@ -26,6 +26,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,8 +65,10 @@ import app.gyrolet.mpvrx.ui.browser.cards.containerColor
 import app.gyrolet.mpvrx.ui.browser.cards.contentColor
 import app.gyrolet.mpvrx.ui.browser.cards.icon
 import app.gyrolet.mpvrx.ui.browser.cards.labelRes
+import app.gyrolet.mpvrx.ui.components.themedSegmentedButtonColors
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
+import app.gyrolet.mpvrx.ui.preferences.components.SwitchPreference
 import app.gyrolet.mpvrx.ui.theme.AppConnectedShapeTokens
 import app.gyrolet.mpvrx.ui.theme.AppMotion
 import app.gyrolet.mpvrx.ui.theme.ConnectedLayout
@@ -83,10 +88,19 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
   @Composable
   override fun Content() {
     val preferences = koinInject<BrowserPreferences>()
-    val right by preferences.videoSwipeRight.collectAsState()
-    val left by preferences.videoSwipeLeft.collectAsState()
-    val rightZonePercent by preferences.videoSwipeRightZonePercent.collectAsState()
-    val leftZonePercent by preferences.videoSwipeLeftZonePercent.collectAsState()
+    val separateAudio by preferences.separateAudioSwipeActions.collectAsState()
+    var audioTabSelected by rememberSaveable { mutableStateOf(false) }
+    val editingAudio = separateAudio && audioTabSelected
+    val rightPreference = if (editingAudio) preferences.audioSwipeRight else preferences.videoSwipeRight
+    val leftPreference = if (editingAudio) preferences.audioSwipeLeft else preferences.videoSwipeLeft
+    val rightZonePreference =
+      if (editingAudio) preferences.audioSwipeRightZonePercent else preferences.videoSwipeRightZonePercent
+    val leftZonePreference =
+      if (editingAudio) preferences.audioSwipeLeftZonePercent else preferences.videoSwipeLeftZonePercent
+    val right by rightPreference.collectAsState()
+    val left by leftPreference.collectAsState()
+    val rightZonePercent by rightZonePreference.collectAsState()
+    val leftZonePercent by leftZonePreference.collectAsState()
     val backStack = LocalBackStack.current
     val haptics = rememberAppHaptics()
     var editingRight by rememberSaveable { mutableStateOf<Boolean?>(null) }
@@ -120,16 +134,74 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
           ),
         verticalArrangement = Arrangement.spacedBy(AppConnectedShapeTokens.spacing),
       ) {
+        item(key = "separate-audio") {
+          Surface(
+            shape = rememberConnectedShape(0, 3, ConnectedLayout.Vertical),
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+          ) {
+            Column {
+              SwitchPreference(
+                modifier = Modifier.settingsSearchTarget(R.string.pref_video_swipe_separate_audio),
+                value = separateAudio,
+                onValueChange = { enabled ->
+                  if (enabled && !preferences.separateAudioSwipeActions.get()) {
+                    // Start the audio set from the current video set so enabling it changes nothing yet.
+                    preferences.audioSwipeRight.set(preferences.videoSwipeRight.get())
+                    preferences.audioSwipeLeft.set(preferences.videoSwipeLeft.get())
+                    preferences.audioSwipeRightZonePercent.set(preferences.videoSwipeRightZonePercent.get())
+                    preferences.audioSwipeLeftZonePercent.set(preferences.videoSwipeLeftZonePercent.get())
+                  }
+                  preferences.separateAudioSwipeActions.set(enabled)
+                },
+                title = { Text(stringResource(R.string.pref_video_swipe_separate_audio)) },
+                summary = { Text(stringResource(R.string.pref_video_swipe_separate_audio_summary)) },
+              )
+              if (separateAudio) {
+                SingleChoiceSegmentedButtonRow(
+                  modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 16.dp),
+                ) {
+                  listOf(false, true).forEachIndexed { index, audio ->
+                    SegmentedButton(
+                      selected = audioTabSelected == audio,
+                      onClick = {
+                        if (audioTabSelected != audio) {
+                          audioTabSelected = audio
+                          haptics.selection(true)
+                        }
+                      },
+                      shape = SegmentedButtonDefaults.itemShape(index = index, count = 2),
+                      colors = themedSegmentedButtonColors(),
+                      icon = {
+                        Icon(
+                          if (audio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
+                          null,
+                          modifier = Modifier.size(16.dp),
+                        )
+                      },
+                    ) {
+                      Text(
+                        stringResource(
+                          if (audio) R.string.pref_video_swipe_target_audio else R.string.pref_video_swipe_target_video,
+                        ),
+                      )
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
         item(key = "right-swipe") {
           Surface(
-            shape = rememberConnectedShape(0, 2, ConnectedLayout.Vertical),
+            shape = rememberConnectedShape(1, 3, ConnectedLayout.Vertical),
             color = MaterialTheme.colorScheme.surfaceContainerLow,
           ) {
             SwipeDirectionPreference(
               right = true,
               action = right,
               zonePercent = rightZonePercent,
-              onZonePercentChange = { preferences.videoSwipeRightZonePercent.set(it) },
+              onZonePercentChange = { rightZonePreference.set(it) },
+              isAudio = editingAudio,
               modifier = Modifier.settingsSearchTarget(R.string.pref_video_swipe_right),
               onChange = { editingRight = true },
             )
@@ -137,14 +209,15 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
         }
         item(key = "left-swipe") {
           Surface(
-            shape = rememberConnectedShape(1, 2, ConnectedLayout.Vertical),
+            shape = rememberConnectedShape(2, 3, ConnectedLayout.Vertical),
             color = MaterialTheme.colorScheme.surfaceContainerLow,
           ) {
             SwipeDirectionPreference(
               right = false,
               action = left,
               zonePercent = leftZonePercent,
-              onZonePercentChange = { preferences.videoSwipeLeftZonePercent.set(it) },
+              onZonePercentChange = { leftZonePreference.set(it) },
+              isAudio = editingAudio,
               modifier = Modifier.settingsSearchTarget(R.string.pref_video_swipe_left),
               onChange = { editingRight = false },
             )
@@ -175,7 +248,7 @@ object VideoSwipePreferencesScreen : ScrollableSettingsScreen {
                   .fillMaxWidth()
                   .selectable(selected = action == selectedAction, role = Role.RadioButton) {
                     if (action != selectedAction) {
-                      if (isRight) preferences.videoSwipeRight.set(action) else preferences.videoSwipeLeft.set(action)
+                      if (isRight) rightPreference.set(action) else leftPreference.set(action)
                       haptics.selection(true)
                     }
                     editingRight = null
@@ -202,6 +275,7 @@ private fun SwipeDirectionPreference(
   zonePercent: Int,
   onZonePercentChange: (Int) -> Unit,
   modifier: Modifier = Modifier,
+  isAudio: Boolean = false,
   onChange: () -> Unit,
 ) {
   val zoneRange = BrowserPreferences.VIDEO_SWIPE_ZONE_RANGE
@@ -238,7 +312,7 @@ private fun SwipeDirectionPreference(
       }
     }
     Spacer(Modifier.height(16.dp))
-    SwipeActionPreview(right, action, effectiveZonePercent)
+    SwipeActionPreview(right, action, effectiveZonePercent, isAudio)
     Spacer(Modifier.height(16.dp))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
       Text(zoneLabel, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
@@ -270,6 +344,7 @@ private fun SwipeActionPreview(
   right: Boolean,
   action: VideoSwipeAction,
   zonePercent: Int,
+  isAudio: Boolean,
 ) {
   val density = LocalDensity.current
   val offset by animateFloatAsState(
@@ -336,7 +411,11 @@ private fun SwipeActionPreview(
           Modifier.size(48.dp).background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(6.dp)),
           contentAlignment = Alignment.Center,
         ) {
-          Icon(Icons.RoundedFilled.PlayArrow, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+          Icon(
+            if (isAudio) Icons.RoundedFilled.Audiotrack else Icons.RoundedFilled.PlayArrow,
+            null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
           Box(Modifier.fillMaxWidth(0.85f).height(8.dp).background(MaterialTheme.colorScheme.outlineVariant))

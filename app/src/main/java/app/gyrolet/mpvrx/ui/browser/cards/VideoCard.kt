@@ -346,11 +346,14 @@ fun VideoCard(
   }
 
   val cardShape = rememberMediaSelectionShape(isSelected, isGridMode, selectionNeighbors)
+  val (swipeLeftAction, swipeRightAction) =
+    rememberSwipeActions(video.isAudio, resolvedUiConfig.swipeLeft, resolvedUiConfig.swipeRight)
 
   VideoSwipeSurface(
     identity = video.path,
-    leftAction = resolvedUiConfig.swipeLeft,
-    rightAction = resolvedUiConfig.swipeRight,
+    leftAction = swipeLeftAction,
+    rightAction = swipeRightAction,
+    isAudio = video.isAudio,
     isWatched = isWatched,
     enabled =
       !isGridMode &&

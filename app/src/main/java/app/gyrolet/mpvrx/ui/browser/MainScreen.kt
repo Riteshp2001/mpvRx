@@ -647,6 +647,7 @@ object MainScreen : Screen, TvEdgeToEdgeScreen {
               key = { page -> visibleTabs.getOrNull(page)?.name ?: "removed-tab-$page" },
               beyondViewportPageCount = if (adjacentTabsWarm) 1 else 0,
               userScrollEnabled = !isTelevision && !isPermissionDenied && !isDirectTabJumpInProgress,
+              isMainNavigation = true,
               activePageFocusRequester = tvContentFocusRequester.takeIf { isTelevision },
             ) { page ->
               val tab = visibleTabs.getOrNull(page) ?: return@NavigationPager
