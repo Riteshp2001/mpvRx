@@ -2734,8 +2734,8 @@ fun AudioPlayerControls(
         val centerCount = if (isAudiobook) 3 else 4
         BoxWithConstraints(Modifier.fillMaxWidth()) {
           val showPlaylistButton = !isTablet
-          val endCount = 1 + (if (showPlaylistButton) 1 else 0) + (if (isAudiobook) 0 else 1)
-          val endWidth = minOf(barHeight, maxWidth * (if (endCount == 3) 0.13f else 0.15f))
+          val endCount = if (showPlaylistButton) 2 else 1
+          val endWidth = minOf(barHeight, maxWidth * 0.15f)
           val outerSpacing = if (maxWidth < 280.dp) 4.dp else 8.dp
           val centerSpacing = if (maxWidth < 320.dp) 2.dp else 4.dp
           val centerWidth = (maxWidth - (endWidth + outerSpacing) * endCount.toFloat()).coerceAtLeast(0.dp)
@@ -2860,26 +2860,6 @@ fun AudioPlayerControls(
                 }
               }
             }
-            if (!isAudiobook) {
-              val remaining = PlaybackSession.sleepTimerRemaining.collectAsStateWithLifecycle()
-              val endOfSong = PlaybackSession.sleepAtSongEnd.collectAsStateWithLifecycle()
-              val timerActive by remember(remaining, endOfSong) {
-                derivedStateOf { remaining.value > 0 || endOfSong.value }
-              }
-              ExpressiveTransportSideButton(
-                size = barHeight,
-                modifier = Modifier.width(endWidth),
-                active = timerActive,
-                onClick = { onOpenSheet(Sheets.MusicSleepTimer); actionHaptics.confirm() },
-              ) {
-                Icon(
-                  imageVector = Icons.RoundedFilled.Timer,
-                  contentDescription = stringResource(R.string.timer_title),
-                  tint = if (timerActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer,
-                  modifier = Modifier.size(endIconSize),
-                )
-              }
-            }
             if (showPlaylistButton) {
               ExpressiveTransportSideButton(
                 size = barHeight,
@@ -2999,6 +2979,7 @@ fun AudioPlayerControls(
               playlist = filteredPlaylist,
               selectedTab = tabletDualPaneTab,
               onTabSelected = { tabletDualPaneTab = it },
+              onOpenSleepTimer = { onOpenSheet(Sheets.MusicSleepTimer); actionHaptics.confirm() },
               onOpenTranslateSheet = { onOpenSheet(Sheets.LyricsTranslate) },
             )
           }
@@ -3178,6 +3159,7 @@ fun AudioPlayerControls(
 private fun DualPaneSidePanel(
   viewModel: PlayerViewModel,
   playlist: List<PlaylistItem>,
+  onOpenSleepTimer: () -> Unit,
   selectedTab: Int = 0,
   onTabSelected: (Int) -> Unit = {},
   onOpenTranslateSheet: (() -> Unit)? = null,
@@ -3235,6 +3217,7 @@ private fun DualPaneSidePanel(
         UpNextPlaylistContent(
           viewModel = viewModel,
           playlist = playlist,
+          onOpenSleepTimer = onOpenSleepTimer,
         )
       } else {
         app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
@@ -3251,6 +3234,7 @@ private fun DualPaneSidePanel(
 private fun UpNextPlaylistContent(
   viewModel: PlayerViewModel,
   playlist: List<PlaylistItem>,
+  onOpenSleepTimer: () -> Unit,
 ) {
   val lazyListState = rememberLazyListState()
   val isM3U = viewModel.isPlaylistM3U()
@@ -3416,6 +3400,7 @@ private fun UpNextPlaylistContent(
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.weight(1f),
       )
       Surface(
         shape = RoundedCornerShape(50),
@@ -3428,6 +3413,9 @@ private fun UpNextPlaylistContent(
           color = MaterialTheme.colorScheme.onSecondaryContainer,
           modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
         )
+      }
+      IconButton(onClick = onOpenSleepTimer) {
+        Icon(Icons.RoundedFilled.Timer, contentDescription = stringResource(R.string.timer_title))
       }
     }
 
