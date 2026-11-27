@@ -9,7 +9,6 @@
 
 package app.gyrolet.mpvrx.ui.player.controls.components.panels
 
-import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,11 +28,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.BuildConfig
 import app.gyrolet.mpvrx.R
-import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
@@ -46,7 +43,6 @@ import app.gyrolet.mpvrx.ui.player.FongMiMpv
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.applySubtitleLayout
 import app.gyrolet.mpvrx.ui.player.applySubtitleScales
-import app.gyrolet.mpvrx.ui.player.applySubtitleWindowing
 import app.gyrolet.mpvrx.ui.player.controls.CARDS_MAX_WIDTH
 import app.gyrolet.mpvrx.ui.player.controls.components.sheets.toFixed
 import app.gyrolet.mpvrx.ui.player.controls.panelCardsColors
@@ -64,18 +60,16 @@ fun SubtitlesMiscellaneousCard(
   shape: Shape = MaterialTheme.shapes.large,
 ) {
   val preferences = koinInject<SubtitlesPreferences>()
-  val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
   val playerPreferences = koinInject<PlayerPreferences>()
   val configOwnedOptions = currentMpvConfigOverrideOptions()
   val layoutOptions = setOf("sub-ass-override", "secondary-sub-ass-override", "sub-pos", "secondary-sub-pos")
   val scaleOptions = setOf("sub-scale", "secondary-sub-scale")
-  val scaleByWindowOptions = MpvConfigControlledFeatures.SUBTITLE_WINDOW_SCALING
   val blendOptions = setOf("blend-subtitles")
   val bidiOptions = setOf("sub-vsfilter-bidi-compat")
   val showShift = FongMiMpv.isBuildSupported
   val shiftOptions = if (showShift) setOf("sub-offset-y", "secondary-sub-offset-y") else emptySet()
   val miscellaneousOptions =
-    layoutOptions + scaleOptions + scaleByWindowOptions + blendOptions + bidiOptions + shiftOptions
+    layoutOptions + scaleOptions + blendOptions + bidiOptions + shiftOptions
   var isExpanded by remember { mutableStateOf(true) }
   ExpandableCard(
     isExpanded,
@@ -102,8 +96,8 @@ fun SubtitlesMiscellaneousCard(
         val isSecondaryActive =
           BuildConfig.PLAYER_ENGINE_IS_MPV &&
             (secondarySid ?: PlaybackSession.getPropertyString("secondary-sid")?.toIntOrNull() ?: 0) > 0
-        // Only libmpv has the window scaling, secondary zoom, blending and RTL switches.
-        val switchCount = if (BuildConfig.PLAYER_ENGINE_IS_MPV) 5 else 1
+        // Only libmpv has the secondary zoom, blending and RTL switches.
+        val switchCount = if (BuildConfig.PLAYER_ENGINE_IS_MPV) 4 else 1
         // Scale, position and (FongMi) vertical shift per track, after the switches and before reset.
         val tilesPerTrack = if (showShift) 3 else 2
         val secondaryFirstIndex = switchCount + tilesPerTrack
@@ -120,24 +114,6 @@ fun SubtitlesMiscellaneousCard(
           },
           title = { Text(stringResource(R.string.player_sheets_sub_override_ass)) },
         )
-        var scaleByWindow by remember {
-          mutableStateOf(PlaybackSession.getPropertyString("sub-scale-by-window") == "yes")
-        }
-        if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
-          SwitchPreference(
-            scaleByWindow,
-            groupIndex = 1,
-            groupSize = connectedItemCount,
-            enabled = scaleByWindowOptions.none(configOwnedOptions::contains),
-            onValueChange = {
-              scaleByWindow = it
-              preferences.scaleByWindow.set(it)
-              applySubtitleWindowing(isPortrait, scaleByWindow = it)
-            },
-            title = { Text(stringResource(R.string.player_sheets_sub_scale_by_window)) },
-            summary = { Text(stringResource(R.string.player_sheets_sub_scale_by_window_summary)) },
-          )
-        }
         var secondaryPinchZoom by remember {
           mutableStateOf(preferences.secondarySubPinchZoom.get())
         }
@@ -147,7 +123,7 @@ fun SubtitlesMiscellaneousCard(
         if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
           SwitchPreference(
             secondaryPinchZoom,
-            groupIndex = 2,
+            groupIndex = 1,
             groupSize = connectedItemCount,
             enabled = scaleOptions.none(configOwnedOptions::contains),
             onValueChange = {
@@ -164,7 +140,7 @@ fun SubtitlesMiscellaneousCard(
         if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
           SwitchPreference(
             blendSubtitlesWithVideo,
-            groupIndex = 3,
+            groupIndex = 2,
             groupSize = connectedItemCount,
             enabled = blendOptions.none(configOwnedOptions::contains),
             onValueChange = {
@@ -183,7 +159,7 @@ fun SubtitlesMiscellaneousCard(
         if (BuildConfig.PLAYER_ENGINE_IS_MPV) {
           SwitchPreference(
             forceRtlSubtitles,
-            groupIndex = 4,
+            groupIndex = 3,
             groupSize = connectedItemCount,
             enabled = bidiOptions.none(configOwnedOptions::contains),
             onValueChange = {
@@ -332,9 +308,6 @@ fun SubtitlesMiscellaneousCard(
                 val defaultOverride = preferences.overrideAssSubs.deleteAndGet()
                 overrideAssSubs = defaultOverride
                 applySubtitleLayout(defaultSubPos, defaultOverride)
-                val defaultScaleByWindow = preferences.scaleByWindow.deleteAndGet()
-                scaleByWindow = defaultScaleByWindow
-                applySubtitleWindowing(isPortrait, scaleByWindow = defaultScaleByWindow)
                 val defaultBlendSubtitles = preferences.blendSubtitlesWithVideo.deleteAndGet()
                 blendSubtitlesWithVideo = defaultBlendSubtitles
                 val blendMode = if (defaultBlendSubtitles && playerPreferences.isAmbientEnabled.get()) "video" else "no"

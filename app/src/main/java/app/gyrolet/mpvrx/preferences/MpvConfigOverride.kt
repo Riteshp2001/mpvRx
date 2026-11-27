@@ -308,9 +308,6 @@ object MpvConfigControlledFeatures {
 
   val SUBTITLE_DISCOVERY = setOf("sub-auto", "sub-file-paths", "subs-fallback")
 
-  // Margin placement can be owned by mpv.conf independently of subtitle scaling.
-  val SUBTITLE_WINDOW_SCALING = setOf("sub-scale-by-window", "sub-scale-with-window")
-
   val VIDEO_ZOOM = setOf("video-zoom")
 
   val VIDEO_ASPECT = setOf("video-aspect-override", "panscan")

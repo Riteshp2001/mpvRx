@@ -3304,17 +3304,6 @@ class PlayerViewModel(
         }
       }
     }
-    viewModelScope.launch(playbackStateDispatcher) {
-      subtitlesPreferences.scaleByWindow.changes().distinctUntilChanged().drop(1).collect { enabled ->
-        if (mpvCoreReadyState.value) {
-          val configuration = (host?.context ?: appContext).resources.configuration
-          applySubtitleWindowing(
-            isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT,
-            scaleByWindow = enabled,
-          )
-        }
-      }
-    }
 
     // Precise seeks decode from the previous keyframe, which visibly stalls long-GOP files, so seeks
     // snap to keyframes unless asked, or for clips under 2 minutes and A-B loops where exactness is cheap.

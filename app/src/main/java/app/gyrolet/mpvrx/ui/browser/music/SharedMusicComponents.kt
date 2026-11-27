@@ -105,7 +105,6 @@ fun SharedMusicTrackListItem(
   onLongClick: (() -> Unit)? = null,
   modifier: Modifier = Modifier,
   swipeIdentity: String = title,
-  isWatched: Boolean? = null,
   onSwipeAction: ((VideoSwipeAction) -> Unit)? = null,
   audioSong: MusicSong? = null,
   shape: Shape? = null,
@@ -122,7 +121,7 @@ fun SharedMusicTrackListItem(
     leftAction = leftAction,
     rightAction = rightAction,
     isAudio = true,
-    isWatched = isWatched,
+    isWatched = null,
     enabled = !isSelected && onSwipeAction != null,
     onAction = onSwipeAction,
     modifier =

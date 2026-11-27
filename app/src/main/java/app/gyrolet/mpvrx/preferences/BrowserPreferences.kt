@@ -33,6 +33,18 @@ enum class VideoSwipeAction {
   ClearHistory,
 }
 
+internal val VideoSwipeAction.isAudioCompatible: Boolean
+  get() =
+    when (this) {
+      VideoSwipeAction.ToggleWatched,
+      VideoSwipeAction.MarkNew,
+      VideoSwipeAction.LastPlayed,
+      VideoSwipeAction.Finished,
+      VideoSwipeAction.ClearHistory,
+      -> false
+      else -> true
+    }
+
 class BrowserPreferences(
   preferenceStore: PreferenceStore,
   context: android.content.Context,
@@ -68,7 +80,7 @@ class BrowserPreferences(
 
   // Audio rows reuse the video swipe actions unless the user separates them.
   val separateAudioSwipeActions = preferenceStore.getBoolean("separate_audio_swipe_actions", false)
-  val audioSwipeRight = preferenceStore.getEnum("audio_swipe_right", VideoSwipeAction.ToggleWatched)
+  val audioSwipeRight = preferenceStore.getEnum("audio_swipe_right", VideoSwipeAction.None)
   val audioSwipeLeft = preferenceStore.getEnum("audio_swipe_left", VideoSwipeAction.AddToPlaylist)
   val audioSwipeRightZonePercent =
     preferenceStore.getInt(
