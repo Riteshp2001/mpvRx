@@ -394,6 +394,8 @@
   <string name="pref_audio">Audio</string>
   <string name="pref_audio_summary">Ambient mode, visualizer style, audio channels, pitch correction</string>
   <string name="pref_audio_orientation_title">Audio player orientation</string>
+  <string name="pref_audio_dual_pane_for_tablet_title">Dual-pane music player on tablets</string>
+  <string name="pref_audio_dual_pane_for_tablet_summary">Show the queue and lyrics in a side panel beside the music player.</string>
   <string name="pref_audio_pitch_correction_title">Enable audio pitch correction</string>
   <string name="pref_audio_pitch_correction_summary">Keep the original pitch when playback speed changes.</string>
   <string name="pref_audio_volume_normalization_title">Volume normalization</string>

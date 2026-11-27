@@ -17,6 +17,7 @@ internal object TvSettingsPolicy {
     setOf(
       R.string.pref_player_orientation,
       R.string.pref_audio_orientation_title,
+      R.string.pref_audio_dual_pane_for_tablet_title,
       R.string.pref_floating_lyrics_title,
       R.string.pref_player_remember_brightness,
       R.string.pref_pip_on_back_title,

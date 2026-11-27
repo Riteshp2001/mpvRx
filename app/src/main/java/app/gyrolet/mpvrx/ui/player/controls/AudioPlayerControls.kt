@@ -225,6 +225,7 @@ import app.gyrolet.mpvrx.ui.utils.dragElevation
 import app.gyrolet.mpvrx.ui.utils.isMpvOptionOwnedByConfig
 import app.gyrolet.mpvrx.ui.utils.rememberAppHaptics
 import app.gyrolet.mpvrx.ui.utils.rememberReorderFeedback
+import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.utils.media.HttpUtils
 import com.kyant.backdrop.Backdrop
 import kotlinx.collections.immutable.persistentListOf
@@ -1011,7 +1012,7 @@ fun AudioPlayerControls(
     }
 
   var showInPlaceLyrics by rememberSaveable { mutableStateOf(false) }
-  var wasLyricsActiveBeforeLandscape by rememberSaveable { mutableStateOf(false) }
+  var restoreInPlaceLyrics by rememberSaveable { mutableStateOf(false) }
   var tabletDualPaneTab by rememberSaveable { mutableIntStateOf(0) }
   var isLyricsFullscreen by remember { mutableStateOf(false) }
   var lastUserInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -1512,27 +1513,30 @@ fun AudioPlayerControls(
   val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
   // Orientation-independent, as sw600dp and every other tablet check in the app are: screenWidthDp
   // is the width of the current rotation, so it makes any phone held sideways a tablet.
-  val isTablet = configuration.smallestScreenWidthDp >= 600
-  val isTabletLandscape = !isPortrait && isTablet
-  val isTabletPortrait = isPortrait && isTablet
+  val dualPaneForTablet by audioPreferences.dualPaneForTablet.collectAsState()
+  val useDualPane =
+    configuration.smallestScreenWidthDp >= 600 &&
+      (dualPaneForTablet || isAudiobook || DeviceFormFactor.isTelevision(context))
+  val dualPaneLandscape = !isPortrait && useDualPane
+  val dualPanePortrait = isPortrait && useDualPane
 
-  LaunchedEffect(isTablet) {
-    if (isTablet) {
-      if (showInPlaceLyrics || wasLyricsActiveBeforeLandscape) {
+  LaunchedEffect(useDualPane) {
+    if (useDualPane) {
+      if (showInPlaceLyrics || restoreInPlaceLyrics) {
         tabletDualPaneTab = 1
-        wasLyricsActiveBeforeLandscape = true
+        restoreInPlaceLyrics = true
         showInPlaceLyrics = false
       }
     } else {
-      if (wasLyricsActiveBeforeLandscape || tabletDualPaneTab == 1) {
+      if (restoreInPlaceLyrics || tabletDualPaneTab == 1) {
         showInPlaceLyrics = true
-        wasLyricsActiveBeforeLandscape = false
+        restoreInPlaceLyrics = false
       }
     }
   }
 
-  LaunchedEffect(showInPlaceLyrics, isPlaying, isTablet, lastUserInteractionTime) {
-    if (showInPlaceLyrics && !isTablet && isPlaying) {
+  LaunchedEffect(showInPlaceLyrics, isPlaying, useDualPane, lastUserInteractionTime) {
+    if (showInPlaceLyrics && !useDualPane && isPlaying) {
       kotlinx.coroutines.delay(5000L)
       isLyricsFullscreen = true
     } else {
@@ -1608,10 +1612,10 @@ fun AudioPlayerControls(
         listOf(surface, topBackdrop, bottomBackdrop, ColorUtils.blendARGB(topBackdrop, bottomBackdrop, 0.5f)),
       )
     }
-  val edgeToEdgeVisualizer = showVisualizer && (!showInPlaceLyrics || isTablet)
+  val edgeToEdgeVisualizer = showVisualizer && (!showInPlaceLyrics || useDualPane)
   // In-place lyrics run flush against the screen edges, so the root padding moves onto
   // the header and the footer instead of boxing the lyrics in.
-  val flushInPlaceLyrics = showInPlaceLyrics && isPortrait && !isTablet
+  val flushInPlaceLyrics = showInPlaceLyrics && isPortrait && !useDualPane
   val controlsSidePadding = if (edgeToEdgeVisualizer || flushInPlaceLyrics) 16.dp else 0.dp
   // The header keeps the side and top padding the root gives up while the lyrics are flush.
   val headerContentPadding =
@@ -1619,7 +1623,7 @@ fun AudioPlayerControls(
   // Visibility-independent insets keep the layout still while bars re-dispatch on resume.
   val stableInsets = WindowInsets.systemBarsIgnoringVisibility.union(WindowInsets.displayCutout)
   val showImmersiveArtwork =
-    !isTablet &&
+    !useDualPane &&
       immersiveArtworkEnabled &&
       !showVisualizer &&
       !showInPlaceLyrics &&
@@ -1799,7 +1803,7 @@ fun AudioPlayerControls(
             },
           ).fillMaxSize()
           .windowInsetsPadding(
-            if (!isPortrait && !isTablet) {
+            if (!isPortrait && !useDualPane) {
               WindowInsets(0, 0, 0, 0)
             } else if (edgeToEdgeVisualizer) {
               stableInsets.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
@@ -1808,16 +1812,16 @@ fun AudioPlayerControls(
             },
           ).padding(
             horizontal =
-              if ((!isPortrait && !isTablet) || edgeToEdgeVisualizer || flushInPlaceLyrics) {
+              if ((!isPortrait && !useDualPane) || edgeToEdgeVisualizer || flushInPlaceLyrics) {
                 0.dp
-              } else if (isTablet) {
-                if (isTabletLandscape) 24.dp else 16.dp
+              } else if (useDualPane) {
+                if (dualPaneLandscape) 24.dp else 16.dp
               } else {
                 16.dp
               },
           ).padding(
-            top = if ((!isPortrait && !isTablet) || edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 6.dp,
-            bottom = if (isPortrait || isTablet) 12.dp else 0.dp,
+            top = if ((!isPortrait && !useDualPane) || edgeToEdgeVisualizer || flushInPlaceLyrics) 0.dp else 6.dp,
+            bottom = if (isPortrait || useDualPane) 12.dp else 0.dp,
           ),
     ) {
       val availableHeight =
@@ -1943,7 +1947,7 @@ fun AudioPlayerControls(
           val containerWidthPx = constraints.maxWidth.toFloat()
           val currentOffset = animatableOffsetX.value
 
-          if (showInPlaceLyrics && !isTablet) {
+          if (showInPlaceLyrics && !useDualPane) {
             app.gyrolet.mpvrx.ui.player.controls.components.LyricsView(
               viewModel = viewModel,
               modifier = Modifier.fillMaxSize(),
@@ -1990,20 +1994,20 @@ fun AudioPlayerControls(
                   onClick = viewModel::toggleAudioVisualizer,
                   onLongClick = { onOpenSheet(Sheets.VisualizerStyle) },
                   modifier = Modifier.fillMaxSize(),
-                  landscape = !isPortrait && !isTablet,
+                  landscape = !isPortrait && !useDualPane,
                 )
               } else {
                 val coverShape =
                   if (isPortrait ||
-                    isTablet
+                    useDualPane
                   ) {
                     RoundedCornerShape(32.dp)
                   } else {
                     androidx.compose.ui.graphics.RectangleShape
                   }
                 val coverSize =
-                  if (isPortrait || isTablet) {
-                    Modifier.aspectRatio(1f, matchHeightConstraintsFirst = isTabletLandscape)
+                  if (isPortrait || useDualPane) {
+                    Modifier.aspectRatio(1f, matchHeightConstraintsFirst = dualPaneLandscape)
                   } else {
                     Modifier.fillMaxSize()
                   }
@@ -2026,8 +2030,8 @@ fun AudioPlayerControls(
                     Modifier
                       .fillMaxHeight()
                       .fillMaxWidth(
-                        if (isTablet) {
-                          (if (isTabletPortrait) 0.92f else 0.88f)
+                        if (useDualPane) {
+                          (if (dualPanePortrait) 0.92f else 0.88f)
                         } else if (isPortrait) {
                           0.88f
                         } else {
@@ -2609,7 +2613,7 @@ fun AudioPlayerControls(
               .fillMaxWidth()
               .clip(RoundedCornerShape(8.dp))
               .clickable {
-                if (isTablet) {
+                if (useDualPane) {
                   tabletDualPaneTab = 1
                 } else {
                   showInPlaceLyrics = true
@@ -3003,19 +3007,19 @@ fun AudioPlayerControls(
             isShortLandscape -> 42.dp
             isCompactLandscape -> 48.dp
             isAudiobook -> 48.dp
-            isPortrait || isTablet -> 64.dp
+            isPortrait || useDualPane -> 64.dp
             else -> 56.dp
           }
         val playHeight =
           when {
             isShortLandscape -> 44.dp
             isCompactLandscape -> 52.dp
-            isPortrait || isTablet -> 72.dp
+            isPortrait || useDualPane -> 72.dp
             else -> 60.dp
           }
         val sideIconSize = if (isCompactLandscape || isAudiobook) 24.dp else 28.dp
         val controlSpacing = if (isCompactLandscape || isAudiobook) 10.dp else 18.dp
-        val controlPadding = if (isPortrait || isTablet) 8.dp else 0.dp
+        val controlPadding = if (isPortrait || useDualPane) 8.dp else 0.dp
         val halfWidth = !isPortrait && !isAudiobook
         Row(
           modifier =
@@ -3070,7 +3074,7 @@ fun AudioPlayerControls(
               imageVector = if (isPlaying) Icons.RoundedFilled.Pause else Icons.RoundedFilled.PlayArrow,
               contentDescription = stringResource(if (isPlaying) R.string.audiobook_pause else R.string.ui_play),
               tint = MaterialTheme.colorScheme.onPrimary,
-              modifier = Modifier.size(if (isPortrait || isTablet) 34.dp else 28.dp),
+              modifier = Modifier.size(if (isPortrait || useDualPane) 34.dp else 28.dp),
               reduceMotion = AppMotion.playerReducedMotion(),
             )
           }
@@ -3105,7 +3109,8 @@ fun AudioPlayerControls(
         val timer by app.gyrolet.mpvrx.ui.player.AudiobookPlayback.timer
           .collectAsStateWithLifecycle()
         val equalizerEnabled by audioPreferences.equalizerEnabled.collectAsState()
-        val isQueueActive = !isTablet && sheetShown == Sheets.Playlist
+        val showPlaylistButton = !useDualPane
+        val isQueueActive = showPlaylistButton && sheetShown == Sheets.Playlist
         val barHeight =
           if (isShortLandscape) {
             38.dp
@@ -3116,7 +3121,6 @@ fun AudioPlayerControls(
           }
         val centerCount = if (isAudiobook) 3 else 4
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-          val showPlaylistButton = !isTablet
           val endCount = if (showPlaylistButton) 2 else 1
           val endWidth = minOf(barHeight, maxWidth * 0.15f)
           val outerSpacing = if (maxWidth < 280.dp) 4.dp else 8.dp
@@ -3308,10 +3312,10 @@ fun AudioPlayerControls(
         }
       }
 
-      if (isTablet) {
+      if (useDualPane) {
         Row(
           modifier = Modifier.fillMaxSize(),
-          horizontalArrangement = Arrangement.spacedBy(if (isTabletLandscape) 24.dp else 16.dp),
+          horizontalArrangement = Arrangement.spacedBy(if (dualPaneLandscape) 24.dp else 16.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
           Column(
@@ -3350,8 +3354,8 @@ fun AudioPlayerControls(
                   .weight(1f)
                   .fillMaxWidth()
                   .padding(
-                    vertical = if (isTabletPortrait) 16.dp else 8.dp,
-                    horizontal = if (isTabletPortrait) 8.dp else 16.dp,
+                    vertical = if (dualPanePortrait) 16.dp else 8.dp,
+                    horizontal = if (dualPanePortrait) 8.dp else 16.dp,
                   ),
               )
             }
@@ -3371,9 +3375,9 @@ fun AudioPlayerControls(
                 Spacer(modifier = Modifier.height(4.dp))
               }
               seekbarView()
-              Spacer(modifier = Modifier.height(if (isTabletPortrait) 18.dp else 12.dp))
+              Spacer(modifier = Modifier.height(if (dualPanePortrait) 18.dp else 12.dp))
               playbackControlsRow()
-              Spacer(modifier = Modifier.height(if (isTabletPortrait) 18.dp else 14.dp))
+              Spacer(modifier = Modifier.height(if (dualPanePortrait) 18.dp else 14.dp))
               bottomActionRow()
             }
           }
@@ -3382,9 +3386,9 @@ fun AudioPlayerControls(
           Surface(
             modifier =
               Modifier
-                .weight(if (isTabletLandscape) 1.1f else 1f)
+                .weight(if (dualPaneLandscape) 1.1f else 1f)
                 .fillMaxHeight()
-                .padding(end = if (isTabletLandscape) 16.dp else 12.dp)
+                .padding(end = if (dualPaneLandscape) 16.dp else 12.dp)
                 .then(
                   if (edgeToEdgeVisualizer) {
                     Modifier.windowInsetsPadding(stableInsets.only(WindowInsetsSides.Top)).padding(top = 6.dp)

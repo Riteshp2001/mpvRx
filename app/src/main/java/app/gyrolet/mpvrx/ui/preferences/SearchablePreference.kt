@@ -1211,6 +1211,15 @@ object SearchablePreferences {
       )
       add(
         SearchablePreference(
+          titleRes = R.string.pref_audio_dual_pane_for_tablet_title,
+          summaryRes = R.string.pref_audio_dual_pane_for_tablet_summary,
+          keywords = listOf("tablet", "music", "player", "layout", "dual pane", "single pane", "sidebar"),
+          category = "Audio",
+          screen = AudioPreferencesScreen,
+        ),
+      )
+      add(
+        SearchablePreference(
           titleRes = R.string.pref_preferred_languages,
           keywords = listOf("language", "preferred", "subtitle", "audio", "locale", "code"),
           category = "Audio",
