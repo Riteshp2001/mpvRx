@@ -30,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.player.AmbientStyle
@@ -106,7 +107,7 @@ private fun AudioArtworkVideoBackground(
     sequenceOf(item?.artist, rawArtist, rawArtistAlt, rawAlbumArtist, rawPerformer, metadata?.artist)
       .filterNotNull()
       .firstOrNull { it.isNotBlank() }
-  val highQualityEnabled by koinInject<AudioPreferences>().highQualityArtwork.collectAsStateWithLifecycle()
+  val highQualityEnabled by koinInject<AudioPreferences>().highQualityArtwork.collectAsState()
   val query =
     rememberArtworkQuery(
       enabled = highQualityEnabled && item?.audiobook == null,
