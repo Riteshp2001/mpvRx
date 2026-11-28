@@ -387,6 +387,13 @@ private object AudioPresentationMetadataCache {
               retriever?.let {
                 EmbeddedArtworkResolver.decodeRetrieverArtwork(it, pictureBytes)
               }
+                ?: if (isLocalArtworkSource(pathOrUri) &&
+                  generator != app.gyrolet.mpvrx.preferences.ThumbnailGenerator.MediaStore
+                ) {
+                  repository.getArtwork(pathOrUri)
+                } else {
+                  null
+                }
             val sidecarArtwork =
               if (embeddedArtwork == null) {
                 EmbeddedArtworkResolver.decodeAudioSidecar(cleanPath ?: pathOrUri)
@@ -413,9 +420,18 @@ private object AudioPresentationMetadataCache {
               motionArtwork = EmbeddedMotionArtwork.animatedBytes(pictureBytes),
               folderMotionArtworkUri = folderMotion,
             )
-          } catch (_: Exception) {
+          } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+          } catch (error: Exception) {
+            app.gyrolet.mpvrx.utils.logging.Log.w("AudioPresentation", "Could not read audio metadata", error)
             val fallbackArtwork =
-              explicitArtwork ?: if (cleanPath != null && !isNetworkStream) {
+              (if (isLocalArtworkSource(pathOrUri) &&
+                generator != app.gyrolet.mpvrx.preferences.ThumbnailGenerator.MediaStore
+              ) {
+                repository.getArtwork(pathOrUri)
+              } else {
+                null
+              }) ?: explicitArtwork ?: if (cleanPath != null && !isNetworkStream) {
                 EmbeddedArtworkResolver.decodeSidecar(cleanPath)
               } else {
                 null

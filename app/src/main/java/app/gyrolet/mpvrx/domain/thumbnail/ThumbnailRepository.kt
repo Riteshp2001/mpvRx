@@ -603,7 +603,7 @@ class ThumbnailRepository(
     generator: ThumbnailGenerator = browserPreferences.thumbnailGenerator.get(),
     artworkTier: Int = 0,
   ): String =
-    "${if (artworkTier > 0) "audio-art-v4|$artworkTier" else "video-thumb-v2"}|${diskVideoBaseKey(video)}|" +
+    "${if (artworkTier > 0) "audio-art-v5|$artworkTier" else "video-thumb-v2"}|${diskVideoBaseKey(video)}|" +
       "${thumbnailModeKey()}|${thumbnailQualityKey()}" +
       thumbnailGeneratorCacheKey(video, generator)
 
@@ -854,19 +854,21 @@ class ThumbnailRepository(
           }
         }
       }.getOrNull()
-    val sidecarArtwork =
-      if (isAudioArtwork(video)) {
-        EmbeddedArtworkResolver.decodeAudioSidecar(canonicalPath, maxSize)
-      } else {
-        EmbeddedArtworkResolver.decodeContainerOrSidecar(
+    return (
+      retrieverArtwork
+        ?: EmbeddedArtworkResolver.decodeMatroskaArtwork(
           videoPath = canonicalPath,
           context = context,
           videoUri = video.uri,
           displayName = video.displayName,
           maxSize = maxSize,
         )
-      }
-    return (retrieverArtwork ?: sidecarArtwork)?.scaleToThumbnailMax(maxSize)
+        ?: if (isAudioArtwork(video)) {
+          EmbeddedArtworkResolver.decodeAudioSidecar(canonicalPath, maxSize)
+        } else {
+          EmbeddedArtworkResolver.decodeSidecar(canonicalPath, maxSize)
+        }
+    )?.scaleToThumbnailMax(maxSize)
   }
 
   private suspend fun generateWithFastThumbnails(

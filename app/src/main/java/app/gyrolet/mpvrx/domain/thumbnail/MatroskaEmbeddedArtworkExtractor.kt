@@ -13,6 +13,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.provider.OpenableColumns
 import app.gyrolet.mpvrx.utils.logging.Log
 import java.io.FileInputStream
 import java.io.IOException
@@ -63,8 +64,16 @@ internal object MatroskaEmbeddedArtworkExtractor {
     uri: Uri,
     displayName: String?,
   ): ByteArray? {
-    if (displayName?.hasMatroskaExtension() != true) return null
     return try {
+      val isMatroska =
+        displayName?.hasMatroskaExtension() == true ||
+          uri.lastPathSegment?.hasMatroskaExtension() == true ||
+          context.contentResolver
+            .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor ->
+              cursor.moveToFirst() && cursor.getString(0)?.hasMatroskaExtension() == true
+            } == true
+      if (!isMatroska) return null
       context.contentResolver.openFileDescriptor(uri, "r")?.use { descriptor ->
         FileInputStream(descriptor.fileDescriptor).channel.use { it.readArtwork() }
       }
@@ -76,6 +85,9 @@ internal object MatroskaEmbeddedArtworkExtractor {
       null
     } catch (error: IllegalArgumentException) {
       Log.w(TAG, "Could not open the media document", error)
+      null
+    } catch (error: android.database.SQLException) {
+      Log.w(TAG, "Could not query the media document", error)
       null
     }
   }

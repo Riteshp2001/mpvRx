@@ -880,13 +880,27 @@ private fun rememberMiniPlayerArtwork(
             }
             val pictureBytes = retriever.embeddedPicture
             MiniPlayerArtwork(
-              bitmap = EmbeddedArtworkResolver.decodeEmbeddedArtwork(cleanPath, retriever, pictureBytes),
+              bitmap =
+                EmbeddedArtworkResolver.decodeRetrieverArtwork(retriever, pictureBytes)
+                  ?: if (isLocalArtworkSource(pathOrUri)) {
+                    repository.getArtwork(pathOrUri)
+                  } else {
+                    EmbeddedArtworkResolver.decodeSidecar(cleanPath)
+                  },
               motionArtwork = EmbeddedMotionArtwork.animatedBytes(pictureBytes),
             )
           } finally {
             runCatching { retriever.release() }
           }
+        }.onFailure { error ->
+          if (error is kotlinx.coroutines.CancellationException) throw error
+          app.gyrolet.mpvrx.utils.logging.Log.w("MiniPlayerArtwork", "Could not read audio artwork", error)
         }.getOrNull()
+          ?: if (isLocalArtworkSource(pathOrUri)) {
+            MiniPlayerArtwork(bitmap = repository.getArtwork(pathOrUri))
+          } else {
+            null
+          }
       }
   }
   return artwork

@@ -131,6 +131,16 @@ internal object EmbeddedArtworkResolver {
     displayName: String? = null,
     maxSize: Int = MAX_THUMBNAIL_SIZE,
   ): Bitmap? =
+    decodeMatroskaArtwork(videoPath, context, videoUri, displayName, maxSize)
+      ?: decodeSidecar(videoPath, maxSize)
+
+  fun decodeMatroskaArtwork(
+    videoPath: String?,
+    context: Context? = null,
+    videoUri: Uri? = null,
+    displayName: String? = null,
+    maxSize: Int = MAX_THUMBNAIL_SIZE,
+  ): Bitmap? =
     MatroskaEmbeddedArtworkExtractor.decode(videoPath, maxSize)
       ?: (
         if (context != null) {
@@ -141,7 +151,6 @@ internal object EmbeddedArtworkResolver {
           null
         }
       )
-      ?: decodeSidecar(videoPath, maxSize)
 
   fun decodeSidecar(
     videoPath: String?,
