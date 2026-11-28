@@ -270,6 +270,7 @@ object PlaybackSession : MPVLib.EventObserver {
   /** The current seek's target is already cached; see [seekTargetIsCachedLocked]. */
   @Volatile private var seekWaitsOnlyForDecoder = false
   private const val PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS = 180L
+  private const val PLAYBACK_TRANSITION_START_HOLD_FAILSAFE_MS = 1500L
   private const val AMBIENT_SHADER_PREFIX = "ambient_"
   private const val AMBIENT_SHADER_SUFFIX = ".glsl"
   private const val STATISTICS_REQUEST_PROPERTY = "user-data/mpvrx/statistics-request"
@@ -485,6 +486,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private var playbackTransitionAudioGuardToken = 0L
   private var playbackTransitionAudioGuardPreviousMute: Boolean? = null
   private var playbackTransitionAudioGuardCanRestore = false
+  private var playbackTransitionStartHold = false
   private val activeAmbientShaderPaths = linkedSetOf<String>()
   private var desiredAmbientScaleX = 1.0
   private var desiredAmbientScaleY = 1.0
@@ -3159,7 +3161,17 @@ object PlaybackSession : MPVLib.EventObserver {
             // Track/decoder replacement is now complete. Apply the latest user/service intent
             // once instead of allowing pause writes to race the load operation. Saved-position
             // loads stay paused until PlayerActivity finishes the database lookup and seek.
-            MPVLib.setPropertyBoolean("pause", appliedPaused)
+            // A fresh, audible load stays paused inside mpv until PLAYBACK_RESTART. There the
+            // transition mute is released first and playback starts after, so no audio is flowing
+            // while the mute is lifted.
+            val holdForTransitionMute =
+              !restoringPosition &&
+                !desiredPaused &&
+                playbackTransitionAudioGuardCanRestore &&
+                playbackTransitionAudioGuardPreviousMute != null
+            playbackTransitionStartHold = holdForTransitionMute
+            MPVLib.setPropertyBoolean("pause", appliedPaused || holdForTransitionMute)
+            if (holdForTransitionMute) scheduleTransitionStartHoldFailsafeLocked()
             // A Surface can disappear while loadfile/yt-dlp is still selecting tracks. Keep the
             // new file audio-only until a renderer exists; never reuse the outgoing file's id.
             if (!rendererOutputReady || !current.surfaceAttached) suspendVideoTrackLocked()
@@ -3211,7 +3223,16 @@ object PlaybackSession : MPVLib.EventObserver {
             pendingEofSeekGeneration = null
             applySpatialAudioLocked()
             if (_state.value.phase != PlaybackPhase.STOPPING) {
-              schedulePlaybackTransitionAudioGuardRestoreLocked(PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS)
+              val releaseHold = playbackTransitionStartHold
+              if (releaseHold ||
+                (playbackTransitionAudioGuardCanRestore && MPVLib.getPropertyBoolean("pause") == true)
+              ) {
+                // mpv is paused here, so no audio is flowing: safe to unmute now, then start.
+                clearPlaybackTransitionAudioGuardLocked(restoreMute = true)
+                if (releaseHold) runCatching { MPVLib.setPropertyBoolean("pause", desiredPaused) }
+              } else {
+                schedulePlaybackTransitionAudioGuardRestoreLocked(PLAYBACK_TRANSITION_AUDIO_RESTORE_DELAY_MS)
+              }
             }
             refreshBufferingState()
             true
@@ -3441,6 +3462,7 @@ object PlaybackSession : MPVLib.EventObserver {
     }
     runCatching { MPVLib.setPropertyBoolean("mute", true) }
     playbackTransitionAudioGuardCanRestore = canRestore
+    playbackTransitionStartHold = false
     playbackTransitionAudioGuardToken++
   }
 
@@ -3462,10 +3484,29 @@ object PlaybackSession : MPVLib.EventObserver {
     val previousMute = playbackTransitionAudioGuardPreviousMute
     playbackTransitionAudioGuardPreviousMute = null
     playbackTransitionAudioGuardCanRestore = false
+    playbackTransitionStartHold = false
     playbackTransitionAudioGuardToken++
     if (restoreMute && initialized && previousMute != null) {
       runCatching { MPVLib.setPropertyBoolean("mute", previousMute) }
     }
+  }
+
+  private fun scheduleTransitionStartHoldFailsafeLocked() {
+    val token = ++playbackTransitionAudioGuardToken
+    playbackTransitionAudioGuardHandler.postDelayed(
+      {
+        nativeLock.withLock {
+          if (!initialized || !playbackTransitionStartHold || token != playbackTransitionAudioGuardToken) {
+            return@withLock
+          }
+          clearPlaybackTransitionAudioGuardLocked(restoreMute = true)
+          if (_state.value.phase != PlaybackPhase.STOPPING) {
+            runCatching { MPVLib.setPropertyBoolean("pause", desiredPaused) }
+          }
+        }
+      },
+      PLAYBACK_TRANSITION_START_HOLD_FAILSAFE_MS,
+    )
   }
 
   internal fun keepYouTubeAmbientSubtitlesInsidePicture(
