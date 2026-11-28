@@ -211,6 +211,7 @@ internal fun TvPlayerControls(
         TvPlayerTopBar(
           title = mediaTitle,
           onOpenInfo = { onOpenSheet(Sheets.MediaInfo) },
+          onSwitchToAudio = { viewModel.setAudioPlayerPresentation(true) },
           modifier =
             Modifier
               .align(Alignment.TopStart)
@@ -379,6 +380,7 @@ internal fun TvPlayerControls(
 private fun TvPlayerTopBar(
   title: String?,
   onOpenInfo: () -> Unit,
+  onSwitchToAudio: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   var clock by remember { mutableStateOf("") }
@@ -401,6 +403,12 @@ private fun TvPlayerTopBar(
         icon = Icons.RoundedFilled.Info,
         contentDescription = stringResource(R.string.ui_media_info),
         onClick = onOpenInfo,
+        size = 44.dp,
+      )
+      TvPlayerButton(
+        icon = Icons.RoundedFilled.ReplaceAudio,
+        contentDescription = stringResource(R.string.player_switch_to_audio),
+        onClick = onSwitchToAudio,
         size = 44.dp,
       )
       Text(

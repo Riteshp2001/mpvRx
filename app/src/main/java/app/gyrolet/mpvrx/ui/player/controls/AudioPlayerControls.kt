@@ -174,6 +174,7 @@ import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
 import app.gyrolet.mpvrx.ui.liquidglass.outsideShadow
 import app.gyrolet.mpvrx.ui.player.AudioQuality
+import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
 import app.gyrolet.mpvrx.ui.player.EmbeddedMotionArtwork
 import app.gyrolet.mpvrx.ui.player.InAppMusicSheetState
 import app.gyrolet.mpvrx.ui.player.MotionArtworkImage
@@ -202,6 +203,7 @@ import app.gyrolet.mpvrx.ui.player.controls.components.stableNumericWidth
 import app.gyrolet.mpvrx.ui.player.controls.components.tvFocusHighlight
 import app.gyrolet.mpvrx.ui.player.controls.components.tvInitialFocus
 import app.gyrolet.mpvrx.ui.player.controls.components.withTabularDigits
+import app.gyrolet.mpvrx.ui.player.declaredMediaKind
 import app.gyrolet.mpvrx.ui.player.inAppMusicSheetDrag
 import app.gyrolet.mpvrx.ui.player.playerSheetAnchor
 import app.gyrolet.mpvrx.ui.player.rememberMotionArtworkDrawable
@@ -485,7 +487,7 @@ private fun rememberAudioPresentationMetadata(
 
 /** FongMi build: decodes the cover mpv parsed from the playing file, once per [key]. */
 @Composable
-private fun rememberMpvAlbumArt(
+internal fun rememberMpvAlbumArt(
   enabled: Boolean,
   key: Any?,
 ): Bitmap? {
@@ -993,6 +995,7 @@ fun AudioPlayerControls(
   onBackPress: () -> Unit,
   onOpenSheet: (Sheets) -> Unit,
   onOpenPanel: (Panels) -> Unit,
+  onSwitchToVideo: () -> Unit,
   modifier: Modifier = Modifier,
   sheetBackdrop: Backdrop? = null,
   inAppSheet: InAppMusicSheetState? = null,
@@ -1022,9 +1025,11 @@ fun AudioPlayerControls(
   val filePosition = viewModel.precisePosition.collectAsStateWithLifecycle()
   val playlistItems by viewModel.playlistItems.collectAsState()
   val isAudioOnly by viewModel.isAudioOnly.collectAsState()
+  val playerPresentation by viewModel.playerPresentation.collectAsState()
+  val switchedToAudio = playerPresentation == true
   val filteredPlaylist =
-    remember(playlistItems, isAudioOnly) {
-      if (isAudioOnly) playlistItems else playlistItems.filter { it.isAudio }
+    remember(playlistItems, isAudioOnly, switchedToAudio) {
+      if (isAudioOnly || switchedToAudio) playlistItems else playlistItems.filter { it.isAudio }
     }
 
   var showInPlaceLyrics by rememberSaveable { mutableStateOf(false) }
@@ -2330,7 +2335,7 @@ fun AudioPlayerControls(
                 Modifier
                   .weight(
                     1f,
-                  ).then(if (isPortrait) Modifier.horizontalScroll(rememberScrollState()) else Modifier),
+                  ).horizontalScroll(rememberScrollState()),
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -2505,6 +2510,17 @@ fun AudioPlayerControls(
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+              ReactiveIconButton(
+                onClick = onSwitchToVideo,
+                modifier = Modifier.size(if (isCompactLandscape) 32.dp else 40.dp),
+              ) {
+                Icon(
+                  imageVector = Icons.RoundedFilled.ViewQuilt,
+                  contentDescription = stringResource(R.string.player_switch_to_video),
+                  tint = MaterialTheme.colorScheme.onSurface,
+                  modifier = Modifier.size(24.dp),
+                )
+              }
               // Favorite Button (right before Add to Playlist)
               ReactiveIconButton(
                 onClick = {
@@ -2517,7 +2533,16 @@ fun AudioPlayerControls(
 
                   coroutineScope.launch {
                     // Toggle local Room favorite state
-                    playlistRepository.toggleFavorite(filePath = path, fileName = displayTitle, isAudio = true)
+                    playlistRepository.toggleFavorite(
+                      filePath = path,
+                      fileName = displayTitle,
+                      isAudio =
+                        when (currentItem?.declaredMediaKind()) {
+                          DeclaredPlaybackMediaKind.AUDIO -> true
+                          DeclaredPlaybackMediaKind.VIDEO -> false
+                          else -> isAudioOnly || !switchedToAudio
+                        },
+                    )
                     actionHaptics.selection(newFavState)
                     // Toggle Jellyfin server favorite status via API if playing from Jellyfin
                     if (server != null && !itemId.isNullOrBlank()) {

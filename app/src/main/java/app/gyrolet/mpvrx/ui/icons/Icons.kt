@@ -139,6 +139,7 @@ import com.composables.icons.materialsymbols.roundedfilled.Push_pin
 import com.composables.icons.materialsymbols.roundedfilled.Queue_music
 import com.composables.icons.materialsymbols.roundedfilled.Refresh
 import com.composables.icons.materialsymbols.roundedfilled.Remove
+import com.composables.icons.materialsymbols.roundedfilled.Replace_audio
 import com.composables.icons.materialsymbols.roundedfilled.Repeat
 import com.composables.icons.materialsymbols.roundedfilled.Repeat_on
 import com.composables.icons.materialsymbols.roundedfilled.Repeat_one
@@ -221,6 +222,7 @@ object Icons {
       AppIcon(app.gyrolet.mpvrx.R.drawable.ic_audiobookshelf_header)
     }
     val Audiotrack by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Music_note) }
+    val ReplaceAudio by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Replace_audio) }
     val AutoAwesome by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Auto_awesome) }
     val AutoFixHigh by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Auto_fix_high) }
     val Aperture by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Shutter_speed) }

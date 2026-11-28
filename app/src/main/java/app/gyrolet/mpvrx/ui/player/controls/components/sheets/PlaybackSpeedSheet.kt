@@ -58,9 +58,6 @@ fun PlaybackSpeedSheet(
   onSpeedChange: (Float) -> Unit,
   onAddSpeedPreset: (Float) -> Unit,
   onRemoveSpeedPreset: (Float) -> Unit,
-  onResetPresets: () -> Unit,
-  onMakeDefault: (Float) -> Unit,
-  onResetDefault: () -> Unit,
   onDismissRequest: () -> Unit,
   speedControlEnabled: Boolean = true,
   pitchCorrectionEnabled: Boolean = true,
@@ -84,24 +81,6 @@ fun PlaybackSpeedSheet(
     leadingIcon = Icons.RoundedFilled.Speed,
     customMaxWidth = 520.dp,
     showDragHandle = false,
-    actions = {
-      PlayerSheetAction(
-        icon = Icons.RoundedFilled.Bookmark,
-        label = stringResource(R.string.player_sheets_speed_make_default),
-        onClick = { onMakeDefault(speed) },
-        enabled = speedControlEnabled,
-      )
-      PlayerSheetAction(
-        icon = Icons.RoundedFilled.Restore,
-        label = stringResource(R.string.generic_reset),
-        onClick = {
-          onResetDefault()
-          onResetPresets()
-          onSpeedChange(1f)
-        },
-        enabled = speedControlEnabled,
-      )
-    },
   ) {
     Column(
       modifier

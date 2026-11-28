@@ -30,6 +30,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -473,50 +474,50 @@ fun PlayerSheetHeader(
   actions: @Composable RowScope.() -> Unit = {},
 ) {
   Column(modifier.fillMaxWidth()) {
-    Row(
-      modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 16.dp, end = 4.dp),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      leadingContent?.invoke()
-      if (title.isNotBlank() || titleContent != null || subtitle != null) {
-        val titleWidth = if (scrollActions) Modifier.widthIn(max = 120.dp) else Modifier.weight(1f)
-        Column(titleWidth.padding(vertical = 6.dp)) {
-          if (titleContent != null) {
-            titleContent()
-          } else if (title.isNotBlank()) {
-            Text(
-              text = title,
-              modifier = Modifier.semantics { heading() },
-              style = MaterialTheme.typography.titleMediumEmphasized,
-              maxLines = 2,
-              overflow = TextOverflow.Ellipsis,
-            )
-          }
-          if (subtitle != null) {
-            Text(
-              text = subtitle,
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-              maxLines = 2,
-              overflow = TextOverflow.Ellipsis,
-            )
-          }
-        }
-      } else {
-        Spacer(Modifier.weight(1f))
-      }
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+      val actionMaxWidth = maxWidth / 2
       Row(
-        modifier =
-          if (scrollActions) {
-            Modifier.weight(1f).horizontalScroll(rememberScrollState(), reverseScrolling = true)
-          } else {
-            Modifier
-          },
-        horizontalArrangement = Arrangement.End,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        content = actions,
-      )
+      ) {
+        leadingContent?.invoke()
+        if (title.isNotBlank() || titleContent != null || subtitle != null) {
+          val titleWidth = if (scrollActions) Modifier.widthIn(max = 120.dp) else Modifier.weight(1f)
+          Column(titleWidth.padding(vertical = 6.dp)) {
+            if (titleContent != null) {
+              titleContent()
+            } else if (title.isNotBlank()) {
+              Text(
+                text = title,
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.titleMediumEmphasized,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+              )
+            }
+            if (subtitle != null) {
+              Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+              )
+            }
+          }
+        } else {
+          Spacer(Modifier.weight(1f))
+        }
+        Row(
+          modifier =
+            (if (scrollActions) Modifier.weight(1f) else Modifier.widthIn(max = actionMaxWidth))
+              .horizontalScroll(rememberScrollState(), reverseScrolling = true),
+          horizontalArrangement = Arrangement.End,
+          verticalAlignment = Alignment.CenterVertically,
+          content = actions,
+        )
+      }
     }
     HorizontalDivider(
       modifier = Modifier.padding(horizontal = 12.dp),

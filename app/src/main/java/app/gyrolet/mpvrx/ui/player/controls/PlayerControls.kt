@@ -9,6 +9,7 @@
 
 package app.gyrolet.mpvrx.ui.player.controls
 
+import android.content.Intent
 import android.content.res.Configuration.ORIENTATION_PORTRAIT
 import android.database.ContentObserver
 import android.media.AudioManager
@@ -30,6 +31,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -97,6 +99,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -131,7 +135,6 @@ import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.allPlayerButtons
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
-import app.gyrolet.mpvrx.preferences.preference.deleteAndGet
 import app.gyrolet.mpvrx.preferences.preference.minusAssign
 import app.gyrolet.mpvrx.preferences.preference.plusAssign
 import app.gyrolet.mpvrx.ui.components.SwipeDismissibleToast
@@ -146,8 +149,10 @@ import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
 import app.gyrolet.mpvrx.ui.player.Decoder.Companion.getDecoderFromValue
 import app.gyrolet.mpvrx.ui.player.InAppMusicSheetState
 import app.gyrolet.mpvrx.ui.player.MPVView
+import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
 import app.gyrolet.mpvrx.ui.player.Panels
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
+import app.gyrolet.mpvrx.ui.player.PlaybackItem
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerUpdates
@@ -226,6 +231,7 @@ internal fun AudioPlayerScreen(
   val appearancePreferences = koinInject<AppearancePreferences>()
   val enableLiquidGlass by appearancePreferences.liquidGlassEnabled.collectAsState()
   val playbackQueue by PlaybackSession.queue.collectAsStateWithLifecycle()
+  val activity = LocalActivity.current
   val currentPlaybackItem = playbackQueue.currentItem
   val chapters by viewModel.playbackChapters.collectAsStateWithLifecycle(persistentListOf())
   val playbackSpeed by PlaybackSession.propFloat["speed"].collectAsStateWithLifecycle()
@@ -322,6 +328,20 @@ internal fun AudioPlayerScreen(
       onBackPress = onBackPress,
       onOpenSheet = onOpenSheet,
       onOpenPanel = onOpenPanel,
+      onSwitchToVideo = {
+        if (inAppSheet != null && activity != null) {
+          val intent = Intent(activity, PlayerActivity::class.java).apply {
+            action = MediaPlaybackService.ACTION_OPEN_PLAYER
+            putExtra("is_audio", true)
+            putExtra("internal_launch", true)
+            putExtra(PlayerActivity.EXTRA_PLAYER_PRESENTATION_VIDEO, true)
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+          }
+          activity.startActivity(intent)
+        } else {
+          viewModel.setAudioPlayerPresentation(false)
+        }
+      },
       modifier = if (enableLiquidGlass) Modifier.layerBackdrop(audioBackdrop) else Modifier,
       sheetBackdrop = audioBackdrop.takeIf { enableLiquidGlass },
       inAppSheet = inAppSheet,
@@ -360,20 +380,9 @@ internal fun AudioPlayerScreen(
             PlaybackSession.setPropertyFloat("speed", it.toFixed(2))
           }
         },
-        onMakeDefaultSpeed = { playerPreferences.defaultSpeed.set(it.toFixed(2)) },
         onAddSpeedPreset = { playerPreferences.speedPresets += it.toFixed(2).toString() },
         onRemoveSpeedPreset = { playerPreferences.speedPresets -= it.toFixed(2).toString() },
-        onResetSpeedPresets = playerPreferences.speedPresets::delete,
         speedPresets = sortedSpeedPresets,
-        onResetDefaultSpeed = {
-          val speed = playerPreferences.defaultSpeed.deleteAndGet().toFixed(2)
-          if (currentPlaybackItem?.audiobook != null) {
-            app.gyrolet.mpvrx.ui.player.AudiobookPlayback
-              .setSpeed(speed)
-          } else {
-            PlaybackSession.setPropertyFloat("speed", speed)
-          }
-        },
         onStartSleepTimer = viewModel::startTimer,
         onOpenPanel = onOpenPanel,
         onShowSheet = onOpenSheet,
@@ -599,13 +608,15 @@ fun PlayerControls(
   val isAudioOnly by viewModel.isAudioOnly.collectAsState()
   val activity = LocalActivity.current as? PlayerActivity
   val currentPlaybackItem = playbackQueue.currentItem
-  val useAudioPlayer =
+  val playerPresentation by viewModel.playerPresentation.collectAsState()
+  val defaultAudioPlayer =
     when (currentPlaybackItem?.declaredMediaKind()) {
       null -> activity?.isCurrentMediaKnownAudio() == true
       DeclaredPlaybackMediaKind.VIDEO -> false
       DeclaredPlaybackMediaKind.AUDIO -> true
       DeclaredPlaybackMediaKind.UNKNOWN -> isAudioOnly || activity?.isCurrentMediaKnownAudio() == true
     }
+  val useAudioPlayer = playerPresentation ?: defaultAudioPlayer
   if (useAudioPlayer) {
     AudioPlayerScreen(
       viewModel = viewModel,
@@ -894,6 +905,11 @@ fun PlayerControls(
               .clipToBounds()
               .onSizeChanged { playerBounds = it },
         ) {
+          if (defaultAudioPlayer) {
+            key(playbackSessionState.generation) {
+              AudioArtworkVideoBackground(viewModel, currentQueueItem)
+            }
+          }
           if (playerKyantBackdrop != null) {
             VideoGlassBackdropSource(glassSource, playerKyantBackdrop)
           }
@@ -972,14 +988,9 @@ fun PlayerControls(
             onUpdateDecoder = { PlaybackSession.setPropertyString("hwdec", it.value) },
             speed = playbackSpeed ?: playerPreferences.defaultSpeed.get(),
             onSpeedChange = { PlaybackSession.setPropertyFloat("speed", it.toFixed(2)) },
-            onMakeDefaultSpeed = { playerPreferences.defaultSpeed.set(it.toFixed(2)) },
             onAddSpeedPreset = { playerPreferences.speedPresets += it.toFixed(2).toString() },
             onRemoveSpeedPreset = { playerPreferences.speedPresets -= it.toFixed(2).toString() },
-            onResetSpeedPresets = playerPreferences.speedPresets::delete,
             speedPresets = tvSortedSpeedPresets,
-            onResetDefaultSpeed = {
-              PlaybackSession.setPropertyFloat("speed", playerPreferences.defaultSpeed.deleteAndGet().toFixed(2))
-            },
             onStartSleepTimer = viewModel::startTimer,
             onOpenPanel = onOpenPanel,
             onShowSheet = onOpenSheet,
@@ -1072,6 +1083,11 @@ fun PlayerControls(
             .clipToBounds()
             .onSizeChanged { playerBounds = it },
       ) {
+        if (defaultAudioPlayer) {
+          key(playbackSessionState.generation) {
+            AudioArtworkVideoBackground(viewModel, currentQueueItem)
+          }
+        }
         key(playbackSessionState.generation) {
           DoubleTapToSeekOvals(
             amount = doubleTapSeekAmount,
@@ -2386,6 +2402,7 @@ fun PlayerControls(
                         onBackPress = onBackPress,
                         onOpenSheet = onOpenSheet,
                         viewModel = viewModel,
+                        onSwitchToAudio = { viewModel.setAudioPlayerPresentation(true) },
                         isTranslatingSub = showAiIndicators && isTranslatingSub,
                         isRealtimeSubsActive = showRealtimeSubs && isRealtimeSubsActive,
                         realtimeSubsLanguage = realtimeSubsLanguage,
@@ -2399,6 +2416,7 @@ fun PlayerControls(
                         onBackPress = onBackPress,
                         onOpenSheet = onOpenSheet,
                         viewModel = viewModel,
+                        onSwitchToAudio = { viewModel.setAudioPlayerPresentation(true) },
                         isTranslatingSub = showAiIndicators && isTranslatingSub,
                         isRealtimeSubsActive = showRealtimeSubs && isRealtimeSubsActive,
                         realtimeSubsLanguage = realtimeSubsLanguage,
@@ -2540,14 +2558,9 @@ fun PlayerControls(
           onUpdateDecoder = { PlaybackSession.setPropertyString("hwdec", it.value) },
           speed = playbackSpeed ?: playerPreferences.defaultSpeed.get(),
           onSpeedChange = { PlaybackSession.setPropertyFloat("speed", it.toFixed(2)) },
-          onMakeDefaultSpeed = { playerPreferences.defaultSpeed.set(it.toFixed(2)) },
           onAddSpeedPreset = { playerPreferences.speedPresets += it.toFixed(2).toString() },
           onRemoveSpeedPreset = { playerPreferences.speedPresets -= it.toFixed(2).toString() },
-          onResetSpeedPresets = playerPreferences.speedPresets::delete,
           speedPresets = sortedSpeedPresets,
-          onResetDefaultSpeed = {
-            PlaybackSession.setPropertyFloat("speed", playerPreferences.defaultSpeed.deleteAndGet().toFixed(2))
-          },
           onStartSleepTimer = viewModel::startTimer,
           onOpenPanel = onOpenPanel,
           onShowSheet = onOpenSheet,
@@ -2639,6 +2652,53 @@ fun PlayerControls(
           }
         }
       }
+    }
+  }
+}
+
+@Composable
+private fun AudioArtworkVideoBackground(
+  viewModel: PlayerViewModel,
+  item: PlaybackItem?,
+) {
+  val session by PlaybackSession.state.collectAsStateWithLifecycle()
+  val path by PlaybackSession.propString["path"].collectAsStateWithLifecycle()
+  val streamPath by PlaybackSession.propString["stream-open-filename"].collectAsStateWithLifecycle()
+  val book by app.gyrolet.mpvrx.ui.player.AudiobookPlayback.book.collectAsStateWithLifecycle()
+  val source =
+    item?.originalUri?.takeIf { it.isNotBlank() }
+      ?: item?.playableUri?.takeIf { it.isNotBlank() }
+      ?: path?.takeIf { it.isNotBlank() }
+      ?: streamPath
+  val artworkUri =
+    book?.takeIf { it.book.id == item?.audiobook?.bookId }?.book?.coverUri?.takeIf { it.isNotBlank() }
+      ?: item?.artworkUri?.takeIf { it.isNotBlank() }
+  val artwork = rememberAudioAlbumArt(source, artworkUri)
+  val hasMpvAlbumArt by viewModel.hasAlbumArt.collectAsState()
+  val mpvArtwork =
+    rememberMpvAlbumArt(
+      enabled = artwork == null && hasMpvAlbumArt && session.phase == PlaybackPhase.READY,
+      key = session.generation,
+    )
+  val bitmap = artwork ?: mpvArtwork
+  Box(
+    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer),
+    contentAlignment = Alignment.Center,
+  ) {
+    if (bitmap != null) {
+      Image(
+        bitmap = remember(bitmap) { bitmap.asImageBitmap() },
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = Modifier.fillMaxSize(),
+      )
+    } else {
+      Icon(
+        imageVector = Icons.RoundedFilled.Audiotrack,
+        contentDescription = null,
+        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(96.dp),
+      )
     }
   }
 }

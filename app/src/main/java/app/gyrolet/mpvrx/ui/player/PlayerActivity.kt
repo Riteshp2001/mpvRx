@@ -873,6 +873,10 @@ class PlayerActivity :
 
     val attachedToCurrentSession =
       attachToCurrentPlaybackSessionIfRequested() || attachToSavedPlaybackSessionIfValid()
+    if (attachedToCurrentSession && intent.getBooleanExtra(EXTRA_PLAYER_PRESENTATION_VIDEO, false)) {
+      viewModel.setAudioPlayerPresentation(false)
+      intent.removeExtra(EXTRA_PLAYER_PRESENTATION_VIDEO)
+    }
     if (!attachedToCurrentSession && !restoredSavedPlaylistItem && playlist.isNotEmpty()) {
       pendingSavedPlaylistSelection = null
     }
@@ -1674,13 +1678,19 @@ class PlayerActivity :
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
         combine(
-          PlaybackSession.state.map { it.generation to it.phase }.distinctUntilChanged(),
+          combine(
+            PlaybackSession.state.map { it.generation to it.phase }.distinctUntilChanged(),
+            viewModel.playerPresentation,
+          ) { state, presentation -> state to presentation },
           viewModel.isAudioOnly,
           PlaybackSession.propString["vid"],
           PlaybackSession.propBoolean["vo-configured"],
           videoHiddenForGeneration,
-        ) { (generation, phase), audioOnly, _, voConfigured, hiddenGeneration ->
+        ) { stateAndPresentation, audioOnly, _, voConfigured, hiddenGeneration ->
+          val (state, presentation) = stateAndPresentation
+          val (generation, phase) = state
           !audioOnly &&
+            presentation != true &&
             generation != hiddenGeneration &&
             voConfigured == true &&
             (phase == PlaybackPhase.READY || phase == PlaybackPhase.BACKGROUND) &&
@@ -6309,6 +6319,10 @@ class PlayerActivity :
         isBackgroundPlaybackSessionActive = false
         pendingBackgroundTransition = false
         if (attachToCurrentPlaybackSessionIfRequested(intent)) {
+          if (intent.getBooleanExtra(EXTRA_PLAYER_PRESENTATION_VIDEO, false)) {
+            viewModel.setAudioPlayerPresentation(false)
+            this.intent.removeExtra(EXTRA_PLAYER_PRESENTATION_VIDEO)
+          }
           PlaybackSession.markForeground()
           isReady = PlaybackSession.state.value.phase == PlaybackPhase.READY
           if (isReady) viewModel.onVideoLoadCompleted()
@@ -6352,6 +6366,7 @@ class PlayerActivity :
     val previouslyLoadedTorrentFileIndex = this.intent.getIntExtra("torrent_file_index", -1)
     val previousItemWasReady = isReady
 
+    viewModel.resetPlayerPresentation()
     setIntent(intent)
     // A new media launch drops the rotation picked for the previous video.
     PlayerOrientationPolicy.manualOrientation = null
@@ -9285,6 +9300,7 @@ class PlayerActivity :
 
     const val EXTRA_PREPARED_PLAYBACK_QUEUE = "prepared_playback_queue"
     const val EXTRA_PREPARED_PLAYBACK_TOKEN = "prepared_playback_token"
+    const val EXTRA_PLAYER_PRESENTATION_VIDEO = "player_presentation_video"
     private const val EXTRA_SCRIPT_RUNTIME_RESTART = "script_runtime_restart"
     private const val EXTRA_CORE_RECOVERY_AT = "core_recovery_at"
     private const val EXTRA_SCRIPT_RESTORE_MEDIA_ID = "script_restore_media_id"

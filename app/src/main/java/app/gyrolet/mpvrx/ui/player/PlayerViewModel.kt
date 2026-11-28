@@ -1095,6 +1095,18 @@ class PlayerViewModel(
     val mergeSeparateStreams: Boolean,
   )
 
+  private val _playerPresentation = MutableStateFlow<Boolean?>(null)
+  val playerPresentation: StateFlow<Boolean?> = _playerPresentation.asStateFlow()
+
+  fun setAudioPlayerPresentation(audio: Boolean) {
+    _playerPresentation.value = audio
+    showControls()
+  }
+
+  fun resetPlayerPresentation() {
+    _playerPresentation.value = null
+  }
+
   val isAudioOnly: StateFlow<Boolean> =
     combine(
       allTracks,
