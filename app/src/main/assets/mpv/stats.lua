@@ -1955,7 +1955,14 @@ local function sync_stats()
     end
 
     local events = {}
-    local x, y = font_size * 0.75, font_size * 0.75
+    local osd_height = mp.get_property_number("osd-height", 0)
+    local margin_scale = 288 / 720
+    if not mp.get_property_native("osd-scale-by-window") and osd_height > 0 then
+        margin_scale = 288 / osd_height
+    end
+    local x = max(font_size * 0.75, mp.get_property_number("osd-margin-x", 16) * margin_scale)
+    local y = max(font_size * 0.75, (mp.get_property_number("osd-margin-y", 16) +
+                                    mp.get_property_number("osd-margin-y-offset", 0)) * margin_scale)
     local top, width = y, font_size * 47.2
     local function line(str)
         events[#events+1] = format("{\\pos(%.2f,%.2f)}%s%s", x, y, text_style(), str)
