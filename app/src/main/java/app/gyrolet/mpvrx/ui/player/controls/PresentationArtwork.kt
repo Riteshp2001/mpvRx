@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
 import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -41,6 +42,7 @@ import app.gyrolet.mpvrx.ui.player.components.VideoAmbientBackground
 import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
+import org.koin.compose.koinInject
 
 /**
  * Album art for audio switched to the video layout. PlayerActivity keeps it as a window layer
@@ -93,14 +95,35 @@ private fun AudioArtworkVideoBackground(
   val artworkUri =
     book?.takeIf { it.book.id == item?.audiobook?.bookId }?.book?.coverUri?.takeIf { it.isNotBlank() }
       ?: item?.artworkUri?.takeIf { it.isNotBlank() }
-  val artwork = rememberAudioAlbumArt(source, artworkUri)
+  val metadata = rememberAudioPresentationMetadata(source, artworkUri)
+  val artwork = metadata?.artwork
+  val mediaTitle by PlaybackSession.propString["media-title"].collectAsStateWithLifecycle()
+  val rawArtist by PlaybackSession.propString["metadata/by-key/Artist"].collectAsStateWithLifecycle()
+  val rawArtistAlt by PlaybackSession.propString["metadata/artist"].collectAsStateWithLifecycle()
+  val rawAlbumArtist by PlaybackSession.propString["metadata/by-key/album_artist"].collectAsStateWithLifecycle()
+  val rawPerformer by PlaybackSession.propString["metadata/by-key/PERFORMER"].collectAsStateWithLifecycle()
+  val artist =
+    sequenceOf(item?.artist, rawArtist, rawArtistAlt, rawAlbumArtist, rawPerformer, metadata?.artist)
+      .filterNotNull()
+      .firstOrNull { it.isNotBlank() }
+  val highQualityEnabled by koinInject<AudioPreferences>().highQualityArtwork.collectAsStateWithLifecycle()
+  val query =
+    rememberArtworkQuery(
+      enabled = highQualityEnabled && item?.audiobook == null,
+      phase = session.phase,
+      generation = session.generation,
+      itemTitle = item?.title,
+      mediaTitle = mediaTitle,
+      artistFallback = artist,
+    )
+  val highQualityCover = rememberHighQualityArtwork(query)
   val hasMpvAlbumArt by viewModel.hasAlbumArt.collectAsStateWithLifecycle()
   val mpvArtwork =
     rememberMpvAlbumArt(
-      enabled = artwork == null && hasMpvAlbumArt && session.phase == PlaybackPhase.READY,
+      enabled = highQualityCover == null && artwork == null && hasMpvAlbumArt && session.phase == PlaybackPhase.READY,
       key = session.generation,
     )
-  val bitmap = artwork ?: mpvArtwork
+  val bitmap = highQualityCover ?: artwork ?: mpvArtwork
   val statisticsPage by PlaybackSession.visibleStatisticsPage.collectAsStateWithLifecycle()
   val osdLayer by PlaybackSession.osdOverlayAttached.collectAsStateWithLifecycle()
   // Without FongMi's OSD layer, mpv draws statistics only into the video Surface underneath.

@@ -33,7 +33,7 @@ Switch between the **video and music player layouts**, enjoy sharper covers and 
 
 #### 🔀 Switch between music and video layouts
 
-Choose the player presentation that suits what you're playing. The video player has a **Switch to audio player** button, and the music player has a **Switch to video player** button. Playback continues as you switch. Audio shown in the video layout keeps its album artwork, and the player follows the selected layout for orientation, system bars, volume and brightness feedback, and picture-in-picture.
+Choose the player presentation that suits what you're playing. The video player has a **Switch to audio player** button, and the music player has a **Switch to video player** button. Playback continues as you switch. Audio shown in the video layout uses the same high-quality cover as the music player when available. With video-based orientation selected, audio follows its audio orientation setting instead of being forced to portrait by square artwork. The player follows the selected layout for system bars, volume and brightness feedback, and picture-in-picture.
 
 On tablets, **Dual-pane music player on tablets** lets you choose whether the queue and lyrics appear beside the music player (#1028).
 

@@ -974,7 +974,12 @@ class PlayerActivity :
 
     lifecycleScope.launch {
       audioPreferences.audioOrientation.changes().drop(1).collect {
-        if (isAudioLayoutShown()) setOrientation()
+        if (isAudioLayoutShown() ||
+          (playerPreferences.orientation.get() == PlayerOrientation.Video &&
+            (viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()))
+        ) {
+          setOrientation()
+        }
       }
     }
 
@@ -7447,6 +7452,11 @@ class PlayerActivity :
         PlayerOrientationPolicy.forAudioPreference(audioPreferences.audioOrientation.get())
       } else if (manual != null) {
         manual
+      } else if (playerPreferences.orientation.get() == PlayerOrientation.Video &&
+        (viewModel.isAudioOnly.value || isCurrentMediaKnownAudio())
+      ) {
+        // Album artwork is not video geometry; follow the audio orientation instead of its shape.
+        PlayerOrientationPolicy.forAudioPreference(audioPreferences.audioOrientation.get())
       } else {
         val preference = playerPreferences.orientation.get()
         // A saved custom ratio is re-applied to every file and is already part of mpv's reported

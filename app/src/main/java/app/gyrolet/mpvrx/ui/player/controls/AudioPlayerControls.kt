@@ -249,7 +249,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private data class AudioPresentationMetadata(
+internal data class AudioPresentationMetadata(
   val artwork: Bitmap?,
   val artist: String?,
   val motionArtwork: ByteArray? = null,
@@ -463,7 +463,7 @@ private object AudioPresentationMetadataCache {
 }
 
 @Composable
-private fun rememberAudioPresentationMetadata(
+internal fun rememberAudioPresentationMetadata(
   pathOrUri: String?,
   artworkUri: String? = null,
 ): AudioPresentationMetadata? {
@@ -1147,28 +1147,6 @@ fun AudioPlayerControls(
     )
   val embeddedAlbumArt = currentAudioPresentation?.artwork ?: mpvAlbumArt
 
-  fun cleanSongTitle(
-    title: String,
-    artist: String?,
-  ): String {
-    val titleWithoutExt = title.stripAudioExtension()
-    if (!artist.isNullOrBlank() && artist != "Unknown Artist") {
-      val prefixes = listOf("$artist - ", "$artist – ", "$artist — ", "$artist- ", "$artist : ")
-      for (prefix in prefixes) {
-        if (titleWithoutExt.startsWith(prefix, ignoreCase = true)) {
-          return titleWithoutExt.substring(prefix.length).trim()
-        }
-      }
-      val suffixes = listOf(" - $artist", " – $artist", " — $artist", " -$artist")
-      for (suffix in suffixes) {
-        if (titleWithoutExt.endsWith(suffix, ignoreCase = true)) {
-          return titleWithoutExt.substring(0, titleWithoutExt.length - suffix.length).trim()
-        }
-      }
-    }
-    return titleWithoutExt
-  }
-
   val isYouTubeSource = HttpUtils.isYouTubeUrl(currentItem?.originalUri)
   val itemTitle =
     currentItem?.title?.takeIf {
@@ -1226,45 +1204,14 @@ fun AudioPlayerControls(
   val animatedAlbumArtwork by audioPreferences.animatedAlbumArtwork.collectAsState()
   val highQualityArtwork by audioPreferences.highQualityArtwork.collectAsState()
   val artworkQuery =
-    if ((animatedAlbumArtwork || highQualityArtwork) &&
-      !isAudiobook &&
-      (playbackState.phase == PlaybackPhase.READY || playbackState.phase == PlaybackPhase.BACKGROUND)
-    ) {
-      // One metadata observer, only while an online artwork feature is on. Tag names vary in case
-      // across containers; metadata/album is not the by-key lookup, and queue titles may still be raw filenames.
-      val nativeMetadata by PlaybackSession.propNode["metadata"].collectAsState()
-      remember(nativeMetadata, playbackState.generation, currentItem?.title, mediaTitle, displayArtist) {
-        // Use the event as a trigger, then take one generation-checked native snapshot.
-        // A cached metadata event from the previous file must not identify the new song.
-        PlaybackSession.readLoadedMedia(playbackState.generation) { reader ->
-          fun known(value: String?): String? =
-            value?.trim()?.takeUnless {
-              it.isBlank() ||
-                it.equals("<unknown>", ignoreCase = true) ||
-                it.equals("Unknown Artist", ignoreCase = true) ||
-                it.equals("Unknown Album", ignoreCase = true)
-            }
-
-          fun tag(vararg keys: String): String? =
-            keys
-              .asSequence()
-              .mapNotNull { known(reader.string("metadata/by-key/$it")) }
-              .firstOrNull()
-          val artist = tag("artist", "Artist", "ARTIST", "album_artist", "ALBUMARTIST") ?: known(displayArtist)
-          val title =
-            (tag("title", "Title", "TITLE") ?: known(currentItem?.title) ?: known(mediaTitle))
-              ?.let { cleanSongTitle(it, artist) }
-              ?.trim()
-          if (artist != null && !title.isNullOrBlank()) {
-            MotionArtworkQuery(title = title, artist = artist, album = tag("album", "Album", "ALBUM"))
-          } else {
-            null
-          }
-        }
-      }
-    } else {
-      null
-    }
+    rememberArtworkQuery(
+      enabled = (animatedAlbumArtwork || highQualityArtwork) && !isAudiobook,
+      phase = playbackState.phase,
+      generation = playbackState.generation,
+      itemTitle = currentItem?.title,
+      mediaTitle = mediaTitle,
+      artistFallback = displayArtist,
+    )
   val motionQuery = artworkQuery?.takeIf { animatedAlbumArtwork }
   // The catalogue's own cover replaces the embedded one whatever its resolution; until it is
   // cached the embedded art shows, and it stays when no catalogue knows the song.
@@ -4457,6 +4404,28 @@ private fun RowScope.ExpressiveConnectedBarButton(
   ) {
     content(contentColor)
   }
+}
+
+internal fun cleanSongTitle(
+  title: String,
+  artist: String?,
+): String {
+  val titleWithoutExt = title.stripAudioExtension()
+  if (!artist.isNullOrBlank() && artist != "Unknown Artist") {
+    val prefixes = listOf("$artist - ", "$artist – ", "$artist — ", "$artist- ", "$artist : ")
+    for (prefix in prefixes) {
+      if (titleWithoutExt.startsWith(prefix, ignoreCase = true)) {
+        return titleWithoutExt.substring(prefix.length).trim()
+      }
+    }
+    val suffixes = listOf(" - $artist", " – $artist", " — $artist", " -$artist")
+    for (suffix in suffixes) {
+      if (titleWithoutExt.endsWith(suffix, ignoreCase = true)) {
+        return titleWithoutExt.substring(0, titleWithoutExt.length - suffix.length).trim()
+      }
+    }
+  }
+  return titleWithoutExt
 }
 
 private fun String.stripAudioExtension(): String {
