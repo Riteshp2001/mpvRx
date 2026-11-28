@@ -43,7 +43,6 @@ fun TopLeftPlayerControlsLandscape(
   onBackPress: () -> Unit,
   onOpenSheet: (Sheets) -> Unit,
   viewModel: PlayerViewModel,
-  onSwitchToAudio: () -> Unit,
   isTranslatingSub: Boolean = false,
   isRealtimeSubsActive: Boolean = false,
   realtimeSubsLanguage: String = "",
@@ -64,14 +63,6 @@ fun TopLeftPlayerControlsLandscape(
         ControlsButton(
           icon = Icons.RoundedFilled.ArrowBack,
           onClick = onBackPress,
-          color = playerButtonContentColor(),
-          modifier = Modifier.size(48.dp),
-        )
-
-        ControlsButton(
-          icon = Icons.RoundedFilled.ReplaceAudio,
-          onClick = onSwitchToAudio,
-          title = stringResource(R.string.player_switch_to_audio),
           color = playerButtonContentColor(),
           modifier = Modifier.size(48.dp),
         )

@@ -214,7 +214,7 @@ class AppearancePreferences(
   val bottomRightControls =
     preferenceStore.getString(
       "bottom_right_controls",
-      "PLAYLIST,ASPECT_RATIO",
+      "PLAYLIST,ASPECT_RATIO,SWITCH_PLAYER_LAYOUT",
     )
 
   val bottomLeftControls =
@@ -226,13 +226,15 @@ class AppearancePreferences(
   val portraitBottomControls =
     preferenceStore.getString(
       "portrait_bottom_controls",
-      "SCREEN_ROTATION,AUDIO_TRACK,SUBTITLES,PLAYBACK_SPEED,BACKGROUND_PLAYBACK,LOCK_CONTROLS,MORE_OPTIONS",
+      "SCREEN_ROTATION,AUDIO_TRACK,SUBTITLES,PLAYBACK_SPEED,BACKGROUND_PLAYBACK,LOCK_CONTROLS,MORE_OPTIONS,SWITCH_PLAYER_LAYOUT",
     )
 
   private val castButtonMigrationComplete =
     preferenceStore.getBoolean("cast_button_migration_complete", false)
   private val clipButtonMigrationComplete =
     preferenceStore.getBoolean("clip_button_migration_complete", false)
+  private val switchPlayerLayoutButtonMigrationComplete =
+    preferenceStore.getBoolean("switch_player_layout_button_migration_complete", false)
 
   init {
     // The advanced Liquid Glass optics rely on modern Android rendering primitives. A restored
@@ -288,6 +290,25 @@ class AppearancePreferences(
         portraitBottomControls.set("${portraitBottomControls.get()},CLIP")
       }
       clipButtonMigrationComplete.set(true)
+    }
+
+    if (!switchPlayerLayoutButtonMigrationComplete.get()) {
+      val switchButton = PlayerButton.SWITCH_PLAYER_LAYOUT
+      val usedButtons = mutableSetOf<PlayerButton>()
+      listOf(topRightControls, bottomRightControls, bottomLeftControls).forEach {
+        parseButtons(it.get(), usedButtons)
+      }
+      if (landscapeLayoutStored && switchButton !in usedButtons) {
+        bottomRightControls.set(
+          listOf(bottomRightControls.get(), switchButton.name).filter(String::isNotBlank).joinToString(","),
+        )
+      }
+      if (portraitLayoutStored && switchButton !in parseButtons(portraitBottomControls.get(), mutableSetOf())) {
+        portraitBottomControls.set(
+          listOf(portraitBottomControls.get(), switchButton.name).filter(String::isNotBlank).joinToString(","),
+        )
+      }
+      switchPlayerLayoutButtonMigrationComplete.set(true)
     }
   }
 

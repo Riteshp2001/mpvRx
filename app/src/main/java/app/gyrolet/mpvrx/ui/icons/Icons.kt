@@ -222,7 +222,6 @@ object Icons {
       AppIcon(app.gyrolet.mpvrx.R.drawable.ic_audiobookshelf_header)
     }
     val Audiotrack by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Music_note) }
-    val ReplaceAudio by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Replace_audio) }
     val AutoAwesome by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Auto_awesome) }
     val AutoFixHigh by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Auto_fix_high) }
     val Aperture by lazy(LazyThreadSafetyMode.NONE) { AppIcon(MaterialSymbols.RoundedFilled.Shutter_speed) }

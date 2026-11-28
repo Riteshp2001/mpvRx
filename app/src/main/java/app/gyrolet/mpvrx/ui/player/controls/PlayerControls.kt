@@ -2402,7 +2402,6 @@ fun PlayerControls(
                         onBackPress = onBackPress,
                         onOpenSheet = onOpenSheet,
                         viewModel = viewModel,
-                        onSwitchToAudio = { viewModel.setAudioPlayerPresentation(true) },
                         isTranslatingSub = showAiIndicators && isTranslatingSub,
                         isRealtimeSubsActive = showRealtimeSubs && isRealtimeSubsActive,
                         realtimeSubsLanguage = realtimeSubsLanguage,
@@ -2416,7 +2415,6 @@ fun PlayerControls(
                         onBackPress = onBackPress,
                         onOpenSheet = onOpenSheet,
                         viewModel = viewModel,
-                        onSwitchToAudio = { viewModel.setAudioPlayerPresentation(true) },
                         isTranslatingSub = showAiIndicators && isTranslatingSub,
                         isRealtimeSubsActive = showRealtimeSubs && isRealtimeSubsActive,
                         realtimeSubsLanguage = realtimeSubsLanguage,
@@ -2681,6 +2679,10 @@ private fun AudioArtworkVideoBackground(
       key = session.generation,
     )
   val bitmap = artwork ?: mpvArtwork
+  val statisticsPage by PlaybackSession.visibleStatisticsPage.collectAsStateWithLifecycle()
+  // The artwork would otherwise cover the statistics drawn on mpv's Surface.
+  if (statisticsPage != 0) return
+
   Box(
     modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer),
     contentAlignment = Alignment.Center,

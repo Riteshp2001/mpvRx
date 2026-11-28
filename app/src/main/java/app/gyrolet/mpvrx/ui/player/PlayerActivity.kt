@@ -1680,20 +1680,23 @@ class PlayerActivity :
         combine(
           combine(
             PlaybackSession.state.map { it.generation to it.phase }.distinctUntilChanged(),
-            viewModel.playerPresentation,
-          ) { state, presentation -> state to presentation },
+            PlaybackSession.visibleStatisticsPage,
+            ::Pair,
+          ),
+          viewModel.playerPresentation,
           viewModel.isAudioOnly,
-          PlaybackSession.propString["vid"],
-          PlaybackSession.propBoolean["vo-configured"],
+          combine(PlaybackSession.propString["vid"], PlaybackSession.propBoolean["vo-configured"], ::Pair),
           videoHiddenForGeneration,
-        ) { stateAndPresentation, audioOnly, _, voConfigured, hiddenGeneration ->
-          val (state, presentation) = stateAndPresentation
+        ) { (state, statisticsPage), presentation, audioOnly, (_, voConfigured), hiddenGeneration ->
           val (generation, phase) = state
+          if (presentation == true || (phase != PlaybackPhase.READY && phase != PlaybackPhase.BACKGROUND)) {
+            return@combine false
+          }
+          // A forced video layout can display mpv's OSD without a selected video track.
+          if (presentation == false && statisticsPage != 0) return@combine true
           !audioOnly &&
-            presentation != true &&
             generation != hiddenGeneration &&
             voConfigured == true &&
-            (phase == PlaybackPhase.READY || phase == PlaybackPhase.BACKGROUND) &&
             PlaybackSession.state.value.currentItem
               ?.isDefinitelyAudioOnly() == false &&
             PlaybackSession.readLoadedMedia(generation) { reader ->
@@ -1701,10 +1704,21 @@ class PlayerActivity :
                 reader.string("current-tracks/video/albumart") != "yes" &&
                 (reader.string("current-tracks/video/image") != "yes" || reader.int("current-tracks/audio/id") == null)
             } == true
-        }.distinctUntilChanged().collect { showVideo ->
+        }.distinctUntilChanged().collect { showPlayerOutput ->
           // Keep the native Surface available to initialize a real video. The cover is above
           // the Surface but below the player UI and its album art.
-          binding.videoPresentationCover.visibility = if (showVideo) View.INVISIBLE else View.VISIBLE
+          binding.videoPresentationCover.visibility = if (showPlayerOutput) View.INVISIBLE else View.VISIBLE
+        }
+      }
+    }
+    lifecycleScope.launch {
+      repeatOnLifecycle(Lifecycle.State.STARTED) {
+        combine(viewModel.isAudioOnly, viewModel.playerPresentation) { isAudioOnly, presentation ->
+          !isAudioOnly || presentation == false
+        }.distinctUntilChanged().collect { showSurface ->
+          // mpv uses this Surface for OSD even when there is no video track.
+          binding.player.visibility = if (showSurface) View.VISIBLE else View.INVISIBLE
+          if (showSurface) binding.player.clipToOutline = false
         }
       }
     }
@@ -1714,7 +1728,6 @@ class PlayerActivity :
           if (isAudioOnly) {
             applyPlaybackBrightnessPolicy(isAudio = true)
             viewModel.showControls()
-            binding.player.visibility = View.INVISIBLE
             try {
               windowInsetsController.apply {
                 systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
@@ -1726,9 +1739,6 @@ class PlayerActivity :
             } catch (e: Exception) {
               Log.e(TAG, "Failed to show system bars for audio playback", e)
             }
-          } else {
-            binding.player.clipToOutline = false
-            binding.player.visibility = View.VISIBLE
           }
           updateStatusBarProtection()
         }

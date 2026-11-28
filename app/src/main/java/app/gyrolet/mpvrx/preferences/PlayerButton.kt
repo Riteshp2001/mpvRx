@@ -56,6 +56,7 @@ enum class PlayerButton(
   SCOPES(Icons.RoundedFilled.Mystery),
   PLAYLIST(Icons.RoundedFilled.PlaylistPlay),
   MOTION_INTERPOLATION(Icons.RoundedFilled.MotionInterpolation),
+  SWITCH_PLAYER_LAYOUT(Icons.RoundedFilled.ViewQuilt),
   NONE(Icons.RoundedFilled.Bookmarks),
 }
 
@@ -111,5 +112,6 @@ fun getPlayerButtonLabel(button: PlayerButton): String =
     PlayerButton.SCOPES -> stringResource(R.string.btn_label_scopes)
     PlayerButton.PLAYLIST -> stringResource(R.string.ui_playlist)
     PlayerButton.MOTION_INTERPOLATION -> stringResource(R.string.btn_label_motion_interpolation)
+    PlayerButton.SWITCH_PLAYER_LAYOUT -> stringResource(R.string.player_switch_to_audio)
     PlayerButton.NONE -> stringResource(R.string.btn_label_none)
   }

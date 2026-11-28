@@ -79,6 +79,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.GesturePreferences
+import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.icons.AppIcon
@@ -211,7 +212,6 @@ internal fun TvPlayerControls(
         TvPlayerTopBar(
           title = mediaTitle,
           onOpenInfo = { onOpenSheet(Sheets.MediaInfo) },
-          onSwitchToAudio = { viewModel.setAudioPlayerPresentation(true) },
           modifier =
             Modifier
               .align(Alignment.TopStart)
@@ -354,6 +354,11 @@ internal fun TvPlayerControls(
               )
             }
             TvPlayerButton(
+              icon = PlayerButton.SWITCH_PLAYER_LAYOUT.icon,
+              contentDescription = stringResource(R.string.player_switch_to_audio),
+              onClick = { viewModel.setAudioPlayerPresentation(true) },
+            )
+            TvPlayerButton(
               icon = Icons.RoundedFilled.MoreVert,
               contentDescription = stringResource(R.string.player_sheets_more_title),
               onClick = { onOpenSheet(Sheets.More) },
@@ -380,7 +385,6 @@ internal fun TvPlayerControls(
 private fun TvPlayerTopBar(
   title: String?,
   onOpenInfo: () -> Unit,
-  onSwitchToAudio: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   var clock by remember { mutableStateOf("") }
@@ -403,12 +407,6 @@ private fun TvPlayerTopBar(
         icon = Icons.RoundedFilled.Info,
         contentDescription = stringResource(R.string.ui_media_info),
         onClick = onOpenInfo,
-        size = 44.dp,
-      )
-      TvPlayerButton(
-        icon = Icons.RoundedFilled.ReplaceAudio,
-        contentDescription = stringResource(R.string.player_switch_to_audio),
-        onClick = onSwitchToAudio,
         size = 44.dp,
       )
       Text(

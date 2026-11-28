@@ -824,6 +824,16 @@ fun RenderPlayerButton(
         )
       }
 
+      PlayerButton.SWITCH_PLAYER_LAYOUT -> {
+        ControlsButton(
+          icon = button.icon,
+          onClick = { viewModel.setAudioPlayerPresentation(true) },
+          title = stringResource(R.string.player_switch_to_audio),
+          color = if (borderless) controlColor else buttonContentColor,
+          modifier = Modifier.size(buttonSize),
+        )
+      }
+
       PlayerButton.CLIP -> {
         val clipOverlay = remember(activity) { ClipOverlayView.ensureAttached(activity) }
         ControlsButton(

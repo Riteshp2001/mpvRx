@@ -160,6 +160,7 @@ import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.AudioVisualizerStyle
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.LyricsTranslationDisplayMode
+import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.AudioFormatArtworkBadge
@@ -2515,7 +2516,7 @@ fun AudioPlayerControls(
                 modifier = Modifier.size(if (isCompactLandscape) 32.dp else 40.dp),
               ) {
                 Icon(
-                  imageVector = Icons.RoundedFilled.ViewQuilt,
+                  imageVector = PlayerButton.SWITCH_PLAYER_LAYOUT.icon,
                   contentDescription = stringResource(R.string.player_switch_to_video),
                   tint = MaterialTheme.colorScheme.onSurface,
                   modifier = Modifier.size(24.dp),

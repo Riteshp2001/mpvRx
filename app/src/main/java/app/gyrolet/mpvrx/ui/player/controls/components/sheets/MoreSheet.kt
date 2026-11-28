@@ -157,6 +157,7 @@ fun MoreSheet(
               // One coordinator owns the chips, the preference and mpv's stats.lua state; it
               // closes the console itself and keeps the overlay from being blind-toggled.
               PlaybackSession.setStatisticsPage(page)
+              if (page != 0) onDismissRequest()
             },
             colors =
               FilterChipDefaults.filterChipColors(
