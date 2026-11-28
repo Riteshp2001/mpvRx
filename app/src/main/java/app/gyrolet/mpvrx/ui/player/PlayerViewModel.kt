@@ -6497,6 +6497,9 @@ class PlayerViewModel(
     viewModelScope.launch(gesturePropertyDispatcher) {
       if (active) {
         if (savedSubtitleBoxStyle != null) return@launch
+        if (MpvConfigOverridePolicy.ownsAny(setOf("sub-border-style", "sub-back-color", "sub-shadow-offset"))) {
+          return@launch
+        }
         val style =
           SubtitleGestureBoxStyle(
             PlaybackSession.getPropertyString("sub-border-style"),

@@ -1578,7 +1578,7 @@ class MediaPlaybackService :
   private fun sanitizedPositionMs(): Long {
     // Queue selection publishes the incoming title before native loadfile replaces the old file.
     // Never put the outgoing position (or a cached position) under the incoming notification.
-    currentPositionSeconds = PlaybackSession.readLoadedPlaybackState(mediaIdentifier) { position, _ -> position } ?: 0.0
+    currentPositionSeconds = PlaybackSession.readLoadedPlaybackState(mediaIdentifier) { position, _, _ -> position } ?: 0.0
     val seconds = currentPositionSeconds.takeIf { it.isFinite() && it > 0.0 } ?: return 0L
     return (seconds * 1000.0)
       .coerceAtMost(Long.MAX_VALUE.toDouble())
@@ -2017,7 +2017,7 @@ class MediaPlaybackService :
   ): PlaybackStateSnapshot? {
     if (identifier.isBlank()) return null
 
-    return PlaybackSession.readLoadedPlaybackState(identifier) { position, duration ->
+    return PlaybackSession.readLoadedPlaybackState(identifier) { position, duration, item ->
       PlaybackStateSnapshot(
         mediaIdentifier = identifier,
         mediaTitle = mediaTitle.ifBlank { identifier },
@@ -2026,6 +2026,7 @@ class MediaPlaybackService :
         isPositionRestorePending =
           PlaybackSession.isPositionRestorePending(PlaybackSession.state.value.activeGeneration),
         isLive = PlaybackSession.isLiveMedia(),
+        isAudio = item.audiobook != null || resolveNotificationIsAudio(item, usesAudioBackgroundPlayback),
         playbackSpeed = readMpvDouble("speed", oldState?.playbackSpeed ?: DEFAULT_PLAYBACK_STATE_SPEED),
         videoZoom = PlaybackSession.videoZoom.value,
         sid = readMpvTrackId("sid", oldState?.sid ?: -1),

@@ -165,9 +165,6 @@ enum class MpvConfigOverride(
         "sub-scale",
         "sub-pos",
         "sub-margin-x",
-        "sub-scale-by-window",
-        "sub-scale-with-window",
-        "sub-use-margins",
         "sub-ass-override",
         "sub-ass-justify",
         "sub-vsfilter-bidi-compat",
@@ -317,14 +314,23 @@ object MpvConfigControlledFeatures {
 
 /** The ownership snapshot used by the active libmpv core. */
 object MpvConfigOverridePolicy {
+  private val aliases =
+    listOf(
+      setOf("sub-back-color", "sub-shadow-color"),
+      setOf("sub-border-color", "sub-outline-color"),
+      setOf("sub-border-size", "sub-outline-size"),
+      setOf("script-opts", "script-opts-append"),
+    )
+
   @Volatile
   private var overriddenOptionNames: Set<String> = emptySet()
 
   fun configure(storedValues: Set<String>) {
-    overriddenOptionNames = MpvConfigOverride.resolveOptionNames(storedValues)
+    overriddenOptionNames = effectiveOptionNames(MpvConfigOverride.resolveOptionNames(storedValues))
   }
 
-  fun effectiveOptionNames(optionNames: Set<String>): Set<String> = optionNames
+  fun effectiveOptionNames(optionNames: Set<String>): Set<String> =
+    optionNames + aliases.filter { group -> group.any(optionNames::contains) }.flatten()
 
   fun isOwnedByMpvConf(optionName: String): Boolean = optionName in overriddenOptionNames
 

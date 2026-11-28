@@ -456,8 +456,7 @@ object YtdlpManager {
     // Configure the bundled hook before MPVLib.init(), otherwise it caches an empty path.
     // Keep a generated fallback for ytdl_hook. This file is app-owned compatibility state, not a
     // user preference: mpv.conf ownership must never delete it or leave a stale bundled path
-    // behind. A genuinely hand-written hook file is preserved and the required bootstrap values
-    // are supplied independently through app-owned script options below.
+    // behind. A genuinely hand-written hook file is preserved.
     try {
       val scriptOptsDir = File(context.filesDir, "script-opts")
       if (!scriptOptsDir.exists()) scriptOptsDir.mkdirs()
@@ -496,20 +495,16 @@ object YtdlpManager {
   private fun applyMpvHookOptions(context: Context) {
     val ytdlBinaryPath = getExecutablePath(context)
 
-    // These values are part of mpvRx's bundled bridge contract. They intentionally bypass
-    // preference ownership so a broad script-opts override cannot remove half of the integration.
-    PlaybackSession.setIntegrationOptionString("script-opts-append", "ytdl_hook-ytdl_path=$ytdlBinaryPath")
-    PlaybackSession.setIntegrationOptionString("script-opts-append", "ytdl_hook-all_formats=yes")
-    PlaybackSession.setIntegrationOptionString("script-opts-append", "ytdl_hook-force_all_formats=yes")
-    PlaybackSession.setIntegrationOptionString("script-opts-append", "ytdl_hook-try_ytdl_first=yes")
+    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-ytdl_path=$ytdlBinaryPath")
+    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-all_formats=yes")
+    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-force_all_formats=yes")
+    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-try_ytdl_first=yes")
     // Skip yt-dlp for direct media/manifest URLs (.m3u8/.mpd/.mp4/.ts/...). Without this,
     // ytdl_hook intercepts every http(s) URL and routes it through yt-dlp's generic
     // extractor, which chokes on tokenized HLS/CDN links — so mpv never falls back to
     // ffmpeg's native HLS demuxer and playback fails (while MX Player/VLC play it fine).
-    PlaybackSession.setIntegrationOptionString("script-opts-append", "ytdl_hook-exclude=$DIRECT_MEDIA_EXCLUDE")
-    // Configure the executable before enabling a hook disabled by a user config. Keep it
-    // enabled between loads; a local file must not unload the built-in script.
-    PlaybackSession.setIntegrationOptionString("ytdl", "yes")
+    PlaybackSession.setOptionString("script-opts-append", "ytdl_hook-exclude=$DIRECT_MEDIA_EXCLUDE")
+    PlaybackSession.setOptionString("ytdl", "yes")
   }
 
   fun setupMpvOptions(

@@ -41,7 +41,7 @@ object PlaybackStateOps {
     watched: Boolean,
   ) = withContext(Dispatchers.IO) {
     try {
-      videos.forEach { video ->
+      videos.filterNot { it.isAudio }.forEach { video ->
         currentCoroutineContext().ensureActive()
         persistWatched(video, watched)
         database.playlistDao().clearResumePositionForFile(video.path)
@@ -55,8 +55,9 @@ object PlaybackStateOps {
     videos: List<Video>,
     threshold: Int,
   ): Boolean {
-    val watched = watchedPaths(videos, threshold)
-    return videos.isNotEmpty() && videos.all { it.path in watched }
+    val videoFiles = videos.filterNot { it.isAudio }
+    val watched = watchedPaths(videoFiles, threshold)
+    return videoFiles.isNotEmpty() && videoFiles.all { it.path in watched }
   }
 
   suspend fun watchedPaths(
@@ -67,6 +68,7 @@ object PlaybackStateOps {
       val states = repository.getAllPlaybackStates().associateBy { it.mediaTitle }
       videos
         .filter { video ->
+          if (video.isAudio) return@filter false
           val state = videoPlaybackIdentifiers(video).firstNotNullOfOrNull(states::get)
           val duration = video.duration / 1000.0
           if (app.gyrolet.mpvrx.BuildConfig.SCOPED_STORAGE_ONLY) {

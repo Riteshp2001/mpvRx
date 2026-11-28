@@ -477,6 +477,7 @@ class FolderListViewModel(
     playbackStateFor: suspend (identifiers: Set<String>) -> PlaybackStateEntity?,
   ): Int =
     videos.count { video ->
+      if (video.isAudio) return@count false
       val videoAge = parameters.currentTime - (video.dateModified * 1000)
       val isRecent = videoAge <= parameters.thresholdMillis
       val playbackState =

@@ -966,7 +966,18 @@ private fun pillScript(
 ): PillScript {
   val rows = mutableListOf<PillRow>()
   val stops = mutableListOf<PillStop>()
-  var slots = 2
+  fun companion(line: SyncedLine): String? {
+    val original = line.line.trim()
+    val translated =
+      line.translation?.trim()?.takeIf {
+        mode == LyricsTranslationDisplayMode.DualLine && it.isNotEmpty() && !it.equals(original, ignoreCase = true)
+      }
+    return translated ?: line.romanization?.trim()?.takeIf {
+      it.isNotEmpty() && !it.equals(original, ignoreCase = true) &&
+        !(mode == LyricsTranslationDisplayMode.Replace && it.equals(line.translation?.trim(), ignoreCase = true))
+    }
+  }
+  val hasCompanion = model.lines.any { companion(it) != null }
   for ((index, line) in model.lines.withIndex()) {
     if (line.line.isBlank()) continue
     val start = line.time.toLong()
@@ -1006,11 +1017,9 @@ private fun pillScript(
         startMs = start,
         endMs = end,
       )
-    line.romanization?.takeIf { it.isNotBlank() && it != line.line }?.let {
-      rows += PillRow(it, small = true, startMs = start, endMs = end)
-      slots = 3
-    }
-    line.background?.takeIf { it.line.isNotBlank() }?.let {
+    if (hasCompanion) {
+      rows += PillRow(companion(line).orEmpty(), small = true, startMs = start, endMs = end)
+    } else line.background?.takeIf { it.line.isNotBlank() }?.let {
       rows +=
         PillRow(
           it.line,
@@ -1020,14 +1029,6 @@ private fun pillScript(
           endMs = it.endTime?.toLong()?.takeIf { stop -> stop > it.time } ?: end,
           ownerMs = start,
         )
-    }
-    if (mode == LyricsTranslationDisplayMode.DualLine) {
-      line.translation
-        ?.takeIf { it.isNotBlank() && !it.trim().equals(line.line.trim(), ignoreCase = true) }
-        ?.let {
-          rows += PillRow(it, small = true, startMs = start, endMs = end)
-          slots = 3
-        }
     }
     val time = (start - 300L).coerceAtLeast(0)
     while (stops.size > 1 && stops.last().timeMs >= time) stops.removeAt(stops.lastIndex)
@@ -1052,7 +1053,7 @@ private fun pillScript(
     val end = rows.take(info).maxOfOrNull { it.endMs } ?: 0L
     stops += PillStop(maxOf(end + 1_500, stops.last().timeMs + 1), info)
   }
-  return PillScript(model.generation, rows, stops, slots)
+  return PillScript(model.generation, rows, stops, 2)
 }
 
 private data class PreparedRow(

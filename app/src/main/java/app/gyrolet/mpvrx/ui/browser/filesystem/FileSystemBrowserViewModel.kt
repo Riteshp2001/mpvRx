@@ -953,19 +953,20 @@ class FileSystemBrowserViewModel(
           0f
         }
       val isWatched =
-        sharedInfo?.isWatched ?: (
-          playbackState?.hasBeenWatched == true ||
-            (watchedThreshold > 0 && progressValue >= watchedThreshold / 100f)
-        )
+        !video.isAudio &&
+          (sharedInfo?.isWatched ?: (
+            playbackState?.hasBeenWatched == true ||
+              (watchedThreshold > 0 && progressValue >= watchedThreshold / 100f)
+          ))
       if (isWatched) watchedIds += video.id
 
-      if (playbackState != null && progressValue in 0.01f..0.99f) {
+      if (!video.isAudio && playbackState != null && progressValue in 0.01f..0.99f) {
         playbackMap[video.id] = progressValue
       }
 
       val videoAge = currentTime - (video.dateModified * 1000L)
       val isWithinNewWindow = thresholdMillis == 0L || videoAge <= thresholdMillis
-      if (showNewLabels && !isWatched && (playbackState?.newLabelOverride ?: isWithinNewWindow)) {
+      if (!video.isAudio && showNewLabels && !isWatched && (playbackState?.newLabelOverride ?: isWithinNewWindow)) {
         newIds += video.id
       }
     }

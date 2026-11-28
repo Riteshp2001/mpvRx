@@ -1045,9 +1045,9 @@ private fun SectionHeader(
       Modifier.fillMaxWidth().padding(
         start = if (isTablet) 24.dp else 16.dp,
         end = if (isTablet) 16.dp else 8.dp,
-        top = 12.dp,
-        bottom = 2.dp,
-      ),
+        top = 16.dp,
+        bottom = 8.dp,
+      ).heightIn(min = 48.dp),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.SpaceBetween,
   ) {
@@ -1107,7 +1107,7 @@ private fun ShelfEmptyCard(
     shape = AppShapeScale.large,
     color = MaterialTheme.colorScheme.surfaceContainerLow,
     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
-    modifier = Modifier.fillMaxWidth().padding(horizontal = if (isTablet) 24.dp else 16.dp, vertical = 2.dp),
+    modifier = Modifier.fillMaxWidth().padding(horizontal = if (isTablet) 24.dp else 16.dp),
   ) {
     Row(
       modifier = Modifier.padding(12.dp),

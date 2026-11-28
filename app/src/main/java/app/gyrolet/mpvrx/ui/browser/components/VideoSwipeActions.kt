@@ -407,7 +407,8 @@ internal fun rememberVideoSwipeActions(
                   resolved.distinctBy { it.path }.sortedBy { it.path.lowercase() }
                 }
               currentCoroutineContext().ensureActive()
-              if (videos.isEmpty()) {
+              val eligibleVideos = if (action.isAudioCompatible) videos else videos.filterNot { it.isAudio }
+              if (eligibleVideos.isEmpty()) {
                 Toast
                   .makeText(
                     context,
@@ -415,7 +416,7 @@ internal fun rememberVideoSwipeActions(
                     Toast.LENGTH_SHORT,
                   ).show()
               } else {
-                perform(SwipeTarget(videos, folder.name), action)
+                perform(SwipeTarget(eligibleVideos, folder.name), action)
               }
             } catch (cancelled: CancellationException) {
               throw cancelled

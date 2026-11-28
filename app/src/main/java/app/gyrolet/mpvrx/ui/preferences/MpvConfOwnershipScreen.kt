@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigOverride
+import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.components.ExpandableCard
 import app.gyrolet.mpvrx.ui.icons.Icon
@@ -80,7 +81,11 @@ object MpvConfOwnershipScreen : ScrollableSettingsScreen {
     val preferences = koinInject<AdvancedPreferences>()
     val storedValues by preferences.mpvConfOverrides.collectAsState()
     val availableGroups = MpvConfigOverride.availableGroups
-    val selectedOptions = remember(storedValues) { MpvConfigOverride.resolveOptionNames(storedValues) }
+    val selectedOptions =
+      remember(storedValues) {
+        MpvConfigOverridePolicy.effectiveOptionNames(MpvConfigOverride.resolveOptionNames(storedValues)) intersect
+          MpvConfigOverride.allOptionNames
+      }
     val hasMpvConfig = remember { hasMeaningfulMpvConfig(preferences.mpvConf.get()) }
     var expandedGroup by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -289,6 +294,8 @@ private fun OwnershipGroupCard(
         options.forEachIndexed { index, optionName ->
           val optionShape = rememberConnectedShape(index, options.size, ConnectedLayout.Vertical)
           val checked = optionName in selectedOptions
+          val equivalentOptions =
+            MpvConfigOverridePolicy.effectiveOptionNames(setOf(optionName)) intersect MpvConfigOverride.allOptionNames
           Row(
             modifier =
               Modifier
@@ -304,7 +311,7 @@ private fun OwnershipGroupCard(
                   },
                 ).toggleable(value = checked, role = Role.Checkbox) {
                   onSelectionChange(
-                    if (checked) selectedOptions - optionName else selectedOptions + optionName,
+                    if (checked) selectedOptions - equivalentOptions else selectedOptions + equivalentOptions,
                   )
                 }.heightIn(min = 48.dp)
                 .padding(horizontal = 8.dp, vertical = 4.dp),

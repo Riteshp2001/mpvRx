@@ -2438,7 +2438,7 @@ object PlaybackSession : MPVLib.EventObserver {
 
   internal fun <T> readLoadedPlaybackState(
     mediaIdentifier: String,
-    capture: (positionSeconds: Double, durationSeconds: Double) -> T,
+    capture: (positionSeconds: Double, durationSeconds: Double, item: PlaybackItem) -> T,
   ): T? =
     withReadyCore(null) {
       val current = _state.value
@@ -2453,7 +2453,7 @@ object PlaybackSession : MPVLib.EventObserver {
         MPVLib.getPropertyDouble("time-pos")?.takeIf { it.isFinite() && it >= 0.0 }
           ?: return@withReadyCore null
       val duration = MPVLib.getPropertyDouble("duration")?.takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
-      capture(position, duration)
+      capture(position, duration, item)
     }
 
   internal fun applyAudiobookSpeed(
@@ -3443,7 +3443,6 @@ object PlaybackSession : MPVLib.EventObserver {
   ) = withCore(Unit) {
     val saved = youTubeAmbientSubtitleMargins
     if (active) {
-      if (MpvConfigOverridePolicy.isOwnedByMpvConf("sub-use-margins")) return@withCore
       val original = saved?.second ?: MPVLib.getPropertyString("sub-use-margins") ?: return@withCore
       youTubeAmbientSubtitleMargins = owner to original
       if (saved == null && original != "no") MPVLib.setPropertyString("sub-use-margins", "no")

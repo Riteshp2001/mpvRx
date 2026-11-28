@@ -5781,7 +5781,7 @@ class PlayerActivity :
     val saveIdentifier = activeSaveMediaIdentifier.ifBlank { mediaIdentifier }
     if (saveIdentifier.isBlank()) return null
 
-    return PlaybackSession.readLoadedPlaybackState(saveIdentifier) { position, duration ->
+    return PlaybackSession.readLoadedPlaybackState(saveIdentifier) { position, duration, item ->
       PlaybackStateSnapshot(
         mediaIdentifier = saveIdentifier,
         mediaTitle = mediaTitle,
@@ -5790,6 +5790,12 @@ class PlayerActivity :
         isPositionRestorePending =
           PlaybackSession.isPositionRestorePending(PlaybackSession.state.value.activeGeneration),
         isLive = PlaybackSession.isLiveMedia(),
+        isAudio =
+          when (item.declaredMediaKind()) {
+            DeclaredPlaybackMediaKind.AUDIO -> true
+            DeclaredPlaybackMediaKind.VIDEO -> false
+            DeclaredPlaybackMediaKind.UNKNOWN -> viewModel.isAudioOnly.value || isCurrentMediaKnownAudio()
+          },
         playbackSpeed = PlaybackSession.getPropertyDouble("speed") ?: DEFAULT_PLAYBACK_SPEED,
         videoZoom = PlaybackSession.videoZoom.value,
         sid = player.sid,

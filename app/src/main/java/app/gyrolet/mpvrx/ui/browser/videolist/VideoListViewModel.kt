@@ -121,8 +121,9 @@ internal fun buildVideoWithPlaybackInfo(
       null
     }
   val isWatched =
-    playbackState?.hasBeenWatched == true ||
-      (watchedThreshold > 0 && progressValue != null && progressValue >= watchedThreshold / 100f)
+    !video.isAudio &&
+      (playbackState?.hasBeenWatched == true ||
+        (watchedThreshold > 0 && progressValue != null && progressValue >= watchedThreshold / 100f))
   val newLabelWindowMillis = newLabelDays.toLong() * 24L * 60L * 60L * 1000L
   val videoAgeMillis = currentTimeMillis - video.dateModified * 1000L
   val isWithinNewLabelWindow = newLabelDays == 0 || videoAgeMillis <= newLabelWindowMillis
@@ -130,8 +131,8 @@ internal fun buildVideoWithPlaybackInfo(
   return VideoWithPlaybackInfo(
     video = displayVideo,
     timeRemaining = playbackState?.timeRemaining?.toLong(),
-    progressPercentage = progressValue?.takeIf { it in 0.01f..0.99f },
-    isOldAndUnplayed = !isWatched && (playbackState?.newLabelOverride ?: isWithinNewLabelWindow),
+    progressPercentage = progressValue?.takeIf { !video.isAudio && it in 0.01f..0.99f },
+    isOldAndUnplayed = !video.isAudio && !isWatched && (playbackState?.newLabelOverride ?: isWithinNewLabelWindow),
     isWatched = isWatched,
   )
 }
@@ -511,6 +512,7 @@ class VideoListViewModel(
     video: Video,
     watched: Boolean,
   ) {
+    if (video.isAudio) return
     _videosWithPlaybackInfo.update { videos ->
       videos.map { item ->
         if (item.video.path == video.path) {

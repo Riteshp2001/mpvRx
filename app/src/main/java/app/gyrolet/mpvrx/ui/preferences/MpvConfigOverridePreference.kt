@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.preferences.AdvancedPreferences
 import app.gyrolet.mpvrx.preferences.MpvConfigOverride
+import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
@@ -32,7 +33,11 @@ internal fun MpvConfigOverridePreference(
 ) {
   val backStack = LocalBackStack.current
   val storedValues by preferences.mpvConfOverrides.collectAsState()
-  val selectedOptions = remember(storedValues) { MpvConfigOverride.resolveOptionNames(storedValues) }
+  val selectedOptions =
+    remember(storedValues) {
+      MpvConfigOverridePolicy.effectiveOptionNames(MpvConfigOverride.resolveOptionNames(storedValues)) intersect
+        MpvConfigOverride.allOptionNames
+    }
   val selectedGroups = remember(selectedOptions) { MpvConfigOverride.groupsContaining(selectedOptions) }
 
   ExpressivePreferenceItem(modifier = modifier) {
