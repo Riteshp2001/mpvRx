@@ -59,7 +59,7 @@ val sideloadDistributions = setOf("standard", "noVulkan", "fongmi")
 // AGP cannot build an app bundle while ABI splits produce multiple APKs (issuetracker 402800800).
 val isBundleBuild =
   gradle.startParameter.taskNames.any { it.substringAfterLast(':').startsWith("bundle") }
-val releaseVersionCode = 305
+val releaseVersionCode = 306
 val versionCodeBandSize = 10_000
 val stableVersionCode = releaseVersionCode * versionCodeBandSize + (versionCodeBandSize - 1)
 
@@ -97,7 +97,7 @@ android {
     targetSdk = 36
     // Stable occupies the top of its version band.
     versionCode = stableVersionCode
-    versionName = "3.1.1"
+    versionName = "3.2.0"
 
     vectorDrawables {
       useSupportLibrary = true

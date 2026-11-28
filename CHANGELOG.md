@@ -2,6 +2,118 @@
 
 These notes are written in plain English and focus on what changed for real use.
 
+## 3.2.0 — Playback
+
+**Release date:** November 28, 2026 · [Compare every change since 3.1.1 →](https://github.com/Riteshp2001/mpvRx/compare/v3.1.1...v3.2.0)
+
+<p align="center"><strong>Your player, your layout. Better listening, wherever you go.</strong><br />Player layout switching · Sharper album art · Background playback · Music sleep timer · LAN discovery · Watched threshold</p>
+
+Switch between the **video and music player layouts**, enjoy sharper covers and more animated artwork, and choose how video behaves when you leave the player. This update also makes seeking smoother, finds more servers on your network, improves sheets across the app, and gives you control over when videos are marked watched.
+
+> **ℹ️ Build tags used below:** `FongMi` = FongMi APK only · `Sideload` = every build except Google Play · no tag = every build.
+
+---
+
+### 🧭 At a glance
+
+| | Feature | Where to find it | Build |
+| :-: | --- | --- | :-: |
+| 🔀 | **Switch player layouts** without changing the playing file | Player → Switch to audio / video player | All |
+| 🖼️ | **High-quality covers** and more motion artwork | Settings → Audio → Artwork | All |
+| 🌙 | **Music sleep timer**, including end of song | Music player → Playlist → Sleep timer | All |
+| 🎧 | **Simpler background playback** and Back controls | Settings → Player → Background playback / Auto Picture-in-Picture | All |
+| 📡 | **Find more local network servers** | Network → Find nearby servers | All |
+| ✅ | **Choose the watched threshold** | Settings → Player → Watched threshold | All |
+| 📺 | **Adjust TV remote seeking** | Settings → Player → Seeking | All |
+| 🌈 | **Linear Passthrough** HDR mode | HDR Screen Output | All |
+
+---
+
+### ✨ Release highlights
+
+#### 🔀 Switch between music and video layouts
+
+Choose the player presentation that suits what you're playing. The video player has a **Switch to audio player** button, and the music player has a **Switch to video player** button. Playback continues as you switch. Audio shown in the video layout keeps its album artwork, and the player follows the selected layout for orientation, system bars, volume and brightness feedback, and picture-in-picture.
+
+On tablets, **Dual-pane music player on tablets** lets you choose whether the queue and lyrics appear beside the music player (#1028).
+
+#### 🖼️ Sharper covers and more motion artwork
+
+**High-quality artwork** is on by default. It looks for a matching Apple Music cover up to 3000 px, then a TIDAL cover, even when the file has embedded art. Downloaded covers are cached for later playback; the existing artwork remains the fallback.
+
+- **TIDAL video covers** no longer need developer credentials. **Spotify Canvas** can be used as a final motion-art source with your Spotify session cookie. · `Sideload` for Spotify Canvas
+- Motion clips are cached while they loop and fade in when ready. Immersive artwork fills the screen, and swiping the cover changes tracks as soon as you release it.
+- Embedded covers in Matroska audio files are found more reliably, including in the mini player.
+
+#### 🎧 Background playback that is easier to control
+
+Music and audiobooks keep playing in the background. For video, one **Video Player Background Playback** switch covers Home, app switching, and screen-off. Long-press the player's background button to keep the current video playing once, even when the switch is off.
+
+- **Back keeps the video playing** lets Back return to the list while a video continues with notification controls, or close the video instead. **Back enters picture-in-picture** separately controls whether Back enters PiP when auto-PiP is enabled. Android TV keeps its Back-to-close behavior.
+- The system media notification appears while playback is in the background and works without notification permission. Playback ends and its position is saved when you clear mpvRx from Recents.
+- The **video mini player** and swipe-down-to-minimize gesture have been removed; the audio mini player remains. The old audio background switch, per-video background choice, screen-off-only option, and notification-style selector have also been removed (#1027).
+- Read-ahead cache is preserved when the video surface is lost, so returning from the background need not download the same buffered data again. Audio focus is reacquired when playback starts, unless **Ignore audio focus** is enabled.
+
+#### 🌙 A sleep timer for music
+
+Open the timer from the music player's playlist. Choose 5, 15, 30, or 60 minutes, enter a custom time, or stop at the **end of the current song**. The timer survives collapsing the music player.
+
+#### 📡 Find more servers on your network
+
+**Find nearby servers** now checks the local subnet for SMB, FTP, SFTP, and WebDAV services as well as advertised servers, helping find shares that do not announce themselves. DLNA discovery and connections are more reliable; live tuner streams can play without a known length, and available artwork, artist, and duration are carried into playback (#1017, #1033).
+
+---
+
+### 🆕 What's new
+
+#### 🎬 Playback and picture
+
+- **Watched threshold:** choose the percentage at which a video is marked watched, or turn automatic marking off. The default remains 95%. Music is no longer treated as watched video or offered video watched actions.
+- **Linear Passthrough** adds an hdr-toys BT.2100 PQ output mode for compatible HDR displays. HDR screen output remains off by default; when enabled, Linear Passthrough is the default mode, with a compatible fallback where needed.
+- **Choose the TV seek step:** select a preset or a custom 1–120 seconds. Holding the remote button still accelerates the seek; the default is 10 seconds.
+- **Audio output sheet:** see the current media output, change the output through Android's picker, and adjust media volume where Android allows it.
+- **Swipe settings:** choose whether swipes switch main pages, independently of inner tabs, and use separate swipe actions and zones for audio and video items (#717).
+
+#### 📚 Library and files
+
+- **Hidden folders** show an eye-off badge. Granted `.nomedia` folders also appear in Library and Tree views where supported, including Play Store Tree mode.
+- **Sharper thumbnails:** thumbnails are generated at the size needed for their cards using up to eight cores, without the old quality cap. The thumbnail quality and processing-core settings have been removed; older cached thumbnails regenerate.
+- Recently Played and Recently Added shelves show watched checkmarks and honor grayscale watched thumbnails. Resolution chips use the dimensions known to MediaStore, and subtitle chips better distinguish ASS, SSA, and PGS.
+
+#### 🎨 Sheets and controls
+
+- Bottom sheets and player panels have been refreshed across the app, with clearer headers and more consistent sizing and dragging on phones, tablets, and landscape screens.
+- Player panels retain their Liquid Glass backdrop and opacity, while native HDR uses its compatible translucent treatment. The video controls keep a stable bottom safe area when system bars appear or disappear.
+- The audio button highlights active audio filters. On the first and last queue items, unavailable previous and next buttons are dimmed unless repeat-all wraps the queue.
+
+---
+
+### 🔧 Improvements and fixes
+
+#### 🎮 Player and statistics
+
+- Swipe and seekbar scrubbing no longer block the UI while mpv processes seeks; the seek thumb stays at the requested position until playback catches up. Seeking within the cache no longer shows a misleading network buffering spinner.
+- Videos without a saved position start without waiting for a resume-state restore. Network playback and pinch zoom avoid unnecessary work on the main thread.
+- Open panels and sheets are better protected from accidental dismissal, and closing them keeps previously hidden player controls hidden.
+- Statistics can remain visible with Ambient. On `FongMi`, mpv's OSD is layered above Ambient and album art, including in picture-in-picture. The music layout turns statistics off; switching to the video layout makes them available again. Sync statistics now respect window inset padding.
+- Subtitle window scaling was removed. The bundled mpvlib update fixes decomposed Korean Hangul in subtitles across all builds (#1026, #1037).
+
+#### 🎵 Music, library, and network
+
+- Media notifications and system or Bluetooth controls handle player returns, background transitions, and playback state more reliably. Optional microphone and notification permissions are requested in response to relevant actions instead of repeatedly on return to the app.
+- Opening a deleted file no longer crashes the app, and refreshing the library picks up newly downloaded media more reliably (#1032).
+- TV stream entry is placed below saved connections and bookmarks and no longer opens the keyboard merely on focus (#1035). Jellyfin credits wrap instead of overflowing.
+- Video and subtitle metadata are refreshed more reliably; ASS/SSA and PGS tracks are labeled more accurately.
+
+#### 🧹 Changes to previous features
+
+- Automatic black-bar detection and cropping for Ambient have been removed. Fit, Stretch, Crop, and manual zoom remain available.
+- The automatic missing-subtitle-font downloader and its setting have been removed; subtitle font handling now relies on mpvlib.
+- Preview builds and the preview update channel have been retired. Updates now follow stable GitHub releases.
+- The native playback backend has been updated to **mpvlib 1.1.8.9**.
+
+---
+
 ## 3.1.1 — Motion
 
 **Release date:** November 23, 2026 · [Compare every change since 3.0.2 →](https://github.com/Riteshp2001/mpvRx/compare/v3.0.2...v3.1.1)
