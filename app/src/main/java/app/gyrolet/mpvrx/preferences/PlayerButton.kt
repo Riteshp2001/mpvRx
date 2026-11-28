@@ -56,7 +56,7 @@ enum class PlayerButton(
   SCOPES(Icons.RoundedFilled.Mystery),
   PLAYLIST(Icons.RoundedFilled.PlaylistPlay),
   MOTION_INTERPOLATION(Icons.RoundedFilled.MotionInterpolation),
-  SWITCH_PLAYER_LAYOUT(Icons.RoundedFilled.ViewQuilt),
+  SWITCH_PLAYER_LAYOUT(Icons.RoundedFilled.ReplaceAudio),
   NONE(Icons.RoundedFilled.Bookmarks),
 }
 

@@ -614,6 +614,7 @@ fun VideoAmbientBackground(
   videoBounds: ComposeRect,
   edgeBlend: Float,
   modifier: Modifier = Modifier,
+  frameModifier: Modifier = Modifier,
 ) {
   val base = baseColor ?: Color.Transparent
   val accent = accentColor ?: Color.Transparent
@@ -636,7 +637,7 @@ fun VideoAmbientBackground(
         bitmap = frame,
         contentDescription = null,
         contentScale = ContentScale.Crop,
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().then(frameModifier),
         alpha = FRAME_ALPHA,
       )
     }

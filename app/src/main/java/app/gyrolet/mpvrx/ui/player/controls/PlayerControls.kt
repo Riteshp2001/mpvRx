@@ -93,13 +93,15 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
@@ -130,6 +132,8 @@ import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
+import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
+import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.PlaybackControlsPlacement
 import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
@@ -145,6 +149,7 @@ import app.gyrolet.mpvrx.ui.liquidglass.LiquidPillButton
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerHdrOutputEnabled
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerLiquidGlassActive
+import app.gyrolet.mpvrx.ui.player.AmbientStyle
 import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
 import app.gyrolet.mpvrx.ui.player.Decoder.Companion.getDecoderFromValue
 import app.gyrolet.mpvrx.ui.player.InAppMusicSheetState
@@ -163,6 +168,7 @@ import app.gyrolet.mpvrx.ui.player.buildControlsEnterH
 import app.gyrolet.mpvrx.ui.player.buildControlsEnterV
 import app.gyrolet.mpvrx.ui.player.buildControlsExitH
 import app.gyrolet.mpvrx.ui.player.buildControlsExitV
+import app.gyrolet.mpvrx.ui.player.components.VideoAmbientBackground
 import app.gyrolet.mpvrx.ui.player.components.VideoGlassBackdropSource
 import app.gyrolet.mpvrx.ui.player.components.rememberVideoGlassSource
 import app.gyrolet.mpvrx.ui.player.controls.components.AnimatedPlayPauseIcon
@@ -2683,13 +2689,42 @@ private fun AudioArtworkVideoBackground(
   // The artwork would otherwise cover the statistics drawn on mpv's Surface.
   if (statisticsPage != 0) return
 
+  val ambientEnabled by viewModel.isAmbientEnabled.collectAsState()
+  val ambientStyle by viewModel.ambientStyle.collectAsState()
+  val edgeBlend by viewModel.ambientYouTubeEdgeBlend.collectAsState()
+  var viewport by remember { mutableStateOf(IntSize.Zero) }
   Box(
-    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer),
+    modifier =
+      Modifier
+        .fillMaxSize()
+        .background(MaterialTheme.colorScheme.surfaceContainer)
+        .onSizeChanged { viewport = it },
     contentAlignment = Alignment.Center,
   ) {
     if (bitmap != null) {
+      val image = remember(bitmap) { bitmap.asImageBitmap() }
+      if (ambientEnabled &&
+        ambientStyle == AmbientStyle.YouTube &&
+        !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT) &&
+        viewport.width > 0 && viewport.height > 0
+      ) {
+        // Audio in the video layout has artwork instead of a frame that PixelCopy can sample.
+        val scale = minOf(viewport.width.toFloat() / image.width, viewport.height.toFloat() / image.height)
+        val x = (viewport.width - image.width * scale) / 2f
+        val y = (viewport.height - image.height * scale) / 2f
+        if (x >= 1f || y >= 1f) {
+          VideoAmbientBackground(
+            frame = image,
+            baseColor = null,
+            accentColor = null,
+            videoBounds = Rect(x, y, viewport.width - x, viewport.height - y),
+            edgeBlend = edgeBlend,
+            frameModifier = Modifier.blur(48.dp),
+          )
+        }
+      }
       Image(
-        bitmap = remember(bitmap) { bitmap.asImageBitmap() },
+        bitmap = image,
         contentDescription = null,
         contentScale = ContentScale.Fit,
         modifier = Modifier.fillMaxSize(),

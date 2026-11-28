@@ -1420,6 +1420,7 @@ class PlayerActivity :
       val edgeBlend by viewModel.ambientYouTubeEdgeBlend.collectAsState()
       val lifecycleActive by viewModel.isAmbientLifecycleActive.collectAsState()
       val isAudioOnly by viewModel.isAudioOnly.collectAsState()
+      val presentation by viewModel.playerPresentation.collectAsState()
       val playbackState by PlaybackSession.state.collectAsState()
       val osdDimensions by PlaybackSession.propNode["osd-dimensions"].collectAsState()
       val directRect by PlaybackSession.propString[ANDROID_VIDEO_RECT].collectAsState()
@@ -1460,6 +1461,7 @@ class PlayerActivity :
           style == AmbientStyle.YouTube &&
           !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT) &&
           !isAudioOnly &&
+          presentation != true &&
           !isAmbientPipMode &&
           playbackReady &&
           playbackState.surfaceAttached
