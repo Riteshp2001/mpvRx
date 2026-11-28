@@ -69,6 +69,7 @@ fun MoreSheet(
   filtersEnabled: Boolean = true,
   equalizerEnabled: Boolean = true,
   anime4KEnabled: Boolean = true,
+  showStatistics: Boolean = true,
   modifier: Modifier = Modifier,
 ) {
   val advancedPreferences = koinInject<AdvancedPreferences>()
@@ -133,39 +134,41 @@ fun MoreSheet(
           .padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      Text(
-        text = stringResource(R.string.player_sheets_stats_page_title),
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.primary,
-      )
-      LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
-      ) {
-        items(9, key = { it }) { page ->
-          FilterChip(
-            label = {
-              Text(
-                when (page) {
-                  0 -> stringResource(R.string.player_sheets_tracks_off)
-                  8 -> stringResource(R.string.player_sheets_stats_page_console)
-                  else -> stringResource(R.string.player_sheets_stats_page_chip, page)
-                },
-              )
-            },
-            selected = statisticsPage == page,
-            onClick = {
-              // One coordinator owns the chips, the preference and mpv's stats.lua state; it
-              // closes the console itself and keeps the overlay from being blind-toggled.
-              PlaybackSession.setStatisticsPage(page)
-              if (page != 0) onDismissRequest()
-            },
-            colors =
-              FilterChipDefaults.filterChipColors(
-                containerColor = playerSheetSelectionColor(false),
-                selectedContainerColor = playerSheetSelectionColor(true),
-                selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-              ),
-          )
+      if (showStatistics) {
+        Text(
+          text = stringResource(R.string.player_sheets_stats_page_title),
+          style = MaterialTheme.typography.titleMedium,
+          color = MaterialTheme.colorScheme.primary,
+        )
+        LazyRow(
+          horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.smaller),
+        ) {
+          items(9, key = { it }) { page ->
+            FilterChip(
+              label = {
+                Text(
+                  when (page) {
+                    0 -> stringResource(R.string.player_sheets_tracks_off)
+                    8 -> stringResource(R.string.player_sheets_stats_page_console)
+                    else -> stringResource(R.string.player_sheets_stats_page_chip, page)
+                  },
+                )
+              },
+              selected = statisticsPage == page,
+              onClick = {
+                // One coordinator owns the chips, the preference and mpv's stats.lua state; it
+                // closes the console itself and keeps the overlay from being blind-toggled.
+                PlaybackSession.setStatisticsPage(page)
+                if (page != 0) onDismissRequest()
+              },
+              colors =
+                FilterChipDefaults.filterChipColors(
+                  containerColor = playerSheetSelectionColor(false),
+                  selectedContainerColor = playerSheetSelectionColor(true),
+                  selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+            )
+          }
         }
       }
 

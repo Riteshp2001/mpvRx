@@ -19,7 +19,8 @@ import java.lang.reflect.Method
 /**
  * FongMi's mpv can hand Dolby Vision tracks to MediaCodec on the video SurfaceView
  * (`android-dolby-vision-output=direct`) and draw subtitles and OSD on a transparent overlay
- * Surface (`android-osd-wid`). Only FongMi's mpvlib has the overlay JNI calls, so they are
+ * Surface (`android-osd-wid`). The player keeps that overlay as its OSD layer above YouTube
+ * Ambient and the album art. Only FongMi's mpvlib has the overlay JNI calls, so they are
  * resolved at runtime; the other builds compile against libraries without them.
  */
 internal object DolbyVisionDirect {
@@ -45,8 +46,8 @@ internal object DolbyVisionDirect {
     }.getOrDefault(false)
   }
 
-  /** The overlay carries subtitles for direct Dolby Vision tracks and for MediaCodec embed. */
-  fun wantsOsdOverlay(
+  /** Whether Dolby Vision tracks go straight to MediaCodec, which MediaCodec embed also asks for. */
+  fun wantsDirectOutput(
     dolbyVisionDirect: Boolean,
     mediaCodecEmbed: Boolean,
   ): Boolean = isBuildSupported && (dolbyVisionDirect || mediaCodecEmbed)

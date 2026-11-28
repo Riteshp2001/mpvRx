@@ -4,6 +4,7 @@
 
 package app.gyrolet.mpvrx.ui.player.components
 
+import android.view.View
 import android.view.ViewTreeObserver
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -56,28 +57,35 @@ internal class VideoGlassSource(
 }
 
 @Composable
-internal fun rememberVideoGlassSource(videoView: MPVView?): VideoGlassSource {
-  val scene = videoView?.videoBackdrop
-  val source = remember(videoView, scene) { VideoGlassSource(scene) }
-  DisposableEffect(videoView, source) {
-    if (videoView == null || scene == null) return@DisposableEffect onDispose {}
+internal fun rememberVideoGlassSource(videoView: MPVView?): VideoGlassSource =
+  rememberViewGlassSource(videoView, videoView?.videoBackdrop)
+
+/** [scene] is recorded in [view]'s own composition, e.g. the video host or the album art layer. */
+@Composable
+internal fun rememberViewGlassSource(
+  view: View?,
+  scene: LayerBackdrop?,
+): VideoGlassSource {
+  val source = remember(view, scene) { VideoGlassSource(scene) }
+  DisposableEffect(view, source) {
+    if (view == null || scene == null) return@DisposableEffect onDispose {}
     val location = IntArray(2)
 
     fun updateBounds() {
-      videoView.getLocationInWindow(location)
+      view.getLocationInWindow(location)
       source.boundsInWindow =
-        if (videoView.isShown) {
+        if (view.isShown) {
           Rect(
             location[0].toFloat(),
             location[1].toFloat(),
-            location[0] + videoView.width * videoView.scaleX,
-            location[1] + videoView.height * videoView.scaleY,
+            location[0] + view.width * view.scaleX,
+            location[1] + view.height * view.scaleY,
           )
         } else {
           Rect.Zero
         }
     }
-    val observer = videoView.viewTreeObserver
+    val observer = view.viewTreeObserver
     val listener =
       ViewTreeObserver.OnPreDrawListener {
         updateBounds()

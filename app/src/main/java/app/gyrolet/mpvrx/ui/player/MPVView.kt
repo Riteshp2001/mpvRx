@@ -90,6 +90,14 @@ class MPVView(
   // Android may create the Surface while the core is still initializing on IO. Do not let its
   // main-thread callbacks wait on the native lock; attachSessionSurface enables them afterwards.
   private var renderCallbacksEnabled = false
+
+  // FongMi build: Dolby Vision direct output or MediaCodec embed is on. mpv applies it to Dolby
+  // Vision tracks while the OSD layer is attached.
+  private var dolbyVisionDirectOutput =
+    DolbyVisionDirect.wantsDirectOutput(
+      decoderPreferences.dolbyVisionDirect.get(),
+      decoderPreferences.mediaCodecEmbed.get(),
+    )
   private var surfaceRecovery: Runnable? = null
   private var pausedFrameRedraw: Runnable? = null
   private val surfaceReadiness = MutableStateFlow(false)
@@ -127,7 +135,6 @@ class MPVView(
         mediaCodecEmbed = mediaCodecEmbed,
       ),
     )
-    setOsdOverlay(DolbyVisionDirect.wantsOsdOverlay(decoderPreferences.dolbyVisionDirect.get(), mediaCodecEmbed))
   }
 
   /** A slow Surface must not prevent the media load and its watchdog from starting. */
@@ -779,6 +786,8 @@ class MPVView(
   ) {
     if (isExiting || !surfaceBindingEnabled || !renderCallbacksEnabled || renderSurface !== surface) return
     if (PlaybackSession.isSurfaceAttachedTo(this)) return
+    // A replaced video Surface took mpv's OSD layer with it; restore the layer before the video.
+    ensureOsdSurfaceAttached()
     cancelSurfaceRecovery()
     isSurfaceReady = false
     surfaceAttachmentGeneration++
@@ -833,7 +842,20 @@ class MPVView(
     ) {
       return
     }
-    PlaybackSession.bindOsdSurface(surface, osdSurfaceWidth, osdSurfaceHeight, owner = this)
+    PlaybackSession.bindOsdSurface(
+      surface,
+      osdSurfaceWidth,
+      osdSurfaceHeight,
+      owner = this,
+      dolbyVisionDirect = dolbyVisionDirectOutput,
+    )
+  }
+
+  /** Dolby Vision direct output and MediaCodec embed follow their settings while the layer stays. */
+  internal fun setDolbyVisionDirectOutput(enabled: Boolean) {
+    if (dolbyVisionDirectOutput == enabled) return
+    dolbyVisionDirectOutput = enabled
+    if (renderCallbacksEnabled && !isExiting) PlaybackSession.setOsdDolbyVisionDirect(owner = this, direct = enabled)
   }
 
   override fun onOsdSurfaceAvailable(

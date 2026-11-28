@@ -469,6 +469,13 @@ object PlaybackSession : MPVLib.EventObserver {
   private var loadedAudiobookEnded = false
   private var speedBeforeAudiobook: Float? = null
   private var attachedOsdOwner: Any? = null
+  private val osdOverlayAttachedState = MutableStateFlow(false)
+
+  /**
+   * FongMi build: mpv draws subtitles, statistics and OSD on the player's own layer above YouTube
+   * Ambient and the album art, instead of into the video Surface underneath them.
+   */
+  internal val osdOverlayAttached: StateFlow<Boolean> = osdOverlayAttachedState.asStateFlow()
   private var appliedDolbyVisionOutput: String? = null
   private var defaultUserAgent: String? = null
   private var pendingPositionRestoreGeneration = 0L
@@ -846,6 +853,15 @@ object PlaybackSession : MPVLib.EventObserver {
                 // so its low 32 bits must never decide whether the Surface is attached.
                 val windowId = MPVLib.getPropertyString("wid")?.toLongOrNull() ?: 0L
                 if (windowId == 0L || windowId == -1L) return@withLock false
+                // FongMi's direct MediaCodec output fails to start without its OSD Surface. The OSD
+                // layer is a TextureView, which gets its Surface in the same frame's draw pass, just
+                // after a SurfaceView video Surface.
+                if (videoOutput == MediaCodecEmbed.VO &&
+                  DolbyVisionDirect.isBuildSupported &&
+                  attachedOsdOwner == null
+                ) {
+                  return@withLock false
+                }
 
                 val activated =
                   runCatching {
@@ -961,14 +977,16 @@ object PlaybackSession : MPVLib.EventObserver {
     nativeLock.withLock { _state.value.surfaceAttached && attachedSurfaceOwner === owner }
 
   /**
-   * Attaches the transparent overlay that carries subtitles and OSD (FongMi build). Dolby Vision
-   * tracks then go straight to MediaCodec on the video Surface; mpv keeps other tracks on the GPU.
+   * Attaches the transparent layer that carries subtitles, statistics and OSD (FongMi build). mpv
+   * then stops drawing them into the video Surface. With [dolbyVisionDirect], Dolby Vision tracks
+   * go straight to MediaCodec on the video Surface; mpv keeps other tracks on the GPU.
    */
   fun bindOsdSurface(
     surface: Surface,
     width: Int,
     height: Int,
     owner: Any,
+    dolbyVisionDirect: Boolean,
   ): Boolean =
     withCore(default = false) {
       if (!DolbyVisionDirect.isBuildSupported || !surface.isValid || width <= 0 || height <= 0) {
@@ -979,19 +997,30 @@ object PlaybackSession : MPVLib.EventObserver {
         DolbyVisionDirect.attachOsdSurface(surface)
         MPVLib.setPropertyString("android-osd-surface-size", "${width}x$height")
         attachedOsdOwner = owner
-        // Direct output makes FongMi's FFmpeg insist on a native Dolby Vision MediaCodec
-        // decoder and fail the whole video track when the device has none (for example
-        // HDR10-only phones playing profile 8.1 through MediaCodec embed end up with audio
-        // and no picture). Only request it when a DV decoder actually exists; "configured"
-        // keeps the embed output and lets the decoder fall back to the base layer.
-        setDolbyVisionOutputLocked(
-          if (DolbyVisionDirect.hasDolbyVisionDecoder) "direct" else "configured",
-        )
+        osdOverlayAttachedState.value = true
+        setDolbyVisionDirectLocked(dolbyVisionDirect)
       }.onFailure { error ->
-        Log.e(TAG, "Could not attach the subtitle overlay Surface", error)
+        Log.e(TAG, "Could not attach the OSD layer Surface", error)
         detachOsdSurfaceLocked()
       }.isSuccess
     }
+
+  /** Dolby Vision direct output for the attached OSD layer's [owner]. */
+  fun setOsdDolbyVisionDirect(
+    owner: Any,
+    direct: Boolean,
+  ) = withCore(Unit) {
+    if (attachedOsdOwner === owner) setDolbyVisionDirectLocked(direct)
+  }
+
+  private fun setDolbyVisionDirectLocked(direct: Boolean) {
+    // Direct output makes FongMi's FFmpeg insist on a native Dolby Vision MediaCodec decoder
+    // and fail the whole video track when the device has none (for example HDR10-only phones
+    // playing profile 8.1 through MediaCodec embed end up with audio and no picture). Only
+    // request it when a DV decoder actually exists; "configured" keeps the embed output and lets
+    // the decoder fall back to the base layer.
+    setDolbyVisionOutputLocked(if (direct && DolbyVisionDirect.hasDolbyVisionDecoder) "direct" else "configured")
+  }
 
   fun resizeOsdSurface(
     width: Int,
@@ -1033,8 +1062,9 @@ object PlaybackSession : MPVLib.EventObserver {
     // Move a direct Dolby Vision track back to the GPU output before its overlay disappears.
     runCatching { setDolbyVisionOutputLocked("configured") }
     runCatching { DolbyVisionDirect.detachOsdSurface() }
-      .onFailure { error -> Log.w(TAG, "Could not detach the subtitle overlay Surface", error) }
+      .onFailure { error -> Log.w(TAG, "Could not detach the OSD layer Surface", error) }
     attachedOsdOwner = null
+    osdOverlayAttachedState.value = false
   }
 
   private fun setDolbyVisionOutputLocked(output: String) {
@@ -1423,6 +1453,7 @@ object PlaybackSession : MPVLib.EventObserver {
     rendererOutputReady = false
     attachedSurfaceOwner = null
     attachedOsdOwner = null
+    osdOverlayAttachedState.value = false
     appliedDolbyVisionOutput = null
     managesUserScripts = false
     loadedUserScripts.clear()

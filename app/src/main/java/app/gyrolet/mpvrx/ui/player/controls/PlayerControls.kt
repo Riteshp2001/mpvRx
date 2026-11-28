@@ -16,6 +16,7 @@ import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
+import android.view.View
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedVisibility
@@ -31,7 +32,6 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -93,16 +93,12 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -132,8 +128,6 @@ import app.gyrolet.mpvrx.preferences.AudioPreferences
 import app.gyrolet.mpvrx.preferences.BrowserPreferences
 import app.gyrolet.mpvrx.preferences.DecoderPreferences
 import app.gyrolet.mpvrx.preferences.GesturePreferences
-import app.gyrolet.mpvrx.preferences.MpvConfigControlledFeatures
-import app.gyrolet.mpvrx.preferences.MpvConfigOverridePolicy
 import app.gyrolet.mpvrx.preferences.PlaybackControlsPlacement
 import app.gyrolet.mpvrx.preferences.PlayerButton
 import app.gyrolet.mpvrx.preferences.PlayerPreferences
@@ -149,7 +143,6 @@ import app.gyrolet.mpvrx.ui.liquidglass.LiquidPillButton
 import app.gyrolet.mpvrx.ui.liquidglass.LocalKyantPlayerBackdrop
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerHdrOutputEnabled
 import app.gyrolet.mpvrx.ui.liquidglass.LocalPlayerLiquidGlassActive
-import app.gyrolet.mpvrx.ui.player.AmbientStyle
 import app.gyrolet.mpvrx.ui.player.DeclaredPlaybackMediaKind
 import app.gyrolet.mpvrx.ui.player.Decoder.Companion.getDecoderFromValue
 import app.gyrolet.mpvrx.ui.player.InAppMusicSheetState
@@ -157,7 +150,6 @@ import app.gyrolet.mpvrx.ui.player.MPVView
 import app.gyrolet.mpvrx.ui.player.MediaPlaybackService
 import app.gyrolet.mpvrx.ui.player.Panels
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
-import app.gyrolet.mpvrx.ui.player.PlaybackItem
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.player.PlayerUpdates
@@ -168,9 +160,9 @@ import app.gyrolet.mpvrx.ui.player.buildControlsEnterH
 import app.gyrolet.mpvrx.ui.player.buildControlsEnterV
 import app.gyrolet.mpvrx.ui.player.buildControlsExitH
 import app.gyrolet.mpvrx.ui.player.buildControlsExitV
-import app.gyrolet.mpvrx.ui.player.components.VideoAmbientBackground
 import app.gyrolet.mpvrx.ui.player.components.VideoGlassBackdropSource
 import app.gyrolet.mpvrx.ui.player.components.rememberVideoGlassSource
+import app.gyrolet.mpvrx.ui.player.components.rememberViewGlassSource
 import app.gyrolet.mpvrx.ui.player.controls.components.AnimatedPlayPauseIcon
 import app.gyrolet.mpvrx.ui.player.controls.components.BrightnessSlider
 import app.gyrolet.mpvrx.ui.player.controls.components.BufferingPhase
@@ -200,6 +192,7 @@ import app.gyrolet.mpvrx.ui.theme.spacing
 import app.gyrolet.mpvrx.utils.device.DeviceFormFactor
 import app.gyrolet.mpvrx.utils.logging.Log
 import app.gyrolet.mpvrx.utils.storage.FileTypeUtils
+import com.kyant.backdrop.backdrops.LayerBackdrop
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import kotlinx.collections.immutable.persistentListOf
@@ -325,6 +318,15 @@ internal fun AudioPlayerScreen(
     }
   }
 
+  // Statistics exist only in the video layout. The music player turns every page off, including
+  // the one left open there when switching back, and anything mpv opens while it is on screen.
+  val advancedPreferences = koinInject<AdvancedPreferences>()
+  val visibleStatisticsPage by PlaybackSession.visibleStatisticsPage.collectAsStateWithLifecycle()
+  val selectedStatisticsPage by advancedPreferences.enabledStatisticsPage.collectAsState()
+  LaunchedEffect(visibleStatisticsPage, selectedStatisticsPage) {
+    if (visibleStatisticsPage != 0 || selectedStatisticsPage != 0) PlaybackSession.setStatisticsPage(0)
+  }
+
   // Only sheets and panels sample this layer; the controls would otherwise sample themselves.
   val audioBackdrop = rememberLayerBackdrop()
   Box(modifier = modifier.fillMaxSize()) {
@@ -393,6 +395,7 @@ internal fun AudioPlayerScreen(
         onOpenPanel = onOpenPanel,
         onShowSheet = onOpenSheet,
         onDismissRequest = { onOpenSheet(Sheets.None) },
+        statisticsAvailable = false,
       )
 
       PlayerPanels(
@@ -417,6 +420,8 @@ fun PlayerControls(
   onBackPress: () -> Unit,
   videoSurface: MPVView? = null,
   modifier: Modifier = Modifier,
+  artworkView: View? = null,
+  artworkBackdrop: LayerBackdrop? = null,
 ) {
   val spacing = MaterialTheme.spacing
   val isTelevision = DeviceFormFactor.isTelevision(LocalContext.current)
@@ -433,7 +438,7 @@ fun PlayerControls(
   // Glass needs the video on the Compose-recordable renderer, so this mirrors the renderer choice.
   // When HDR output keeps the video on a native surface ("Liquid glass in HDR" off, or HDR owned by
   // mpv.conf), every player control uses its regular form, exactly as with Liquid Glass off.
-  val enableLiquidGlass =
+  val videoLiquidGlass =
     shouldUseTextureRendering(
       liquidGlass = liquidGlassPreference,
       hdrOutput = hdrOutputPreference,
@@ -623,6 +628,8 @@ fun PlayerControls(
       DeclaredPlaybackMediaKind.UNKNOWN -> isAudioOnly || activity?.isCurrentMediaKnownAudio() == true
     }
   val useAudioPlayer = playerPresentation ?: defaultAudioPlayer
+  // The album art layer and the volume feedback follow the layout resolved here.
+  LaunchedEffect(viewModel, defaultAudioPlayer) { viewModel.onDefaultPlayerLayoutResolved(defaultAudioPlayer) }
   if (useAudioPlayer) {
     AudioPlayerScreen(
       viewModel = viewModel,
@@ -632,6 +639,8 @@ fun PlayerControls(
     )
     return
   }
+  // Audio here shows album art from its own layer, which glass samples without a video renderer.
+  val enableLiquidGlass = if (defaultAudioPlayer) liquidGlassPreference else videoLiquidGlass
 
   val playerActivity = LocalActivity.current as PlayerActivity
   val configuration = LocalConfiguration.current
@@ -841,14 +850,26 @@ fun PlayerControls(
     key(glassSource, isHdrOutputEnabled, liquidGlassInHdr) {
       rememberLayerBackdrop(onDraw = { with(glassSource) { drawVideo() } })
     }
+  // Audio has no picture in mpv's output, only the album art layer PlayerActivity shows under the
+  // OSD layer. The glass samples that recording, live, the same way as the video's GPU layer.
+  val artworkGlassSource = rememberViewGlassSource(artworkView, artworkBackdrop)
+  val artworkGlassBackdrop =
+    key(artworkGlassSource) {
+      rememberLayerBackdrop(onDraw = { with(artworkGlassSource) { drawVideo() } })
+    }
+  val activeGlassSource = if (defaultAudioPlayer) artworkGlassSource else glassSource
   val playerKyantBackdrop =
-    videoBackdrop.takeIf {
-      enableLiquidGlass &&
-        (!isHdrOutputEnabled || liquidGlassInHdr) &&
-        videoSurface?.isTextureSurface == true &&
-        videoSurfaceReady &&
-        videoFrameReady &&
-        glassSource.scene != null
+    if (defaultAudioPlayer) {
+      artworkGlassBackdrop.takeIf { enableLiquidGlass && artworkGlassSource.scene != null }
+    } else {
+      videoBackdrop.takeIf {
+        enableLiquidGlass &&
+          (!isHdrOutputEnabled || liquidGlassInHdr) &&
+          videoSurface?.isTextureSurface == true &&
+          videoSurfaceReady &&
+          videoFrameReady &&
+          glassSource.scene != null
+      }
     }
 
   if (isTelevision) {
@@ -911,13 +932,8 @@ fun PlayerControls(
               .clipToBounds()
               .onSizeChanged { playerBounds = it },
         ) {
-          if (defaultAudioPlayer) {
-            key(playbackSessionState.generation) {
-              AudioArtworkVideoBackground(viewModel, currentQueueItem)
-            }
-          }
           if (playerKyantBackdrop != null) {
-            VideoGlassBackdropSource(glassSource, playerKyantBackdrop)
+            VideoGlassBackdropSource(activeGlassSource, playerKyantBackdrop)
           }
           VideoOpenAnimationOverlay(
             style = videoOpenAnim,
@@ -1089,11 +1105,6 @@ fun PlayerControls(
             .clipToBounds()
             .onSizeChanged { playerBounds = it },
       ) {
-        if (defaultAudioPlayer) {
-          key(playbackSessionState.generation) {
-            AudioArtworkVideoBackground(viewModel, currentQueueItem)
-          }
-        }
         key(playbackSessionState.generation) {
           DoubleTapToSeekOvals(
             amount = doubleTapSeekAmount,
@@ -1111,7 +1122,7 @@ fun PlayerControls(
           animationState = videoOpenAnimState,
         )
         if (enableLiquidGlass && playerKyantBackdrop != null) {
-          VideoGlassBackdropSource(glassSource, videoBackdrop)
+          VideoGlassBackdropSource(activeGlassSource, playerKyantBackdrop)
         }
         if (brightness < 0) {
           Box(
@@ -2656,86 +2667,6 @@ fun PlayerControls(
           }
         }
       }
-    }
-  }
-}
-
-@Composable
-private fun AudioArtworkVideoBackground(
-  viewModel: PlayerViewModel,
-  item: PlaybackItem?,
-) {
-  val session by PlaybackSession.state.collectAsStateWithLifecycle()
-  val path by PlaybackSession.propString["path"].collectAsStateWithLifecycle()
-  val streamPath by PlaybackSession.propString["stream-open-filename"].collectAsStateWithLifecycle()
-  val book by app.gyrolet.mpvrx.ui.player.AudiobookPlayback.book.collectAsStateWithLifecycle()
-  val source =
-    item?.originalUri?.takeIf { it.isNotBlank() }
-      ?: item?.playableUri?.takeIf { it.isNotBlank() }
-      ?: path?.takeIf { it.isNotBlank() }
-      ?: streamPath
-  val artworkUri =
-    book?.takeIf { it.book.id == item?.audiobook?.bookId }?.book?.coverUri?.takeIf { it.isNotBlank() }
-      ?: item?.artworkUri?.takeIf { it.isNotBlank() }
-  val artwork = rememberAudioAlbumArt(source, artworkUri)
-  val hasMpvAlbumArt by viewModel.hasAlbumArt.collectAsState()
-  val mpvArtwork =
-    rememberMpvAlbumArt(
-      enabled = artwork == null && hasMpvAlbumArt && session.phase == PlaybackPhase.READY,
-      key = session.generation,
-    )
-  val bitmap = artwork ?: mpvArtwork
-  val statisticsPage by PlaybackSession.visibleStatisticsPage.collectAsStateWithLifecycle()
-  // The artwork would otherwise cover the statistics drawn on mpv's Surface.
-  if (statisticsPage != 0) return
-
-  val ambientEnabled by viewModel.isAmbientEnabled.collectAsState()
-  val ambientStyle by viewModel.ambientStyle.collectAsState()
-  val edgeBlend by viewModel.ambientYouTubeEdgeBlend.collectAsState()
-  var viewport by remember { mutableStateOf(IntSize.Zero) }
-  Box(
-    modifier =
-      Modifier
-        .fillMaxSize()
-        .background(MaterialTheme.colorScheme.surfaceContainer)
-        .onSizeChanged { viewport = it },
-    contentAlignment = Alignment.Center,
-  ) {
-    if (bitmap != null) {
-      val image = remember(bitmap) { bitmap.asImageBitmap() }
-      if (ambientEnabled &&
-        ambientStyle == AmbientStyle.YouTube &&
-        !MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.AMBIENT) &&
-        viewport.width > 0 && viewport.height > 0
-      ) {
-        // Audio in the video layout has artwork instead of a frame that PixelCopy can sample.
-        val scale = minOf(viewport.width.toFloat() / image.width, viewport.height.toFloat() / image.height)
-        val x = (viewport.width - image.width * scale) / 2f
-        val y = (viewport.height - image.height * scale) / 2f
-        if (x >= 1f || y >= 1f) {
-          VideoAmbientBackground(
-            frame = image,
-            baseColor = null,
-            accentColor = null,
-            videoBounds = Rect(x, y, viewport.width - x, viewport.height - y),
-            edgeBlend = edgeBlend,
-            frameModifier = Modifier.blur(48.dp),
-          )
-        }
-      }
-      Image(
-        bitmap = image,
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
-        modifier = Modifier.fillMaxSize(),
-      )
-    } else {
-      Icon(
-        imageVector = Icons.RoundedFilled.Audiotrack,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.size(96.dp),
-      )
     }
   }
 }

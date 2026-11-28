@@ -117,6 +117,8 @@ fun PlayerSheets(
   onOpenPanel: (Panels) -> Unit,
   onShowSheet: (Sheets) -> Unit,
   onDismissRequest: () -> Unit,
+  // Statistics pages belong to the video layout only.
+  statisticsAvailable: Boolean = true,
 ) {
   val context = LocalContext.current
   val isTelevision = DeviceFormFactor.isTelevision(context)
@@ -514,6 +516,7 @@ fun PlayerSheets(
         filtersEnabled = MpvConfigOverride.VIDEO_FILTERS.optionNames.any { it !in configOwnedOptions },
         equalizerEnabled = "af" !in configOwnedOptions,
         anime4KEnabled = MpvConfigControlledFeatures.ANIME4K.none(configOwnedOptions::contains),
+        showStatistics = statisticsAvailable,
       )
     }
 
